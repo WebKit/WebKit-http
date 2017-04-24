@@ -1,3 +1,401 @@
+2017-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215674.
+        https://bugs.webkit.org/show_bug.cgi?id=171212
+
+        Possible unintended commit. This patch was on the wrong bug.
+        (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "test262: test262/test/language/expressions/generators/yield-
+        as-label.js"
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+        http://trac.webkit.org/changeset/215674
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Number/prototype/toPrecision/nan.js
+        https://bugs.webkit.org/show_bug.cgi?id=171197
+
+        Reviewed by Saam Barati.
+
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToExponential):
+        (JSC::numberProtoFuncToFixed):
+        (JSC::numberProtoFuncToPrecision):
+        Refine the order of operations to match the spec.
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVariableDeclarationList):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        Converge on "Cannot" instead of "Can't" in error messages.
+
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        Disallow "yield" as the generator function name in function expressions.
+        This refers to the difference between Declaration and Expression, where
+        only GeneratorExpression explicitly has [+Yield] disallowing yield for
+        the generator name:
+
+            GeneratorDeclaration[Yield, Await, Default]:
+                function * BindingIdentifier[?Yield, ?Await] ...
+
+            GeneratorExpression:
+                function * BindingIdentifier[+Yield, ~Await]opt ...
+
+        (JSC::Parser<LexerType>::parseExpressionOrLabelStatement):
+        Disallow "yield" as a label name in strict mode or inside a generator.
+
+        (JSC::Parser<LexerType>::parseProperty):
+        Disallow "yield" or any keyword in object literal shorthands.
+
+        * parser/Parser.h:
+        (JSC::Parser::getToken):
+        (JSC::Parser::isDisallowedIdentifierLet):
+        (JSC::Parser::isDisallowedIdentifierYield):
+        (JSC::Parser::disallowedIdentifierLetReason):
+        (JSC::Parser::disallowedIdentifierYieldReason):
+        Follow pattern for improved error messages based on context.
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Number/parseFloat.js
+        https://bugs.webkit.org/show_bug.cgi?id=171193
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::parseFloatFunction):
+        Expose parseFloat on the global object to be shared with Number constructor.
+
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+        parseFloat uses the same value as the global parseFloat.
+
+2017-04-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use DoublyLinkedList for MachineThread
+        https://bugs.webkit.org/show_bug.cgi?id=171171
+
+        Reviewed by Mark Lam.
+
+        MachineThread can use WTF::DoublyLinkedList to simplify
+        its implementation. We should not use Vector<> etc. since
+        we do not want to call allocations during suspending and
+        resuming threads.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::removeThreadIfFound):
+        (JSC::MachineThreads::MachineThread::MachineThread):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::threadsListHead):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::isValidFramePointer):
+        * runtime/VMTraps.cpp:
+        (JSC::findActiveVMAndStackBounds):
+
+2017-04-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: Module.exports, Module.imports, Module.customSections are wrong
+        https://bugs.webkit.org/show_bug.cgi?id=171078
+
+        Reviewed by Saam Barati.
+
+        They're static properties of Module, not instance properties of a module.
+        https://github.com/WebAssembly/design/blob/master/JS.md#webassemblymoduleexports
+
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::webAssemblyModuleCustomSections):
+        (JSC::webAssemblyModuleImports):
+        (JSC::webAssemblyModuleExports):
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        (JSC::webAssemblyModuleProtoCustomSections): Deleted.
+        (JSC::webAssemblyModuleProtoImports): Deleted.
+        (JSC::webAssemblyModuleProtoExports): Deleted.
+
+2017-04-21  Saam Barati  <sbarati@apple.com>
+
+        SharedArrayBuffer-opt.js fails with Briggs
+        https://bugs.webkit.org/show_bug.cgi?id=170948
+        <rdar://problem/31740568>
+
+        Reviewed by Michael Saboff.
+
+        The bug was not actually with Briggs, but instead was with
+        our X86-64 MacroAssembler. Michael fixed the bug here:
+        https://trac.webkit.org/changeset/215618/webkit
+        
+        The issue was we weren't adding the REX byte for AtomicXchg8,
+        leading to the incorrect encoding for the result register depending
+        on which register it was. If you look at this code, you'll see the issue:
+
+          Int32 @38 = AtomicXchg(@59, @64, width = 8, range = 0, fenceRange = 0, ControlDependent|Fence|Writes:0|Reads:0, DFG:@49)
+              AtomicXchg8 %rsi, (%rax,%rdx), @38
+                  0x2dcb5bc0015e: lock xchg %dh, (%rax,%rdx)
+          Int32 @66 = Const32(255, DFG:@49)
+          Int32 @67 = BitAnd(@38, $255(@66), DFG:@49)
+              ZeroExtend8To32 %rsi, %rax, @67
+                  0x2dcb5bc00162: movzx %sil, %eax
+
+        Air thought the result was in the lower 8 bits of %rsi,
+        however, the code we emitted stored it in the [8-15] bits
+        of %rdx. Since this issue is fixed, I'm turning Briggs back
+        on.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.h:
+        (JSC::B3::Air::useIRC):
+
+2017-04-20  Mark Lam  <mark.lam@apple.com>
+
+        Refactor MASM probe to allow printing of custom types.
+        https://bugs.webkit.org/show_bug.cgi?id=171101
+
+        Reviewed by JF Bastien.
+
+        For example, this allows us to add MASM printing of CodeBlock* and Air::Args.
+
+        In general, MASM print can be used like dataLog, except that it generates JITted
+        code for doing the dataLogging later when the JITted code runs.  MASM print can
+        print any value type that a specialized Printer template or a setPrinter()
+        function implemented for that type.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssembler.h:
+
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printAllRegisters):
+        (JSC::Printer::printPCRegister):
+        (JSC::Printer::printRegisterID):
+        (JSC::Printer::printFPRegisterID):
+        (JSC::Printer::printAddress):
+        (JSC::Printer::printMemory):
+        (JSC::Printer::printCallback):
+        (JSC::printIndent): Deleted.
+        (JSC::printCPU): Deleted.
+        (JSC::printCPURegisters): Deleted.
+        (JSC::printPC): Deleted.
+        (JSC::printRegister): Deleted.
+        (JSC::printMemory): Deleted.
+        (JSC::MacroAssemblerPrinter::printCallback): Deleted.
+        * assembler/MacroAssemblerPrinter.h:
+        (JSC::AllRegisters::AllRegisters):
+        (JSC::Printer::Printer<AllRegisters>::Printer):
+        (JSC::Printer::Printer<PCRegister>::Printer):
+        (JSC::Printer::Printer<MacroAssembler::RegisterID>::Printer):
+        (JSC::Printer::Printer<MacroAssembler::FPRegisterID>::Printer):
+        (JSC::Printer::Printer<MacroAssembler::Address>::Printer):
+        (JSC::Printer::Printer<Memory>::Printer):
+        (JSC::Printer::Printer<MemWord<IntType>>::Printer):
+        (JSC::MacroAssembler::print):
+        (JSC::MacroAssemblerPrinter::print): Deleted.
+        (JSC::MacroAssemblerPrinter::PrintArg::PrintArg): Deleted.
+        (JSC::MacroAssemblerPrinter::appendPrintArg): Deleted.
+        - Refactored to move the underlying PrintRecord (and associated data structures)
+          out to Printer.cpp/h.
+        - MacroAssemblerPrinter.cpp/h now only add custom Printers for MASM types like
+          RegisterID and Memory.  It also defines the implementation of
+          MacroAssembler::print().
+
+          As before, JIT code that wishes to use MacroAssembler::print() needs to
+          #include "MacroAssemblerPrinter.h".
+
+        - Also added the ability to specify an optional indentation (in number of chars)
+          when MASM printing AllRegisters.  This is useful because AllRegisters prints
+          a block of data unlike other printers which print inline.
+
+        * assembler/Printer.cpp: Added.
+        (JSC::Printer::printConstCharString):
+        (JSC::Printer::printIntptr):
+        (JSC::Printer::printUintptr):
+        (JSC::Printer::printPointer):
+        (JSC::Printer::setPrinter):
+        * assembler/Printer.h: Added.
+        (JSC::Printer::Context::Context):
+        (JSC::Printer::PrintRecord::PrintRecord):
+        (JSC::Printer::appendPrinter):
+        (JSC::Printer::makePrintRecordList):
+        (JSC::Printer::Printer<RawPointer>::Printer):
+        (JSC::Printer::setPrinter):
+        (JSC::Printer::Printer::Printer):
+        - Data structures for creating a list of PrintRecords.  Classes which wish to
+          add custom support for MASM printing can #include "Printer.h" and implement
+          either:
+          1. a specialized Printer template, or
+          2. a setPrinter() function.
+
+          See Printer<Reg> and Printer<B3::Air::Tmp> in AirPrintSpecial.h for examples of
+          (1).  See CodeBlock's setPrinter() for an example of (2).
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::print):
+        * b3/air/AirPrintSpecial.cpp: Added.
+        (JSC::B3::Air::PrintSpecial::PrintSpecial):
+        (JSC::B3::Air::PrintSpecial::~PrintSpecial):
+        (JSC::B3::Air::PrintSpecial::forEachArg):
+        (JSC::B3::Air::PrintSpecial::isValid):
+        (JSC::B3::Air::PrintSpecial::admitsStack):
+        (JSC::B3::Air::PrintSpecial::reportUsedRegisters):
+        (JSC::B3::Air::PrintSpecial::generate):
+        (JSC::B3::Air::PrintSpecial::extraEarlyClobberedRegs):
+        (JSC::B3::Air::PrintSpecial::extraClobberedRegs):
+        (JSC::B3::Air::PrintSpecial::dumpImpl):
+        (JSC::B3::Air::PrintSpecial::deepDumpImpl):
+        (JSC::Printer::printAirArg):
+        * b3/air/AirPrintSpecial.h: Added.
+        (JSC::Printer::appendAirArg):
+        (JSC::Printer::appendAirArgs):
+        (JSC::Printer::Printer<B3::Air::Tmp>::Printer):
+        (JSC::Printer::Printer<Reg>::Printer):
+        - Add the print() operation for use in LowerToAir.  print() will emit a
+          PrintSpecial that will ultimately emit a MASM print to print what we want.
+        - LowerToAir's print() adds the ability to print Air::Args.
+        - Unlike in the baseline JIT and the DFG, LowerToAir's print() can perturb the
+          usage of registers.  This is because PrintSpecial is a patch point, and it
+          prevents certain optimizations.  If not used carefully, an attempt to print()
+          an Arg by taking a Tmp, can force the B3 Value into a Tmp earlier than it would
+          otherwise do so.  So, use LowerToAir's print() with care.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::setPrinter):
+        - Now we can MASM print CodeBlock*.
+        (WTF::printInternal):
+        - Now we can dataLog CodeBlock* (including null CodeBlock pointers).
+
+        * bytecode/CodeBlock.h:
+
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        - Use the new ability to dataLog CodeBlock*.  No need to do an explicit null
+          check before printing anymore.
+
+2017-04-21  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, rolling out r215634.
+
+        underlying build issues should have been fixed
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r215620 and r215623."
+        https://bugs.webkit.org/show_bug.cgi?id=171139
+        http://trac.webkit.org/changeset/215634
+
+2017-04-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215620 and r215623.
+        https://bugs.webkit.org/show_bug.cgi?id=171139
+
+        broke arm64 build (Requested by keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Add signaling API"
+        https://bugs.webkit.org/show_bug.cgi?id=170976
+        http://trac.webkit.org/changeset/215620
+
+        "Unreviewed, fix Cloop build."
+        http://trac.webkit.org/changeset/215623
+
+2017-04-21  Keith Miller  <keith_miller@apple.com>
+
+        Remove LL/SC from Atomics
+        https://bugs.webkit.org/show_bug.cgi?id=171141
+
+        Reviewed by Saam Barati.
+
+        Adding load link and store conditionally was not an actual progression
+        and the existing code is causing problems for users of Atomics. So let's
+        get rid of it.
+
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::testAndSetMarked):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::testAndSetMarked):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::setMarkedAndAppendToMarkStack):
+
+2017-04-21  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix Cloop build.
+
+        * jit/ExecutableAllocator.h:
+        (JSC::isJITPC):
+
+2017-04-20  Keith Miller  <keith_miller@apple.com>
+
+        Add signaling API
+        https://bugs.webkit.org/show_bug.cgi?id=170976
+
+        Reviewed by Filip Pizlo.
+
+        Update various uses of sigaction to use the new signaling API.
+        Also switch VMTraps to use the thread message system instead of
+        rolling it's own.
+
+        * jit/ExecutableAllocator.h:
+        (JSC::isJITPC):
+        * runtime/VMTraps.cpp:
+        (JSC::installSignalHandler):
+        (JSC::VMTraps::VMTraps):
+        (JSC::VMTraps::SignalSender::send):
+        (JSC::handleSigusr1): Deleted.
+        (JSC::handleSigtrap): Deleted.
+        (JSC::installSignalHandlers): Deleted.
+        * runtime/VMTraps.h:
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::installCrashHandler):
+        (JSC::handleCrash): Deleted.
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+
+2017-04-21  Michael Saboff  <msaboff@apple.com>
+
+        X86-64 Assembler doesn't handle xchg with byte register src
+        https://bugs.webkit.org/show_bug.cgi?id=171118
+
+        Reviewed by Saam Barati.
+
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::xchgb_rm): Use oneByteOp8() since these are 8 bit opcodes.
+
+2017-04-21  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+
+        Reviewed by JF Bastien.
+
+        Use udat_formatForFields to iterate through the parts of a formatted date string.
+        Make formatToParts and related functions dependent on ICU version >= 55.
+
+        * icu/unicode/udat.h: Update to 55.1.
+        * icu/unicode/ufieldpositer.h: Added from 55.1.
+        * icu/unicode/uvernum.h: Update to 55.1
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::partTypeString): Convert UDateFormatField to string.
+        (JSC::IntlDateTimeFormat::formatToParts): Return parts of formatted date string.
+        * runtime/IntlDateTimeFormat.h:
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeFuncFormatToParts): Add prototype function formatToParts.
+
 2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere

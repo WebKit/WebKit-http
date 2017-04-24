@@ -32,12 +32,14 @@
 #import "TestWKWebView.h"
 #import "WKWebViewConfigurationExtras.h"
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <UIKit/NSURL+UIItemProvider.h>
 #import <UIKit/UIItemProvider_Private.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 
 typedef void (^FileLoadCompletionBlock)(NSURL *, BOOL, NSError *);
+typedef void (^DataLoadCompletionBlock)(NSData *, NSError *);
 
 static UIImage *testIconImage()
 {
@@ -73,6 +75,15 @@ static void cleanUpDataInteractionTemporaryPath()
             capturedBlock(retainedTemporaryURL.get(), NO, nil);
         });
         return nil;
+    }];
+}
+
+- (void)registerDataRepresentationForTypeIdentifier:(NSString *)typeIdentifier withData:(NSData *)data
+{
+    RetainPtr<NSData> retainedData = data;
+    [self registerDataRepresentationForTypeIdentifier:typeIdentifier visibility:NSItemProviderRepresentationVisibilityAll loadHandler: [retainedData] (DataLoadCompletionBlock block) -> NSProgress * {
+        block(retainedData.get(), nil);
+        return [NSProgress discreteProgressWithTotalUnitCount:100];
     }];
 }
 
@@ -237,6 +248,14 @@ TEST(DataInteractionTests, LinkToInput)
 
     EXPECT_WK_STREQ("https://www.apple.com/", [webView editorValue].UTF8String);
 
+    __block bool doneLoadingURL = false;
+    UIItemProvider *sourceItemProvider = [dataInteractionSimulator sourceItemProviders].firstObject;
+    [sourceItemProvider loadObjectOfClass:[NSURL class] completionHandler:^(NSURL *url, NSError *error) {
+        EXPECT_WK_STREQ("Hello world", url._title.UTF8String ?: "");
+        doneLoadingURL = true;
+    }];
+    TestWebKitAPI::Util::run(&doneLoadingURL);
+
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionOverEventName]);
@@ -312,6 +331,23 @@ TEST(DataInteractionTests, EnterAndLeaveEvents)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionLeaveEventName]);
     EXPECT_FALSE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
     checkSelectionRectsWithLogging(@[ ], [dataInteractionSimulator finalSelectionRects]);
+}
+
+TEST(DataInteractionTests, ExternalSourceJSONToFileInput)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"file-uploading"];
+
+    RetainPtr<UIItemProvider> simulatedJSONItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    NSData *jsonData = [@"{ \"foo\": \"bar\",  \"bar\": \"baz\" }" dataUsingEncoding:NSUTF8StringEncoding];
+    [simulatedJSONItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJSON withData:jsonData filename:@"data.json"];
+
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedJSONItemProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(200, 100) to:CGPointMake(100, 100)];
+
+    EXPECT_WK_STREQ("application/json", [webView stringByEvaluatingJavaScript:@"output.value"]);
+    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceImageToFileInput)
@@ -461,6 +497,35 @@ TEST(DataInteractionTests, ExternalSourceJPEGOnly)
     [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
     EXPECT_TRUE([webView editorContainsImageElement]);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(1, 201, 215, 174) ], [dataInteractionSimulator finalSelectionRects]);
+}
+
+TEST(DataInteractionTests, OverrideDataInteractionOperation)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"simple"];
+
+    RetainPtr<UIItemProvider> simulatedItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    [simulatedItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:[@"<body></body>" dataUsingEncoding:NSUTF8StringEncoding]];
+
+    __block bool finishedLoadingData = false;
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProvider.get() ]];
+    [dataInteractionSimulator setOverrideDataInteractionOperationBlock:^NSUInteger(NSUInteger operation, id session)
+    {
+        EXPECT_EQ(0U, operation);
+        return 1;
+    }];
+    [dataInteractionSimulator setDataInteractionOperationCompletionBlock:^(BOOL handled, NSArray *itemProviders) {
+        EXPECT_FALSE(handled);
+        [itemProviders.firstObject loadDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML completionHandler:^(NSData *data, NSError *error) {
+            NSString *text = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
+            EXPECT_WK_STREQ("<body></body>", text.UTF8String);
+            EXPECT_FALSE(!!error);
+            finishedLoadingData = true;
+        }];
+    }];
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+    TestWebKitAPI::Util::run(&finishedLoadingData);
 }
 
 TEST(DataInteractionTests, AttachmentElementItemProviders)

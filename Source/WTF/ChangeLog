@@ -1,3 +1,213 @@
+2017-04-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Get stack pointer without pthread attr
+        https://bugs.webkit.org/show_bug.cgi?id=171162
+
+        Reviewed by Mark Lam.
+
+        If HAVE(MACHINE_CONTEXT) is not enabled, we get stack base and boundary by using
+        pthread_attr functions. However, it is wrong since this function can be called
+        after the thread is suspended. In that case, we should not call any functions
+        that is not async signal safe. For example, pthread_getattr_np calls malloc.
+
+        Instead we use getApproximateStackPointer(), which returns approximate stack pointer.
+
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::getApproximateStackPointer):
+        (WTF::isOnAlternativeSignalStack):
+        When gathering conservative roots, we should keep stack pointer pointing stack.
+        And if concurrent GC is enabled, we always need to keep the above invariant.
+        So, we do not support alternative signal stack.
+
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::Thread::getRegisters):
+
+2017-04-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r215638): [Linux] Several worker tests are crashing in Thread::signalHandlerSuspendResume after r215638
+        https://bugs.webkit.org/show_bug.cgi?id=171159
+
+        Reviewed by Michael Catanzaro.
+
+        Now, SIGUSR2 is used by ThreadMessage. Instead SIGUSR1 becomes empty.
+        We should use some signal, that is not managed by WTF Signal mechanism
+        because the behaivor of this suspend and resume is a bit tricky.
+        For example, we set a bit tricky signal mask to sigaction to temporary
+        block SIGUSR2 in the handler to avoid nested SIGUSR2. And we cannot
+        use ThreadMessage to implement this mechanism because this suspend
+        and resume handler will stop in the middle of the handler by sigsuspend.
+        It is not the expected semantics by ThreadMessage.
+
+        So now, we use SIGUSR1 instead. And we note that SIGUSR1 is used for
+        pthread ports.
+
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/threads/Signals.h:
+
+2017-04-20  Sam Weinig  <sam@webkit.org>
+
+        Split cryptographic digest computation and parsing out of CSP code so it can be reused
+        https://bugs.webkit.org/show_bug.cgi?id=171076
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64Decode):
+        (WTF::base64URLDecode):
+        Add overloads for base64Decode and base64URLDecode that take a StringView, to avoid allocations
+        of Strings.
+
+        * wtf/text/Base64.h:
+        (WTF::isBase64OrBase64URLCharacter):
+        Move helper predicate used for parsing either type of Base64 encoded string from WebCore.
+
+2017-04-21  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, rolling out r215634.
+
+        underlying build issues should have been fixed
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r215620 and r215623."
+        https://bugs.webkit.org/show_bug.cgi?id=171139
+        http://trac.webkit.org/changeset/215634
+
+2017-04-21  Keith Miller  <keith_miller@apple.com>
+
+        Remove LL/SC from Atomics
+        https://bugs.webkit.org/show_bug.cgi?id=171141
+
+        Reviewed by Saam Barati.
+
+        Adding load link and store conditionally was not an actual progression
+        and the existing code is causing problems for users of Atomics. So let's
+        get rid of it.
+
+        * wtf/Atomics.h:
+        (WTF::hasFence):
+        (WTF::Atomic::exchange):
+        (WTF::Atomic::transaction):
+        (WTF::Atomic::transactionRelaxed):
+        (WTF::Atomic::prepare): Deleted.
+        (WTF::Atomic::attempt): Deleted.
+        * wtf/Bitmap.h:
+        (WTF::WordType>::concurrentTestAndSet):
+        (WTF::WordType>::concurrentTestAndClear):
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::lockFast):
+        (WTF::LockAlgorithm::unlockFast):
+
+2017-04-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215620 and r215623.
+        https://bugs.webkit.org/show_bug.cgi?id=171139
+
+        broke arm64 build (Requested by keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Add signaling API"
+        https://bugs.webkit.org/show_bug.cgi?id=170976
+        http://trac.webkit.org/changeset/215620
+
+        "Unreviewed, fix Cloop build."
+        http://trac.webkit.org/changeset/215623
+
+2017-04-20  Keith Miller  <keith_miller@apple.com>
+
+        Add signaling API
+        https://bugs.webkit.org/show_bug.cgi?id=170976
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds a bunch of new functionality to WTF. First, it add
+        a new data structure of a lockless bag. The LocklessBag class can
+        be used as either a multi-writer multi-reader lockless bag or a
+        multi-writer single consumer lockless bag.
+
+        Next, this patch adds an abstraction around sigaction in WTF.
+        Basically, you can add a handler, which can be an arbitrary
+        lambda. Although it should still be safe for the signal you are
+        handling.  the signal handler manager will then do all the
+        appropriate handling of chaining:
+
+        In the SIGUSR case we always forward the signal to any other
+        non-default handler installed before us. We need to do this,
+        otherwise, since it's not possible to tell if a SIGUSR was
+        intended exlusively for our handlers. Signal handlers don't record
+        how many times they were sent only that there is at least one
+        unhandled signal.
+
+        In the faulting cases we require that every handle be able to
+        recognise a fault they installed, vs crashes. If none of our
+        handlers claim to have handled the fault we will forward the
+        fault. If a handler was installed before the first fault handler
+        we simply call that handler and rely on them to take the
+        appropriate action. If no handler was installed before our first
+        handler we restore the default handler and allow the fault to
+        happen again.
+
+        Finally, this patch adds a signal based messaging system.  This
+        system allows the user to run an arbitrary lambda from the SIGUSR2
+        signal handler of any target WTF::Thread. This is already in use
+        for the VMTraps API which allows us to kill rogue VMs by sending
+        the VM's running WTF::Thread a SIGUSR and requesting it jetison
+        all optimized code and throw an uncatchable exception from all
+        function entries/loop backedges.  In the future, we will also use
+        this API for Wasm to reset the instruction caches in currently
+        executing Wasm threads.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Atomics.h:
+        (WTF::Atomic::Atomic):
+        * wtf/LocklessBag.h: Added.
+        (WTF::LocklessBag::LocklessBag):
+        (WTF::LocklessBag::add):
+        (WTF::LocklessBag::iterate):
+        (WTF::LocklessBag::consumeAll):
+        * wtf/ThreadMessage.cpp: Added.
+        (WTF::ThreadMessageData::ThreadMessageData):
+        (WTF::initializeThreadMessages):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h: Added.
+        (WTF::sendMessage):
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::threadMessages):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::current):
+        (WTF::Thread::signal):
+        * wtf/threads/Signals.cpp: Added.
+        (WTF::jscSignalHandler):
+        (WTF::installSignalHandler):
+        * wtf/threads/Signals.h: Added.
+        (WTF::toSystemSignal):
+        (WTF::fromSystemSignal):
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] WTF target should not have wtf and subdirectries in public interface
+        https://bugs.webkit.org/show_bug.cgi?id=171115
+
+        Reviewed by Michael Catanzaro.
+
+        In r209665 WEBCORE_FRAMEWORK macro started to export INCLUDE_DIRECTORIES of
+        targets as their public interface, so that linked targets can use them
+        implicitly without copying directory lists around. This matches existing
+        practice for all targets except WTF, headers from which are always included
+        with full path starting from "<wtf/...".
+
+        Since r209665 it became possible to include headers from wtf or its
+        subdirectories in CMake builds without using "<wtf/..." path. It should
+        not be allowed.
+
+        * wtf/CMakeLists.txt: WTF/wtf and its sudirectories should not be in
+        public include paths of WTF target.
+
 2017-04-20  Sam Weinig  <sam@webkit.org>
 
         Move notFound into its own file

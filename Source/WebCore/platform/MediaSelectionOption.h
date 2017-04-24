@@ -23,23 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit/WKFoundation.h>
+#pragma once
 
-#if WK_API_ENABLED
+#include <wtf/text/WTFString.h>
 
-@class WKWebView;
+namespace WebCore {
 
-NS_ASSUME_NONNULL_BEGIN
+struct MediaSelectionOption {
+    enum class Type {
+        Regular,
+        LegibleOff,
+        LegibleAuto,
+    };
 
-@protocol _WKTestingDelegate <NSObject>
-@optional
+    String displayName;
+    Type type;
+};
 
-#if TARGET_OS_IPHONE
-- (void)webViewDidPerformDataInteractionControllerOperation:(WKWebView *)webView;
-#endif // TARGET_OS_PHONE
-
-@end
-
-NS_ASSUME_NONNULL_END
-
-#endif // WK_API_ENABLED
+} // namespace WebCore

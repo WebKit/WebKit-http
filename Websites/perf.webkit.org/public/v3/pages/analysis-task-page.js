@@ -133,6 +133,53 @@ class AnalysisTaskResultsPane extends ComponentBase {
 
 ComponentBase.defineElement('analysis-task-results-pane', AnalysisTaskResultsPane);
 
+class AnalysisTaskConfiguratorPane extends ComponentBase {
+    constructor()
+    {
+        super('analysis-task-configurator-pane');
+        this._currentGroup = null;
+    }
+
+    didConstructShadowTree()
+    {
+        const form = this.part('form');
+        form.setHasTask(true);
+        form.listenToAction('startTesting', (...args) => {
+            this.dispatchAction('createCustomTestGroup', ...args);
+        });
+    }
+
+    setTestGroups(testGroups, currentGroup)
+    {
+        this._currentGroup = currentGroup;
+        const form = this.part('form');
+        if (!form.hasCommitSets())
+            form.setConfigurations(currentGroup.test(), currentGroup.platform(), currentGroup.repetitionCount(), currentGroup.requestedCommitSets());
+        this.enqueueToRender();
+    }
+
+    render()
+    {
+        super.render();
+    }
+    
+    static htmlTemplate()
+    {
+        return `<custom-configuration-test-group-form id="form"></custom-configuration-test-group-form>`;
+    }
+
+    static cssTemplate()
+    {
+        return `
+            #form {
+                margin: 1rem;
+            }
+        `;
+    }
+};
+
+ComponentBase.defineElement('analysis-task-configurator-pane', AnalysisTaskConfiguratorPane);
+
 class AnalysisTaskTestGroupPane extends ComponentBase {
 
     constructor()
@@ -161,13 +208,15 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         this._testGroups = testGroups;
         this._currentTestGroup = currentTestGroup;
         this._showHiddenGroups = showHiddenGroups;
-        this.part('results-table').setTestGroup(currentTestGroup);
+        this.part('revision-table').setTestGroup(currentTestGroup);
+        this.part('results-viewer').setTestGroup(currentTestGroup);
         this.enqueueToRender();
     }
 
-    setAnalysisResultsView(analysisResultsView)
+    setAnalysisResults(analysisResults, metric)
     {
-        this.part('results-table').setAnalysisResultsView(analysisResultsView);
+        this.part('revision-table').setAnalysisResults(analysisResults);
+        this.part('results-viewer').setAnalysisResults(analysisResults, metric);
         this.enqueueToRender();
     }
 
@@ -177,8 +226,6 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         this._renderTestGroupVisibilityLazily.evaluate(...this._testGroups.map((group) => group.isHidden() ? 'hidden' : 'visible'));
         this._renderTestGroupNamesLazily.evaluate(...this._testGroups.map((group) => group.label()));
         this._renderCurrentTestGroup(this._currentTestGroup);
-        this.part('results-table').enqueueToRender();
-        this.part('retry-form').enqueueToRender();
     }
 
     _renderTestGroups(showHiddenGroups, ...testGroups)
@@ -239,7 +286,8 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         return `
             <ul id="test-group-list"></ul>
             <div id="test-group-details">
-                <test-group-results-table id="results-table"></test-group-results-table>
+                <test-group-results-viewer id="results-viewer"></test-group-results-viewer>
+                <test-group-revision-table id="revision-table"></test-group-revision-table>
                 <test-group-form id="retry-form">Retry</test-group-form>
                 <button id="hide-button">Hide</button>
                 <span id="pending-request-cancel-warning">(cancels pending requests)</span>
@@ -251,6 +299,15 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         return `
             :host {
                 display: flex !important;
+                font-size: 0.9rem;
+            }
+
+            #new-container {
+                display: flex;
+            }
+
+            #new-container test-group-revision-table {
+                margin-left: 2rem;
             }
 
             #test-group-list {
@@ -379,6 +436,8 @@ class AnalysisTaskPage extends PageWithHeading {
         resultsPane.listenToAction('showTestGroup', (testGroup) => this._showTestGroup(testGroup));
         resultsPane.listenToAction('newTestGroup', this._createTestGroupAfterVerifyingCommitSetList.bind(this));
 
+        this.part('configurator-pane').listenToAction('createCustomTestGroup', this._createCustomTestGroup.bind(this));
+
         const groupPane = this.part('group-pane');
         groupPane.listenToAction('showTestGroup', (testGroup) => this._showTestGroup(testGroup));
         groupPane.listenToAction('showHiddenTestGroups', () => this._showAllTestGroups());
@@ -490,7 +549,7 @@ class AnalysisTaskPage extends PageWithHeading {
             return false;
 
         const view = this._analysisResults.viewForMetric(this._metric);
-        this.part('group-pane').setAnalysisResultsView(view);
+        this.part('group-pane').setAnalysisResults(this._analysisResults, this._metric);
         this.part('results-pane').setAnalysisResultsView(view);
 
         return true;
@@ -513,6 +572,8 @@ class AnalysisTaskPage extends PageWithHeading {
 
         this.content('results-pane').style.display = this._task && !this._task.isCustom() ? null : 'none';
         this.part('results-pane').setShowForm(!!this._triggerable);
+
+        this.content('configurator-pane').style.display = this._task && this._task.isCustom() ? null : 'none';
 
         Instrumentation.endMeasuringTime('AnalysisTaskPage', 'render');
     }
@@ -573,6 +634,7 @@ class AnalysisTaskPage extends PageWithHeading {
     _showTestGroup(testGroup)
     {
         this._currentTestGroup = testGroup;
+        this.part('configurator-pane').setTestGroups(this._filteredTestGroups, this._currentTestGroup);
         this.part('results-pane').setTestGroups(this._filteredTestGroups, this._currentTestGroup);
         const groupsInReverseChronology = this._filteredTestGroups.slice(0).reverse();
         const showHiddenGroups = !this._testGroups.some((group) => group.isHidden()) || this._showHiddenTestGroups;
@@ -701,6 +763,20 @@ class AnalysisTaskPage extends PageWithHeading {
         });
     }
 
+    _createCustomTestGroup(repetitionCount, testGroupName, commitSets, platform, test)
+    {
+        console.assert(this._task.isCustom());
+        if (this._hasDuplicateTestGroupName(testGroupName)) {
+            alert(`There is already a test group named "${testGroupName}"`);
+            return;
+        }
+
+        TestGroup.createWithCustomConfiguration(this._task, platform, test, testGroupName, repetitionCount, commitSets)
+            .then(this._didFetchTestGroups.bind(this), function (error) {
+            alert('Failed to create a new test group: ' + error);
+        });
+    }
+
     _createRetryNameForTestGroup(name)
     {
         var nameWithNumberMatch = name.match(/(.+?)\s*\(\s*(\d+)\s*\)\s*$/);
@@ -767,6 +843,7 @@ class AnalysisTaskPage extends PageWithHeading {
                 </div>
                 <analysis-task-chart-pane id="chart-pane"></analysis-task-chart-pane>
                 <analysis-task-results-pane id="results-pane"></analysis-task-results-pane>
+                <analysis-task-configurator-pane id="configurator-pane"></analysis-task-configurator-pane>
                 <analysis-task-test-group-pane id="group-pane"></analysis-task-test-group-pane>
             </div>
 `;

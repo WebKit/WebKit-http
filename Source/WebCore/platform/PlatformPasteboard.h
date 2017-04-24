@@ -51,6 +51,7 @@ class SelectionData;
 class SharedBuffer;
 class URL;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 
 class PlatformPasteboard {
@@ -82,6 +83,7 @@ public:
     WEBCORE_EXPORT void write(const PasteboardWebContent&);
     WEBCORE_EXPORT void write(const PasteboardImage&);
     WEBCORE_EXPORT void write(const String& pasteboardType, const String&);
+    WEBCORE_EXPORT void write(const PasteboardURL&);
     WEBCORE_EXPORT RefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
     WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
@@ -98,6 +100,7 @@ private:
     WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardWebContent&);
     WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardImage&);
     WEBCORE_EXPORT void writeObjectRepresentations(const String& pasteboardType, const String& text);
+    WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardURL&);
 #endif
 
 #if PLATFORM(MAC)

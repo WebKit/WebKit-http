@@ -1,3 +1,134 @@
+2017-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215674.
+        https://bugs.webkit.org/show_bug.cgi?id=171212
+
+        Possible unintended commit. This patch was on the wrong bug.
+        (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "test262: test262/test/language/expressions/generators/yield-
+        as-label.js"
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+        http://trac.webkit.org/changeset/215674
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+        Extend this test to cover object literal shorthand with keywords.
+
+        * js/dom/reserved-words-as-property-expected.txt:
+        * js/let-syntax-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        Improved error messages.
+
+2017-04-21  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r205374): <li> content inside <ul> should mid-word wrap when word-break: break-word is present.
+        https://bugs.webkit.org/show_bug.cgi?id=171108
+        <rdar://problem/30271747>
+
+        Reviewed by Dan Bernstein.
+
+        * fast/replaced/ul-li-word-break-break-word-expected.html: Added.
+        * fast/replaced/ul-li-word-break-break-word.html: Added.
+        * fast/replaced/zero-width-image-force-linebreak-expected.html: Added.
+        * fast/replaced/zero-width-image-force-linebreak.html: Added.
+
+2017-04-21  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: FKA: Buttons need a visible focus indicator
+        https://bugs.webkit.org/show_bug.cgi?id=171040
+        <rdar://problem/30922548>
+
+        Reviewed by Antoine Quint.
+
+        * TestExpectations:
+        * media/modern-media-controls/icon-button/icon-button-focus-state-expected.txt: Added.
+        * media/modern-media-controls/icon-button/icon-button-focus-state.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-04-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/debugger/tail-deleted-frames-this-value.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169119
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r206240): XMLSerializer.serializeToString() does not properly escape '<' / '>' in attribute values
+        https://bugs.webkit.org/show_bug.cgi?id=171132
+        <rdar://problem/31426752>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage. This test is passing in both Firefox and Chrome.
+
+        * fast/dom/XMLSerializer-serializeToString-entities-expected.txt: Added.
+        * fast/dom/XMLSerializer-serializeToString-entities.html: Added.
+
+2017-04-21  Youenn Fablet  <youenn@apple.com>
+
+        [ios-simulator] LayoutTest webrtc/multi-video.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=170823
+        <rdar://problem/31611583>
+
+        Unreviewed.
+
+        * TestExpectations: Reactivating test.
+
+2017-04-21  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Skip http/tests/security/contentSecurityPolicy/{audio, video}-redirect-allowed2.html
+        <rdar://problem/31690952>
+
+        Rubber-stamped by Jer Noble.
+
+        We can enable these tests again once we fix <rdar://problem/25780035>.
+
+        * platform/ios/TestExpectations:
+
+2017-04-21  Per Arne Vollan  <pvollan@apple.com>
+
+        Validate vImage arguments
+        https://bugs.webkit.org/show_bug.cgi?id=171109
+
+        Reviewed by Brent Fulgham.
+
+        * fast/canvas/canvas-crash-expected.txt: Added.
+        * fast/canvas/canvas-crash.html: Added.
+
+2017-04-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webrtc/datachannel/bufferedAmountLowThreshold.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170701
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-21  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=169458
+
+        Reviewed by JF Bastien.
+
+        Add tests for formatToParts
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
 2017-04-21  Timothy Horton  <timothy_horton@apple.com>
 
         Expose obscured insets to web content (as "safe area insets")

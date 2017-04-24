@@ -36,8 +36,6 @@
 #import "FindClient.h"
 #import "FullscreenClient.h"
 #import "IconLoadingDelegate.h"
-#import "InteractionInformationAtPosition.h"
-#import "InteractionInformationRequest.h"
 #import "LegacySessionStateCoding.h"
 #import "Logging.h"
 #import "NavigationState.h"
@@ -85,7 +83,6 @@
 #import "WebURLSchemeHandlerCocoa.h"
 #import "WebViewImpl.h"
 #import "_WKDiagnosticLoggingDelegate.h"
-#import "_WKDraggableElementInfoInternal.h"
 #import "_WKFindDelegate.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKFullscreenDelegate.h"
@@ -93,7 +90,6 @@
 #import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
-#import "_WKTestingDelegate.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 #import <WebCore/GraphicsContextCG.h>
@@ -119,7 +115,8 @@
 #import <wtf/spi/darwin/dyldSPI.h>
 
 #if PLATFORM(IOS)
-#import "_WKWebViewPrintFormatter.h"
+#import "InteractionInformationAtPosition.h"
+#import "InteractionInformationRequest.h"
 #import "ProcessThrottler.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
@@ -130,6 +127,8 @@
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
 #import "WebVideoFullscreenManagerProxy.h"
+#import "_WKDraggableElementInfoInternal.h"
+#import "_WKWebViewPrintFormatter.h"
 #import <UIKit/UIApplication.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/FrameLoaderTypes.h>
@@ -302,8 +301,6 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     std::unique_ptr<WebKit::WebViewImpl> _impl;
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
-
-    id<_WKTestingDelegate> _testingDelegate;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -5085,16 +5082,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #else
     return nil;
 #endif
-}
-
-- (id<_WKTestingDelegate>)_testingDelegate
-{
-    return _testingDelegate;
-}
-
-- (void)_setTestingDelegate:(id<_WKTestingDelegate>)testingDelegate
-{
-    _testingDelegate = testingDelegate;
 }
 
 #if PLATFORM(IOS)

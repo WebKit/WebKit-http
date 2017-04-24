@@ -1,3 +1,867 @@
+2017-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215657 and r215676.
+        https://bugs.webkit.org/show_bug.cgi?id=171201
+
+        Broke the build (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "[macOS] Enable media selection button on AVTouchBarScrubber"
+        https://bugs.webkit.org/show_bug.cgi?id=171149
+        http://trac.webkit.org/changeset/215657
+
+        "Build fix after r215657."
+        http://trac.webkit.org/changeset/215676
+
+2017-04-23  Andy Estes  <aestes@apple.com>
+
+        [macOS] AVTouchBarMediaSelectionOptions should be created with the correct type
+        https://bugs.webkit.org/show_bug.cgi?id=171192
+        <rdar://problem/29875010>
+
+        Reviewed by Wenson Hsieh.
+
+        AVTouchBarMediaSelectionOption was always being created with type
+        AVTouchBarMediaSelectionOptionTypeRegular, but we know if a TextTrack is really the legible
+        off or legible auto track. This change plumbs that information into
+        WebPlaybackControlsManager so that AVTouchBarMediaSelectionOptions can be created with the
+        right AVTouchBarMediaSelectionOptionType. 
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/CaptionUserPreferences.cpp:
+        (WebCore::CaptionUserPreferences::mediaSelectionOptionForTrack):
+        * page/CaptionUserPreferences.h:
+        * platform/MediaSelectionOption.h: Added.
+        * platform/cocoa/WebPlaybackSessionModel.h:
+        (WebCore::WebPlaybackSessionModelClient::audioMediaSelectionOptionsChanged):
+        (WebCore::WebPlaybackSessionModelClient::legibleMediaSelectionOptionsChanged):
+        * platform/cocoa/WebPlaybackSessionModelMediaElement.h:
+        * platform/cocoa/WebPlaybackSessionModelMediaElement.mm:
+        (WebCore::WebPlaybackSessionModelMediaElement::audioMediaSelectionOptions):
+        (WebCore::WebPlaybackSessionModelMediaElement::legibleMediaSelectionOptions):
+        * platform/ios/WebPlaybackSessionInterfaceAVKit.h:
+        * platform/ios/WebPlaybackSessionInterfaceAVKit.mm:
+        (WebCore::mediaSelectionOptions):
+        (WebCore::WebPlaybackSessionInterfaceAVKit::audioMediaSelectionOptionsChanged):
+        (WebCore::WebPlaybackSessionInterfaceAVKit::legibleMediaSelectionOptionsChanged):
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm:
+        (WebVideoFullscreenControllerContext::audioMediaSelectionOptionsChanged):
+        (WebVideoFullscreenControllerContext::legibleMediaSelectionOptionsChanged):
+        (WebVideoFullscreenControllerContext::audioMediaSelectionOptions):
+        (WebVideoFullscreenControllerContext::legibleMediaSelectionOptions):
+        * platform/mac/WebPlaybackControlsManager.h:
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (toAVTouchBarMediaSelectionOptionType):
+        (mediaSelectionOptions):
+        (-[WebPlaybackControlsManager setAudioMediaSelectionOptions:withSelectedIndex:]):
+        (-[WebPlaybackControlsManager setLegibleMediaSelectionOptions:withSelectedIndex:]):
+        (-[WebPlaybackControlsManager webPlaybackSessionInterfaceMac]):
+        (-[WebPlaybackControlsManager setWebPlaybackSessionInterfaceMac:]):
+        * platform/mac/WebPlaybackSessionInterfaceMac.h:
+        * platform/mac/WebPlaybackSessionInterfaceMac.mm:
+        (WebCore::WebPlaybackSessionInterfaceMac::audioMediaSelectionOptionsChanged):
+        (WebCore::WebPlaybackSessionInterfaceMac::legibleMediaSelectionOptionsChanged):
+
+2017-04-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        File inputs only accept UTI types that can be inserted into contenteditable areas when dropping
+        https://bugs.webkit.org/show_bug.cgi?id=171177
+        <rdar://problem/31765379>
+
+        Reviewed by Andy Estes.
+
+        Currently, DragController::canProcessDrag bails immediately with `false` if the drag data does not contain
+        compatible content. However, if we are dragging over a file input, we want the presence of files in the drag
+        data to take priority. To fix this, we teach DragData::containsCompatibleContent to take the purpose of the drag
+        into account (by default, this is Editing, but when dragging over a file input, this becomes FileUpload). We
+        then consider DragData to have compatible content for the purpose of file uploading if it contains any files.
+
+        Test: DataInteractionTests.ExternalSourceJSONToFileInput.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::canProcessDrag):
+        * platform/DragData.h:
+        * platform/gtk/DragDataGtk.cpp:
+        (WebCore::DragData::containsCompatibleContent):
+        * platform/mac/DragDataMac.mm:
+        (WebCore::DragData::containsCompatibleContent):
+        * platform/win/DragDataWin.cpp:
+        (WebCore::DragData::containsCompatibleContent):
+
+2017-04-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Fix regression caused by r215626
+        https://bugs.webkit.org/show_bug.cgi?id=171168
+        <rdar://problem/31774787>
+
+        Reviewed by Antoine Quint.
+
+        No new tests, fixes fast/mediastream/MediaStream-page-muted.html
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::mediaState): Test muted before m_isProducingData because if both are 
+        true we want to report that the stream is muted.
+
+2017-04-21  Zalan Bujtas  <zalan@apple.com>
+
+        Do not measure large chunk of text repeatedly during mid-word breaking.
+        https://bugs.webkit.org/show_bug.cgi?id=171065
+        <rdar://problem/31630245>
+
+        Reviewed by Antti Koivisto.
+
+        This patch reduces redundant text measuring for mid-word breaking by
+        1. Adjusting the range for the binary search when the text fragment is longer than the available width
+        2. Preserving the width value for the left side of the split fragment (computed during the binary search) so
+        that when the fragment is being split we don't need to re-measure it
+        3. Checking if the right side fits the next line and only adjust the width (by re-measuring the text) for
+        kerning/ligature if it does (if it does not fit, we'll end up re-measuring some part of it
+        during the next split)
+
+        Performance test has already been added.
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::hyphenPositionForFragment):
+        (WebCore::SimpleLineLayout::split): binary search with adjusting the range and preserving the width for the left side.
+        (WebCore::SimpleLineLayout::splitFragmentToFitLine):
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::FragmentForwardIterator): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator++): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator!=): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator==): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator*): Deleted.
+        (WebCore::SimpleLineLayout::begin): Deleted.
+        (WebCore::SimpleLineLayout::end): Deleted.
+        * rendering/SimpleLineLayoutTextFragmentIterator.h:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::split):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::splitWithHyphen):
+
+2017-04-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support writing link titles to the pasteboard when beginning data interaction on a link
+        https://bugs.webkit.org/show_bug.cgi?id=171154
+        <rdar://problem/31356937>
+
+        Reviewed by Andy Estes.
+
+        Currently, when writing NSURLs to the pasteboard, we only write a String to the pasteboard corresponding to
+        kUTTypeURL. This means richer data associated with the link (in this case, the title) are not captured when
+        writing to the pasteboard. To address this, we introduce a new codepath for writing links to the pasteboard that
+        mirrors the way PasteboardImage and PasteboardWebContent are written to the pasteboard.
+
+        Test: Augmented DataInteractionTests.LinkToInput.
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+
+        Add plumbing support for writing PasteboardURLs.
+
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::write):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::writeObjectRepresentations):
+
+        Teach PlatformPasteboard to also set the _title attribute of the NSURL when creating an NSURL representation
+        for registering with the shared WebItemProviderPasteboard.
+
+        (WebCore::PlatformPasteboard::write):
+        * platform/ios/WebItemProviderPasteboard.mm:
+
+        Remove deprecation guards and replace deprecated method calls with the latest undeprecated versions.
+
+        (-[WebItemProviderPasteboard setItemsFromObjectRepresentations:]):
+
+2017-04-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r215608.
+
+        Hundreds of test failures on GTK bot
+
+        Reverted changeset:
+
+        "Reduce copies and allocations in SharedBuffer::append"
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+        http://trac.webkit.org/changeset/215608
+
+2017-04-21  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r205374): <li> content inside <ul> should mid-word wrap when word-break: break-word is present.
+        https://bugs.webkit.org/show_bug.cgi?id=171108
+        <rdar://problem/30271747>
+
+        Reviewed by Dan Bernstein.
+
+        This patch ensures that we search for mid-word breaks when a zero sized element has been committed on the line
+        unless it's an image or some other replaced element with special properties (e.g. list-style: inside).  
+
+        Tests: fast/replaced/ul-li-word-break-break-word.html
+               fast/replaced/zero-width-image-force-linebreak.html
+
+        * rendering/line/BreakingContext.h:
+        (WebCore::BreakingContext::handleReplaced):
+        (WebCore::BreakingContext::handleText): This matches pre-r205374 behaviour, but it's explicit about whether a 
+        replaced width has already been committed on the current line.
+        * rendering/line/LineWidth.cpp:
+        (WebCore::LineWidth::commit):
+        * rendering/line/LineWidth.h:
+        (WebCore::LineWidth::hasCommittedReplaced):
+        (WebCore::LineWidth::addUncommittedReplacedWidth): These 2 last functions were removed with r205374 (and now I am adding them back). 
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        [MediaCapture] Improvements to CoreAudioCaptureSource
+        https://bugs.webkit.org/show_bug.cgi?id=171146
+
+        Reviewed by Eric Carlson.
+
+        Various interlocking improvements to CoreAudioCaptureSource:
+
+        - Allow the volume, sampleRate, and echoCancellation settings to be applied to the source.
+        - Update the values returned via settings() when these values change.
+        - Obey the sampleRate and echoCancellation settings when creating the VPIO unit.
+        - Because AudioUnitRender() mutates the passed in AudioBufferList, reset it immediately before calling.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::create):
+        (WebCore::CoreAudioCaptureSource::CoreAudioCaptureSource):
+        (WebCore::CoreAudioCaptureSource::preferredSampleRate):
+        (WebCore::CoreAudioCaptureSource::preferredIOBufferSize):
+        (WebCore::CoreAudioCaptureSource::configureMicrophoneProc):
+        (WebCore::CoreAudioCaptureSource::configureSpeakerProc):
+        (WebCore::CoreAudioCaptureSource::processMicrophoneSamples):
+        (WebCore::CoreAudioCaptureSource::setupAudioUnits):
+        (WebCore::CoreAudioCaptureSource::stopProducingData):
+        (WebCore::CoreAudioCaptureSource::settings):
+        (WebCore::CoreAudioCaptureSource::settingsDidChange):
+        (WebCore::CoreAudioCaptureSource::preferredIOBufferDuration): Deleted.
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+
+2017-04-21  Youenn Fablet  <youenn@apple.com>
+
+        com.apple.WebCore: non-virtual thunk to WebCore::LibWebRTCDataChannelHandler::OnBufferedAmountChange + 39
+        https://bugs.webkit.org/show_bug.cgi?id=171087
+        <rdar://problem/31739051>
+
+        Reviewed by Eric Carlson.
+
+        Covered by existing tests.
+        No test added as this behavior is really libwebrtc specific and cannot be triggered easily.
+
+        * Modules/mediastream/RTCDataChannel.cpp:
+        (WebCore::RTCDataChannel::close): Stopping observing libwebrtc data channel before closing it.
+        This ensures we will stop getting notified as soon as there is no more interest.
+        * Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.cpp:
+        (WebCore::LibWebRTCDataChannelHandler::OnStateChange): libwebrtc can still notify us even though we said we were
+        not interested. Ensuring we do not call the client if we are no longer interested.
+        (WebCore::LibWebRTCDataChannelHandler::OnMessage): Ditto.
+        (WebCore::LibWebRTCDataChannelHandler::OnBufferedAmountChange): Ditto.
+
+2017-04-21  Andy Estes  <aestes@apple.com>
+
+        [macOS] Enable media selection button on AVTouchBarScrubber
+        https://bugs.webkit.org/show_bug.cgi?id=171149
+        <rdar://problem/29875010>
+
+        Reviewed by Beth Dakin.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-21  Andy Estes  <aestes@apple.com>
+
+        [macOS] Name WebPlaybackControlsManager delegate methods correctly depending on OS version
+        https://bugs.webkit.org/show_bug.cgi?id=171147
+        <rdar://problem/29875010>
+
+        Reviewed by Beth Dakin.
+
+        On macOS 10.12, WebPlaybackControlsManager conforms to
+        AVFunctionBarPlaybackControlsControlling, but on 10.13 it conforms to
+        AVTouchBarPlaybackControlsControlling. These protocols are near-identical, except for
+        instances of "FunctionBar" in method names are renamed to "TouchBar". This patch updates to
+        the new method names, and generally renames things with "FunctionBar" to "TouchBar".
+
+        * platform/mac/WebPlaybackControlsManager.h:
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (-[WebPlaybackControlsManager generateTouchBarThumbnailsForTimes:tolerance:size:thumbnailHandler:]):
+        (-[WebPlaybackControlsManager generateTouchBarAudioAmplitudeSamples:completionHandler:]):
+        (-[WebPlaybackControlsManager canBeginTouchBarScrubbing]):
+        (-[WebPlaybackControlsManager beginTouchBarScrubbing]):
+        (-[WebPlaybackControlsManager endTouchBarScrubbing]):
+        (-[WebPlaybackControlsManager generateFunctionBarThumbnailsForTimes:size:completionHandler:]):
+        (-[WebPlaybackControlsManager generateFunctionBarAudioAmplitudeSamples:completionHandler:]):
+        (-[WebPlaybackControlsManager canBeginFunctionBarScrubbing]):
+        (-[WebPlaybackControlsManager beginFunctionBarScrubbing]):
+        (-[WebPlaybackControlsManager endFunctionBarScrubbing]):
+        (-[WebPlaybackControlsManager audioTouchBarMediaSelectionOptions]):
+        (-[WebPlaybackControlsManager setAudioTouchBarMediaSelectionOptions:]):
+        (-[WebPlaybackControlsManager currentAudioTouchBarMediaSelectionOption]):
+        (-[WebPlaybackControlsManager setCurrentAudioTouchBarMediaSelectionOption:]):
+        (-[WebPlaybackControlsManager legibleTouchBarMediaSelectionOptions]):
+        (-[WebPlaybackControlsManager setLegibleTouchBarMediaSelectionOptions:]):
+        (-[WebPlaybackControlsManager currentLegibleTouchBarMediaSelectionOption]):
+        (-[WebPlaybackControlsManager setCurrentLegibleTouchBarMediaSelectionOption:]):
+        (-[WebPlaybackControlsManager setAudioMediaSelectionOptions:withSelectedIndex:]):
+        (-[WebPlaybackControlsManager setLegibleMediaSelectionOptions:withSelectedIndex:]):
+        (-[WebPlaybackControlsManager audioFunctionBarMediaSelectionOptions]): Deleted.
+        (-[WebPlaybackControlsManager setAudioFunctionBarMediaSelectionOptions:]): Deleted.
+        (-[WebPlaybackControlsManager currentAudioFunctionBarMediaSelectionOption]): Deleted.
+        (-[WebPlaybackControlsManager setCurrentAudioFunctionBarMediaSelectionOption:]): Deleted.
+        (-[WebPlaybackControlsManager legibleFunctionBarMediaSelectionOptions]): Deleted.
+        (-[WebPlaybackControlsManager setLegibleFunctionBarMediaSelectionOptions:]): Deleted.
+        (-[WebPlaybackControlsManager currentLegibleFunctionBarMediaSelectionOption]): Deleted.
+        (-[WebPlaybackControlsManager setCurrentLegibleFunctionBarMediaSelectionOption:]): Deleted.
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        Make CoreAudioCaptureDevice stackable.
+        https://bugs.webkit.org/show_bug.cgi?id=171097
+
+        Reviewed by Eric Carlson.
+
+        There's no real reason to keep CoreAudioCaptureDevice from being created on the stack. 
+        Make it un-RefCounted, and have it's static factory method return an std::optional rather
+        than a RefPtr.
+
+        Drive-by fix: clean up the factory method of CoreAudioCaptureSource a bit.
+
+        * platform/mediastream/mac/CoreAudioCaptureDevice.cpp:
+        (WebCore::CoreAudioCaptureDevice::create):
+        (WebCore::CoreAudioCaptureDevice::deviceID): Deleted.
+        * platform/mediastream/mac/CoreAudioCaptureDevice.h:
+        (WebCore::CoreAudioCaptureDevice::deviceID):
+        * platform/mediastream/mac/CoreAudioCaptureDeviceManager.cpp:
+        (WebCore::CoreAudioCaptureDeviceManager::coreAudioCaptureDevices):
+        (WebCore::CoreAudioCaptureDeviceManager::coreAudioDeviceWithUID):
+        (WebCore::CoreAudioCaptureDeviceManager::refreshAudioCaptureDevices):
+        * platform/mediastream/mac/CoreAudioCaptureDeviceManager.h:
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::create):
+        (WebCore::CoreAudioCaptureSource::CoreAudioCaptureSource):
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+
+2017-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream iOS] Release capture session when not producing data
+        https://bugs.webkit.org/show_bug.cgi?id=171148
+        <rdar://problem/29265868>
+
+        Reviewed by Jer Noble.
+
+        On iOS, only one AVCaptureSession can be active at a time, so release a session whenever
+        it is told to stop producing data. The session will recreated if the capture source if/when
+        told to produce data again.
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::stopProducingData): Clear m_session to release the session.
+        It will be re-allocated if startProducingData is called later.
+
+2017-04-21  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: FKA: Buttons need a visible focus indicator
+        https://bugs.webkit.org/show_bug.cgi?id=171040
+        <rdar://problem/30922548>
+
+        Reviewed by Antoine Quint.
+
+        Added a background color for the focus state of the icon buttons in modern media controls.
+
+        Test: media/modern-media-controls/icon-button/icon-button-focus-state.html
+
+        * Modules/modern-media-controls/controls/icon-button.css:
+        (button.icon:focus):
+
+2017-03-22  Matt Rajca  <mrajca@apple.com>
+
+        Consider muting audio hardware a form of autoplay interference.
+        https://bugs.webkit.org/show_bug.cgi?id=169971
+
+        Reviewed by Eric Carlson.
+
+        If the user mutes audio hardware and a media element is auto-playing, consider that
+        as a form of auto-play interference that we tell clients about.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement):
+        (WebCore::HTMLMediaElement::~HTMLMediaElement):
+        (WebCore::HTMLMediaElement::hardwareMutedStateDidChange):
+        * html/HTMLMediaElement.h:
+        * platform/audio/AudioSession.h:
+        (WebCore::AudioSession::MutedStateObserver::~MutedStateObserver):
+        * platform/audio/mac/AudioSessionMac.cpp:
+        (WebCore::AudioSession::isMuted):
+        (WebCore::muteProcess):
+        (WebCore::AudioSession::handleMutedStateChange):
+        (WebCore::AudioSession::addMutedStateObserver):
+        (WebCore::AudioSession::removeMutedStateObserver):
+
+2017-04-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r206240): XMLSerializer.serializeToString() does not properly escape '<' / '>' in attribute values
+        https://bugs.webkit.org/show_bug.cgi?id=171132
+        <rdar://problem/31426752>
+
+        Reviewed by Ryosuke Niwa.
+
+        Use XMLSerialization [1] in MarkupAccumulator::appendAttribute() when inXMLFragmentSerialization()
+        returns true, even if the node's associated document is an HTML document. When XMLSerializer.serializeToString()
+        is called on a Node, we want XML serialization, even if the node comes from an HTML document.
+
+        [1] https://w3c.github.io/DOM-Parsing/#dfn-xml-serialization
+
+        Test: fast/dom/XMLSerializer-serializeToString-entities.html
+
+        * editing/MarkupAccumulator.cpp:
+        (WebCore::MarkupAccumulator::appendAttributeValue):
+        (WebCore::MarkupAccumulator::appendAttribute):
+        * editing/MarkupAccumulator.h:
+
+2017-04-20  Sam Weinig  <sam@webkit.org>
+
+        Split cryptographic digest computation and parsing out of CSP code so it can be reused
+        https://bugs.webkit.org/show_bug.cgi?id=171076
+
+        Reviewed by Chris Dumez.
+
+        Factor out cryptographic digest parsing from Content Security Policy code
+        so that it can be reused for the Subresource Integrity implementation.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        Add new files.
+
+        * html/parser/ParsingUtilities.h:
+        (WebCore::skipExactlyIgnoringASCIICase):
+        Add parsing helper to match / skip over a constant string, using IgnoringASCIICase semantics.
+
+        * loader/ResourceCryptographicDigest.cpp: Added.
+        (WebCore::parseHashAlgorithmAdvancingPosition):
+        (WebCore::parseCryptographicDigestImpl):
+        (WebCore::parseCryptographicDigest):
+        Move parsing of cryptographic-digest strings from ContentSecurityPolicySourceList.cpp
+        and optimize it a little by avoiding String allocations and generalizing it so that it
+        can parse either UChars or LChars.
+
+        * loader/ResourceCryptographicDigest.h: Added.
+        (WebCore::ResourceCryptographicDigest::operator==):
+        (WebCore::ResourceCryptographicDigest::operator!=):
+        (WTF::DefaultHash<WebCore::ResourceCryptographicDigest>::Hash::hash):
+        (WTF::DefaultHash<WebCore::ResourceCryptographicDigest>::Hash::equal):
+        (WTF::HashTraits<WebCore::ResourceCryptographicDigest>::emptyValue):
+        (WTF::HashTraits<WebCore::ResourceCryptographicDigest>::constructDeletedValue):
+        (WTF::HashTraits<WebCore::ResourceCryptographicDigest>::isDeletedValue):
+        Add a struct (rather than using a std::pair) to represent the digest + algorithm. And add
+        HashTraits so it can be used as HashMap.
+        
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::findHashOfContentInPolicies):
+        (WebCore::toCryptoDigestAlgorithm): Deleted.
+        Move algorithm conversion to ResourceCryptographicDigest.cpp. Make use of new 
+        cryptographicDigestForBytes function to do hashing.
+
+        * page/csp/ContentSecurityPolicy.h:
+        * page/csp/ContentSecurityPolicyHash.h:
+        (WTF::DefaultHash<WebCore::ContentSecurityPolicyDigest>::Hash::hash): Deleted.
+        (WTF::DefaultHash<WebCore::ContentSecurityPolicyDigest>::Hash::equal): Deleted.
+        Remove HashTraits for the digest, this is now handled by ResourceCryptographicDigest. 
+        To keep things relatively straight-forward, redefine ContentSecurityPolicyHashAlgorithm
+        and ContentSecurityPolicyHash in terms of ResourceCryptographicDigest, so that less code
+        has to be changed all at once. In a later pass, if wanted, we can remove these using 
+        declarations.
+
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::isNonceCharacter):
+        Use renamed isBase64OrBase64URLCharacter predicate.
+
+        (WebCore::ContentSecurityPolicySourceList::parseHashSource):
+        Rework using ResourceCryptographicDigest parsing. Quotation and maximum digest
+        length have been kept here, as they are not applicable to other uses of 
+        the digest, specifically Subresource Integrity.
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed fix after r215624; null-deref crash.
+
+        Make sure to call reset() inside each constructor.
+
+        * platform/audio/WebAudioBufferList.cpp:
+        (WebCore::WebAudioBufferList::WebAudioBufferList):
+
+2017-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 5
+        https://bugs.webkit.org/show_bug.cgi?id=171134
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::convertAndValidate):
+        Stop using the toPaymentAuthorizationStatus. Convert the passed in status results to the remaining
+        PaymentAuthorizationStatus values, and add errors if needed.
+
+        (WebCore::toPaymentAuthorizationStatus):
+        This function is no longer used.
+
+        * Modules/applepay/PaymentAuthorizationStatus.h:
+        Remove deprecated status values. We can achieve the same results with errors now.
+
+        * Modules/applepay/PaymentRequest.cpp:
+        (WebCore::isFinalStateResult):
+        Remove deprecated status values.
+
+        * Modules/applepay/PaymentRequest.h:
+        Remove deprecated status values.
+
+2017-04-21  Per Arne Vollan  <pvollan@apple.com>
+
+        Validate vImage arguments
+        https://bugs.webkit.org/show_bug.cgi?id=171109
+        rdar://problem/30236606
+
+        Reviewed by Brent Fulgham.
+
+        When writing data to a canvas context, clip the source rectangle to the data rectangle
+        to make sure we will not attempt to read data outside of the buffer.
+
+        Test: fast/canvas/canvas-crash.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::putImageData):
+
+2017-04-21  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from -std=gnu++11 to -std=gnu++14 for consistency in DerivedSources.make
+        <https://webkit.org/b/171122>
+
+        Reviewed by Brent Fulgham.
+
+        * DerivedSources.make: Switch to -std=gnu++14 for preprocessing
+        headers to check for build settings.
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        [MediaCapture][iOS] AVAudioSession must be active and the correct category before IO AudioUnits start producing data.
+        https://bugs.webkit.org/show_bug.cgi?id=171095
+
+        Reviewed by Youenn Fablet.
+
+        If an input audio unit is asked to start before the AVAudioSession is in a recording category and active,
+        CoreAudio will return an error stating that no input device is available.
+
+        The PlatformMediaSessionManager will automatically set the category of and activate the AVAudioSession when one
+        of its associated MediaStreams has a capturing RealtimeMediaSource and is currently producing data.  To solve
+        the chicken-or-egg problem of activating the AVAudioSession before the source produces data, move the state bit
+        of "producing data" directly into MediaStreams, and notify the PlatformMediaSessionManager that capturing is
+        occurring after flipping that bit, but before asking the constituent tracks to begin producing data.
+
+        In places (i.e. UserMediaRequest) where we previously told a stream's tracks to begin producing data, instead
+        allow the stream to handle that by telling it to produce data directly.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::startProducingData):
+        (WebCore::MediaStream::stopProducingData):
+        (WebCore::MediaStream::mediaState):
+        (WebCore::MediaStream::mediaType):
+        (WebCore::MediaStream::characteristics):
+        (WebCore::MediaStream::canProduceAudio):
+        * Modules/mediastream/MediaStream.h:
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::allow):
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        Add a method to retrieve the current I/O buffer size from AudioSession
+        https://bugs.webkit.org/show_bug.cgi?id=171126
+
+        Reviewed by Eric Carlson.
+
+        There is an existing method to get and set the preferred I/O buffer size; add a matching method to return
+        the acutal I/O buffer size.
+
+        * platform/audio/AudioSession.cpp:
+        (WebCore::AudioSession::bufferSize):
+        * platform/audio/AudioSession.h:
+        * platform/audio/ios/AudioSessionIOS.mm:
+        (WebCore::AudioSession::bufferSize):
+        * platform/audio/mac/AudioSessionMac.cpp:
+        (WebCore::AudioSession::bufferSize):
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        Make AudioSampleBufferList::reset() less expensive.
+        https://bugs.webkit.org/show_bug.cgi?id=171124
+
+        Reviewed by Eric Carlson.
+
+        Previously, AudioSampleBufferList would reallocate its constituent WebAudioBufferList every time reset() was
+        called. Instead, add a reset() method to WebAudioBufferList which re-initializes its AudioBufferList (which is a
+        simple memcpy of a 24-byte struct), reusing the existing memory buffers.
+
+        While making these changes, we'll also take the opportunity to clean up the AudioSampleBufferList class by
+        making some of its members into UniqueRefs instead of unique_ptrs, thus removing the possibility of null-
+        dereferences.
+
+        * platform/audio/WebAudioBufferList.cpp:
+        (WebCore::WebAudioBufferList::WebAudioBufferList):
+        (WebCore::WebAudioBufferList::reset):
+        * platform/audio/WebAudioBufferList.h:
+        * platform/audio/mac/AudioSampleBufferList.cpp:
+        (WebCore::AudioSampleBufferList::AudioSampleBufferList):
+        (WebCore::AudioSampleBufferList::applyGain):
+        (WebCore::AudioSampleBufferList::mixFrom):
+        (WebCore::AudioSampleBufferList::reset):
+        (WebCore::AudioSampleBufferList::zero):
+        (WebCore::AudioSampleBufferList::~AudioSampleBufferList): Deleted.
+        * platform/audio/mac/AudioSampleBufferList.h:
+        (WebCore::AudioSampleBufferList::bufferList):
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        Fix some spurious ASSERTs when working with capturing media elements
+        https://bugs.webkit.org/show_bug.cgi?id=171096
+
+        Reviewed by Youenn Fablet.
+
+        Two related ASSERTS:
+
+        1) When we added a new PlatformMediaSession MediaType (MediaStreamCapturingAudio), we did not update all the
+        places that validated the enum. This would lead to spurious ASSERTs when an element capturing audio would
+        fail various checks to enusre it's type's validity.
+
+        2) Audio elements will ASSERT when they change page visibility, as they do not have a renderer which implements
+        visibleInViewportStateChanged(). So opt out of visibility-state checking for non-video media elements.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::wantsToObserveViewportVisibilityForAutoplay):
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::resetRestrictions):
+        (WebCore::PlatformMediaSessionManager::addRestriction):
+        (WebCore::PlatformMediaSessionManager::removeRestriction):
+        (WebCore::PlatformMediaSessionManager::restrictions):
+        * platform/audio/PlatformMediaSessionManager.h:
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] WTF target should not have wtf and subdirectries in public interface
+        https://bugs.webkit.org/show_bug.cgi?id=171115
+
+        Reviewed by Michael Catanzaro.
+
+        In r209665 WEBCORE_FRAMEWORK macro started to export INCLUDE_DIRECTORIES of
+        targets as their public interface, so that linked targets can use them
+        implicitly without copying directory lists around. This matches existing
+        practice for all targets except WTF, headers from which are always included
+        with full path starting from "<wtf/...".
+
+        Since r209665 it became possible to include headers from wtf or its
+        subdirectories in CMake builds without using "<wtf/..." path. It should
+        not be allowed.
+
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp: Fix
+        incorrect include of WTF header.
+
+2017-04-21  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        Do not paint the border of the box if the dirty region does not intersect with border area
+        https://bugs.webkit.org/show_bug.cgi?id=170988
+
+        Reviewed by Simon Fraser.
+
+        No new tests, since there is no change in behavior.
+
+        * platform/graphics/GeometryUtilities.cpp:
+        (WebCore::ellipseContainsPoint):
+        Checks if a point is within an ellipse.
+
+        * platform/graphics/GeometryUtilities.h:
+        Replace header-guards with #pragma once.
+
+        * platform/graphics/RoundedRect.cpp:
+        (WebCore::RoundedRect::contains):
+        Implemented to know the dirty rectangle intersects with rounded rectangle or not.
+        * platform/graphics/RoundedRect.h:
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::paintBorder):
+        When typing in decorated text box, the dirty rect generated only for the
+        inside of the text box, not for the decorations.  So we can avoid the
+        calculations to draw borders if the inner border totally covers the
+        target surface. It will optimize the rendering process since we don't
+        have to render border decorations whenever we type somethings in side of
+        the text input element.
+
+2017-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Remove another use of toPaymentAuthorizationStatus
+        https://bugs.webkit.org/show_bug.cgi?id=171114
+
+        Reviewed by Dan Bernstein.
+
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::ApplePaySession::completeShippingContactSelection):
+
+2017-04-21  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce copies and allocations in SharedBuffer::append
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+
+        Reviewed by Andreas Kling.
+
+        SharedBuffer was a mess of different data structures added over the years.
+        SharedBuffer::append would allocate large Vector<char>s and call memcpy, and that
+        is inefficient and causes crashes when large allocations fail, and the allocations
+        and copies aren't even necessary.  There were also const correctness problems in
+        ResourceLoader::addDataOrBuffer, and iterating a SharedBuffer was strange because
+        sometimes we don't want to add unnecessary copies.
+
+        These problems are solved by making SharedBuffer a Vector of read-only data segments,
+        which can be contained in various ways but we don't care because all we want to do is
+        read them.  Appending SharedBuffers is now const correct because we just add to a
+        Vector<Ref<DataSegment>> and neither SharedBuffer can write to the data.  Sometimes,
+        though, we want all the data to be in continuous memory, and if there are multiple
+        segments then the data needs to be copied once to a new segment.  We should audit the
+        call sites of SharedBuffer::data and see if this is really necessary.
+
+        No change in functional behavior.  Fewer copies of the data are made when buffering
+        data in the NetworkProcess.  No extra memory is allocated for bytes we think we might
+        need to append in the future.  Data is now only copied into one buffer lazily as needed,
+        which could slightly change when small delays from memcpy happen, but it's an overall
+        improvement.  We could have a performance hit if we were to call append() then data()
+        then append() then data() etc. but that doesn't happen in WebKit because we call append
+        repeatedly when buffering the data then call data() once when reading the data.
+
+        * editing/cocoa/EditorCocoa.mm:
+        (WebCore::archivedDataForAttributedString):
+        (WebCore::Editor::selectionInWebArchiveFormat):
+        (WebCore::Editor::dataInRTFDFormat):
+        (WebCore::Editor::dataInRTFFormat):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::WebContentReader::readURL):
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::imageInWebArchiveFormat):
+        * loader/TextTrackLoader.cpp:
+        (WebCore::TextTrackLoader::processNewCueData):
+        * loader/archive/cf/LegacyWebArchive.cpp:
+        (WebCore::LegacyWebArchive::createResource):
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::tryReplaceEncodedData):
+        * loader/cocoa/DiskCacheMonitorCocoa.mm:
+        (WebCore::DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse):
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::combineToOneSegment):
+        (WebCore::SharedBuffer::data):
+        (WebCore::SharedBuffer::createArrayBuffer):
+        (WebCore::SharedBuffer::append):
+        (WebCore::SharedBuffer::clear):
+        (WebCore::SharedBuffer::copy):
+        (WebCore::SharedBuffer::DataSegment::data):
+        (WebCore::SharedBuffer::DataSegment::size):
+        (WebCore::segmentIndex): Deleted.
+        (WebCore::offsetInSegment): Deleted.
+        (WebCore::allocateSegment): Deleted.
+        (WebCore::freeSegment): Deleted.
+        (WebCore::SharedBuffer::~SharedBuffer): Deleted.
+        (WebCore::SharedBuffer::size): Deleted.
+        (WebCore::SharedBuffer::duplicateDataBufferIfNecessary): Deleted.
+        (WebCore::SharedBuffer::appendToDataBuffer): Deleted.
+        (WebCore::SharedBuffer::clearDataBuffer): Deleted.
+        (WebCore::SharedBuffer::copyBufferAndClear): Deleted.
+        (WebCore::SharedBuffer::buffer): Deleted.
+        (WebCore::SharedBuffer::getSomeData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferMappedFileData): Deleted.
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        * platform/SharedBuffer.h:
+        (WebCore::SharedBuffer::create): Deleted.
+        (WebCore::SharedBuffer::isEmpty): Deleted.
+        * platform/SharedBufferChunkReader.cpp:
+        (WebCore::SharedBufferChunkReader::nextChunk):
+        (WebCore::SharedBufferChunkReader::peek):
+        * platform/SharedBufferChunkReader.h:
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::URLParser):
+        * platform/cf/KeyedEncoderCF.cpp:
+        (WebCore::KeyedEncoderCF::finishEncoding):
+        * platform/cf/SharedBufferCF.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::createCFData):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::hintMemoryNotNeededSoon):
+        (WebCore::SharedBuffer::append):
+        (WebCore::SharedBuffer::wrapCFData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::platformDataSize): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::tryReplaceContentsWithPlatformBuffer): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        (WebCore::SharedBuffer::copyBufferAndClear): Deleted.
+        (WebCore::SharedBuffer::copySomeDataFromDataArray): Deleted.
+        (WebCore::SharedBuffer::singleDataArrayBuffer): Deleted.
+        (WebCore::SharedBuffer::maybeAppendDataArray): Deleted.
+        * platform/cocoa/NetworkExtensionContentFilter.mm:
+        (WebCore::NetworkExtensionContentFilter::replacementData):
+        * platform/cocoa/ParentalControlsContentFilter.mm:
+        (WebCore::ParentalControlsContentFilter::replacementData):
+        * platform/cocoa/SharedBufferCocoa.mm:
+        (-[WebCoreSharedBufferData initWithSharedBufferDataSegment:]):
+        (-[WebCoreSharedBufferData length]):
+        (-[WebCoreSharedBufferData bytes]):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::createCFData):
+        (WebCore::SharedBuffer::createFromReadingFile):
+        (WebCore::SharedBuffer::createNSDataArray):
+        (-[WebCoreSharedBufferData initWithSharedBufferDataBuffer:]): Deleted.
+        (WebCore::SharedBuffer::wrapNSData): Deleted.
+        (WebCore::SharedBuffer::existingCFData): Deleted.
+        * platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm:
+        (WebCore::WebCoreAVFResourceLoader::fulfillRequestWithResource):
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::openTypeTable):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (ResourceHandleStreamingClient::didReceiveBuffer):
+        * platform/graphics/mac/ImageMac.mm:
+        (WebCore::Image::loadPlatformResource):
+        * platform/image-decoders/ImageDecoder.cpp:
+        (WebCore::ImageDecoder::create):
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageReader::decode):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::readBuffer):
+        * platform/mac/PasteboardMac.mm:
+        (WebCore::writeFileWrapperAsRTFDAttachment):
+        (WebCore::Pasteboard::write):
+        * platform/mac/PlatformPasteboardMac.mm:
+        (WebCore::PlatformPasteboard::bufferForType):
+        * platform/network/BlobResourceHandle.cpp:
+        (WebCore::BlobResourceHandle::notifyReceiveData):
+        * platform/network/MIMEHeader.cpp:
+        * platform/network/MIMEHeader.h:
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp:
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::didReceiveData):
+        * platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp:
+        (WebCore::SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData):
+        * platform/network/mac/WebCoreResourceHandleAsDelegate.mm:
+        (-[WebCoreResourceHandleAsDelegate connection:didReceiveData:lengthReceived:]):
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm:
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveData:lengthReceived:]):
+        * platform/soup/SharedBufferSoup.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::createSoupBuffer):
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::platformDataSize): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        (WebCore::SharedBuffer::tryReplaceContentsWithPlatformBuffer): Deleted.
+
 2017-04-21  Timothy Horton  <timothy_horton@apple.com>
 
         Expose obscured insets to web content (as "safe area insets")

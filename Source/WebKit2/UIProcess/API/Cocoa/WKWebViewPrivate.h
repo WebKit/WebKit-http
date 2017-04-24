@@ -53,6 +53,11 @@ typedef NS_OPTIONS(NSInteger, _WKMediaMutedState) {
     _WKMediaCaptureDevicesMuted = 1 << 1,
 } WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
+typedef NS_OPTIONS(NSUInteger, _WKCaptureDevices) {
+    _WKCaptureDeviceMicrophone = 1 << 0,
+    _WKCaptureDeviceCamera = 1 << 1,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 #if !TARGET_OS_IPHONE
 
 typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
@@ -82,7 +87,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @protocol _WKIconLoadingDelegate;
 @protocol _WKInputDelegate;
 @protocol _WKFullscreenDelegate;
-@protocol _WKTestingDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -300,7 +304,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @interface WKWebView (WKTesting)
 
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-@property (nonatomic, weak, setter=_setTestingDelegate:) id<_WKTestingDelegate> _testingDelegate WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 

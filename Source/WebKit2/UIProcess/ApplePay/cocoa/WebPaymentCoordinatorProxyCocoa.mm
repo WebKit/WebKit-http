@@ -168,10 +168,7 @@ static WebCore::PaymentRequest::ShippingMethod toShippingMethod(PKShippingMethod
 - (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller didSelectPaymentMethod:(PKPaymentMethod *)paymentMethod handler:(void (^)(PKPaymentRequestPaymentMethodUpdate *update))completion
 {
     if (!_webPaymentCoordinatorProxy) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        completion(adoptNS([allocPKPaymentRequestPaymentMethodUpdateInstance() initWithStatus:PKPaymentAuthorizationStatusFailure paymentSummaryItems:@[ ]]).get());
-#pragma clang diagnostic pop
+        completion(adoptNS([allocPKPaymentRequestPaymentMethodUpdateInstance() initWithPaymentSummaryItems:@[ ]]).get());
         return;
     }
 
@@ -182,10 +179,7 @@ static WebCore::PaymentRequest::ShippingMethod toShippingMethod(PKShippingMethod
 
 - (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller didSelectShippingMethod:(PKShippingMethod *)shippingMethod handler:(void (^)(PKPaymentRequestShippingMethodUpdate *update))completion {
     if (!_webPaymentCoordinatorProxy) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        completion(adoptNS([allocPKPaymentRequestShippingMethodUpdateInstance() initWithStatus:PKPaymentAuthorizationStatusFailure paymentSummaryItems:@[ ]]).get());
-#pragma clang diagnostic pop
+        completion(adoptNS([allocPKPaymentRequestShippingMethodUpdateInstance() initWithPaymentSummaryItems:@[ ]]).get());
         return;
     }
 
@@ -197,10 +191,7 @@ static WebCore::PaymentRequest::ShippingMethod toShippingMethod(PKShippingMethod
 - (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller didSelectShippingContact:(PKContact *)contact handler:(void (^)(PKPaymentRequestShippingContactUpdate *update))completion
 {
     if (!_webPaymentCoordinatorProxy) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        completion(adoptNS([allocPKPaymentRequestShippingContactUpdateInstance() initWithStatus:PKPaymentAuthorizationStatusFailure errors:@[ ] paymentSummaryItems:@[ ] shippingMethods:@[ ]]).get());
-#pragma clang diagnostic pop
+        completion(adoptNS([allocPKPaymentRequestShippingContactUpdateInstance() initWithErrors:@[ ] paymentSummaryItems:@[ ] shippingMethods:@[ ]]).get());
         return;
     }
 
@@ -424,31 +415,6 @@ static PKMerchantCapability toPKMerchantCapabilities(const WebCore::PaymentReque
     return result;
 }
 
-static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(WebCore::PaymentAuthorizationStatus status)
-{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    switch (status) {
-    case WebCore::PaymentAuthorizationStatus::Success:
-        return PKPaymentAuthorizationStatusSuccess;
-    case WebCore::PaymentAuthorizationStatus::Failure:
-        return PKPaymentAuthorizationStatusFailure;
-    case WebCore::PaymentAuthorizationStatus::InvalidBillingPostalAddress:
-        return PKPaymentAuthorizationStatusInvalidBillingPostalAddress;
-    case WebCore::PaymentAuthorizationStatus::InvalidShippingPostalAddress:
-        return PKPaymentAuthorizationStatusInvalidShippingPostalAddress;
-    case WebCore::PaymentAuthorizationStatus::InvalidShippingContact:
-        return PKPaymentAuthorizationStatusInvalidShippingContact;
-    case WebCore::PaymentAuthorizationStatus::PINRequired:
-        return PKPaymentAuthorizationStatusPINRequired;
-    case WebCore::PaymentAuthorizationStatus::PINIncorrect:
-        return PKPaymentAuthorizationStatusPINIncorrect;
-    case WebCore::PaymentAuthorizationStatus::PINLockout:
-        return PKPaymentAuthorizationStatusPINLockout;
-    }
-#pragma clang diagnostic pop
-}
-
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebPaymentCoordinatorProxyCocoaAdditions.mm>)
 #import <WebKitAdditions/WebPaymentCoordinatorProxyCocoaAdditions.mm>
 #else
@@ -589,6 +555,22 @@ RetainPtr<PKPaymentRequest> toPKPaymentRequest(WebPageProxy& webPageProxy, const
 }
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(WebCore::PaymentAuthorizationStatus status)
+{
+    switch (status) {
+    case WebCore::PaymentAuthorizationStatus::Success:
+        return PKPaymentAuthorizationStatusSuccess;
+    case WebCore::PaymentAuthorizationStatus::Failure:
+        return PKPaymentAuthorizationStatusFailure;
+    case WebCore::PaymentAuthorizationStatus::PINRequired:
+        return PKPaymentAuthorizationStatusPINRequired;
+    case WebCore::PaymentAuthorizationStatus::PINIncorrect:
+        return PKPaymentAuthorizationStatusPINIncorrect;
+    case WebCore::PaymentAuthorizationStatus::PINLockout:
+        return PKPaymentAuthorizationStatusPINLockout;
+    }
+}
+
 static PKPaymentErrorCode toPKPaymentErrorCode(WebCore::PaymentError::Code code)
 {
     switch (code) {
@@ -674,6 +656,45 @@ static RetainPtr<NSArray> toNSErrors(const Vector<WebCore::PaymentError>& errors
 
     return result;
 }
+#else
+static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(const std::optional<WebCore::PaymentAuthorizationResult>& result)
+{
+    if (!result)
+        return PKPaymentAuthorizationStatusSuccess;
+
+    if (result->errors.size() == 1) {
+        auto& error = result->errors[0];
+        switch (error.code) {
+        case WebCore::PaymentError::Code::Unknown:
+        case WebCore::PaymentError::Code::AddressUnservicable:
+            return PKPaymentAuthorizationStatusFailure;
+
+        case WebCore::PaymentError::Code::BillingContactInvalid:
+            return PKPaymentAuthorizationStatusInvalidBillingPostalAddress;
+
+        case WebCore::PaymentError::Code::ShippingContactInvalid:
+            if (error.contactField && error.contactField == WebCore::PaymentError::ContactField::PostalAddress)
+                return PKPaymentAuthorizationStatusInvalidShippingPostalAddress;
+
+            return PKPaymentAuthorizationStatusInvalidShippingContact;
+        }
+    }
+
+    switch (result->status) {
+    case WebCore::PaymentAuthorizationStatus::Success:
+        return PKPaymentAuthorizationStatusSuccess;
+    case WebCore::PaymentAuthorizationStatus::Failure:
+        return PKPaymentAuthorizationStatusFailure;
+    case WebCore::PaymentAuthorizationStatus::PINRequired:
+        return PKPaymentAuthorizationStatusPINRequired;
+    case WebCore::PaymentAuthorizationStatus::PINIncorrect:
+        return PKPaymentAuthorizationStatusPINIncorrect;
+    case WebCore::PaymentAuthorizationStatus::PINLockout:
+        return PKPaymentAuthorizationStatusPINLockout;
+    }
+
+    return PKPaymentAuthorizationStatusFailure;
+}
 #endif
 
 void WebPaymentCoordinatorProxy::platformCompletePaymentSession(const std::optional<WebCore::PaymentAuthorizationResult>& result)
@@ -681,14 +702,14 @@ void WebPaymentCoordinatorProxy::platformCompletePaymentSession(const std::optio
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
 
-    auto status = result ? result->status : WebCore::PaymentAuthorizationStatus::Success;
     m_paymentAuthorizationViewControllerDelegate->_didReachFinalState = WebCore::isFinalStateResult(result);
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+    auto status = result ? result->status : WebCore::PaymentAuthorizationStatus::Success;
     auto pkPaymentAuthorizationResult = adoptNS([allocPKPaymentAuthorizationResultInstance() initWithStatus:toPKPaymentAuthorizationStatus(status) errors:result ? toNSErrors(result->errors).get() : @[ ]]);
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion(pkPaymentAuthorizationResult.get());
 #else
-    m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion(toPKPaymentAuthorizationStatus(status));
+    m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion(toPKPaymentAuthorizationStatus(result));
 #endif
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion = nullptr;
 }
@@ -720,7 +741,7 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(const s
 }
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
-static PKPaymentAuthorizationStatus status(const std::optional<WebCore::ShippingContactUpdate>& update)
+static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(const std::optional<WebCore::ShippingContactUpdate>& update)
 {
     if (!update)
         return PKPaymentAuthorizationStatusSuccess;
@@ -768,7 +789,7 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(const 
         [pkShippingContactUpdate setStatus:PKPaymentAuthorizationStatusFailure];
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion(pkShippingContactUpdate.get());
 #else
-    m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion(status(update), m_paymentAuthorizationViewControllerDelegate->_shippingMethods.get(), m_paymentAuthorizationViewControllerDelegate->_paymentSummaryItems.get());
+    m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion(toPKPaymentAuthorizationStatus(update), m_paymentAuthorizationViewControllerDelegate->_shippingMethods.get(), m_paymentAuthorizationViewControllerDelegate->_paymentSummaryItems.get());
 #endif
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion = nullptr;
 }

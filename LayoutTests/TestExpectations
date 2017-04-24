@@ -103,6 +103,9 @@ http/tests/ssl/applepay/ [ Skip ]
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Skip ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Skip ]
 
+# FKA focus ring only make sense on Mac
+media/modern-media-controls/icon-button/icon-button-focus-state.html [ Skip ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -1281,8 +1284,6 @@ webkit.org/b/170699 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/ti
 
 webkit.org/b/90724 compositing/iframes/iframe-size-from-zero.html [ Failure Pass ]
 
-webkit.org/b/170823 webrtc/multi-video.html [ Skip ]
-
 webkit.org/b/170704 webrtc/video-mute.html [ Pass Failure ]
 
 webkit.org/b/171031 imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-cl.htm [ Failure ]
@@ -1291,3 +1292,5 @@ webkit.org/b/171059 crypto/subtle/ecdsa-generate-key-sign-verify-p384.html [ Pas
 webkit.org/b/171059 crypto/subtle/ecdsa-generate-key-sign-verify-p256.html [ Pass Failure ]
 
 webkit.org/b/170921 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/ecdsa.worker.html [ Pass Failure ]
+
+webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold.html [ Pass Failure ]

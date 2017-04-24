@@ -1,3 +1,45 @@
+2017-04-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support writing link titles to the pasteboard when beginning data interaction on a link
+        https://bugs.webkit.org/show_bug.cgi?id=171154
+        <rdar://problem/31356937>
+
+        Reviewed by Andy Estes.
+
+        Adjust for some changes in WebCore to introduce a separate codepath for writing PasteboardURLs. See WebCore
+        and WebKit2 ChangeLogs for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::writeToPasteboard):
+
+2017-04-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r215608.
+
+        Hundreds of test failures on GTK bot
+
+        Reverted changeset:
+
+        "Reduce copies and allocations in SharedBuffer::append"
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+        http://trac.webkit.org/changeset/215608
+
+2017-04-21  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce copies and allocations in SharedBuffer::append
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithData:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+        * WebView/WebResource.mm:
+        (-[WebResource initWithCoder:]):
+        (-[WebResource _initWithData:URL:MIMEType:textEncodingName:frameName:response:copyData:]):
+
 2017-04-20  Dewei Zhu  <dewei_zhu@apple.com>
 
         Build fix to start using C++14.

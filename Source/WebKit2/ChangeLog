@@ -1,3 +1,314 @@
+2017-04-23  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] WKWebInspectorProxyObjCAdapter has a public ivar
+        https://bugs.webkit.org/show_bug.cgi?id=171200
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/API/C/mac/WKInspectorPrivateMac.h: Made ivar private.
+
+2017-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215657 and r215676.
+        https://bugs.webkit.org/show_bug.cgi?id=171201
+
+        Broke the build (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "[macOS] Enable media selection button on AVTouchBarScrubber"
+        https://bugs.webkit.org/show_bug.cgi?id=171149
+        http://trac.webkit.org/changeset/215657
+
+        "Build fix after r215657."
+        http://trac.webkit.org/changeset/215676
+
+2017-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix after r215657.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+
+2017-04-23  Andy Estes  <aestes@apple.com>
+
+        [macOS] AVTouchBarMediaSelectionOptions should be created with the correct type
+        https://bugs.webkit.org/show_bug.cgi?id=171192
+        <rdar://problem/29875010>
+
+        Reviewed by Wenson Hsieh.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<MediaSelectionOption>::encode):
+        (IPC::ArgumentCoder<MediaSelectionOption>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.messages.in:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.mm:
+        (WebKit::WebPlaybackSessionModelContext::setAudioMediaSelectionOptions):
+        (WebKit::WebPlaybackSessionModelContext::setLegibleMediaSelectionOptions):
+        (WebKit::WebPlaybackSessionManagerProxy::setAudioMediaSelectionOptions):
+        (WebKit::WebPlaybackSessionManagerProxy::setLegibleMediaSelectionOptions):
+        * WebProcess/cocoa/WebPlaybackSessionManager.h:
+        * WebProcess/cocoa/WebPlaybackSessionManager.mm:
+        (WebKit::WebPlaybackSessionInterfaceContext::audioMediaSelectionOptionsChanged):
+        (WebKit::WebPlaybackSessionInterfaceContext::legibleMediaSelectionOptionsChanged):
+        (WebKit::WebPlaybackSessionManager::audioMediaSelectionOptionsChanged):
+        (WebKit::WebPlaybackSessionManager::legibleMediaSelectionOptionsChanged):
+
+2017-04-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support writing link titles to the pasteboard when beginning data interaction on a link
+        https://bugs.webkit.org/show_bug.cgi?id=171154
+        <rdar://problem/31356937>
+
+        Reviewed by Andy Estes.
+
+        Adds support for setting the _title attribute of NSURLs written to the pasteboard. See WebCore ChangeLog for more details.
+
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<PasteboardURL>::encode):
+        (IPC::ArgumentCoder<PasteboardURL>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+
+        Teach PasteboardURL to be serialized in IPC. For now, we just send across the absolute string of the link and
+        its title.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::writeURLToPasteboard):
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+
+        Add IPC plumbing for writing PasteboarURLs to the pasteboard.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::writeToPasteboard):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2017-04-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r215608.
+
+        Hundreds of test failures on GTK bot
+
+        Reverted changeset:
+
+        "Reduce copies and allocations in SharedBuffer::append"
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+        http://trac.webkit.org/changeset/215608
+
+2017-04-21  Andy Estes  <aestes@apple.com>
+
+        [macOS] Enable media selection button on AVTouchBarScrubber
+        https://bugs.webkit.org/show_bug.cgi?id=171149
+        <rdar://problem/29875010>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::updateMediaTouchBar):
+
+2017-04-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add delegate hooks for overriding unhanded data interaction operations
+        https://bugs.webkit.org/show_bug.cgi?id=171005
+        <rdar://problem/31669646>
+
+        Reviewed by Tim Horton.
+
+        Adds support for overriding data interaction operations through two new delegate methods:
+        _webView:willUpdateDataInteractionOperationToOperation:forSession:, and
+        _webView:dataInteractionOperationWasHandled:forSession:. The former may be overridden to return a different
+        operation type than what WebKit would originally have returned, and the latter may be overridden to run custom
+        logic after the web process has handled a data interaction operation.
+
+        Additionally, includes some minor cleanup around WKContentViewInteraction. With the new
+        _webView:dataInteractionOperationWasHandled:forSession: delegate method, the last method on _WKTestingDelegate
+        may be removed. This means _WKTestingDelegate is no longer needed, so this patch removes its header entirely.
+        Also, relocates some state variables formerly on WKContentView to WKContentView's WKDataInteractionState struct
+        instead, so that all state associated with data interaction may be cleaned up at the same time.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _testingDelegate]): Deleted.
+        (-[WKWebView _setTestingDelegate:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKTestingDelegate.h: Removed.
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+
+        Add a new "handled" IPC argument to DidPerformDataInteractionControllerOperation. This lets the UI process
+        know whether or not the data interaction operation was handled by the web process, and is eventually plumbed
+        through to the UI delegate via the new SPI.
+
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didPerformDataInteractionControllerOperation):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView _displayFormNodeInputView]):
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:userObject:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didPerformDataInteractionControllerOperation):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::performDragControllerAction):
+
+2017-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 5
+        https://bugs.webkit.org/show_bug.cgi?id=171134
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::toPKPaymentAuthorizationStatus):
+        Remove this and add a new version that doesn't use any deprecated values.
+
+        (WebKit::toPKPaymentAuthorizationStatus):
+        New function that takes a WebCore::PaymentAuthorizationResult and converts it to a status, for older OSes.
+
+        (WebKit::WebPaymentCoordinatorProxy::platformCompletePaymentSession):
+        Use the new toPKPaymentAuthorizationStatus versions.
+
+        (WebKit::WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection):
+        Ditto.
+
+        (WebKit::status): Deleted.
+
+2017-04-21  David Kilzer  <ddkilzer@apple.com>
+
+        Switch from -std=gnu++11 to -std=gnu++14 for consistency in DerivedSources.make
+        <https://webkit.org/b/171122>
+
+        Reviewed by Brent Fulgham.
+
+        * DerivedSources.make: Switch to -std=gnu++14 for preprocessing
+        headers to check for build settings.
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        [WK2][MediaCapture] Pass muted and enabled state across process boundary when capturing in UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=170846
+
+        Reviewed by Jon Lee.
+
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::setMuted):
+        (WebKit::UserMediaCaptureManagerProxy::setEnabled):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::setMuted):
+        (WebKit::UserMediaCaptureManager::Source::setEnabled):
+        (WebKit::UserMediaCaptureManager::setMuted):
+        (WebKit::UserMediaCaptureManager::setEnabled):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2017-04-21  Jer Noble  <jer.noble@apple.com>
+
+        [WK2][MediaCapture] Remove now-unused WKWebViewConfiguration property for shouldCaptureAudioInUIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=170847
+
+        Reviewed by Jon Lee.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _shouldCaptureAudioInUIProcess]): Deleted.
+        (-[WKWebViewConfiguration _setShouldCaptureAudioInUIProcess:]): Deleted.
+
+2017-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Stop using deprecated APIs, part 4
+        https://bugs.webkit.org/show_bug.cgi?id=171125
+        rdar://problem/31589635
+
+        Reviewed by Tim Horton.
+
+        It doesn't really matter what we pass to these completion functions, since the sheet has already been dismissed at this point
+        so just remove the status parameter.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectPaymentMethod:handler:]):
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectShippingMethod:handler:]):
+        (-[WKPaymentAuthorizationViewControllerDelegate paymentAuthorizationViewController:didSelectShippingContact:handler:]):
+
+2017-04-21  Andrew Gold  <agold@apple.com>
+
+        -[WKUIDelegatePrivate _webView:requestUserMediaAuthorizationForMicrophone:camera:url:mainFrameURL:decisionHandler:] 
+        decision handler should only have one parameter.
+        https://bugs.webkit.org/show_bug.cgi?id=171081
+
+        Reviewed by Tim Horton.
+
+        Because user media authorization is all or nothing, we should not have separate booleans
+        to indicate authorization. Additionally, rather than passing two separate booleans to the
+        UIDelegate, we now pass an NS_OPTIONS parameter.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h: Added _WKCaptureDevice NS_OPTIONS.
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Uses new WKUIDelegatePrivate method.
+        (WebKit::UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest): Ditto.
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, added missing file to PlatformMac.cmake
+
+        * PlatformMac.cmake:
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed follow-up for r215609
+
+        * UIProcess/API/Cocoa/WKWebView.mm: Move internal header include too.
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Include iOS-specific headers inside preprocessor guard
+        https://bugs.webkit.org/show_bug.cgi?id=171104
+
+        Reviewed by Michael Catanzaro.
+
+        This patch should fix Mac cmake build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+
+2017-04-21  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce copies and allocations in SharedBuffer::append
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+
+        Reviewed by Andreas Kling.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveData:]):
+        * Platform/IPC/DataReference.cpp:
+        (IPC::SharedBufferDataReference::encode):
+        * Shared/ShareableResource.cpp:
+        (WebKit::ShareableResource::wrapInSharedBuffer):
+        * UIProcess/API/Cocoa/WKURLSchemeHandlerTask.mm:
+        (-[WKURLSchemeHandlerTaskImpl didReceiveData:]):
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (-[WKWebProcessPlugInBrowserContextController _setEditingDelegate:]):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::addArchiveResource):
+        (WebKit::PDFPlugin::liveResourceData):
+        (WebKit::PDFPlugin::writeItemsToPasteboard):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::redeliverManualStream):
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::WebDragClient::declareAndWriteDragImage):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::cachedResponseDataForURL):
+
 2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere

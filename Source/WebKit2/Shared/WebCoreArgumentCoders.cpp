@@ -49,6 +49,7 @@
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/Length.h>
 #include <WebCore/LengthBox.h>
+#include <WebCore/MediaSelectionOption.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
@@ -1408,6 +1409,23 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
     return true;
 }
 
+void ArgumentCoder<PasteboardURL>::encode(Encoder& encoder, const PasteboardURL& content)
+{
+    encoder << content.url;
+    encoder << content.title;
+}
+
+bool ArgumentCoder<PasteboardURL>::decode(Decoder& decoder, PasteboardURL& content)
+{
+    if (!decoder.decode(content.url))
+        return false;
+
+    if (!decoder.decode(content.title))
+        return false;
+
+    return true;
+}
+
 void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const PasteboardWebContent& content)
 {
     encoder << content.canSmartCopyOrDelete;
@@ -2497,5 +2515,22 @@ bool ArgumentCoder<ScrollOffsetRange<float>>::decode(Decoder& decoder, ScrollOff
 }
 
 #endif
+
+void ArgumentCoder<MediaSelectionOption>::encode(Encoder& encoder, const MediaSelectionOption& option)
+{
+    encoder << option.displayName;
+    encoder << option.type;
+}
+
+bool ArgumentCoder<MediaSelectionOption>::decode(Decoder& decoder, MediaSelectionOption& option)
+{
+    if (!decoder.decode(option.displayName))
+        return false;
+
+    if (!decoder.decode(option.type))
+        return false;
+
+    return true;
+}
 
 } // namespace IPC

@@ -68,9 +68,10 @@ public:
     CMClockRef timebaseClock();
 
 private:
-    CoreAudioCaptureSource(const String& deviceID);
+    CoreAudioCaptureSource(const String& deviceID, const String& label, uint32_t persistentID);
     virtual ~CoreAudioCaptureSource();
 
+    bool isCaptureSource() const final { return true; }
     void startProducingData() final;
     void stopProducingData() final;
     bool isProducingData() const final { return m_ioUnitStarted; }
@@ -78,8 +79,13 @@ private:
     OSStatus suspend();
     OSStatus resume();
 
+    bool applyVolume(double) override { return true; }
+    bool applySampleRate(int) override { return true; }
+    bool applyEchoCancellation(bool) override { return true; }
+
     const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
+    void settingsDidChange() final;
 
     OSStatus setupAudioUnits();
     void cleanupAudioUnits();
@@ -88,8 +94,6 @@ private:
     OSStatus defaultOutputDevice(uint32_t*);
     OSStatus defaultInputDevice(uint32_t*);
 
-    void checkTimestamps(const AudioTimeStamp&, uint64_t, double);
-
     static OSStatus microphoneCallback(void*, AudioUnitRenderActionFlags*, const AudioTimeStamp*, UInt32, UInt32, AudioBufferList*);
     OSStatus processMicrophoneSamples(AudioUnitRenderActionFlags&, const AudioTimeStamp&, UInt32, UInt32, AudioBufferList*);
 
@@ -97,10 +101,9 @@ private:
     OSStatus provideSpeakerData(AudioUnitRenderActionFlags&, const AudioTimeStamp&, UInt32, UInt32, AudioBufferList*);
 
     static double preferredSampleRate();
-    static double preferredIOBufferDuration();
+    static size_t preferredIOBufferSize();
 
     AudioUnit m_ioUnit { nullptr };
-    String m_ioUnitName;
 
     // Only read/modified from the IO thread.
     Vector<Ref<AudioSampleDataSource>> m_activeSources;
@@ -112,12 +115,10 @@ private:
 
     CAAudioStreamDescription m_microphoneProcFormat;
     RefPtr<AudioSampleBufferList> m_microphoneSampleBuffer;
-    uint64_t m_microphoneProcsCalled { 0 };
     uint64_t m_latestMicTimeStamp { 0 };
 
     CAAudioStreamDescription m_speakerProcFormat;
     RefPtr<AudioSampleBufferList> m_speakerSampleBuffer;
-    uint64_t m_speakerProcsCalled { 0 };
 
     double m_DTSConversionRatio { 0 };
 
@@ -129,7 +130,15 @@ private:
 
     mutable std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
     mutable RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
-    RealtimeMediaSourceSettings m_currentSettings;
+    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+
+#if !LOG_DISABLED
+    void checkTimestamps(const AudioTimeStamp&, uint64_t, double);
+
+    String m_ioUnitName;
+    uint64_t m_speakerProcsCalled { 0 };
+    uint64_t m_microphoneProcsCalled { 0 };
+#endif
 };
 
 } // namespace WebCore
