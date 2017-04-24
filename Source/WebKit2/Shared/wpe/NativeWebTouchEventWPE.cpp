@@ -26,6 +26,8 @@
 #include "config.h"
 #include "NativeWebTouchEvent.h"
 
+#if ENABLE(TOUCH_EVENTS)
+
 #include "WebEventFactory.h"
 
 namespace WebKit {
@@ -44,3 +46,5 @@ NativeWebTouchEvent::NativeWebTouchEvent(struct wpe_input_touch_event* event)
 }
 
 } // namespace WebKit
+
+#endif // ENABLE(TOUCH_EVENTS)
