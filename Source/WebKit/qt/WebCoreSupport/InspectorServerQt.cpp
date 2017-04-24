@@ -22,6 +22,7 @@
 
 #include "InspectorClientQt.h"
 #include "InspectorController.h"
+#include "MIMETypeRegistry.h"
 #include "Page.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
@@ -164,7 +165,6 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
             header = WebKit::QHttpRequestHeader(QString::fromLatin1(m_data));
             if (header.isValid()) {
                 m_path = header.path();
-                m_contentType = header.contentType().toLatin1();
                 m_contentLength = header.contentLength();
                 if (header.hasKey(QLatin1String("Upgrade")) && (header.value(QLatin1String("Upgrade")) == QLatin1String("websocket")))
                     isWebSocket = true;
@@ -217,6 +217,7 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
         m_endOfHeaders = false;
 
         QByteArray response;
+        QString contentType;
         int code = 200;
         QString text = QString::fromLatin1("OK");
 
@@ -230,7 +231,8 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
                     .arg(QUrl(it.value()->m_inspectedWebPage->mainFrameAdapter().url).toString()));
             }
             indexHtml.append(QLatin1String("</ul></body></html>"));
-            response = indexHtml.toLatin1();
+            response = indexHtml.toUtf8();
+            contentType = QStringLiteral("text/html; charset=utf-8");
         } else {
             QString path = QString::fromLatin1(":%1").arg(m_path);
             QFile file(path);
@@ -240,6 +242,7 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
             if (file.exists()) {
                 file.open(QIODevice::ReadOnly);
                 response = file.readAll();
+                contentType = MIMETypeRegistry::getMIMETypeForPath(m_path);
             } else {
                 code = 404;
                 text = QString::fromLatin1("Not OK");
@@ -248,8 +251,8 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
 
         WebKit::QHttpResponseHeader responseHeader(code, text, 1, 0);
         responseHeader.setContentLength(response.size());
-        if (!m_contentType.isEmpty())
-            responseHeader.setContentType(QString::fromLatin1(m_contentType));
+        if (!contentType.isEmpty())
+            responseHeader.setContentType(contentType);
 
         QByteArray asciiHeader = responseHeader.toString().toLatin1();
         m_tcpConnection->write(asciiHeader);

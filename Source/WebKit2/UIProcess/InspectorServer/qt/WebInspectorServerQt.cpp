@@ -56,10 +56,7 @@ bool WebInspectorServer::platformResourceForPath(const String& path, Vector<char
         file.open(QIODevice::ReadOnly);
         data.grow(file.size());
         file.read(data.data(), data.size());
-
-        size_t extStart = localPath.reverseFind('.');
-        String ext = localPath.substring(extStart != notFound ? extStart + 1 : 0);
-        contentType = WebCore::MIMETypeRegistry::getMIMETypeForExtension(ext);
+        contentType = WebCore::MIMETypeRegistry::getMIMETypeForPath(localPath);
         return true;
     }
     return false;

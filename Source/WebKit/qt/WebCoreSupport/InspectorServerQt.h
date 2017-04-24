@@ -85,7 +85,6 @@ private:
     InspectorServerQt* m_server;
 
     QString m_path;
-    QByteArray m_contentType;
     int m_contentLength;
     bool m_endOfHeaders;
     QByteArray m_data;
