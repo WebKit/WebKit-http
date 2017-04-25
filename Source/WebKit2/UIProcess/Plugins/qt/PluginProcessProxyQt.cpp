@@ -51,6 +51,7 @@ struct PluginProcessCreationParameters;
 
 void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
+    launchOptions.processType = ProcessLauncher::ProcessType::Plugin64;
     launchOptions.extraInitializationData.add("plugin-path", pluginProcessAttributes.moduleInfo.path);
 }
 
@@ -213,11 +214,8 @@ bool PluginProcessProxy::scanPlugin(const String& pluginPath, RawPluginMetaData&
                            && process.exitCode() == EXIT_SUCCESS;
     if (ranSuccessfully) {
         QByteArray outputBytes = process.readAll();
-        ASSERT(!(outputBytes.size() % sizeof(UChar)));
-
-        String output(reinterpret_cast<const UChar*>(outputBytes.constData()), outputBytes.size() / sizeof(UChar));
         Vector<String> lines;
-        output.split(UChar('\n'), true, lines);
+        String::fromUTF8(outputBytes.data(), outputBytes.size()).split('\n', true, lines);
         ASSERT(lines.size() == 4 && lines.last().isEmpty());
 
         result.name.swap(lines[0]);

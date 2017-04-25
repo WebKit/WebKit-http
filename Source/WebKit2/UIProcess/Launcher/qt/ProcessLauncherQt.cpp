@@ -127,8 +127,10 @@ void ProcessLauncher::launchProcess()
         QByteArray pluginProcessPrefix = qgetenv("QT_WEBKIT2_PP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(pluginProcessPrefix.constData())).arg(QString(executablePathOfPluginProcess()));
 #endif
-    } else
+    } else {
+        qDebug() << "Unsupported process type" << (int)m_launchOptions.processType;
         ASSERT_NOT_REACHED();
+    }
 
 #if OS(DARWIN)
     // Create the listening port.
