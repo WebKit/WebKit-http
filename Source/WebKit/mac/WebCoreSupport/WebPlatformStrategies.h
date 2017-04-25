@@ -65,8 +65,9 @@ private:
     int getPasteboardItemsCount(const String& pasteboardName) override;
     String readStringFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
     RefPtr<WebCore::SharedBuffer> readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
-    WebCore::URL readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
+    WebCore::URL readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName, String& title) override;
     void getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName) override;
+    void getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName) override;
 #endif
     int getNumberOfFiles(const String& pasteboardName) override;
     void getTypes(Vector<String>& types, const String& pasteboardName) override;

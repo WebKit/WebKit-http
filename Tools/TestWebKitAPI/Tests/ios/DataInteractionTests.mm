@@ -32,7 +32,9 @@
 #import "TestWKWebView.h"
 #import "WKWebViewConfigurationExtras.h"
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <UIKit/NSString+UIItemProvider.h>
 #import <UIKit/NSURL+UIItemProvider.h>
+#import <UIKit/UIImage+UIItemProvider.h>
 #import <UIKit/UIItemProvider_Private.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
@@ -462,6 +464,39 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToUploadArea)
     cleanUpDataInteractionTemporaryPath();
 }
 
+TEST(DataInteractionTests, RespectsExternalSourceFidelityRankings)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"autofocus-contenteditable"];
+    [webView stringByEvaluatingJavaScript:@"getSelection().removeAllRanges()"];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+
+    // Here, our source item provider vends two representations: plain text, and then an image. If we don't respect the
+    // fidelity order requested by the source, we'll end up assuming that the image is a higher fidelity representation
+    // than the plain text, and erroneously insert the image. If we respect source fidelities, we'll insert text rather
+    // than an image.
+    auto simulatedItemProviderWithTextFirst = adoptNS([[UIItemProvider alloc] init]);
+    [simulatedItemProviderWithTextFirst registerObject:@"Hello world" visibility:NSItemProviderRepresentationVisibilityAll];
+    [simulatedItemProviderWithTextFirst registerObject:testIconImage() visibility:NSItemProviderRepresentationVisibilityAll];
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProviderWithTextFirst.get() ]];
+
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+    EXPECT_WK_STREQ("Hello world", [webView stringByEvaluatingJavaScript:@"editor.textContent"]);
+    EXPECT_FALSE([webView editorContainsImageElement]);
+    [webView stringByEvaluatingJavaScript:@"editor.innerHTML = ''"];
+
+    // Now we register the item providers in reverse, and expect the image to be inserted instead of text.
+    auto simulatedItemProviderWithImageFirst = adoptNS([[UIItemProvider alloc] init]);
+    [simulatedItemProviderWithImageFirst registerObject:testIconImage() visibility:NSItemProviderRepresentationVisibilityAll];
+    [simulatedItemProviderWithImageFirst registerObject:@"Hello world" visibility:NSItemProviderRepresentationVisibilityAll];
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProviderWithImageFirst.get() ]];
+
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"editor.textContent"]);
+    EXPECT_TRUE([webView editorContainsImageElement]);
+}
+
 TEST(DataInteractionTests, ExternalSourceUTF8PlainTextOnly)
 {
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -497,6 +532,25 @@ TEST(DataInteractionTests, ExternalSourceJPEGOnly)
     [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
     EXPECT_TRUE([webView editorContainsImageElement]);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(1, 201, 215, 174) ], [dataInteractionSimulator finalSelectionRects]);
+}
+
+TEST(DataInteractionTests, ExternalSourceTitledNSURL)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"autofocus-contenteditable"];
+    [webView stringByEvaluatingJavaScript:@"getSelection().removeAllRanges()"];
+
+    NSURL *titledURL = [NSURL URLWithString:@"https://www.apple.com"];
+    titledURL._title = @"Apple";
+    auto simulatedItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    [simulatedItemProvider registerObject:titledURL visibility:NSItemProviderRepresentationVisibilityAll];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+
+    EXPECT_WK_STREQ("Apple", [webView stringByEvaluatingJavaScript:@"editor.querySelector('a').textContent"]);
+    EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"editor.querySelector('a').href"]);
 }
 
 TEST(DataInteractionTests, OverrideDataInteractionOperation)

@@ -60,6 +60,7 @@ public:
 #if PLATFORM(IOS) || PLATFORM(WPE)
     WEBCORE_EXPORT PlatformPasteboard();
     WEBCORE_EXPORT Vector<String> filenamesForDataInteraction();
+    WEBCORE_EXPORT void getTypesByFidelityForItemAtIndex(Vector<String>& types, int index);
 #endif
     WEBCORE_EXPORT static String uniqueName();
 
@@ -86,7 +87,7 @@ public:
     WEBCORE_EXPORT void write(const PasteboardURL&);
     WEBCORE_EXPORT RefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
-    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
+    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType, String& title);
     WEBCORE_EXPORT int count();
     WEBCORE_EXPORT int numberOfFiles();
 

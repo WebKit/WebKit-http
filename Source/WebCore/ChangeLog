@@ -1,3 +1,670 @@
+2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Build fix
+
+        Unreviewed.
+
+        No new tests because there is no behavior change.
+
+        * crypto/mac/SerializedCryptoKeyWrapMac.mm:
+        (WebCore::wrapSerializedCryptoKey):
+        (WebCore::unwrapSerializedCryptoKey):
+
+2017-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support reading NSURL titles from the pasteboard when performing data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=171156
+        <rdar://problem/31356937>
+
+        Reviewed by Tim Horton.
+
+        Support reading link titles from the pasteboard when performing data interaction. To do this, we refactor
+        Pasteboard::readURL to take in an additional String& title which is ultimately plumbed to the PlatformPasteboard
+        where it is set to the value of -[NSURL _title].
+
+        Test: DataInteractionTests.ExternalSourceTitledNSURL.
+
+        * editing/FrameSelection.h:
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::WebContentReader::readURL):
+        * page/DragController.cpp:
+        (WebCore::DragController::performDragOperation):
+        (WebCore::DragController::concludeEditDrag):
+
+        Move calls to clearDragCaret() out of concludeEditDrag and into the call site, in performDragOperation after
+        attempting to concludeEditDrag. This is done so that if the WebEditorClient queries whether the drag caret is
+        in richly editable content for the purposes of generating a document fragment to insert, the answer will not
+        always be false as a drop is occurring.
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::respectsUTIFidelities):
+        (WebCore::Pasteboard::readString):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::readURL):
+
+2017-04-24  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Clean up ICU headers
+        https://bugs.webkit.org/show_bug.cgi?id=170997
+
+        Reviewed by JF Bastien.
+
+        Update all icu headers to 55.1
+
+        * icu/LICENSE: Update copyright
+        * icu/README: Explain ICU headers for OS X better
+        * icu/unicode/localpointer.h:
+        (LocalPointer::LocalPointer):
+        (LocalPointer::adoptInsteadAndCheckErrorCode):
+        * icu/unicode/platform.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/std_string.h:
+        * icu/unicode/ubrk.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/ucnv.h:
+        * icu/unicode/ucol.h:
+        * icu/unicode/ucoleitr.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucurr.h:
+        * icu/unicode/uidna.h:
+        * icu/unicode/uloc.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unistr.h:
+        (UnicodeString::getArrayStart):
+        (UnicodeString::UnicodeString):
+        (UnicodeString::hasShortLength):
+        (UnicodeString::getShortLength):
+        (UnicodeString::length):
+        (UnicodeString::getCapacity):
+        (UnicodeString::isBogus):
+        (UnicodeString::isWritable):
+        (UnicodeString::isBufferWritable):
+        (UnicodeString::getBuffer):
+        (UnicodeString::isEmpty):
+        (UnicodeString::setZeroLength):
+        (UnicodeString::setShortLength):
+        (UnicodeString::setLength):
+        (UnicodeString::setToEmpty):
+        (UnicodeString::remove):
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/usearch.h:
+        * icu/unicode/uset.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h:
+
+2017-04-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        LayoutTests crypto/subtle/ecdsa-generate-key-sign-verify-p384.html and crypto/subtle/ecdsa-generate-key-sign-verify-p256.html are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=171059
+        <rdar://problem/31734958>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * crypto/mac/CryptoAlgorithmECDSAMac.cpp:
+        (WebCore::signECDSA):
+        Enhance ways to convert the DER signatures produced from CommonCrypto to r||s.
+
+2017-04-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [selectors4] :focus-within should use the flat tree
+        https://bugs.webkit.org/show_bug.cgi?id=170899
+
+        Reviewed by Antti Koivisto.
+
+        This has been discussed in the following CSS WG issue:
+        https://github.com/w3c/csswg-drafts/issues/1135
+
+        And the spec has been updated (https://drafts.csswg.org/selectors-4/#the-focus-within-pseudo):
+        "An element also matches :focus-within if one of its descendants in the flat tree
+         (including non-element nodes, such as text nodes) matches the conditions for matching :focus."
+
+        Test: imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-006.html
+
+        * dom/Element.cpp:
+        (WebCore::Element::setFocus): Use "flat tree" ("composed tree" in WebKit)
+        to set focus-within flag.
+
+2017-04-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Respect fidelity order when reading web content from item providers
+        https://bugs.webkit.org/show_bug.cgi?id=171155
+        <rdar://problem/31356937>
+
+        Reviewed by Tim Horton.
+
+        Currently, when reading web content from pasteboards, we assume the old UIPasteboard/NSPasteboard model wherein
+        the destination must determine which of the items is considered to have the highest fidelity for the purposes of
+        inserting into an editable area. This destination-side fidelity ranking is determined solely by the NSArray
+        returned from Pasteboard::supportedPasteboardTypes, which lists compatible types in order from highest fidelity
+        to lowest fidelity. Pasteboard::read effectively iterates over this list of types in order, attempting to read
+        highest fidelity types and bailing when it first successfully reads data.
+
+        However, when our pasteboard is backed by UIItemProviders, we should instead read pasteboard types in order of
+        fidelity as specified by the source rather than the destination. To accomplish this, we introduce an alternate
+        codepath, Pasteboard::readRespectingUTIFidelities, which we take if Pasteboard::respectsUTIFidelities is true
+        (currently, this only applies for the purposes of data interaction). This version follows a different flow:
+        for each item in the pasteboard, we ask for just the UTIs for that item, in order of fidelity. For each item,
+        we then call readPasteboardWebContentDataForType to try and read data for that type, continuing until either
+        all UTIs have been attempted, or reading was successful.
+
+        This patch makes two additional adjustments. First, we introduce Pasteboard::getTypesByFidelityForItemAtIndex,
+        which is used by Pasteboard::readRespectingUTIFidelities when querying the list of supported UTIs for each
+        pasteboard item, sorted by highest to lowest fidelity.
+
+        Secondly, we refactor logic to write to the item provider pasteboard in PlatformPasteboardIOS. Since we are
+        now respecting fidelity rankings on the destination, the source must also register UTI types in the right
+        fidelity order. While this was mostly achieved using our existing method of writing a list of object
+        representations to the pasteboard and then all of the contents of a NSString => NSData dictionary containing
+        private UTI data, this approach has two flaws:
+        1.  We are unable to register high-priority custom types, followed by representing objects, followed by more
+            lower-priority custom types, since we assume that all custom types follow all representing objects.
+        2.  Since we're just iterating over a dictionary of NSString => NSData when registering custom UTI
+            representations to the item provider, there cannot inherently be any fidelity ordering for custom types.
+
+        To address both of these issues, we introduce two new objects that encapsulate how we register data to the item
+        provider pasteboard. WebItemProviderRegistrationInfo represents some data that can be registered to an item
+        provider (either an object conforming to UIItemProviderWriting, or an NSString and NSData).
+        WebItemProviderRegistrationInfoList represents a list of WebItemProviderRegistrationInfos in order of highest to
+        lowest fidelity. In PlatformPasteboardIOS, we transform PasteboardWebContent, PasteboardImage, and PasteboardURL
+        into a WebItemProviderRegistrationInfoList, which we then pass along to the WebItemProviderPasteboard. In
+        WebItemProviderPasteboard, we traverse the list of WebItemProviderRegistrationInfos in the list and register
+        each WebItemProviderRegistrationInfo's representing object or data to the item provider.
+
+        Test: DataInteractionTests.RespectsExternalSourceFidelityRankings.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/Pasteboard.h:
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/AbstractPasteboard.h:
+        * platform/ios/AbstractPasteboard.mm: Removed.
+
+        Moves WebItemProviderData, formerly implemented in AbstractPasteboard.mm, into WebItemProviderPasteboard.mm.
+        We can delete AbstractPasteboard.mm as a result.
+
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::readPasteboardWebContentDataForType):
+
+        Pull out common logic for reading data given a UTI type from the pasteboard into the PasteboardWebContentReader.
+        This is invoked from both the existing Pasteboard::read codepath, as well as the readRespectingUTIFidelities
+        codepath.
+
+        (WebCore::Pasteboard::read):
+
+        Refactored to call the new readPasteboardWebContentDataForType helper. Behavior should not have changed, unless
+        the pasteboard supports UTI fidelities.
+
+        (WebCore::Pasteboard::respectsUTIFidelities):
+        (WebCore::Pasteboard::readRespectingUTIFidelities):
+
+        An alternative to Pasteboard::read that considers source-side fidelity rankings of UTIs.
+
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::getTypesByFidelityForItemAtIndex):
+        (WebCore::PlatformPasteboard::writeObjectRepresentations):
+
+        Refactored to build a WebItemProviderRegistrationInfoList and pass it to the WebItemProviderPasteboard to
+        register items and data.
+
+        (WebCore::PlatformPasteboard::write):
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (-[WebItemProviderRegistrationInfo initWithRepresentingObject:typeIdentifier:data:]):
+        (-[WebItemProviderRegistrationInfo representingObject]):
+        (-[WebItemProviderRegistrationInfo typeIdentifier]):
+        (-[WebItemProviderRegistrationInfo data]):
+
+        Represents a single calls to register data onto the item provider pasteboard. See
+        WebItemProviderPasteboard.h header comments for more info.
+
+        (-[WebItemProviderRegistrationInfoList init]):
+        (-[WebItemProviderRegistrationInfoList addData:forType:]):
+        (-[WebItemProviderRegistrationInfoList addRepresentingObject:]):
+        (-[WebItemProviderRegistrationInfoList numberOfItems]):
+        (-[WebItemProviderRegistrationInfoList itemAtIndex:]):
+        (-[WebItemProviderRegistrationInfoList enumerateItems:]):
+
+        Represents a series of calls to register representations onto the item provider pasteboard. See
+        WebItemProviderPasteboard.h header comments for more info.
+
+        (-[WebItemProviderPasteboard pasteboardTypesByFidelityForItemAtIndex:]):
+        (-[WebItemProviderPasteboard setItemsUsingRegistrationInfoLists:]):
+        (-[WebItemProviderPasteboard setItemsFromObjectRepresentations:]): Deleted.
+
+2017-04-24  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r204605): support for "cp874" charset alias was inadvertently dropped which may cause issues on certain Thai sites
+        https://bugs.webkit.org/show_bug.cgi?id=171128
+        <rdar://problem/31526844>
+
+        Reviewed by Alexey Proskuryakov.
+
+        When using Thai as default language on MacOS, defaultTextEncodingNameForSystemLanguage()
+        was returning "cp874" encoding with was dropped in r204605 for not being part of the
+        encoding specification (https://encoding.spec.whatwg.org/#names-and-labels).
+
+        To address the issue, we map "cp874" encoding to the "dos-874" encoding which is
+        properly recognized. Without this, this could lead to issue on WebSites that do not
+        specify a charset.
+
+        * platform/text/TextEncodingRegistry.cpp:
+        (WebCore::defaultTextEncodingNameForSystemLanguage):
+
+2017-04-24  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [CG] Provide a type identifier hint to the CGImageSource so getting the type identifier is more accurate
+        https://bugs.webkit.org/show_bug.cgi?id=171042
+
+        Reviewed by Tim Horton.
+
+        The image URL can be used to get the type identifier hint. Without providing
+        this hint, the image type identifier is not accurate for image formats.
+
+        Also add a function to the ImageDecoder class to get the typeIdentifier. Add
+        all the pluming from the ImageDecoder till the Image class.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::destroyDecodedData):
+        (WebCore::BitmapImage::frameImageAtIndexCacheIfNeeded):
+        (WebCore::BitmapImage::draw):
+        (WebCore::BitmapImage::internalStartAnimation):
+        (WebCore::BitmapImage::advanceAnimation):
+        (WebCore::BitmapImage::internalAdvanceAnimation):
+        (WebCore::BitmapImage::newFrameNativeImageAvailableAtIndex):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::sourceURL):
+        * platform/graphics/Image.h: Change the sourceURL() to return a URL so CG can create CFURLRef from it.
+        (WebCore::Image::uti):
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::cacheAsyncFrameNativeImageAtIndex):
+        (WebCore::ImageFrameCache::startAsyncDecodingQueue):
+        (WebCore::ImageFrameCache::requestFrameAsyncDecodingAtIndex):
+        (WebCore::ImageFrameCache::stopAsyncDecodingQueue):
+        (WebCore::ImageFrameCache::clearMetadata):
+        (WebCore::ImageFrameCache::sourceURL):
+        (WebCore::ImageFrameCache::encodedDataStatus):
+        (WebCore::ImageFrameCache::uti):
+        (WebCore::ImageFrameCache::filenameExtension):
+        * platform/graphics/ImageFrameCache.h:
+        * platform/graphics/ImageSource.cpp:
+        (WebCore::ImageSource::ensureDecoderAvailable):
+        * platform/graphics/ImageSource.h:
+        (WebCore::ImageSource::uti):
+        * platform/graphics/cg/ImageDecoderCG.cpp:
+        (WebCore::ImageDecoder::ImageDecoder): Pass the type identifier hint to CGImageSourceCreateIncremental().
+        (WebCore::ImageDecoder::uti):
+        (WebCore::ImageDecoder::filenameExtension):
+        (WebCore::ImageDecoder::frameHasAlphaAtIndex):
+        (WebCore::ImageDecoder::createFrameImageAtIndex):
+        * platform/graphics/cg/ImageDecoderCG.h:
+        (WebCore::ImageDecoder::create):
+        * platform/graphics/win/ImageDecoderDirect2D.cpp:
+        (WebCore::ImageDecoder::encodedDataStatus):
+        * platform/graphics/win/ImageDecoderDirect2D.h:
+        (WebCore::ImageDecoder::create): Add an argument of type URL.
+        * platform/image-decoders/ImageDecoder.cpp:
+        (WebCore::ImageDecoder::create): Add an argument of type URL.
+        * platform/image-decoders/ImageDecoder.h:
+        (WebCore::ImageDecoder::encodedDataStatus): Make it const.
+        * platform/image-decoders/bmp/BMPImageDecoder.cpp:
+        (WebCore::BMPImageDecoder::encodedDataStatus):
+        * platform/image-decoders/bmp/BMPImageDecoder.h:
+        * platform/image-decoders/gif/GIFImageDecoder.cpp:
+        (WebCore::GIFImageDecoder::encodedDataStatus):
+        * platform/image-decoders/gif/GIFImageDecoder.h:
+        * platform/image-decoders/ico/ICOImageDecoder.cpp:
+        (WebCore::ICOImageDecoder::encodedDataStatus):
+        * platform/image-decoders/ico/ICOImageDecoder.h:
+        * platform/image-decoders/jpeg/JPEGImageDecoder.cpp:
+        (WebCore::JPEGImageDecoder::encodedDataStatus):
+        * platform/image-decoders/jpeg/JPEGImageDecoder.h:
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageDecoder::encodedDataStatus):
+        * platform/image-decoders/png/PNGImageDecoder.h:
+        * platform/image-decoders/webp/WEBPImageDecoder.cpp:
+        (WebCore::WEBPImageDecoder::encodedDataStatus):
+        * platform/image-decoders/webp/WEBPImageDecoder.h:
+        * platform/spi/cg/ImageIOSPI.h: Added.
+
+2017-04-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed build fix.
+
+        * crypto/mac/CryptoAlgorithmAES_GCMMac.cpp:
+        (WebCore::encryptAES_GCM):
+        (WebCore::decyptAES_GCM):
+
+2017-04-24  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Whitelist supported image MIME types
+        https://bugs.webkit.org/show_bug.cgi?id=171077
+
+        Reviewed by Tim Horton.
+
+        Restrict the CG port image formats to a known whitelist. Build this list from image
+        UTI's instead of MIME types, since the image UTI's is a superset of the MIME types.
+        Use this list to build the list of supported image MIME types.
+
+        * PlatformAppleWin.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/MIMETypeRegistry.cpp:
+        (WebCore::initializeSupportedImageMIMETypes):
+        * platform/graphics/cg/UTIRegistry.cpp: Added.
+        (WebCore::allowedImageUTIs):
+        (WebCore::isAllowedImageUTI):
+        * platform/graphics/cg/UTIRegistry.h: Added.
+
+2017-04-24  Nan Wang  <n_wang@apple.com>
+
+        AX: Crash at WebCore::AXObjectCache::characterOffsetForIndex(int, WebCore::AccessibilityObject const*) + 703
+        https://bugs.webkit.org/show_bug.cgi?id=171247
+
+        Reviewed by Chris Fleizach.
+
+        Crashed because we were passing a nil node into rootAXEditableElement(). Fixed it by
+        adding a null check.
+
+        Test: accessibility/mac/input-string-for-range-crash.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::characterOffsetForIndex):
+
+2017-04-24  Youenn Fablet  <youenn@apple.com>
+
+        Set defaults video getUserMedia constraints
+        https://bugs.webkit.org/show_bug.cgi?id=171127
+
+        Reviewed by Eric Carlson.
+
+        Test: fast/mediastream/getUserMedia-default.html
+
+        Adding default optional constraints for video size and frame rate if none is defined.
+        Default is 640x480 30fps.
+
+        Doing some refactoring in MeddiaConstraintsImpl and MeddiaConstraintsData to use more move constructors.
+
+        * Modules/mediastream/MediaConstraintsImpl.cpp:
+        (WebCore::defaultVideoConstraints):
+        (WebCore::MediaConstraintsData::setDefaultVideoConstraints):
+        (WebCore::MediaConstraintsImpl::create): Deleted.
+        * Modules/mediastream/MediaConstraintsImpl.h:
+        * Modules/mediastream/MediaDevices.cpp:
+        (WebCore::MediaDevices::getUserMedia):
+        * platform/mediastream/mac/MockRealtimeVideoSourceMac.mm:
+        (WebCore::MockRealtimeVideoSourceMac::updateSampleBuffer): Fixing crash when setting frameRate.
+
+2017-04-24  Chris Dumez  <cdumez@apple.com>
+
+        createElementNS() should now throw only InvalidCharacterError, not NamespaceError
+        https://bugs.webkit.org/show_bug.cgi?id=171052
+
+        Reviewed by Sam Weinig.
+
+        Validating a qualified name should only throw InvalidCharacterError, not NamespaceError,
+        after:
+        - https://github.com/whatwg/dom/issues/319
+        - https://github.com/w3c/web-platform-tests/issues/5161
+        - https://github.com/whatwg/dom/issues/423
+
+        Latest spec:
+        - https://dom.spec.whatwg.org/#validate
+
+        No new tests, updated web-platform-tests.
+
+        * dom/Document.cpp:
+        (WebCore::Document::parseQualifiedName):
+
+2017-04-24  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (214503): Webkit crash under RenderElement::repaintForPausedImageAnimationsIfNeeded() when scrolling giphy pages
+        https://bugs.webkit.org/show_bug.cgi?id=171243
+        <rdar://problem/31715572>
+
+        Reviewed by Antti Koivisto.
+
+        After r214503, we would frequently crash when scrolling giphy pages because we were failing to call
+        RenderView::removeRendererWithPausedImageAnimations(renderer, cachedImage) in some cases. This would
+        cause a RenderElement to still be associated to a CachedImage in RenderView but not in practice.
+        If the CachedImage then gets destroyed and the user scrolls, we end up calling
+        RenderElement::repaintForPausedImageAnimationsIfNeeded() with a bad CachedImage.
+
+        StyleCachedImage was properly calling RenderView::removeRendererWithPausedImageAnimations() before
+        unregistering the renderer as a client to the CachedImage. However, RenderImageResource was failing
+        to do the same. To make this less error-prone, I added a didRemoveCachedImageClient(CachedImage&)
+        function to the CachedImageClient interface. It is overriden in RenderElement only to call
+        RenderView::removeRendererWithPausedImageAnimations().
+
+        Test: fast/images/animated-gif-scrolling-crash.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::didRemoveClient):
+        * loader/cache/CachedImageClient.h:
+        (WebCore::CachedImageClient::didRemoveCachedImageClient):
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::didRemoveCachedImageClient):
+        * rendering/RenderElement.h:
+        * rendering/style/StyleCachedImage.cpp:
+        (WebCore::StyleCachedImage::removeClient):
+
+2017-04-24  Andy Estes  <aestes@apple.com>
+
+        [macOS] Fix two minor issues with MediaSelectionOption::Type
+        https://bugs.webkit.org/show_bug.cgi?id=171235
+
+        Reviewed by Sam Weinig.
+
+        * platform/MediaSelectionOption.h: Gave type a default value, and added explicit
+        constructors to make gcc and msvc happy.
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (toAVTouchBarMediaSelectionOptionType): Added an ASSERT_NOT_REACHED if none of the switch
+        cases match.
+
+2017-04-24  Andy Estes  <aestes@apple.com>
+
+        [macOS] Enable media selection button on AVTouchBarScrubber
+        https://bugs.webkit.org/show_bug.cgi?id=171149
+        <rdar://problem/29875010>
+
+        Reviewed by Beth Dakin.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-04-24  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce copies and allocations in SharedBuffer::append
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+
+        Reviewed by Andreas Kling.
+
+        SharedBuffer was a mess of different data structures added over the years.
+        SharedBuffer::append would allocate large Vector<char>s and call memcpy, and that
+        is inefficient and causes crashes when large allocations fail, and the allocations
+        and copies aren't even necessary.  There were also const correctness problems in
+        ResourceLoader::addDataOrBuffer, and iterating a SharedBuffer was strange because
+        sometimes we don't want to add unnecessary copies.
+
+        These problems are solved by making SharedBuffer a Vector of read-only data segments,
+        which can be contained in various ways but we don't care because all we want to do is
+        read them.  Appending SharedBuffers is now const correct because we just add to a
+        Vector<Ref<DataSegment>> and neither SharedBuffer can write to the data.  Sometimes,
+        though, we want all the data to be in continuous memory, and if there are multiple
+        segments then the data needs to be copied once to a new segment.  We should audit the
+        call sites of SharedBuffer::data and see if this is really necessary.
+
+        No change in functional behavior.  Fewer copies of the data are made when buffering
+        data in the NetworkProcess.  No extra memory is allocated for bytes we think we might
+        need to append in the future.  Data is now only copied into one buffer lazily as needed,
+        which could slightly change when small delays from memcpy happen, but it's an overall
+        improvement.  We could have a performance hit if we were to call append() then data()
+        then append() then data() etc. but that doesn't happen in WebKit because we call append
+        repeatedly when buffering the data then call data() once when reading the data.
+
+        * editing/cocoa/EditorCocoa.mm:
+        (WebCore::archivedDataForAttributedString):
+        (WebCore::Editor::selectionInWebArchiveFormat):
+        (WebCore::Editor::dataInRTFDFormat):
+        (WebCore::Editor::dataInRTFFormat):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::WebContentReader::readURL):
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::imageInWebArchiveFormat):
+        * loader/TextTrackLoader.cpp:
+        (WebCore::TextTrackLoader::processNewCueData):
+        * loader/archive/cf/LegacyWebArchive.cpp:
+        (WebCore::LegacyWebArchive::createResource):
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::tryReplaceEncodedData):
+        * loader/cocoa/DiskCacheMonitorCocoa.mm:
+        (WebCore::DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse):
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::combineToOneSegment):
+        (WebCore::SharedBuffer::data):
+        (WebCore::SharedBuffer::createArrayBuffer):
+        (WebCore::SharedBuffer::append):
+        (WebCore::SharedBuffer::clear):
+        (WebCore::SharedBuffer::copy):
+        (WebCore::SharedBuffer::DataSegment::data):
+        (WebCore::SharedBuffer::DataSegment::size):
+        (WebCore::segmentIndex): Deleted.
+        (WebCore::offsetInSegment): Deleted.
+        (WebCore::allocateSegment): Deleted.
+        (WebCore::freeSegment): Deleted.
+        (WebCore::SharedBuffer::~SharedBuffer): Deleted.
+        (WebCore::SharedBuffer::size): Deleted.
+        (WebCore::SharedBuffer::duplicateDataBufferIfNecessary): Deleted.
+        (WebCore::SharedBuffer::appendToDataBuffer): Deleted.
+        (WebCore::SharedBuffer::clearDataBuffer): Deleted.
+        (WebCore::SharedBuffer::copyBufferAndClear): Deleted.
+        (WebCore::SharedBuffer::buffer): Deleted.
+        (WebCore::SharedBuffer::getSomeData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferMappedFileData): Deleted.
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        * platform/SharedBuffer.h:
+        (WebCore::SharedBuffer::create): Deleted.
+        (WebCore::SharedBuffer::isEmpty): Deleted.
+        * platform/SharedBufferChunkReader.cpp:
+        (WebCore::SharedBufferChunkReader::nextChunk):
+        (WebCore::SharedBufferChunkReader::peek):
+        * platform/SharedBufferChunkReader.h:
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::URLParser):
+        * platform/cf/KeyedEncoderCF.cpp:
+        (WebCore::KeyedEncoderCF::finishEncoding):
+        * platform/cf/SharedBufferCF.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::createCFData):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::hintMemoryNotNeededSoon):
+        (WebCore::SharedBuffer::append):
+        (WebCore::SharedBuffer::wrapCFData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::platformDataSize): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::tryReplaceContentsWithPlatformBuffer): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        (WebCore::SharedBuffer::copyBufferAndClear): Deleted.
+        (WebCore::SharedBuffer::copySomeDataFromDataArray): Deleted.
+        (WebCore::SharedBuffer::singleDataArrayBuffer): Deleted.
+        (WebCore::SharedBuffer::maybeAppendDataArray): Deleted.
+        * platform/cocoa/NetworkExtensionContentFilter.mm:
+        (WebCore::NetworkExtensionContentFilter::replacementData):
+        * platform/cocoa/ParentalControlsContentFilter.mm:
+        (WebCore::ParentalControlsContentFilter::replacementData):
+        * platform/cocoa/SharedBufferCocoa.mm:
+        (-[WebCoreSharedBufferData initWithSharedBufferDataSegment:]):
+        (-[WebCoreSharedBufferData length]):
+        (-[WebCoreSharedBufferData bytes]):
+        (WebCore::SharedBuffer::create):
+        (WebCore::SharedBuffer::createCFData):
+        (WebCore::SharedBuffer::createFromReadingFile):
+        (WebCore::SharedBuffer::createNSDataArray):
+        (-[WebCoreSharedBufferData initWithSharedBufferDataBuffer:]): Deleted.
+        (WebCore::SharedBuffer::wrapNSData): Deleted.
+        (WebCore::SharedBuffer::existingCFData): Deleted.
+        * platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm:
+        (WebCore::WebCoreAVFResourceLoader::fulfillRequestWithResource):
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::openTypeTable):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (ResourceHandleStreamingClient::didReceiveBuffer):
+        * platform/graphics/mac/ImageMac.mm:
+        (WebCore::Image::loadPlatformResource):
+        * platform/image-decoders/ImageDecoder.cpp:
+        (WebCore::ImageDecoder::create):
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageReader::decode):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::readBuffer):
+        * platform/mac/PasteboardMac.mm:
+        (WebCore::writeFileWrapperAsRTFDAttachment):
+        (WebCore::Pasteboard::write):
+        * platform/mac/PlatformPasteboardMac.mm:
+        (WebCore::PlatformPasteboard::bufferForType):
+        * platform/network/BlobResourceHandle.cpp:
+        (WebCore::BlobResourceHandle::notifyReceiveData):
+        * platform/network/MIMEHeader.cpp:
+        * platform/network/MIMEHeader.h:
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp:
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::didReceiveData):
+        * platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp:
+        (WebCore::SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData):
+        * platform/network/mac/WebCoreResourceHandleAsDelegate.mm:
+        (-[WebCoreResourceHandleAsDelegate connection:didReceiveData:lengthReceived:]):
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm:
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveData:lengthReceived:]):
+        * platform/soup/SharedBufferSoup.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::createSoupBuffer):
+        (WebCore::SharedBuffer::clearPlatformData): Deleted.
+        (WebCore::SharedBuffer::maybeTransferPlatformData): Deleted.
+        (WebCore::SharedBuffer::hasPlatformData): Deleted.
+        (WebCore::SharedBuffer::platformData): Deleted.
+        (WebCore::SharedBuffer::platformDataSize): Deleted.
+        (WebCore::SharedBuffer::maybeAppendPlatformData): Deleted.
+        (WebCore::SharedBuffer::tryReplaceContentsWithPlatformBuffer): Deleted.
+
+2017-04-24  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Some ivars are needlessly @protected
+        https://bugs.webkit.org/show_bug.cgi?id=171208
+
+        Reviewed by Anders Carlsson.
+
+        Made ivars @private where possible.
+
+        * platform/mac/WebCoreFullScreenPlaceholderView.h:
+        * platform/mac/WebCoreFullScreenWarningView.h:
+        * platform/mac/WebPlaybackControlsManager.h:
+        * platform/network/cocoa/WebCoreNSURLSession.h:
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        Add PageDebuggable.cpp to the compilation.
+
+        * CMakeLists.txt:
+
 2017-04-23  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r215657 and r215676.

@@ -1,3 +1,86 @@
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js
+        https://bugs.webkit.org/show_bug.cgi?id=171190
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-syntax.js:
+        * test262.yaml:
+
+2017-04-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use JSFixedArray directly when using call_varargs
+        https://bugs.webkit.org/show_bug.cgi?id=171057
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-capture-rest.js: Added.
+        (shouldBe):
+        (capture):
+        (a):
+        (b):
+        * stress/spread-multi-layers.js: Added.
+        (shouldBe):
+        (a):
+        (b):
+        (c):
+        (d):
+        * stress/spread-non-varargs.js: Added.
+        (shouldBe):
+        (a):
+        (b):
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/computed-property-names/class/static/getter-prototype.js
+        https://bugs.webkit.org/show_bug.cgi?id=170897
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Address some FIXMEs in JavaScript tests for bugs that have been fixed
+        https://bugs.webkit.org/show_bug.cgi?id=171191
+
+        Reviewed by JF Bastien.
+
+        * stress/proxy-is-extensible.js:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/statements/for-of/dstr-array-elem-init-fn-name-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=171160
+
+        Reviewed by JF Bastien.
+
+        * stress/inferred-names.js:
+        * test262.yaml:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-module-reserved-word.js:
+        * stress/async-await-reserved-word.js:
+        Converge on "Cannot" instead of "Can't".
+
+        * catch-parameter-syntax.js:
+        * yield-named-variable-generator.js:
+        * yield-named-variable.js:
+        * stress/yield-label-generator.js:
+        * stress/yield-label.js:
+        * stress/yield-reserved-word.js: Added.
+        More complete list of when 'yield' is allowed.
+
+        * ChakraCore/test/strict/23.reservedWords_sm.baseline-jsc:
+        * test262.yaml:
+
 2017-04-23  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r215674.

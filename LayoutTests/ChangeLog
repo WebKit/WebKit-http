@@ -1,3 +1,163 @@
+2017-04-25  Frederic Wang  <fwang@igalia.com>
+
+        Import W3C tests for the CSSOM View module
+        https://bugs.webkit.org/show_bug.cgi?id=171215
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Skip some completely failing CSSOM View tests.
+        * platform/ios-simulator/imported/w3c/web-platform-tests/cssom-view/Screen-pixelDepth-Screen-colorDepth001-actual.txt: Added. Add an expectation for iOS simulator, differing from other platform.
+        * platform/ios-simulator/imported/w3c/web-platform-tests/cssom-view/scrolling-quirks-vs-nonquirks-expected.txt: Added. Ditto.
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js
+        https://bugs.webkit.org/show_bug.cgi?id=171190
+
+        Reviewed by Saam Barati.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        Extend to cover method duplicate parameter cases.
+
+2017-04-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        LayoutTests crypto/subtle/ecdsa-generate-key-sign-verify-p384.html and crypto/subtle/ecdsa-generate-key-sign-verify-p256.html are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=171059
+        <rdar://problem/31734958>
+
+        Reviewed by Brent Fulgham.
+
+        * TestExpectations:
+        Remove test expectations.
+
+2017-04-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [selectors4] :focus-within should use the flat tree
+        https://bugs.webkit.org/show_bug.cgi?id=170899
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations: Remove test that is passing now.
+
+2017-04-24  Nan Wang  <n_wang@apple.com>
+
+        AX: Crash at WebCore::AXObjectCache::characterOffsetForIndex(int, WebCore::AccessibilityObject const*) + 703
+        https://bugs.webkit.org/show_bug.cgi?id=171247
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/input-string-for-range-crash-expected.txt: Added.
+        * accessibility/mac/input-string-for-range-crash.html: Added.
+
+2017-04-24  Youenn Fablet  <youenn@apple.com>
+
+        Set defaults video getUserMedia constraints
+        https://bugs.webkit.org/show_bug.cgi?id=171127
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/getUserMedia-default-expected.txt: Added.
+        * fast/mediastream/getUserMedia-default.html: Added.
+
+2017-04-24  Chris Dumez  <cdumez@apple.com>
+
+        createElementNS() should now throw only InvalidCharacterError, not NamespaceError
+        https://bugs.webkit.org/show_bug.cgi?id=171052
+
+        Reviewed by Sam Weinig.
+
+        Updated / rebaselined existing tests to reflect behavior change.
+
+        * fast/dom/DOMImplementation/createDocument-namespace-err-expected.txt:
+        * fast/dom/DOMImplementation/createDocumentType-err-expected.txt:
+        * fast/dom/DOMImplementation/script-tests/createDocument-namespace-err.js:
+        * fast/dom/DOMImplementation/script-tests/createDocumentType-err.js:
+        * fast/dom/Document/createAttributeNS-namespace-err-expected.txt:
+        * fast/dom/Document/createElementNS-namespace-err-expected.txt:
+        * fast/dom/Document/script-tests/createAttributeNS-namespace-err.js:
+        * fast/dom/Document/script-tests/createElementNS-namespace-err.js:
+        * fast/dom/Element/script-tests/setAttributeNS-namespace-err.js:
+        * fast/dom/Element/setAttributeNS-namespace-err-expected.txt:
+
+2017-04-24  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (214503): Webkit crash under RenderElement::repaintForPausedImageAnimationsIfNeeded() when scrolling giphy pages
+        https://bugs.webkit.org/show_bug.cgi?id=171243
+        <rdar://problem/31715572>
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test coverage.
+
+        * fast/images/animated-gif-scrolling-crash-expected.txt: Added.
+        * fast/images/animated-gif-scrolling-crash.html: Added.
+
+2017-04-24  Saam Barati  <sbarati@apple.com>
+
+        [mac debug] LayoutTest workers/wasm-long-compile-many.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=171120
+        <rdar://problem/31781889>
+
+        Rubber stamped by Mark Lam.
+
+        Make the wasm binary we compile close to 50% smaller.
+
+        * workers/wasm-resources/long-compile-many.js:
+        (i.async.run):
+        (i.worker.onmessage):
+        * workers/wasm-resources/long-compile-worker.js:
+        * workers/wasm-resources/long-compile.js:
+        (async.run):
+        (worker.onmessage):
+
+2017-04-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/scrubber-support/scrubber-support-click.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171245
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/computed-property-names/class/static/getter-prototype.js
+        https://bugs.webkit.org/show_bug.cgi?id=170897
+
+        Reviewed by Saam Barati.
+
+        * js/class-syntax-declaration-expected.txt:
+        * js/script-tests/class-syntax-declaration.js:
+        Extend tests for static and non-static methods named "constructor" and "prototype".
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Address some FIXMEs in JavaScript tests for bugs that have been fixed
+        https://bugs.webkit.org/show_bug.cgi?id=171191
+
+        Reviewed by JF Bastien.
+
+        * js/dom/custom-constructors-expected.txt:
+        * js/dom/script-tests/custom-constructors.js:
+        * js/script-tests/keyword-method-names.js:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+        Extend this test to cover object literal shorthand with keywords.
+
+        * js/dom/reserved-words-as-property-expected.txt:
+        * js/let-syntax-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        Improved error messages.
+
 2017-04-23  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r215674.

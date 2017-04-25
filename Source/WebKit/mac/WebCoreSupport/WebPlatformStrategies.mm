@@ -186,6 +186,11 @@ int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
 }
 
 #if PLATFORM(IOS)
+void WebPlatformStrategies::getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName)
+{
+    PlatformPasteboard(pasteboardName).getTypesByFidelityForItemAtIndex(types, index);
+}
+
 void WebPlatformStrategies::writeToPasteboard(const PasteboardURL& url, const String& pasteboardName)
 {
     PlatformPasteboard(pasteboardName).write(url);
@@ -216,9 +221,9 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(in
     return PlatformPasteboard(pasteboardName).readBuffer(index, type);
 }
 
-WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& type, const String& pasteboardName)
+WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& type, const String& pasteboardName, String& title)
 {
-    return PlatformPasteboard(pasteboardName).readURL(index, type);
+    return PlatformPasteboard(pasteboardName).readURL(index, type, title);
 }
 
 String WebPlatformStrategies::readStringFromPasteboard(int index, const String& type, const String& pasteboardName)

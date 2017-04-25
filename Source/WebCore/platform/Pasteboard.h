@@ -221,6 +221,11 @@ public:
 #endif
 
 private:
+#if PLATFORM(IOS)
+    bool respectsUTIFidelities() const;
+    void readRespectingUTIFidelities(PasteboardWebContentReader&);
+#endif
+
 #if PLATFORM(WIN)
     void finishCreatingPasteboard();
     void writeRangeToDataObject(Range&, Frame&); // FIXME: Layering violation.

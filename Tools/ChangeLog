@@ -1,3 +1,119 @@
+2017-04-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] ImageDiff should be run by jhbuild-wrapper in case of using jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=168036
+
+        Reviewed by Michael Catanzaro.
+
+        Call ImageDiff with the JHBuild wrapper if we should use it.
+        Also add some unit tests for the JHBuild wrapper feature.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._should_use_jhbuild): Use self._filesystem instead of os.path to allow mock testing.
+        * Scripts/webkitpy/port/base_unittest.py:
+        (test_jhbuild_wrapper): Add a test for port._should_use_jhbuild()
+        * Scripts/webkitpy/port/image_diff.py:
+        (ImageDiffer._start): The actual fix, use the wrapper if we should.
+        * Scripts/webkitpy/port/image_diff_unittest.py: Removed. This two tests are now integrated in port_testcase
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase):
+        (PortTestCase.test_diff_image): Test the command with wrapper and without it.
+        (PortTestCase.test_diff_image_passed): Moved from image_diff_unittest.py
+        (PortTestCase.test_diff_image_failed): Moved from image_diff_unittest.py
+
+2017-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support reading NSURL titles from the pasteboard when performing data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=171156
+        <rdar://problem/31356937>
+
+        Reviewed by Tim Horton.
+
+        Adds a new unit test, DataInteractionTests.ExternalSourceTitledNSURL.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-04-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Respect fidelity order when reading web content from item providers
+        https://bugs.webkit.org/show_bug.cgi?id=171155
+        <rdar://problem/31356937>
+
+        Reviewed by Tim Horton.
+
+        Adds a new unit test (DataInteractionTests.RespectsExternalSourceFidelityRankings). See WebCore ChangeLog for
+        more details.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-04-24  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        SyntaxError fix after r215702.
+        https://bugs.webkit.org/show_bug.cgi?id=168944
+
+        Unreviewed "build" fix.
+
+        * BuildSlaveSupport/built-product-archive:
+        (archiveBuiltProduct):
+
+2017-04-24  Jonathan Bedard  <jbedard@apple.com>
+
+        Package ImageDiff built with host SDK
+        https://bugs.webkit.org/show_bug.cgi?id=168944
+        <rdar://problem/30745642>
+
+        Reviewed by David Kilzer.
+
+        iOS Simulator and iOS device should archive the ImageDiff built for the host
+        machine.
+
+        * BuildSlaveSupport/built-product-archive:
+        (determineWebKitBuildDirectories): Add _hostBuildDirectory for iOS.
+        (archiveBuiltProduct): Archive Mac products for iOS so that ImageDiff is included.
+
+2017-04-24  Keith Miller  <keith_miller@apple.com>
+
+        ThreadMessage API tests failing on release bots
+        https://bugs.webkit.org/show_bug.cgi?id=171246
+
+        Reviewed by Saam Barati.
+
+        Need to make sure that C++ doesn't optimize away our spin loop.
+
+        * TestWebKitAPI/Tests/WTF/ThreadMessages.cpp:
+        (runThreadMessageTest):
+        (TEST):
+
+2017-04-24  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce copies and allocations in SharedBuffer::append
+        https://bugs.webkit.org/show_bug.cgi?id=170956
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/SharedBuffer.mm:
+        (TestWebKitAPI::TEST_F):
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        Update remote inspector unit tests.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/InspectorTestServer.cpp:
+        (main):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspectorServer.cpp:
+        (connectToInspectorServer):
+        (waitUntilInspectorServerIsReady):
+        (startTestServer):
+        (testInspectorServerPageList):
+        (beforeAll):
+
 2017-04-23  Youenn Fablet  <youenn@apple.com>
 
         Add a tool to update expected.txt files from EWS bot results

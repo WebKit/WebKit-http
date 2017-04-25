@@ -1,3 +1,32 @@
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r215681.
+
+        * Source/cmake/OptionsGTK.cmake: Don't re-define the ENABLE_SUBTLE_CRYPTO
+        macro, that's already done by the option macro.
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        Add private option for ENABLE_REMOTE_INSPECTOR and enabled it by default.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Make the ENABLE_SUBTLE_CRYPTO option depend on libgcrypt 1.7.0
+        https://bugs.webkit.org/show_bug.cgi?id=171112
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake: When ENABLE_SUBTLE_CRYPTO feature is enabled,
+        the detected libgcrypt library version should be at least 1.7.0 since we'll be
+        relying on API that was introduced in that version.
+
 2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] WTF target should not have wtf and subdirectries in public interface
