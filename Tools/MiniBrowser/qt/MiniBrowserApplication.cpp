@@ -303,6 +303,7 @@ static void printHelp(const QString& programName)
     qDebug() << "Usage:" << programName.toLatin1().data()
          << "[--desktop]"
          << "[-r list]"
+         << "[--remote-inspector [port|addr]]"
          << "[--robot-timeout seconds]"
          << "[--robot-extra-time seconds]"
          << "[--window-size (width)x(height)]"
@@ -346,6 +347,12 @@ void MiniBrowserApplication::handleUserOptions()
         QStringList list = value.split(QRegExp("\\D+"), QString::SkipEmptyParts);
         if (list.length() == 2)
             m_windowOptions.setRequestedWindowSize(QSize(list.at(0).toInt(), list.at(1).toInt()));
+    }
+
+    if (args.contains("--remote-inspector")) {
+        QString value = takeOptionValue(&args, "--remote-inspector");
+        if (!value.isEmpty())
+            qputenv("QTWEBKIT_INSPECTOR_SERVER", value.toUtf8());
     }
 
 #if HAVE(QTTESTSUPPORT)
