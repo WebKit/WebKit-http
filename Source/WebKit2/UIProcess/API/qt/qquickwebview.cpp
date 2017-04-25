@@ -26,7 +26,6 @@
 #include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
-#include "DrawingAreaProxyImpl.h"
 #include "PageViewportControllerClientQt.h"
 #include "QtDialogRunner.h"
 #include "QtDownloadManager.h"
