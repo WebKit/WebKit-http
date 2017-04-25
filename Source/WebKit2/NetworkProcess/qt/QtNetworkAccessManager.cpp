@@ -27,8 +27,6 @@
 #include "config.h"
 #include "QtNetworkAccessManager.h"
 
-#include "SharedMemory.h"
-#include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
@@ -39,9 +37,8 @@
 
 namespace WebKit {
 
-QtNetworkAccessManager::QtNetworkAccessManager(WebProcess* webProcess)
+QtNetworkAccessManager::QtNetworkAccessManager()
     : QNetworkAccessManager()
-    , m_webProcess(webProcess)
 {
     connect(this, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)), SLOT(onAuthenticationRequired(QNetworkReply*, QAuthenticator*)));
     connect(this, SIGNAL(proxyAuthenticationRequired(const QNetworkProxy&, QAuthenticator*)), SLOT(onProxyAuthenticationRequired(const QNetworkProxy&, QAuthenticator*)));
@@ -52,29 +49,16 @@ QtNetworkAccessManager::QtNetworkAccessManager(WebProcess* webProcess)
 
 WebPage* QtNetworkAccessManager::obtainOriginatingWebPage(const QNetworkRequest& request)
 {
+    // QTFIXME: Old process model
+    if (!m_webProcess)
+        return nullptr;
+
     QObject* originatingObject = request.originatingObject();
     if (!originatingObject)
         return 0;
 
     qulonglong pageID = originatingObject->property("pageID").toULongLong();
     return m_webProcess->webPage(pageID);
-}
-
-QNetworkReply* QtNetworkAccessManager::createRequest(Operation operation, const QNetworkRequest& request, QIODevice* outData)
-{
-    WebPage* webPage = obtainOriginatingWebPage(request);
-    if (webPage && m_applicationSchemes.contains(webPage, request.url().scheme().toLower())) {
-        QtNetworkReply* reply = new QtNetworkReply(request, this);
-        webPage->receivedApplicationSchemeRequest(request, reply);
-        return reply;
-    }
-
-    return QNetworkAccessManager::createRequest(operation, request, outData);
-}
-
-void QtNetworkAccessManager::registerApplicationScheme(const WebPage* page, const QString& scheme)
-{
-    m_applicationSchemes.insert(page, scheme.toLower());
 }
 
 void QtNetworkAccessManager::onProxyAuthenticationRequired(const QNetworkProxy& proxy, QAuthenticator* authenticator)
@@ -98,7 +82,7 @@ void QtNetworkAccessManager::onProxyAuthenticationRequired(const QNetworkProxy& 
              authenticator->setUser(username);
          if (!password.isEmpty())
              authenticator->setPassword(password);
-     }
+    }
 
 }
 

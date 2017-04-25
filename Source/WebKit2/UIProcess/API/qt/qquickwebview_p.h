@@ -65,8 +65,7 @@ namespace WTF {
 template<class T> class PassRefPtr;
 }
 
-typedef const struct OpaqueWKContext* WKContextRef;
-typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
+typedef const struct OpaqueWKPageConfiguration* WKPageConfigurationRef;
 typedef const struct OpaqueWKPage* WKPageRef;
 
 QT_BEGIN_NAMESPACE
@@ -210,7 +209,7 @@ private:
     QPointF contentPos() const;
     void setContentPos(const QPointF&);
 
-    QQuickWebView(WKContextRef, WKPageGroupRef, QQuickItem* parent = 0);
+    QQuickWebView(WKPageConfigurationRef);
     WKPageRef pageRef() const;
 
     void emitUrlChangeIfNeeded();
@@ -283,7 +282,7 @@ class QWEBKIT_EXPORT QQuickWebViewExperimental : public QObject {
     Q_PROPERTY(QList<QUrl> userScripts READ userScripts WRITE setUserScripts NOTIFY userScriptsChanged)
     Q_PROPERTY(QList<QUrl> userStyleSheets READ userStyleSheets WRITE setUserStyleSheets NOTIFY userStyleSheetsChanged)
     Q_PROPERTY(QUrl remoteInspectorUrl READ remoteInspectorUrl NOTIFY remoteInspectorUrlChanged FINAL)
-#ifdef HAVE_WEBCHANNEL
+#ifdef QT_WEBCHANNEL_LIB
     Q_PROPERTY(QQmlWebChannel* webChannel READ webChannel WRITE setWebChannel NOTIFY webChannelChanged)
 #endif
     Q_ENUMS(NavigationRequestActionExperimental)
@@ -365,7 +364,7 @@ public:
     static void setFlickableViewportEnabled(bool enable);
     static bool flickableViewportEnabled();
 
-#ifdef HAVE_WEBCHANNEL
+#ifdef QT_WEBCHANNEL_LIB
     QQmlWebChannel* webChannel() const;
     void setWebChannel(QQmlWebChannel* channel);
     void postQtWebChannelTransportMessage(const QByteArray& message);
@@ -409,9 +408,7 @@ Q_SIGNALS:
     void processDidBecomeUnresponsive();
     void processDidBecomeResponsive();
 
-#ifdef HAVE_WEBCHANNEL
     void webChannelChanged(QQmlWebChannel* channel);
-#endif
 
 private:
     QQuickWebViewExperimental(QQuickWebView* webView, QQuickWebViewPrivate* webViewPrivate);
@@ -420,7 +417,7 @@ private:
     QObject* schemeParent;
     QWebKitTest* m_test;
 
-#ifdef HAVE_WEBCHANNEL
+#ifdef QT_WEBCHANNEL_LIB
     QQmlWebChannel* m_webChannel;
     QWebChannelWebKitTransport* m_webChannelTransport;
 #endif

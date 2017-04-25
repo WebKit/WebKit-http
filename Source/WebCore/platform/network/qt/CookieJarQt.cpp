@@ -32,6 +32,7 @@
 #include "Cookie.h"
 #include "URL.h"
 #include "NetworkingContext.h"
+#include "NotImplemented.h"
 #include "PlatformCookieJar.h"
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
@@ -114,8 +115,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)
 {
-    QNetworkCookieJar* jar = session.context() ? session.context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
-    return !!jar;
+    return true;
 }
 
 bool getRawCookies(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/, Vector<Cookie>& rawCookies)
@@ -138,12 +138,12 @@ void getHostnamesWithCookies(const NetworkStorageSession& session, HashSet<Strin
         jar->getHostnamesWithCookies(hostnames);
 }
 
-void deleteCookiesForHostname(const NetworkStorageSession& session, const String& hostname)
+void deleteCookiesForHostnames(const NetworkStorageSession& session, const Vector<String>& hostNames)
 {
     ASSERT_UNUSED(session, !session.context()); // Not yet implemented for cookie jars other than the shared one.
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
-        jar->deleteCookiesForHostname(hostname);
+        jar->deleteCookiesForHostnames(hostNames);
 }
 
 void deleteAllCookies(const NetworkStorageSession& session)
@@ -152,6 +152,14 @@ void deleteAllCookies(const NetworkStorageSession& session)
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
         jar->deleteAllCookies();
+}
+
+void deleteAllCookiesModifiedSince(const NetworkStorageSession& session, std::chrono::system_clock::time_point time)
+{
+    ASSERT_UNUSED(session, !session.context()); // Not yet implemented for cookie jars other than the shared one.
+    SharedCookieJarQt* jar = SharedCookieJarQt::shared();
+    if (jar)
+        jar->deleteAllCookiesModifiedSince(time);
 }
 
 SharedCookieJarQt* SharedCookieJarQt::shared()
@@ -203,6 +211,13 @@ bool SharedCookieJarQt::deleteCookie(const QNetworkCookie& cookie)
     return true;
 }
 
+void SharedCookieJarQt::deleteCookiesForHostnames(const Vector<WTF::String>& hostNames)
+{
+    // QTFIXME: Implement as one statement or transaction
+    for (auto& hostname : hostNames)
+        deleteCookiesForHostname(hostname);
+}
+
 void SharedCookieJarQt::deleteCookiesForHostname(const String& hostname)
 {
     if (!m_database.isOpen())
@@ -243,6 +258,12 @@ void SharedCookieJarQt::deleteAllCookies()
     if (!m_database.executeCommand(ASCIILiteral("DELETE FROM cookies")))
         qWarning("Failed to clear cookies database");
     setAllCookies(QList<QNetworkCookie>());
+}
+
+void SharedCookieJarQt::deleteAllCookiesModifiedSince(std::chrono::system_clock::time_point)
+{
+    // QTFIXME
+    notImplemented();
 }
 
 SharedCookieJarQt::SharedCookieJarQt(const String& cookieStorageDirectory)

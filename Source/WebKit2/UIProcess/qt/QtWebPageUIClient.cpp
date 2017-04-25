@@ -37,10 +37,10 @@ namespace WebKit {
 QtWebPageUIClient::QtWebPageUIClient(WKPageRef pageRef, QQuickWebView* webView)
     : m_webView(webView)
 {
-    WKPageUIClient uiClient;
-    memset(&uiClient, 0, sizeof(WKPageUIClient));
-    uiClient.version = kWKPageUIClientCurrentVersion;
-    uiClient.clientInfo = this;
+    WKPageUIClientV1 uiClient;
+    memset(&uiClient, 0, sizeof(WKPageUIClientV1));
+    uiClient.base.version = 1;
+    uiClient.base.clientInfo = this;
     uiClient.runJavaScriptAlert = runJavaScriptAlert;
     uiClient.runJavaScriptConfirm = runJavaScriptConfirm;
     uiClient.runJavaScriptPrompt = runJavaScriptPrompt;
@@ -49,7 +49,7 @@ QtWebPageUIClient::QtWebPageUIClient(WKPageRef pageRef, QQuickWebView* webView)
     uiClient.exceededDatabaseQuota = exceededDatabaseQuota;
     uiClient.decidePolicyForGeolocationPermissionRequest = policyForGeolocationPermissionRequest;
     uiClient.decidePolicyForNotificationPermissionRequest = policyForNotificationPermissionRequest;
-    WKPageSetPageUIClient(pageRef, &uiClient);
+    WKPageSetPageUIClient(pageRef, &uiClient.base);
 }
 
 quint64 QtWebPageUIClient::exceededDatabaseQuota(const QString& databaseName, const QString& displayName, WKSecurityOriginRef securityOrigin, quint64 currentQuota, quint64 currentOriginUsage, quint64 currentDatabaseUsage, quint64 expectedUsage)

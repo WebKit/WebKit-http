@@ -110,7 +110,7 @@ void WebColorPickerQt::createContext(QQmlComponent* component, QObject* contextO
     m_context.reset(new QQmlContext(baseContext));
 
     contextObject->setParent(m_context.get());
-    m_context->setContextProperty(QLatin1String("model"), contextObject);
+    m_context->setContextProperty(QStringLiteral("model"), contextObject);
     m_context->setContextObject(contextObject);
 }
 
@@ -121,6 +121,12 @@ void WebColorPickerQt::setSelectedColor(const Color&)
     // option to update the color chooser UI if we were showing the
     // current value. Since we don't, it is irrelevant right now.
     // And yes, the name sounds misleading but comes from WebCore.
+}
+
+void WebColorPickerQt::showColorPicker(const Color&)
+{
+    // We use ENABLE(INPUT_TYPE_COLOR_POPOVER), so new color picker is created
+    // each time
 }
 
 void WebColorPickerQt::notifyColorSelected(const QColor& color)
@@ -139,11 +145,6 @@ void WebColorPickerQt::endPicker()
 {
     m_colorChooser = nullptr;
     m_context = nullptr;
-
-    if (!m_client)
-        return;
-
-    m_client->didEndColorPicker();
 }
 
 } // namespace WebKit

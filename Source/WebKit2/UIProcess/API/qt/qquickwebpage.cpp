@@ -59,10 +59,10 @@ QQuickWebPagePrivate::QQuickWebPagePrivate(QQuickWebPage* q, QQuickWebView* view
 {
 }
 
-void QQuickWebPagePrivate::paint(QPainter* painter)
+void QQuickWebPagePrivate::paint(QPainter* painter, const WebCore::Color& backgroundColor, bool drawsBackground)
 {
     if (CoordinatedGraphicsScene* scene = QQuickWebViewPrivate::get(viewportItem)->coordinatedGraphicsScene())
-        scene->paintToGraphicsContext(painter);
+        scene->paintToGraphicsContext(painter, backgroundColor, drawsBackground);
 }
 
 
@@ -88,7 +88,7 @@ QSGNode* QQuickWebPage::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
     }
 
     if (!node)
-        node = new QtWebPageSGNode;
+        node = new QtWebPageSGNode(*webViewPrivate->webPageProxy);
 
     node->setCoordinatedGraphicsScene(scene);
 

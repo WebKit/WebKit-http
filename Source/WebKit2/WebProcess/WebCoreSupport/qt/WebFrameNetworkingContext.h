@@ -26,10 +26,15 @@
 namespace WebKit {
 
 class WebFrame;
+class WebFrameLoaderClient;
 
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
-    static PassRefPtr<WebFrameNetworkingContext> create(WebFrame*);
+    static Ref<WebFrameNetworkingContext> create(WebFrame*);
+
+    static void ensurePrivateBrowsingSession(WebCore::SessionID);
+
+    WebFrameLoaderClient* webFrameLoaderClient() const;
 
     QObject* originatingObject() const override { return m_originatingObject.get(); }
 
@@ -37,9 +42,10 @@ private:
     WebFrameNetworkingContext(WebFrame*);
     ~WebFrameNetworkingContext() { }
 
-    QNetworkAccessManager* networkAccessManager() const override { return WebProcess::singleton().networkAccessManager(); }
+    QNetworkAccessManager* networkAccessManager() const override;
     bool mimeSniffingEnabled() const override { return m_mimeSniffingEnabled; }
     bool thirdPartyCookiePolicyPermission(const QUrl&) const override { /*TODO. Used QWebSettings in WK1.*/ return true; }
+    WebCore::NetworkStorageSession& storageSession() const override;
 
     std::unique_ptr<QObject> m_originatingObject;
     bool m_mimeSniffingEnabled;

@@ -29,6 +29,7 @@
 
 #include "QtBuiltinBundlePage.h"
 #include "WKBundlePage.h"
+#include "WKData.h"
 #include "WKNumber.h"
 #include "WKString.h"
 #include "WKStringQt.h"
@@ -51,14 +52,14 @@ void QtBuiltinBundle::initialize(WKBundleRef bundle)
 {
     m_bundle = bundle;
 
-    WKBundleClient client;
-    memset(&client, 0, sizeof(WKBundleClient));
-    client.version = kWKBundleClientCurrentVersion;
-    client.clientInfo = this;
+    WKBundleClientV1 client;
+    memset(&client, 0, sizeof(WKBundleClientV1));
+    client.base.version = 1;
+    client.base.clientInfo = this;
     client.didCreatePage = QtBuiltinBundle::didCreatePage;
     client.willDestroyPage = QtBuiltinBundle::willDestroyPage;
     client.didReceiveMessageToPage = QtBuiltinBundle::didReceiveMessageToPage;
-    WKBundleSetClient(m_bundle, &client);
+    WKBundleSetClient(m_bundle, &client.base);
 }
 
 void QtBuiltinBundle::didCreatePage(WKBundleRef, WKBundlePageRef page, const void* clientInfo)
@@ -92,7 +93,7 @@ void QtBuiltinBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef 
         handleMessageToNavigatorQtObject(page, messageBody);
     else if (WKStringIsEqualToUTF8CString(messageName, "SetNavigatorQtObjectEnabled"))
         handleSetNavigatorQtObjectEnabled(page, messageBody);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     else if (WKStringIsEqualToUTF8CString(messageName, "MessageToNavigatorQtWebChannelTransportObject"))
         handleMessageToNavigatorQtWebChannelTransport(page, messageBody);
 #endif
@@ -122,12 +123,12 @@ void QtBuiltinBundle::handleSetNavigatorQtObjectEnabled(WKBundlePageRef page, WK
     bundlePage->setNavigatorQtObjectEnabled(enabled);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QtBuiltinBundle::handleMessageToNavigatorQtWebChannelTransport(WKBundlePageRef page, WKTypeRef messageBody)
 {
     ASSERT(messageBody);
-    ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
-    WKStringRef contents = static_cast<WKStringRef>(messageBody);
+    ASSERT(WKGetTypeID(messageBody) == WKDataGetTypeID());
+    WKDataRef contents = static_cast<WKDataRef>(messageBody);
 
     QtBuiltinBundlePage* bundlePage = m_pages.get(page);
     if (!bundlePage)

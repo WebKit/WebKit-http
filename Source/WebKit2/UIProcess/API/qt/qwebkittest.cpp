@@ -140,8 +140,8 @@ QSize QWebKitTest::contentsSize() const
 static inline QJsonObject toJsonObject(const QSizeF& sizeF)
 {
     QJsonObject result;
-    result.insert(QLatin1String("width"), sizeF.width());
-    result.insert(QLatin1String("height"), sizeF.height());
+    result.insert(QStringLiteral("width"), sizeF.width());
+    result.insert(QStringLiteral("height"), sizeF.height());
     return result;
 }
 
@@ -149,16 +149,16 @@ QJsonObject QWebKitTest::viewport() const
 {
     QJsonObject viewportData;
     if (const PageViewportController* const viewportHandler = m_webViewPrivate->viewportController()) {
-        viewportData.insert(QLatin1String("layoutSize"), toJsonObject(viewportHandler->contentsLayoutSize()));
-        viewportData.insert(QLatin1String("isScalable"), viewportHandler->allowsUserScaling());
-        viewportData.insert(QLatin1String("minimumScale"), viewportHandler->minimumScale());
-        viewportData.insert(QLatin1String("maximumScale"), viewportHandler->maximumScale());
+        viewportData.insert(QStringLiteral("layoutSize"), toJsonObject(viewportHandler->contentsLayoutSize()));
+        viewportData.insert(QStringLiteral("isScalable"), viewportHandler->allowsUserScaling());
+        viewportData.insert(QStringLiteral("minimumScale"), viewportHandler->minimumScale());
+        viewportData.insert(QStringLiteral("maximumScale"), viewportHandler->maximumScale());
     } else {
-        viewportData.insert(QLatin1String("initialScale"), 1.0);
-        viewportData.insert(QLatin1String("layoutSize"), toJsonObject(QSizeF()));
-        viewportData.insert(QLatin1String("isScalable"), false);
-        viewportData.insert(QLatin1String("minimumScale"), 1.0);
-        viewportData.insert(QLatin1String("maximumScale"), 1.0);
+        viewportData.insert(QStringLiteral("initialScale"), 1.0);
+        viewportData.insert(QStringLiteral("layoutSize"), toJsonObject(QSizeF()));
+        viewportData.insert(QStringLiteral("isScalable"), false);
+        viewportData.insert(QStringLiteral("minimumScale"), 1.0);
+        viewportData.insert(QStringLiteral("maximumScale"), 1.0);
     }
     return viewportData;
 }
@@ -176,3 +176,5 @@ QVariant QWebKitTest::contentsScale() const
         return viewport->currentScale();
     return 1.0;
 }
+
+#include "moc_qwebkittest_p.cpp"

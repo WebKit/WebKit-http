@@ -77,7 +77,7 @@ void NetworkProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) con
     IPC::encode(encoder, networkATSContext.get());
 #endif
 #endif
-#if USE(SOUP)
+#if USE(SOUP) || PLATFORM(QT)
     encoder << cookiePersistentStoragePath;
     encoder << cookiePersistentStorageType;
     encoder.encodeEnum(cookieAcceptPolicy);
@@ -149,7 +149,7 @@ bool NetworkProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, Net
 #endif
 #endif
 
-#if USE(SOUP)
+#if USE(SOUP) || PLATFORM(QT)
     if (!decoder.decode(result.cookiePersistentStoragePath))
         return false;
     if (!decoder.decode(result.cookiePersistentStorageType))

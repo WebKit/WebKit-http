@@ -153,7 +153,9 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/WebKitLibraries"
 )
 
-set(WebKit2_SYSTEM_INCLUDE_DIRECTORIES "")
+set(WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+    ${ICU_INCLUDE_DIRS}
+)
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
@@ -384,6 +386,8 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
+    UIProcess/WebURLSchemeHandler.cpp
+    UIProcess/WebURLSchemeHandlerTask.cpp
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
@@ -396,6 +400,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APISession.cpp
     UIProcess/API/APISessionState.cpp
+    UIProcess/API/APIURLSchemeHandlerTask.cpp
     UIProcess/API/APIUserContentExtension.cpp
     UIProcess/API/APIUserContentExtensionStore.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
@@ -620,9 +625,9 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPage.cpp
     WebProcess/WebPage/WebPageGroupProxy.cpp
     WebProcess/WebPage/WebPageOverlay.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp
     WebProcess/WebPage/WebUndoStep.cpp
-
-
 
     ${NetworkProcess_COMMON_SOURCES}
 )
@@ -760,6 +765,8 @@ WEBKIT_FRAMEWORK(WebKit2)
 add_dependencies(WebKit2 WebCore ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 
+QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(WebKit2)
+
 # Suppress unused parameter warnings for sources in WebKit2.
 ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
 
@@ -815,8 +822,8 @@ POPULATE_LIBRARY_VERSION(WEBKIT2)
 set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
 if (NOT APPLE)
-    install(TARGETS WebKit2 WebProcess NetworkProcess
-        LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
-        RUNTIME DESTINATION "${LIBEXEC_INSTALL_DIR}"
-    )
+    install(TARGETS WebProcess NetworkProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+    if (SHARED_CORE OR NOT PORT STREQUAL "Qt")
+        install(TARGETS WebKit2 DESTINATION "${LIB_INSTALL_DIR}")
+    endif ()
 endif ()

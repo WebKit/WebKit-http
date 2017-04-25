@@ -41,7 +41,8 @@ namespace WebKit {
 static const int kScaleAnimationDurationMillis = 250;
 
 PageViewportControllerClientQt::PageViewportControllerClientQt(QQuickWebView* viewportItem, QQuickWebPage* pageItem)
-    : m_viewportItem(viewportItem)
+    : m_controller(nullptr)
+    , m_viewportItem(viewportItem)
     , m_pageItem(pageItem)
     , m_scaleChange(this)
     , m_scrollChange(this)

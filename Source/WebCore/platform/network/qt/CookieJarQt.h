@@ -40,8 +40,9 @@ public:
 
     void getHostnamesWithCookies(HashSet<String>&);
     bool deleteCookie(const QNetworkCookie&) final;
-    void deleteCookiesForHostname(const String&);
+    void deleteCookiesForHostnames(const Vector<String>&);
     void deleteAllCookies();
+    void deleteAllCookiesModifiedSince(std::chrono::system_clock::time_point);
     bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&) final;
     void loadCookies();
 
@@ -49,6 +50,7 @@ private:
     SharedCookieJarQt(const String&);
     ~SharedCookieJarQt();
     bool ensureDatabaseTable();
+    void deleteCookiesForHostname(const String&);
 
     SQLiteDatabase m_database;
 };

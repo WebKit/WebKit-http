@@ -57,9 +57,9 @@ static WebMouseEvent::Button mouseButtonForEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton || (event->buttons() & Qt::LeftButton))
         return WebMouseEvent::LeftButton;
-    else if (event->button() == Qt::RightButton || (event->buttons() & Qt::RightButton))
+    if (event->button() == Qt::RightButton || (event->buttons() & Qt::RightButton))
         return WebMouseEvent::RightButton;
-    else if (event->button() == Qt::MidButton || (event->buttons() & Qt::MidButton))
+    if (event->button() == Qt::MidButton || (event->buttons() & Qt::MidButton))
         return WebMouseEvent::MiddleButton;
     return WebMouseEvent::NoButton;
 }

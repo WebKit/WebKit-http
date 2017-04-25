@@ -27,10 +27,14 @@
 #include "config.h"
 #include "WebProcessPool.h"
 
+#include "NetworkProcessCreationParameters.h"
+#include "QtWebContext.h"
 #include "WKSharedAPICast.h"
+#include "WebCookieManagerProxy.h"
 #include "WebProcessCreationParameters.h"
 #include <QProcess>
 #include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/Language.h>
 
 #if ENABLE(GEOLOCATION)
 #include "WebGeolocationManagerProxy.h"
@@ -41,12 +45,14 @@ namespace WebKit {
 
 String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
-    const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
+// QTFIXME
+//    const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
 
-    if (cacheDirectory.isEmpty())
-        return diskCacheDirectory();
+//    if (cacheDirectory.isEmpty())
+//        return diskCacheDirectory();
 
-    return cacheDirectory;
+//    return cacheDirectory;
+    return API::WebsiteDataStore::defaultApplicationCacheDirectory();
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
@@ -62,15 +68,41 @@ void WebProcessPool::platformInvalidateContext()
 {
 }
 
+void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)
+{
+    // QTFIXME
+    parameters.cookiePersistentStoragePath = QtWebContext::preparedStoragePath(QtWebContext::CookieStorage);
+    parameters.languages = WebCore::userPreferredLanguages();
+}
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::IconDatabaseStorage);
 }
 
-String WebProcessPool::platformDefaultLocalStorageDirectory() const
+String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::LocalStorage);
+}
+
+String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
+{
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DatabaseStorage);
+}
+
+String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
+{
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DatabaseStorage);
+}
+
+String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
+{
+    return String(); // QTFIXME: Add MediaKeys path
+}
+
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
+{
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DiskCacheStorage);
 }
 
 } // namespace WebKit

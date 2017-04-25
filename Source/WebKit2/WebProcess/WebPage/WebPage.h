@@ -49,6 +49,7 @@
 #include "ShareableBitmap.h"
 #include "UserData.h"
 #include "UserMediaPermissionRequestManager.h"
+#include "WebURLSchemeHandler.h"
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
@@ -79,13 +80,7 @@
 
 #if PLATFORM(QT)
 #include "ArgumentCodersQt.h"
-#include "QtNetworkAccessManager.h"
-#include "QtNetworkReply.h"
-#include "QtNetworkReplyData.h"
-#include "QtNetworkRequestData.h"
 #include "TapHighlightController.h"
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #endif
 
 #if HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
@@ -186,6 +181,7 @@ class WebInspectorClient;
 class WebInspectorUI;
 class WebGestureEvent;
 class WebKeyboardEvent;
+class WebURLSchemeHandlerProxy;
 class WebMouseEvent;
 class WebNotificationClient;
 class WebOpenPanelResultListener;
@@ -805,9 +801,6 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    void registerApplicationScheme(const String& scheme);
-    void applicationSchemeReply(const QtNetworkReplyData&);
-    void receivedApplicationSchemeRequest(const QNetworkRequest&, QtNetworkReply*);
     void setUserScripts(const Vector<String>&);
 #endif
     void wheelEvent(const WebWheelEvent&);
@@ -947,6 +940,8 @@ public:
     void dispatchDidLayout(WebCore::LayoutMilestones);
 
     void didRestoreScrollPosition();
+
+    WebURLSchemeHandlerProxy* urlSchemeHandlerForScheme(const String&);
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -1207,6 +1202,12 @@ private:
     void didEndRequestInstallMissingMediaPlugins(uint32_t result);
 #endif
 
+    void registerURLSchemeHandler(uint64_t identifier, const String& scheme);
+
+    void urlSchemeHandlerTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceResponse&);
+    void urlSchemeHandlerTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference&);
+    void urlSchemeHandlerTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceError&);
+
     uint64_t m_pageID;
 
     std::unique_ptr<WebCore::Page> m_page;
@@ -1317,7 +1318,7 @@ private:
 
     FindController m_findController;
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(QT)
-    TapHighlightController m_tapHighlightController;
+    TapHighlightController m_tapHighlightController { this };
 #endif
 
     RefPtr<WebInspector> m_inspector;
@@ -1432,10 +1433,6 @@ private:
     WebCore::Timer m_volatilityTimer;
 #endif
 
-#if PLATFORM(QT)
-    HashMap<String, QtNetworkReply*> m_applicationSchemeReplies;
-#endif
-
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;
 
@@ -1470,6 +1467,9 @@ private:
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     RefPtr<WebCore::MediaPlayerRequestInstallMissingPluginsCallback> m_installMediaPluginsCallback;
 #endif
+
+    HashMap<String, std::unique_ptr<WebURLSchemeHandlerProxy>> m_schemeToURLSchemeHandlerProxyMap;
+    HashMap<uint64_t, WebURLSchemeHandlerProxy*> m_identifierToURLSchemeHandlerProxyMap;
 };
 
 } // namespace WebKit

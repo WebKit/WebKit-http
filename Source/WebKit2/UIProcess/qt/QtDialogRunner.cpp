@@ -417,7 +417,7 @@ bool QtDialogRunner::createDialog(QQmlComponent* component, QObject* contextObje
     // This makes both "message" and "model.message" work for the dialog,
     // just like QtQuick's ListView delegates.
     contextObject->setParent(m_dialogContext.get());
-    m_dialogContext->setContextProperty(QLatin1String("model"), contextObject);
+    m_dialogContext->setContextProperty(QStringLiteral("model"), contextObject);
     m_dialogContext->setContextObject(contextObject);
 
     QObject* object = component->beginCreate(m_dialogContext.get());

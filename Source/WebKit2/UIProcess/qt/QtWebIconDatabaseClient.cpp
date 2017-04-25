@@ -46,12 +46,12 @@ QtWebIconDatabaseClient::QtWebIconDatabaseClient(WKContextRef context)
 {
     m_iconDatabase = WKContextGetIconDatabase(context);
 
-    WKIconDatabaseClient iconDatabaseClient;
-    memset(&iconDatabaseClient, 0, sizeof(WKIconDatabaseClient));
-    iconDatabaseClient.version = kWKIconDatabaseClientCurrentVersion;
-    iconDatabaseClient.clientInfo = this;
+    WKIconDatabaseClientV0 iconDatabaseClient;
+    memset(&iconDatabaseClient, 0, sizeof(WKIconDatabaseClientV0));
+    iconDatabaseClient.base.version = 0;
+    iconDatabaseClient.base.clientInfo = this;
     iconDatabaseClient.didChangeIconForPageURL = didChangeIconForPageURL;
-    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase, &iconDatabaseClient);
+    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase, &iconDatabaseClient.base);
     // Triggers the startup of the icon database.
     WKRetainPtr<WKStringRef> path = adoptWK(WKStringCreateWithQString(QtWebContext::preparedStoragePath(QtWebContext::IconDatabaseStorage)));
     WKContextSetIconDatabasePath(context, path.get());

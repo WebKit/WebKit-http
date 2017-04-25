@@ -147,6 +147,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/text/qt"
+    "${WEBCORE_DIR}/plugins/qt"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/style"
 
@@ -227,6 +228,26 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 # Build the include path with duplicates removed
 list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
 
+if (ENABLE_WEBKIT2)
+    if (APPLE)
+        set(WEBKIT2_LIBRARY -Wl,-force_load WebKit2)
+    elseif (MSVC)
+        set(WEBKIT2_LIBRARY "-WHOLEARCHIVE:WebKit2")
+    elseif (UNIX)
+        set(WEBKIT2_LIBRARY -Wl,--whole-archive WebKit2 -Wl,--no-whole-archive)
+    else ()
+        message(WARNING "Unknown system, linking with WebKit2 may fail!")
+        set(WEBKIT2_LIBRARY WebKit2)
+    endif ()
+endif ()
+
+list(APPEND WebKit_LIBRARIES
+    PRIVATE
+        ${WEBKIT2_LIBRARY}
+        ${Qt5Quick_LIBRARIES}
+        ${Qt5WebChannel_LIBRARIES}
+)
+
 list(APPEND WebKit_LIBRARIES
     PRIVATE
         ${ICU_LIBRARIES}
@@ -278,12 +299,6 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         list(APPEND WebKit_SOURCES
             qt/Plugins/PluginPackageQt.cpp
             qt/Plugins/PluginViewQt.cpp
-        )
-    endif ()
-
-    if (PLUGIN_BACKEND_XLIB)
-        list(APPEND WebKit_SOURCES
-            qt/Plugins/QtX11ImageConversion.cpp
         )
     endif ()
 
@@ -809,4 +824,10 @@ if (COMPILER_IS_GCC_OR_CLANG)
     )
 endif ()
 
-add_subdirectory(qt/tests)
+if (ENABLE_WEBKIT2)
+    add_subdirectory(qt/declarative)
+endif ()
+
+if (ENABLE_API_TESTS)
+    add_subdirectory(qt/tests)
+endif ()

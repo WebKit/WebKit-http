@@ -71,7 +71,7 @@ public:
 
     virtual ~QQuickWebViewPrivate();
 
-    virtual void initialize(WKContextRef contextRef = 0, WKPageGroupRef pageGroupRef = 0);
+    virtual void initialize(WKPageConfigurationRef configurationRef = 0);
 
     virtual void onComponentComplete() { }
 
@@ -135,8 +135,8 @@ public:
     void handleDownloadRequest(WebKit::DownloadProxy*);
 
     void didReceiveMessageFromNavigatorQtObject(WKStringRef message);
-#ifdef HAVE_WEBCHANNEL
-    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message);
+#if ENABLE(QT_WEBCHANNEL)
+    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKDataRef);
 #endif
 
     WebKit::CoordinatedGraphicsScene* coordinatedGraphicsScene();
@@ -181,7 +181,6 @@ protected:
     QQuickWebViewPrivate(QQuickWebView* viewport);
     RefPtr<WebKit::WebPageProxy> webPageProxy;
     WKRetainPtr<WKPageRef> webPage;
-    WKRetainPtr<WKPageGroupRef> pageGroup;
 
     WebKit::QtPageClient pageClient;
     WebKit::DefaultUndoController undoController;
@@ -227,7 +226,7 @@ class QQuickWebViewLegacyPrivate : public QQuickWebViewPrivate {
     Q_DECLARE_PUBLIC(QQuickWebView)
 public:
     QQuickWebViewLegacyPrivate(QQuickWebView* viewport);
-    void initialize(WKContextRef contextRef = 0, WKPageGroupRef pageGroupRef = 0) Q_DECL_OVERRIDE;
+    void initialize(WKPageConfigurationRef configurationRef = 0) Q_DECL_OVERRIDE;
 
     void updateViewportSize() Q_DECL_OVERRIDE;
 
@@ -239,7 +238,7 @@ class QQuickWebViewFlickablePrivate : public QQuickWebViewPrivate {
     Q_DECLARE_PUBLIC(QQuickWebView)
 public:
     QQuickWebViewFlickablePrivate(QQuickWebView* viewport);
-    void initialize(WKContextRef contextRef = 0, WKPageGroupRef pageGroupRef = 0) Q_DECL_OVERRIDE;
+    void initialize(WKPageConfigurationRef configurationRef = 0) Q_DECL_OVERRIDE;
 
     void onComponentComplete() Q_DECL_OVERRIDE;
 

@@ -25,7 +25,10 @@
 
 #include "config.h"
 #include "WebPreferences.h"
+
+#include "WebPreferencesKeys.h"
 #include <QFont>
+#include <WebCore/NotImplemented.h>
 
 namespace WebKit {
 
@@ -62,22 +65,51 @@ void WebPreferences::platformInitializeStore()
 
 void WebPreferences::platformUpdateStringValueForKey(const String&, const String&)
 {
+    notImplemented();
 }
 
 void WebPreferences::platformUpdateBoolValueForKey(const String&, bool)
 {
+    notImplemented();
 }
 
 void WebPreferences::platformUpdateUInt32ValueForKey(const String&, uint32_t)
 {
+    notImplemented();
 }
 
 void WebPreferences::platformUpdateDoubleValueForKey(const String&, double)
 {
+    notImplemented();
 }
 
 void WebPreferences::platformUpdateFloatValueForKey(const String&, float)
 {
+    notImplemented();
+}
+
+bool WebPreferences::platformGetStringUserValueForKey(const String&, String&)
+{
+    notImplemented();
+    return false;
+}
+
+bool WebPreferences::platformGetBoolUserValueForKey(const String&, bool&)
+{
+    notImplemented();
+    return false;
+}
+
+bool WebPreferences::platformGetUInt32UserValueForKey(const String&, uint32_t&)
+{
+    notImplemented();
+    return false;
+}
+
+bool WebPreferences::platformGetDoubleUserValueForKey(const String&, double&)
+{
+    notImplemented();
+    return false;
 }
 
 } // namespace WebKit

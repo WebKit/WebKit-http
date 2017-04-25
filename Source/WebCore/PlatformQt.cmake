@@ -43,6 +43,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/text/qt"
     "${WEBCORE_DIR}/platform/win"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WTF_DIR}"
 )
 
@@ -69,6 +70,7 @@ list(APPEND WebCore_SOURCES
     platform/audio/qt/AudioBusQt.cpp
 
     platform/graphics/ImageSource.cpp
+    platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/texmap/BitmapTextureImageBuffer.cpp
@@ -101,6 +103,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/TransformationMatrixQt.cpp
 
     platform/graphics/surfaces/qt/GraphicsSurfaceQt.cpp
+
+    platform/graphics/x11/PlatformDisplayX11.cpp
+    platform/graphics/x11/XUniqueResource.cpp
 
     platform/network/NetworkStorageSessionStub.cpp
     platform/network/MIMESniffing.cpp
@@ -186,21 +191,32 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     )
 endif ()
 
-if (ENABLE_NETSCAPE_PLUGIN_API AND WIN32)
-    set(WebCore_FORWARDING_HEADERS_FILES
-        platform/graphics/win/LocalWindowsContext.h
-        platform/win/BitmapInfo.h
-        platform/win/WebCoreInstanceHandle.h
-    )
-    list(APPEND WebCore_SOURCES
-        platform/graphics/win/TransformationMatrixWin.cpp
-        platform/win/BitmapInfo.cpp
-        platform/win/WebCoreInstanceHandle.cpp
-    )
-    list(APPEND WebCore_LIBRARIES
-        Shlwapi
-        version
-    )
+if (ENABLE_NETSCAPE_PLUGIN_API)
+    if (WIN32)
+        set(WebCore_FORWARDING_HEADERS_FILES
+            platform/graphics/win/LocalWindowsContext.h
+
+            platform/win/BitmapInfo.h
+            platform/win/WebCoreInstanceHandle.h
+        )
+        list(APPEND WebCore_SOURCES
+            platform/graphics/win/TransformationMatrixWin.cpp
+
+            platform/win/BitmapInfo.cpp
+            platform/win/WebCoreInstanceHandle.cpp
+        )
+        list(APPEND WebCore_LIBRARIES
+            Shlwapi
+            version
+        )
+    elseif (PLUGIN_BACKEND_XLIB)
+        set(WebCore_FORWARDING_HEADERS_FILES
+            plugins/qt/QtX11ImageConversion.h
+        )
+        list(APPEND WebCore_SOURCES
+            plugins/qt/QtX11ImageConversion.cpp
+        )
+    endif ()
 endif ()
 
 if (ENABLE_SMOOTH_SCROLLING)
@@ -247,6 +263,7 @@ list(APPEND WebCore_LIBRARIES
     ${Qt5Network_LIBRARIES}
     ${Qt5Sensors_LIBRARIES}
     ${SQLITE_LIBRARIES}
+    ${X11_X11_LIB}
     ${ZLIB_LIBRARIES}
 )
 

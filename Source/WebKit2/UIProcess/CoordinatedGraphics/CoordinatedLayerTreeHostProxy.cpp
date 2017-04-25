@@ -72,6 +72,15 @@ void CoordinatedLayerTreeHostProxy::commitCoordinatedGraphicsState(const Coordin
 
 void CoordinatedLayerTreeHostProxy::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector)
 {
+#if PLATFORM(QT)
+    // Inform the renderer to adjust viewport-fixed layers.
+    RefPtr<CoordinatedGraphicsScene> sceneProtector(m_scene);
+    const FloatPoint& scrollPosition = rect.location();
+    dispatchUpdate([=] {
+        sceneProtector->setScrollPosition(scrollPosition);
+    });
+#endif
+
     if (rect == m_lastSentVisibleRect && trajectoryVector == m_lastSentTrajectoryVector)
         return;
 

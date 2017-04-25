@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WebInspectorProxy.h"
 
-#if ENABLE(INSPECTOR)
-
 #include <WebCore/NotImplemented.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,6 +43,11 @@ void WebInspectorProxy::platformOpen()
 }
 
 void WebInspectorProxy::platformDidClose()
+{
+    notImplemented();
+}
+
+void WebKit::WebInspectorProxy::platformInvalidate()
 {
     notImplemented();
 }
@@ -107,7 +110,7 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
     notImplemented();
 }
 
-void WebInspectorProxy::platformSetToolbarHeight(unsigned)
+void WebKit::WebInspectorProxy::platformStartWindowDrag()
 {
     notImplemented();
 }
@@ -122,18 +125,22 @@ void WebInspectorProxy::platformAppend(const String&, const String&)
     notImplemented();
 }
 
-String WebInspectorProxy::inspectorPageURL() const
+String WebInspectorProxy::inspectorPageURL()
 {
     notImplemented();
     return String();
 }
 
-String WebInspectorProxy::inspectorBaseURL() const
+String WebInspectorProxy::inspectorTestPageURL()
+{
+    notImplemented();
+    return String();
+}
+
+String WebInspectorProxy::inspectorBaseURL()
 {
     notImplemented();
     return String();
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(INSPECTOR)

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 Zeno Albisser <zeno@webkit.org>
- * Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2017 Konstantin Tokarev <annulen@yandex.ru>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,41 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef QtNetworkAccessManager_h
-#define QtNetworkAccessManager_h
+#pragma once
 
-#include <QMultiHash>
-#include <QNetworkAccessManager>
-#include <QNetworkProxy>
-#include <QString>
+#include "WebURLSchemeHandler.h"
 
 namespace WebKit {
 
-class WebPage;
-class WebProcess;
-
-class QtNetworkAccessManager : public QNetworkAccessManager {
-    Q_OBJECT
+class QrcSchemeHandler final : public WebURLSchemeHandler {
 public:
-    QtNetworkAccessManager(WebProcess*);
-    void registerApplicationScheme(const WebPage*, const QString& scheme);
-
-protected:
-    QNetworkReply* createRequest(Operation, const QNetworkRequest&, QIODevice* outgoingData = 0) override;
-
-private Q_SLOTS:
-    void onAuthenticationRequired(QNetworkReply *, QAuthenticator *);
-    void onProxyAuthenticationRequired(const QNetworkProxy&, QAuthenticator *);
-    void onSslErrors(QNetworkReply*, const QList<QSslError>&);
+    static Ref<QrcSchemeHandler> create();
 
 private:
-    WebPage* obtainOriginatingWebPage(const QNetworkRequest&);
+    QrcSchemeHandler() = default;
 
-    QMultiHash<const WebPage*, QString> m_applicationSchemes;
-    WebProcess* m_webProcess;
-
+    void platformStartTask(WebPageProxy&, WebURLSchemeHandlerTask&) final;
+    void platformStopTask(WebPageProxy&, WebURLSchemeHandlerTask&) final;
 };
 
 } // namespace WebKit
-
-#endif // QtNetworkAccessManager_h

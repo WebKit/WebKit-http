@@ -55,12 +55,6 @@
 #include "WebSQLiteDatabaseTracker.h"
 #endif
 
-#if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QNetworkAccessManager;
-QT_END_NAMESPACE
-#endif
-
 namespace API {
 class Object;
 }
@@ -147,10 +141,6 @@ public:
 #endif
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
-
-#if PLATFORM(QT)
-    QNetworkAccessManager* networkAccessManager() { return m_networkAccessManager; }
-#endif
 
     void clearResourceCaches(ResourceCachesToClear = AllResourceCaches);
     
@@ -255,10 +245,6 @@ private:
     void startMemorySampler(const SandboxExtension::Handle&, const String&, const double);
     void stopMemorySampler();
 
-#if PLATFORM(QT)
-    void startTransfer(uint64_t downloadID, const String& destination);
-#endif
-
     void setTextCheckerState(const TextCheckerState&);
     
     void getWebCoreStatistics(uint64_t callbackID);
@@ -339,10 +325,6 @@ private:
 #endif
 
     bool m_fullKeyboardAccessEnabled;
-
-#if PLATFORM(QT)
-    QNetworkAccessManager* m_networkAccessManager;
-#endif
 
     HashMap<uint64_t, WebFrame*> m_frameMap;
 

@@ -100,6 +100,7 @@
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
 #include "WebStorageNamespaceProvider.h"
+#include "WebURLSchemeHandlerProxy.h"
 #include "WebUndoStep.h"
 #include "WebUserContentController.h"
 #include "WebUserMediaClient.h"
@@ -313,11 +314,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(this)
-#if ENABLE(TOUCH_EVENTS)
-#if PLATFORM(QT)
-    , m_tapHighlightController(this)
-#endif
-#endif
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
 #endif
@@ -561,6 +557,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(IOS)
     m_page->settings().setContentDispositionAttachmentSandboxEnabled(true);
 #endif
+
+    for (auto iterator : parameters.urlSchemeHandlers)
+        registerURLSchemeHandler(iterator.value, iterator.key);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -797,6 +796,18 @@ WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const Stri
 }
 #endif
 
+#if PLATFORM(QT)
+
+static Element* rootEditableElementRespectingShadowTree(const Frame& frame)
+{
+    Element* selectionRoot = frame.selection().selection().rootEditableElement();
+    if (selectionRoot && selectionRoot->isInShadowTree())
+        selectionRoot = selectionRoot->shadowHost();
+    return selectionRoot;
+}
+
+#endif
+
 EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -828,7 +839,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     size_t location = 0;
     size_t length = 0;
 
-    Element* selectionRoot = frame.selection().rootEditableElementRespectingShadowTree();
+    Element* selectionRoot = rootEditableElementRespectingShadowTree(frame);
     Element* scope = selectionRoot ? selectionRoot : frame.document()->documentElement();
 
     if (!scope)
@@ -857,14 +868,14 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         }
     }
 
-    if (selectionRoot)
-        result.editorRect = frame.view()->contentsToWindow(selectionRoot->pixelSnappedBoundingBox());
+    if (selectionRoot && selectionRoot->renderer())
+        result.editorRect = frame.view()->contentsToWindow(selectionRoot->renderer()->absoluteBoundingBoxRect());
 
     RefPtr<Range> range;
     if (result.hasComposition && (range = frame.editor().compositionRange())) {
         frame.editor().getCompositionSelection(result.anchorPosition, result.cursorPosition);
 
-        result.compositionRect = frame.view()->contentsToWindow(range->boundingBox());
+        result.compositionRect = frame.view()->contentsToWindow(range->absoluteBoundingBox());
     }
 
     if (!result.hasComposition && !result.selectionIsNone && (range = frame.selection().selection().firstRange())) {
@@ -5310,6 +5321,44 @@ void WebPage::dispatchDidLayout(WebCore::LayoutMilestones milestones)
 void WebPage::didRestoreScrollPosition()
 {
     send(Messages::WebPageProxy::DidRestoreScrollPosition());
+}
+
+WebURLSchemeHandlerProxy* WebPage::urlSchemeHandlerForScheme(const String& scheme)
+{
+    return m_schemeToURLSchemeHandlerProxyMap.get(scheme);
+}
+
+void WebPage::registerURLSchemeHandler(uint64_t handlerIdentifier, const String& scheme)
+{
+    auto schemeResult = m_schemeToURLSchemeHandlerProxyMap.add(scheme, std::make_unique<WebURLSchemeHandlerProxy>(*this, handlerIdentifier));
+    ASSERT(schemeResult.isNewEntry);
+
+    auto identifierResult = m_identifierToURLSchemeHandlerProxyMap.add(handlerIdentifier, schemeResult.iterator->value.get());
+    ASSERT_UNUSED(identifierResult, identifierResult.isNewEntry);
+}
+
+void WebPage::urlSchemeHandlerTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const ResourceResponse& response)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidReceiveResponse(taskIdentifier, response);
+}
+
+void WebPage::urlSchemeHandlerTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference& data)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidReceiveData(taskIdentifier, data.size(), data.data());
+}
+
+void WebPage::urlSchemeHandlerTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const ResourceError& error)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+
+    handler->taskDidComplete(taskIdentifier, error);
 }
 
 } // namespace WebKit

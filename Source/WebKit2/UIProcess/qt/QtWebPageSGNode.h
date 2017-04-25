@@ -33,17 +33,20 @@ namespace WebKit {
 
 class ContentsSGNode;
 class CoordinatedGraphicsScene;
+class WebPageProxy;
 
 class QtWebPageSGNode final : public QSGTransformNode {
     public:
-        QtWebPageSGNode();
+        QtWebPageSGNode(WebPageProxy&);
         void setBackground(const QRectF&, const QColor&);
         void setScale(float);
         void setCoordinatedGraphicsScene(PassRefPtr<CoordinatedGraphicsScene>);
         qreal devicePixelRatio() const { return m_devicePixelRatio; }
         void setDevicePixelRatio(qreal devicePixelRatio) { m_devicePixelRatio = devicePixelRatio; }
+        const WebPageProxy& page() const { return m_page; }
 
     private:
+        Ref<WebPageProxy> m_page;
         ContentsSGNode* m_contentsNode;
         QSGSimpleRectNode* m_backgroundNode;
         qreal m_devicePixelRatio;

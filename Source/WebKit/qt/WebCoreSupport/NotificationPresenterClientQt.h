@@ -74,7 +74,7 @@ private:
     friend class NotificationPresenterClientQt;
 };
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 typedef QHash <Notification*, NotificationWrapper*> NotificationsQueue;
 
@@ -88,12 +88,7 @@ public:
     void cancel(Notification*) override;
     void notificationObjectDestroyed(Notification*) override;
     void notificationControllerDestroyed() override;
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    void requestPermission(ScriptExecutionContext*, PassRefPtr<VoidCallback>) override;
-#endif
-#if ENABLE(NOTIFICATIONS)
     void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback>) override;
-#endif
     bool hasPendingPermissionRequests(ScriptExecutionContext*) const override;
     NotificationClient::Permission checkPermission(ScriptExecutionContext*) override;
     void cancelRequestsForPermission(ScriptExecutionContext*) override;
@@ -132,12 +127,7 @@ private:
     int m_clientCount;
     struct CallbacksInfo {
         QWebFrameAdapter* m_frame;
-#if ENABLE(LEGACY_NOTIFICATIONS)
-        QList<RefPtr<VoidCallback> > m_voidCallbacks;
-#endif
-#if ENABLE(NOTIFICATIONS)
         QList<RefPtr<NotificationPermissionCallback> > m_callbacks;
-#endif
     };
     QHash<ScriptExecutionContext*,  CallbacksInfo > m_pendingPermissionRequests;
     QHash<ScriptExecutionContext*, NotificationClient::Permission> m_cachedPermissions;
@@ -149,7 +139,7 @@ private:
 #endif
 };
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
 }
 

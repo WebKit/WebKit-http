@@ -60,4 +60,9 @@ String executablePathOfPluginProcess()
     return executablePath(QStringLiteral("QtWebPluginProcess"));
 }
 
+String executablePathOfNetworkProcess()
+{
+    return executablePath(QStringLiteral("QtWebNetworkProcess"));
+}
+
 } // namespace WebKit

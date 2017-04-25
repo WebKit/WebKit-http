@@ -38,8 +38,11 @@
 #include "WebFrameLoaderClient.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
+#include "WebPageProxyMessages.h"
 #include "WebProcess.h"
 #include "WebResourceLoader.h"
+#include "WebURLSchemeHandlerProxy.h"
+#include "WebURLSchemeHandlerTaskProxy.h"
 #include <WebCore/ApplicationCacheHost.h>
 #include <WebCore/CachedResource.h>
 #include <WebCore/Document.h>
@@ -130,6 +133,13 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader* resourceLoader, CachedResou
     ResourceLoadIdentifier identifier = resourceLoader->identifier();
     ASSERT(identifier);
 
+    // FIXME: Some entities in WebCore use WebCore's "EmptyFrameLoaderClient" instead of having a proper WebFrameLoaderClient.
+    // EmptyFrameLoaderClient shouldn't exist and everything should be using a WebFrameLoaderClient,
+    // but in the meantime we have to make sure not to mis-cast.
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(resourceLoader->frameLoader()->client());
+    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
+    WebPage* webPage = webFrame ? webFrame->page() : nullptr;
+
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
     // If the DocumentLoader schedules this as an archive resource load,
     // then we should remember the ResourceLoader in our records but not schedule it in the NetworkProcess.
@@ -170,17 +180,20 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader* resourceLoader, CachedResou
     }
 #endif
 
+    if (webPage) {
+        if (auto* handler = webPage->urlSchemeHandlerForScheme(resourceLoader->request().url().protocol())) {
+            LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, URL '%s' will be handled by a UIProcess URL scheme handler.", resourceLoader->url().string().utf8().data());
+            //RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled by a UIProcess URL scheme handler (frame = %p, resourceID = %" PRIu64 ")", resourceLoader->frame(), identifier);
+
+            handler->startNewTask(*resourceLoader);
+            return;
+        }
+    }
+
     LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be scheduled with the NetworkProcess with priority %d", resourceLoader->url().string().utf8().data(), static_cast<int>(resourceLoader->request().priority()));
 
     ContentSniffingPolicy contentSniffingPolicy = resourceLoader->shouldSniffContent() ? SniffContent : DoNotSniffContent;
     StoredCredentials allowStoredCredentials = resourceLoader->shouldUseCredentialStorage() ? AllowStoredCredentials : DoNotAllowStoredCredentials;
-
-    // FIXME: Some entities in WebCore use WebCore's "EmptyFrameLoaderClient" instead of having a proper WebFrameLoaderClient.
-    // EmptyFrameLoaderClient shouldn't exist and everything should be using a WebFrameLoaderClient,
-    // but in the meantime we have to make sure not to mis-cast.
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(resourceLoader->frameLoader()->client());
-    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
-    WebPage* webPage = webFrame ? webFrame->page() : 0;
 
     NetworkResourceLoadParameters loadParameters;
     loadParameters.identifier = identifier;
@@ -237,6 +250,11 @@ void WebLoaderStrategy::remove(ResourceLoader* resourceLoader)
 
     if (m_internallyFailedResourceLoaders.contains(resourceLoader)) {
         m_internallyFailedResourceLoaders.remove(resourceLoader);
+        return;
+    }
+
+    if (auto task = m_urlSchemeHandlerTasks.take(resourceLoader->identifier())) {
+        task->stopLoading();
         return;
     }
     

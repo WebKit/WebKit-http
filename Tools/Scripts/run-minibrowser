@@ -43,6 +43,21 @@ my @jhbuildWrapper;
 prohibitUnknownPort();
 setConfiguration();
 
+my $isWK2;
+
+sub isWK2()
+{
+    if (defined($isWK2)) {
+        return $isWK2;
+    }
+    if (checkForArgumentAndRemoveFromARGV("-2")) {
+        $isWK2 = 1;
+    } else {
+        $isWK2 = 0;
+    }
+    return $isWK2;
+}
+
 if (isGtk() || isEfl()) {
     # Check to see that all the frameworks are built.
     checkFrameworks();
@@ -56,7 +71,7 @@ if (isGtk() || isEfl()) {
     # Check to see that all the frameworks are built.
     checkFrameworks();
 
-    $launcherPath = catdir(productDir(), "bin", "QtTestBrowser");
+    $launcherPath = catdir(productDir(), "bin", isWK2() ? "MiniBrowser" : "QtTestBrowser");
     die "Can't find $launcherPath" unless -x $launcherPath;
     @jhbuildWrapper = wrapperPrefixIfNeeded();
     print "Starting QtTestBrowser.\n";

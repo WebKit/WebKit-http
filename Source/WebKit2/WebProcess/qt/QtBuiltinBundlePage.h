@@ -53,24 +53,24 @@ public:
     bool navigatorQtObjectEnabled() const { return m_navigatorQtObjectEnabled; }
     void setNavigatorQtObjectEnabled(bool);
 
-#ifdef HAVE_WEBCHANNEL
-    void postMessageFromNavigatorQtWebChannelTransport(WKStringRef message);
-    void didReceiveMessageToNavigatorQtWebChannelTransport(WKStringRef message);
+#if ENABLE(QT_WEBCHANNEL)
+    void postMessageFromNavigatorQtWebChannelTransport(WKDataRef message);
+    void didReceiveMessageToNavigatorQtWebChannelTransport(WKDataRef message);
 #endif
 
 private:
     void registerNavigatorQtObject(JSGlobalContextRef);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     void registerNavigatorQtWebChannelTransportObject(JSGlobalContextRef);
 #endif
 
-    void postNavigatorMessage(WKStringRef messageName, WKStringRef message);
+    void postNavigatorMessage(WKStringRef messageName, WKTypeRef message);
 
     QtBuiltinBundle* m_bundle;
     WKBundlePageRef m_page;
     JSObjectRef m_navigatorQtObject;
     bool m_navigatorQtObjectEnabled;
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     JSObjectRef m_navigatorQtWebChannelTransportObject;
 #endif
 };

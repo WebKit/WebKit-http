@@ -24,6 +24,10 @@
 #include "qquickwebpage_p.h"
 #include <QTransform>
 
+namespace WebCore {
+class Color;
+}
+
 class QQuickWebViewPrivate;
 
 class QQuickWebPagePrivate {
@@ -33,7 +37,7 @@ public:
 
     void updateSize();
 
-    void paint(QPainter*);
+    void paint(QPainter*, const WebCore::Color& backgroundColor, bool drawsBackground);
     void resetPaintNode();
     QQuickWebPage* const q;
     QQuickWebView* const viewportItem;

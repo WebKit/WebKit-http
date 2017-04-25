@@ -39,16 +39,16 @@ static inline QtDownloadManager* toQtDownloadManager(const void* clientInfo)
 
 QtDownloadManager::QtDownloadManager(WKContextRef context)
 {
-    WKContextDownloadClient downloadClient;
-    memset(&downloadClient, 0, sizeof(WKContextDownloadClient));
-    downloadClient.version = kWKContextDownloadClientCurrentVersion;
-    downloadClient.clientInfo = this;
+    WKContextDownloadClientV0 downloadClient;
+    memset(&downloadClient, 0, sizeof(WKContextDownloadClientV0));
+    downloadClient.base.version = 0;
+    downloadClient.base.clientInfo = this;
     downloadClient.didReceiveResponse = didReceiveResponse;
     downloadClient.didReceiveData = didReceiveDataForDownload;
     downloadClient.didCreateDestination = didCreateDestination;
     downloadClient.didFinish = didFinishDownload;
     downloadClient.didFail = didFailDownload;
-    WKContextSetDownloadClient(context, &downloadClient);
+    WKContextSetDownloadClient(context, &downloadClient.base);
 }
 
 QtDownloadManager::~QtDownloadManager()

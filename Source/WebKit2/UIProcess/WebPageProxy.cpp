@@ -103,6 +103,7 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include "WebProtectionSpace.h"
+#include "WebURLSchemeHandler.h"
 #include "WebUserContentControllerProxy.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/BitmapImage.h>
@@ -178,6 +179,27 @@
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_process->connection())
 #define MESSAGE_CHECK_URL(url) MESSAGE_CHECK_BASE(m_process->checkURLReceivedFromWebProcess(url), m_process->connection())
+
+// Instead of URLParser class added later
+namespace URLParser
+{
+static WTF::Optional<String> maybeCanonicalizeScheme(const String& scheme)
+{
+    if (scheme.isEmpty())
+        return WTF::Nullopt;
+
+    if (!isASCIIAlpha(scheme[0]))
+        return WTF::Nullopt;
+
+    for (size_t i = 1; i < scheme.length(); ++i) {
+        if (isASCIIAlphanumeric(scheme[i]) || scheme[i] == '+' || scheme[i] == '-' || scheme[i] == '.')
+            continue;
+        return WTF::Nullopt;
+    }
+
+    return scheme.convertToASCIILowercase();
+}
+}
 
 using namespace WebCore;
 
@@ -500,7 +522,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
 WebPageProxy::~WebPageProxy()
 {
-    ASSERT(m_process->webPage(m_pageID) != this);
+    // QtWebPageSGNode may be the last owner of WebPageProxy, but it is destroyed
+    // in the renderer thread which causes assertion failure when accessing globalPageMap
+    ASSERT(!RunLoop::isMain() || m_process->webPage(m_pageID) != this);
 #if !ASSERT_DISABLED
     for (WebPageProxy* page : m_process->pages())
         ASSERT(page != this);
@@ -5264,6 +5288,9 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #endif
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
 
+    for (auto& iterator : m_urlSchemeHandlersByScheme)
+        parameters.urlSchemeHandlers.set(iterator.key, iterator.value->identifier());
+
     return parameters;
 }
 
@@ -6238,6 +6265,43 @@ void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocu
 void WebPageProxy::didRestoreScrollPosition()
 {
     m_pageClient.didRestoreScrollPosition();
+}
+
+void WebPageProxy::setURLSchemeHandlerForScheme(Ref<WebURLSchemeHandler>&& handler, const String& scheme)
+{
+    auto canonicalizedScheme = URLParser::maybeCanonicalizeScheme(scheme);
+    ASSERT(canonicalizedScheme);
+//    ASSERT(!URLParser::isSpecialScheme(canonicalizedScheme.value()));
+
+    auto schemeResult = m_urlSchemeHandlersByScheme.add(canonicalizedScheme.value(), handler.ptr());
+    ASSERT_UNUSED(schemeResult, schemeResult.isNewEntry);
+
+    auto identifier = handler->identifier();
+    auto identifierResult = m_urlSchemeHandlersByIdentifier.add(identifier, WTFMove(handler));
+    ASSERT_UNUSED(identifierResult, identifierResult.isNewEntry);
+
+    m_process->send(Messages::WebPage::RegisterURLSchemeHandler(identifier, canonicalizedScheme.value()), m_pageID);
+}
+
+WebURLSchemeHandler* WebPageProxy::urlSchemeHandlerForScheme(const String& scheme)
+{
+    return m_urlSchemeHandlersByScheme.get(scheme);
+}
+
+void WebPageProxy::startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest& request)
+{
+    auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
+    ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
+
+    iterator->value->startTask(*this, resourceIdentifier, request);
+}
+
+void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier)
+{
+    auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
+    ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
+
+    iterator->value->stopTask(*this, resourceIdentifier);
 }
 
 } // namespace WebKit

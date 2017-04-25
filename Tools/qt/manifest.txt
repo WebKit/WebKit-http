@@ -83,6 +83,12 @@ file Source/WTF/wtf/cocoa
 file Source/WTF/wtf/text/cf
 file Source/WebCore/platform/cf/SharedBufferCF.cpp
 
+# WK2 on Windows and macOS
+file Source/WebKit2/Platform/IPC/mac
+file Source/WebKit2/Platform/IPC/win
+file Source/WebKit2/Platform/mac
+file Source/WebKit2/Platform/win
+
 # WK1 plugin code is in WebKit/win
 file Source/WebKit/win/Plugins
 

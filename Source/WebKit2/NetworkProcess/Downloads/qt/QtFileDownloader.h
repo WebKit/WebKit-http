@@ -40,10 +40,11 @@ class Download;
 class QtFileDownloader : public QObject {
     Q_OBJECT
 public:
-    QtFileDownloader(Download*, QNetworkReply*);
+    QtFileDownloader(Download&, const QNetworkRequest&);
+    QtFileDownloader(Download&, QNetworkReply*);
     virtual ~QtFileDownloader();
+
     void cancel();
-    void init();
     void startTransfer(const QString& destination);
 
     enum DownloadError {
@@ -62,14 +63,15 @@ private Q_SLOTS:
     void onError(QNetworkReply::NetworkError);
 
 private:
+    void makeConnections();
     void abortDownloadWritingAndEmitError(QtFileDownloader::DownloadError);
     void handleDownloadResponse();
 
-    Download* m_download;
+    Download& m_download;
     std::unique_ptr<QNetworkReply> m_reply;
     std::unique_ptr<QFile> m_destinationFile;
     QNetworkReply::NetworkError m_error;
-    bool m_headersRead;
+    bool m_headersRead { false };
 };
 
 } // namespace WebKit

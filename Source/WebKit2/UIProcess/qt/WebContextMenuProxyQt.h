@@ -40,8 +40,7 @@ public:
     WebContextMenuProxyQt(const ContextMenuContextData&, const UserData&);
 
 private:
-    virtual void showContextMenu(const WebCore::IntPoint&, const Vector<WebContextMenuItemData>&);
-    virtual void hideContextMenu();
+    void show() override;
 };
 
 } // namespace WebKit

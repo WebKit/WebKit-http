@@ -147,10 +147,6 @@ messages -> WebPageProxy {
 
     FrameDidBecomeFrameSet(uint64_t frameID, bool value)
 
-#if PLATFORM(QT)
-    ResolveApplicationSchemeRequest(struct WebKit::QtNetworkRequestData request)
-#endif
-
     # History client messages.
     DidNavigateWithNavigationData(struct WebKit::WebNavigationDataStore store, uint64_t frameID)
     DidPerformClientRedirect(String sourceURLString, String destinationURLString, uint64_t frameID)
@@ -468,4 +464,7 @@ messages -> WebPageProxy {
 #if PLATFORM(MAC)
     DidHandleAcceptedCandidate()
 #endif
+
+    StartURLSchemeHandlerTask(uint64_t loaderIdentifier, uint64_t resourceIdentifier, WebCore::ResourceRequest request)
+    StopURLSchemeHandlerTask(uint64_t loaderIdentifier, uint64_t resourceIdentifier)
 }

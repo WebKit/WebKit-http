@@ -34,8 +34,12 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool InjectedBundle::load(APIObject* initializationUserData)
+bool InjectedBundle::initialize(const WebProcessCreationParameters&, API::Object* initializationUserData)
 {
+    // Built-in bundle
+    if (m_path.isEmpty())
+        return true;
+
     m_platformBundle.setFileName(static_cast<QString>(m_path));
     if (!m_platformBundle.load()) {
         qWarning("Error loading the injected bundle: %s", qPrintable(m_platformBundle.errorString()));
@@ -52,6 +56,14 @@ bool InjectedBundle::load(APIObject* initializationUserData)
 
     initializeFunction(toAPI(this), toAPI(initializationUserData));
     return true;
+}
+
+void InjectedBundle::setBundleParameter(const WTF::String&, const IPC::DataReference&)
+{
+}
+
+void InjectedBundle::setBundleParameters(const IPC::DataReference&)
+{
 }
 
 } // namespace WebKit

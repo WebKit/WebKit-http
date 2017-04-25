@@ -36,11 +36,7 @@ WebContextMenuProxyQt::WebContextMenuProxyQt(const ContextMenuContextData& conte
 {
 }
 
-void WebContextMenuProxyQt::showContextMenu(const IntPoint&, const Vector<WebContextMenuItemData>&)
-{
-}
-
-void WebContextMenuProxyQt::hideContextMenu()
+void WebContextMenuProxyQt::show()
 {
 }
 

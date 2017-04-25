@@ -88,7 +88,7 @@ void QtPageClient::pageDidRequestScroll(const IntPoint& pos)
     QQuickWebViewPrivate::get(m_webView)->pageDidRequestScroll(pos);
 }
 
-void QtPageClient::processDidCrash()
+void QtPageClient::processDidExit()
 {
     QQuickWebViewPrivate::get(m_webView)->processDidCrash();
 }
@@ -98,7 +98,7 @@ void QtPageClient::didRelaunchProcess()
     QQuickWebViewPrivate::get(m_webView)->didRelaunchProcess();
 }
 
-void QtPageClient::didChangeContentsSize(const IntSize& newSize)
+void QtPageClient::didChangeContentSize(const IntSize& newSize)
 {
     PageViewportController* pvc = QQuickWebViewPrivate::get(m_webView)->viewportController();
     if (pvc)
@@ -199,12 +199,12 @@ FloatRect QtPageClient::convertToUserSpace(const FloatRect& rect)
     return rect;
 }
 
-IntPoint QtPageClient::screenToWindow(const IntPoint& point)
+IntPoint QtPageClient::screenToRootView(const IntPoint& point)
 {
     return point;
 }
 
-IntRect QtPageClient::windowToScreen(const IntRect& rect)
+IntRect QtPageClient::rootViewToScreen(const IntRect& rect)
 {
     return rect;
 }
@@ -220,7 +220,7 @@ std::unique_ptr<WebContextMenuProxy> QtPageClient::createContextMenuProxy(WebPag
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebColorPicker> QtPageClient::createColorPicker(WebPageProxy* webPageProxy, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
+RefPtr<WebColorPicker> QtPageClient::createColorPicker(WebPageProxy* webPageProxy, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
 {
     return WebColorPickerQt::create(webPageProxy, m_webView, initialColor, elementRect);
 }
@@ -266,6 +266,43 @@ void QtPageClient::doneWithTouchEvent(const NativeWebTouchEvent& event, bool was
     m_eventHandler->doneWithTouchEvent(event, wasEventHandled);
 }
 #endif
+
+WebFullScreenManagerProxyClient& QtPageClient::fullScreenManagerProxyClient()
+{
+    return *this;
+}
+
+// QTFIXME: #419
+void QtPageClient::closeFullScreenManager()
+{
+    notImplemented();
+}
+
+bool QtPageClient::isFullScreen()
+{
+    notImplemented();
+    return false;
+}
+
+void QtPageClient::enterFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::exitFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
+
+void QtPageClient::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
 
 void QtPageClient::displayView()
 {
@@ -326,6 +363,86 @@ void QtPageClient::exitAcceleratedCompositingMode()
 void QtPageClient::updateAcceleratedCompositingMode(const LayerTreeContext&)
 {
     // FIXME: Implement.
+}
+
+void QtPageClient::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
+{
+}
+
+void QtPageClient::didCommitLoadForMainFrame(const WTF::String& mimeType, bool useCustomContentProvider)
+{
+}
+
+void QtPageClient::willEnterAcceleratedCompositingMode()
+{
+}
+
+void QtPageClient::didFinishLoadingDataForCustomContentProvider(const WTF::String& suggestedFilename, const IPC::DataReference&)
+{
+}
+
+void QtPageClient::navigationGestureDidBegin()
+{
+}
+
+void QtPageClient::navigationGestureWillEnd(bool willNavigate, WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::navigationGestureDidEnd(bool willNavigate, WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::navigationGestureDidEnd()
+{
+}
+
+void QtPageClient::willRecordNavigationSnapshot(WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::didRemoveNavigationGestureSnapshot()
+{
+}
+
+void QtPageClient::didFirstVisuallyNonEmptyLayoutForMainFrame()
+{
+}
+
+void QtPageClient::didFinishLoadForMainFrame()
+{
+}
+
+void QtPageClient::didFailLoadForMainFrame()
+{
+}
+
+void QtPageClient::didSameDocumentNavigationForMainFrame(WebKit::SameDocumentNavigationType)
+{
+}
+
+void QtPageClient::didChangeBackgroundColor()
+{
+}
+
+void QtPageClient::refView()
+{
+}
+
+void QtPageClient::derefView()
+{
+}
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+bool QtPageClient::decidePolicyForInstallMissingMediaPluginsPermissionRequest(WebKit::InstallMissingMediaPluginsPermissionRequest&)
+{
+    // QTFIXME
+    return false;
+}
+#endif
+
+void QtPageClient::didRestoreScrollPosition()
+{
 }
 
 } // namespace WebKit

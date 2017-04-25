@@ -31,6 +31,7 @@
 #include <WKAPICast.h>
 #include <WKArray.h>
 #include <WKContextPrivate.h>
+#include <WKData.h>
 #include <WKPage.h>
 #include <WKString.h>
 #include <WKStringQt.h>
@@ -50,7 +51,7 @@ static void initInspectorServer()
 #if ENABLE(INSPECTOR_SERVER)
     QString inspectorEnv = QString::fromUtf8(qgetenv("QTWEBKIT_INSPECTOR_SERVER"));
     if (!inspectorEnv.isEmpty()) {
-        QString bindAddress = QLatin1String("127.0.0.1");
+        QString bindAddress = QStringLiteral("127.0.0.1");
         QString portStr = inspectorEnv;
         int port = 0;
 
@@ -69,7 +70,7 @@ static void initInspectorServer()
 
         bool success = WebInspectorServer::singleton().listen(bindAddress, port);
         if (success) {
-            QString inspectorServerUrl = QString::fromLatin1("http://%1:%2").arg(bindAddress).arg(port);
+            QString inspectorServerUrl = QStringLiteral("http://%1:%2").arg(bindAddress).arg(port);
             qWarning("Inspector server started successfully. Try pointing a WebKit browser to %s", qPrintable(inspectorServerUrl));
         } else
             qWarning("Couldn't start the inspector server on bind address \"%s\" and port \"%d\". In case of invalid input, try something like: \"12345\" or \"192.168.2.14:12345\" (with the address of one of this host's interface).", qPrintable(bindAddress), port);
@@ -90,7 +91,7 @@ static void globalInitialization()
 static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*)
 {
     if (!WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
         && !WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")
 #endif
         )
@@ -104,26 +105,30 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
     WKArrayRef body = static_cast<WKArrayRef>(messageBody);
     ASSERT(WKArrayGetSize(body) == 2);
     ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 0)) == WKPageGetTypeID());
-    ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
 
     WKPageRef page = static_cast<WKPageRef>(WKArrayGetItemAtIndex(body, 0));
-    WKStringRef str = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
 
-    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(str);
-#ifdef HAVE_WEBCHANNEL
-    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(str);
+    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
+        WKStringRef data = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(data);
+    }
+#if ENABLE(QT_WEBCHANNEL)
+    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKDataGetTypeID());
+        WKDataRef data = static_cast<WKDataRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(data);
+    }
 #endif
 }
 
 static void initializeContextInjectedBundleClient(WKContextRef context)
 {
-    WKContextInjectedBundleClient injectedBundleClient;
-    memset(&injectedBundleClient, 0, sizeof(WKContextInjectedBundleClient));
-    injectedBundleClient.version = kWKContextInjectedBundleClientCurrentVersion;
+    WKContextInjectedBundleClientV0 injectedBundleClient;
+    memset(&injectedBundleClient, 0, sizeof(WKContextInjectedBundleClientV0));
+    injectedBundleClient.base.version = 0;
     injectedBundleClient.didReceiveMessageFromInjectedBundle = didReceiveMessageFromInjectedBundle;
-    WKContextSetInjectedBundleClient(context, &injectedBundleClient);
+    WKContextSetInjectedBundleClient(context, &injectedBundleClient.base);
 }
 
 QtWebContext::QtWebContext(WKContextRef context)
@@ -155,10 +160,11 @@ QtWebContext* QtWebContext::defaultContext()
         WKContextSetCacheModel(wkContext.get(), kWKCacheModelDocumentBrowser);
 
         // Those paths have to be set before the first web process is spawned.
-        WKContextSetDatabaseDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DatabaseStorage))).get());
-        WKContextSetLocalStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(LocalStorage))).get());
+// QTFIXME
+//        WKContextSetDatabaseDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DatabaseStorage))).get());
+//        WKContextSetLocalStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(LocalStorage))).get());
         WKContextSetCookieStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(CookieStorage))).get());
-        WKContextSetDiskCacheDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DiskCacheStorage))).get());
+//        WKContextSetDiskCacheDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DiskCacheStorage))).get());
 
         s_defaultQtWebContext = QtWebContext::create(wkContext.get());
     }
@@ -177,6 +183,10 @@ QString QtWebContext::preparedStoragePath(StorageType type)
 {
     QString path;
     switch (type) {
+    case ApplicationCacheStorage:
+        path = defaultLocation(QStandardPaths::DataLocation) % QStringLiteral("Applications");
+        QDir::root().mkpath(path);
+        break;
     case DatabaseStorage:
         path = defaultLocation(QStandardPaths::DataLocation) % QStringLiteral("Databases");
         QDir::root().mkpath(path);
@@ -190,7 +200,11 @@ QString QtWebContext::preparedStoragePath(StorageType type)
         QDir::root().mkpath(path);
         break;
     case DiskCacheStorage:
+#if ENABLE(NETWORK_CACHE)
+        path = defaultLocation(QStandardPaths::CacheLocation) % QStringLiteral("WebKitCache");
+#else
         path = defaultLocation(QStandardPaths::CacheLocation) % QStringLiteral("DiskCache");
+#endif
         QDir::root().mkpath(path);
         break;
     case IconDatabaseStorage:

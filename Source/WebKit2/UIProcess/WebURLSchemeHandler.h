@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Zeno Albisser <zeno@webkit.org>
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,42 +23,42 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef QtNetworkReply_h
-#define QtNetworkReply_h
+#pragma once
 
-#include "QtNetworkReplyData.h"
-#include "SharedMemory.h"
-#include <QByteArray>
-#include <QDateTime>
-#include <QNetworkReply>
+#include "WebURLSchemeHandlerTask.h"
+#include <wtf/HashMap.h>
+#include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
+
+namespace WebCore {
+class ResourceRequest;
+}
 
 namespace WebKit {
 
-class QtNetworkAccessManager;
+class WebPageProxy;
 
-class QtNetworkReply final : public QNetworkReply {
+class WebURLSchemeHandler : public RefCounted<WebURLSchemeHandler> {
+    WTF_MAKE_NONCOPYABLE(WebURLSchemeHandler);
 public:
-    QtNetworkReply(const QNetworkRequest&, QtNetworkAccessManager* parent);
+    virtual ~WebURLSchemeHandler();
 
-    qint64 readData(char *data, qint64 maxlen) final;
-    qint64 bytesAvailable() const final;
-    void setReplyData(const QtNetworkReplyData&);
-    void finalize();
+    uint64_t identifier() const { return m_identifier; }
+
+    void startTask(WebPageProxy&, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
+    void stopTask(WebPageProxy&, uint64_t resourceIdentifier);
 
 protected:
-    void setData(const SharedMemory::Handle&, qint64 dataSize);
-
-    void abort() final;
-    void close() final;
-    void setReadBufferSize(qint64) final;
-    bool canReadLine() const final;
+    WebURLSchemeHandler();
 
 private:
-    qint64 m_bytesAvailable;
-    RefPtr<SharedMemory> m_sharedMemory;
-    qint64 m_sharedMemorySize;
-};
+    virtual void platformStartTask(WebPageProxy&, WebURLSchemeHandlerTask&) = 0;
+    virtual void platformStopTask(WebPageProxy&, WebURLSchemeHandlerTask&) = 0;
+
+    uint64_t m_identifier;
+
+    HashMap<uint64_t, RefPtr<WebURLSchemeHandlerTask>> m_tasks;
+
+}; // class WebURLSchemeHandler
 
 } // namespace WebKit
-
-#endif // QtNetworkReply_h

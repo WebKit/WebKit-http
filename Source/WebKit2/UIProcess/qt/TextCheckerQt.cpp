@@ -80,12 +80,12 @@ void TextChecker::closeSpellDocumentWithTag(int64_t)
     notImplemented();
 }
 
-void TextChecker::checkSpellingOfString(int64_t, const UChar*, uint32_t, int32_t&, int32_t&)
+void TextChecker::checkSpellingOfString(int64_t, StringView, int32_t&, int32_t&)
 {
     notImplemented();
 }
 
-void TextChecker::checkGrammarOfString(int64_t, const UChar*, uint32_t, Vector<WebCore::GrammarDetail>&, int32_t&, int32_t&)
+void TextChecker::checkGrammarOfString(int64_t, StringView, Vector<WebCore::GrammarDetail>&, int32_t&, int32_t&)
 {
     notImplemented();
 }

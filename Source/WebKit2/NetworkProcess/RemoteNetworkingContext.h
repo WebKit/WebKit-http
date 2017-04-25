@@ -69,6 +69,13 @@ private:
 #if PLATFORM(COCOA)
     bool m_localFileContentSniffingEnabled = false;
 #endif
+
+#if PLATFORM(QT)
+    QObject* originatingObject() const override { return nullptr; }
+    QNetworkAccessManager* networkAccessManager() const override;
+    bool mimeSniffingEnabled() const override  { return true; }
+    bool thirdPartyCookiePolicyPermission(const QUrl&) const override  { return true; }
+#endif
 };
 
 }

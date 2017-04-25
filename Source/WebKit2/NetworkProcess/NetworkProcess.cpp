@@ -451,6 +451,13 @@ void NetworkProcess::cancelDownload(DownloadID downloadID)
 {
     downloadManager().cancelDownload(downloadID);
 }
+
+#if PLATFORM(QT)
+void NetworkProcess::startTransfer(DownloadID downloadID, const String& destination)
+{
+    downloadManager().startTransfer(downloadID, destination);
+}
+#endif
     
 #if USE(NETWORK_SESSION)
 void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(DownloadID downloadID, bool canAuthenticate)

@@ -41,6 +41,10 @@
 #include "WebSQLiteDatabaseTracker.h"
 #endif
 
+#if PLATFORM(QT)
+#include "QtNetworkAccessManager.h"
+#endif
+
 namespace WebCore {
 class CertificateInfo;
 class NetworkStorageSession;
@@ -99,6 +103,10 @@ public:
     void clearHSTSCache(WebCore::NetworkStorageSession&, std::chrono::system_clock::time_point modifiedSince);
 #endif
 
+#if PLATFORM(QT)
+    QNetworkAccessManager& networkAccessManager() { return m_networkAccessManager; }
+#endif
+
     void prefetchDNS(const String&);
 
 private:
@@ -154,6 +162,9 @@ private:
     void downloadRequest(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&);
     void resumeDownload(WebCore::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancelDownload(DownloadID);
+#if PLATFORM(QT)
+    void startTransfer(DownloadID, const String& destination);
+#endif
 #if USE(NETWORK_SESSION)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
     void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
@@ -196,6 +207,10 @@ private:
 
 #if PLATFORM(IOS)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
+#endif
+
+#if PLATFORM(QT)
+    QtNetworkAccessManager m_networkAccessManager;
 #endif
 };
 
