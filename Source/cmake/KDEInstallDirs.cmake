@@ -449,6 +449,10 @@ if(KDE_INSTALL_USE_QT_SYS_PATHS)
     file(RELATIVE_PATH INCLUDE_INSTALL_DIR ${qt_install_prefix} ${qt_include_dir})
     set(KDE_INSTALL_INCLUDEDIR ${INCLUDE_INSTALL_DIR})
 
+    query_qmake(qt_libexec_dir QT_INSTALL_LIBEXECS)
+    file(RELATIVE_PATH LIBEXEC_INSTALL_DIR ${qt_install_prefix} ${qt_libexec_dir})
+    set(KDE_INSTALL_LIBEXECDIR ${LIBEXEC_INSTALL_DIR})
+
     # Qt-specific vars
     query_qmake(qt_plugins_dir QT_INSTALL_PLUGINS)
 
