@@ -202,7 +202,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
         if (point.type == wpe_input_touch_event_type_null)
             continue;
 
-        WebCore::IntPoint pointCoordinates;
+        WebCore::IntPoint pointCoordinates(point.x, point.y);
         pointCoordinates.scale(1 / deviceScaleFactor);
         touchPoints.uncheckedAppend(
             WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
