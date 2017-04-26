@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEViewClient_h
-#define WPEViewClient_h
+#pragma once
 
 #include "APIClient.h"
 #include <WebKit/WKView.h>
@@ -45,6 +44,3 @@ public:
 };
 
 } // namespace WebKit
-
-
-#endif // WPEViewClient_h

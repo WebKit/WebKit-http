@@ -26,10 +26,10 @@
 #include "config.h"
 #include "EventHandler.h"
 
-#include "Page.h"
-#include "Frame.h"
 #include "FocusController.h"
+#include "Frame.h"
 #include "NotImplemented.h"
+#include "Page.h"
 
 namespace WebCore {
 

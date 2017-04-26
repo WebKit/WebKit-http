@@ -27,8 +27,8 @@
 #include "LocalizedStrings.h"
 
 #include "NotImplemented.h"
-#include <wtf/text/WTFString.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 

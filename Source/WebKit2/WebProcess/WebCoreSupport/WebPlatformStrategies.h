@@ -95,10 +95,10 @@ private:
 #endif
 
 #if PLATFORM(WPE)
-    virtual void getTypes(Vector<String>& types) override;
-    virtual String readStringFromPasteboard(int index, const String& pasteboardType) override;
-    virtual void writeToPasteboard(const WebCore::PasteboardWebContent&) override;
-    virtual void writeToPasteboard(const String& pasteboardType, const String&) override;
+    void getTypes(Vector<String>& types) override;
+    String readStringFromPasteboard(int index, const String& pasteboardType) override;
+    void writeToPasteboard(const WebCore::PasteboardWebContent&) override;
+    void writeToPasteboard(const String& pasteboardType, const String&) override;
 #endif
 };
 

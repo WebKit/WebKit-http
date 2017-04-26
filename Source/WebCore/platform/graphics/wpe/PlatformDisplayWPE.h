@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformDisplayWPE_h
-#define PlatformDisplayWPE_h
+#pragma once
 
 #if PLATFORM(WPE)
 
@@ -98,5 +97,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayWPE, WPE)
 
 #endif // PLATFORM(WPE)
-
-#endif // PlatformDisplayWPE_h

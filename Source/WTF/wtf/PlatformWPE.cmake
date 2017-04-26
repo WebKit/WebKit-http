@@ -4,8 +4,8 @@ list(APPEND WTF_SOURCES
 
     generic/WorkQueueGeneric.cpp
 
-    glib/GRefPtr.cpp
     glib/GLibUtilities.cpp
+    glib/GRefPtr.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
 

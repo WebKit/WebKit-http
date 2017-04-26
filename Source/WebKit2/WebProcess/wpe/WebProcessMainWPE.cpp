@@ -31,9 +31,8 @@
 #include "WebProcess.h"
 #include <WebCore/PlatformDisplayWPE.h>
 #include <glib.h>
-#include <libsoup/soup.h>
-
 #include <iostream>
+#include <libsoup/soup.h>
 
 using namespace WebCore;
 

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CompositingManagerProxy_h
-#define CompositingManagerProxy_h
+#pragma once
 
 #include "MessageReceiver.h"
 #include <wtf/Noncopyable.h>
@@ -49,8 +48,8 @@ public:
 
 private:
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override { }
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>& replyEncoder) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override { }
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>& replyEncoder) override;
 
     void establishConnection(IPC::Attachment&);
 
@@ -58,5 +57,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // CompositingManagerProxy_h

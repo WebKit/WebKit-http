@@ -32,7 +32,7 @@ namespace WebKit {
 
 NativeWebTouchEvent::NativeWebTouchEvent(struct wpe_input_touch_event* event, float deviceScaleFactor)
     : WebTouchEvent(WebEventFactory::createWebTouchEvent(event, deviceScaleFactor))
-    , m_fallbackTouchPoint{ wpe_input_touch_event_type_null, 0, 0, 0, 0 }
+    , m_fallbackTouchPoint { wpe_input_touch_event_type_null, 0, 0, 0, 0 }
 {
     for (unsigned i = 0; i < event->touchpoints_length; ++i) {
         auto& point = event->touchpoints[i];

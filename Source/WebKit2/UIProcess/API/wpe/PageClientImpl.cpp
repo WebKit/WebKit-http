@@ -32,8 +32,8 @@
 #include "ScrollGestureController.h"
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
-#include <WebCore/NotImplemented.h>
 #include <WebCore/ActivityState.h>
+#include <WebCore/NotImplemented.h>
 
 namespace WebKit {
 
@@ -191,7 +191,7 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& touchEvent, b
         return;
     }
 
-    struct wpe_input_pointer_event pointerEvent{
+    struct wpe_input_pointer_event pointerEvent {
         wpe_input_pointer_event_type_null, touchPoint->time,
         touchPoint->x, touchPoint->y,
         1, 0

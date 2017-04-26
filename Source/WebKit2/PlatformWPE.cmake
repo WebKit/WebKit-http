@@ -41,14 +41,14 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/soup/NetworkSessionSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
-    Platform/classifier/ResourceLoadStatisticsClassifier.cpp
-
-    Platform/glib/ModuleGlib.cpp
-
     Platform/IPC/glib/GSocketMonitor.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
+
+    Platform/classifier/ResourceLoadStatisticsClassifier.cpp
+
+    Platform/glib/ModuleGlib.cpp
 
     Platform/unix/LoggingUnix.cpp
     Platform/unix/SharedMemoryUnix.cpp
@@ -66,9 +66,9 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
     Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
-    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
 
@@ -90,6 +90,12 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
 
+    UIProcess/BackingStore.cpp
+    UIProcess/DefaultUndoController.cpp
+    UIProcess/LegacySessionStateCodingNone.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
+    UIProcess/WebResourceLoadStatisticsStore.cpp
+
     UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
@@ -105,15 +111,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEViewClient.cpp
 
-    UIProcess/BackingStore.cpp
-    UIProcess/DefaultUndoController.cpp
-    UIProcess/LegacySessionStateCodingNone.cpp
-    UIProcess/WebResourceLoadStatisticsManager.cpp
-    UIProcess/WebResourceLoadStatisticsStore.cpp
+    UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
 
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
-
-    UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
 
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
 

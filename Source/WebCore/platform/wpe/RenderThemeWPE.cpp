@@ -26,9 +26,9 @@
 #include "config.h"
 #include "RenderThemeWPE.h"
 
+#include "NotImplemented.h"
 #include "UserAgentScripts.h"
 #include "UserAgentStyleSheets.h"
-#include "NotImplemented.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {

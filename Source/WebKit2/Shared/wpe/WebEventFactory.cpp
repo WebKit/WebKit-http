@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WebEventFactory.h"
 
-#include <wpe/input.h>
 #include <WebCore/Scrollbar.h>
 #include <cstdlib>
+#include <wpe/input.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {

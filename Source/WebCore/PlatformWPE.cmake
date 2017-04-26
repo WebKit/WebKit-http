@@ -51,13 +51,13 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
-    page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
-    page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
-
     page/scrolling/ScrollingStateStickyNode.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
     page/scrolling/ScrollingTreeScrollingNode.cpp
+
+    page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
+    page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
 
     platform/Cursor.cpp
     platform/KillRingNone.cpp
@@ -104,8 +104,8 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
     platform/graphics/opengl/Extensions3DOpenGLES.cpp
-    platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+    platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
@@ -150,8 +150,8 @@ list(APPEND WebCore_SOURCES
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
-    platform/glib/SharedBufferGlib.cpp
     platform/glib/SSLKeyGeneratorGLib.cpp
+    platform/glib/SharedBufferGlib.cpp
 
     platform/graphics/cairo/GraphicsContextCairo.cpp
 

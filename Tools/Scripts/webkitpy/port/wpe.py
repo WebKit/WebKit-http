@@ -31,6 +31,7 @@ from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
 from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
 
+
 class WPEPort(Port):
     port_name = "wpe"
 

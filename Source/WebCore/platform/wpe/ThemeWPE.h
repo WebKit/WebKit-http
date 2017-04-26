@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThemeWPE_h
-#define ThemeWPE_h
+#pragma once
 
 #include "Theme.h"
 
@@ -35,9 +34,9 @@ public:
     ThemeWPE() { }
     virtual ~ThemeWPE() { }
 
-    virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const override;
+    LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const override;
 
-    virtual void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float, ScrollView*, float, float) override;
+    void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float, ScrollView*, float, float) override;
 
 private:
     void paintCheckbox(ControlStates&, GraphicsContext&, const FloatRect&, float);
@@ -46,5 +45,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ThemeWPE_h

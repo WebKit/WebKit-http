@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebEventFactory_h
-#define WebEventFactory_h
+#pragma once
 
 #include "WebEvent.h"
 
@@ -44,5 +43,3 @@ public:
 };
 
 } // namespace WebKit
-
-#endif // WebEventFactory_h

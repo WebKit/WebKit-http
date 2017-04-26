@@ -27,9 +27,9 @@
 #include "WebPage.h"
 
 #include "NotImplemented.h"
-#include <WebCore/Settings.h>
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
+#include <WebCore/Settings.h>
 
 using namespace WebCore;
 

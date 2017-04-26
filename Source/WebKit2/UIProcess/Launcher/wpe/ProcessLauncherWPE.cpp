@@ -35,10 +35,10 @@
 #include <glib.h>
 #include <wpe/renderer-host.h>
 #include <wtf/RunLoop.h>
-#include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
 #include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 // FIXME: Merge with ProcessLauncherGtk?
 
@@ -125,10 +125,10 @@ void ProcessLauncher::launchProcess()
     m_processIdentifier = pid;
 
     // We've finished launching the process, message back to the main run loop.
-    RefPtr<ProcessLauncher> protector(this);
+    RefPtr<ProcessLauncher> protectedThis(this);
     IPC::Connection::Identifier serverSocket = socketPair.server;
-    RunLoop::main().dispatch([protector, pid, serverSocket] {
-        protector->didFinishLaunchingProcess(pid, serverSocket);
+    RunLoop::main().dispatch([protectedThis, pid, serverSocket] {
+        protectedThis->didFinishLaunchingProcess(pid, serverSocket);
     });
 }
 
