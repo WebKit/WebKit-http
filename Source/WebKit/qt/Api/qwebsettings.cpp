@@ -69,10 +69,13 @@ QWEBKIT_EXPORT void qt_networkAccessAllowed(bool isAllowed)
 
 class QWebSettingsPrivate {
 public:
-    QWebSettingsPrivate(WebCore::Settings* wcSettings = 0)
+    QWebSettingsPrivate(WebCore::Page* page = nullptr)
         : offlineStorageDefaultQuota(0)
-        , settings(wcSettings)
+        , page(page)
+        , settings(nullptr)
     {
+        if (page)
+            settings = &page->settings();
     }
 
     QHash<int, QString> fontFamilies;
@@ -87,6 +90,7 @@ public:
     qint64 offlineStorageDefaultQuota;
     QWebSettings::ThirdPartyCookiePolicy thirdPartyCookiePolicy;
     void apply();
+    WebCore::Page* page;
     WebCore::Settings* settings;
 };
 
@@ -211,13 +215,9 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::PluginsEnabled));
         settings->setPluginsEnabled(value);
 
-// FIXME: setPrivateBrowsingEnabled was removed, instead we have Page::enableLegacyPrivateBrowsing
-//        and ephemeral sessions (and I guess it's better to use the latter)
-/*
         value = attributes.value(QWebSettings::PrivateBrowsingEnabled,
                                       global->attributes.value(QWebSettings::PrivateBrowsingEnabled));
-        settings->setPrivateBrowsingEnabled(value);
-*/
+        page->setSessionID(value ? WebCore::SessionID::legacyPrivateSessionID() : WebCore::SessionID::defaultSessionID());
 
         value = attributes.value(QWebSettings::SpatialNavigationEnabled,
                                       global->attributes.value(QWebSettings::SpatialNavigationEnabled));
@@ -612,8 +612,8 @@ QWebSettings::QWebSettings()
 /*!
     \internal
 */
-QWebSettings::QWebSettings(WebCore::Settings* settings)
-    : d(new QWebSettingsPrivate(settings))
+QWebSettings::QWebSettings(WebCore::Page* page)
+    : d(new QWebSettingsPrivate(page))
 {
     d->apply();
     allSettings()->append(d);

@@ -32,12 +32,6 @@
 
 namespace WebCore {
 
-static std::unique_ptr<NetworkStorageSession>& privateSession()
-{
-    static NeverDestroyed<std::unique_ptr<NetworkStorageSession>> session;
-    return session;
-}
-
 FrameNetworkingContextQt::FrameNetworkingContextQt(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
     : FrameNetworkingContext(frame)
     , m_originatingObject(originatingObject)
@@ -45,20 +39,21 @@ FrameNetworkingContextQt::FrameNetworkingContextQt(Frame* frame, QObject* origin
 {
 }
 
+void FrameNetworkingContextQt::setSession(std::unique_ptr<NetworkStorageSession>&& session)
+{
+    m_session = WTFMove(session);
+}
+
 PassRefPtr<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
 {
-    return adoptRef(new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
+    RefPtr<FrameNetworkingContextQt> self = adoptRef(new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
+    self->setSession(std::make_unique<NetworkStorageSession>(self.get()));
+    return self;
 }
 
 NetworkStorageSession& FrameNetworkingContextQt::storageSession() const
 {
-    ASSERT(isMainThread());
-
-    if (frame() && frame()->page()->usesEphemeralSession())
-        notImplemented();
-//        return *privateSession(); // FIXME: Implement and call ensurePrivateBrowsingSession()
-
-    return NetworkStorageSession::defaultStorageSession();
+    return *m_session;
 }
 
 QObject* FrameNetworkingContextQt::originatingObject() const

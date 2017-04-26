@@ -1479,6 +1479,8 @@ NPError PluginView::getAuthenticationInfo(const char* protocol, const char* host
 
 void PluginView::privateBrowsingStateChanged(bool privateBrowsingEnabled)
 {
+    if (!m_plugin)
+        return;
     NPP_SetValueProcPtr setValue = m_plugin->pluginFuncs()->setvalue;
     if (!setValue)
         return;

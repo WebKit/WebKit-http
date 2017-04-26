@@ -28,7 +28,7 @@
 #include <QtCore/qshareddata.h>
 
 namespace WebCore {
-    class Settings;
+class Page;
 }
 
 class QWebPage;
@@ -186,7 +186,7 @@ private:
     Q_DISABLE_COPY(QWebSettings)
 
     QWebSettings();
-    QWebSettings(WebCore::Settings *settings);
+    QWebSettings(WebCore::Page* page);
     ~QWebSettings();
 
     QWebSettingsPrivate *d;
