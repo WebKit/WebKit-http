@@ -1,3 +1,251 @@
+2017-04-25  Youenn Fablet  <youenn@apple.com>
+
+        fast/mediastream/RTCPeerConnection-icecandidate-event.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171242
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * fast/mediastream/RTCPeerConnection-icecandidate-event-expected.txt:
+        * fast/mediastream/RTCPeerConnection-icecandidate-event.html: Updating test to be more deterministic.
+
+2017-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Relax the event firing ASSERT for Attr changes
+        https://bugs.webkit.org/show_bug.cgi?id=171236
+        <rdar://problem/30516349>
+
+        Reviewed by Dean Jackson.
+
+        * fast/dom/HTMLLinkElement/event-while-removing-attribute-expected.txt: Added.
+        * fast/dom/HTMLLinkElement/event-while-removing-attribute.html: Added.
+
+2017-04-25  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r214129): fast/media/mq-prefers-reduced-motion.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=171303
+        <rdar://problem/31434879>
+
+        Reviewed by Brent Fulgham.
+
+        This particular test was calling notifyDone() from within
+        a callback triggered by the UIScriptController script, which
+        meant that by the time the controller tried to call its callback,
+        the test had finished.
+
+        * fast/media/mq-prefers-reduced-motion-matchMedia.html: Make sure
+        notifyDone is called after both the callback-like functions have
+        triggered.
+
+2017-04-25  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Introduce shorter time-to-live for cookie partition whitelisting
+        https://bugs.webkit.org/show_bug.cgi?id=171295
+        <rdar://problem/31823818>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+            Changed a TestRunner function name to
+            statisticsFireShouldPartitionCookiesHandlerForOneDomain().
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html: Added.
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+            Changed a TestRunner function name to
+            statisticsFireShouldPartitionCookiesHandlerForOneDomain().
+
+2017-04-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215476.
+        https://bugs.webkit.org/show_bug.cgi?id=171304
+
+        "It broke JSBench" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[ES6]. Implement Annex B.3.3 function hoisting rules for
+        eval"
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+        http://trac.webkit.org/changeset/215476
+
+2017-04-25  Saam Barati  <sbarati@apple.com>
+
+        JSArray::isArrayPrototypeIteratorProtocolFastAndNonObservable is wrong because it does not do the necessary checks on the base object
+        https://bugs.webkit.org/show_bug.cgi?id=171150
+        <rdar://problem/31771880>
+
+        Reviewed by Sam Weinig.
+
+        * js/sequence-iterator-protocol-2-expected.txt: Added.
+        * js/sequence-iterator-protocol-2.html: Added.
+        * js/sequence-iterator-protocol-expected.txt: Added.
+        * js/sequence-iterator-protocol.html: Added.
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/pip-support/pip-support-click.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=165311
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171301
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215730.
+
+        The LayoutTest for this change is a flaky timeout on mac-wk1
+        debug.
+
+        Reverted changeset:
+
+        "Enable expired-only reload policy on Mac and iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        http://trac.webkit.org/changeset/215730
+
+2017-04-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Restrict WebKit image formats to a known whitelist
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+
+        Reviewed by Tim Horton.
+
+        * fast/images/image-formats-support-expected.txt: Added.
+        * fast/images/image-formats-support.html: Added.
+        * fast/images/resources/100x100-red-psd-renamed.png: Added.
+        * fast/images/resources/100x100-red-tga-renamed.png: Added.
+        * fast/images/resources/100x100-red.psd: Added.
+        * fast/images/resources/100x100-red.tga: Added.
+
+2017-04-25  Tim Horton  <timothy_horton@apple.com>
+
+        Deduplicate some lines in the toplevel TestExpectations
+
+        * TestExpectations:
+        Remove a duplicate line and consolidate another.
+
+2017-04-25  Chris Dumez  <cdumez@apple.com>
+
+        Element.dataset.name incorrectly returns undefined
+        https://bugs.webkit.org/show_bug.cgi?id=161454
+        <rdar://problem/31818563>
+
+        Reviewed by Mark Lam.
+
+        Add layout test for JS caching bug on DOMStringMap that was fixed as part
+        of a large named property getter refactoring in r210667.
+
+        * fast/dom/dataset-caching-bug-expected.txt: Added.
+        * fast/dom/dataset-caching-bug.html: Added.
+
+2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Supplementary Multilingual Plane Complex Scripts Rendered Incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=171272
+        <rdar://problem/30966764>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/kaithi-expected.html: Added.
+        * fast/text/kaithi.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Unskip nosniff tests on Mac, iOS and Windows and update expected results now that
+        we support X-Content-Type-Options: nosniff.
+
+        Merge Blink test from <https://src.chromium.org/viewvc/blink?revision=168570&view=revision>.
+
+        * TestExpectations: Unskip all nosniff tests except imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html.
+        We need to fix <https://bugs.webkit.org/show_bug.cgi?id=171248> before we can unskip it.
+        When running the nosniff Web Platform Tests (WPT) dump console messages to standard error
+        to avoid a difference of console message ordering due to the non-determinism of the WPT
+        tests from affecting the matching of the expected result.
+        * http/tests/security/contentTypeOptions/nosniff-dynamic-script-blocked-expected.txt: Added.
+        * http/tests/security/contentTypeOptions/nosniff-dynamic-script-blocked.html: Copied from LayoutTests/http/tests/security/contentTypeOptions/nosniff-script-blocked.html.
+        * http/tests/security/contentTypeOptions/nosniff-script-blocked-expected.txt: Update expected result.
+        * http/tests/security/contentTypeOptions/nosniff-script-blocked.html: Substitute the not executable
+        MIME type "text/xx-javascript" for "text/x-javascript" as the latter is an acceptable MIME type for
+        JavaScript scripts as per the Fetch standard, <https://html.spec.whatwg.org/multipage/scripting.html#javascript-mime-type> (30 March 2017).
+        * http/tests/security/contentTypeOptions/nosniff-script-without-content-type-blocked-expected.txt: Update
+        expected result.
+        * platform/gtk/TestExpectations: Skip the nosniff tests as GTK does not enable ENABLE(NOSNIFF).
+        * platform/ios/TestExpectations: Unskip nosniff tests.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wk2/TestExpectations: Ditto.
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/inspector/network/resource-sizes-disk-cache.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170971
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-25  Chris Dumez  <cdumez@apple.com>
+
+        Content-Disposition header filename is ignored when 'download' attribute is specified in HTML
+        https://bugs.webkit.org/show_bug.cgi?id=171239
+        <rdar://problem/31789855>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/security/anchor-download-allow-sameorigin.html:
+        Stop using attachment.php as resource for this download attribute test because attachment.php
+        returns a Content-Disposition header with a filename. Given the behavior change in this patch,
+        this resource is no longer suitable for testing the download attribute.
+
+        * http/tests/download/anchor-download-attribute-content-disposition-expected.txt: Added.
+        * http/tests/download/anchor-download-attribute-content-disposition.html: Added.
+        * http/tests/download/resources/content-disposition-pass.php: Added.
+        Add layout test coverage.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        Skip new test on platforms where the download attribute is not supported.
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/canvas/canvas-crash.html for ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=171238
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/fast/canvas/canvas-crash-expected.txt: Added.
+
+2017-04-25  Antti Koivisto  <antti@apple.com>
+
+        Enable expired-only reload policy on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        <rdar://problem/31807637>
+
+        Reviewed by Andreas Kling.
+
+        * fast/loader/display-image-unset-can-block-image-and-can-reload-in-place.html:
+
+        WebKitDisplayImages preference blocks loads, it does not prevent images already in memory cache from displaying.
+        Modify the test to clear the memory cache so it still tests what it is supposed to.
+
 2017-04-25  Frederic Wang  <fwang@igalia.com>
 
         Import W3C tests for the CSSOM View module

@@ -1823,6 +1823,7 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
@@ -1939,3 +1940,5 @@ webkit.org/b/170153 fast/scrolling/ios/touch-scroll-pointer-events-none.html [ F
 webkit.org/b/170153 fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
 
 webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]
+
+webkit.org/b/171301 [ Release ] http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html [ Pass Timeout ]

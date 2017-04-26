@@ -1,3 +1,264 @@
+2017-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(206450): WebKit2PlatformMouseEvent m_modifierFlags not set
+        https://bugs.webkit.org/show_bug.cgi?id=171297
+        <rdar://problem/31530719>
+
+        Reviewed by Geoffrey Garen.
+
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformMouseEvent::WebKit2PlatformMouseEvent):
+
+2017-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, speculative build fix
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+        For the time being, remove all references to UIItemProviders from this private header.
+        This should be fixed to use unavailability macros in a followup. See <rdar://problem/31827095>.
+
+2017-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Limit allowed size of document.title to avoid locking WebKit clients
+        https://bugs.webkit.org/show_bug.cgi?id=165113
+        <rdar://problem/28324389>
+
+        Reviewed by Darin Adler.
+
+        When a web application attempts to set an extremely long title, truncate the
+        title to a more reasonable size.
+
+        We do this at at the presentation layer, rather than in the DOM, so that we do
+        not affect script function. Instead, we merely limit display to a level that is
+        reasonable for normal GUI widgets. Anything else needs to be truncated in the UI
+        layer, so it is a waste of effort to send across IPC.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveTitle):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2017-04-25  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Introduce shorter time-to-live for cookie partition whitelisting
+        https://bugs.webkit.org/show_bug.cgi?id=171295
+        <rdar://problem/31823818>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.cpp:
+        (WKResourceLoadStatisticsManagerSetTimeToLiveCookiePartitionFree):
+        (WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler):
+        (WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandlerForOneDomain):
+            Changes and additions to test infrastructure.
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.h:
+        * UIProcess/WebResourceLoadStatisticsManager.cpp:
+        (WebKit::WebResourceLoadStatisticsManager::setTimeToLiveCookiePartitionFree):
+        (WebKit::WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandler):
+        (WebKit::WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandlerForOneDomain):
+        (WebKit::WebResourceLoadStatisticsManager::resetToConsistentState):
+            Changes and additions to test infrastructure.
+        * UIProcess/WebResourceLoadStatisticsManager.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+            No longer sends a boolean parameter to
+            WebCore::ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler().
+
+2017-04-25  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r213719): WebGL content on cubeslam.com is 1/4 expected size
+        https://bugs.webkit.org/show_bug.cgi?id=171300
+        rdar://problem/31051538
+
+        Reviewed by Dean Jackson.
+
+        Propagating the contentsScale to the UI process for canvas content layers causes
+        scaling issues, so don't do it for contents-provided layers.
+        
+        No test because WebGL can't be tested in the iOS simulator.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::PlatformCALayerRemote):
+
+2017-04-25  Brady Eidson  <beidson@apple.com>
+
+        Update WebProcess(Pool) to assume there's always a WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=171299
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        (WebKit::WebProcessPool::warmInitialProcess):
+        (WebKit::WebProcessPool::createNewWebProcessRespectingProcessCountLimit):
+        (WebKit::WebProcessPool::createWebPage):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::create):
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        (WebKit::m_userMediaCaptureManagerProxy):
+        * UIProcess/WebProcessProxy.h:
+        (WebKit::WebProcessProxy::websiteDataStore):
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215730.
+
+        The LayoutTest for this change is a flaky timeout on mac-wk1
+        debug.
+
+        Reverted changeset:
+
+        "Enable expired-only reload policy on Mac and iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        http://trac.webkit.org/changeset/215730
+
+2017-04-24  Matt Rajca  <mrajca@apple.com>
+
+        Indicate presence of audio when handling autoplay events.
+        https://bugs.webkit.org/show_bug.cgi?id=171227
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::handleAutoplayEvent):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/API/C/WKPageUIClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleAutoplayEvent):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::handleAutoplayEvent):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Enable X-Content-Type-Options: nosniff on Mac, iOS and Windows platforms.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-25  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Clear network process cache when clearing store
+        https://bugs.webkit.org/show_bug.cgi?id=171256
+        <rdar://problem/31802347>
+
+        Reviewed by Brent Fulgham.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains):
+            Now takes and passes on the boolean parameter clearFirst to
+            WebCore::NetworkStorageSession::setShouldPartitionCookiesForHosts().
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+            The message ShouldPartitionCookiesForTopPrivatelyOwnedDomains now
+            takes the boolean parameter clearFirst.
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::shouldPartitionCookiesForTopPrivatelyOwnedDomains):
+            Now takes and passes on the boolean parameter clearFirst to
+            Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains.
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+            The message ShouldPartitionCookiesForTopPrivatelyOwnedDomains now
+            takes the boolean parameter clearFirst.
+        * UIProcess/WebResourceLoadStatisticsManager.cpp:
+        (WebKit::WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandler):
+            Now uses the boolean parameter clearFirst when calling
+            WebCore::ResourceLoadObserver::fireShouldPartitionCookiesHandler().
+        (WebKit::WebResourceLoadStatisticsManager::clearInMemoryAndPersistentStore):
+            No longer uses the deleted store getter.
+        (WebKit::WebResourceLoadStatisticsManager::resetToConsistentState):
+            No longer uses the deleted store getter.
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+            No sends the boolean parameter clearFirst to
+            ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler().
+        (WebKit::WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver):
+            Now expects a handler with the boolean parameter clearFirst.
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+            Now uses the new WebCore::ResourceLoadObserver::clearInMemoryStore().
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains):
+            Now takes and passes on the boolean parameter clearFirst in its
+            message to the network process.
+        (WebKit::WebsiteDataStore::registerSharedResourceLoadObserver):
+            Now expects a handler with the boolean parameter clearFirst.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2017-04-25  Chris Dumez  <cdumez@apple.com>
+
+        Content-Disposition header filename is ignored when 'download' attribute is specified in HTML
+        https://bugs.webkit.org/show_bug.cgi?id=171239
+        <rdar://problem/31789855>
+
+        Reviewed by Alex Christensen.
+
+        Content-Disposition header filename is ignored when 'download' attribute is specified in HTML.
+        This is not as per HTML specification:
+        - https://html.spec.whatwg.org/#as-a-download (Step 2)
+
+        Content-Disposition header filename is supposed to override the value of the download attribute.
+
+        Firefox and Chrome follow the specification.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::findPendingDownloadLocation):
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::didReceiveResponse):
+
+2017-04-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add WebKitInspectorWindow to create inspector windows from local and remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171261
+
+        Reviewed by Michael Catanzaro.
+
+        The code is currently duplicated in WebInspectorProxyGtk.cpp and RemoteWebInspectorProxyGtk.cpp. We can simplify
+        it by using a common widget in both places.
+        This patch also fixes the build when using GTK+ < 3.16.
+
+        * PlatformGTK.cmake:
+        * UIProcess/gtk/RemoteWebInspectorProxyGtk.cpp:
+        (WebKit::RemoteWebInspectorProxy::updateWindowTitle):
+        (WebKit::RemoteWebInspectorProxy::platformCreateFrontendPageAndWindow):
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::createInspectorWindow):
+        (WebKit::WebInspectorProxy::updateInspectorWindowTitle):
+        * UIProcess/gtk/WebKitInspectorWindow.cpp: Added.
+        (webkit_inspector_window_class_init):
+        (webkit_inspector_window_init):
+        (webkitInspectorWindowNew):
+        (webkitInspectorWindowSetSubtitle):
+        * UIProcess/gtk/WebKitInspectorWindow.h: Added.
+
+2017-04-25  Antti Koivisto  <antti@apple.com>
+
+        Enable expired-only reload policy on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        <rdar://problem/31807637>
+
+        Reviewed by Andreas Kling.
+
+        Enable the reload policy where only expired subresources are revalidated on Mac and iOS.
+        The behavor is enabled in Safari and for other clients based on SDK version check.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageReload):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView reload]):
+        * UIProcess/Cocoa/VersionChecks.h:
+
 2017-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Support reading NSURL titles from the pasteboard when performing data interaction

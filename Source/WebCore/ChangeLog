@@ -1,3 +1,497 @@
+2017-04-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Enhance ways to convert an ECDSA signature binary into DER format
+        https://bugs.webkit.org/show_bug.cgi?id=171287
+        <rdar://problem/31735332>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * crypto/mac/CryptoAlgorithmECDSAMac.cpp:
+        (WebCore::verifyECDSA):
+
+2017-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Relax the event firing ASSERT for Attr changes
+        https://bugs.webkit.org/show_bug.cgi?id=171236
+        <rdar://problem/30516349>
+
+        Reviewed by Dean Jackson.
+
+        The assertions added in Bug 167318 were overly strict, and trigger for valid behavior.
+        Relax the assertion preventing event dispatch for the case of Attr elements at the
+        end of childrenChanged.
+
+        Test: fast/dom/HTMLLinkElement/event-while-removing-attribute.html
+
+        * dom/Attr.cpp:
+        (WebCore::Attr::childrenChanged):
+
+2017-04-25  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Introduce shorter time-to-live for cookie partition whitelisting
+        https://bugs.webkit.org/show_bug.cgi?id=171295
+        <rdar://problem/31823818>
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html
+
+        * loader/ResourceLoadObserver.cpp:
+        (WebCore::reduceTimeResolutionToOneDay): Deleted.
+        (WebCore::reduceTimeResolution):
+            Changed name to no longer lock this to a specific resolution.
+        (WebCore::ResourceLoadObserver::logUserInteractionWithReducedTimeResolution):
+            Now calls WebCore::reduceTimeResolution().
+        (WebCore::ResourceLoadObserver::setTimeToLiveCookiePartitionFree):
+            Added for testing purposes.
+        (WebCore::ResourceLoadObserver::fireShouldPartitionCookiesHandler):
+            Added for testing purposes.
+        * loader/ResourceLoadObserver.h:
+        * loader/ResourceLoadStatisticsStore.cpp:
+        (WebCore::shouldPartitionCookies):
+            Static inline convenience function.
+        (WebCore::ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler):
+            Now decides whether a domain should get partitioned cookies
+            based on timeToLiveCookiePartitionFree.
+            Removed clearFirst parameter since it's not needed here
+            and it introduced complexity in keeping the store and the
+            network process cache in sync.
+        (WebCore::ResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+            Added for testing purposes.
+        * loader/ResourceLoadStatisticsStore.h:
+
+2017-04-25  Saam Barati  <sbarati@apple.com>
+
+        JSArray::isArrayPrototypeIteratorProtocolFastAndNonObservable is wrong because it does not do the necessary checks on the base object
+        https://bugs.webkit.org/show_bug.cgi?id=171150
+        <rdar://problem/31771880>
+
+        Reviewed by Sam Weinig.
+
+        This patch moves the sequence converters to use the now fixed
+        JSArray::isArrayPrototypeIteratorProtocolFastAndNonObservable test
+        inside JSC.
+        
+        This patch also fixes a few bugs:
+        1. Converting to a sequence of numbers must prove that the JSArray
+        is filled only with Int32/Double. If there is a chance the array
+        contains objects, the conversion to a numeric IDLType can be observable
+        (via valueOf()), and can change the iterator protocol.
+        2. There are other conversions that can have side effects a-la valueOf().
+        This patch introduces a new static constant in the various Converter
+        classes that tell the sequence converter if the conversion operation
+        can have JS side effects. If it does have side effects, we fall back to
+        the generic conversion that uses the iterator protocol. If not, we can
+        do a faster version that iterates over each element of the array,
+        reading it directly, and converting it.
+
+        Tests: js/sequence-iterator-protocol-2.html
+               js/sequence-iterator-protocol.html
+
+        * bindings/js/JSDOMConvertAny.h: Does not have side effects.
+        * bindings/js/JSDOMConvertBase.h: We pessimistically assume inside DefaultConverter that converions have side effects.
+        * bindings/js/JSDOMConvertBoolean.h: Does not have side effects.
+        * bindings/js/JSDOMConvertCallbacks.h: Does not have side effects.
+        * bindings/js/JSDOMConvertObject.h: Does not have side effects.
+        * bindings/js/JSDOMConvertSequences.h:
+        (WebCore::Detail::NumericSequenceConverter::convert):
+        (WebCore::Detail::SequenceConverter::convert):
+
+2017-04-25  Michael Saboff  <msaboff@apple.com>
+
+        Call bmalloc scavenger first when handling a memory pressure event
+        https://bugs.webkit.org/show_bug.cgi?id=171289
+
+        Reviewed by Geoffrey Garen.
+
+        Let bmalloc free any pages to the OS that it can before doing anything else.
+
+        * page/MemoryRelease.cpp:
+        (WebCore::releaseMemory):
+
+2017-04-25  Dean Jackson  <dino@apple.com>
+
+        Skip WebKitAdditions for Safari Technology Preview media controls
+        https://bugs.webkit.org/show_bug.cgi?id=171302
+        <rdar://problem/31823256>
+
+        Reviewed by Simon Fraser.
+
+        Safari Technology Preview should use the same controls
+        as OpenSource.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2017-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215730.
+
+        The LayoutTest for this change is a flaky timeout on mac-wk1
+        debug.
+
+        Reverted changeset:
+
+        "Enable expired-only reload policy on Mac and iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        http://trac.webkit.org/changeset/215730
+
+2017-04-24  Matt Rajca  <mrajca@apple.com>
+
+        Indicate presence of audio when handling autoplay events.
+        https://bugs.webkit.org/show_bug.cgi?id=171227
+
+        Reviewed by Alex Christensen.
+
+        Added API tests.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::handleAutoplayEvent):
+        (WebCore::HTMLMediaElement::playInternal):
+        (WebCore::HTMLMediaElement::mediaPlayerTimeChanged):
+        (WebCore::HTMLMediaElement::stopWithoutDestroyingMediaPlayer):
+        (WebCore::HTMLMediaElement::userDidInterfereWithAutoplay):
+        (WebCore::HTMLMediaElement::setPlaybackWithoutUserGesture):
+        * html/HTMLMediaElement.h:
+        * page/AutoplayEvent.h:
+        * page/ChromeClient.h:
+
+2017-04-25  Aakash Jain  <aakash_jain@apple.com>
+
+        WebCore.framework should restrict allowable_clients
+        https://bugs.webkit.org/show_bug.cgi?id=171260
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/WebCore.xcconfig: Adding allowable_client to all platform, in order to restrict WebCore
+        from being directly linked on any platform.
+        Moved WebKitLegacy and WebCoreTestSupport to OTHER_LDFLAGS_BASE.
+        Removed WebKit2 as allowable_client from mac.
+        Added iTunesU, Casablanca and Remote to OTHER_LDFLAGS_BASE_ios for iTunes related projects.
+        Added WebKit, TVBooks, DumpRenderTree, WebKitTestRunner and TestWebKitAPI to OTHER_LDFLAGS_BASE_ios.
+
+2017-04-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Restrict WebKit image formats to a known whitelist
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+
+        Reviewed by Tim Horton.
+
+        If the image format is not supported, the load should be canceled and the
+        image is marked a broken image.
+
+        Test: fast/images/image-formats-support.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::addIncrementalDataBuffer):
+        (WebCore::CachedImage::setImageDataBuffer):
+        (WebCore::CachedImage::finishLoading):
+        * loader/cache/CachedImage.h:
+
+2017-04-25  Youenn Fablet  <youenn@apple.com>
+
+        CoreAudioCaptureSource::suspend is asserting too often
+        https://bugs.webkit.org/show_bug.cgi?id=171285
+
+        Reviewed by Eric Carlson.
+
+        No change of behavior.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::suspend): Moving the assertion to where it might be useful.
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        Use an OptionSet for compositing reasons bitmask
+        https://bugs.webkit.org/show_bug.cgi?id=171153
+
+        Reviewed by Simon Fraser.
+
+        We should make use of OptionSet to represent the bitmask of the reasons a layer
+        was composited instead of using an integer and bitwise operations.
+
+        * inspector/InspectorLayerTreeAgent.cpp:
+        (WebCore::InspectorLayerTreeAgent::reasonsForCompositingLayer):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::reasonsForCompositing):
+        (WebCore::RenderLayerCompositor::logReasonsForCompositing): Also fix code style issues;
+        an else-if statement should be written as an if-statement when the prior if-statement
+        concludes with a return statement.
+        * rendering/RenderLayerCompositor.h:
+
+2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Supplementary Multilingual Plane Complex Scripts Rendered Incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=171272
+        <rdar://problem/30966764>
+
+        Reviewed by Zalan Bujtas.
+
+        These scripts need to take the complex text codepath.
+
+        Test: fast/text/kaithi.html
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::characterRangeCodePath):
+
+2017-04-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Revert r215745 (especulative build fix) after r215752.
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Unreviewed.
+
+        * platform/graphics/harfbuzz/HarfBuzzShaper.cpp:
+        (WebCore::normalizeCharacters):
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Enable support for X-Content-Type-Options: nosniff on Mac, iOS and Windows.
+
+        Additionally, honor X-Content-Type-Options: nosniff header for stylesheets as per
+        <https://fetch.spec.whatwg.org/#should-response-to-request-be-blocked-due-to-nosniff%3F> (30 March 2017).
+
+        Test: http/tests/security/contentTypeOptions/nosniff-dynamic-script-blocked.html
+
+        * Configurations/FeatureDefines.xcconfig:
+        * css/StyleSheetContents.cpp:
+        (WebCore::StyleSheetContents::parseAuthorStyleSheet): Log an error if the stylesheet
+        has the nosniff header and does not have a valid MIME type. Also update code for
+        renaming of MIMETypeCheck to MIMETypeCheckHint.
+        (WebCore::StyleSheetContents::notifyLoadedSheet): If the stylesheet is blocked by
+        nosniff then consider it analogous to a load error so that we dispatch a DOM error
+        event at the <style>/<link> element.
+        * dom/LoadableClassicScript.cpp:
+        (WebCore::LoadableClassicScript::notifyFinished): Modified the wording of the error
+        message when a script is disallowed by nosniff so as to more closely match the
+        wording used when a stylesheet is disallowed by nonsniff.
+        * loader/cache/CachedCSSStyleSheet.cpp:
+        (WebCore::CachedCSSStyleSheet::sheetText): Update for renaming of MIMETypeCheck
+        to MIMETypeCheckHint.
+        (WebCore::CachedCSSStyleSheet::responseMIMEType): Added.
+        (WebCore::CachedCSSStyleSheet::mimeTypeAllowedByNosniff): Added.
+        (WebCore::CachedCSSStyleSheet::canUseSheet): Modified to check if the X-Content-Type-Options: nosniff
+        header is in the HTTP response for the stylesheet. If it is then we can only use the stylesheet
+        if its content-type is "text/css". Otherwise, apply the existing criterion for determining whether
+        to to use the stylesheet.
+        * loader/cache/CachedCSSStyleSheet.h: Rename MIMETypeCheck to MIMETypeCheckHint to better
+        describe its purpose as a hint as to whether to enforce MIME type checking for the stylesheet.
+        Processing of the HTTP header X-Content-Type-Options takes precedence over this hint.
+        * loader/cache/CachedScript.h: Make mimeType() private.
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Part 1
+
+        Enable X-Content-Type-Options: nosniff on Mac, iOS and Windows platforms.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [GTK] Build fix after r215737
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Unreviewed.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/FontCascade.h:
+        (WebCore::FontCascade::treatAsZeroWidthSpace):
+        (WebCore::FontCascade::treatAsZeroWidthSpaceInComplexScript):
+
+2017-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove an unnecessary -respondsToSelector: check after r215724
+
+        Rubber-stamped by Tim Horton.
+
+        Addresses review feedback from <https://bugs.webkit.org/show_bug.cgi?id=171156>. -[NSURL _title]
+        will always for builds that need to access it.
+
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::readURL):
+
+2017-04-25  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r215469): [ios-simulator-wk2] LayoutTest compositing/animation/animation-backing.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=171060
+        <rdar://problem/31771174>
+
+        Reviewed by Simon Fraser.
+
+        Accelerated transform animations move underlying layers without invalidating GraphicsLayers.
+        To update tile coverage we need to commit such subtrees even if there are not other changes.
+
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::GraphicsLayerCA):
+        (WebCore::GraphicsLayerCA::needsCommit):
+
+            Commit subtrees with accelerated transform animations.
+            Factor into a function.
+
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+
+            Track if descendants had any accelerated transform animations after commit.
+
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        (WebCore::GraphicsLayerCA::hasDescendantsWithRunningTransformAnimations):
+        (WebCore::GraphicsLayerCA::setHasDescendantsWithRunningTransformAnimations):
+
+2017-04-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream macOS] Unable to apply frameRate constraint
+        https://bugs.webkit.org/show_bug.cgi?id=171279
+
+        Reviewed by Youenn Fablet.
+
+        No new tests, this doesn't affect the mock capture devices.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::supportsSizeAndFrameRate): Cast frame rate
+        ranges to int before comparing.
+
+2017-04-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Build fix after r215737
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Unreviewed.
+
+        * platform/graphics/harfbuzz/HarfBuzzShaper.cpp:
+        (WebCore::normalizeCharacters):
+
+2017-04-25  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Clear network process cache when clearing store
+        https://bugs.webkit.org/show_bug.cgi?id=171256
+        <rdar://problem/31802347>
+
+        Reviewed by Brent Fulgham.
+
+        Test that covers this code:
+        http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html
+
+        * loader/ResourceLoadObserver.cpp:
+        (WebCore::ResourceLoadObserver::clearInMemoryStore):
+            Better name.
+        (WebCore::ResourceLoadObserver::logUserInteraction):
+            Now passes on the boolean parameter clearFirst to
+            ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler().
+        (WebCore::ResourceLoadObserver::fireShouldPartitionCookiesHandler):
+            Now takes and passes on the boolean parameter clearFirst to
+            ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler().
+        (WebCore::ResourceLoadObserver::statisticsStore): Deleted.
+            This getter violated abstraction. The way it was used
+            is now solved through dedicated functions.
+        * loader/ResourceLoadObserver.h:
+        * loader/ResourceLoadStatisticsStore.cpp:
+        (WebCore::ResourceLoadStatisticsStore::readDataFromDecoder):
+            Now passes on the boolean parameter clearFirst to
+            ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler().
+        (WebCore::ResourceLoadStatisticsStore::clearInMemory):
+            Better name.
+            Now triggers clearing of the associated network process cache.
+        (WebCore::ResourceLoadStatisticsStore::clearInMemoryAndPersistent):
+            Now calls clearInMemory().
+        (WebCore::ResourceLoadStatisticsStore::setShouldPartitionCookiesCallback):
+            Now expects a handler with the boolean parameter clearFirst.
+        (WebCore::ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler):
+            Now takes and passes on the boolean parameter clearFirst to
+            m_shouldPartitionCookiesForDomainsHandler().
+        * loader/ResourceLoadStatisticsStore.h:
+        (WebCore::ResourceLoadStatisticsStore::clear): Deleted.
+        * platform/network/NetworkStorageSession.h:
+            NetworkStorageSession::setShouldPartitionCookiesForHosts() now
+            takes the boolean parameter clearFirst.
+        * platform/network/cf/NetworkStorageSessionCFNet.cpp:
+        (WebCore::NetworkStorageSession::setShouldPartitionCookiesForHosts):
+            Now clears m_topPrivatelyControlledDomainsForCookiePartitioning
+            if the boolean parameter clearFirst is true.
+
+2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add performance test for FontCache::systemFallbackForCharacters()
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Reviewed by Tim Horton.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/FontCascade.h:
+        (WebCore::FontCascade::treatAsZeroWidthSpace):
+        (WebCore::FontCascade::treatAsZeroWidthSpaceInComplexScript): Deleted.
+        * platform/graphics/WidthCache.h:
+        (WebCore::WidthCache::add):
+        (WebCore::WidthCache::addSlowCase):
+
+2017-04-25  Chris Dumez  <cdumez@apple.com>
+
+        Content-Disposition header filename is ignored when 'download' attribute is specified in HTML
+        https://bugs.webkit.org/show_bug.cgi?id=171239
+        <rdar://problem/31789855>
+
+        Reviewed by Alex Christensen.
+
+        Add isAttachmentWithFilename() utility method to ResourceResponse to implement:
+        - https://html.spec.whatwg.org/#as-a-download (Step 2)
+
+        Test: http/tests/download/anchor-download-attribute-content-disposition.html
+
+        * platform/network/ResourceResponseBase.cpp:
+        (WebCore::ResourceResponseBase::isAttachmentWithFilename):
+        * platform/network/ResourceResponseBase.h:
+
+2017-04-25  Antti Koivisto  <antti@apple.com>
+
+        Enable expired-only reload policy on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        <rdar://problem/31807637>
+
+        Reviewed by Andreas Kling.
+
+        * loader/NavigationAction.cpp:
+        (WebCore::navigationType):
+
+        Test for reload navigation type correctly.
+
+2017-04-25  Miguel Gomez  <magomez@igalia.com>
+
+        Image decoders must have private constructors to avoid refcount misuse: ASSERTION FAILED: m_deletionHasBegun when destroying ImageDecoder
+        https://bugs.webkit.org/show_bug.cgi?id=171211
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a create method to each of the decoders and set their constructors as private. Change
+        ICOImageDecoder to store its internal PNG decoders as RefPtr and use the new create method, and
+        change ImageDecoder to use the create methods as well.
+
+        Covered by existent tests.
+
+        * platform/image-decoders/ImageDecoder.cpp:
+        (WebCore::ImageDecoder::create):
+        * platform/image-decoders/bmp/BMPImageDecoder.h:
+        * platform/image-decoders/gif/GIFImageDecoder.h:
+        * platform/image-decoders/ico/ICOImageDecoder.cpp:
+        (WebCore::ICOImageDecoder::decodeAtIndex):
+        * platform/image-decoders/ico/ICOImageDecoder.h:
+        * platform/image-decoders/jpeg/JPEGImageDecoder.h:
+        * platform/image-decoders/png/PNGImageDecoder.h:
+        * platform/image-decoders/webp/WEBPImageDecoder.h:
+
 2017-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Build fix

@@ -7033,11 +7033,10 @@ void SpeculativeJIT::compileSpread(Node* node)
     SpeculateCellOperand operand(this, node->child1());
     GPRReg argument = operand.gpr();
 
-    if (node->child1().useKind() == ArrayUse) {
-        // Note: we only speculate on ArrayUse when we've set up the necessary watchpoints
-        // to prove that the iteration protocol is non-observable.
+    if (node->child1().useKind() == ArrayUse)
         speculateArray(node->child1(), argument);
 
+    if (m_jit.graph().canDoFastSpread(node, m_state.forNode(node->child1()))) {
 #if USE(JSVALUE64)
         GPRTemporary result(this);
         GPRTemporary scratch1(this);
@@ -9436,27 +9435,6 @@ void SpeculativeJIT::compileResolveScope(Node* node)
     cellResult(resultGPR, node);
 }
 
-void SpeculativeJIT::compileResolveScopeForHoistingFuncDeclInEval(Node* node)
-{
-    SpeculateCellOperand scope(this, node->child1());
-    GPRReg scopeGPR = scope.gpr();
-#if USE(JSVALUE64)
-    GPRFlushedCallResult result(this);
-    GPRReg resultGPR = result.gpr();
-    flushRegisters();
-    callOperation(operationResolveScopeForHoistingFuncDeclInEval, resultGPR, scopeGPR, identifierUID(node->identifierNumber()));
-    m_jit.exceptionCheck();
-    jsValueResult(result.gpr(), node);
-#else
-    flushRegisters();
-    GPRFlushedCallResult2 resultTag(this);
-    GPRFlushedCallResult resultPayload(this);
-    callOperation(operationResolveScopeForHoistingFuncDeclInEval, JSValueRegs(resultTag.gpr(), resultPayload.gpr()), scopeGPR, identifierUID(node->identifierNumber()));
-    m_jit.exceptionCheck();
-    jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
-#endif
-}
-    
 void SpeculativeJIT::compileGetDynamicVar(Node* node)
 {
     SpeculateCellOperand scope(this, node->child1());

@@ -1081,9 +1081,6 @@ private:
         case RecordRegExpCachedResult:
             compileRecordRegExpCachedResult();
             break;
-        case ResolveScopeForHoistingFuncDeclInEval:
-            compileResolveScopeForHoistingFuncDeclInEval();
-            break;
         case ResolveScope:
             compileResolveScope();
             break;
@@ -4676,9 +4673,11 @@ private:
         LValue argument = lowCell(m_node->child1());
 
         LValue result;
-        if (m_node->child1().useKind() == ArrayUse) {
+
+        if (m_node->child1().useKind() == ArrayUse)
             speculateArray(m_node->child1());
 
+        if (m_graph.canDoFastSpread(m_node, m_state.forNode(m_node->child1()))) {
             LBasicBlock preLoop = m_out.newBlock();
             LBasicBlock loopSelection = m_out.newBlock();
             LBasicBlock contiguousLoopStart = m_out.newBlock();
@@ -10139,12 +10138,6 @@ private:
         default:
             RELEASE_ASSERT_NOT_REACHED();
         }
-    }
-
-    void compileResolveScopeForHoistingFuncDeclInEval()
-    {
-        UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
-        setJSValue(vmCall(pointerType(), m_out.operation(operationResolveScopeForHoistingFuncDeclInEval), m_callFrame, lowCell(m_node->child1()), m_out.constIntPtr(uid)));
     }
 
     void compileResolveScope()

@@ -41,6 +41,8 @@ namespace WebCore {
 static const auto statisticsModelVersion = 3;
 // 30 days in seconds
 static auto timeToLiveUserInteraction = 2592000;
+// 1 day in seconds
+static auto timeToLiveCookiePartitionFree = 86400;
 
 Ref<ResourceLoadStatisticsStore> ResourceLoadStatisticsStore::create()
 {
@@ -110,12 +112,18 @@ void ResourceLoadStatisticsStore::readDataFromDecoder(KeyedDecoder& decoder)
         m_resourceStatisticsMap.set(statistics.highLevelDomain, statistics);
     }
 
-    fireShouldPartitionCookiesHandler({ }, prevalentResourceDomainsWithoutUserInteraction);
+    fireShouldPartitionCookiesHandler({ }, prevalentResourceDomainsWithoutUserInteraction, true);
+}
+
+void ResourceLoadStatisticsStore::clearInMemory()
+{
+    m_resourceStatisticsMap.clear();
+    fireShouldPartitionCookiesHandler({ }, { }, true);
 }
 
 void ResourceLoadStatisticsStore::clearInMemoryAndPersistent()
 {
-    clear();
+    clearInMemory();
     if (m_writePersistentStoreHandler)
         m_writePersistentStoreHandler();
 }
@@ -157,7 +165,7 @@ void ResourceLoadStatisticsStore::setNotificationCallback(std::function<void()> 
     m_dataAddedHandler = WTFMove(handler);
 }
 
-void ResourceLoadStatisticsStore::setShouldPartitionCookiesCallback(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)>&& handler)
+void ResourceLoadStatisticsStore::setShouldPartitionCookiesCallback(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)>&& handler)
 {
     m_shouldPartitionCookiesForDomainsHandler = WTFMove(handler);
 }
@@ -173,38 +181,65 @@ void ResourceLoadStatisticsStore::fireDataModificationHandler()
         m_dataAddedHandler();
 }
 
+static inline bool shouldPartitionCookies(const ResourceLoadStatistics& statistic)
+{
+    return statistic.isPrevalentResource
+        && (!statistic.hadUserInteraction || currentTime() > statistic.mostRecentUserInteraction + timeToLiveCookiePartitionFree);
+}
+
 void ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler()
 {
     Vector<String> domainsToRemove;
     Vector<String> domainsToAdd;
     
     for (auto& resourceStatistic : m_resourceStatisticsMap.values()) {
-        bool recentUserInteraction = hasHadRecentUserInteraction(resourceStatistic);
-        if (resourceStatistic.isMarkedForCookiePartitioning && recentUserInteraction) {
+        bool shouldPartition = shouldPartitionCookies(resourceStatistic);
+        if (resourceStatistic.isMarkedForCookiePartitioning && !shouldPartition) {
             resourceStatistic.isMarkedForCookiePartitioning = false;
             domainsToRemove.append(resourceStatistic.highLevelDomain);
-        } else if (!resourceStatistic.isMarkedForCookiePartitioning && !recentUserInteraction && resourceStatistic.isPrevalentResource) {
+        } else if (!resourceStatistic.isMarkedForCookiePartitioning && shouldPartition) {
             resourceStatistic.isMarkedForCookiePartitioning = true;
             domainsToAdd.append(resourceStatistic.highLevelDomain);
         }
     }
     
-    fireShouldPartitionCookiesHandler(domainsToRemove, domainsToAdd);
+    if (domainsToRemove.isEmpty() && domainsToAdd.isEmpty())
+        return;
+    
+    if (m_shouldPartitionCookiesForDomainsHandler)
+        m_shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd, false);
 }
 
-void ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+void ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)
 {
     if (domainsToRemove.isEmpty() && domainsToAdd.isEmpty())
         return;
 
     if (m_shouldPartitionCookiesForDomainsHandler)
-        m_shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd);
+        m_shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd, clearFirst);
+
+    if (clearFirst) {
+        for (auto& resourceStatistic : m_resourceStatisticsMap.values())
+            resourceStatistic.isMarkedForCookiePartitioning = false;
+    } else {
+        for (auto& domain : domainsToRemove)
+            ensureResourceStatisticsForPrimaryDomain(domain).isMarkedForCookiePartitioning = false;
+    }
+
+    for (auto& domain : domainsToAdd)
+        ensureResourceStatisticsForPrimaryDomain(domain).isMarkedForCookiePartitioning = true;
 }
 
 void ResourceLoadStatisticsStore::setTimeToLiveUserInteraction(double seconds)
 {
     if (seconds >= 0)
         timeToLiveUserInteraction = seconds;
+}
+
+void ResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree(double seconds)
+{
+    if (seconds >= 0)
+        timeToLiveCookiePartitionFree = seconds;
 }
 
 void ResourceLoadStatisticsStore::processStatistics(std::function<void(ResourceLoadStatistics&)>&& processFunction)

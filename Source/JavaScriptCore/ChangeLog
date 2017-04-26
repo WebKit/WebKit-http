@@ -1,3 +1,183 @@
+2017-04-25  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Unhandled enumeration values in IntlDateTimeFormat.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=171241
+
+        Reviewed by JF Bastien.
+
+        Added some missing cases of the UDateFormatField to partTypeString,
+        and made them conditional to the ICU version that added them.
+        This should remove the warnings that appear on platform builds using the
+        newer system ICU headers.
+
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::partTypeString):
+
+2017-04-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215476.
+        https://bugs.webkit.org/show_bug.cgi?id=171304
+
+        "It broke JSBench" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[ES6]. Implement Annex B.3.3 function hoisting rules for
+        eval"
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+        http://trac.webkit.org/changeset/215476
+
+2017-04-25  Saam Barati  <sbarati@apple.com>
+
+        JSArray::isArrayPrototypeIteratorProtocolFastAndNonObservable is wrong because it does not do the necessary checks on the base object
+        https://bugs.webkit.org/show_bug.cgi?id=171150
+        <rdar://problem/31771880>
+
+        Reviewed by Sam Weinig.
+
+        This patch fixes a huge oversight from the patch that introduced
+        op_spread/Spread. The original patch did not account for the
+        base object having Symbol.iterator or getters that could
+        change the iterator protocol. This patch fixes the oversight both
+        in the C code, as well as the DFG/FTL backends. We only perform
+        the memcpy version of spread if we've proven that it's guaranteed
+        to be side-effect free (no indexed getters), and if the iterator
+        protocol is guaranteed to be the original protocol. To do this, we
+        must prove that:
+        1. The protocol on Array.prototype hasn't changed (this is the same as the
+        introductory patch for op_spread).
+        2. The base object's __proto__ is Array.prototype
+        3. The base object does not have indexed getters
+        4. The base object does not have Symbol.iterator property.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::canDoFastSpread):
+        * dfg/DFGGraph.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileSpread):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileSpread):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::isIteratorProtocolFastAndNonObservable):
+        * runtime/JSArray.h:
+        * runtime/JSArrayInlines.h:
+        (JSC::JSArray::isIteratorProtocolFastAndNonObservable): Deleted.
+        * runtime/JSGlobalObject.h:
+        * runtime/JSGlobalObjectInlines.h:
+        (JSC::JSGlobalObject::isArrayPrototypeIteratorProtocolFastAndNonObservable):
+        (JSC::JSGlobalObject::isArrayIteratorProtocolFastAndNonObservable): Deleted.
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.slice() should ensure that end >= begin.
+        https://bugs.webkit.org/show_bug.cgi?id=170989
+        <rdar://problem/31705652>
+
+        Reviewed by Saam Barati.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSlice):
+
+2017-04-25  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Use Clang's __has_declspec_attribute for export macros
+        https://bugs.webkit.org/show_bug.cgi?id=171240
+
+        Reviewed by Alex Christensen.
+
+        * runtime/JSExportMacros.h:
+
+2017-04-25  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Attempt armv7k build fix after r215720
+
+        I think we're just missing an include for the definition of ExecState::r().
+
+        * runtime/JSFixedArray.cpp:
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Enable X-Content-Type-Options: nosniff on Mac, iOS and Windows platforms.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Local CSE wrongly CSEs array accesses with different result types.
+        https://bugs.webkit.org/show_bug.cgi?id=170990
+        <rdar://problem/31705945>
+
+        Reviewed by Saam Barati.
+
+        The fix is to use different LocationKind enums for the different type of array
+        result types.  This makes the HeapLocation values different based on the result
+        types, and allows CSE to discern between them.
+
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        (JSC::DFG::indexedPropertyLocForResultType):
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Make DFG SpeculatedType dumps easier to read.
+        https://bugs.webkit.org/show_bug.cgi?id=171280
+
+        Reviewed by Saam Barati.
+
+        Adding a pretty printer to insert |s between each type string and changing the
+        dumped strings to match the SpeculatedType names case-wise.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::PrettyPrinter::PrettyPrinter):
+        (JSC::PrettyPrinter::print):
+        (JSC::dumpSpeculation):
+        * bytecode/SpeculatedType.h:
+
+2017-04-25  JF Bastien  <jfbastien@apple.com>
+
+        lowerStackArgs: check Arg::addr.isValidForm when falling back to SP offsets
+        https://bugs.webkit.org/show_bug.cgi?id=171278
+
+        Reviewed by Filip Pizlo.
+
+        lowerStackArgs checked that the FP offsets it tries to generate
+        are valid form, but didn't check that the fallback was valid
+        form. This lead to stackAddr's assertion being dead, and the
+        MaroAssembler asserting way later on move / add when handed a huge
+        immediate.
+
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::stackAddrImpl):
+
+2017-04-25  Zan Dobersek  <zdobersek@igalia.com>
+
+        [aarch64] moveConditionally32(), moveConditionallyTest32() should move from/to 64-bit registers
+        https://bugs.webkit.org/show_bug.cgi?id=170891
+
+        Reviewed by Saam Barati.
+
+        moveConditionally32() and moveConditionallyTest32() operations in
+        MacroAssemblerARM64 properly perform comparisons and tests on 32-bit
+        values, but end up performing the moves from and to 32-bit registers.
+
+        Move operations should instead be done on 64-bit registers, just like
+        on the X86_64 platform. This is achieved by specifying 64 as the data
+        size for the csel instructions.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::moveConditionally32):
+        (JSC::MacroAssemblerARM64::moveConditionallyTest32):
+
 2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
 
         test262: test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js

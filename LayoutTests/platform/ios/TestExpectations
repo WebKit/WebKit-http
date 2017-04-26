@@ -193,9 +193,6 @@ fast/history/page-cache-media-source-closed.html [ Skip ]
 fast/history/page-cache-media-source-opened.html [ Skip ]
 fast/history/page-cache-removed-source-buffer.html [ Skip ]
 
-# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
-webkit.org/b/136452 http/tests/security/contentTypeOptions
-
 # IndexedDB tests have numerous unexpected failures on iOS
 webkit.org/b/144475 storage/indexeddb
 
@@ -2945,3 +2942,5 @@ workers/wasm-long-compile.html [ Skip ]
 # <rdar://problem/25780035> CSP does not ignore paths for media redirects
 http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Skip ]
 http/tests/security/contentSecurityPolicy/video-redirect-allowed2.html [ Skip ]
+
+webkit.org/b/171272 fast/text/kaithi.html [ ImageOnlyFailure ]
