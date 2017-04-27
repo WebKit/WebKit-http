@@ -643,6 +643,8 @@ public:
     void ariaOwnsElements(AccessibilityChildrenVector&) const;
 
     virtual bool ariaHasPopup() const { return false; }
+    String ariaPopupValue() const;
+    bool supportsARIAHasPopup() const;
     bool ariaPressedIsPresent() const;
     bool ariaIsMultiline() const;
     String invalidStatus() const;
@@ -656,6 +658,8 @@ public:
     void classList(Vector<String>&) const;
     virtual String roleDescription() const;
     AccessibilityARIACurrentState ariaCurrentState() const;
+    String ariaCurrentValue() const;
+    bool supportsARIACurrent() const;
     
     // This function checks if the object should be ignored when there's a modal dialog displayed.
     bool ignoredFromARIAModalPresence() const;

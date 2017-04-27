@@ -1,3 +1,628 @@
+2017-04-27  Dean Jackson  <dino@apple.com>
+
+        Use the correct modern-media-controls
+        https://bugs.webkit.org/show_bug.cgi?id=171358
+
+        Reviewed by Antoine Quint.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2017-04-26  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r215774.
+
+        That change wasn’t doing what it was intended to do and was inappropriate for WebCore.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2017-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Attempt to fix a PLT regression.
+        <rdar://problem/31826998>
+
+        Unreviewed.
+
+        Disable passing the TypeIdentifierHint to CGImageSourceCreateIncremental()
+        on iOS for now.
+
+        * platform/graphics/cg/ImageDecoderCG.cpp:
+        (WebCore::ImageDecoder::ImageDecoder):
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] ARIA buttons which have a popup should be ATK_ROLE_PUSH_BUTTON; not ATK_ROLE_COMBO_BOX
+        https://bugs.webkit.org/show_bug.cgi?id=171182
+
+        Reviewed by Chris Fleizach.
+
+        Test: accessibility/gtk/button-with-aria-haspopup-is-not-a-combobox.html
+
+        WebCore Accessibility assigns PopUpButtonRole to collapsed select elements,
+        which the ATK code correctly maps to ATK_ROLE_COMBO_BOX. It turns out that
+        WebCore Accessibility also maps the ARIA button role to PopUpButtonRole if
+        it also has aria-haspopup. Add a check to atkRole() so that the latter case
+        is mapped to ATK_ROLE_PUSH_BUTTON.
+
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (atkRole):
+
+2017-04-26  Tim Horton  <timothy_horton@apple.com>
+
+        Should not drag x-apple-data-detectors links
+        https://bugs.webkit.org/show_bug.cgi?id=171352
+        <rdar://problem/31309081>
+
+        Reviewed by Beth Dakin.
+
+        Test: fast/events/do-not-drag-and-drop-data-detectors-link.html
+
+        These links are only meaningful in the context of the original document,
+        so they should not be draggable.
+
+        * editing/cocoa/DataDetection.h:
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::dataDetectorURLProtocol):
+        (WebCore::DataDetection::isDataDetectorURL):
+        * page/DragController.cpp:
+        (WebCore::isDraggableLink):
+        Disallow dragging of <a href="x-apple-data-detectors://..."> links.
+
+2017-04-26  Tim Horton  <timothy_horton@apple.com>
+
+        Revert accidentally smushed commit.
+
+        * editing/cocoa/DataDetection.h:
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::dataDetectorURLProtocol): Deleted.
+        (WebCore::DataDetection::isDataDetectorURL): Deleted.
+        * page/DragController.cpp:
+        (WebCore::isDraggableLink):
+        * platform/mac/DragImageMac.mm:
+        (WebCore::createDragImageForLink):
+
+2017-04-26  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r215686): ASSERTION FAILED: data seen with webarchive/loading tests
+        https://bugs.webkit.org/show_bug.cgi?id=171340
+
+        Reviewed by Brady Eidson.
+
+        This fixes a flaky assertion in webarchive/loading/missing-data.html
+
+        * platform/cf/SharedBufferCF.cpp:
+        (WebCore::SharedBuffer::append):
+        If there's no CFDataRef, there's no need to append data.
+        This happens sometimes.
+
+2017-04-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215814.
+
+        The LayoutTest for this change is failing on ios-simulator and
+        is flaky on macOS.
+
+        Reverted changeset:
+
+        "Response.blob() does not set the content-type based on the
+        header value."
+        https://bugs.webkit.org/show_bug.cgi?id=170849
+        http://trac.webkit.org/changeset/215814
+
+2017-04-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WebItemProviderPasteboard should not synchronously load provided data
+        https://bugs.webkit.org/show_bug.cgi?id=171341
+        <rdar://problem/31614010>
+
+        Reviewed by Tim Horton.
+
+        Refactors WebItemProviderPasteboard to not require asynchronously loading item provider data. To accomplish this,
+        we ensure that before performing data interaction, the UTI type that the data operation target should consume is
+        propagated to the UI process prior to the web process receiving the signal from the UI process to begin the
+        data operation itself. This information is sent via WebPlatformStrategies::updatePreferredTypeIdentifiers, a new
+        pasteboard helper function.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::DragController):
+        (WebCore::dragIsHandledByDocument):
+        (WebCore::DragController::performDragOperation):
+        (WebCore::DragController::dragEnteredOrUpdated):
+        (WebCore::DragController::updatePreferredTypeIdentifiersForDragHandlingMethod):
+        (WebCore::DragController::tryDocumentDrag):
+
+        Give DragHandlingMethod a richer representation of what type of action will be performed. DragController::
+        updatePreferredTypeIdentifiersForDragHandlingMethod uses this to determine what kinds of UTIs are acceptable for
+        the current drop session.
+
+        * page/DragController.h:
+        (WebCore::DragController::documentIsHandlingNonDefaultDrag):
+        * page/mac/DragControllerMac.mm:
+        (WebCore::DragController::updatePreferredTypeIdentifiersForDragHandlingMethod):
+
+        Updates the data interaction pasteboard's list of preferred type identifiers it should load upon data operation.
+
+        * platform/DragData.h:
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/AbstractPasteboard.h:
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::updatePreferredTypeIdentifiers):
+        * platform/ios/WebItemProviderPasteboard.mm:
+
+        Introduce _preferredTypeIdentifiers, which -doAfterLoadingProvidedContentIntoFileURLs: uses as a hint when
+        determining which UTI to load for an item provider. In the absence of preferred type identifiers, the default
+        behavior is to use the highest fidelity type adhering to "public.content".
+
+        (-[WebItemProviderPasteboard init]):
+        (-[WebItemProviderPasteboard updatePreferredTypeIdentifiers:]):
+        (-[WebItemProviderPasteboard setItemProviders:]):
+        (-[WebItemProviderPasteboard dataForPasteboardType:inItemSet:]):
+        (-[WebItemProviderPasteboard valuesForPasteboardType:inItemSet:]):
+
+        Remove calls to -createObjectOfClass: and -copyDataRepresentation:. Instead, rely solely on the loaded file URL
+        to read and initialize data and objects from the pasteboard.
+
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+        (-[WebItemProviderPasteboard _tryToCreateObjectOfClass:usingProvider:]): Deleted.
+        * platform/mac/DragDataMac.mm:
+        (WebCore::DragData::updatePreferredTypeIdentifiers):
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Elements with a defined, non-false value for aria-current should expose ATK_STATE_ACTIVE
+        https://bugs.webkit.org/show_bug.cgi?id=171163
+
+        Reviewed by Chris Fleizach.
+
+        Add ATK_STATE_ACTIVE to the state set of elements which have a valid, non-false
+        value for aria-current, expose the value of via the "current" AtkObject attribute,
+        and emit state-change notifications when the value of aria-current changes from
+        non-false to false, or vice versa.
+
+        Tests: accessibility/gtk/aria-current-changed-notification.html
+               accessibility/gtk/aria-current.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::handleAttributeChanged):
+        * accessibility/AXObjectCache.h:
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::supportsARIACurrent):
+        (WebCore::AccessibilityObject::ariaCurrentValue):
+        * accessibility/AccessibilityObject.h:
+        * accessibility/atk/AXObjectCacheAtk.cpp:
+        (WebCore::AXObjectCache::postPlatformNotification):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetAttributes):
+        (setAtkStateSetFromCoreObject):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]): Moved code returning
+        string value for aria-current into AccessibilityObject:ariaCurrentValue().
+
+2017-04-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WebItemProviderPasteboard should fetch preloaded assets from disk when possible
+        https://bugs.webkit.org/show_bug.cgi?id=171320
+        <rdar://problem/31614010>
+
+        Reviewed by Tim Horton.
+
+        Adds a mechanism to WebItemProviderPasteboard to remember the temporary file URLs of assets it has loaded using
+        doAfterLoadingProvidedContentIntoFileURLs:. When retrieving data from the pasteboard, we then see if we can
+        first fetch serialized data straight from disk instead of having to go through the item provider in both
+        -dataForPasteboardType:inItemSet: and -valuesForPasteboardType:inItemSet:.
+
+        See below annotations for more detail.
+
+        * platform/ios/AbstractPasteboard.h:
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::filenamesForDataInteraction):
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+
+        Introduces _typeToFileURLMaps, an array of dictionaries. A dictionary at the ith index of this array represents
+        a mapping of UTIs to loaded temo file URLs for the ith UIItemProvider in the _itemProviders array. Before data
+        interaction is performed, all entries in this array will be empty.
+
+        (-[WebItemProviderPasteboard init]):
+        (-[WebItemProviderPasteboard setItemProviders:]):
+        (-[WebItemProviderPasteboard _preLoadedDataConformingToType:forItemProviderAtIndex:]):
+        (-[WebItemProviderPasteboard dataForPasteboardType:inItemSet:]):
+        (-[WebItemProviderPasteboard valuesForPasteboardType:inItemSet:]):
+
+        Consult any loaded assets on disk before hitting UIItemProviders via the new
+        -_preLoadedDataConformingToType:forItemProviderAtIndex: helper method.
+
+        (-[WebItemProviderPasteboard _tryToCreateObjectOfClass:usingProvider:]):
+        (-[WebItemProviderPasteboard fileURLsForDataInteraction]):
+
+        Traverse _typeToFileURLMaps to collect all file URLs.
+
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+
+        Refactored to populate and set _typeToFileURLMaps when loading completes, rather than an array of file URLs.
+
+        (-[WebItemProviderPasteboard _tryToCreateAndAppendObjectOfClass:toArray:usingProvider:]): Deleted.
+        (-[WebItemProviderPasteboard filenamesForDataInteraction]): Deleted.
+
+        Correct an erroneously named method (replaces filenames with fileURLs).
+
+2017-04-26  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/datachannel/basic.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=170154
+        <rdar://problem/31288423>
+
+        Reviewed by Geoffrey Garen.
+
+        Before the patch, we are setting the channel handler client to null and then unregistering from observer to
+        libwebrtc data channel. Since this happens in two different threads, there might be a timing issue.
+
+        Removing this risk by first unregistering (done synchronously on the other thread), before setting client to null.
+        Made some clean-up related refactoring.
+
+        * Modules/mediastream/RTCDataChannel.cpp:
+        (WebCore::RTCDataChannel::create):
+        (WebCore::RTCDataChannel::close):
+        * Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.cpp:
+        (WebCore::LibWebRTCDataChannelHandler::setClient):
+        (WebCore::LibWebRTCDataChannelHandler::close):
+        * Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.h:
+        * platform/mediastream/RTCDataChannelHandler.h:
+        * platform/mock/RTCDataChannelHandlerMock.cpp:
+        (WebCore::RTCDataChannelHandlerMock::setClient):
+        * platform/mock/RTCDataChannelHandlerMock.h:
+
+2017-04-26  Alex Christensen  <achristensen@webkit.org>
+
+        Make user script injection more robust
+        https://bugs.webkit.org/show_bug.cgi?id=171339
+        <rdar://problem/30643691>
+
+        Reviewed by Geoffrey Garen.
+
+        * loader/EmptyClients.cpp:
+        * page/Frame.cpp:
+        (WebCore::Frame::injectUserScripts):
+        * page/UserContentController.cpp:
+        (WebCore::UserContentController::forEachUserScript):
+        (WebCore::UserContentController::forEachUserStyleSheet):
+        (WebCore::UserContentController::forEachUserMessageHandler):
+        * page/UserContentController.h:
+        * page/UserContentProvider.h:
+
+2017-04-26  Zalan Bujtas  <zalan@apple.com>
+
+        RTL: recent searches popover is displayed in incorrect location
+        https://bugs.webkit.org/show_bug.cgi?id=171338
+        <rdar://problem/31377807>
+
+        Reviewed by Dean Jackson.
+
+        Compute the absolute coordinates for the popup the same way we do for the select dropdown.
+
+        * rendering/RenderSearchField.cpp:
+        (WebCore::RenderSearchField::showPopup):
+
+2017-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Restrict WebKit image formats to a known whitelist
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+
+        Reviewed by Tim Horton.
+
+        If the image format is not supported, the load should be canceled and the
+        image is marked a broken image.
+
+        Test: fast/images/image-formats-support.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::addIncrementalDataBuffer):
+        (WebCore::CachedImage::setImageDataBuffer):
+        (WebCore::CachedImage::finishLoading):
+        * loader/cache/CachedImage.h:
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Implement support for new ARIA 1.1 values of aria-haspopup
+        https://bugs.webkit.org/show_bug.cgi?id=171164
+
+        Reviewed by Chris Fleizach.
+
+        In ARIA 1.1, aria-haspopup's value type changed from true/false to a token.
+        Values: true, false (default, unless it's a combobox), dialog, grid, listbox
+        (default for combobox), menu, and tree. Any value of aria-haspopup that is
+        not included in the list of allowed values, including an empty string, must
+        be treated as if the value false had been provided.
+
+        Add AccessibilityObject::ariaPopupValue() to validate the value, handle implicit
+        values, and give platform assistive technologies a means to access that value.
+
+        If there is a valid, non-false value of aria-haspopup, include ATK_STATE_HAS_POPUP
+        in the AtkStateSet. Lastly, expose the value (rather than true/false) via the "haspop"
+        AtkObject attribute.
+
+        Test: accessibility/gtk/aria-haspopup.html
+
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::ariaPopupValue):
+        (WebCore::AccessibilityObject::supportsARIAHasPopup):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::ariaHasPopup):
+        * accessibility/AccessibilityRenderObject.h:
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetAttributes):
+        (setAtkStateSetFromCoreObject):
+
+2017-04-26  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2017-04-26  Antti Koivisto  <antti@apple.com>
+
+        Enable expired-only reload policy on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        <rdar://problem/31807637>
+
+        Reviewed by Andreas Kling.
+
+        Limit the behavior to http and data URLs (where we explicitly know about expiration).
+
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::setCSSStyleSheet):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::subresourceCachePolicy):
+
+            Pass the URL so we can test for protocol.
+
+        * loader/FrameLoader.h:
+        * loader/NavigationAction.cpp:
+        (WebCore::navigationType):
+
+            Test for reload navigation type correctly.
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::load):
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy):
+        (WebCore::CachedResourceLoader::cachePolicy):
+        * loader/cache/CachedResourceLoader.h:
+
+2017-04-26  WebKit Contributor  <webkitcontrib@gmail.com>
+
+        Response.blob() does not set the content-type based on the header value.
+        https://bugs.webkit.org/show_bug.cgi?id=170849
+
+        Reviewed by Alex Christensen.
+
+        The Fetch API specification requires setting the blob contentType
+        using the Content-Type header value, if present.  Previously the
+        FetchResponse class only called updateContentType() when first
+        created even though all the headers were not available.  Call
+        updateContentType() again after the headers are populated.
+
+        This change allows WebKit to pass the "Consume response's body: from
+        fetch to blob" case in the WPT response-consume.html test.
+
+        Test: http://w3c-test.org/fetch/api/response/response-consume.html
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::BodyLoader::didReceiveResponse): Modified to
+        call FetchBodyOwner::updateContentType() after filling m_headers.
+
+2017-04-26  Andy Estes  <aestes@apple.com>
+
+        Try to fix the macOS Sierra build.
+
+        * platform/mac/WebVideoFullscreenInterfaceMac.mm:
+
+2017-04-26  Andy Estes  <aestes@apple.com>
+
+        [macOS] Add picture-in-picture support to WebPlaybackControlsManager
+        https://bugs.webkit.org/show_bug.cgi?id=171328
+        <rdar://problem/29875010>
+
+        Reviewed by Jer Noble.
+
+        * platform/cocoa/WebPlaybackSessionModel.h:
+        * platform/cocoa/WebPlaybackSessionModelMediaElement.h:
+        * platform/cocoa/WebPlaybackSessionModelMediaElement.mm:
+        (WebCore::WebPlaybackSessionModelMediaElement::togglePictureInPicture): If the media element
+        is currently in PiP fullscreen mode, exit fullscreen. Otherwise, enter PiP fullscreen mode.
+        * platform/mac/WebPlaybackControlsManager.h:
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (-[WebPlaybackControlsManager canTogglePictureInPicture]): Added. Returns YES if
+        -allowsPictureInPicturePlayback returns YES.
+        (-[WebPlaybackControlsManager togglePictureInPicture]): Added. Calls
+        WebPlaybackSessionModel::togglePictureInPicture().
+        * platform/mac/WebVideoFullscreenInterfaceMac.mm:
+        (WebCore::WebVideoFullscreenInterfaceMac::enterFullscreen): Added a call to
+        -[WebPlaybackControlsManager setPictureInPictureActive:YES].
+        (WebCore::WebVideoFullscreenInterfaceMac::exitFullscreen): Added a call to
+        -[WebPlaybackControlsManager setPictureInPictureActive:NO].
+        (WebCore::WebVideoFullscreenInterfaceMac::exitFullscreenWithoutAnimationToMode): Ditto.
+        * platform/spi/cocoa/AVKitSPI.h: Declared new SPI on AVTouchBarPlaybackControlsControlling.
+
+2017-04-25  Dean Jackson  <dino@apple.com>
+
+        [Color] Make gradients work with ExtendedColors
+        https://bugs.webkit.org/show_bug.cgi?id=171315
+        <rdar://problems/31830177>
+
+        Reviewed by Antoine Quint.
+
+        Allow gradients to hold Color objects, and thus
+        handle ExtendedColor. Implement the backend for
+        CoreGraphics.
+
+        Test: css3/color/gradients.html
+
+        * platform/graphics/Gradient.cpp:
+        (WebCore::Gradient::addColorStop): Just copy the Color now.
+        (WebCore::compareStops): Handle rename of stop to offset.
+        (WebCore::Gradient::hasAlpha): Use Color's helper.
+        * platform/graphics/Gradient.h:
+        (WebCore::Gradient::ColorStop::ColorStop): Rename stop
+        to offset, and store a Color rather than four floating
+        point values.
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::platformGradient):
+        * platform/graphics/cg/GradientCG.cpp:
+        (WebCore::Gradient::platformGradient): Use the CG method
+        that can handle CGColorRefs with ColorSpace values, and
+        pass the Extended sRGB space which should be no change for
+        all existing gradients but also handle ColorSpaces like
+        Display P3.
+        * platform/graphics/win/GradientDirect2D.cpp:
+        (WebCore::Gradient::generateGradient):
+        * svg/SVGGradientElement.cpp:
+        (WebCore::SVGGradientElement::buildStops):
+
+2017-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Encoded filename should be decoded for WKContentExtension.identifier
+        https://bugs.webkit.org/show_bug.cgi?id=171316
+
+        Reviewed by Andy Estes.
+
+        * platform/FileSystem.h:
+
+2017-04-26  Frederic Wang  <fwang@igalia.com>
+
+        Fix typo in RenderFrameBase
+        https://bugs.webkit.org/show_bug.cgi?id=171324
+
+        Reviewed by Zalan Bujtas.
+
+        No new tests, behavior unchanged.
+
+        * rendering/RenderFrameBase.cpp:
+        (WebCore::RenderFrameBase::layoutWithFlattening):
+        (WebCore::RenderFrameBase::performLayoutWithFlattening):
+        (WebCore::RenderFrameBase::peformLayoutWithFlattening): Deleted.
+        * rendering/RenderFrameBase.h:
+
+2017-04-26  Zalan Bujtas  <zalan@apple.com>
+
+        Forced page break on :after triggers infinite loop in column balancing
+        https://bugs.webkit.org/show_bug.cgi?id=171309
+        rdar://problem/26285884
+
+        Reviewed by David Hyatt.
+
+        Stop trying to balance the columns when the forced page breaks >= the number of
+        columns even when this number is 1. Content will always overflow to the next page.
+        see https://chromium.googlesource.com/chromium/src/+/fbbebf38cefb2712c912581eccb046ef363ec84e%5E%21/#F2 
+
+        Test: fast/multicol/infinite-loop-when-forced-break.html
+
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::calculateBalancedHeight):
+
+2017-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Attempt to fix a JetStream regression.
+        <rdar://problem/31742414>
+
+        Unreviewed.
+
+        Disable async decoding for large images till the flickering bug wk170640
+        is fixed.
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::shouldUseAsyncDecodingForLargeImages):
+
+2017-04-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215767.
+
+        The LayoutTest for this change is a flaky failure.
+
+        Reverted changeset:
+
+        "Restrict WebKit image formats to a known whitelist"
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+        http://trac.webkit.org/changeset/215767
+
+2017-04-26  Dave Hyatt  <hyatt@apple.com>
+
+        Improve wavy underline rendering
+        https://bugs.webkit.org/show_bug.cgi?id=171281
+
+        Reviewed by Sam Weinig.
+
+        Change wavy underline rendering to use font size instead of stroke
+        thickness as a way to tune it. Cut the extra offset from 2 to 1.
+        Change the parameters to make the line flatter and to make the proportion
+        of the wave that renders underneath a glyph the same.
+
+        * rendering/TextDecorationPainter.cpp:
+        (WebCore::strokeWavyTextDecoration):
+        (WebCore::TextDecorationPainter::paintTextDecoration):
+        * style/InlineTextBoxStyle.cpp:
+        (WebCore::getWavyStrokeParameters):
+        (WebCore::visualOverflowForDecorations):
+        * style/InlineTextBoxStyle.h:
+        (WebCore::wavyOffsetFromDecoration):
+
+2017-04-24  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Remove most of the usage of SizingOperation
+        https://bugs.webkit.org/show_bug.cgi?id=171225
+
+        Reviewed by Darin Adler.
+
+        SizingOperation was added as a way to modify the behaviour of the track sizing algorithm
+        with the specifics for intrinsic size computations. The problem is that although intrinsic
+        size computation does imply indefinite sizes, the opposite is not always true. For example,
+        a grid container with height:auto would compute the row sizes with an indefinite size but is
+        not part of the intrinsic size (preferred widths) computation.
+
+        That's why it was wrongly used in some parts of the current code, in most of the cases is
+        more than enough to check whether the available space is indefinite or not. In order to do
+        that we have to keep both available sizes (height & width) around all the time to properly
+        support orthogonal flows.
+
+        This change does not imply any change in behaviour.
+
+        * rendering/GridTrackSizingAlgorithm.cpp:
+        (WebCore::GridTrackSizingAlgorithm::setAvailableSpace):
+        (WebCore::GridTrackSizingAlgorithm::computeTrackBasedSize):
+        (WebCore::GridTrackSizingAlgorithm::initialBaseSize):
+        (WebCore::GridTrackSizingAlgorithm::initialGrowthLimit):
+        (WebCore::GridTrackSizingAlgorithm::sizeTrackToFitNonSpanningItem):
+        (WebCore::GridTrackSizingAlgorithm::increaseSizesToAccommodateSpanningItems):
+        (WebCore::GridTrackSizingAlgorithm::assumedRowsSizeForOrthogonalChild):
+        (WebCore::GridTrackSizingAlgorithm::gridAreaBreadthForChild):
+        (WebCore::GridTrackSizingAlgorithm::gridTrackSize):
+        (WebCore::IndefiniteSizeStrategy::findUsedFlexFraction):
+        (WebCore::IndefiniteSizeStrategy::recomputeUsedFlexFractionIfNeeded):
+        (WebCore::GridTrackSizingAlgorithm::initializeTrackSizes):
+        (WebCore::GridTrackSizingAlgorithm::setup):
+        (WebCore::GridTrackSizingAlgorithm::reset):
+        * rendering/GridTrackSizingAlgorithm.h:
+        (WebCore::GridTrackSizingAlgorithmStrategy::availableSpace):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::availableSpaceForGutters):
+        (WebCore::RenderGrid::computeTrackBasedLogicalHeight):
+        (WebCore::RenderGrid::computeTrackSizesForDefiniteSize):
+        (WebCore::RenderGrid::layoutBlock):
+        (WebCore::RenderGrid::gridGap):
+        (WebCore::RenderGrid::guttersSize):
+        (WebCore::RenderGrid::computeIntrinsicLogicalWidths):
+        (WebCore::RenderGrid::computeTrackSizesForIndefiniteSize):
+        (WebCore::RenderGrid::computeAutoRepeatTracksCount):
+        (WebCore::RenderGrid::placeItemsOnGrid):
+        (WebCore::RenderGrid::trackSizesForComputedStyle):
+        (WebCore::RenderGrid::applyStretchAlignmentToTracksIfNeeded):
+        (WebCore::RenderGrid::offsetAndBreadthForPositionedChild):
+        (WebCore::RenderGrid::populateGridPositionsForDirection):
+        (WebCore::RenderGrid::columnAxisOffsetForChild):
+        (WebCore::RenderGrid::rowAxisOffsetForChild):
+        (WebCore::RenderGrid::gridGapForDirection): Deleted.
+        * rendering/RenderGrid.h:
+
 2017-04-26  Frederic Wang  <fwang@igalia.com>
 
         Remove Document::*FrameElementsShouldIgnoreScrolling

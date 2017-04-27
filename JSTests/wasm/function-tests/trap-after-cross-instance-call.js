@@ -52,13 +52,13 @@ let foo2 = new WebAssembly.Instance(module, importObject).exports.foo;
 
 
 function wasmFrameCountFromError(e) {
-    let stackFrames = e.stack.split("\n").filter((s) => s.indexOf("<wasm>@[wasm code]") !== -1);
+    let stackFrames = e.stack.split("\n").filter((s) => s.indexOf("wasm function") !== -1);
     return stackFrames.length;
 }
 
 for (let i = 0; i < 1000; i++) {
     const e1 = assert.throws(() => foo1(numPages * pageSize + 1), WebAssembly.RuntimeError, "Out of bounds memory access");
     assert.eq(wasmFrameCountFromError(e1), 2);
-    const e2 = assert.throws(() => foo1(numPages * pageSize + 1), WebAssembly.RuntimeError, "Out of bounds memory access");
+    const e2 = assert.throws(() => foo2(numPages * pageSize + 1), WebAssembly.RuntimeError, "Out of bounds memory access");
     assert.eq(wasmFrameCountFromError(e2), 2);
 }

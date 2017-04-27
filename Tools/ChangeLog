@@ -1,3 +1,108 @@
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        Add some more testing modes for Wasm tests now that we have tier up
+        https://bugs.webkit.org/show_bug.cgi?id=171360
+
+        Reviewed by Keith Miller.
+
+        Lets enable the FTL on all Wasm tests. Let's also run each
+        test with and without CJIT.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-04-26  Aakash Jain  <aakash_jain@apple.com>
+
+        JSC EWS Patch Relevance skips few JSC scripts
+        https://bugs.webkit.org/show_bug.cgi?id=171351
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance): Added few jsc related scripts.
+
+2017-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Test importer should delete obsolete files based on w3c-import.log
+        https://bugs.webkit.org/show_bug.cgi?id=171348
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.do_import): Removing dangling -expected.txt files in regular import mode.
+        (TestImporter.remove_deleted_files): Fixing according w3c-import.log current format.
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (test_remove_obsolete_content):
+
+2017-04-26  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION (r213926): We're sometimes trying to start WebKitTestRunner without proper DYLD variables
+        <rdar://problem/31816459>
+
+        Unreviewed infrastructure fix.
+
+        Some of our iOS Simulator bots are slow and will register crashes due to an incorrect
+        DYLD_FRAMEWORK_PATH when installing an app.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.setup_test_run): Pass DYLD_FRAMEWORK_PATH to app on install.
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Elements with a defined, non-false value for aria-current should expose ATK_STATE_ACTIVE
+        https://bugs.webkit.org/show_bug.cgi?id=171163
+
+        Reviewed by Chris Fleizach.
+
+        Add support for state-change notifications for ATK_STATE_ACTIVE.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+
+2017-04-26  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Teardown iOS Simulators on exit if managed Simulators are still running
+        https://bugs.webkit.org/show_bug.cgi?id=171293
+
+        Reviewed by Aakash Jain.
+
+        We should make an effort to teardown simulators which we booted even when an exception is
+        thrown while booting. Make some IOSSimulatorPort functions into static methods and register
+        one of these functions to be run at exit to ensure any devices webkitpy is managing gets
+        torn down.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._set_up_run): Rely on exit handlers to teardown, not exceptions.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort._teardown_managed_simulators): Function run on exit which will kill all
+        iOS simulators and teardown and managed devices.
+        (IOSSimulatorPort._create_simulators): Register teardown function.
+        (IOSSimulatorPort.clean_up_test_run): Move device teardown to _teardown_managed_simulators.
+        (IOSSimulatorPort._remove_device): Deleted.
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Implement support for new ARIA 1.1 values of aria-haspopup
+        https://bugs.webkit.org/show_bug.cgi?id=171164
+
+        Reviewed by Chris Fleizach.
+
+        hasPopup() should return whether or not ATK_STATE_HAS_POPUP is in the
+        AtkStateSet; not what is found in the AtkObject's attributes.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::hasPopup):
+
+2017-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Encoded filename should be decoded for WKContentExtension.identifier
+        https://bugs.webkit.org/show_bug.cgi?id=171316
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKContentExtensionStore.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm.
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm: Removed.
+
 2017-04-25  Alex Christensen  <achristensen@webkit.org>
 
         REGRESSION(206450): WebKit2PlatformMouseEvent m_modifierFlags not set

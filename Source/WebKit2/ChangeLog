@@ -1,3 +1,162 @@
+2017-04-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WebItemProviderPasteboard should not synchronously load provided data
+        https://bugs.webkit.org/show_bug.cgi?id=171341
+        <rdar://problem/31614010>
+
+        Reviewed by Tim Horton.
+
+        Adds plumbing for updatePreferredTypeIdentifiers through the WebPasteboardProxy. This allows the web process to
+        signal to the UI process what UTIs the current drop target should accept and load. See WebCore ChangeLog for more
+        details.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::updatePreferredTypeIdentifiers):
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::updatePreferredTypeIdentifiers):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2017-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Unauthenticated CORS preflight requests should not use client certificates
+        https://bugs.webkit.org/show_bug.cgi?id=171298
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSessionCocoa::NetworkSessionCocoa): Ensuring that session dedicated to requests that do not want to use credentials do not look for client credentials.
+
+2017-04-26  Eric Carlson  <eric.carlson@apple.com>
+
+        The current page is given a muted state when starting a media stream on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=171290
+        <rdar://problem/31821427>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Don't mute the current
+        page on iOS either, that will prevent the new media stream from playing.
+
+2017-04-26  Alex Christensen  <achristensen@webkit.org>
+
+        Make user script injection more robust
+        https://bugs.webkit.org/show_bug.cgi?id=171339
+        <rdar://problem/30643691>
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserContentController::forEachUserScript):
+        (WebKit::WebUserContentController::forEachUserStyleSheet):
+        (WebKit::WebUserContentController::forEachUserMessageHandler):
+        * WebProcess/UserContent/WebUserContentController.h:
+
+2017-04-26  Zalan Bujtas  <zalan@apple.com>
+
+        RTL: recent searches popover is displayed in incorrect location
+        https://bugs.webkit.org/show_bug.cgi?id=171338
+        <rdar://problem/31377807>
+
+        Reviewed by Dean Jackson.
+
+        Add RTL support for the pop-under branch.
+
+        * UIProcess/mac/WebPopupMenuProxyMac.mm:
+        (WebKit::WebPopupMenuProxyMac::showPopupMenu):
+
+2017-04-26  Antti Koivisto  <antti@apple.com>
+
+        Enable expired-only reload policy on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171264
+        <rdar://problem/31807637>
+
+        Reviewed by Andreas Kling.
+
+        Enable the reload policy where only expired subresources are revalidated on Mac and iOS.
+        The behavor is enabled in Safari and for other clients based on SDK version check.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageReload):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView reload]):
+        * UIProcess/Cocoa/VersionChecks.h:
+
+2017-04-26  Andy Estes  <aestes@apple.com>
+
+        [macOS] Add picture-in-picture support to WebPlaybackControlsManager
+        https://bugs.webkit.org/show_bug.cgi?id=171328
+        <rdar://problem/29875010>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.mm:
+        (WebKit::WebPlaybackSessionModelContext::togglePictureInPicture): Added. Calls
+        WebPlaybackSessionManagerProxy::togglePictureAndPicture().
+        (WebKit::WebPlaybackSessionManagerProxy::togglePictureInPicture): Added. Sends
+        TogglePictureInPicture to WebPlaybackSessionManager.
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::updateMediaTouchBar): Called
+        -[WebPlaybackControlsManager setAllowsPictureInPicturePlayback:YES] if
+        WebPreferences::allowsPictureInPictureMediaPlayback() is true.
+        * WebProcess/cocoa/WebPlaybackSessionManager.h:
+        * WebProcess/cocoa/WebPlaybackSessionManager.messages.in:
+        * WebProcess/cocoa/WebPlaybackSessionManager.mm:
+        (WebKit::WebPlaybackSessionManager::togglePictureInPicture): Added. Sets a
+        UserGestureIndicator and calls WebPlaybackSessionModel::togglePictureInPicture().
+
+2017-04-26  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit calls AppKit NSCell API from a background queue
+        https://bugs.webkit.org/show_bug.cgi?id=171318
+        <rdar://problem/31798317>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/mac/ServicesController.mm:
+        (WebKit::ServicesController::refreshExistingServices):
+        Synchronously bounce to the main thread to do non-thread-safe NSCell related work.
+
+2017-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Encoded filename should be decoded for WKContentExtension.identifier
+        https://bugs.webkit.org/show_bug.cgi?id=171316
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/API/APIContentExtensionStore.cpp:
+        (API::createExtension):
+        (API::ContentExtensionStore::lookupContentExtension):
+        (API::ContentExtensionStore::getAvailableContentExtensionIdentifiers):
+
+2017-04-26  Andrew Gold  <agold@apple.com>
+
+        Move mediaCaptureEnabled from WKWebViewConfiguration to WKPreferences
+        https://bugs.webkit.org/show_bug.cgi?id=171294
+
+        Reviewed by Eric Carlson.
+
+        Since we now want the ability to toggle this setting dynamically, I have
+        moved it from WKWebViewConfiguration to WKPreferences.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _mediaStreamEnabled]):
+        (-[WKPreferences _setMediaStreamEnabled:]):
+
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]): No longer set mediaStream enabled from
+        the configuration.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _mediaStreamEnabled]): Deleted.
+        (-[WKWebViewConfiguration _setMediaStreamEnabled:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+
 2017-04-25  Alex Christensen  <achristensen@webkit.org>
 
         REGRESSION(206450): WebKit2PlatformMouseEvent m_modifierFlags not set

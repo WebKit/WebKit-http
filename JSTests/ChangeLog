@@ -1,3 +1,60 @@
+2017-04-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Handle PhantomSpread in LoadVarargs as the same to the others
+        https://bugs.webkit.org/show_bug.cgi?id=171262
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-outer-create-rest.js: Added.
+        (assert):
+        (foo):
+        (bar):
+        (baz):
+
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        Print Wasm function index in stack trace
+        https://bugs.webkit.org/show_bug.cgi?id=171349
+
+        Reviewed by JF Bastien.
+
+        * wasm/function-tests/stack-trace.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (let.imp):
+        * wasm/function-tests/trap-after-cross-instance-call.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load-2.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load.js:
+        (wasmFrameCountFromError):
+
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        ASSERTION FAILED: inIndex != notFound in JSC::invalidParameterInSourceAppender()
+        https://bugs.webkit.org/show_bug.cgi?id=170924
+        <rdar://problem/31721052>
+
+        Reviewed by Mark Lam.
+
+        * stress/error-message-for-function-base-not-found.js: Added.
+        (assert):
+        (throw.new.Error):
+        * stress/error-messages-for-in-operator-should-not-crash.js: Added.
+        (catch):
+
+2017-04-26  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Implement tier up
+        https://bugs.webkit.org/show_bug.cgi?id=170134
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/trap-after-cross-instance-call.js:
+        * wasm/tier-up/js-to-wasm.js: Added.
+        (async.test):
+        * wasm/tier-up/wasm-to-wasm.js: Added.
+        (async.test):
+
 2017-04-26  Caitlin Potter  <caitp@igalia.com>
 
         [JSC] Object.keys() must discard property names with no PropertyDescriptor

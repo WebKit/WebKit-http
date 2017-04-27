@@ -400,8 +400,11 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
 
-    if (coreObject->ariaHasPopup())
-        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", "true");
+    if (coreObject->supportsARIAHasPopup())
+        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->ariaPopupValue().utf8().data());
+
+    if (coreObject->supportsARIACurrent())
+        attributeSet = addToAtkAttributeSet(attributeSet, "current", coreObject->ariaCurrentValue().utf8().data());
 
     AccessibilitySortDirection sortDirection = coreObject->sortDirection();
     if (sortDirection != SortDirectionNone) {
@@ -527,6 +530,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case WindowRole:
         return ATK_ROLE_WINDOW;
     case PopUpButtonRole:
+        return coreObject->ariaHasPopup() ? ATK_ROLE_PUSH_BUTTON : ATK_ROLE_COMBO_BOX;
     case ComboBoxRole:
         return ATK_ROLE_COMBO_BOX;
     case SplitGroupRole:
@@ -753,7 +757,8 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     bool isListBoxOption = parent && parent->isListBox();
 
     // Please keep the state list in alphabetical order
-    if (isListBoxOption && coreObject->isSelectedOptionActive())
+    if ((isListBoxOption && coreObject->isSelectedOptionActive())
+        || coreObject->ariaCurrentState() != ARIACurrentFalse)
         atk_state_set_add_state(stateSet, ATK_STATE_ACTIVE);
 
     if (coreObject->isBusy())
@@ -792,6 +797,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
         atk_state_set_add_state(stateSet, ATK_STATE_HORIZONTAL);
     else if (coreObject->orientation() == AccessibilityOrientationVertical)
         atk_state_set_add_state(stateSet, ATK_STATE_VERTICAL);
+
+    if (coreObject->ariaHasPopup())
+        atk_state_set_add_state(stateSet, ATK_STATE_HAS_POPUP);
 
     if (coreObject->isIndeterminate())
         atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);

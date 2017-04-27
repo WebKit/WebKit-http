@@ -88,12 +88,24 @@
 #include <wtf/RefPtr.h>
 #endif
 
+#if PLATFORM(COCOA)
+#include "DataDetection.h"
+#endif
+
 namespace WebCore {
 
 bool isDraggableLink(const Element& element)
 {
-    if (is<HTMLAnchorElement>(element))
-        return downcast<HTMLAnchorElement>(element).isLiveLink();
+    if (is<HTMLAnchorElement>(element)) {
+        auto& anchorElement = downcast<HTMLAnchorElement>(element);
+        if (!anchorElement.isLiveLink())
+            return false;
+#if PLATFORM(COCOA)
+        return !DataDetection::isDataDetectorURL(anchorElement.href());
+#else
+        return true;
+#endif
+    }
     if (is<SVGAElement>(element))
         return element.isLink();
     return false;
@@ -119,7 +131,7 @@ DragController::DragController(Page& page, DragClient& client)
     : m_page(page)
     , m_client(client)
     , m_numberOfItemsToBeAccepted(0)
-    , m_documentDragHandlingMethod(DragHandlingMethod::None)
+    , m_dragHandlingMethod(DragHandlingMethod::None)
     , m_dragDestinationAction(DragDestinationActionNone)
     , m_dragSourceAction(DragSourceActionNone)
     , m_didInitiateDrag(false)
@@ -220,6 +232,17 @@ DragOperation DragController::dragUpdated(const DragData& dragData)
     return dragEnteredOrUpdated(dragData);
 }
 
+inline static bool dragIsHandledByDocument(DragController::DragHandlingMethod dragHandlingMethod)
+{
+    if (dragHandlingMethod == DragController::DragHandlingMethod::None)
+        return false;
+
+    if (dragHandlingMethod == DragController::DragHandlingMethod::PageLoad)
+        return false;
+
+    return true;
+}
+
 bool DragController::performDragOperation(const DragData& dragData)
 {
     m_documentUnderMouse = m_page.mainFrame().documentAtPoint(dragData.clientPosition());
@@ -228,7 +251,7 @@ bool DragController::performDragOperation(const DragData& dragData)
     if (m_documentUnderMouse)
         shouldOpenExternalURLsPolicy = m_documentUnderMouse->shouldOpenExternalURLsPolicyToPropagate();
 
-    if ((m_dragDestinationAction & DragDestinationActionDHTML) && m_documentDragHandlingMethod != DragHandlingMethod::None) {
+    if ((m_dragDestinationAction & DragDestinationActionDHTML) && dragIsHandledByDocument(m_dragHandlingMethod)) {
         m_client.willPerformDragDestinationAction(DragDestinationActionDHTML, dragData);
         Ref<MainFrame> mainFrame(m_page.mainFrame());
         bool preventedDefault = false;
@@ -283,6 +306,7 @@ DragOperation DragController::dragEnteredOrUpdated(const DragData& dragData)
 {
     mouseMovedIntoDocument(m_page.mainFrame().documentAtPoint(dragData.clientPosition()));
 
+    m_preferredTypeIdentifiersToLoad = { };
     m_dragDestinationAction = dragData.dragDestinationAction();
     if (m_dragDestinationAction == DragDestinationActionNone) {
         clearDragCaret(); // FIXME: Why not call mouseMovedIntoDocument(nullptr)?
@@ -290,9 +314,14 @@ DragOperation DragController::dragEnteredOrUpdated(const DragData& dragData)
     }
 
     DragOperation dragOperation = DragOperationNone;
-    m_documentDragHandlingMethod = tryDocumentDrag(dragData, m_dragDestinationAction, dragOperation);
-    if (m_documentDragHandlingMethod == DragHandlingMethod::None && (m_dragDestinationAction & DragDestinationActionLoad))
+    m_dragHandlingMethod = tryDocumentDrag(dragData, m_dragDestinationAction, dragOperation);
+    if (m_dragHandlingMethod == DragHandlingMethod::None && (m_dragDestinationAction & DragDestinationActionLoad)) {
         dragOperation = operationForLoad(dragData);
+        if (dragOperation != DragOperationNone)
+            m_dragHandlingMethod = DragHandlingMethod::PageLoad;
+    }
+
+    updatePreferredTypeIdentifiersForDragHandlingMethod(m_dragHandlingMethod, dragData);
     return dragOperation;
 }
 
@@ -331,6 +360,14 @@ static Element* elementUnderMouse(Document* documentUnderMouse, const IntPoint& 
     return downcast<Element>(node);
 }
 
+#if !ENABLE(DATA_INTERACTION)
+
+void DragController::updatePreferredTypeIdentifiersForDragHandlingMethod(DragHandlingMethod, const DragData&) const
+{
+}
+
+#endif
+
 DragController::DragHandlingMethod DragController::tryDocumentDrag(const DragData& dragData, DragDestinationAction actionMask, DragOperation& dragOperation)
 {
     if (!m_documentUnderMouse)
@@ -365,7 +402,7 @@ DragController::DragHandlingMethod DragController::tryDocumentDrag(const DragDat
     if ((actionMask & DragDestinationActionEdit) && canProcessDrag(dragData)) {
         if (dragData.containsColor()) {
             dragOperation = DragOperationGeneric;
-            return DragHandlingMethod::Default;
+            return DragHandlingMethod::SetColor;
         }
 
         IntPoint point = frameView->windowToContents(dragData.clientPosition());
@@ -408,8 +445,14 @@ DragController::DragHandlingMethod DragController::tryDocumentDrag(const DragDat
             // be loaded into the view the number of dragged items is 1.
             m_numberOfItemsToBeAccepted = numberOfFiles != 1 ? 0 : 1;
         }
-        
-        return DragHandlingMethod::Default;
+
+        if (m_fileInputElementUnderMouse)
+            return DragHandlingMethod::UploadFile;
+
+        if (m_page.dragCaretController().isContentRichlyEditable())
+            return DragHandlingMethod::EditRichText;
+
+        return DragHandlingMethod::EditPlainText;
     }
     
     // We are not over an editable region. Make sure we're clearing any prior drag cursor.

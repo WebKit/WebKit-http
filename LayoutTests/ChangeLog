@@ -1,3 +1,224 @@
+2017-04-26  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, remove unnecessary expected result in platform/ios-wk2
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt: Removed.
+        * platform/ios/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2017-04-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uint8ClampedArray should be treated like an array, not an object
+        https://bugs.webkit.org/show_bug.cgi?id=171364
+        <rdar://problem/10873037>
+
+        Reviewed by Sam Weinig.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        Test a Uint8ClampedArray is treated like an array.
+
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        ASSERTION FAILED: inIndex != notFound in JSC::invalidParameterInSourceAppender()
+        https://bugs.webkit.org/show_bug.cgi?id=170924
+        <rdar://problem/31721052>
+
+        Reviewed by Mark Lam.
+
+        * js/let-syntax-expected.txt:
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] ARIA buttons which have a popup should be ATK_ROLE_PUSH_BUTTON; not ATK_ROLE_COMBO_BOX
+        https://bugs.webkit.org/show_bug.cgi?id=171182
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/button-with-aria-haspopup-is-not-a-combobox-expected.txt: Added.
+        * accessibility/gtk/button-with-aria-haspopup-is-not-a-combobox.html: Added.
+
+2017-04-26  Tim Horton  <timothy_horton@apple.com>
+
+        Should not drag x-apple-data-detectors links
+        https://bugs.webkit.org/show_bug.cgi?id=171352
+        <rdar://problem/31309081>
+
+        Reviewed by Beth Dakin.
+
+        * fast/events/do-not-drag-and-drop-data-detectors-link-expected.txt: Added.
+        * fast/events/do-not-drag-and-drop-data-detectors-link.html: Added.
+
+2017-04-26  Tim Horton  <timothy_horton@apple.com>
+
+        Revert accidentally smushed commit.
+
+        * TestExpectations:
+        * fast/events/do-not-drag-and-drop-data-detectors-link-expected.txt: Removed.
+        * fast/events/do-not-drag-and-drop-data-detectors-link.html: Removed.
+        * platform/mac/TestExpectations:
+
+2017-04-26  Matt Lewis  <jlewis3@apple.com>
+
+        Re-baseline inspector/dom/getAccessibilityPropertiesForNode.html after r215821
+        https://bugs.webkit.org/show_bug.cgi?id=171346
+
+        Unreviewed test gardening.
+
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt:
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Elements with a defined, non-false value for aria-current should expose ATK_STATE_ACTIVE
+        https://bugs.webkit.org/show_bug.cgi?id=171163
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/aria-current-changed-notification-expected.txt: Added.
+        * accessibility/gtk/aria-current-changed-notification.html: Added.
+        * accessibility/gtk/aria-current-expected.txt: Added.
+        * accessibility/gtk/aria-current.html: Added.
+
+2017-04-26  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/datachannel/bufferedAmountLowThreshold.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170701
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk1/TestExpectations: Removing flaky expectation.
+        * webrtc/datachannel/bufferedAmountLowThreshold-expected.txt:
+        * webrtc/datachannel/bufferedAmountLowThreshold.html:
+
+2017-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Restrict WebKit image formats to a known whitelist
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+
+        Reviewed by Tim Horton.
+
+        * fast/images/image-formats-support-expected.txt: Added.
+        * fast/images/image-formats-support.html: Added.
+        * fast/images/resources/100x100-red-psd-renamed.png: Added.
+        * fast/images/resources/100x100-red-tga-renamed.png: Added.
+        * fast/images/resources/100x100-red.psd: Added.
+        * fast/images/resources/100x100-red.tga: Added.
+
+2017-04-26  Matt Lewis  <jlewis3@apple.com>
+
+        Mark swipe/main-frame-pinning-requirement.html as a flaky failure on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=170484
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-26  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync html/browsers/the-window-object web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=171313
+
+        Reviewed by Alex Christensen.
+
+        * tests-options.json:
+
+2017-04-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Implement support for new ARIA 1.1 values of aria-haspopup
+        https://bugs.webkit.org/show_bug.cgi?id=171164
+
+        Reviewed by Chris Fleizach.
+
+        In addition to the new test, update xml-roles-exposed.html's expectations
+        because the implicit value of aria-haspopup for the combobox role is now
+        listbox, and that value should be exposed via an AtkObject attribute.
+
+        * accessibility/gtk/aria-haspopup-expected.txt: Added.
+        * accessibility/gtk/aria-haspopup.html: Added.
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+
+2017-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        http/tests/frame-throttling tests failing on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=171314
+        rdar://problem/31691134
+
+        Reviewed by Chris Dumez.
+
+        The tests use UIHelper.activateAt(), which in DumpRenderTree dispatches mouse events via EventSender, and in iOS WK2 uses
+        UIScriptController to dispatch touch events. The former just use standard hit testing, which works fine.
+        The latter go via Frame::qualifyingNodeAtViewportLocation(), which calls ancestorRespondingToClickEvents()
+        and does area hit testing, and this fails to find anything clickable inside the <iframe>s.
+
+        Fix by putting a div with an onlick handler inside the iframes, and adjusting the click
+        locations.
+
+        * http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html:
+        * http/tests/frame-throttling/resources/requestAnimationFrame-frame.html:
+        * http/tests/frame-throttling/resources/timer-throttling-frame.html:
+        * http/tests/frame-throttling/timer-throttle-in-cross-origin-subframe.html:
+
+2017-04-26  Matt Lewis  <jlewis3@apple.com>
+
+        Removing Flaky timeout expectation for swipe/main-frame-pinning-requirement.html.
+        https://bugs.webkit.org/show_bug.cgi?id=161887
+
+        Reviewed by Tim Horton.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-04-25  Dean Jackson  <dino@apple.com>
+
+        [Color] Make gradients work with ExtendedColors
+        https://bugs.webkit.org/show_bug.cgi?id=171315
+        <rdar://problems/31830177>
+
+        Reviewed by Antoine Quint.
+
+        Test for gradients using the color() syntax. Unfortunately,
+        due to rounding errors, we can't use a ref test for some
+        transparent colors, so comment them out for the moment.
+        These can be re-enabled when we can specify a tolerance
+        value for image comparison in the testing framework.
+
+        * css3/color/gradients-expected.html: Added.
+        * css3/color/gradients.html: Added.
+
+2017-04-26  Zalan Bujtas  <zalan@apple.com>
+
+        Forced page break on :after triggers infinite loop in column balancing
+        https://bugs.webkit.org/show_bug.cgi?id=171309
+        rdar://problem/26285884
+
+        Reviewed by David Hyatt.
+
+        * fast/multicol/infinite-loop-when-forced-break-expected.txt: Added.
+        * fast/multicol/infinite-loop-when-forced-break.html: Added.
+
+2017-04-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215767.
+
+        The LayoutTest for this change is a flaky failure.
+
+        Reverted changeset:
+
+        "Restrict WebKit image formats to a known whitelist"
+        https://bugs.webkit.org/show_bug.cgi?id=170700
+        http://trac.webkit.org/changeset/215767
+
+2017-04-24  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Remove most of the usage of SizingOperation
+        https://bugs.webkit.org/show_bug.cgi?id=171225
+
+        Reviewed by Darin Adler.
+
+        Added a new test case which was working correctly but that was not properly tested before.
+
+        * fast/css-grid-layout/grid-track-sizing-with-percentages-and-orthogonal-flows-expected.txt:
+        * fast/css-grid-layout/grid-track-sizing-with-percentages-and-orthogonal-flows.html:
+
 2017-04-25  Joseph Pecoraro  <pecoraro@apple.com>
 
         [mac-wk1 Debug] LayoutTest http/tests/inspector/network/resource-sizes-network.html is a flaky failure

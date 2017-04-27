@@ -1956,6 +1956,11 @@ String AccessibilityObject::invalidStatus() const
     // Any other non empty string should be treated as "true".
     return trueValue;
 }
+
+bool AccessibilityObject::supportsARIACurrent() const
+{
+    return hasAttribute(aria_currentAttr);
+}
  
 AccessibilityARIACurrentState AccessibilityObject::ariaCurrentState() const
 {
@@ -1979,6 +1984,27 @@ AccessibilityARIACurrentState AccessibilityObject::ariaCurrentState() const
     
     // Any value not included in the list of allowed values should be treated as "true".
     return ARIACurrentTrue;
+}
+
+String AccessibilityObject::ariaCurrentValue() const
+{
+    switch (ariaCurrentState()) {
+    case ARIACurrentFalse:
+        return "false";
+    case ARIACurrentPage:
+        return "page";
+    case ARIACurrentStep:
+        return "step";
+    case ARIACurrentLocation:
+        return "location";
+    case ARIACurrentTime:
+        return "time";
+    case ARIACurrentDate:
+        return "date";
+    default:
+    case ARIACurrentTrue:
+        return "true";
+    }
 }
 
 bool AccessibilityObject::isAriaModalDescendant(Node* ariaModalNode) const
@@ -2481,6 +2507,32 @@ bool AccessibilityObject::supportsRangeValue() const
         || isAttachmentElement();
 }
     
+bool AccessibilityObject::supportsARIAHasPopup() const
+{
+    return hasAttribute(aria_haspopupAttr) || isComboBox();
+}
+
+String AccessibilityObject::ariaPopupValue() const
+{
+    const AtomicString& hasPopup = getAttribute(aria_haspopupAttr);
+    if (equalLettersIgnoringASCIICase(hasPopup, "true")
+        || equalLettersIgnoringASCIICase(hasPopup, "dialog")
+        || equalLettersIgnoringASCIICase(hasPopup, "grid")
+        || equalLettersIgnoringASCIICase(hasPopup, "listbox")
+        || equalLettersIgnoringASCIICase(hasPopup, "menu")
+        || equalLettersIgnoringASCIICase(hasPopup, "tree"))
+        return hasPopup;
+
+    // In ARIA 1.1, the implicit value for combobox became "listbox."
+    if (isComboBox() && hasPopup.isEmpty())
+        return "listbox";
+
+    // The spec states that "User agents must treat any value of aria-haspopup that is not
+    // included in the list of allowed values, including an empty string, as if the value
+    // false had been provided."
+    return "false";
+}
+
 bool AccessibilityObject::supportsARIASetSize() const
 {
     return hasAttribute(aria_setsizeAttr);
