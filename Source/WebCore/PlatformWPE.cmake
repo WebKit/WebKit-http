@@ -3,6 +3,11 @@ include(platform/ImageDecoders.cmake)
 include(platform/Linux.cmake)
 include(platform/TextureMapper.cmake)
 
+# Allow building ANGLE on platforms that don't provide X11 headers.
+if (PORT STREQUAL "WPE")
+    list(APPEND ANGLE_PLATFORM_DEFINITIONS "USE_WPE")
+endif ()
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
