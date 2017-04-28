@@ -25,6 +25,8 @@ DrawingAreaWPE::DrawingAreaWPE(WebPage& webPage, const WebPageCreationParameters
 
 DrawingAreaWPE::~DrawingAreaWPE()
 {
+    if (m_layerTreeHost)
+        m_layerTreeHost->invalidate();
 }
 
 void DrawingAreaWPE::layerHostDidFlushLayers()
