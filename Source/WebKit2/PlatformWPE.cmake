@@ -470,4 +470,4 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
         COMPONENT "Development"
     )
-endif()
+endif ()
