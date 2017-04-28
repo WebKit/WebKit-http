@@ -466,6 +466,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/PopStateEvent.idl
     dom/ProcessingInstruction.idl
     dom/ProgressEvent.idl
+    dom/PromiseRejectionEvent.idl
     dom/Range.idl
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
@@ -1536,10 +1537,12 @@ set(WebCore_SOURCES
     dom/PositionIterator.cpp
     dom/ProcessingInstruction.cpp
     dom/ProgressEvent.cpp
+    dom/PromiseRejectionEvent.cpp
     dom/PseudoElement.cpp
     dom/QualifiedName.cpp
     dom/RadioButtonGroups.cpp
     dom/Range.cpp
+    dom/RejectedPromiseTracker.cpp
     dom/ScopedEventQueue.cpp
     dom/ScriptElement.cpp
     dom/ScriptElementCachedScriptFetcher.cpp
@@ -2101,6 +2104,7 @@ set(WebCore_SOURCES
     page/SecurityOrigin.cpp
     page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
+    page/SessionID.cpp
     page/Settings.cpp
     page/SocketProvider.cpp
     page/SpatialNavigation.cpp
@@ -2206,7 +2210,6 @@ set(WebCore_SOURCES
     platform/Timer.cpp
     platform/URL.cpp
     platform/URLParser.cpp
-    platform/UUID.cpp
     platform/UserActivity.cpp
     platform/WebCoreCrossThreadCopier.cpp
     platform/WebGLStateTracker.cpp

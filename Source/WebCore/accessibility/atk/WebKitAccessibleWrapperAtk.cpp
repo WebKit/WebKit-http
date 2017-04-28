@@ -457,9 +457,9 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
 {
     AccessibilityRole role = coreObject->roleValue();
     switch (role) {
-    case ApplicationAlertDialogRole:
     case ApplicationAlertRole:
         return ATK_ROLE_ALERT;
+    case ApplicationAlertDialogRole:
     case ApplicationDialogRole:
         return ATK_ROLE_DIALOG;
     case ApplicationStatusRole:
@@ -809,6 +809,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
             atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
     }
 
+    if (coreObject->isAriaModalNode())
+        atk_state_set_add_state(stateSet, ATK_STATE_MODAL);
+
     if (coreObject->invalidStatus() != "false")
         atk_state_set_add_state(stateSet, ATK_STATE_INVALID_ENTRY);
 
@@ -1145,7 +1148,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
         interfaceMask |= 1 << WAITable;
 
 #if ATK_CHECK_VERSION(2,11,90)
-    if (role == CellRole || role == ColumnHeaderRole || role == RowHeaderRole)
+    if (role == CellRole || role == GridCellRole || role == ColumnHeaderRole || role == RowHeaderRole)
         interfaceMask |= 1 << WAITableCell;
 #endif
 
@@ -1154,7 +1157,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
         interfaceMask |= 1 << WAIDocument;
 
     // Value
-    if (role == SliderRole || role == SpinButtonRole || role == ScrollBarRole || role == ProgressIndicatorRole)
+    if (coreObject->supportsRangeValue())
         interfaceMask |= 1 << WAIValue;
 
 #if ENABLE(INPUT_TYPE_COLOR)

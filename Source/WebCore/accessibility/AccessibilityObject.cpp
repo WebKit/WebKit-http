@@ -860,6 +860,8 @@ bool AccessibilityObject::isRangeControl() const
     case ScrollBarRole:
     case SpinButtonRole:
         return true;
+    case SplitterRole:
+        return canSetFocusAttribute();
     default:
         return false;
     }
@@ -951,15 +953,11 @@ bool AccessibilityObject::press()
     
 bool AccessibilityObject::dispatchTouchEvent()
 {
-    bool handled = false;
 #if ENABLE(IOS_TOUCH_EVENTS)
-    MainFrame* frame = mainFrame();
-    if (!frame)
-        return false;
-
-    handled = frame->eventHandler().dispatchSimulatedTouchEvent(clickPoint());
+    if (auto* frame = mainFrame())
+        return frame->eventHandler().dispatchSimulatedTouchEvent(clickPoint());
 #endif
-    return handled;
+    return false;
 }
 
 Frame* AccessibilityObject::frame() const
@@ -2024,6 +2022,14 @@ bool AccessibilityObject::isAriaModalDescendant(Node* ariaModalNode) const
     return false;
 }
 
+bool AccessibilityObject::isAriaModalNode() const
+{
+    if (AXObjectCache* cache = axObjectCache())
+        return node() && cache->ariaModalNode() == node();
+
+    return false;
+}
+
 bool AccessibilityObject::ignoredFromARIAModalPresence() const
 {
     // We shouldn't ignore the top node.
@@ -2185,6 +2191,7 @@ static void initializeRoleMap()
         { "combobox", ComboBoxRole },
         { "definition", DefinitionRole },
         { "document", DocumentRole },
+        { "feed", ApplicationGroupRole },
         { "form", FormRole },
         { "rowheader", RowHeaderRole },
         { "group", ApplicationGroupRole },
@@ -2504,6 +2511,7 @@ bool AccessibilityObject::supportsRangeValue() const
         || isSlider()
         || isScrollbar()
         || isSpinButton()
+        || (isSplitter() && canSetFocusAttribute())
         || isAttachmentElement();
 }
     

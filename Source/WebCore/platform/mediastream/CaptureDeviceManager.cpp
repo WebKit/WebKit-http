@@ -33,7 +33,6 @@
 #import "RealtimeMediaSource.h"
 #import "RealtimeMediaSourceCenter.h"
 #import "RealtimeMediaSourceSettings.h"
-#import "UUID.h"
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringHash.h>
@@ -70,17 +69,37 @@ Vector<CaptureDevice> CaptureDeviceManager::getVideoSourcesInfo()
     return sourcesInfo;
 }
 
-bool CaptureDeviceManager::captureDeviceFromDeviceID(const String& captureDeviceID, CaptureDevice& foundDevice)
+std::optional<CaptureDevice> CaptureDeviceManager::captureDeviceFromPersistentID(const String& captureDeviceID)
 {
     for (auto& device : captureDevices()) {
-        if (device.persistentId() == captureDeviceID) {
-            foundDevice = device;
-            return true;
-        }
+        if (device.persistentId() == captureDeviceID)
+            return device;
     }
 
-    return false;
+    return std::nullopt;
 }
+
+#if 0
+std::optional<CaptureDevice> CaptureDeviceManager::captureDeviceFromPersistentID(const String& captureDeviceID, const String& idHashSalt)
+{
+    for (auto& device : captureDevices()) {
+        auto hashedID = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(device.persistentId(), idHashSalt);
+        if (device.persistentId() == captureDeviceID)
+            return device;
+    }
+
+    return std::nullopt;
+}
+
+for (auto& captureDevice : getMediaStreamDevices()) {
+    auto hashedID = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(captureDevice.persistentId(), idHashSalt);
+    if (hashedID == uniqueID)
+        return String { captureDevice.persistentId() };
+}
+
+return Exception { NOT_FOUND_ERR };
+
+#endif
 
 std::optional<CaptureDevice> CaptureDeviceManager::deviceWithUID(const String& deviceUID, RealtimeMediaSource::Type type)
 {

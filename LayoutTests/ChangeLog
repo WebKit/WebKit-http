@@ -1,3 +1,514 @@
+2017-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] aria-modal="true" should be exposed via ATK_STATE_MODAL
+        https://bugs.webkit.org/show_bug.cgi?id=171188
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/aria-modal-state-exposed-expected.txt: Added.
+        * accessibility/gtk/aria-modal-state-exposed.html: Added.
+
+2017-04-28  Matt Lewis  <jlewis3@apple.com>
+
+        Rebaselining test after r215916.
+        https://bugs.webkit.org/show_bug.cgi?id=171438
+
+        Unreviewed test gardening.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-04-28  Eric Carlson  <eric.carlson@apple.com>
+
+        Implement ondevicechange
+        https://bugs.webkit.org/show_bug.cgi?id=169872
+        <rdar://problem/28945035>
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/device-change-event-expected.txt: Added.
+        * fast/mediastream/device-change-event.html: Added.
+
+2017-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement aria-value support for focusable separators
+        https://bugs.webkit.org/show_bug.cgi?id=171169
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/separator-values-expected.txt: Added.
+        * accessibility/separator-values.html: Added.
+
+2017-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] GridCellRole should implement AtkTableCell (regression?)
+        https://bugs.webkit.org/show_bug.cgi?id=171179
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/interface-table-cell-expected.txt: Added.
+        * accessibility/gtk/interface-table-cell.html: Added.
+
+2017-04-28  Miguel Gomez  <magomez@igalia.com>
+
+        REGRESSION(r215211): [GTK] Several webgl related tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=170730
+
+        Reviewed by Said Abou-Hallawa.
+
+        Adjust test expectations for the tests that were failing. They must pass now.
+
+        * platform/gtk/TestExpectations:
+
+2017-04-27  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement the caseFirst option for Intl.Collator
+        https://bugs.webkit.org/show_bug.cgi?id=158188
+
+        Reviewed by Geoffrey Garen.
+
+        Updates the Intl.Collator tests to check caseFirst support.
+        The caseFirst option or unicode locale extension lets the user explicitly
+        set if lower or upper case characters should be first in order.
+
+        * js/intl-collator-expected.txt:
+        * js/script-tests/intl-collator.js:
+        (testCollator):
+
+2017-04-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Support for promise rejection events (unhandledrejection)
+        https://bugs.webkit.org/show_bug.cgi?id=150358
+        <rdar://problem/28441651>
+
+        Reviewed by Saam Barati.
+
+        Patch by Joseph Pecoraro and Yusuke Suzuki.
+
+        * js/dom/unhandled-promise-rejection-basic-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-basic.html: Added.
+        * js/dom/unhandled-promise-rejection-bindings-type-error-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-bindings-type-error.html: Added.
+        * js/dom/unhandled-promise-rejection-console-no-report-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-console-no-report.html: Added.
+        * js/dom/unhandled-promise-rejection-console-report-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-console-report.html: Added.
+        * js/dom/unhandled-promise-rejection-handle-during-event-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-handle-during-event.html: Added.
+        * js/dom/unhandled-promise-rejection-handle-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-handle-in-handler-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-handle-in-handler.html: Added.
+        * js/dom/unhandled-promise-rejection-handle.html: Added.
+        * js/dom/unhandled-promise-rejection-order-expected.txt: Added.
+        * js/dom/unhandled-promise-rejection-order.html: Added.
+        New tests specific to the `onunhandledrejection` and `onrejectionhandled` events.
+
+        * resources/testharnessreport.js:
+        (self.testRunner.add_completion_callback.sanitize):
+        (self.testRunner.add_completion_callback):
+        Report results immediately and then finish the test after a turn. This way
+        if the test ends with a pass, but may get unhandled rejections after
+        completing which should not make the test appear as if it failed. Some tests
+        have unhandled promise rejections but are expected to pass. Likewise some
+        tests perform cleanup in their own completion callbacks, which happen after
+        this initial completion callback, and we want to report results after all
+        the work is done as it may eliminate non-deterministic debug test output.
+
+        * TestExpectations:
+        Mark some tests as flakey that have sometimes have unhandled promise rejections.
+        These tests are all various imported tests that use the testharness.
+
+        * fast/mediastream/MediaStream-MediaElement-setObject-null-expected.txt:
+        * http/tests/security/video-cross-origin-caching-expected.txt:
+        * inspector/debugger/break-on-exception-throw-in-promise-expected.txt:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-expected.txt:
+        * inspector/worker/resources-in-worker-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * js/promises-tests/promises-tests-2-2-6-expected.txt:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        * webrtc/libwebrtc/release-while-creating-offer-expected.txt:
+        * webrtc/libwebrtc/release-while-setting-local-description-expected.txt:
+        Update tests with unhandled promise rejection messages.
+
+        * media/W3C/audio/events/event_pause_manual.html:
+        * media/audio-playback-restriction-play-expected.txt:
+        * media/audio-playback-restriction-play.html:
+        * media/click-volume-bar-not-pausing.html:
+        * media/remote-control-command-is-user-gesture-expected.txt:
+        * media/remote-control-command-is-user-gesture.html:
+        * media/track/track-mode.html:
+        * media/video-autoplay-allowed-but-fullscreen-required.html:
+        * media/video-display-none-crash.html:
+        * media/video-main-content-deny-display-none.html:
+        * media/video-main-content-deny-not-in-dom.html:
+        * media/video-main-content-deny-not-visible.html:
+        * media/video-main-content-deny-obscured.html:
+        * media/video-main-content-deny-too-small.html:
+        * media/video-multiple-concurrent-playback-expected.txt:
+        * media/video-play-audio-require-user-gesture-expected.txt:
+        * media/video-play-audio-require-user-gesture.html:
+        * media/video-play-pause-events-expected.txt:
+        * media/video-play-pause-events.html:
+        * media/video-play-pause-exception-expected.txt:
+        * media/video-play-pause-exception.html:
+        * media/video-play-require-user-gesture-expected.txt:
+        * media/video-play-require-user-gesture.html:
+        * media/video-preload-expected.txt:
+        * media/video-preload.html:
+        * media/video-test.js:
+        (handlePromise.handle):
+        Snuff many possible unhandled promise rejections in media via media.play().
+
+        * streams/reference-implementation/pipe-to-expected.txt:
+        * streams/reference-implementation/pipe-to-options-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/writable-stream-abort-expected.txt:
+        * streams/reference-implementation/writable-stream-expected.txt:
+        These stream tests are out of date and produce unhandled rejections.
+
+        * streams/shadowing-Promise.html:
+        Update non-imported tests to prevent unhandled rejection messages.
+
+2017-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Align colspan/rowspan limits with the latest HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=171322
+
+        Reviewed by Darin Adler.
+
+        Rebaseline a couple of rowspan tests now that our max limit has changed.
+
+        * fast/table/giantRowspan2-expected.txt:
+        * platform/ios/fast/table/giantRowspan-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/mac/fast/table/giantRowspan-expected.txt:
+
+2017-04-27  Matt Lewis  <jlewis3@apple.com>
+
+        Mark fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events.html as a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=170835
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-04-27  Matt Lewis  <jlewis3@apple.com>
+
+        Mark imported/blink/paint/deprecatedpaintlayer/non-self-painting-layer-overrides-visibility.html as a flaky crash.
+        https://bugs.webkit.org/show_bug.cgi?id=171406
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add missing expected file for fast/inline/simple-line-layout-16bit-content.html.
+        https://bugs.webkit.org/show_bug.cgi?id=171379
+
+        Unreviewed test gardening.
+
+        * fast/inline/simple-line-layout-16bit-content-expected-mismatch.html: Added.
+
+2017-04-27  David Kilzer  <ddkilzer@apple.com>
+
+        Enhance shouldBe()/shouldNotBe() to accept anonymous function arguments
+        <https://webkit.org/b/171362>
+        <rdar://problem/31867686>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change makes it possible to pass either the first or second
+        argument (or both) as anonymous functions into shouldBe() and
+        shouldNotBe() to make it easy to capture local variables when
+        writing tests.  This is similar to the change in r202609 for Bug
+        159232 for shouldThrow() and shouldNotThrow().
+
+        Note that shouldBe()/shouldNotBe() from the following files were
+        NOT updated since they were imported from other projects and did
+        share the full WebKit history of resources/js-test-pre.js:
+
+            http/tests/webgl/1.0.2/resources/webgl_test_files/resources/js-test-pre.js
+            js/mozilla/resources/js-test-pre.js
+            webgl/1.0.2/resources/webgl_test_files/resources/js-test-pre.js
+            webgl/1.0.3/resources/webgl_test_files/resources/js-test-pre.js
+
+        However, these files WERE brought up-to-date with the ability to
+        pass anonymous functions into shouldBe()/shouldNotBe() for this
+        bug, and shouldThrow()/shouldNotThrow() which should have
+        originally been fixed with Bug 159232:
+
+            http/tests/resources/js-test-pre.js
+            resources/standalone-pre.js
+
+        * css3/scroll-snap/resources/iframe-content.html: Drive-by fix
+        to debug message for copy-paste error.  Found by searching
+        LayoutTests directory for "expects string arguments".
+
+        * fast/canvas/webgl/array-unit-tests-expected.txt: Update test
+        results.
+        * fast/canvas/webgl/array-unit-tests.html: Fix warning by making
+        second argument to shouldBe() a string.
+
+        * fast/css/script-tests/image-set-parsing.js:
+        (testImageSetRule): Remove comment by changing second argument
+        to shouldBe() into an anonymous function.
+
+        * http/tests/resources/js-test-pre.js:
+        (evalAndLog):
+        (evalAndLogResult):
+        (shouldBe):
+        (shouldNotBe):
+        (shouldEvaluateTo):
+        - Made a full copy of resources/js-test-pre.js to bring this up
+          to speed.  Needs a checker written for it to keep them in sync.
+        * http/tests/security/xssAuditor/block-does-not-leak-location-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-referrer-expected.txt:
+        - Update line numbers after updating http/tests/resources/js-test-pre.js.
+
+        * js/function-declarations-in-switch-statement-expected.txt:
+        - Update results after fixing warnings.
+        * js/script-tests/function-declarations-in-switch-statement.js:
+        - Fix warnings by passing in strings to shouldBe().
+
+        * js/script-tests/stack-unwinding.js:
+        - Update results after fixing warnings.
+        * js/stack-unwinding-expected.txt:
+        - Fix warnings by passing in strings to shouldBe().
+
+        * resources/js-test-pre.js:
+        (shouldBe):
+        (shouldNotBe):
+        * resources/js-test.js:
+        (shouldBe):
+        (shouldNotBe):
+        - Update shouldBe()/shouldNotBe() to accept anonymous function
+          arguments.
+
+        * resources/standalone-pre.js:
+        (shouldBe):
+        (shouldNotBe):
+        (shouldNotThrow):
+        (shouldThrow):
+        - Update shouldBe()/shouldNotBe() to accept anonymous function
+          arguments.
+        - Also fix shouldThrow()/shouldNotThrow() to accept anonymous
+          function arguments (which were missed in r202609 for Bug
+          159232).
+
+2017-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Element.getBoundingClientRect() / getClientRects() should return a DOMRect types
+        https://bugs.webkit.org/show_bug.cgi?id=171226
+
+        Reviewed by Simon Fraser.
+
+        Update existing tests to reflect behavior change.
+
+        * TestExpectations:
+        * css3/flexbox/align-absolute-child-expected.txt:
+        * fast/css/ClientRect-attributes-prototype-expected.txt: Removed.
+        * fast/css/ClientRect-attributes-prototype.html: Removed.
+        * fast/css/ClientRect-serialization-expected.txt: Removed.
+        * fast/css/ClientRect-serialization.html: Removed.
+        * fast/css/DOMRect-attributes-prototype-expected.txt: Added.
+        * fast/css/DOMRect-attributes-prototype.html: Added.
+        * fast/css/DOMRect-serialization-expected.txt: Added.
+        * fast/css/DOMRect-serialization.html: Added.
+        * fast/dom/Element/getClientRects-return-type-expected.txt: Added.
+        * fast/dom/Element/getClientRects-return-type.html: Added.
+        * fast/dom/collection-iterators-expected.txt:
+        * fast/dom/collection-iterators.html:
+        * fast/visual-viewport/zoomed-fixed-expected.txt:
+        * fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed.html:
+        * js/resources/JSON-stringify.js:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/fullscreen-button/fullscreen-button.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171391
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/contentSecurityPolicy/source-list-parsing-05.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171389
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/xmlhttprequest/workers/methods.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170181
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Expose elements with the ARIA "feed" role
+        https://bugs.webkit.org/show_bug.cgi?id=171184
+
+        Reviewed by Chris Fleizach.
+
+        Add "feed" role to roles-exposed.html, xml-roles-exposed.html, and
+        roles-computedRoleString.html. Update expectations accordingly.
+
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2017-04-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r214572): Update fast/text/variations/advances.html to understand normalized variation widths
+        https://bugs.webkit.org/show_bug.cgi?id=171356
+        <rdar://problem/28670085>
+
+        Reviewed by Dean Jackson.
+
+        Unspecified 'wdth' axis values are being normalized because the font is a GX font. However, this
+        font assumes no normalization, which means one of the comparisons in the test is bogus.
+
+        * fast/text/variations/advances-expected.txt:
+        * fast/text/variations/advances.html:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-04-27  Antti Koivisto  <antti@apple.com>
+
+        Skip css3/viewport-percentage-lengths/vh-auto-size.html on WK1.
+
+        Looks like use of auto-sizing leaves state behind in DRT.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/buttons-container/buttons-container-buttons-property.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167371
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webgl/1.0.2/conformance/glsl/misc/shader-with-reserved-words.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170877
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-04-27  Zalan Bujtas  <zalan@apple.com>
+
+        Use text-shadow to visualize simple line layout coverage.
+        https://bugs.webkit.org/show_bug.cgi?id=171379
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/simple-line-layout-16bit-content-expected-mismatch.html: Added.
+        * fast/inline/simple-line-layout-16bit-content-expected.html: Removed.
+        * fast/inline/simple-line-layout-16bit-content.html:
+
+2017-04-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] ARIA alertdialogs should be exposed with ROLE_DIALOG
+        https://bugs.webkit.org/show_bug.cgi?id=171187
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-mappings-expected.txt: Updated.
+        * accessibility/gtk/xml-roles-exposed-expected.txt: Updated.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated.
+
+2017-04-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make fast/text/complex-small-caps-non-bmp-capitalize.html more robust
+        https://bugs.webkit.org/show_bug.cgi?id=171366
+        <rdar://problem/30060323>
+
+        Reviewed by Alex Christensen.
+
+        This test needs a font which supports Deseret but doesn't support small caps.
+        Geneva is a better choice for such a font.
+
+        * fast/text/complex-small-caps-non-bmp-capitalize-expected.html:
+        * fast/text/complex-small-caps-non-bmp-capitalize.html:
+
+2017-04-27  Antti Koivisto  <antti@apple.com>
+
+        Repeated layouts in Mail due to viewport units being used with auto-sizing
+        https://bugs.webkit.org/show_bug.cgi?id=171371
+        <rdar://problem/28780084>
+
+        Reviewed by Zalan Bujtas.
+
+        * css3/viewport-percentage-lengths/vh-auto-size-expected.html: Added.
+        * css3/viewport-percentage-lengths/vh-auto-size.html: Added.
+
+2017-04-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Inconsistent exposure of ARIA "button" role with non-false value of aria-haspopup
+        https://bugs.webkit.org/show_bug.cgi?id=171204
+
+        Reviewed by Chris Fleizach.
+
+        It turns out that this bug was fixed as a side effect of the changes made
+        to fix WebKitGtk bug 171164 (r215821). But we didn't realize it due to the
+        lack of an existing layout test covering the mappings for other platforms.
+        The test created for the WebKitGtk port was modified and moved to the shared
+        tests. Shared expectations are based on the Mac's mappings.
+
+        * accessibility/button-with-aria-haspopup-role-expected.txt: Added.
+        * accessibility/button-with-aria-haspopup-role.html: Renamed from LayoutTests/accessibility/gtk/button-with-aria-haspopup-is-not-a-combobox.html.
+        * accessibility/gtk/button-with-aria-haspopup-is-not-a-combobox-expected.txt: Removed.
+        * platform/gtk/accessibility/button-with-aria-haspopup-role-expected.txt: Added.
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/local/blob/send-hybrid-blob-using-open-panel.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171353
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-04-27  Frederic Wang  <fwang@igalia.com>
+
+        Fix some tests from platform-tests/cssom-view/cssom-view/
+        https://bugs.webkit.org/show_bug.cgi?id=171228
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Unskip media-query-list-interface.
+
+2017-04-27  Zalan Bujtas  <zalan@apple.com>
+
+        Text gets cut off when bailing out of simple line layout with widows.
+        https://bugs.webkit.org/show_bug.cgi?id=171370
+        <rdar://problem/31563414>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/multicol/simple-line-layout-widows-when-switching-over-to-normal-line-layout-expected.html: Added.
+        * fast/multicol/simple-line-layout-widows-when-switching-over-to-normal-line-layout.html: Added.
+
 2017-04-26  Chris Dumez  <cdumez@apple.com>
 
         Unreviewed, remove unnecessary expected result in platform/ios-wk2

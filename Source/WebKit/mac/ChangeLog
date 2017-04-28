@@ -1,3 +1,55 @@
+2017-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Align colspan/rowspan limits with the latest HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=171322
+
+        Reviewed by Darin Adler.
+
+        ObjC bindings build fix.
+
+        * DOM/DOMHTMLTableCellElement.mm:
+        (-[DOMHTMLTableCellElement colSpan]):
+        (-[DOMHTMLTableCellElement setColSpan:]):
+
+2017-04-27  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r213764): Async decoding of animated images is disabled for ImageDocument
+        https://bugs.webkit.org/show_bug.cgi?id=170333
+
+        Reviewed by Simon Fraser.
+
+        Disbale the async decoding for large images for now.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-04-27  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize Frame.h
+        https://bugs.webkit.org/show_bug.cgi?id=171357
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::isSelectTrailingWhitespaceEnabled):
+
+2017-04-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] Tweak the data interaction SPI to indicate whether or not a data interaction was handled
+        https://bugs.webkit.org/show_bug.cgi?id=171369
+        <rdar://problem/31858853>
+
+        Reviewed by Dan Bernstein.
+
+        Introduce a new SPI hook intended to replace performDataInteraction:client:global:operation: that
+        returns whether or not the data interaction was handled. Due to the difference only in return type
+        and some staging constraints, this version is prefixed with "_tryTo".
+
+        * WebView/WebView.mm:
+        (-[WebView _tryToPerformDataInteraction:client:global:operation:]):
+        * WebView/WebViewPrivate.h:
+
 2017-04-26  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         WebItemProviderPasteboard should not synchronously load provided data

@@ -2135,7 +2135,7 @@ WebContextMenu* WebPage::contextMenuAtPointInWindow(const IntPoint& point)
     
     // Simulate a mouse click to generate the correct menu.
     PlatformMouseEvent mouseEvent(point, point, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
-    bool handled = corePage()->userInputBridge().handleContextMenuEvent(mouseEvent, &corePage()->mainFrame());
+    bool handled = corePage()->userInputBridge().handleContextMenuEvent(mouseEvent, corePage()->mainFrame());
     if (!handled)
         return 0;
 
@@ -2260,7 +2260,7 @@ static bool handleContextMenuEvent(const PlatformMouseEvent& platformMouseEvent,
     if (result.innerNonSharedNode())
         frame = result.innerNonSharedNode()->document().frame();
 
-    bool handled = page->corePage()->userInputBridge().handleContextMenuEvent(platformMouseEvent, frame);
+    bool handled = page->corePage()->userInputBridge().handleContextMenuEvent(platformMouseEvent, *frame);
     if (handled)
         page->contextMenu()->show();
 
@@ -3364,7 +3364,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints);
     setForceAlwaysUserScalable(m_forceAlwaysUserScalable || store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
 #endif
-    settings.setLargeImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::largeImageAsyncDecodingEnabledKey()));
+    // FIXME: enable async image decoding after the flickering bug wk170640 is fixed.
+    // settings.setLargeImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::largeImageAsyncDecodingEnabledKey()));
+    settings.setLargeImageAsyncDecodingEnabled(false);
     settings.setAnimatedImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::animatedImageAsyncDecodingEnabledKey()));
     settings.setShouldSuppressKeyboardInputDuringProvisionalNavigation(store.getBoolValueForKey(WebPreferencesKey::shouldSuppressKeyboardInputDuringProvisionalNavigationKey()));
 }
@@ -5186,7 +5188,7 @@ void WebPage::setSmartInsertDeleteEnabled(bool enabled)
     }
 }
 
-bool WebPage::isSelectTrailingWhitespaceEnabled()
+bool WebPage::isSelectTrailingWhitespaceEnabled() const
 {
     return m_page->settings().selectTrailingWhitespaceEnabled();
 }

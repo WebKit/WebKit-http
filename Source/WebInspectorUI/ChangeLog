@@ -1,3 +1,198 @@
+2017-04-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for different Script Timeline Views (Events and Call Trees)
+        https://bugs.webkit.org/show_bug.cgi?id=155077
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/gtk/CallTrees.svg: Added.
+        * UserInterface/Images/gtk/Events.svg: Added.
+        * UserInterface/Views/PathComponentIcons.css:
+        (body:not(.mac-platform, .windows-platform) .heap-snapshot-record .icon,):
+        (body:not(.mac-platform, .windows-platform) .events-icon .icon,): Deleted.
+
+2017-04-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Remove unused ToggleControlToolbarItem.js
+        https://bugs.webkit.org/show_bug.cgi?id=171401
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ToggleControlToolbarItem.js: Removed.
+
+2017-04-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: inherit system layout direction by default
+        https://bugs.webkit.org/show_bug.cgi?id=171402
+        <rdar://problem/30753626>
+
+        Reviewed by Joseph Pecoraro.
+
+        Web Inspector's layout direction should follow the system layout direction
+        by default now that most RTL bugs seem to be fixed. We are ready for more
+        feedback.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Setting.js:
+        Rename the existing "layout-direction" setting so that the new default
+        value is set properly even for people who have overridden the layout
+        direction while the setting was exposed to everyone.
+
+        * UserInterface/Views/GeneralSettingsView.js:
+        (WebInspector.GeneralSettingsView.prototype.initialLayout):
+        (WebInspector.GeneralSettingsView.prototype.layout):
+        (WebInspector.GeneralSettingsView):
+        Make the layout direction override setting only visible when DebugUI
+        is turned on. This remains only for engineers to quickly check layout bugs.
+
+        * UserInterface/Views/SettingsView.js:
+        (WebInspector.SettingsView.prototype.addGroupWithCustomSetting):
+        (WebInspector.SettingsView.prototype.addCustomSetting): Deleted.
+        Refactor the convenience method to return both the group and the
+        custom setting. This allows us to toggle .hidden on the entire
+        row for the Layout Direction setting (label and editor).
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Unlocalize the setting strings since they are only shown in engineering builds now.
+
+2017-04-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: fix alignment of "truncated call stack" message
+        https://bugs.webkit.org/show_bug.cgi?id=170477
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ThreadTreeElement.css:
+        (.tree-outline > .item.thread + ol > .item.truncated-call-frames):
+        (body[dir=ltr] .tree-outline > .item.thread + ol > .item.truncated-call-frames):
+        (body[dir=rtl] .tree-outline > .item.thread + ol > .item.truncated-call-frames):
+        (.tree-outline > .item.thread + ol > .item.truncated-call-frames .icon):
+        (body[dir=ltr] .tree-outline > .item.thread + ol > .item.truncated-call-frames .icon):
+        (body[dir=rtl] .tree-outline > .item.thread + ol > .item.truncated-call-frames .icon):
+
+2017-04-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: layout issues in Open Resource Dialog
+        https://bugs.webkit.org/show_bug.cgi?id=170551
+
+        Reviewed by Matt Baker.
+
+        We need to flip the cancel and search icons, and flip padding
+        in the tree outline that contains search results.
+
+        I am still not happy with the title/subtitle ordering
+        (i.e., the domain vs the resource name), but this issue will
+        be solved primarily in the navigation sidebar first and then
+        adjusted for Open Resource Dialog if those changes are not
+        sufficient.
+
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog > .field):
+        (body[dir=ltr] .open-resource-dialog > .field):
+        (body[dir=rtl] .open-resource-dialog > .field):
+        (.open-resource-dialog > .field::before):
+        (body[dir=ltr] .open-resource-dialog > .field::before):
+        (body[dir=rtl] .open-resource-dialog > .field::before):
+        (.open-resource-dialog > .field > input):
+        (body[dir=ltr] .open-resource-dialog > .field > input):
+        (body[dir=rtl] .open-resource-dialog > .field > input):
+        (.open-resource-dialog > .field > img):
+        (body[dir=ltr] .open-resource-dialog > .field > img):
+        (body[dir=rtl] .open-resource-dialog > .field > img):
+        (.open-resource-dialog > .tree-outline .item):
+        (body[dir=ltr] .open-resource-dialog > .tree-outline .item):
+        (body[dir=rtl] .open-resource-dialog > .tree-outline .item):
+
+2017-04-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: fix tooltip wording for Reload button
+        https://bugs.webkit.org/show_bug.cgi?id=171073
+        <rdar://problem/31378524>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+
+2017-04-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for instrument icons
+        https://bugs.webkit.org/show_bug.cgi?id=153892
+        <rdar://problem/24510460>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add more free icons from art-libre symbolic and removed some
+        unused ones for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/Colors.png: Removed.
+        * UserInterface/Images/gtk/Colors@2x.png: Removed.
+        * UserInterface/Images/gtk/ColorsLarge.png: Removed.
+        * UserInterface/Images/gtk/ColorsLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/Frames.png: Removed.
+        * UserInterface/Images/gtk/Frames@2x.png: Removed.
+        * UserInterface/Images/gtk/HeapAllocationsInstrument.svg: Added.
+        * UserInterface/Images/gtk/LayoutInstrument.svg: Added.
+        * UserInterface/Images/gtk/MemoryInstrument.svg: Added.
+        * UserInterface/Images/gtk/Network.png: Removed.
+        * UserInterface/Images/gtk/Network@2x.png: Removed.
+        * UserInterface/Images/gtk/NetworkInstrument.svg: Added.
+        * UserInterface/Images/gtk/NetworkLarge.png: Removed.
+        * UserInterface/Images/gtk/NetworkLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/RenderingFramesInstrument.svg: Added.
+        * UserInterface/Images/gtk/Script.png: Removed.
+        * UserInterface/Images/gtk/Script@2x.png: Removed.
+        * UserInterface/Images/gtk/ScriptLarge.png: Removed.
+        * UserInterface/Images/gtk/ScriptLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/ScriptsInstrument.svg: Added.
+        * UserInterface/Views/TimelineIcons.css:
+        (body:not(.mac-platform, .windows-platform) .network-icon .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .network-icon.large .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .layout-icon .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .layout-icon.large .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .script-icon .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .script-icon.large .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .rendering-frame-icon .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .memory-icon .icon): Deleted.
+        (body:not(.mac-platform, .windows-platform) .heap-allocations-icon .icon): Deleted.
+
+2017-04-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: gtk/NavigationItemCurleyBraces.svg is licensed under NonCommercial CC
+        https://bugs.webkit.org/show_bug.cgi?id=170902
+
+        Reviewed by Michael Catanzaro.
+
+        * UserInterface/Images/gtk/NavigationItemCurleyBraces.svg:
+        Replaced with new one created by me.
+
+2017-04-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: some SVG images are specified 'currentColor' incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=170977
+
+        Reviewed by Michael Catanzaro.
+
+        The keyword 'currentColor' is specifed manually in Bug 150602.
+        But, some SVG images are specified incorrectly.
+
+        * UserInterface/Images/gtk/NavigationItemTypes.svg: Do not stroke
+        with currentColor, but fill.
+        * UserInterface/Images/gtk/UpDownArrows.svg: Ditto.
+
+2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remote inspector should support inspecting targets with previous version of backend commands
+        https://bugs.webkit.org/show_bug.cgi?id=171267
+
+        Reviewed by Michael Catanzaro.
+
+        Allow to use data URLs for script-src.
+
+        * UserInterface/Main.html:
+
 2017-04-25  Nikita Vasilyev  <nvasilyev@apple.com>
 
         REGRESSION (r209882): Web Inspector: Command-G does not work in the console

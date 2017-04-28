@@ -1,3 +1,200 @@
+2017-04-28  Brady Eidson  <beidson@apple.com>
+
+        Teach WebProcessPool to track a map of SessionIDs to WebPageProxys to manage their lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=171408
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/APIPageConfiguration.cpp:
+        (API::PageConfiguration::sessionID):
+        * UIProcess/API/APIPageConfiguration.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::close):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::pageAddedToProcess):
+        (WebKit::WebProcessPool::pageRemovedFromProcess):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::createWebPage):
+        (WebKit::WebProcessProxy::addExistingWebPage):
+        (WebKit::WebProcessProxy::removeWebPage):
+        * UIProcess/WebProcessProxy.h:
+
+2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move UUID from WebCore/platform to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=171372
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::handleForWebPageProxy):
+        (WebKit::WebAutomationSession::handleForWebFrameID):
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::createUUID):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::openWithNativeApplication):
+
+2017-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Align colspan/rowspan limits with the latest HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=171322
+
+        Reviewed by Darin Adler.
+
+        GTK build fix.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableCellElement.cpp:
+        (webkit_dom_html_table_cell_element_get_col_span):
+        (webkit_dom_html_table_cell_element_set_col_span):
+
+2017-04-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WKUIDelegatePrivate needs a hook to vend data used to initialize item providers for data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=171386
+        <rdar://problem/31557237>
+
+        Reviewed by Beth Dakin.
+
+        Add a new WKUIDelegate hook, _webView:adjustedDataInteractionItemProvidersForItemProvider:representingObjects:additionalData:.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+2017-04-27  Brady Eidson  <beidson@apple.com>
+
+        Refactor SessionID to support multiple non-ephemeral (persistent) sessions.
+        https://bugs.webkit.org/show_bug.cgi?id=171367
+
+        Reviewed by Andy Estes.
+
+        * Shared/ChildProcess.cpp:
+        (WebKit::ChildProcess::initialize): Child processes should never be generating new SessionIDs,
+          so enable generation protection.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<SessionID>::encode): Deleted.
+        (IPC::ArgumentCoder<SessionID>::decode): Deleted.
+        * Shared/WebCoreArgumentCoders.h:
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::createNonPersistent):
+        (WebKit::generateNonPersistentSessionID): Deleted.
+
+2017-04-27  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r213764): Async decoding of animated images is disabled for ImageDocument
+        https://bugs.webkit.org/show_bug.cgi?id=170333
+
+        Reviewed by Simon Fraser.
+
+        Disbale the async decoding for large images for now.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Allow multi-touch related iokit-get-properties
+        https://bugs.webkit.org/show_bug.cgi?id=171355
+        <rdar://problem/31851928>
+
+        Reviewed by Alexey Proskuryakov.
+
+        During testing I've noticed Sandbox Violations being generated during some 'Force Touch' track pad use.
+        The sandbox should allow these IOKit properties to be accessed.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2017-04-27  Alex Christensen  <achristensen@webkit.org>
+
+        Add stub SPI for setting cookie storage path on _WKWebsiteDataStoreConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=171399
+
+        Reviewed by Brady Eidson.
+
+        This SPI isn't hooked up yet, but it has a test that will need to be updated once it works.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _initWithConfiguration:]):
+        * UIProcess/API/Cocoa/_WKDraggableElementInfo.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.mm:
+        (-[_WKWebsiteDataStoreConfiguration _cookieStorageDirectory]):
+        (-[_WKWebsiteDataStoreConfiguration _setCookieStorageDirectory:]):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::resolvedCookieStorageDirectory):
+
+2017-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Element.getBoundingClientRect() / getClientRects() should return a DOMRect types
+        https://bugs.webkit.org/show_bug.cgi?id=171226
+
+        Reviewed by Simon Fraser.
+
+        GTK build fix.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMElement.cpp:
+        (toClientRect):
+        (webkit_dom_element_get_bounding_client_rect):
+        (webkit_dom_element_get_client_rects):
+
+2017-04-27  Brady Eidson  <beidson@apple.com>
+
+        Update NetworkStorageSession to support multiple persistent sessions and explicitly set cookie storages.
+        https://bugs.webkit.org/show_bug.cgi?id=171365
+
+        Reviewed by Andy Estes.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSessionCocoa::NetworkSessionCocoa):
+
+2017-04-27  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize Frame.h
+        https://bugs.webkit.org/show_bug.cgi?id=171357
+
+        Reviewed by Andy Estes.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::isSelectTrailingWhitespaceEnabled):
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::contextMenuAtPointInWindow):
+        (WebKit::handleContextMenuEvent):
+        (WebKit::WebPage::isSelectTrailingWhitespaceEnabled):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectWithGesture):
+        (WebKit::WebPage::selectPositionAtPoint):
+        (WebKit::WebPage::selectPositionAtBoundaryWithDirection):
+        (WebKit::WebPage::rangeForGranularityAtPoint):
+        (WebKit::WebPage::selectTextWithGranularityAtPoint):
+        (WebKit::WebPage::updateSelectionWithExtentPointAndBoundary):
+        (WebKit::WebPage::updateSelectionWithExtentPoint):
+
+2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remote inspector should support inspecting targets with previous version of backend commands
+        https://bugs.webkit.org/show_bug.cgi?id=171267
+
+        Reviewed by Michael Catanzaro.
+
+        There's a FIXME for this in the code. The remote inspector proxy allows to pass a backend commands URL when
+        inspecting a target. That URL, if not empty, is used as Protocol/InspectorBackendCommands.js in the inspector
+        code instead of the local copy. We are currently assuming that both ends use the same version of that file.
+
+        * UIProcess/glib/RemoteInspectorClient.cpp:
+        (WebKit::RemoteInspectorProxy::load): Pass RemoteInspectorClient::backendCommandsURL() to load().
+        (WebKit::RemoteInspectorClient::setupConnection): Get the local backend commands hash and pass it to
+        SetupInspectorClient method. Extract the server backend commands from the result and call setBackendCommands().
+        (WebKit::RemoteInspectorClient::setBackendCommands): Create a data URL for the server backend commands file
+        conents if needed.
+        * UIProcess/glib/RemoteInspectorClient.h:
+        (WebKit::RemoteInspectorClient::backendCommandsURL):
+
 2017-04-26  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         WebItemProviderPasteboard should not synchronously load provided data

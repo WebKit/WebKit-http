@@ -488,7 +488,7 @@ div[role=alert]
       AXRole: AXAlert
       
 div[role=alertdialog]
-      AXRole: AXAlert
+      AXRole: AXDialog
       
 div[role=application]
       AXRole: AXEmbedded
@@ -663,6 +663,9 @@ div[role=columnheader]
       
 div[role=gridcell]
       AXRole: AXCell
+      
+div[role=feed]
+      AXRole: AXGroup
       
 div[role=group]
       AXRole: AXGroup
