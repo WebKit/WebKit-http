@@ -41,7 +41,7 @@ typedef struct CGImage *CGImageRef;
 OBJC_CLASS NSImage;
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
-#elif PLATFORM(GTK) || PLATFORM(WPE)
+#elif USE(CAIRO)
 #include "RefPtrCairo.h"
 #endif
 
