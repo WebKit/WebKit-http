@@ -42,11 +42,10 @@ class WebProcessMain final: public ChildProcessMainBase {
 public:
     bool platformInitialize() override
     {
-        // TODO: Wrap with #ifndef NDEBUG
-        if (g_getenv("WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH")) {
-            g_printerr("WebProcess PID: %d\n", getpid());
+#if ENABLE(DEVELOPER_MODE)
+        if (g_getenv("WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH"))
             WTF::sleep(30);
-        }
+#endif
 
         return true;
     }
