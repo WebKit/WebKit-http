@@ -71,6 +71,14 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/glib/AudioBusGLib.cpp
 
+    platform/glib/EventLoopGlib.cpp
+    platform/glib/FileSystemGlib.cpp
+    platform/glib/KeyedDecoderGlib.cpp
+    platform/glib/KeyedEncoderGlib.cpp
+    platform/glib/MainThreadSharedTimerGLib.cpp
+    platform/glib/SSLKeyGeneratorGLib.cpp
+    platform/glib/SharedBufferGlib.cpp
+
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
@@ -84,6 +92,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
     platform/graphics/cairo/GradientCairo.cpp
     platform/graphics/cairo/GraphicsContext3DCairo.cpp
+    platform/graphics/cairo/GraphicsContextCairo.cpp
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
@@ -95,8 +104,11 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/RefPtrCairo.cpp
     platform/graphics/cairo/TransformationMatrixCairo.cpp
 
+    platform/graphics/egl/GLContextEGL.cpp
+
     platform/graphics/freetype/FontCacheFreeType.cpp
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
+    platform/graphics/freetype/FontPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
@@ -145,30 +157,20 @@ list(APPEND WebCore_SOURCES
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
 
-    # FIXME: Split build targers below into a WebCorePlatform library
+    platform/unix/LoggingUnix.cpp
+
+    platform/xdg/MIMETypeRegistryXdg.cpp
+)
+
+list(APPEND WebCorePlatformWPE_SOURCES
     editing/wpe/EditorWPE.cpp
 
     page/wpe/EventHandlerWPE.cpp
 
-    platform/glib/EventLoopGlib.cpp
-    platform/glib/FileSystemGlib.cpp
-    platform/glib/KeyedDecoderGlib.cpp
-    platform/glib/KeyedEncoderGlib.cpp
-    platform/glib/MainThreadSharedTimerGLib.cpp
-    platform/glib/SSLKeyGeneratorGLib.cpp
-    platform/glib/SharedBufferGlib.cpp
-
-    platform/graphics/cairo/GraphicsContextCairo.cpp
-
-    platform/graphics/egl/GLContextEGL.cpp
     platform/graphics/egl/GLContextEGLWPE.cpp
-
-    platform/graphics/freetype/FontPlatformDataFreeType.cpp
 
     platform/graphics/wpe/IconWPE.cpp
     platform/graphics/wpe/ImageWPE.cpp
-
-    platform/unix/LoggingUnix.cpp
 
     platform/wpe/CursorWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
@@ -181,8 +183,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
-
-    platform/xdg/MIMETypeRegistryXdg.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -231,6 +231,19 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
     ${WPE_INCLUDE_DIRS}
+)
+
+add_library(WebCorePlatformWPE ${WebCore_LIBRARY_TYPE} ${WebCorePlatformWPE_SOURCES})
+add_dependencies(WebCorePlatformWPE WebCore)
+WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformWPE)
+target_include_directories(WebCorePlatformWPE PRIVATE
+    ${WebCore_INCLUDE_DIRECTORIES}
+)
+target_include_directories(WebCorePlatformWPE SYSTEM PRIVATE
+    ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
+)
+target_link_libraries(WebCorePlatformWPE
+    ${WebCore_LIBRARIES}
 )
 
 if (ENABLE_SUBTLE_CRYPTO)
