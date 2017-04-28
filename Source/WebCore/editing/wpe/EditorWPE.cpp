@@ -34,7 +34,7 @@
 
 namespace WebCore {
 
-static PassRefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pasteboard, Frame& frame, Range& range, bool allowPlainText, bool& chosePlainText)
+static RefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pasteboard, Frame& frame, Range& range, bool allowPlainText, bool& chosePlainText)
 {
     chosePlainText = false;
 
@@ -45,7 +45,7 @@ static PassRefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard&
     if (types.contains("text/html;charset=utf-8") && frame.document()) {
         String markup = pasteboard.readString("text/html;charset=utf-8");
         if (RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), markup, emptyString(), DisallowScriptingAndPluginContent))
-            return fragment.release();
+            return fragment;
     }
 
     if (!allowPlainText)
@@ -54,7 +54,7 @@ static PassRefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard&
     if (types.contains("text/plain;charset=utf-8")) {
         chosePlainText = true;
         if (RefPtr<DocumentFragment> fragment = createFragmentFromText(range, pasteboard.readString("text/plain;charset=utf-8")))
-            return fragment.release();
+            return fragment;
     }
 
     return nullptr;
