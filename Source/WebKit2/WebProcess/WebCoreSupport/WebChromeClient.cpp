@@ -276,7 +276,7 @@ void WebChromeClient::runModal()
     m_page.runModal();
 }
 
-void WebChromeClient::reportProcessCPUTime(int64_t cpuTime, ActivityStateForCPUSampling activityState)
+void WebChromeClient::reportProcessCPUTime(Seconds cpuTime, ActivityStateForCPUSampling activityState)
 {
     WebProcess::singleton().send(Messages::WebProcessPool::ReportWebContentCPUTime(cpuTime, static_cast<uint64_t>(activityState)), 0);
 }
@@ -1225,11 +1225,6 @@ void WebChromeClient::requestInstallMissingMediaPlugins(const String& details, c
 void WebChromeClient::didInvalidateDocumentMarkerRects()
 {
     m_page.findController().didInvalidateDocumentMarkerRects();
-}
-
-void WebChromeClient::didChangeClipToSafeArea(bool clipToSafeArea)
-{
-    m_page.send(Messages::WebPageProxy::SetClipToSafeArea(clipToSafeArea));
 }
 
 } // namespace WebKit

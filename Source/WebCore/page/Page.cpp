@@ -28,10 +28,10 @@
 #include "CSSAnimationController.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "ClientRectList.h"
 #include "ConstantPropertyMap.h"
 #include "ContextMenuClient.h"
 #include "ContextMenuController.h"
+#include "DOMRect.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
@@ -77,6 +77,7 @@
 #include "PluginViewBase.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
+#include "PublicSuffix.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -405,7 +406,7 @@ String Page::synchronousScrollingReasonsAsText()
     return String();
 }
 
-Ref<ClientRectList> Page::nonFastScrollableRects()
+Vector<Ref<DOMRect>> Page::nonFastScrollableRects()
 {
     if (Document* document = m_mainFrame->document())
         document->updateLayout();
@@ -421,10 +422,10 @@ Ref<ClientRectList> Page::nonFastScrollableRects()
     for (size_t i = 0; i < rects.size(); ++i)
         quads[i] = FloatRect(rects[i]);
 
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
 }
 
-Ref<ClientRectList> Page::touchEventRectsForEvent(const String& eventName)
+Vector<Ref<DOMRect>> Page::touchEventRectsForEvent(const String& eventName)
 {
     if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
@@ -444,10 +445,10 @@ Ref<ClientRectList> Page::touchEventRectsForEvent(const String& eventName)
     for (size_t i = 0; i < rects.size(); ++i)
         quads[i] = FloatRect(rects[i]);
 
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
 }
 
-Ref<ClientRectList> Page::passiveTouchEventListenerRects()
+Vector<Ref<DOMRect>> Page::passiveTouchEventListenerRects()
 {
     if (Document* document = m_mainFrame->document()) {
         document->updateLayout();
@@ -464,7 +465,7 @@ Ref<ClientRectList> Page::passiveTouchEventListenerRects()
     for (size_t i = 0; i < rects.size(); ++i)
         quads[i] = FloatRect(rects[i]);
 
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
 }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
@@ -1670,6 +1671,11 @@ void Page::setIsVisibleInternal(bool isVisible)
         setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
 
         resumeAnimatingImages();
+
+        if (m_navigationToLogWhenVisible) {
+            logNavigation(m_navigationToLogWhenVisible.value());
+            m_navigationToLogWhenVisible = std::nullopt;
+        }
     }
 
     Vector<Ref<Document>> documents;
@@ -2054,6 +2060,64 @@ bool Page::arePromptsAllowed()
     return !m_forbidPromptsDepth;
 }
 
+void Page::logNavigation(const Navigation& navigation)
+{
+    String navigationDescription;
+    switch (navigation.type) {
+    case FrameLoadType::Standard:
+        navigationDescription = ASCIILiteral("standard");
+        break;
+    case FrameLoadType::Back:
+        navigationDescription = ASCIILiteral("back");
+        break;
+    case FrameLoadType::Forward:
+        navigationDescription = ASCIILiteral("forward");
+        break;
+    case FrameLoadType::IndexedBackForward:
+        navigationDescription = ASCIILiteral("indexedBackForward");
+        break;
+    case FrameLoadType::Reload:
+        navigationDescription = ASCIILiteral("reload");
+        break;
+    case FrameLoadType::Same:
+        navigationDescription = ASCIILiteral("same");
+        break;
+    case FrameLoadType::ReloadFromOrigin:
+        navigationDescription = ASCIILiteral("reloadFromOrigin");
+        break;
+    case FrameLoadType::ReloadExpiredOnly:
+        navigationDescription = ASCIILiteral("reloadRevalidatingExpired");
+        break;
+    case FrameLoadType::Replace:
+    case FrameLoadType::RedirectWithLockedBackForwardList:
+        // Not logging those for now.
+        return;
+    }
+    diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
+
+    if (!navigation.domain.isEmpty())
+        diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), navigation.domain, ShouldSample::No);
+}
+
+void Page::mainFrameLoadStarted(const URL& destinationURL, FrameLoadType type)
+{
+    String domain;
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    domain = topPrivatelyControlledDomain(destinationURL.host());
+#endif
+
+    Navigation navigation = { domain, type };
+
+    // To avoid being too verbose, we only log navigations if the page is or becomes visible. This avoids logging non-user observable loads.
+    if (!isVisible()) {
+        m_navigationToLogWhenVisible = navigation;
+        return;
+    }
+
+    m_navigationToLogWhenVisible = std::nullopt;
+    logNavigation(navigation);
+}
+
 PluginInfoProvider& Page::pluginInfoProvider()
 {
     return m_pluginInfoProvider;
@@ -2290,17 +2354,17 @@ void Page::accessibilitySettingsDidChange()
         LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
 }
 
-void Page::setObscuredInsets(const FloatBoxExtent& insets)
+void Page::setUnobscuredSafeAreaInsets(const FloatBoxExtent& insets)
 {
-    if (m_obscuredInsets == insets)
+    if (m_unobscuredSafeAreaInsets == insets)
         return;
 
-    m_obscuredInsets = insets;
+    m_unobscuredSafeAreaInsets = insets;
 
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
             continue;
-        frame->document()->constantProperties().didChangeObscuredInsets();
+        frame->document()->constantProperties().didChangeSafeAreaInsets();
     }
 }
 

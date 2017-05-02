@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +28,11 @@
 #include "DOMRectReadOnly.h"
 #include "FloatRect.h"
 #include "IntRect.h"
+#include <wtf/Vector.h>
 
 namespace WebCore {
+
+class FloatQuad;
 
 class DOMRect : public DOMRectReadOnly {
     WTF_MAKE_FAST_ALLOCATED;
@@ -54,5 +57,7 @@ private:
 
     DOMRect() = default;
 };
+
+WEBCORE_EXPORT Vector<Ref<DOMRect>> createDOMRectVector(const Vector<FloatQuad>&);
 
 }

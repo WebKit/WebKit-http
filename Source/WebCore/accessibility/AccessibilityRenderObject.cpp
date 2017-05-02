@@ -1045,7 +1045,7 @@ void AccessibilityRenderObject::determineARIADropEffects(Vector<String>& effects
     
 bool AccessibilityRenderObject::exposesTitleUIElement() const
 {
-    if (!isControl() && !isFigure())
+    if (!isControl() && !isFigureElement())
         return false;
 
     // If this control is ignored (because it's invisible), 
@@ -1082,7 +1082,7 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     if (isFieldset())
         return axObjectCache()->getOrCreate(downcast<RenderBlock>(*m_renderer).findFieldsetLegend(RenderBlock::FieldsetIncludeFloatingOrOutOfFlow));
     
-    if (isFigure())
+    if (isFigureElement())
         return captionForFigure();
     
     Node* node = m_renderer->node();
@@ -1249,7 +1249,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (isControl())
         return false;
     
-    if (isFigure())
+    if (isFigureElement())
         return false;
 
     switch (roleValue()) {
@@ -1260,6 +1260,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     case DocumentArticleRole:
     case LandmarkRegionRole:
     case ListItemRole:
+    case TimeRole:
     case VideoRole:
         return false;
     default:
@@ -2439,6 +2440,9 @@ AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
 
 void AccessibilityRenderObject::handleAriaExpandedChanged()
 {
+    // This object might be deleted under the call to the parentObject() method.
+    auto protectedThis = makeRef(*this);
+    
     // Find if a parent of this object should handle aria-expanded changes.
     AccessibilityObject* containerParent = this->parentObject();
     while (containerParent) {
@@ -2686,6 +2690,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(fieldsetTag))
         return GroupRole;
 
+    if (node && node->hasTagName(figureTag))
+        return FigureRole;
+
     // Check for Ruby elements
     if (m_renderer->isRubyText())
         return RubyTextRole;
@@ -2789,6 +2796,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     // menu tags with toolbar type should have Toolbar role.
     if (node && node->hasTagName(menuTag) && equalLettersIgnoringASCIICase(getAttribute(typeAttr), "toolbar"))
         return ToolbarRole;
+    
+    if (node && node->hasTagName(timeTag))
+        return TimeRole;
     
     // If the element does not have role, but it has ARIA attributes, or accepts tab focus, accessibility should fallback to exposing it as a group.
     if (supportsARIAAttributes() || canSetFocusAttribute())
@@ -2979,7 +2989,7 @@ void AccessibilityRenderObject::addImageMapChildren()
 void AccessibilityRenderObject::updateChildrenIfNecessary()
 {
     if (needsToUpdateChildren())
-        clearChildren();        
+        clearChildren();
     
     AccessibilityObject::updateChildrenIfNecessary();
 }
@@ -3204,6 +3214,8 @@ void AccessibilityRenderObject::addChildren()
     for (RefPtr<AccessibilityObject> obj = firstChild(); obj; obj = obj->nextSibling())
         addChild(obj.get());
     
+    m_subtreeDirty = false;
+    
     addHiddenChildren();
     addAttachmentChildren();
     addImageMapChildren();
@@ -3353,6 +3365,7 @@ void AccessibilityRenderObject::selectedChildren(AccessibilityChildrenVector& re
         return;
     case GridRole:
     case TreeRole:
+    case TreeGridRole:
         ariaSelectedRows(result);
         return;
     case TabListRole:

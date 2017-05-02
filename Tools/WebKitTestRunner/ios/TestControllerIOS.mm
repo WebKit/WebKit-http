@@ -51,6 +51,7 @@ void TestController::notifyDone()
 void TestController::platformInitialize()
 {
     setUpIOSLayoutTestCommunication();
+    [UIApplication sharedApplication].idleTimerDisabled = YES;
 }
 
 void TestController::platformDestroy()
@@ -86,8 +87,7 @@ void TestController::platformResetStateToConsistentValues()
         [scrollView setZoomScale:1 animated:NO];
         [scrollView setContentOffset:CGPointZero];
 
-        scrollView.contentInset = UIEdgeInsetsZero;
-        webView->platformView()._obscuredInsets = UIEdgeInsetsZero;
+        webView->platformView().overrideSafeAreaInsets = UIEdgeInsetsZero;
     }
 }
 

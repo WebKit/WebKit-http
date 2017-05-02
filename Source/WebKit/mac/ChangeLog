@@ -1,3 +1,63 @@
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Remove some usage of PassRefPtr in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=171490
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame dictationResultMetadataForRange:]):
+        (-[WebFrame _replaceSelectionWithFragment:selectReplacement:smartReplace:matchStyle:]):
+
+2017-05-01  Beth Dakin  <bdakin@apple.com>
+
+        On-screen panel for candidate bar is in the wrong place when the caret is at the 
+        start of a paragraph
+        https://bugs.webkit.org/show_bug.cgi?id=171453
+        -and corresponding-
+        rdar://problem/29779764
+
+        Reviewed by Tim Horton.
+
+        This bug only happens when the caret is at the beginning of the paragraph, and it 
+        is because Range::absoluteTextQuads() returns no quads in this case. I think it 
+        might be correct that absoluteTextQuads() returns no quads in this case, so this 
+        patch fixes the bug at the call site by using absoluteCaretBounds() in this case.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleRequestedCandidates):
+
+2017-04-30  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Replaces uses of [get…() alloc] with alloc…Instance()
+        https://bugs.webkit.org/show_bug.cgi?id=171485
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData initWithImage:textIndicatorData:scale:]):
+        (-[WebUITextIndicatorData initWithImage:scale:]):
+
+2017-04-28  Youenn Fablet  <youenn@apple.com>
+
+        Adding a runtime flag specific to MediaDevices
+        https://bugs.webkit.org/show_bug.cgi?id=171433
+
+        Reviewed by Geoffrey Garen.
+
+        Adding a preference for MediaDevices.
+        Setting media devices runtime flag to false by default.
+        Setting peer connection and media stream flags to true by default.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaDevicesEnabled]):
+        (-[WebPreferences setMediaDevicesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2017-04-27  Chris Dumez  <cdumez@apple.com>
 
         Align colspan/rowspan limits with the latest HTML specification

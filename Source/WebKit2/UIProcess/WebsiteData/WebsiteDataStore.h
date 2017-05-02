@@ -37,6 +37,10 @@
 #include <wtf/WorkQueue.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(COCOA)
+#include <WebCore/CFNetworkSPI.h>
+#endif
+
 namespace WebCore {
 class SecurityOrigin;
 }
@@ -49,7 +53,9 @@ class WebProcessPool;
 class WebResourceLoadStatisticsStore;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
+struct DatabaseProcessCreationParameters;
 struct WebsiteDataRecord;
+struct WebsiteDataStoreParameters;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 struct PluginModuleInfo;
@@ -69,10 +75,10 @@ public:
         String mediaKeysStorageDirectory;
         String resourceLoadStatisticsDirectory;
         String javaScriptConfigurationDirectory;
-        String cookieStorageDirectory;
+        String cookieStorageFile;
     };
     static Ref<WebsiteDataStore> createNonPersistent();
-    static Ref<WebsiteDataStore> create(Configuration);
+    static Ref<WebsiteDataStore> create(Configuration, WebCore::SessionID);
     virtual ~WebsiteDataStore();
 
     uint64_t identifier() const { return m_identifier; }
@@ -101,16 +107,20 @@ public:
     const String& resolvedMediaKeysDirectory() const { return m_resolvedConfiguration.mediaKeysStorageDirectory; }
     const String& resolvedDatabaseDirectory() const { return m_resolvedConfiguration.webSQLDatabaseDirectory; }
     const String& resolvedJavaScriptConfigurationDirectory() const { return m_resolvedConfiguration.javaScriptConfigurationDirectory; }
-    const String& resolvedCookieStorageDirectory() const { return m_resolvedConfiguration.cookieStorageDirectory; }
+    const String& resolvedCookieStorageFile() const { return m_resolvedConfiguration.cookieStorageFile; }
+    const String& resolvedIndexedDatabaseDirectory() const { return m_resolvedConfiguration.indexedDBDatabaseDirectory; }
 
     StorageManager* storageManager() { return m_storageManager.get(); }
 
     WebProcessPool* processPoolForCookieStorageOperations();
     bool isAssociatedProcessPool(WebProcessPool&) const;
 
+    WebsiteDataStoreParameters parameters();
+    DatabaseProcessCreationParameters databaseProcessParameters();
+
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
-    explicit WebsiteDataStore(Configuration);
+    explicit WebsiteDataStore(Configuration, WebCore::SessionID);
 
     // WebProcessLifetimeObserver.
     void webPageWasAdded(WebPageProxy&) override;
@@ -145,6 +155,11 @@ private:
     const RefPtr<WebResourceLoadStatisticsStore> m_resourceLoadStatistics;
 
     Ref<WorkQueue> m_queue;
+
+#if PLATFORM(COCOA)
+    Vector<uint8_t> m_uiProcessCookieStorageIdentifier;
+    RetainPtr<CFHTTPCookieStorageRef> m_cfCookieStorage;
+#endif
 };
 
 }

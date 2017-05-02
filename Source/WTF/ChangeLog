@@ -1,3 +1,122 @@
+2017-05-01  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] It’s easy to accidentally install a WTF header outside /usr/local/include/wtf
+        https://bugs.webkit.org/show_bug.cgi?id=171533
+
+        Reviewed by Andy Estes.
+
+        * WTF.xcodeproj/project.pbxproj: Removed the WTF target’s Headers build phase. Its existence
+          was making it easy to accidentally add a header to the target and make it Private, which
+          would have Xcode install a copy of it right under /usr/local/include, in addition to the
+          copy installed under /usr/local/include/wtf by the Copy WTF Headers target.
+          Also got rid of INSTALL_PATH_PREFIX in the script build phase in the Copy WTF Headers
+          target, because it is being never set anymore.
+
+2017-05-01  Dan Bernstein  <mitz@apple.com>
+
+        WTF installs an extra copy of a header outside /usr/local/include/wtf
+
+        * WTF.xcodeproj/project.pbxproj: Demoted CPUTime.h from Private to Project.
+
+2017-05-01  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Change ASCIICaseInsensitiveHash from a class to a struct
+        https://bugs.webkit.org/show_bug.cgi?id=171460
+
+        Reviewed by Sam Weinig.
+
+        All of the members of ASCIICaseInsensitiveHash have public visibility.
+        We are underutilizing the purpose of a class - defaults to private
+        visibility of members. We should change ASCIICaseInsensitiveHash from
+        a class to a struct, which by definition defaults to public visibility
+        for members.
+
+        * wtf/text/StringHash.h:
+
+2017-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Move WebCore CPUTime to WTF and implement it in all the platforms
+        https://bugs.webkit.org/show_bug.cgi?id=171477
+
+        Reviewed by Chris Dumez.
+
+        We move WebCore::CPUTime to WTF::CPUTime since it is useful even in JSC
+        and it does not depend on any external libraries.
+        And we additionally implement WTF::CPUTime in all the platforms: Windows and Unix.
+
+        In CPUTime, instead of holding int64_t, we hold MonotonicTime and Seconds.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CPUTime.cpp: Copied from Source/WebCore/platform/CPUTime.cpp.
+        (WTF::CPUTime::percentageCPUUsageSince):
+        * wtf/CPUTime.h: Renamed from Source/WebCore/platform/CPUTime.h.
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cocoa/CPUTimeCocoa.mm: Renamed from Source/WebCore/platform/cocoa/CPUTimeCocoa.mm.
+        (WTF::timeValueToMicroseconds):
+        (WTF::CPUTime::get):
+        * wtf/unix/CPUTimeUnix.cpp: Renamed from Source/WebCore/platform/CPUTime.cpp.
+        (WTF::timevalToSeconds):
+        (WTF::CPUTime::get):
+        * wtf/win/CPUTimeWin.cpp: Added.
+        (WTF::fileTimeToSeconds):
+        (WTF::CPUTime::get):
+
+2017-04-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system trace points for Document::updateTouchEventRegions()
+        https://bugs.webkit.org/show_bug.cgi?id=171470
+        rdar://problem/31901239
+
+        Reviewed by Tim Horton.
+
+        Add trace markers for updateTouchEventRegions.
+
+        * wtf/SystemTracing.h:
+
+2017-04-28  Daniel Bates  <dabates@apple.com>
+
+        Add StringView::toExistingAtomicString()
+        https://bugs.webkit.org/show_bug.cgi?id=171405
+
+        Reviewed by Andreas Kling.
+
+        Similar to the reasons for JSString::toExistingAtomicString() we should expose a way to
+        convert a StringView to an existing atomic string. Looking up an atomic string is more
+        efficient that creating one, which requires a lookup and memory allocation.
+
+        We are not making use of StringView::toExistingAtomicString() now, but will in the patch
+        for <https://bugs.webkit.org/show_bug.cgi?id=170925>.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::AtomicStringImpl::lookUp): Modified to take a const LChar*/UChar*.
+        (WTF::AtomicStringImpl::lookUpInternal): Renamed to AtomicStringImpl::lookup() to avoid
+        an extra function call.
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringView.h:
+        (WTF::StringView::toExistingAtomicString): Added.
+
+2017-04-28  Chris Dumez  <cdumez@apple.com>
+
+        Update DOMTokenList.replace() to match the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=171388
+
+        Reviewed by Alex Christensen.
+
+        Add Vector::findMatching() API which takes in a lambda function for convenience.
+        Add optional startIndex parameter to Vector::removeFirstMatching() / removeAllMatching()
+        to remove items only after given index.
+
+        * wtf/Vector.h:
+        (WTF::minCapacity>::findMatching):
+        (WTF::minCapacity>::find):
+        (WTF::minCapacity>::removeFirstMatching):
+        (WTF::minCapacity>::removeAllMatching):
+
 2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Move UUID from WebCore/platform to WTF

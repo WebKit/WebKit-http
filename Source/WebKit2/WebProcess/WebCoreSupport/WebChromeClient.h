@@ -68,7 +68,7 @@ private:
     bool canRunModal() final;
     void runModal() final;
 
-    void reportProcessCPUTime(int64_t, WebCore::ActivityStateForCPUSampling) final;
+    void reportProcessCPUTime(Seconds, WebCore::ActivityStateForCPUSampling) final;
     
     void setToolbarsVisible(bool) final;
     bool toolbarsVisible() final;
@@ -341,8 +341,6 @@ private:
 #endif
 
     void didInvalidateDocumentMarkerRects() final;
-
-    void didChangeClipToSafeArea(bool) final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

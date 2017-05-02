@@ -67,23 +67,23 @@ RealtimeMediaSourceCenter::~RealtimeMediaSourceCenter()
 {
 }
 
-void RealtimeMediaSourceCenter::setAudioFactory(RealtimeMediaSource::CaptureFactory& factory)
+void RealtimeMediaSourceCenter::setAudioFactory(RealtimeMediaSource::AudioCaptureFactory& factory)
 {
     m_audioFactory = &factory;
 }
 
-void RealtimeMediaSourceCenter::unsetAudioFactory(RealtimeMediaSource::CaptureFactory& factory)
+void RealtimeMediaSourceCenter::unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory& factory)
 {
     if (m_audioFactory == &factory)
         m_audioFactory = nullptr;
 }
 
-void RealtimeMediaSourceCenter::setVideoFactory(RealtimeMediaSource::CaptureFactory& factory)
+void RealtimeMediaSourceCenter::setVideoFactory(RealtimeMediaSource::VideoCaptureFactory& factory)
 {
     m_videoFactory = &factory;
 }
 
-void RealtimeMediaSourceCenter::unsetVideoFactory(RealtimeMediaSource::CaptureFactory& factory)
+void RealtimeMediaSourceCenter::unsetVideoFactory(RealtimeMediaSource::VideoCaptureFactory& factory)
 {
     if (m_videoFactory == &factory)
         m_videoFactory = nullptr;
@@ -160,7 +160,7 @@ ExceptionOr<void> RealtimeMediaSourceCenter::setDeviceEnabled(const String&, boo
 
 RealtimeMediaSourceCenter::DevicesChangedObserverToken RealtimeMediaSourceCenter::addDevicesChangedObserver(std::function<void()>&& observer)
 {
-    DevicesChangedObserverToken nextToken = 0;
+    static DevicesChangedObserverToken nextToken = 0;
     m_devicesChangedObservers.set(++nextToken, WTFMove(observer));
     return nextToken;
 }

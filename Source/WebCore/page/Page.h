@@ -81,10 +81,10 @@ class BackForwardController;
 class BackForwardClient;
 class Chrome;
 class ChromeClient;
-class ClientRectList;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
+class DOMRect;
 class DatabaseProvider;
 class DiagnosticLoggingClient;
 class DragCaretController;
@@ -128,6 +128,7 @@ class Settings;
 class SocketProvider;
 class StorageNamespace;
 class StorageNamespaceProvider;
+class URL;
 class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
@@ -239,10 +240,10 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects();
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> nonFastScrollableRects();
 
-    WEBCORE_EXPORT Ref<ClientRectList> touchEventRectsForEvent(const String& eventName);
-    WEBCORE_EXPORT Ref<ClientRectList> passiveTouchEventListenerRects();
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> touchEventRectsForEvent(const String& eventName);
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> passiveTouchEventListenerRects();
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -330,7 +331,10 @@ public:
     WEBCORE_EXPORT void setTopContentInset(float);
 
     const FloatBoxExtent& obscuredInsets() const { return m_obscuredInsets; }
-    WEBCORE_EXPORT void setObscuredInsets(const FloatBoxExtent&);
+    void setObscuredInsets(const FloatBoxExtent& obscuredInsets) { m_obscuredInsets = obscuredInsets; }
+
+    const FloatBoxExtent& unobscuredSafeAreaInsets() const { return m_unobscuredSafeAreaInsets; }
+    WEBCORE_EXPORT void setUnobscuredSafeAreaInsets(const FloatBoxExtent&);
 
 #if PLATFORM(IOS)
     bool enclosedInScrollableAncestorView() const { return m_enclosedInScrollableAncestorView; }
@@ -495,6 +499,8 @@ public:
     void allowPrompts();
     bool arePromptsAllowed();
 
+    void mainFrameLoadStarted(const URL&, FrameLoadType);
+
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
@@ -595,6 +601,12 @@ public:
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(std::optional<bool>);
 
 private:
+    struct Navigation {
+        String domain;
+        FrameLoadType type;
+    };
+    void logNavigation(const Navigation&);
+
     WEBCORE_EXPORT void initGroup();
 
     void setIsInWindowInternal(bool);
@@ -687,6 +699,7 @@ private:
 
     float m_topContentInset;
     FloatBoxExtent m_obscuredInsets;
+    FloatBoxExtent m_unobscuredSafeAreaInsets;
 
 #if PLATFORM(IOS)
     bool m_enclosedInScrollableAncestorView { false };
@@ -803,6 +816,8 @@ private:
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
     std::unique_ptr<LowPowerModeNotifier> m_lowPowerModeNotifier;
     std::optional<bool> m_lowPowerModeEnabledOverrideForTesting;
+
+    std::optional<Navigation> m_navigationToLogWhenVisible;
 
     bool m_isRunningUserScripts { false };
 };

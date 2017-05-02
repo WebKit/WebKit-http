@@ -38,6 +38,7 @@
 #include "AccessibilityList.h"
 #include "AccessibilityListBoxOption.h"
 #include "AccessibilityTable.h"
+#include "AccessibilityTableCell.h"
 #include "Document.h"
 #include "Editing.h"
 #include "Frame.h"
@@ -391,14 +392,42 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
             attributeSet = addToAtkAttributeSet(attributeSet, "multiscript-type", "post");
     }
 
-    // Set the 'layout-guess' attribute to help Assistive
-    // Technologies know when an exposed table is not data table.
-    if (is<AccessibilityTable>(*coreObject) && downcast<AccessibilityTable>(*coreObject).isExposableThroughAccessibility() && !coreObject->isDataTable())
-        attributeSet = addToAtkAttributeSet(attributeSet, "layout-guess", "true");
+    if (is<AccessibilityTable>(*coreObject) && downcast<AccessibilityTable>(*coreObject).isExposableThroughAccessibility()) {
+        auto& table = downcast<AccessibilityTable>(*coreObject);
+        int rowCount = table.ariaRowCount();
+        if (rowCount)
+            attributeSet = addToAtkAttributeSet(attributeSet, "rowcount", String::number(rowCount).utf8().data());
+
+        int columnCount = table.ariaColumnCount();
+        if (columnCount)
+            attributeSet = addToAtkAttributeSet(attributeSet, "colcount", String::number(columnCount).utf8().data());
+    }
+
+    if (is<AccessibilityTableCell>(*coreObject)) {
+        auto& cell = downcast<AccessibilityTableCell>(*coreObject);
+        int rowIndex = cell.ariaRowIndex();
+        if (rowIndex != -1)
+            attributeSet = addToAtkAttributeSet(attributeSet, "rowindex", String::number(rowIndex).utf8().data());
+
+        int columnIndex = cell.ariaColumnIndex();
+        if (columnIndex != -1)
+            attributeSet = addToAtkAttributeSet(attributeSet, "colindex", String::number(columnIndex).utf8().data());
+
+        int rowSpan = cell.ariaRowSpan();
+        if (rowSpan != -1)
+            attributeSet = addToAtkAttributeSet(attributeSet, "rowspan", String::number(rowSpan).utf8().data());
+
+        int columnSpan = cell.ariaColumnSpan();
+        if (columnSpan != -1)
+            attributeSet = addToAtkAttributeSet(attributeSet, "colspan", String::number(columnSpan).utf8().data());
+    }
 
     String placeholder = coreObject->placeholderValue();
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
+
+    if (coreObject->supportsARIAAutoComplete())
+        attributeSet = addToAtkAttributeSet(attributeSet, "autocomplete", coreObject->ariaAutoCompleteValue().utf8().data());
 
     if (coreObject->supportsARIAHasPopup())
         attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->ariaPopupValue().utf8().data());
@@ -551,9 +580,13 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case GridRole:
     case TableRole:
         return ATK_ROLE_TABLE;
+    case TreeGridRole:
+        return ATK_ROLE_TREE_TABLE;
     case ApplicationRole:
         return ATK_ROLE_APPLICATION;
     case ApplicationGroupRole:
+    case FeedRole:
+    case FigureRole:
     case GroupRole:
     case RadioGroupRole:
     case SVGRootRole:
@@ -670,6 +703,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
+    case LandmarkDocRegionRole:
     case LandmarkMainRole:
     case LandmarkNavigationRole:
     case LandmarkRegionRole:
@@ -679,6 +713,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
 #if ATK_CHECK_VERSION(2, 11, 4)
     case DescriptionListRole:
         return ATK_ROLE_DESCRIPTION_LIST;
+    case TermRole:
     case DescriptionListTermRole:
         return ATK_ROLE_DESCRIPTION_TERM;
     case DescriptionListDetailRole:
@@ -695,6 +730,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_STATIC;
     case SVGTextPathRole:
     case SVGTSpanRole:
+    case TimeRole:
         return ATK_ROLE_STATIC;
 #endif
     default:
@@ -867,6 +903,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
         atk_state_set_add_state(stateSet, ATK_STATE_SINGLE_LINE);
 
     // TODO: ATK_STATE_SENSITIVE
+
+    if (coreObject->supportsARIAAutoComplete() && coreObject->ariaAutoCompleteValue() != "none")
+        atk_state_set_add_state(stateSet, ATK_STATE_SUPPORTS_AUTOCOMPLETION);
 
     if (coreObject->isVisited())
         atk_state_set_add_state(stateSet, ATK_STATE_VISITED);
@@ -1144,7 +1183,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
         interfaceMask |= 1 << WAIImage;
 
     // Table
-    if (role == TableRole || role == GridRole)
+    if (coreObject->isTable())
         interfaceMask |= 1 << WAITable;
 
 #if ATK_CHECK_VERSION(2,11,90)

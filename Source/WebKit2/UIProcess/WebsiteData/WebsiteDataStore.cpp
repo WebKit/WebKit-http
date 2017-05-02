@@ -28,6 +28,7 @@
 
 #include "APIProcessPoolConfiguration.h"
 #include "APIWebsiteDataRecord.h"
+#include "DatabaseProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
 #include "StorageManager.h"
 #include "WebCookieManagerProxy.h"
@@ -36,8 +37,10 @@
 #include "WebResourceLoadStatisticsStore.h"
 #include "WebResourceLoadStatisticsStoreMessages.h"
 #include "WebsiteData.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/DatabaseTracker.h>
+#include <WebCore/FileSystem.h>
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/OriginLock.h>
 #include <WebCore/ResourceLoadObserver.h>
@@ -63,14 +66,14 @@ Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistent()
     return adoptRef(*new WebsiteDataStore(WebCore::SessionID::generateEphemeralSessionID()));
 }
 
-Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration)
+Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, WebCore::SessionID sessionID)
 {
-    return adoptRef(*new WebsiteDataStore(WTFMove(configuration)));
+    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), sessionID));
 }
 
-WebsiteDataStore::WebsiteDataStore(Configuration configuration)
+WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::SessionID sessionID)
     : m_identifier(generateIdentifier())
-    , m_sessionID(WebCore::SessionID::defaultSessionID())
+    , m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
     , m_storageManager(StorageManager::create(m_configuration.localStorageDirectory))
     , m_resourceLoadStatistics(WebResourceLoadStatisticsStore::create(m_configuration.resourceLoadStatisticsDirectory))
@@ -92,9 +95,9 @@ WebsiteDataStore::~WebsiteDataStore()
 {
     platformDestroy();
 
-    if (m_sessionID.isEphemeral()) {
+    if (m_sessionID.isValid() && m_sessionID != WebCore::SessionID::defaultSessionID()) {
         for (auto& processPool : WebProcessPool::allProcessPools())
-            processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroyPrivateBrowsingSession(m_sessionID));
+            processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroySession(m_sessionID));
     }
 }
 
@@ -110,13 +113,23 @@ void WebsiteDataStore::resolveDirectoriesIfNecessary()
         return;
     m_hasResolvedDirectories = true;
 
+    // Resolve directory paths.
     m_resolvedConfiguration.applicationCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.applicationCacheDirectory);
     m_resolvedConfiguration.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaCacheDirectory);
     m_resolvedConfiguration.mediaKeysStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaKeysStorageDirectory);
     m_resolvedConfiguration.webSQLDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.webSQLDatabaseDirectory);
 
+    if (!m_configuration.indexedDBDatabaseDirectory.isEmpty())
+        m_resolvedConfiguration.indexedDBDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.indexedDBDatabaseDirectory);
+
     if (!m_configuration.javaScriptConfigurationDirectory.isEmpty())
         m_resolvedConfiguration.javaScriptConfigurationDirectory = resolvePathForSandboxExtension(m_configuration.javaScriptConfigurationDirectory);
+
+    // Resolve directories for file paths.
+    if (!m_configuration.cookieStorageFile.isEmpty()) {
+        m_resolvedConfiguration.cookieStorageFile = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebCore::directoryName(m_configuration.cookieStorageFile));
+        m_resolvedConfiguration.cookieStorageFile = WebCore::pathByAppendingComponent(m_resolvedConfiguration.cookieStorageFile, WebCore::pathGetFileName(m_configuration.cookieStorageFile));
+    }
 }
 
 void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
@@ -1234,5 +1247,29 @@ void WebsiteDataStore::registerSharedResourceLoadObserver()
     m_resourceLoadStatistics->registerSharedResourceLoadObserver();
 #endif
 }
+
+DatabaseProcessCreationParameters WebsiteDataStore::databaseProcessParameters()
+{
+    DatabaseProcessCreationParameters parameters;
+
+    parameters.sessionID = m_sessionID;
+
+#if ENABLE(INDEXED_DATABASE)
+    parameters.indexedDatabaseDirectory = resolvedIndexedDatabaseDirectory();
+    if (!parameters.indexedDatabaseDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+#endif
+
+    return parameters;
+}
+
+#if !PLATFORM(COCOA)
+WebsiteDataStoreParameters WebsiteDataStore::parameters()
+{
+    // FIXME: Implement.
+
+    return { };
+}
+#endif
 
 }

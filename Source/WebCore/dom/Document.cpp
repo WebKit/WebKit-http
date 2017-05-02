@@ -433,6 +433,17 @@ HashSet<Document*>& Document::allDocuments()
     return documents;
 }
 
+static inline int currentOrientation(Frame* frame)
+{
+#if ENABLE(ORIENTATION_EVENTS)
+    if (frame)
+        return frame->orientation();
+#else
+    UNUSED_PARAM(frame);
+#endif
+    return 0;
+}
+
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
@@ -483,6 +494,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #endif
     , m_isSynthesized(constructionFlags & Synthesized)
     , m_isNonRenderedPlaceholder(constructionFlags & NonRenderedPlaceholder)
+    , m_orientationNotifier(currentOrientation(frame))
 {
     allDocuments().add(this);
 
@@ -2635,13 +2647,13 @@ void Document::implicitClose()
         ImageLoader::dispatchPendingErrorEvents();
         HTMLLinkElement::dispatchPendingLoadEvents();
         HTMLStyleElement::dispatchPendingLoadEvents();
-    }
 
-    // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
-    // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
-    // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
-    if (svgExtensions())
-        accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
+        // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
+        // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
+        // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
+        if (svgExtensions())
+            accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
+    }
 
     dispatchWindowLoadEvent();
     dispatchPageshowEvent(PageshowEventNotPersisted);
@@ -3175,7 +3187,7 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
 
     m_viewportArguments = ViewportArguments(origin);
 
-    processFeaturesString(features, [this](StringView key, StringView value) {
+    processFeaturesString(features, FeatureMode::Viewport, [this](StringView key, StringView value) {
         setViewportFeature(m_viewportArguments, *this, key, value);
     });
 
@@ -3198,7 +3210,7 @@ void Document::updateViewportArguments()
 void Document::processFormatDetection(const String& features)
 {
     // FIXME: Find a better place for this function.
-    processFeaturesString(features, [this](StringView key, StringView value) {
+    processFeaturesString(features, FeatureMode::Viewport, [this](StringView key, StringView value) {
         if (equalLettersIgnoringASCIICase(key, "telephone") && equalLettersIgnoringASCIICase(value, "no"))
             setIsTelephoneNumberParsingAllowed(false);
     });
@@ -6952,6 +6964,12 @@ void Document::didRemoveInDocumentShadowRoot(ShadowRoot& shadowRoot)
 {
     ASSERT(m_inDocumentShadowRoots.contains(&shadowRoot));
     m_inDocumentShadowRoots.remove(&shadowRoot);
+}
+
+void Document::orientationChanged(int orientation)
+{
+    dispatchWindowEvent(Event::create(eventNames().orientationchangeEvent, false, false));
+    m_orientationNotifier.orientationChanged(orientation);
 }
 
 } // namespace WebCore

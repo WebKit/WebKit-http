@@ -20,6 +20,7 @@
  <div role="directory"></div>
  <div role="document"></div>
  <div role="feed"></div>
+ <div role="figure"></div>
  <div role="form"></div>
  <div role="group"></div>
  <div role="heading"></div>
@@ -34,7 +35,8 @@
  <div role="presentation"></div>
  <div role="progressbar"></div>
  <div role="radio"></div>
- <div role="region"></div>
+ <div role="region" aria-label="X"></div>
+ <div role="region">X</div>
  <div role="scrollbar"></div>
  <div role="search"></div>
  <div role="searchbox"></div>
@@ -43,6 +45,7 @@
  <div role="spinbutton"></div>
  <div role="status"></div>
  <div role="switch"></div>
+ <div role="term"></div>
  <div role="textbox"></div>
  <div role="timer"></div>
  <div role="toolbar"></div>
@@ -94,6 +97,7 @@ description("Verify exposure of ARIA role values via the 'xml-roles' object attr
 if (window.accessibilityController) {
     document.getElementById("body").focus();
     debug(accessibilityController.focusedElement.attributesOfChildren());
+    document.getElementById("test").style.visibility = "hidden";
 }
 </script>
 <script src="../../resources/js-test-post.js"></script>

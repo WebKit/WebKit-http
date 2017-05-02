@@ -1,3 +1,299 @@
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [aarch64][Linux] m_allowScratchRegister assert hit in MacroAssemblerARM64 under B3::Air::CCallSpecial::generate()
+        https://bugs.webkit.org/show_bug.cgi?id=170672
+
+        Reviewed by Filip Pizlo.
+
+        In Air::CCallSpecial::admitsStack() we reject admitting the callee argument on
+        the stack for ARM64 because that can lead to disallowed usage of the scratch
+        register in MacroAssemblerARM64 when generating a call with an address Arg
+        in Air::CCallSpecial::generate().
+
+        The testLinearScanWithCalleeOnStack test is added to testb3. It reproduces the
+        original issue by force-spilling everything on the stack and enforcing the use
+        of the linear scan register allocation by using an optimization level of 1.
+
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::admitsStack):
+        * b3/testb3.cpp:
+        (JSC::B3::testLinearScanWithCalleeOnStack):
+        (JSC::B3::run):
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using sprintf() in JavaScriptCore debugger
+        <https://webkit.org/b/171512>
+
+        Reviewed by Keith Miller.
+
+        * disassembler/udis86/udis86.c:
+        (ud_insn_hex): Switch from sprintf() to snprintf().
+
+2017-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::fixObviousSpills should remove totally redundant instructions
+        https://bugs.webkit.org/show_bug.cgi?id=171131
+
+        Reviewed by Saam Barati.
+        
+        This is a modest compile-time-neutral improvement to fixObviousSpills. That phase
+        builds up a classic alias analysis data structure over spills and registers and then
+        uses it to remove the most common spill pathologies we encounter. For example, if you
+        use a spill but the spill is aliased to a register or constant, then we can replace the
+        use of the spill with a use of the register or constant.
+        
+        But that phase was missing perhaps one of the most obvious fixups that its analysis
+        allows us to do: if any instruction creates an alias we already know about, then the
+        instruction is redundant. This turned out to be super important for
+        https://bugs.webkit.org/show_bug.cgi?id=171075. That patch didn't work out, but this
+        kind of optimization might be a good clean-up for many other kinds of optimizations.
+
+        * b3/air/AirFixObviousSpills.cpp:
+
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        We initialize functions too early in an eval
+        https://bugs.webkit.org/show_bug.cgi?id=161099
+
+        Reviewed by Saam Barati.
+
+        Current patch allow to fix problem with scope in function that is 
+        declared within eval. Before scope was set inside Interpretator.cpp and it
+        was scope where eval is executed, but in this case function would not 
+        see let/const variables and classes declated in eval.
+        This patch devide declaration and binding in two operation, first just declare
+        variable with function name, and second bind variable to function with correct 
+        scope
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        Current patch implements Annex B.3.3 that is related to 
+        hoisting of function declaration in eval. 
+        https://tc39.github.io/ecma262/#sec-web-compat-evaldeclarationinstantiation
+        Function declaration in eval should create variable with 
+        function name in function scope where eval is invoked 
+        or bind to variable if it declared outside of the eval. 
+        If variable is created it can be removed by 'delete a;' command. 
+        If eval is invoke in block scope that contains let/const 
+        variable with the same name as function declaration 
+        we do not bind. This patch leads to the following behavior: 
+        '''
+        function foo() {
+           {
+             print(boo); // undefined
+             eval('{ function boo() {}}');
+             print(boo); // function boo() {}
+           }
+           print(boo); // function boo() {}
+        }
+
+        function foobar() {
+          { 
+            let boo = 10;
+            print(boo); // 10;
+            eval('{ function boo() {}}');
+            print(boo); // 10;
+          }
+          print(boo) // 10
+        }
+
+        function bar() {
+           {
+              var boo = 10;
+              print(boo); // 10
+              eval('{ function boo() {} }'); 
+              print(boo); // function boo() {}
+           }
+           print(boo); // function boo() {}
+        }       
+        
+        function bas() {
+            {
+                 let boo = 10;
+                 eval(' { function boo() {} } ');
+                 print(boo); // 10
+            }
+            print(boo); //Reference Error
+        }
+        '''
+
+        Current implementation relies on already implemented 
+        'hoist function in sloppy mode' feature, with small changes.
+        In short it works in following way: during hoisting of function 
+        with name S in eval, we are looking for first scope that 
+        contains space for variable with name S and if this scope 
+        has var type we bind function there
+
+        To implement this feature was added bytecode ops:
+        op_resolve_scope_for_hoisting_func_decl_in_eval - get variable scope 
+        or return undefined if variable can't be binded there.
+
+        There is a corner case, hoist function in eval within catch block,
+        that is not covered by this patch, and will be fixed in 
+        https://bugs.webkit.org/show_bug.cgi?id=168184
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/EvalCodeBlock.h:
+        (JSC::EvalCodeBlock::functionHoistingCandidate):
+        (JSC::EvalCodeBlock::numFunctionHoistingCandidates):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::hoistSloppyModeFunctionIfNecessary):
+        (JSC::BytecodeGenerator::emitResolveScopeForHoistingFuncDeclInEval):
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileResolveScopeForHoistingFuncDeclInEval):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileResolveScopeForHoistingFuncDeclInEval):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope_for_hoisting_func_decl_in_eval):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope_for_hoisting_func_decl_in_eval):
+        * llint/LowLevelInterpreter.asm:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionDeclarationStatement):
+        * parser/Parser.h:
+        (JSC::Scope::getSloppyModeHoistedFunctions):
+        (JSC::Parser::declareFunction):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * runtime/EvalExecutable.h:
+        (JSC::EvalExecutable::numFunctionHoistingCandidates):
+        (JSC::EvalExecutable::numTopLevelFunctionDecls):
+        (JSC::EvalExecutable::numberOfFunctionDecls): Deleted.
+        * runtime/JSScope.cpp:
+        (JSC::JSScope::resolve):
+        (JSC::JSScope::resolveScopeForHoistingFuncDeclInEval):
+        * runtime/JSScope.h:
+
+2017-04-29  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Deep nesting is leading to ReferenceError for hoisted function
+        https://bugs.webkit.org/show_bug.cgi?id=171456
+
+        Reviewed by Yusuke Suzuki.
+
+        Current patch fix error that appears during hoisting of the function 
+        in block scope. Error happens only when exist some deep scope that lead
+        to increase scope stack, after which list of the hosted candidates do not 
+        copied to updated scope stack.
+
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+
+2017-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] LabelScopePtr is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=171474
+
+        Reviewed by Geoffrey Garen.
+
+        Originally, LabelScopePtr is introduced because LabelScopes uses Vector<> instead of SegmentedVector<>.
+        LabelScopePtr holds the pointer to the vector owner and index instead of the pointer to LabelScope directly
+        since Vector<> can relocate LocalScopes inside it.
+        The reason why LabelScopes use Vector instead is that there is code copying this vector. SegmentedVector<>
+        prohibits copying since it is so costly. So, we used Vector<> here instead of SegmentedVector<>.
+
+        But the latest code does not have copying code for LabelScopes. Thus, we can take the same design to Label and
+        RegisterID. Just use SegmentedVector<> and Ref<>/RefPtr<>. This patch removes LabelScopePtr since it is no
+        longer necessary. And use SegmentedVector for LabelScopes.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::reclaim):
+        (JSC::BytecodeGenerator::reclaimFreeRegisters):
+        (JSC::BytecodeGenerator::newLabelScope):
+        (JSC::BytecodeGenerator::newLabel):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::breakTarget):
+        (JSC::BytecodeGenerator::continueTarget):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/LabelScope.h:
+        (JSC::LabelScope::LabelScope):
+        (JSC::LabelScope::breakTarget):
+        (JSC::LabelScope::continueTarget):
+        (JSC::LabelScope::type):
+        (JSC::LabelScope::name):
+        (JSC::LabelScope::scopeDepth):
+        (JSC::LabelScope::ref):
+        (JSC::LabelScope::deref):
+        (JSC::LabelScope::refCount):
+        (JSC::LabelScopePtr::LabelScopePtr): Deleted.
+        (JSC::LabelScopePtr::operator=): Deleted.
+        (JSC::LabelScopePtr::~LabelScopePtr): Deleted.
+        (JSC::LabelScopePtr::operator!): Deleted.
+        (JSC::LabelScopePtr::operator*): Deleted.
+        (JSC::LabelScopePtr::operator->): Deleted.
+        (JSC::LabelScopePtr::null): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::DoWhileNode::emitBytecode):
+        (JSC::WhileNode::emitBytecode):
+        (JSC::ForNode::emitBytecode):
+        (JSC::ForInNode::emitBytecode):
+        (JSC::ContinueNode::trivialTarget):
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::trivialTarget):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::SwitchNode::emitBytecode):
+        (JSC::LabelNode::emitBytecode):
+
 2017-04-28  Mark Lam  <mark.lam@apple.com>
 
         Revert instrumentation from https://bugs.webkit.org/show_bug.cgi?id=170086 that is no longer needed.

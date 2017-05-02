@@ -74,26 +74,36 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
 
-    NSURL *sqlPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/WebSQL/" stringByExpandingTildeInPath]];
-    NSURL *idbPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/IndexedDB/" stringByExpandingTildeInPath]];
-    NSURL *localStoragePath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/LocalStorage/" stringByExpandingTildeInPath]];
-    NSURL *cookieStoragePath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/CookieStorage/" stringByExpandingTildeInPath]];
+    NSURL *sqlPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/WebSQL/" stringByExpandingTildeInPath] isDirectory:YES];
+    NSURL *idbPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/IndexedDB/" stringByExpandingTildeInPath] isDirectory:YES];
+    NSURL *localStoragePath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/LocalStorage/" stringByExpandingTildeInPath] isDirectory:YES];
+    NSURL *cookieStorageFile = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/CookieStorage/Cookie.File" stringByExpandingTildeInPath] isDirectory:NO];
+
+    NSURL *defaultSQLPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/WebSQL/" stringByExpandingTildeInPath] isDirectory:YES];
+    NSURL *defaultIDBPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/IndexedDB/" stringByExpandingTildeInPath] isDirectory:YES];
+    NSURL *defaultLocalStoragePath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/LocalStorage/" stringByExpandingTildeInPath] isDirectory:YES];
 
     [[NSFileManager defaultManager] removeItemAtURL:sqlPath error:nil];
     [[NSFileManager defaultManager] removeItemAtURL:idbPath error:nil];
     [[NSFileManager defaultManager] removeItemAtURL:localStoragePath error:nil];
-    [[NSFileManager defaultManager] removeItemAtURL:cookieStoragePath error:nil];
+    [[NSFileManager defaultManager] removeItemAtURL:cookieStorageFile error:nil];
+    [[NSFileManager defaultManager] removeItemAtURL:defaultSQLPath error:nil];
+    [[NSFileManager defaultManager] removeItemAtURL:defaultIDBPath error:nil];
+    [[NSFileManager defaultManager] removeItemAtURL:defaultLocalStoragePath error:nil];
 
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:sqlPath.path]);
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:idbPath.path]);
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:localStoragePath.path]);
-    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:cookieStoragePath.path]);
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:cookieStorageFile.path]);
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:defaultSQLPath.path]);
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:defaultIDBPath.path]);
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:defaultLocalStoragePath.path]);
 
     _WKWebsiteDataStoreConfiguration *websiteDataStoreConfiguration = [[_WKWebsiteDataStoreConfiguration alloc] init];
     websiteDataStoreConfiguration._webSQLDatabaseDirectory = sqlPath;
     websiteDataStoreConfiguration._indexedDBDatabaseDirectory = idbPath;
     websiteDataStoreConfiguration._webStorageDirectory = localStoragePath;
-    websiteDataStoreConfiguration._cookieStorageDirectory = cookieStoragePath;
+    websiteDataStoreConfiguration._cookieStorageFile = cookieStorageFile;
 
     configuration.get().websiteDataStore = [[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration];
     [websiteDataStoreConfiguration release];
@@ -111,12 +121,28 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
 
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:sqlPath.path]);
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:localStoragePath.path]);
-    
-    // FIXME: Once this API works this should be true, and there should be a file that contains the bytes "testkey=value"
-    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:cookieStoragePath.path]);
-    
-    // FIXME: <rdar://problem/30785618> - We don't yet support IDB database processes at custom paths per WebsiteDataStore
-    // EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:idbPath]);
+
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:idbPath.path]);
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultIDBPath.path]);
+
+    // FIXME: We currently don't have a reliable way to force sync on newer SDKs, so we can't test this on them.
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
+    [[[webView configuration] processPool] _syncNetworkProcessCookies];
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:cookieStorageFile.path]);
+
+    // Note: The format of the cookie file on disk is proprietary and opaque, so this is fragile to future changes.
+    // But right now, it is reliable to scan the file for the ASCII string of the cookie name we set.
+    // This helps verify that the cookie file was actually written to as we'd expect.
+    auto data = adoptNS([[NSData alloc] initWithContentsOfURL:cookieStorageFile]);
+    char bytes[] = "testkey";
+    auto cookieKeyData = adoptNS([[NSData alloc] initWithBytes:(void *)bytes length:strlen(bytes)]);
+    auto result = [data rangeOfData:cookieKeyData.get() options:0 range:NSMakeRange(0, data.get().length)];
+    EXPECT_NE((const long)result.location, NSNotFound);
+#endif
+
+    // FIXME: The default SQL and LocalStorage paths are being used for something, but they shouldn't be. (theses should be false, not true)
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultSQLPath.path]);
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultLocalStoragePath.path]);
 }
 
 #endif

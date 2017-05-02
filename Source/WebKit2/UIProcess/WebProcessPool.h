@@ -264,7 +264,9 @@ public:
     void terminateDatabaseProcess();
     void terminateNetworkProcess();
 
-    void reportWebContentCPUTime(int64_t cpuTime, uint64_t activityState);
+    void syncNetworkProcessCookies();
+
+    void reportWebContentCPUTime(Seconds cpuTime, uint64_t activityState);
 
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
@@ -394,7 +396,8 @@ public:
     bool resourceLoadStatisticsEnabled() { return m_resourceLoadStatisticsEnabled; }
     void setResourceLoadStatisticsEnabled(bool enabled) { m_resourceLoadStatisticsEnabled = enabled; }
 
-    bool alwaysRunsAtBackgroundPriority() { return m_alwaysRunsAtBackgroundPriority; }
+    bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
+    bool shouldTakeUIBackgroundAssertion() const { return m_shouldTakeUIBackgroundAssertion; }
 
 #if ENABLE(GAMEPAD)
     void gamepadConnected(const UIGamepad&);
@@ -574,6 +577,7 @@ private:
     bool m_resourceLoadStatisticsEnabled { false };
     bool m_javaScriptConfigurationFileEnabled { false };
     bool m_alwaysRunsAtBackgroundPriority;
+    bool m_shouldTakeUIBackgroundAssertion;
 
     UserObservablePageCounter m_userObservablePageCounter;
     ProcessSuppressionDisabledCounter m_processSuppressionDisabledForPageCounter;
@@ -608,6 +612,7 @@ private:
         String mediaCacheDirectory;
         String mediaKeyStorageDirectory;
         String uiProcessBundleResourcePath;
+        String indexedDatabaseDirectory;
 
 #if PLATFORM(IOS)
         String cookieStorageDirectory;

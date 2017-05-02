@@ -45,6 +45,7 @@
 #import "WebPage.h"
 #import "WebProcessCreationParameters.h"
 #import "WebProcessProxyMessages.h"
+#import "WebsiteDataStoreParameters.h"
 #import <JavaScriptCore/Options.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CFNetworkSPI.h>
@@ -91,7 +92,7 @@ using namespace WebCore;
 namespace WebKit {
 
 #if PLATFORM(MAC)
-static const Seconds backgroundCPUMonitoringInterval { 15_min };
+static const Seconds backgroundCPUMonitoringInterval { 8_min };
 #endif
 
 void WebProcess::platformSetCacheModel(CacheModel)

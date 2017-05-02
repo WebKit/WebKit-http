@@ -182,6 +182,7 @@
 <div role="dialog"                   data-role="dialog" class="ex">X</div>
 <div role="directory"                data-role="list" class="ex">X</div><!-- FIXME: should be directory -->
 <div role="document"                 data-role="document" class="ex">X</div>
+<div role="figure"                   data-role="figure" class="ex">X</div>
 <div role="form"                     data-role="form" class="ex">X</div>
 <div role="grid"                     data-role="grid" class="ex">
     <div role="rowgroup"             data-role="rowgroup" class="ex">
@@ -192,7 +193,7 @@
         </div>
     </div>
 </div>
-<div role="feed"                     data-role="group" class="ex">X</div>
+<div role="feed"                     data-role="feed" class="ex">X</div>
 <div role="group"                    data-role="group" class="ex">X</div>
 <div role="heading"                  data-role="heading" class="ex">X</div>
 <div role="img"                      data-role="img" class="ex">X</div>
@@ -224,7 +225,12 @@
 <div role="radiogroup"               data-role="radiogroup" class="ex">
     <div role="radio"                data-role="radio" class="ex">X</div>
 </div>
-<div role="region"                   data-role="region" class="ex">X</div>
+<div role="region"                   class="ex" data-role="" data-note=":not([aria-label]:not([aria-labelledby])">X</div>
+<div role="region"                   class="ex" data-role="region" aria-label="x" data-note="[aria-label]">X</div>
+<div role="region"                   class="ex" data-role="region" aria-labelledby="region-label" data-note="[aria-labelledby]">
+    <h2 id="region-label">X</h2>
+</div>
+
 <div role="scrollbar"                data-role="scrollbar" class="ex">X</div>
 <div role="search"                   data-role="search" class="ex">X</div>
 <div role="separator"                data-role="separator" class="ex">X</div>
@@ -236,6 +242,7 @@
 </div>
 <div role="tabpanel"                 data-role="tabpanel" class="ex">X</div>
 <div role="textbox"                  data-role="" class="ex">X</div><!-- FIXME: should be textbox -->
+<div role="term"                     data-role="term" class="ex">X</div>
 <div role="timer"                    data-role="timer" class="ex">X</div>
 <div role="toolbar"                  data-role="toolbar" class="ex">X</div>
 <div role="tooltip"                  data-role="tooltip" class="ex">X</div>
@@ -245,7 +252,7 @@
         <div role="treeitem"         data-role="treeitem" class="ex">X</div>
     </div>
 </div>
-<div role="treegrid"                 data-role="grid" class="ex"><!-- FIXME: should be treegrid -->
+<div role="treegrid"                 data-role="treegrid" class="ex">
     <div role="rowgroup"             data-role="rowgroup" class="ex">
         <div role="row"              data-role="row" class="ex">
             <div role="rowheader"    data-role="rowheader" class="ex">X</div>

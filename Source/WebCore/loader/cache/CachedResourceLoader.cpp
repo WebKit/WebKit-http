@@ -776,12 +776,12 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 #if ENABLE(WEB_TIMING)
             loadTiming.setResponseEnd(MonotonicTime::now());
 
-            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
-                ResourceTiming resourceTiming = ResourceTiming::fromCache(url, request.initiatorName(), loadTiming);
+            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled() && document() && !resource->isLoading()) {
+                auto resourceTiming = ResourceTiming::fromCache(url, request.initiatorName(), loadTiming, resource->response(), *request.origin());
                 if (initiatorContext == InitiatorContext::Worker) {
                     ASSERT(is<CachedRawResource>(resource.get()));
                     downcast<CachedRawResource>(resource.get())->finishedTimingForWorkerLoad(WTFMove(resourceTiming));
-                } else if (document()) {
+                } else {
                     ASSERT(initiatorContext == InitiatorContext::Document);
                     m_resourceTimingInfo.storeResourceTimingInitiatorInformation(resource, request.initiatorName(), frame());
                     m_resourceTimingInfo.addResourceTiming(*resource.get(), *document(), WTFMove(resourceTiming));

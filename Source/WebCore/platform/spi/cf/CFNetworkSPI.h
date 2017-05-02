@@ -171,6 +171,12 @@ void _CFNetworkResetHSTSHostsWithSession(CFURLStorageSessionRef);
 
 void CFHTTPCookieStorageDeleteAllCookies(CFHTTPCookieStorageRef);
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
+void _CFHTTPCookieStorageFlushCookieStores();
+#else
+void CFHTTPCookieStorageFlushCookieStores();
+#endif
+
 #if PLATFORM(COCOA)
 CFDataRef _CFCachedURLResponseGetMemMappedData(CFCachedURLResponseRef);
 #ifdef __BLOCKS__
@@ -184,6 +190,8 @@ extern const CFStringRef kCFURLRequestAllowAllPOSTCaching;
 extern const CFStringRef _kCFURLConnectionPropertyShouldSniff;
 
 CFHTTPCookieStorageRef _CFHTTPCookieStorageGetDefault(CFAllocatorRef);
+CFHTTPCookieStorageRef CFHTTPCookieStorageCreateFromFile(CFAllocatorRef, CFURLRef, CFHTTPCookieStorageRef);
+
 void CFHTTPCookieStorageSetCookie(CFHTTPCookieStorageRef, CFHTTPCookieRef);
 void CFHTTPCookieStorageSetCookieAcceptPolicy(CFHTTPCookieStorageRef, CFHTTPCookieStorageAcceptPolicy);
 CFHTTPCookieStorageAcceptPolicy CFHTTPCookieStorageGetCookieAcceptPolicy(CFHTTPCookieStorageRef);

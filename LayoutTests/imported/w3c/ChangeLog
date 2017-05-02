@@ -1,3 +1,147 @@
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Eliminate ?pipe=sub from Resource Timing Tests
+        https://bugs.webkit.org/show_bug.cgi?id=171525
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/resource-timing/resources/rt-utilities.sub.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-utilities.js.
+        Rename with ".sub.js" to automatically get substitutions.
+
+        * web-platform-tests/resource-timing/resources/rt-iframe-1.html:
+        * web-platform-tests/resource-timing/resources/rt-iframe-2.html:
+        * web-platform-tests/resource-timing/resources/rt-worker-resources.js:
+        * web-platform-tests/resource-timing/rt-cors.html:
+        * web-platform-tests/resource-timing/rt-cors.worker.js:
+        * web-platform-tests/resource-timing/rt-initiatorType-css.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-element.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-fetch.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-media.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-other.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-script-module.html:
+        * web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest.html:
+        * web-platform-tests/resource-timing/rt-initiatorType.worker.js:
+        * web-platform-tests/resource-timing/rt-nextHopProtocol.html:
+        * web-platform-tests/resource-timing/rt-nextHopProtocol.worker.js:
+        * web-platform-tests/resource-timing/rt-performance-extensions.html:
+        * web-platform-tests/resource-timing/rt-performance-extensions.worker.js:
+        * web-platform-tests/resource-timing/rt-resource-errors.html:
+        * web-platform-tests/resource-timing/rt-resource-ignored.html:
+        * web-platform-tests/resource-timing/rt-resources-per-frame.html:
+        * web-platform-tests/resource-timing/rt-resources-per-worker.html:
+        * web-platform-tests/resource-timing/rt-revalidate-requests.html:
+        * web-platform-tests/resource-timing/rt-serialization.html:
+        * web-platform-tests/resource-timing/rt-shared-resource-in-frames.html:
+        * web-platform-tests/resource-timing/rt-shared-resource-in-workers.html:
+        Update include of rt-utilities.
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Documents created using DOMParser.parseFromString should inherit their context document's origin / URL
+        https://bugs.webkit.org/show_bug.cgi?id=171499
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline web-platform-tests now that more checks are passing.
+
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html-expected.txt:
+        * web-platform-tests/domparsing/DOMParser-parseFromString-xml-expected.txt:
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        RejectedPromiseTracker should produce better callstacks and avoid capturing callstacks unless there is a debugger/inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171416
+        <rdar://problem/31899425>
+
+        Reviewed by Saam Barati and Brian Burg.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_bits-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_keys-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/event_pause_noautoplay-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/event_play_noautoplay-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/paused_true_during_pause-expected.txt:
+        * web-platform-tests/streams/piping/close-propagation-forward-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-backward-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-forward-expected.txt:
+        * web-platform-tests/streams/piping/flow-control-expected.txt:
+        * web-platform-tests/streams/piping/general-expected.txt:
+        Rebaseline results. Better stack trace for errors includes correct line numbers.
+        Explicit rejections with a value do not include backtraces without a debugger.
+
+2017-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Zero out PerformanceResourceTiming properties for cached cross-origin responses without Timing-Allow-Origin
+        https://bugs.webkit.org/show_bug.cgi?id=171394
+
+        Reviewed by Youenn Fablet.
+
+        WebKit doesn't create multiple PerformanceResourceTiming entries for
+        loads that use the same CachedResource. However for revalidation
+        requests, which may happen for cached entries, we will send new
+        network requests. These tests cover whether revalidation requests
+        include timing data or not.
+
+        * web-platform-tests/resource-timing/resources/rt-revalidation-response.py: Added.
+        * web-platform-tests/resource-timing/rt-cors-expected.txt:
+        * web-platform-tests/resource-timing/rt-cors.js:
+        * web-platform-tests/resource-timing/rt-cors.worker-expected.txt:
+        * web-platform-tests/resource-timing/rt-revalidate-requests-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-revalidate-requests.html: Added.
+
+2017-04-28  Chris Dumez  <cdumez@apple.com>
+
+        Tweak window.open features argument tokenizer to match HTML standard and Edge
+        https://bugs.webkit.org/show_bug.cgi?id=170548
+
+        Reviewed by Geoffrey Garen.
+
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener-expected.txt:
+        Rebaseline test now that more checks are passing. The remaining failures are because the test currently expects "noopener=0" / "noopener=false" to activate
+        the 'noopener' feature. The test matches the specification which currently says that if the 'noopener' key is present, then the 'noopener' feature should be
+        activated, no matter its value. However, I am intentionally not making this change yet because:
+        - This behavior would be inconsistent with other Window features
+        - There is upstream discussion on this (https://github.com/whatwg/html/issues/2600) and the current feedback is that the specification should likely
+          change to treat 'noopener' more consistently with other features.
+        I will follow-up once the specification / test settles.
+
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener.html:
+        Re-sync test from upstream after https://github.com/w3c/web-platform-tests/pull/5715.
+
+2017-04-28  Chris Dumez  <cdumez@apple.com>
+
+        Update DOMTokenList.replace() to match the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=171388
+
+        Reviewed by Alex Christensen.
+
+        Re-sync web-platform-test after:
+        - https://github.com/w3c/web-platform-tests/pull/5725
+
+        This adds test coverage for the behavior change in this patch.
+
+        * web-platform-tests/dom/nodes/Element-classlist.html:
+
+2017-04-28  Chris Dumez  <cdumez@apple.com>
+
+        URLSearchParams should be reflective
+        https://bugs.webkit.org/show_bug.cgi?id=171345
+
+        Reviewed by Alex Christensen.
+
+        Merge https://github.com/w3c/web-platform-tests/pull/5736 to gain test
+        coverage.
+
+        * web-platform-tests/url/urlsearchparams-constructor-expected.txt:
+        * web-platform-tests/url/urlsearchparams-constructor.html:
+
+2017-04-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html after r215916.
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt:
+
 2017-04-27  Joseph Pecoraro  <pecoraro@apple.com>
 
         Support for promise rejection events (unhandledrejection)

@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if 0
+#if ENABLE(DATA_INTERACTION)
 
 #import "DataInteractionSimulator.h"
 #import "PlatformUtilities.h"
@@ -48,42 +48,12 @@ static UIImage *testIconImage()
     return [UIImage imageNamed:@"TestWebKitAPI.resources/icon.png"];
 }
 
-static NSURL *temporaryURLForDataInteractionFileLoad(NSString *temporaryFileName)
-{
-    NSString *temporaryDirectoryPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"data-interaction"];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:temporaryDirectoryPath])
-        [[NSFileManager defaultManager] createDirectoryAtPath:temporaryDirectoryPath withIntermediateDirectories:YES attributes:nil error:nil];
-    return [NSURL fileURLWithPath:[temporaryDirectoryPath stringByAppendingPathComponent:temporaryFileName]];
-}
-
-static void cleanUpDataInteractionTemporaryPath()
-{
-    NSArray *temporaryDirectoryContents = [[NSFileManager defaultManager] contentsOfDirectoryAtURL:[NSURL fileURLWithPath:NSTemporaryDirectory()] includingPropertiesForKeys:nil options:0 error:nil];
-    for (NSURL *url in temporaryDirectoryContents) {
-        if ([url.lastPathComponent rangeOfString:@"data-interaction"].location != NSNotFound)
-            [[NSFileManager defaultManager] removeItemAtURL:url error:nil];
-    }
-}
-
 @implementation UIItemProvider (DataInteractionTests)
-
-- (void)registerFileRepresentationForTypeIdentifier:(NSString *)typeIdentifier withData:(NSData *)data filename:(NSString *)filename
-{
-    RetainPtr<NSData> retainedData = data;
-    RetainPtr<NSURL> retainedTemporaryURL = temporaryURLForDataInteractionFileLoad(filename);
-    [self registerFileRepresentationForTypeIdentifier:typeIdentifier fileOptions:0 visibility:NSItemProviderRepresentationVisibilityAll loadHandler: [retainedData, retainedTemporaryURL] (FileLoadCompletionBlock block) -> NSProgress * {
-        [retainedData writeToFile:[retainedTemporaryURL path] atomically:YES];
-        dispatch_async(dispatch_get_main_queue(), [retainedTemporaryURL, capturedBlock = makeBlockPtr(block)] {
-            capturedBlock(retainedTemporaryURL.get(), NO, nil);
-        });
-        return nil;
-    }];
-}
 
 - (void)registerDataRepresentationForTypeIdentifier:(NSString *)typeIdentifier withData:(NSData *)data
 {
     RetainPtr<NSData> retainedData = data;
-    [self registerDataRepresentationForTypeIdentifier:typeIdentifier visibility:NSItemProviderRepresentationVisibilityAll loadHandler: [retainedData] (DataLoadCompletionBlock block) -> NSProgress * {
+    [self registerDataRepresentationForTypeIdentifier:typeIdentifier visibility:UIItemProviderRepresentationOptionsVisibilityAll loadHandler: [retainedData] (DataLoadCompletionBlock block) -> NSProgress * {
         block(retainedData.get(), nil);
         return [NSProgress discreteProgressWithTotalUnitCount:100];
     }];
@@ -342,14 +312,13 @@ TEST(DataInteractionTests, ExternalSourceJSONToFileInput)
 
     RetainPtr<UIItemProvider> simulatedJSONItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *jsonData = [@"{ \"foo\": \"bar\",  \"bar\": \"baz\" }" dataUsingEncoding:NSUTF8StringEncoding];
-    [simulatedJSONItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJSON withData:jsonData filename:@"data.json"];
+    [simulatedJSONItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJSON withData:jsonData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedJSONItemProvider.get() ]];
     [dataInteractionSimulator runFrom:CGPointMake(200, 100) to:CGPointMake(100, 100)];
 
     EXPECT_WK_STREQ("application/json", [webView stringByEvaluatingJavaScript:@"output.value"]);
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceImageToFileInput)
@@ -359,7 +328,7 @@ TEST(DataInteractionTests, ExternalSourceImageToFileInput)
 
     RetainPtr<UIItemProvider> simulatedImageItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *imageData = UIImageJPEGRepresentation(testIconImage(), 0.5);
-    [simulatedImageItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData filename:@"image.png"];
+    [simulatedImageItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedImageItemProvider.get() ]];
@@ -367,8 +336,6 @@ TEST(DataInteractionTests, ExternalSourceImageToFileInput)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("image/jpeg", outputValue.UTF8String);
-
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceHTMLToUploadArea)
@@ -378,7 +345,7 @@ TEST(DataInteractionTests, ExternalSourceHTMLToUploadArea)
 
     RetainPtr<UIItemProvider> simulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *htmlData = [@"<body contenteditable></body>" dataUsingEncoding:NSUTF8StringEncoding];
-    [simulatedHTMLItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData filename:@"index.html"];
+    [simulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedHTMLItemProvider.get() ]];
@@ -386,8 +353,6 @@ TEST(DataInteractionTests, ExternalSourceHTMLToUploadArea)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("text/html", outputValue.UTF8String);
-
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceImageAndHTMLToSingleFileInput)
@@ -397,11 +362,11 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToSingleFileInput)
 
     RetainPtr<UIItemProvider> simulatedImageItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *imageData = UIImageJPEGRepresentation(testIconImage(), 0.5);
-    [simulatedImageItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData filename:@"image.png"];
+    [simulatedImageItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData];
 
     RetainPtr<UIItemProvider> simulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *htmlData = [@"<body contenteditable></body>" dataUsingEncoding:NSUTF8StringEncoding];
-    [simulatedHTMLItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData filename:@"index.html"];
+    [simulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedHTMLItemProvider.get(), simulatedImageItemProvider.get() ]];
@@ -409,8 +374,6 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToSingleFileInput)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("", outputValue.UTF8String);
-
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceImageAndHTMLToMultipleFileInput)
@@ -421,11 +384,11 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToMultipleFileInput)
 
     RetainPtr<UIItemProvider> simulatedImageItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *imageData = UIImageJPEGRepresentation(testIconImage(), 0.5);
-    [simulatedImageItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData filename:@"image.png"];
+    [simulatedImageItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData];
 
     RetainPtr<UIItemProvider> simulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *htmlData = [@"<body contenteditable></body>" dataUsingEncoding:NSUTF8StringEncoding];
-    [simulatedHTMLItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData filename:@"index.html"];
+    [simulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:htmlData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedHTMLItemProvider.get(), simulatedImageItemProvider.get() ]];
@@ -433,8 +396,6 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToMultipleFileInput)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("image/jpeg, text/html", outputValue.UTF8String);
-
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, ExternalSourceImageAndHTMLToUploadArea)
@@ -444,15 +405,15 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToUploadArea)
 
     RetainPtr<UIItemProvider> simulatedImageItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *imageData = UIImageJPEGRepresentation(testIconImage(), 0.5);
-    [simulatedImageItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData filename:@"image.png"];
+    [simulatedImageItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData];
 
     RetainPtr<UIItemProvider> firstSimulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *firstHTMLData = [@"<body contenteditable></body>" dataUsingEncoding:NSUTF8StringEncoding];
-    [firstSimulatedHTMLItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:firstHTMLData filename:@"index.html"];
+    [firstSimulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:firstHTMLData];
 
     RetainPtr<UIItemProvider> secondSimulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
     NSData *secondHTMLData = [@"<html><body>hello world</body></html>" dataUsingEncoding:NSUTF8StringEncoding];
-    [secondSimulatedHTMLItemProvider registerFileRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:secondHTMLData filename:@"index.html"];
+    [secondSimulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:secondHTMLData];
 
     RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedImageItemProvider.get(), firstSimulatedHTMLItemProvider.get(), secondSimulatedHTMLItemProvider.get() ]];
@@ -460,8 +421,6 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToUploadArea)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("image/jpeg, text/html, text/html", outputValue.UTF8String);
-
-    cleanUpDataInteractionTemporaryPath();
 }
 
 TEST(DataInteractionTests, RespectsExternalSourceFidelityRankings)
@@ -477,8 +436,8 @@ TEST(DataInteractionTests, RespectsExternalSourceFidelityRankings)
     // than the plain text, and erroneously insert the image. If we respect source fidelities, we'll insert text rather
     // than an image.
     auto simulatedItemProviderWithTextFirst = adoptNS([[UIItemProvider alloc] init]);
-    [simulatedItemProviderWithTextFirst registerObject:@"Hello world" visibility:NSItemProviderRepresentationVisibilityAll];
-    [simulatedItemProviderWithTextFirst registerObject:testIconImage() visibility:NSItemProviderRepresentationVisibilityAll];
+    [simulatedItemProviderWithTextFirst registerObject:@"Hello world" visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    [simulatedItemProviderWithTextFirst registerObject:testIconImage() visibility:UIItemProviderRepresentationOptionsVisibilityAll];
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProviderWithTextFirst.get() ]];
 
     [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
@@ -488,8 +447,8 @@ TEST(DataInteractionTests, RespectsExternalSourceFidelityRankings)
 
     // Now we register the item providers in reverse, and expect the image to be inserted instead of text.
     auto simulatedItemProviderWithImageFirst = adoptNS([[UIItemProvider alloc] init]);
-    [simulatedItemProviderWithImageFirst registerObject:testIconImage() visibility:NSItemProviderRepresentationVisibilityAll];
-    [simulatedItemProviderWithImageFirst registerObject:@"Hello world" visibility:NSItemProviderRepresentationVisibilityAll];
+    [simulatedItemProviderWithImageFirst registerObject:testIconImage() visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    [simulatedItemProviderWithImageFirst registerObject:@"Hello world" visibility:UIItemProviderRepresentationOptionsVisibilityAll];
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProviderWithImageFirst.get() ]];
 
     [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
@@ -543,7 +502,7 @@ TEST(DataInteractionTests, ExternalSourceTitledNSURL)
     NSURL *titledURL = [NSURL URLWithString:@"https://www.apple.com"];
     titledURL._title = @"Apple";
     auto simulatedItemProvider = adoptNS([[UIItemProvider alloc] init]);
-    [simulatedItemProvider registerObject:titledURL visibility:NSItemProviderRepresentationVisibilityAll];
+    [simulatedItemProvider registerObject:titledURL visibility:UIItemProviderRepresentationOptionsVisibilityAll];
 
     auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
     [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProvider.get() ]];

@@ -489,11 +489,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    if (m_sessionID.isEphemeral()) {
-        m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(m_sessionID));
-        m_process->processPool().sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession(m_sessionID));
-    }
-
 #if PLATFORM(COCOA)
     const CFIndex activityStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
     m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(activityStateChangeRunLoopOrder, [this] {
@@ -5474,7 +5469,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     requestPointerUnlock();
 #endif
 
-    m_clipToSafeArea = true;
+    m_avoidsUnsafeArea = true;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -6885,7 +6880,7 @@ WebURLSchemeHandler* WebPageProxy::urlSchemeHandlerForScheme(const String& schem
     return m_urlSchemeHandlersByScheme.get(scheme);
 }
 
-void WebPageProxy::startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest& request)
+void WebPageProxy::startURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest& request)
 {
     auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
@@ -6893,7 +6888,7 @@ void WebPageProxy::startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_
     iterator->value->startTask(*this, resourceIdentifier, request);
 }
 
-void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier)
+void WebPageProxy::stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier)
 {
     auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
@@ -6901,11 +6896,14 @@ void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t
     iterator->value->stopTask(*this, resourceIdentifier);
 }
 
-void WebPageProxy::setClipToSafeArea(bool clipToSafeArea)
+void WebPageProxy::setAvoidsUnsafeArea(bool avoidsUnsafeArea)
 {
-    m_clipToSafeArea = clipToSafeArea;
+    if (m_avoidsUnsafeArea == avoidsUnsafeArea)
+        return;
 
-    m_pageClient.didChangeClipToSafeArea(clipToSafeArea);
+    m_avoidsUnsafeArea = avoidsUnsafeArea;
+
+    m_pageClient.didChangeAvoidsUnsafeArea(avoidsUnsafeArea);
 }
 
 } // namespace WebKit
