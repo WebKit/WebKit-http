@@ -117,7 +117,7 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
-    void didChangeClipToSafeArea(bool) override { }
+    void didChangeAvoidsUnsafeArea(bool) override { }
 
     WKWPE::View& m_view;
 

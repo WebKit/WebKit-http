@@ -13,6 +13,8 @@ list(APPEND WTF_SOURCES
     linux/MemoryPressureHandlerLinux.cpp
 
     text/unix/TextBreakIteratorInternalICUUnix.cpp
+
+    unix/CPUTimeUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES
