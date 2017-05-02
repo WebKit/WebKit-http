@@ -32,8 +32,8 @@
 #include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
 #include "ExceptionCode.h"
-#include "NotImplemented.h"
 #include "ScriptExecutionContext.h"
+#include <pal/crypto/gcrypt/ASN1.h>
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
 
@@ -268,32 +268,552 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgor
         });
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier, std::optional<CryptoAlgorithmIdentifier>, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
-{
-    notImplemented();
+enum class RSAAlgorithm {
+    RSAEncryption,
+    RSAES_OAEP,
+    RSASSA_PSS,
+};
 
-    return nullptr;
+static std::optional<RSAAlgorithm> algorithmForIdentifier(const uint8_t* data, size_t size)
+{
+    static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
+    static const std::array<uint8_t, 9> s_idRSAES_OAEP{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x07 } };
+    static const std::array<uint8_t, 9> s_idRSASSA_PSS{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a } };
+
+    if (size != 9)
+        return std::nullopt;
+
+    if (!std::memcmp(data, s_rsaEncryption.data(), size))
+        return RSAAlgorithm::RSAEncryption;
+    if (!std::memcmp(data, s_idRSAES_OAEP.data(), size))
+        return std::nullopt;
+    if (!std::memcmp(data, s_idRSASSA_PSS.data(), size))
+        return std::nullopt;
+    return std::nullopt;
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier, std::optional<CryptoAlgorithmIdentifier>, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    notImplemented();
+    // SubjectPublicKeyInfo  ::=  SEQUENCE  {
+    //   algorithm            AlgorithmIdentifier,
+    //   subjectPublicKey     BIT STRING  }
+    auto subjectPublicKeyInfoTLV = ASN1::parseTLV(keyData, 0);
+    if (!subjectPublicKeyInfoTLV.bufferSize || !subjectPublicKeyInfoTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
 
-    return nullptr;
+    // AlgorithmIdentifier  ::=  SEQUENCE  {
+    //    algorithm   OBJECT IDENTIFIER,
+    //    parameters  ANY DEFINED BY algorithm OPTIONAL
+    // }
+    auto algorithmIdentifierTLV = ASN1::parseTLV(keyData, subjectPublicKeyInfoTLV.valueOffset());
+    if (!algorithmIdentifierTLV.bufferSize || !algorithmIdentifierTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
+
+    auto algorithmTLV = ASN1::parseTLV(keyData, algorithmIdentifierTLV.valueOffset());
+    if (!algorithmTLV.bufferSize || !algorithmTLV.hasTag(ASN1::Tag::ObjectIdentifier))
+        return nullptr;
+
+    auto supportedAlgorithm = algorithmForIdentifier(keyData.data() + algorithmTLV.valueOffset(), algorithmTLV.length);
+    if (!supportedAlgorithm)
+        return nullptr;
+
+    auto subjectPublicKeyTLV = ASN1::parseTLV(keyData,
+        subjectPublicKeyInfoTLV.valueOffset() + algorithmIdentifierTLV.bufferSize);
+    if (!subjectPublicKeyTLV.bufferSize || !subjectPublicKeyTLV.hasTag(ASN1::Tag::BitString)
+        || keyData[subjectPublicKeyTLV.valueOffset()] != 0x00)
+        return nullptr;
+
+    // RSAPublicKey ::= SEQUENCE {
+    //   modulus           INTEGER,  -- n
+    //   publicExponent    INTEGER   -- e
+    // }
+    auto rsaPublicKeyTLV = ASN1::parseTLV(keyData, subjectPublicKeyTLV.valueOffset() + 1);
+    if (!rsaPublicKeyTLV.bufferSize || !rsaPublicKeyTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
+
+    ASN1::TLV modulusTLV;
+    ASN1::TLV publicExponentTLV;
+    {
+        size_t offset = rsaPublicKeyTLV.valueOffset();
+        modulusTLV = ASN1::parseTLV(keyData, offset);
+        if (!modulusTLV.bufferSize || !modulusTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += modulusTLV.bufferSize;
+        publicExponentTLV = ASN1::parseTLV(keyData, offset);
+        if (!publicExponentTLV.bufferSize || !publicExponentTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        if (modulusTLV.bufferSize + publicExponentTLV.bufferSize != rsaPublicKeyTLV.length)
+            return nullptr;
+    }
+
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(rsa(n %b)(e %b)))",
+        modulusTLV.length, keyData.data() + modulusTLV.valueOffset(),
+        publicExponentTLV.length, keyData.data() + publicExponentTLV.valueOffset());
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return nullptr;
+    }
+
+    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, platformKey.release(), extractable, usages));;
+}
+
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+{
+    // PrivateKeyInfo ::= SEQUENCE {
+    //   version                   Version,
+    //   privateKeyAlgorithm       PrivateKeyAlgorithmIdentifier,
+    //   privateKey                PrivateKey,
+    //   attributes           [0]  IMPLICIT Attributes OPTIONAL }
+    auto privateKeyInfoTLV = ASN1::parseTLV(keyData, 0);
+    if (!privateKeyInfoTLV.bufferSize || !privateKeyInfoTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
+    if (privateKeyInfoTLV.bufferSize != keyData.size())
+        return nullptr;
+
+    // Version ::= INTEGER
+    auto versionTLV = ASN1::parseTLV(keyData, privateKeyInfoTLV.valueOffset());
+    if (!versionTLV.bufferSize || !versionTLV.hasTag(ASN1::Tag::Integer))
+        return nullptr;
+    if (versionTLV.length != 1 && keyData[versionTLV.valueOffset()] != 0)
+        return nullptr;
+
+    // PrivateKeyAlgorithmIdentifier ::= AlgorithmIdentifier
+    // AlgorithmIdentifier  ::=  SEQUENCE  {
+    //    algorithm   OBJECT IDENTIFIER,
+    //    parameters  ANY DEFINED BY algorithm OPTIONAL
+    // }
+    auto privateKeyAlgorithmTLV = ASN1::parseTLV(keyData,
+        privateKeyInfoTLV.valueOffset() + versionTLV.bufferSize);
+    if (!privateKeyAlgorithmTLV.bufferSize || !privateKeyAlgorithmTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
+
+    auto algorithmTLV = ASN1::parseTLV(keyData, privateKeyAlgorithmTLV.valueOffset());
+    if (!algorithmTLV.bufferSize || !algorithmTLV.hasTag(ASN1::Tag::ObjectIdentifier))
+        return nullptr;
+
+    auto supportedAlgorithm = algorithmForIdentifier(keyData.data() + algorithmTLV.valueOffset(), algorithmTLV.length);
+    if (!supportedAlgorithm)
+        return nullptr;
+
+    // PrivateKey ::= OCTET STRING
+    auto privateKeyTLV = ASN1::parseTLV(keyData,
+        privateKeyInfoTLV.valueOffset() + versionTLV.bufferSize + privateKeyAlgorithmTLV.bufferSize);
+    if (!privateKeyTLV.bufferSize || !privateKeyTLV.hasTag(ASN1::Tag::OctetString))
+        return nullptr;
+
+    // RSAPrivateKey ::= SEQUENCE {
+    //     version           Version,
+    //     modulus           INTEGER,  -- n
+    //     publicExponent    INTEGER,  -- e
+    //     privateExponent   INTEGER,  -- d
+    //     prime1            INTEGER,  -- p
+    //     prime2            INTEGER,  -- q
+    //     exponent1         INTEGER,  -- d mod (p-1)
+    //     exponent2         INTEGER,  -- d mod (q-1)
+    //     coefficient       INTEGER,  -- (inverse of q) mod p
+    //     otherPrimeInfos   OtherPrimeInfos OPTIONAL
+    // }
+    auto rsaPrivateKeyTLV = ASN1::parseTLV(keyData, privateKeyTLV.valueOffset());
+    if (!rsaPrivateKeyTLV.bufferSize || !rsaPrivateKeyTLV.hasTag(ASN1::Tag::Sequence))
+        return nullptr;
+
+    ASN1::TLV modulusTLV;
+    ASN1::TLV publicExponentTLV;
+    ASN1::TLV privateExponentTLV;
+    ASN1::TLV prime1TLV;
+    ASN1::TLV prime2TLV;
+    ASN1::TLV exponent1TLV;
+    ASN1::TLV exponent2TLV;
+    ASN1::TLV coefficientTLV;
+    {
+        size_t offset = rsaPrivateKeyTLV.valueOffset();
+        auto versionTLV = ASN1::parseTLV(keyData, offset);
+        if (!versionTLV.bufferSize || !versionTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+        if (versionTLV.length != 1 || keyData[versionTLV.valueOffset()] != 0)
+            return nullptr;
+
+        offset += versionTLV.bufferSize;
+        modulusTLV = ASN1::parseTLV(keyData, offset);
+        if (!modulusTLV.bufferSize || !modulusTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += modulusTLV.bufferSize;
+        publicExponentTLV = ASN1::parseTLV(keyData, offset);
+        if (!publicExponentTLV.bufferSize || !publicExponentTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += publicExponentTLV.bufferSize;
+        privateExponentTLV = ASN1::parseTLV(keyData, offset);
+        if (!privateExponentTLV.bufferSize || !privateExponentTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += privateExponentTLV.bufferSize;
+        prime1TLV = ASN1::parseTLV(keyData, offset);
+        if (!prime1TLV.bufferSize || !prime1TLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += prime1TLV.bufferSize;
+        prime2TLV = ASN1::parseTLV(keyData, offset);
+        if (!prime2TLV.bufferSize || !prime2TLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += prime2TLV.bufferSize;
+        exponent1TLV = ASN1::parseTLV(keyData, offset);
+        if (!exponent1TLV.bufferSize || !exponent1TLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += exponent1TLV.bufferSize;
+        exponent2TLV = ASN1::parseTLV(keyData, offset);
+        if (!exponent2TLV.bufferSize || !exponent2TLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        offset += exponent2TLV.bufferSize;
+        coefficientTLV = ASN1::parseTLV(keyData, offset);
+        if (!coefficientTLV.bufferSize || !coefficientTLV.hasTag(ASN1::Tag::Integer))
+            return nullptr;
+
+        // TODO: support for OtherPrimeInfos.
+
+        size_t bufferSizeSum = versionTLV.bufferSize + modulusTLV.bufferSize + publicExponentTLV.bufferSize + privateExponentTLV.bufferSize
+            + prime1TLV.bufferSize + prime2TLV.bufferSize + exponent1TLV.bufferSize + exponent2TLV.bufferSize + coefficientTLV.bufferSize;
+        if (bufferSizeSum != rsaPrivateKeyTLV.length)
+            return nullptr;
+    }
+
+    Vector<uint8_t> uData;
+    {
+        PAL::GCrypt::Handle<gcry_mpi_t> pMPI;
+        gcry_error_t error = gcry_mpi_scan(&pMPI, GCRYMPI_FMT_USG, keyData.data() + prime1TLV.valueOffset(), prime1TLV.length, nullptr);
+        if (error != GPG_ERR_NO_ERROR)
+            return nullptr;
+
+        PAL::GCrypt::Handle<gcry_mpi_t> qMPI;
+        error = gcry_mpi_scan(&qMPI, GCRYMPI_FMT_USG, keyData.data() + prime2TLV.valueOffset(), prime2TLV.length, nullptr);
+        if (error != GPG_ERR_NO_ERROR)
+            return nullptr;
+
+        PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_set_ui(nullptr, 0));
+        gcry_mpi_invm(qiMPI, qMPI, pMPI);
+        uData = getParameterMPIData(qiMPI);
+    }
+
+    PAL::GCrypt::Handle<gcry_sexp_t> keySexp;
+    gcry_error_t error = gcry_sexp_build(&keySexp, nullptr, "(private-key(rsa(n %b)(e %b)(d %b)(p %b)(q %b)(u %b)))",
+        modulusTLV.length, keyData.data() + modulusTLV.valueOffset(),
+        publicExponentTLV.length, keyData.data() + publicExponentTLV.valueOffset(),
+        privateExponentTLV.length, keyData.data() + privateExponentTLV.valueOffset(),
+        prime2TLV.length, keyData.data() + prime2TLV.valueOffset(),
+        prime1TLV.length, keyData.data() + prime1TLV.valueOffset(),
+        uData.size(), uData.data());
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return nullptr;
+    }
+
+    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Private, keySexp.release(), extractable, usages));
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportSpki() const
 {
-    notImplemented();
+    if (type() != CryptoKeyType::Public)
+        return Exception{ INVALID_ACCESS_ERR };
 
-    return Exception { NOT_SUPPORTED_ERR };
+    auto appendLength =
+        [](size_t length, Vector<uint8_t>& result) {
+            if (length > 127) {
+                uint8_t lengthBytes = std::ceil(std::log2(length + 1) / 8);
+                result.append(0x80 | lengthBytes);
+                for (uint8_t i = 0; i < lengthBytes; ++i)
+                    result.append((length >> ((lengthBytes - i - 1) * 8) & 0xff));
+            } else
+                result.append(length);
+        };
+
+    // SubjectPublicKeyInfo  ::=  SEQUENCE  {
+    //   algorithm            AlgorithmIdentifier,
+    //   subjectPublicKey     BIT STRING  }
+
+
+    // AlgorithmIdentifier  ::=  SEQUENCE  {
+    //    algorithm   OBJECT IDENTIFIER,
+    //    parameters  ANY DEFINED BY algorithm OPTIONAL
+    // }
+    Vector<uint8_t> algorithmIdentifierData;
+    {
+        static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
+
+        algorithmIdentifierData.append(0x30);
+        algorithmIdentifierData.append(2 + s_rsaEncryption.size() + 2);
+
+        // algorithm
+        algorithmIdentifierData.append(0x06);
+        algorithmIdentifierData.append(s_rsaEncryption.size());
+        algorithmIdentifierData.append(s_rsaEncryption.data(), s_rsaEncryption.size());
+
+        // parameters
+        algorithmIdentifierData.append(0x05);
+        algorithmIdentifierData.append(0x00);
+    }
+
+    Vector<uint8_t> subjectPublicKeyData;
+    {
+        // RSAPublicKey ::= SEQUENCE {
+        //   modulus           INTEGER,  -- n
+        //   publicExponent    INTEGER   -- e
+        // }
+        Vector<uint8_t> rsaPublicKeyData;
+        {
+            auto parameterData =
+                [&appendLength](gcry_sexp_t sexp, const char* name) -> Vector<uint8_t> {
+                    Vector<uint8_t> parameter = getRSAKeyParameter(sexp, name);
+                    bool negative = parameter[0] & 0x80;
+
+                    Vector<uint8_t> data;
+                    data.append(0x02);
+                    appendLength(parameter.size() + (negative ? 1 : 0), data);
+                    if (negative)
+                        data.append(0x00);
+                    data.appendVector(parameter);
+                    return data;
+                };
+
+            auto nData = parameterData(m_platformKey, "n");
+            auto eData = parameterData(m_platformKey, "e");
+
+            rsaPublicKeyData.append(0x30);
+            appendLength(nData.size() + eData.size(), rsaPublicKeyData);
+
+            // modulus
+            rsaPublicKeyData.appendVector(nData);
+            // publicExponent
+            rsaPublicKeyData.appendVector(eData);
+        }
+
+        subjectPublicKeyData.append(0x03);
+        appendLength(1 + rsaPublicKeyData.size(), subjectPublicKeyData);
+        subjectPublicKeyData.append(0x00);
+        subjectPublicKeyData.appendVector(rsaPublicKeyData);
+    }
+
+    Vector<uint8_t> result;
+    result.append(0x30);
+    appendLength(algorithmIdentifierData.size() + subjectPublicKeyData.size(), result);
+    result.appendVector(algorithmIdentifierData);
+    result.appendVector(subjectPublicKeyData);
+
+    return WTFMove(result);
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const
 {
-    notImplemented();
+    if (type() != CryptoKeyType::Private)
+        return Exception{ INVALID_ACCESS_ERR };
 
-    return Exception { NOT_SUPPORTED_ERR };
+    auto appendLength =
+        [](size_t length, Vector<uint8_t>& result) {
+            if (length > 127) {
+                uint8_t lengthBytes = std::ceil(std::log2(length + 1) / 8);
+                result.append(0x80 | lengthBytes);
+                for (uint8_t i = 0; i < lengthBytes; ++i)
+                    result.append((length >> ((lengthBytes - i - 1) * 8) & 0xff));
+            } else
+                result.append(length);
+        };
+
+    // PrivateKeyInfo ::= SEQUENCE {
+    //   version                   Version,
+    //   privateKeyAlgorithm       PrivateKeyAlgorithmIdentifier,
+    //   privateKey                PrivateKey,
+    //   attributes           [0]  IMPLICIT Attributes OPTIONAL }
+
+    // Version ::= INTEGER
+    static const std::array<uint8_t, 3> s_versionData{ { 0x02, 0x01, 0x00 } };
+
+
+    // PrivateKeyAlgorithmIdentifier ::= AlgorithmIdentifier
+    // AlgorithmIdentifier  ::=  SEQUENCE  {
+    //    algorithm   OBJECT IDENTIFIER,
+    //    parameters  ANY DEFINED BY algorithm OPTIONAL
+    // }
+    Vector<uint8_t> privateKeyAlgorithmData;
+    {
+        static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
+
+        privateKeyAlgorithmData.append(0x30);
+        privateKeyAlgorithmData.append(2 + s_rsaEncryption.size() + 2);
+
+        privateKeyAlgorithmData.append(0x06);
+        privateKeyAlgorithmData.append(s_rsaEncryption.size());
+        privateKeyAlgorithmData.append(s_rsaEncryption.data(), s_rsaEncryption.size());
+
+        privateKeyAlgorithmData.append(0x05);
+        privateKeyAlgorithmData.append(0x00);
+    }
+
+    // PrivateKey ::= OCTET STRING
+    Vector<uint8_t> privateKeyData;
+    {
+        // RSAPrivateKey ::= SEQUENCE {
+        //     version           Version,
+        //     modulus           INTEGER,  -- n
+        //     publicExponent    INTEGER,  -- e
+        //     privateExponent   INTEGER,  -- d
+        //     prime1            INTEGER,  -- p
+        //     prime2            INTEGER,  -- q
+        //     exponent1         INTEGER,  -- d mod (p-1)
+        //     exponent2         INTEGER,  -- d mod (q-1)
+        //     coefficient       INTEGER,  -- (inverse of q) mod p
+        //     otherPrimeInfos   OtherPrimeInfos OPTIONAL
+        // }
+        Vector<uint8_t> rsaPrivateKeyData;
+        {
+            auto parameterData =
+                [&appendLength](gcry_sexp_t sexp, const char* name) -> Vector<uint8_t> {
+                    Vector<uint8_t> parameter = getRSAKeyParameter(sexp, name);
+                    bool negative = parameter[0] & 0x80;
+
+                    Vector<uint8_t> data;
+                    data.append(0x02);
+                    appendLength(parameter.size() + (negative ? 1 : 0), data);
+                    if (negative)
+                        data.append(0x00);
+                    data.appendVector(parameter);
+                    return data;
+                };
+
+            auto nData = parameterData(m_platformKey, "n");
+            auto eData = parameterData(m_platformKey, "e");
+            auto dData = parameterData(m_platformKey, "d");
+            auto pData = parameterData(m_platformKey, "q");
+            auto qData = parameterData(m_platformKey, "p");
+
+            Vector<uint8_t> dpData;
+            Vector<uint8_t> dqData;
+            Vector<uint8_t> qiData;
+            {
+                auto getMPI =
+                    [](gcry_sexp_t sexp, const char* name) -> gcry_mpi_t {
+                        PAL::GCrypt::Handle<gcry_sexp_t> paramSexp(gcry_sexp_find_token(sexp, name, 0));
+                        if (!paramSexp)
+                            return nullptr;
+                        return gcry_sexp_nth_mpi(paramSexp, 1, GCRYMPI_FMT_USG);
+                    };
+
+                auto extractData =
+                    [](gcry_mpi_t paramMPI) -> Vector<uint8_t> {
+                        size_t dataLength = 0;
+                        gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, paramMPI);
+                        if (error != GPG_ERR_NO_ERROR)
+                            return { };
+
+                        Vector<uint8_t> output(dataLength);
+                        error = gcry_mpi_print(GCRYMPI_FMT_USG, output.data(), output.size(), nullptr, paramMPI);
+                        if (error != GPG_ERR_NO_ERROR) {
+                            PAL::GCrypt::logError(error);
+                            return { };
+                        }
+
+                        return output;
+                    };
+
+                PAL::GCrypt::Handle<gcry_mpi_t> dMPI(getMPI(m_platformKey, "d"));
+                PAL::GCrypt::Handle<gcry_mpi_t> pMPI(getMPI(m_platformKey, "q"));
+                PAL::GCrypt::Handle<gcry_mpi_t> qMPI(getMPI(m_platformKey, "p"));
+
+                // dp
+                {
+                    PAL::GCrypt::Handle<gcry_mpi_t> dpMPI(gcry_mpi_set_ui(nullptr, 0));
+                    PAL::GCrypt::Handle<gcry_mpi_t> pm1MPI(gcry_mpi_set(nullptr, pMPI));
+                    gcry_mpi_sub_ui(pm1MPI, pm1MPI, 1);
+                    gcry_mpi_mod(dpMPI, dMPI, pm1MPI);
+
+                    auto dp = extractData(dpMPI);
+                    bool negative = dp[0] & 0x80;
+
+                    dpData.append(0x02);
+                    appendLength(dp.size() + (negative ? 1 : 0), dpData);
+                    if (negative)
+                        dpData.append(0x00);
+                    dpData.appendVector(dp);
+                }
+
+                // dq
+                {
+                    PAL::GCrypt::Handle<gcry_mpi_t> dqMPI(gcry_mpi_set_ui(nullptr, 0));
+                    PAL::GCrypt::Handle<gcry_mpi_t> qm1MPI(gcry_mpi_set(nullptr, qMPI));
+                    gcry_mpi_sub_ui(qm1MPI, qm1MPI, 1);
+                    gcry_mpi_mod(dqMPI, dMPI, qm1MPI);
+
+                    auto dq = extractData(dqMPI);
+                    bool negative = dq[0] & 0x80;
+
+                    dqData.append(0x02);
+                    appendLength(dq.size() + (negative ? 1 : 0), dqData);
+                    if (negative)
+                        dqData.append(0x00);
+                    dqData.appendVector(dq);
+                }
+
+                // qi
+                {
+                    PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_set_ui(nullptr, 0));
+                    gcry_mpi_invm(qiMPI, qMPI, pMPI);
+
+                    auto qi = extractData(qiMPI);
+                    bool negative = qi[0] & 0x80;
+
+                    qiData.append(0x02);
+                    appendLength(qi.size() + (negative ? 1 : 0), qiData);
+                    if (negative)
+                        qiData.append(0x00);
+                    qiData.appendVector(qi);
+                }
+            }
+
+            rsaPrivateKeyData.append(0x30);
+            appendLength(3 + nData.size() + eData.size() + dData.size() + pData.size() + qData.size()
+                + dpData.size() + dqData.size() + qiData.size(), rsaPrivateKeyData);
+
+            // version
+            rsaPrivateKeyData.append(0x02);
+            rsaPrivateKeyData.append(1);
+            rsaPrivateKeyData.append(0x00);
+
+            // modulus
+            rsaPrivateKeyData.appendVector(nData);
+            // publicExponent
+            rsaPrivateKeyData.appendVector(eData);
+            // privateExponent
+            rsaPrivateKeyData.appendVector(dData);
+            // prime1
+            rsaPrivateKeyData.appendVector(pData);
+            // prime2
+            rsaPrivateKeyData.appendVector(qData);
+            // exponent1
+            rsaPrivateKeyData.appendVector(dpData);
+            // exponent2
+            rsaPrivateKeyData.appendVector(dqData);
+            // coefficient
+            rsaPrivateKeyData.appendVector(qiData);
+        }
+
+        privateKeyData.append(0x04);
+        appendLength(rsaPrivateKeyData.size(), privateKeyData);
+        privateKeyData.appendVector(rsaPrivateKeyData);
+    }
+
+    Vector<uint8_t> result;
+    result.append(0x30);
+    appendLength(s_versionData.size() + privateKeyAlgorithmData.size() + privateKeyData.size(), result);
+    result.append(s_versionData.data(), s_versionData.size());
+    result.appendVector(privateKeyAlgorithmData);
+    result.appendVector(privateKeyData);
+
+    return WTFMove(result);
 }
 
 std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
