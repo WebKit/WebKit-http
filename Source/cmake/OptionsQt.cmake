@@ -20,6 +20,12 @@ if (QT_CONAN_DIR)
             COMMAND conan imports -f \"${QT_CONAN_DIR}/conanfile.txt\" --dest \${_conan_imports_dest}
             WORKING_DIRECTORY \"${QT_CONAN_DIR}\"
         )
+
+        set(_conan_imports_manifest \"\${_conan_imports_dest}/conan_imports_manifest.txt\")
+        if (EXISTS \${_conan_imports_manifest})
+            file(REMOVE \${_conan_imports_manifest})
+            message(\"Removed conan install manifest: \${_conan_imports_manifest}\")
+        endif ()
     ")
 endif ()
 
