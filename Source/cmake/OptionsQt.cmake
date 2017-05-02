@@ -431,12 +431,14 @@ if (ENABLE_WEBKIT2)
     )
     SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
     SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS_MULTIPROCESS TRUE)
+endif ()
 
-    if (APPLE)
-        SET_AND_EXPOSE_TO_BUILD(USE_MACH_PORTS 1) # Qt-specific
-    elseif (UNIX)
-        SET_AND_EXPOSE_TO_BUILD(USE_UNIX_DOMAIN_SOCKETS 1)
-    endif ()
+# Mach ports and Unix sockets are currently used by WK2, but their USE() values
+# affect building WorkQueue
+if (APPLE)
+    SET_AND_EXPOSE_TO_BUILD(USE_MACH_PORTS 1) # Qt-specific
+elseif (UNIX)
+    SET_AND_EXPOSE_TO_BUILD(USE_UNIX_DOMAIN_SOCKETS 1)
 endif ()
 
 if (ENABLE_QT_WEBCHANNEL)
