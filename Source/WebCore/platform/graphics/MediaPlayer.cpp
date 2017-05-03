@@ -847,6 +847,7 @@ void MediaPlayer::setPreservesPitch(bool preservesPitch)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayer::buffered()
 {
+    RELEASE_ASSERT(m_private.get() != nullptr);
     return m_private->buffered();
 }
 

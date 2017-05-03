@@ -31,7 +31,9 @@
 struct wpe_input_axis_event;
 struct wpe_input_keyboard_event;
 struct wpe_input_pointer_event;
+#if ENABLE(TOUCH_EVENTS)
 struct wpe_input_touch_event;
+#endif
 
 namespace WebKit {
 
@@ -40,7 +42,9 @@ public:
     static WebKeyboardEvent createWebKeyboardEvent(struct wpe_input_keyboard_event*);
     static WebMouseEvent createWebMouseEvent(struct wpe_input_pointer_event*);
     static WebWheelEvent createWebWheelEvent(struct wpe_input_axis_event*);
+#if ENABLE(TOUCH_EVENTS)
     static WebTouchEvent createWebTouchEvent(struct wpe_input_touch_event*);
+#endif
 };
 
 } // namespace WebKit

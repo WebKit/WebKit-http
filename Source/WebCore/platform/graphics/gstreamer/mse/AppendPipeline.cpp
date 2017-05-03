@@ -288,7 +288,8 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
     const gchar* contextType = nullptr;
     gst_message_parse_context_type(message, &contextType);
     GST_TRACE("context type: %s", contextType);
-    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id"))
+    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")
+        && m_appendState != AppendPipeline::AppendState::KeyNegotiation)
         setAppendState(AppendPipeline::AppendState::KeyNegotiation);
 
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
@@ -349,7 +350,8 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
     const GstStructure* structure = gst_message_get_structure(message);
     GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
     if (m_playerPrivate && gst_structure_has_name(structure, "drm-key-needed")) {
-        setAppendState(AppendPipeline::AppendState::KeyNegotiation);
+        if (m_appendState != AppendPipeline::AppendState::KeyNegotiation)
+            setAppendState(AppendPipeline::AppendState::KeyNegotiation);
 
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
@@ -366,7 +368,7 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
         return;
     }
 
-    ASSERT(m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
+    ASSERT(m_appendState == AppendState::KeyNegotiation || m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
     ASSERT(!m_appsrcNeedDataReceived);
 
     GST_TRACE("received need-data from appsrc");
@@ -434,6 +436,7 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_TRACE("%s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     bool ok = false;
+    bool mustCheckEndOfAppend = false;
 
     switch (oldAppendState) {
     case AppendState::NotStarted:
@@ -464,6 +467,9 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
     case AppendState::KeyNegotiation:
         switch (newAppendState) {
         case AppendState::Ongoing:
+            ok = true;
+            mustCheckEndOfAppend = true;
+            break;
         case AppendState::Invalid:
             ok = true;
             break;
@@ -564,6 +570,9 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_ERROR("Invalid append state transition %s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     ASSERT(ok);
+
+    if (mustCheckEndOfAppend)
+        checkEndOfAppend();
 
     if (nextAppendState != AppendState::Invalid)
         setAppendState(nextAppendState);

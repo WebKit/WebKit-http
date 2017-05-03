@@ -511,9 +511,10 @@ void MediaPlayerPrivateGStreamer::pause()
     if (currentState < GST_STATE_PAUSED && pendingState <= GST_STATE_PAUSED)
         return;
 
-    if (changePipelineState(GST_STATE_PAUSED))
+    if (changePipelineState(GST_STATE_PAUSED)) {
+        m_paused = true;
         GST_INFO("Pause");
-    else
+    } else
         loadingFailed(MediaPlayer::Empty);
 }
 

@@ -1750,3 +1750,13 @@ bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesR
 {
     return toImpl(preferencesRef)->allowDisplayOfInsecureContent();
 }
+
+void WKPreferencesSetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef, bool allow)
+{
+    toImpl(preferencesRef)->setAllowScriptsToCloseWindows(allow);
+}
+
+bool WKPreferencesGetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowScriptsToCloseWindows();
+}

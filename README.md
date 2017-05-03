@@ -1,5 +1,7 @@
-WebKit for Wayland
+WPEWebKit
 ======
+[![HTML5 score](https://img.shields.io/badge/HTML5%20score-440-blue.svg)](https://html5test.com/)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=55UJZHTXW8VTE)
 
 ## Building prerequisites
 
@@ -26,7 +28,7 @@ To do this quickly under **Ubuntu 16.04 LTS (Xenial Xerus)**, please type:
     $ export XDG_RUNTIME_DIR=/tmp
     $ weston
 
-Then, to run WebKit for Wayland:
+Then, to run WPEWebKit:
 
     $ export WPE_BACKEND=wayland
     $ Tools/Scripts/run-wpe

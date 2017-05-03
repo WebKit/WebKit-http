@@ -343,7 +343,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
 {
     m_pipeline = pipeline;
-#if USE(HOLE_PUNCH_GSTREAMER) && (USE(WESTEROS_SINK) || USE(FUSION_SINK))
+#if USE(HOLE_PUNCH_GSTREAMER)
     updateVideoRectangle();
 #endif
 }
@@ -636,12 +636,6 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 // Returns the size of the video
 FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 {
-#if USE(HOLE_PUNCH_GSTREAMER)
-    // We don't care about the natural size of the video, the external sink will deal with it.
-    // This means that the video will always have the size of the <video> component or the default 300x150
-    return m_size;
-#endif
-
     if (!hasVideo())
         return FloatSize();
 
@@ -1031,7 +1025,7 @@ void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
     GST_INFO("Setting size to %dx%d", size.width(), size.height());
     m_size = size;
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(HOLE_PUNCH_GSTREAMER)
     updateVideoRectangle();
 #endif
 }
@@ -1043,12 +1037,12 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
 
     m_position = position;
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(HOLE_PUNCH_GSTREAMER)
     updateVideoRectangle();
 #endif
 }
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(HOLE_PUNCH_GSTREAMER)
 void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
 {
     if (!m_pipeline)
@@ -1673,13 +1667,26 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             emitPlayReadySession();
             return MediaPlayer::NoError;
         }
-
+        // For now we do not know if all protection systems should drop the pssh box, but during
+        // testing of PR, we found that it is mandatory (found using the EME certification tests)
+        // so for PR we remove the pssh and sice, only ship the actual initdata.
         trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
-        GST_TRACE("current init data size %u", initDataLength);
-        GST_MEMDUMP ("init data", initDataPtr, initDataLength);
+
+        // there can be only 1 pssh, so skip this one (fixed lemgth)
+        // Data: <4 bytes total length><4 bytes FCC><4 bytes length ex this><Given Bytes in last length field><16 bytes GUID><4 bytes length ex this><Given Bytes in last length field>
+        // https://www.w3.org/TR/2014/WD-encrypted-media-20140828/cenc-format.html
+        unsigned int boxLength = 0;
+        if (initDataPtr[4] == 'p' && initDataPtr[5] == 's' && initDataPtr[6] == 's' && initDataPtr[7] == 'h')  {
+            boxLength = 4 + 4 + 16 +
+                        4 + (((initDataPtr[8] << 24) | (initDataPtr[9] << 16) |  (initDataPtr[10] << 8) | (initDataPtr[11])) * 16) +
+                        4;
+        }
+        GST_TRACE("current init data size %u, substracted %u", initDataLength, boxLength);
+        GST_MEMDUMP ("init data", &(initDataPtr[boxLength]), (initDataLength - boxLength));
+
         unsigned short errorCode;
         uint32_t systemCode;
-        RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
+        RefPtr<Uint8Array> initData = Uint8Array::create(&(initDataPtr[boxLength]), initDataLength-boxLength);
         String destinationURL;
         RefPtr<Uint8Array> result = m_prSession->playreadyGenerateKeyRequest(initData.get(), customData, destinationURL, errorCode, systemCode);
         if (errorCode) {

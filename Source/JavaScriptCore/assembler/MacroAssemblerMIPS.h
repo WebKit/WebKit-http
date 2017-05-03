@@ -454,9 +454,9 @@ public:
               sw        dataTemp, offset(base)
             */
             m_assembler.lw(dataTempRegister, address.base, address.offset);
-            if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth) {
+            if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth)
                 m_assembler.ori(dataTempRegister, dataTempRegister, imm.m_value);
-            } else {
+            else {
                 move(imm, immTempRegister);
                 m_assembler.orInsn(dataTempRegister, dataTempRegister, immTempRegister);
             }
@@ -474,9 +474,9 @@ public:
             m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
             m_assembler.lw(dataTempRegister, addrTempRegister, address.offset);
 
-            if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth) {
+            if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth)
                 m_assembler.ori(dataTempRegister, dataTempRegister, imm.m_value);
-            } else {
+            else {
                 move(imm, immTempRegister);
                 m_assembler.addu(dataTempRegister, dataTempRegister, immTempRegister);
             }
@@ -824,7 +824,7 @@ public:
                 addu    addrTemp, addrTemp, address.base
                 lui     immTemp, (address.offset + 0x8000) >> 16
                 addu    addrTemp, addrTemp, immTemp
-                lb      dest, (address.offset & 0xffff)(at)
+                lb     dest, (address.offset & 0xffff)(at)
             */
             m_assembler.sll(addrTempRegister, address.index, address.scale);
             m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
@@ -3051,9 +3051,7 @@ public:
 
     void storeFence()
     {
-        // FIXME: We should actually implement this. The only current caller is related to
-        // concurrent GC, which is disabled on 32-bit systems.
-        // https://bugs.webkit.org/show_bug.cgi?id=164733
+        m_assembler.sync();
     }
 
     void abortWithReason(AbortReason reason, intptr_t misc)

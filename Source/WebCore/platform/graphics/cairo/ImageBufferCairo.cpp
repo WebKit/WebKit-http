@@ -34,6 +34,7 @@
 #include "BitmapImage.h"
 #include "CairoUtilities.h"
 #include "Color.h"
+#include "Extensions3DCache.h"
 #include "GraphicsContext.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
@@ -68,6 +69,16 @@
 using namespace std;
 
 namespace WebCore {
+
+bool cairoIsUsingMSAA()
+{
+    // Cairo will use MSAA if the extensions GL_OES_packed_depth_stencil and GL_EXT_multisampled_render_to_texture
+    // are available, and when it's told to use the msaa compositor through the CAIRO_GL_COMPOSITOR env variable.
+    const char *env = getenv ("CAIRO_GL_COMPOSITOR");
+    bool usingMSAACompositor = env && strcmp(env, "msaa") == 0;
+
+    return usingMSAACompositor && Extensions3DCache::singleton().GL_OES_packed_depth_stencil() && Extensions3DCache::singleton().GL_EXT_multisampled_render_to_texture();
+}
 
 ImageBufferData::ImageBufferData(const IntSize& size, RenderingMode renderingMode)
     : m_platformContext(0)
@@ -257,7 +268,9 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
     m_data.m_platformContext.setCr(cr.get());
-    cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
+    // Disable antialiasing if using the GL backend but cairo is not using MSAA.
+    if ((m_data.m_renderingMode == Accelerated) && !cairoIsUsingMSAA())
+        cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
     m_data.m_context = std::make_unique<GraphicsContext>(&m_data.m_platformContext);
     success = true;
 }

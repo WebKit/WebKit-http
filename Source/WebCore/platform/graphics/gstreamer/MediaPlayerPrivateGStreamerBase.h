@@ -277,7 +277,7 @@ protected:
 
 private:
 
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+#if USE(HOLE_PUNCH_GSTREAMER)
     void updateVideoRectangle();
 #endif
 

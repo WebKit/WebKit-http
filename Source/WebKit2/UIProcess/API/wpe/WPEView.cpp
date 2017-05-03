@@ -29,7 +29,9 @@
 #include "APIPageConfiguration.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
+#if ENABLE(TOUCH_EVENTS)
 #include "NativeWebTouchEvent.h"
+#endif
 #include "NativeWebWheelEvent.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
@@ -57,7 +59,6 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         preferences->setForceCompositingMode(true);
         preferences->setAccelerated2dCanvasEnabled(true);
         preferences->setWebGLEnabled(true);
-        preferences->setWebSecurityEnabled(false);
         preferences->setDeveloperExtrasEnabled(true);
     }
 
@@ -114,12 +115,14 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
             auto& view = *reinterpret_cast<View*>(data);
             view.page().handleWheelEvent(WebKit::NativeWebWheelEvent(event));
         },
+#if ENABLE(TOUCH_EVENTS)
         // handle_touch_event
         [](void* data, struct wpe_input_touch_event* event)
         {
             auto& view = *reinterpret_cast<View*>(data);
             view.page().handleTouchEvent(WebKit::NativeWebTouchEvent(event));
         },
+#endif
     };
     wpe_view_backend_set_input_client(m_backend, &s_inputClient, this);
 

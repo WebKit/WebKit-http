@@ -81,6 +81,7 @@ public:
     ExceptionOr<void> remove(const MediaTime&, const MediaTime&);
 
     const TimeRanges& bufferedInternal() const { ASSERT(m_buffered); return *m_buffered; }
+    MediaTime& currentTimeFudgeFactor() const;
 
     void abortIfUpdating();
     void removedFromMediaSource();
@@ -106,6 +107,8 @@ public:
     ExceptionOr<void> setMode(AppendMode);
 
     void setShouldGenerateTimestamps(bool flag) { m_shouldGenerateTimestamps = flag; }
+
+    void rangeRemoval(const MediaTime&, const MediaTime&);
 
     bool isBufferedDirty() const { return m_bufferedDirty; }
     void setBufferedDirty(bool flag) { m_bufferedDirty = flag; }
@@ -176,8 +179,6 @@ private:
     void appendError(bool);
 
     bool hasAudio() const;
-
-    void rangeRemoval(const MediaTime&, const MediaTime&);
 
     friend class Internals;
     WEBCORE_EXPORT Vector<String> bufferedSamplesForTrackID(const AtomicString&);

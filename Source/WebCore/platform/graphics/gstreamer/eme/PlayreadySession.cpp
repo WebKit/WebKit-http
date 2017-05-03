@@ -150,13 +150,7 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     GST_DEBUG("init data set on DRM context");
 
     // FIXME: Revert once re-use of key is fixed
-    //if (DRM_SUCCEEDED(Drm_Reader_Bind(m_poAppContext, g_rgpdstrRights, NO_OF(g_rgpdstrRights), _PolicyCallback, NULL, &m_oDecryptContext))) {
-    //    GST_DEBUG("Play rights already acquired!");
-    //    m_eKeyState = KEY_READY;
-    //    systemCode = dr;
-    //    errorCode = 0;
-    //    return nullptr;
-    //}
+    Drm_Reader_Bind(m_poAppContext, g_rgpdstrRights, NO_OF(g_rgpdstrRights), _PolicyCallback, NULL, &m_oDecryptContext);
     GST_DEBUG("DRM reader bound");
 
     // Try to figure out the size of the license acquisition

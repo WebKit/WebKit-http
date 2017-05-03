@@ -104,6 +104,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
+    UIProcess/API/C/soup/WKSoupSession.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
     UIProcess/API/C/wpe/WKWebAutomation.cpp
@@ -501,6 +502,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKWebAutomation.h
 
     ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKCookieManagerSoup.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKSoupSession.h
 )
 
 install(FILES ${WPE_INSTALLED_WEBKIT_HEADERS}

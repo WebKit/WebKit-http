@@ -151,6 +151,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* 
         delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event->time);
 }
 
+#if ENABLE(TOUCH_EVENTS)
 static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mainEventId, const struct wpe_input_touch_event_raw* point)
 {
     if (point->id != mainEventId)
@@ -202,5 +203,6 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
 
     return WebTouchEvent(type, WTFMove(touchPoints), WebEvent::Modifiers(0), event->time);
 }
+#endif // ENABLE(TOUCH_EVENTS)
 
 } // namespace WebKit

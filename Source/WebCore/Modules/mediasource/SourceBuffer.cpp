@@ -124,6 +124,15 @@ SourceBuffer::~SourceBuffer()
     m_private->setClient(nullptr);
 }
 
+// Allow hasCurrentTime() to be off by as much as the length of two 24fps video frames
+MediaTime& SourceBuffer::currentTimeFudgeFactor() const
+{
+    static NeverDestroyed<MediaTime> fudgeFactorVideo(2002, 24000);
+    static NeverDestroyed<MediaTime> fudgeFactorAudio(MediaTime::createWithDouble(0.03));
+
+    return (hasAudio())?fudgeFactorAudio:fudgeFactorVideo;
+}
+
 ExceptionOr<Ref<TimeRanges>> SourceBuffer::buffered() const
 {
     // Section 3.1 buffered attribute steps.
@@ -660,6 +669,9 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
     UNUSED_PARAM(buffer);
 #endif
 
+#if USE(GSTREAMER)
+    MediaTime microsecond = MediaTime::createWithDouble(0.000001);
+#endif
     PlatformTimeRanges erasedRanges;
     for (auto sampleIt : samples) {
         const DecodeOrderSampleMap::KeyType& decodeKey = sampleIt.first;
@@ -677,7 +689,11 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
         trackBuffer.decodeQueue.erase(decodeKey);
 
         auto startTime = sample->presentationTime();
+#if USE(GSTREAMER)
+        auto endTime = startTime + sample->duration() + microsecond;
+#else
         auto endTime = startTime + sample->duration();
+#endif
         erasedRanges.add(startTime, endTime);
 
 #if !LOG_DISABLED
@@ -1699,11 +1715,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // disjoint ranges separated by less than a "fudge factor".
         auto presentationEndTime = presentationTimestamp + frameDuration;
         auto nearestToPresentationStartTime = trackBuffer.buffered.nearest(presentationTimestamp);
-        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationTimestamp = nearestToPresentationStartTime;
 
         auto nearestToPresentationEndTime = trackBuffer.buffered.nearest(presentationEndTime);
-        if (nearestToPresentationEndTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationEndTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationEndTime = nearestToPresentationEndTime;
 
         trackBuffer.buffered.add(presentationTimestamp, presentationEndTime);
@@ -1920,7 +1936,7 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, const AtomicS
         currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleStartingOnOrAfterPresentationTime(time);
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()
-        || (currentSamplePTSIterator->first - time) > MediaSource::currentTimeFudgeFactor())
+        || (currentSamplePTSIterator->first - time) > currentTimeFudgeFactor())
         return;
 
     // Seach backward for the previous sync sample.

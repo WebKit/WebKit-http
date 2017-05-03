@@ -298,7 +298,7 @@ void ImageFrameCache::startAsyncDecodingQueue()
             TraceScope tracingScope(AsyncImageDecodeStart, AsyncImageDecodeEnd);
 
             // Get the frame NativeImage on the decoding thread.
-            NativeImagePtr nativeImage = protectedDecoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, frameRequest.sizeForDrawing);
+            NativeImagePtr nativeImage = const_cast<ImageDecoder*>(protectedDecoder.ptr())->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, { });
 
             // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
             callOnMainThread([this, protectedQueue = protectedQueue.copyRef(), nativeImage, frameRequest] () mutable {
