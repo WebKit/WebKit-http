@@ -1,3 +1,52 @@
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Treat cells with ARIA table cell properties as cells
+        https://bugs.webkit.org/show_bug.cgi?id=171178
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/minimal-table-with-aria-is-data-table-expected.txt: Added.
+        * accessibility/minimal-table-with-aria-is-data-table.html: Added.
+        * platform/gtk/accessibility/minimal-table-with-aria-is-data-table-expected.txt: Added.
+
+2017-05-03  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Support dashed values in unicode locale extensions
+        https://bugs.webkit.org/show_bug.cgi?id=171480
+
+        Reviewed by JF Bastien.
+
+        Added tests for calendar locale extensions that contain '-'.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Abandon the current load once the provisional loader detaches from the frame
+        https://bugs.webkit.org/show_bug.cgi?id=171577
+        <rdar://problem/31581227>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-expected.txt: Added.
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash.html: Added.
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several tests.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline inspector resource size tests.
+
+        Libsoup doesn't provide the required information to fill all those size metrics.
+
+        * platform/gtk/http/tests/inspector/network/resource-sizes-memory-cache-expected.txt: Added.
+        * platform/gtk/http/tests/inspector/network/resource-sizes-network-expected.txt: Added.
+
 2017-05-02  Simon Fraser  <simon.fraser@apple.com>
 
         Dynamically added position:fixed element is in the wrong place

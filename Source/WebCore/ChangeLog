@@ -1,3 +1,121 @@
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Treat cells with ARIA table cell properties as cells
+        https://bugs.webkit.org/show_bug.cgi?id=171178
+
+        Reviewed by Chris Fleizach.
+
+        Add the following checks to heuristics in AccessibilityTable::isDataTable():
+        1. If the author has provided a valid aria-rowcount or aria-colcount value on
+           the table element, expose it as a data table.
+        2. If the author has provided a valid aria-colindex or aria-rowindex on the
+           cell element, expose it as a data table.
+        3. If the author has provided a valid aria-rowindex on the row element, expose
+           it as a data table.
+        4. If the author has provided a value for aria-colspan or aria-rowspan on a cell,
+           expose it as a data table (even though we are supposed to ignore the value for
+           the purpose of exposing the span via platform accessibility APIs)
+
+        Remove the heuristic that a table with only one cell is "not a good AXTable candidate."
+        It prevents us from ever doing the above checks.
+
+        Test: accessibility/minimal-table-with-aria-is-data-table.html
+
+        * accessibility/AccessibilityTable.cpp:
+        (WebCore::AccessibilityTable::isDataTable):
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Cairo] Handle extended colors in gradients
+        https://bugs.webkit.org/show_bug.cgi?id=171596
+
+        Reviewed by Michael Catanzaro.
+
+        Check if every gradient color step is an extended color and use asExtended() instead of getRGBA() in such case.
+
+        Fixes: css3/color/gradients.html
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::platformGradient):
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Abandon the current load once the provisional loader detaches from the frame
+        https://bugs.webkit.org/show_bug.cgi?id=171577
+        <rdar://problem/31581227>
+
+        Reviewed by Brent Fulgham and Brady Eidson.
+
+        We detach all child frames as part of setting our document loader to the provisional
+        document loader when committing a load for a frame. Detaching child frames invokes
+        the unload event handler on the child frames that can run arbitrary JavaScript script.
+        Among other things, such script can initiate a new load in the frame whose current
+        load is being committed. We should stop processing the current load as soon as we
+        detect that updating our document loader has started a new provisional load.
+
+        Test: fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::transitionToCommitted):
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Remove out-of-date comment and null check from DocumentLoader::detachFromFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=171604
+
+        Reviewed by Brady Eidson.
+
+        We no longer want to passively allow DocumentLoader::detachFromFrame() to be called twice.
+        It does not make sense to be called twice and should never be called twice. A release assert
+        in DocumentLoader::cancelPolicyCheckIfNeeded() (added in r187558) called by DocumentLoader::detachFromFrame()
+        enforces this invariant. Therefore we can remove the null check of DocumentLoader::m_frame
+        and the comment that explains the purpose of this null check from DocumentLoader::detachFromFrame().
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::detachFromFrame):
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed attempt to fix the Windows build after r216117.
+        https://bugs.webkit.org/show_bug.cgi?id=171601
+
+        * css/CSSAllInOne.cpp:
+
+2017-05-03  Antti Koivisto  <antti@apple.com>
+
+        Rename StyleInvalidationAnalysis to Style::Invalidator
+        https://bugs.webkit.org/show_bug.cgi?id=171601
+
+        Reviewed by Žan Doberšek.
+
+        Also move it to the 'style' directory.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/StyleInvalidationAnalysis.cpp: Removed.
+        * css/StyleInvalidationAnalysis.h: Removed.
+        * dom/ExtensionStyleSheets.cpp:
+        * style/AttributeChangeInvalidation.cpp:
+        (WebCore::Style::AttributeChangeInvalidation::invalidateDescendants):
+        * style/ClassChangeInvalidation.cpp:
+        (WebCore::Style::ClassChangeInvalidation::invalidateDescendantStyle):
+        * style/StyleInvalidator.cpp: Copied from Source/WebCore/css/StyleInvalidationAnalysis.cpp.
+        (WebCore::Style::Invalidator::Invalidator):
+        (WebCore::Style::Invalidator::invalidateIfNeeded):
+        (WebCore::Style::Invalidator::invalidateStyleForTree):
+        (WebCore::Style::Invalidator::invalidateStyle):
+        (WebCore::shouldDirtyAllStyle): Deleted.
+        (WebCore::StyleInvalidationAnalysis::StyleInvalidationAnalysis): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateIfNeeded): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateStyleForTree): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateStyle): Deleted.
+        * style/StyleInvalidator.h: Copied from Source/WebCore/css/StyleInvalidationAnalysis.h.
+        (WebCore::StyleInvalidationAnalysis::dirtiesAllStyle): Deleted.
+        (WebCore::StyleInvalidationAnalysis::hasShadowPseudoElementRulesInAuthorSheet): Deleted.
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+        (WebCore::Style::Scope::analyzeStyleSheetChange):
+
 2017-05-02  Andrew Gold  <agold@apple.com>
 
         Typo in AVAudioSessionCaptureDeviceManager.mm
