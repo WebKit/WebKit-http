@@ -103,6 +103,7 @@
 
 #if PLATFORM(IOS)
 #import "DumpRenderTreeBrowserView.h"
+#import "IOSLayoutTestCommunication.h"
 #import "UIKitSPI.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/CoreGraphicsSPI.h>
@@ -848,9 +849,10 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWebAnimationsEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
-    [preferences setPeerConnectionEnabled:YES];
     [preferences setWebRTCLegacyAPIEnabled:YES];
     [preferences setCredentialManagementEnabled:YES];
+    [preferences setReadableByteStreamAPIEnabled:YES];
+    [preferences setWritableStreamAPIEnabled:YES];
 }
 
 // Called before each test.
@@ -949,15 +951,13 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
 
-    [preferences setFetchAPIEnabled:YES];
-
     [preferences setDownloadAttributeEnabled:YES];
 
     [preferences setHiddenPageDOMTimerThrottlingEnabled:NO];
     [preferences setHiddenPageCSSAnimationSuspensionEnabled:NO];
-    
-    [preferences setMediaStreamEnabled:YES];
-    
+
+    [preferences setMediaDevicesEnabled:YES];
+
     [preferences setLargeImageAsyncDecodingEnabled:NO];
 
     [WebPreferences _clearNetworkLoaderSession];
@@ -1071,8 +1071,8 @@ static void testThreadIdentifierMap()
     pthread_join(pthread, 0);
 
     // Now create another thread using WTF. On OSX, it will have the same pthread handle
-    // but should get a different ThreadIdentifier.
-    createThread(runThread, 0, "DumpRenderTree: test");
+    // but should get a different RefPtr<Thread>.
+    Thread::create(runThread, 0, "DumpRenderTree: test");
 }
 
 static void allocateGlobalControllers()
@@ -1236,17 +1236,8 @@ void writeCrashedMessageOnFatalError(int signalCode)
 void dumpRenderTree(int argc, const char *argv[])
 {
 #if PLATFORM(IOS)
-    const char* identifier = getenv("IPC_IDENTIFIER");
-    const char *stdinPath = [[NSString stringWithFormat:@"/tmp/%s_IN", identifier] UTF8String];
-    const char *stdoutPath = [[NSString stringWithFormat:@"/tmp/%s_OUT", identifier] UTF8String];
-    const char *stderrPath = [[NSString stringWithFormat:@"/tmp/%s_ERROR", identifier] UTF8String];
-
-    int infd = open(stdinPath, O_RDWR);
-    dup2(infd, STDIN_FILENO);
-    int outfd = open(stdoutPath, O_RDWR);
-    dup2(outfd, STDOUT_FILENO);
-    int errfd = open(stderrPath, O_RDWR | O_NONBLOCK);
-    dup2(errfd, STDERR_FILENO);
+    setUpIOSLayoutTestCommunication();
+    [UIApplication sharedApplication].idleTimerDisabled = YES;
 #endif
 
     signal(SIGILL, &writeCrashedMessageOnFatalError);
@@ -1307,9 +1298,7 @@ void dumpRenderTree(int argc, const char *argv[])
     }
 
 #if PLATFORM(IOS)
-    close(infd);
-    close(outfd);
-    close(errfd);
+    tearDownIOSLayoutTestCommunication();
 #endif
 }
 
@@ -1806,6 +1795,7 @@ static void resetWebViewToConsistentStateBeforeTesting(const TestOptions& option
     [webView setPolicyDelegate:defaultPolicyDelegate];
     [policyDelegate setPermissive:NO];
     [policyDelegate setControllerToNotifyDone:0];
+    [uiDelegate resetToConsistentStateBeforeTesting:options];
     [frameLoadDelegate resetToConsistentState];
 #if !PLATFORM(IOS)
     [webView _setDashboardBehavior:WebDashboardBehaviorUseBackwardCompatibilityMode to:NO];

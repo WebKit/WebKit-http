@@ -89,6 +89,8 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool mediaDevicesEnabled() const { return m_isMediaDevicesEnabled; }
+    void setMediaDevicesEnabled(bool isEnabled) { m_isMediaDevicesEnabled = isEnabled; }
     bool mediaStreamEnabled() const { return m_isMediaStreamEnabled; }
     void setMediaStreamEnabled(bool isEnabled) { m_isMediaStreamEnabled = isEnabled; }
 #endif
@@ -165,7 +167,14 @@ public:
     void setFetchAPIEnabled(bool isEnabled) { m_isFetchAPIEnabled = isEnabled; }
     bool fetchAPIEnabled() const { return m_isFetchAPIEnabled; }
 #endif
-
+    
+#if ENABLE(STREAMS_API)
+    void setReadableByteStreamAPIEnabled(bool isEnabled) { m_isReadableByteStreamAPIEnabled = isEnabled; }
+    bool readableByteStreamAPIEnabled() const { return m_isReadableByteStreamAPIEnabled; }
+    void setWritableStreamAPIEnabled(bool isEnabled) { m_isWritableStreamAPIEnabled = isEnabled; }
+    bool writableStreamAPIEnabled() const { return m_isWritableStreamAPIEnabled; }
+#endif
+    
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     void setDownloadAttributeEnabled(bool isEnabled) { m_isDownloadAttributeEnabled = isEnabled; }
     bool downloadAttributeEnabled() const { return m_isDownloadAttributeEnabled; }
@@ -228,6 +237,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool m_isMediaDevicesEnabled { false };
     bool m_isMediaStreamEnabled { true };
 #endif
 
@@ -274,6 +284,11 @@ private:
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     bool m_areAnimationTriggersEnabled { false };
+#endif
+
+#if ENABLE(STREAMS_API)
+    bool m_isReadableByteStreamAPIEnabled { false };
+    bool m_isWritableStreamAPIEnabled { false };
 #endif
 
 #if ENABLE(WEB_ANIMATIONS)

@@ -96,6 +96,9 @@ public:
     const Vector<WTF::String>& alwaysRevalidatedURLSchemes() { return m_alwaysRevalidatedURLSchemes; }
     void setAlwaysRevalidatedURLSchemes(Vector<WTF::String>&& alwaysRevalidatedURLSchemes) { m_alwaysRevalidatedURLSchemes = WTFMove(alwaysRevalidatedURLSchemes); }
 
+    const Vector<WTF::String>& additionalReadAccessAllowedPaths() { return m_additionalReadAccessAllowedPaths; }
+    void setAdditionalReadAccessAllowedPaths(Vector<WTF::String>&& additionalReadAccessAllowedPaths) { m_additionalReadAccessAllowedPaths = additionalReadAccessAllowedPaths; }
+
     bool fullySynchronousModeIsAllowedForTesting() const { return m_fullySynchronousModeIsAllowedForTesting; }
     void setFullySynchronousModeIsAllowedForTesting(bool allowed) { m_fullySynchronousModeIsAllowedForTesting = allowed; }
 
@@ -116,6 +119,12 @@ public:
     
     bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
     void setAlwaysRunsAtBackgroundPriority(bool alwaysRunsAtBackgroundPriority) { m_alwaysRunsAtBackgroundPriority = alwaysRunsAtBackgroundPriority; }
+
+    bool shouldTakeUIBackgroundAssertion() const { return m_shouldTakeUIBackgroundAssertion; }
+    void setShouldTakeUIBackgroundAssertion(bool shouldTakeUIBackgroundAssertion) { m_shouldTakeUIBackgroundAssertion = shouldTakeUIBackgroundAssertion; }
+
+    bool shouldCaptureAudioInUIProcess() const { return m_shouldCaptureAudioInUIProcess; }
+    void setShouldCaptureAudioInUIProcess(bool shouldCaptureAudioInUIProcess) { m_shouldCaptureAudioInUIProcess = shouldCaptureAudioInUIProcess; }
 
 #if PLATFORM(IOS)
     const WTF::String& ctDataConnectionServiceType() const { return m_ctDataConnectionServiceType; }
@@ -143,6 +152,7 @@ private:
     WTF::String m_javaScriptConfigurationDirectory;
     Vector<WTF::String> m_cachePartitionedURLSchemes;
     Vector<WTF::String> m_alwaysRevalidatedURLSchemes;
+    Vector<WTF::String> m_additionalReadAccessAllowedPaths;
     bool m_fullySynchronousModeIsAllowedForTesting { false };
     bool m_ignoreSynchronousMessagingTimeoutsForTesting { false };
     Vector<WTF::String> m_overrideLanguages;
@@ -150,6 +160,8 @@ private:
     WTF::String m_sourceApplicationSecondaryIdentifier;
     bool m_allowsCellularAccess { true };
     bool m_alwaysRunsAtBackgroundPriority { false };
+    bool m_shouldTakeUIBackgroundAssertion { true };
+    bool m_shouldCaptureAudioInUIProcess { false };
 #if PLATFORM(IOS)
     WTF::String m_ctDataConnectionServiceType;
 #endif

@@ -33,7 +33,6 @@
 #import "RealtimeMediaSource.h"
 #import "RealtimeMediaSourceCenter.h"
 #import "RealtimeMediaSourceSettings.h"
-#import "UUID.h"
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringHash.h>
@@ -44,11 +43,11 @@ CaptureDeviceManager::~CaptureDeviceManager()
 {
 }
 
-Vector<CaptureDevice> CaptureDeviceManager::getSourcesInfo()
+Vector<CaptureDevice> CaptureDeviceManager::getAudioSourcesInfo()
 {
     Vector<CaptureDevice> sourcesInfo;
-    for (auto captureDevice : captureDevices()) {
-        if (!captureDevice.enabled() || captureDevice.type() == CaptureDevice::DeviceType::Unknown)
+    for (auto& captureDevice : captureDevices()) {
+        if (!captureDevice.enabled() || captureDevice.type() != CaptureDevice::DeviceType::Audio)
             continue;
 
         sourcesInfo.append(captureDevice);
@@ -57,16 +56,27 @@ Vector<CaptureDevice> CaptureDeviceManager::getSourcesInfo()
     return sourcesInfo;
 }
 
-bool CaptureDeviceManager::captureDeviceFromDeviceID(const String& captureDeviceID, CaptureDevice& foundDevice)
+Vector<CaptureDevice> CaptureDeviceManager::getVideoSourcesInfo()
+{
+    Vector<CaptureDevice> sourcesInfo;
+    for (auto& captureDevice : captureDevices()) {
+        if (!captureDevice.enabled() || captureDevice.type() != CaptureDevice::DeviceType::Video)
+            continue;
+
+        sourcesInfo.append(captureDevice);
+    }
+    LOG(Media, "CaptureDeviceManager::getSourcesInfo(%p), found %zu active devices", this, sourcesInfo.size());
+    return sourcesInfo;
+}
+
+std::optional<CaptureDevice> CaptureDeviceManager::captureDeviceFromPersistentID(const String& captureDeviceID)
 {
     for (auto& device : captureDevices()) {
-        if (device.persistentId() == captureDeviceID) {
-            foundDevice = device;
-            return true;
-        }
+        if (device.persistentId() == captureDeviceID)
+            return device;
     }
 
-    return false;
+    return std::nullopt;
 }
 
 std::optional<CaptureDevice> CaptureDeviceManager::deviceWithUID(const String& deviceUID, RealtimeMediaSource::Type type)
@@ -96,5 +106,25 @@ std::optional<CaptureDevice> CaptureDeviceManager::deviceWithUID(const String& d
 
     return std::nullopt;
 }
+
+static CaptureDeviceManager::ObserverToken nextObserverToken()
+{
+    static CaptureDeviceManager::ObserverToken nextToken = 0;
+    return ++nextToken;
+}
+
+CaptureDeviceManager::ObserverToken CaptureDeviceManager::addCaptureDeviceChangedObserver(CaptureDeviceChangedCallback observer)
+{
+    auto token = nextObserverToken();
+    m_observers.set(token, WTFMove(observer));
+    return token;
+}
+
+void CaptureDeviceManager::removeCaptureDeviceChangedObserver(ObserverToken token)
+{
+    ASSERT(m_observers.contains(token));
+    m_observers.remove(token);
+}
+
 
 #endif // ENABLE(MEDIA_STREAM)

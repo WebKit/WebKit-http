@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSource_h
-#define RealtimeMediaSource_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "AudioSourceProvider.h"
+#include "CaptureDevice.h"
 #include "Image.h"
 #include "MediaConstraints.h"
 #include "MediaSample.h"
@@ -54,12 +54,14 @@ class MediaTime;
 namespace WebCore {
 
 class AudioStreamDescription;
-class CaptureDevice;
 class FloatRect;
 class GraphicsContext;
 class MediaStreamPrivate;
+class OrientationNotifier;
 class PlatformAudioData;
 class RealtimeMediaSourceSettings;
+
+struct CaptureSourceOrError;
 
 class WEBCORE_EXPORT RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
 public:
@@ -83,13 +85,22 @@ public:
         virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
     };
 
-    class CaptureFactory {
+    class AudioCaptureFactory {
     public:
-        virtual ~CaptureFactory() = default;
-        virtual RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice&, const MediaConstraints*, String&) = 0;
+        virtual ~AudioCaptureFactory() = default;
+        virtual CaptureSourceOrError createAudioCaptureSource(const String& audioDeviceID, const MediaConstraints*) = 0;
+        
+    protected:
+        AudioCaptureFactory() = default;
+    };
+
+    class VideoCaptureFactory {
+    public:
+        virtual ~VideoCaptureFactory() = default;
+        virtual CaptureSourceOrError createVideoCaptureSource(const String& videoDeviceID, const MediaConstraints*) = 0;
 
     protected:
-        CaptureFactory() = default;
+        VideoCaptureFactory() = default;
     };
 
     virtual ~RealtimeMediaSource() { }
@@ -106,9 +117,8 @@ public:
     virtual void setName(const String& name) { m_name = name; }
     
     virtual unsigned fitnessScore() const { return m_fitnessScore; }
-    virtual void setFitnessScore(const unsigned fitnessScore) { m_fitnessScore = fitnessScore; }
 
-    virtual RefPtr<RealtimeMediaSourceCapabilities> capabilities() const = 0;
+    virtual const RealtimeMediaSourceCapabilities& capabilities() const = 0;
     virtual const RealtimeMediaSourceSettings& settings() const = 0;
 
     using SuccessHandler = std::function<void()>;
@@ -117,9 +127,12 @@ public:
     std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
     virtual bool supportsConstraints(const MediaConstraints&, String&);
+    virtual bool supportsConstraint(const MediaConstraint&) const;
 
     virtual void settingsDidChange();
 
+    virtual bool isIsolated() const { return false; }
+    
     void videoSampleAvailable(MediaSample&);
     void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t);
     
@@ -131,11 +144,10 @@ public:
     virtual bool enabled() const { return m_enabled; }
     virtual void setEnabled(bool);
 
-    virtual bool readonly() const;
-    virtual void setReadonly(bool readonly) { m_readonly = readonly; }
-
     virtual bool isCaptureSource() const { return false; }
 
+    virtual void monitorOrientation(OrientationNotifier&) { }
+    
     WEBCORE_EXPORT void addObserver(Observer&);
     WEBCORE_EXPORT void removeObserver(Observer&);
 
@@ -193,13 +205,15 @@ protected:
 
     virtual bool selectSettings(const MediaConstraints&, FlattenedConstraint&, String&);
     virtual double fitnessDistance(const MediaConstraint&);
-    virtual bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&);
+    virtual bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&, double& fitnessDistance);
     virtual bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
     virtual void applyConstraint(const MediaConstraint&);
     virtual void applyConstraints(const FlattenedConstraint&);
     virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
     const Vector<Observer*> observers() const { return m_observers; }
+
+    void notifyMutedObservers() const;
 
     bool m_muted { false };
     bool m_enabled { true };
@@ -219,18 +233,27 @@ private:
     double m_volume { 1 };
     double m_sampleRate { 0 };
     double m_sampleSize { 0 };
-    unsigned m_fitnessScore { 0 };
+    double m_fitnessScore { std::numeric_limits<double>::infinity() };
     RealtimeMediaSourceSettings::VideoFacingMode m_facingMode { RealtimeMediaSourceSettings::User};
 
     bool m_echoCancellation { false };
     bool m_stopped { false };
-    bool m_readonly { false };
     bool m_pendingSettingsDidChangeNotification { false };
     bool m_suppressNotifications { true };
+};
+
+struct CaptureSourceOrError {
+    CaptureSourceOrError() = default;
+    CaptureSourceOrError(Ref<RealtimeMediaSource>&& source) : captureSource(WTFMove(source)) { }
+    CaptureSourceOrError(String&& message) : errorMessage(WTFMove(message)) { }
+    
+    operator bool()  const { return !!captureSource; }
+    Ref<RealtimeMediaSource> source() { return captureSource.releaseNonNull(); }
+    
+    RefPtr<RealtimeMediaSource> captureSource;
+    String errorMessage;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // RealtimeMediaSource_h

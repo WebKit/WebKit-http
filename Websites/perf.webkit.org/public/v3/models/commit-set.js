@@ -6,36 +6,45 @@ class CommitSet extends DataModelObject {
     {
         super(id);
         this._repositories = [];
-        this._repositoryToCommitMap = {};
+        this._repositoryToCommitMap = new Map;
+        this._repositoryToPatchMap = new Map;
         this._latestCommitTime = null;
+        this._customRoots = [];
 
         if (!object)
             return;
 
-        for (let row of object.commits) {
-            const repositoryId = row.repository.id();
-            console.assert(!this._repositoryToCommitMap[repositoryId]);
-            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(row.id, row);
-            this._repositories.push(row.repository);
+        for (const item of object.revisionItems) {
+            const commit = item.commit;
+            console.assert(commit instanceof CommitLog);
+            console.assert(!item.patch || item.patch instanceof UploadedFile);
+            const repository = commit.repository();
+            this._repositoryToCommitMap.set(repository, commit);
+            this._repositoryToPatchMap.set(repository, item.patch);
+            this._repositories.push(commit.repository());
         }
+        this._customRoots = object.customRoots;
     }
 
     repositories() { return this._repositories; }
-    commitForRepository(repository) { return this._repositoryToCommitMap[repository.id()]; }
+    customRoots() { return this._customRoots; }
+    commitForRepository(repository) { return this._repositoryToCommitMap.get(repository); }
 
     revisionForRepository(repository)
     {
-        var commit = this._repositoryToCommitMap[repository.id()];
+        var commit = this._repositoryToCommitMap.get(repository);
         return commit ? commit.revision() : null;
     }
+
+    patchForRepository(repository) { return this._repositoryToPatchMap.get(repository); }
 
     // FIXME: This should return a Date object.
     latestCommitTime()
     {
         if (this._latestCommitTime == null) {
             var maxTime = 0;
-            for (var repositoryId in this._repositoryToCommitMap)
-                maxTime = Math.max(maxTime, +this._repositoryToCommitMap[repositoryId].time());
+            for (const [repository, commit] of this._repositoryToCommitMap)
+                maxTime = Math.max(maxTime, +commit.time());
             this._latestCommitTime = maxTime;
         }
         return this._latestCommitTime;
@@ -45,8 +54,22 @@ class CommitSet extends DataModelObject {
     {
         if (this._repositories.length != other._repositories.length)
             return false;
-        for (var repositoryId in this._repositoryToCommitMap) {
-            if (this._repositoryToCommitMap[repositoryId] != other._repositoryToCommitMap[repositoryId])
+        for (const [repository, commit] of this._repositoryToCommitMap) {
+            if (commit != other._repositoryToCommitMap.get(repository))
+                return false;
+            if (this._repositoryToPatchMap.get(repository) != other._repositoryToCommitMap.get(repository))
+                return false;
+        }
+        return CommitSet.areCustomRootsEqual(this._customRoots, other._customRoots);
+    }
+
+    static areCustomRootsEqual(customRoots1, customRoots2)
+    {
+        if (customRoots1.length != customRoots2.length)
+            return false;
+        const set2 = new Set(customRoots2);
+        for (let file of customRoots1) {
+            if (!set2.has(file))
                 return false;
         }
         return true;
@@ -82,7 +105,9 @@ class MeasurementCommitSet extends CommitSet {
             if (!repository)
                 continue;
 
-            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(commitId, {repository: repository, revision: revision, time: time});
+            // FIXME: Add a flag to remember the fact this commit log is incomplete.
+            const commit = CommitLog.ensureSingleton(commitId, {repository: repository, revision: revision, time: time});
+            this._repositoryToCommitMap.set(repository, commit);
             this._repositories.push(repository);
         }
     }
@@ -106,17 +131,55 @@ class CustomCommitSet {
     constructor()
     {
         this._revisionListByRepository = new Map;
+        this._customRoots = [];
     }
 
-    setRevisionForRepository(repository, revision)
+    setRevisionForRepository(repository, revision, patch = null)
     {
         console.assert(repository instanceof Repository);
-        this._revisionListByRepository.set(repository, revision);
+        console.assert(!patch || patch instanceof UploadedFile);
+        this._revisionListByRepository.set(repository, {revision, patch});
+    }
+
+    equals(other)
+    {
+        console.assert(other instanceof CustomCommitSet);
+        if (this._revisionListByRepository.size != other._revisionListByRepository.size)
+            return false;
+        for (let repository of this._revisionListByRepository.keys()) {
+            const thisRevision = this._revisionListByRepository.get(repository);
+            const otherRevision = other._revisionListByRepository.get(repository);
+            if (!thisRevision != !otherRevision)
+                return false;
+            if (thisRevision && (thisRevision.revision != otherRevision.revision
+                || thisRevision.patch != otherRevision.patch))
+                return false;
+        }
+        return CommitSet.areCustomRootsEqual(this._customRoots, other._customRoots);
     }
 
     repositories() { return Array.from(this._revisionListByRepository.keys()); }
-    revisionForRepository(repository) { return this._revisionListByRepository.get(repository); }
+    revisionForRepository(repository)
+    {
+        const entry = this._revisionListByRepository.get(repository);
+        if (!entry)
+            return null;
+        return entry.revision;
+    }
+    patchForRepository(repository)
+    {
+        const entry = this._revisionListByRepository.get(repository);
+        if (!entry)
+            return null;
+        return entry.patch;
+    }
+    customRoots() { return this._customRoots; }
 
+    addCustomRoot(uploadedFile)
+    {
+        console.assert(uploadedFile instanceof UploadedFile);
+        this._customRoots.push(uploadedFile);
+    }
 }
 
 if (typeof module != 'undefined') {

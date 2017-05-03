@@ -53,7 +53,7 @@ double secondsPerTest;
     
 NO_RETURN void usage()
 {
-    printf("Usage: LockSpeedTest yieldspinlock|pausespinlock|wordlock|lock|barginglock|bargingwordlock|thunderlock|thunderwordlock|cascadelock|cascadewordlockhandofflock|mutex|all <num thread groups> <num threads per group> <work per critical section> <work between critical sections> <spin limit> <seconds per test>\n");
+    printf("Usage: LockSpeedTest yieldspinlock|pausespinlock|wordlock|lock|barginglock|bargingwordlock|thunderlock|thunderwordlock|cascadelock|cascadewordlock|handofflock|mutex|all <num thread groups> <num threads per group> <work per critical section> <work between critical sections> <spin limit> <seconds per test>\n");
     exit(1);
 }
 
@@ -77,7 +77,7 @@ struct Benchmark {
     {
         std::unique_ptr<WithPadding<LockType>[]> locks = std::make_unique<WithPadding<LockType>[]>(numThreadGroups);
         std::unique_ptr<WithPadding<double>[]> words = std::make_unique<WithPadding<double>[]>(numThreadGroups);
-        std::unique_ptr<ThreadIdentifier[]> threads = std::make_unique<ThreadIdentifier[]>(numThreadGroups * numThreadsPerGroup);
+        std::unique_ptr<RefPtr<Thread>[]> threads = std::make_unique<RefPtr<Thread>[]>(numThreadGroups * numThreadsPerGroup);
 
         volatile bool keepGoing = true;
 
@@ -90,7 +90,7 @@ struct Benchmark {
             words[threadGroupIndex].value = 0;
 
             for (unsigned threadIndex = numThreadsPerGroup; threadIndex--;) {
-                threads[threadGroupIndex * numThreadsPerGroup + threadIndex] = createThread(
+                threads[threadGroupIndex * numThreadsPerGroup + threadIndex] = Thread::create(
                     "Benchmark thread",
                     [threadGroupIndex, &locks, &words, &keepGoing, &numIterationsLock, &numIterations] () {
                         double localWord = 0;
@@ -100,13 +100,11 @@ struct Benchmark {
                             locks[threadGroupIndex].value.lock();
                             for (unsigned j = workPerCriticalSection; j--;) {
                                 words[threadGroupIndex].value += value;
-                                words[threadGroupIndex].value *= 1.01;
                                 value = words[threadGroupIndex].value;
                             }
                             locks[threadGroupIndex].value.unlock();
                             for (unsigned j = workBetweenCriticalSections; j--;) {
                                 localWord += value;
-                                localWord *= 1.01;
                                 value = localWord;
                             }
                             myNumIterations++;
@@ -121,7 +119,7 @@ struct Benchmark {
         keepGoing = false;
     
         for (unsigned threadIndex = numThreadGroups * numThreadsPerGroup; threadIndex--;)
-            waitForThreadCompletion(threads[threadIndex]);
+            threads[threadIndex]->waitForCompletion();
 
         double after = monotonicallyIncreasingTime();
     

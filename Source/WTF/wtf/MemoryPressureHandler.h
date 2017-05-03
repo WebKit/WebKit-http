@@ -49,7 +49,11 @@ enum class MemoryUsagePolicy {
     Unrestricted, // Allocate as much as you want
     Conservative, // Maybe you don't cache every single thing
     Strict, // Time to start pinching pennies for real
-    Panic, // OH GOD WE'RE SINKING, THROW EVERYTHING OVERBOARD
+};
+
+enum class WebsamProcessState {
+    Active,
+    Inactive,
 };
 
 enum class Critical { No, Yes };
@@ -67,7 +71,6 @@ public:
     WTF_EXPORT_PRIVATE void setShouldUsePeriodicMemoryMonitor(bool);
 
     void setMemoryKillCallback(WTF::Function<void()> function) { m_memoryKillCallback = WTFMove(function); }
-    void setProcessIsEligibleForMemoryKillCallback(WTF::Function<bool()> function) { m_processIsEligibleForMemoryKillCallback = WTFMove(function); }
     void setMemoryPressureStatusChangedCallback(WTF::Function<void(bool)> function) { m_memoryPressureStatusChangedCallback = WTFMove(function); }
 
     void setLowMemoryHandler(LowMemoryHandler&& handler)
@@ -75,14 +78,7 @@ public:
         m_lowMemoryHandler = WTFMove(handler);
     }
 
-    bool isUnderMemoryPressure() const
-    {
-        return m_underMemoryPressure
-#if PLATFORM(MAC)
-            || m_memoryUsagePolicy >= MemoryUsagePolicy::Strict
-#endif
-            || m_isSimulatingMemoryPressure;
-    }
+    WTF_EXPORT_PRIVATE static bool isUnderMemoryPressure();
     void setUnderMemoryPressure(bool);
 
 #if OS(LINUX)
@@ -140,7 +136,11 @@ public:
     WTF_EXPORT_PRIVATE void beginSimulatedMemoryPressure();
     WTF_EXPORT_PRIVATE void endSimulatedMemoryPressure();
 
+    WTF_EXPORT_PRIVATE void setProcessState(WebsamProcessState);
+    WebsamProcessState processState() const { return m_processState; }
+
 private:
+    size_t thresholdForMemoryKill();
     void memoryPressureStatusChanged();
 
     void uninstall();
@@ -154,8 +154,9 @@ private:
     void platformReleaseMemory(Critical);
     void platformInitialize();
 
-    NO_RETURN_DUE_TO_CRASH void didExceedMemoryLimitAndFailedToRecover();
     void measurementTimerFired();
+    void shrinkOrDie();
+    void setMemoryUsagePolicyBasedOnFootprint(size_t);
 
 #if OS(LINUX)
     class EventFDPoller {
@@ -172,10 +173,12 @@ private:
 #if USE(GLIB)
         GRefPtr<GSource> m_source;
 #else
-        ThreadIdentifier m_threadID;
+        RefPtr<Thread> m_thread;
 #endif
     };
 #endif
+
+    WebsamProcessState m_processState { WebsamProcessState::Active };
 
     bool m_installed { false };
     LowMemoryHandler m_lowMemoryHandler;
@@ -186,7 +189,6 @@ private:
     std::unique_ptr<RunLoop::Timer<MemoryPressureHandler>> m_measurementTimer;
     MemoryUsagePolicy m_memoryUsagePolicy { MemoryUsagePolicy::Unrestricted };
     WTF::Function<void()> m_memoryKillCallback;
-    WTF::Function<bool()> m_processIsEligibleForMemoryKillCallback;
     WTF::Function<void(bool)> m_memoryPressureStatusChangedCallback;
 
 #if OS(WINDOWS)
@@ -213,3 +215,4 @@ extern WTFLogChannel LogMemoryPressure;
 using WTF::Critical;
 using WTF::MemoryPressureHandler;
 using WTF::Synchronous;
+using WTF::WebsamProcessState;

@@ -22,6 +22,7 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMRect.h>
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
 #include <WebCore/ExceptionCodeDescription.h>
@@ -30,6 +31,8 @@
 #include <WebCore/JSMainThreadExecState.h>
 #include "WebKitDOMAttrPrivate.h"
 #include "WebKitDOMCSSStyleDeclarationPrivate.h"
+#include "WebKitDOMClientRectListPrivate.h"
+#include "WebKitDOMClientRectPrivate.h"
 #include "WebKitDOMDOMTokenListPrivate.h"
 #include "WebKitDOMElementPrivate.h"
 #include "WebKitDOMEventPrivate.h"
@@ -1219,6 +1222,22 @@ glong webkit_dom_element_get_scroll_height(WebKitDOMElement* self)
     WebCore::Element* item = WebKit::core(self);
     glong result = item->scrollHeight();
     return result;
+}
+
+WebKitDOMClientRect* webkit_dom_element_get_bounding_client_rect(WebKitDOMElement* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_ELEMENT(self), nullptr);
+    WebCore::Element* item = WebKit::core(self);
+    return WebKit::kit(item->getBoundingClientRect().ptr());
+}
+
+WebKitDOMClientRectList* webkit_dom_element_get_client_rects(WebKitDOMElement* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_ELEMENT(self), nullptr);
+    WebCore::Element* item = WebKit::core(self);
+    return WebKit::kit(item->getClientRects());
 }
 
 WebKitDOMElement* webkit_dom_element_get_offset_parent(WebKitDOMElement* self)

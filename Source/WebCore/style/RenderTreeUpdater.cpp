@@ -257,9 +257,15 @@ void RenderTreeUpdater::updateElementRenderer(Element& element, const Style::Ele
     CheckForVisibilityChange checkForVisibilityChange(element);
 #endif
 
-    bool shouldTearDownRenderers = update.change == Style::Detach && (element.renderer() || element.isNamedFlowContentElement());
-    if (shouldTearDownRenderers)
+    bool shouldTearDownRenderers = update.change == Style::Detach
+        && (element.renderer() || element.isNamedFlowContentElement() || element.hasDisplayContents());
+    if (shouldTearDownRenderers) {
+        if (!element.renderer()) {
+            // We may be tearing down a descendant renderer cached in renderTreePosition.
+            renderTreePosition().invalidateNextSibling();
+        }
         tearDownRenderers(element, TeardownType::KeepHoverAndActive);
+    }
 
     bool hasDisplayContents = update.style->display() == CONTENTS;
     if (hasDisplayContents != element.hasDisplayContents()) {

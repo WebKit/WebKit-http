@@ -30,7 +30,6 @@
 #include "SoupNetworkSession.h"
 
 #include "AuthenticationChallenge.h"
-#include "CryptoDigest.h"
 #include "FileSystem.h"
 #include "GUniquePtrSoup.h"
 #include "Logging.h"

@@ -391,6 +391,7 @@ static bool exceedsRenderTreeSizeSizeThreshold(uint64_t thresholdSize, uint64_t 
 void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& layerTreeTransaction)
 {
     m_pageExtendedBackgroundColor = layerTreeTransaction.pageExtendedBackgroundColor();
+    setAvoidsUnsafeArea(layerTreeTransaction.avoidsUnsafeArea());
 
     if (!m_hasReceivedLayerTreeTransactionAfterDidCommitLoad) {
         if (layerTreeTransaction.transactionID() >= m_firstLayerTreeTransactionIdAfterDidCommitLoad) {
@@ -906,9 +907,9 @@ void WebPageProxy::couldNotRestorePageState()
     m_pageClient.couldNotRestorePageState();
 }
 
-void WebPageProxy::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
+void WebPageProxy::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale)
 {
-    m_pageClient.restorePageState(scrollPosition, scrollOrigin, obscuredInsetOnSave, scale);
+    m_pageClient.restorePageState(scrollPosition, scrollOrigin, obscuredInsetsOnSave, scale);
 }
 
 void WebPageProxy::restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale)
@@ -1116,9 +1117,9 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
 
 #if ENABLE(DATA_INTERACTION)
 
-void WebPageProxy::didPerformDataInteractionControllerOperation()
+void WebPageProxy::didPerformDataInteractionControllerOperation(bool handled)
 {
-    m_pageClient.didPerformDataInteractionControllerOperation();
+    m_pageClient.didPerformDataInteractionControllerOperation(handled);
 }
 
 void WebPageProxy::didHandleStartDataInteractionRequest(bool started)

@@ -25,16 +25,16 @@
 
 #pragma once
 
-#include "CPUTime.h"
 #include "Timer.h"
 
+#include <wtf/CPUTime.h>
 #include <wtf/Function.h>
 
 namespace WebCore {
 
 class CPUMonitor {
 public:
-    using ExceededCPULimitHandler = WTF::Function<void()>;
+    using ExceededCPULimitHandler = WTF::Function<void(double)>;
     WEBCORE_EXPORT CPUMonitor(Seconds checkInterval, ExceededCPULimitHandler&&);
 
     WEBCORE_EXPORT void setCPULimit(std::optional<double>);

@@ -77,6 +77,7 @@
 #include "resource.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/Exception.h>
+#include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/InitializeThreading.h>
 #include <JavaScriptCore/JSCJSValue.h>
 #include <JavaScriptCore/JSLock.h>
@@ -525,7 +526,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     unsigned cacheTotalCapacity = 0;
     unsigned cacheMinDeadCapacity = 0;
     unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
+    Seconds deadDecodedDataDeletionInterval;
 
     unsigned pageCacheSize = 0;
 
@@ -637,7 +638,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         // can prove that the overall system gain would justify the regression.
         cacheMaxDeadCapacity = max(24u, cacheMaxDeadCapacity);
 
-        deadDecodedDataDeletionInterval = std::chrono::seconds { 60 };
+        deadDecodedDataDeletionInterval = 60_s;
 
         // Memory cache capacity (in bytes)
         // (These values are small because WebCore does most caching itself.)
@@ -1516,7 +1517,7 @@ void WebView::closeWindowSoon()
     m_closeWindowTimer = WindowCloseTimer::create(this);
     if (!m_closeWindowTimer)
         return;
-    m_closeWindowTimer->startOneShot(0);
+    m_closeWindowTimer->startOneShot(0_s);
 
     AddRef();
 }
@@ -3856,9 +3857,10 @@ HRESULT WebView::hostWindow(_Deref_opt_out_ HWND* window)
 
 static Frame *incrementFrame(Frame *curr, bool forward, bool wrapFlag)
 {
+    CanWrap canWrap = wrapFlag ? CanWrap::Yes : CanWrap::No;
     return forward
-        ? curr->tree().traverseNextWithWrap(wrapFlag)
-        : curr->tree().traversePreviousWithWrap(wrapFlag);
+        ? curr->tree().traverseNext(canWrap)
+        : curr->tree().traversePrevious(canWrap);
 }
 
 HRESULT WebView::searchFor(_In_ BSTR str, BOOL forward, BOOL caseFlag, BOOL wrapFlag, _Out_ BOOL* found)

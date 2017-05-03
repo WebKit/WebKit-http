@@ -152,14 +152,6 @@ RegisterSet RegisterSet::calleeSaveRegisters()
         reg <= ARM64Registers::q15;
         reg = static_cast<ARM64Registers::FPRegisterID>(reg + 1))
         result.set(reg);
-#elif CPU(ARM)
-    result.set(ARMRegisters::r4);
-    result.set(ARMRegisters::r5);
-    result.set(ARMRegisters::r6);
-    result.set(ARMRegisters::r7);
-    result.set(ARMRegisters::r8);
-    result.set(ARMRegisters::r9);
-    result.set(ARMRegisters::r10);
 #elif CPU(MIPS)
 #else
     UNREACHABLE_FOR_PLATFORM();

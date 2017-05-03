@@ -226,6 +226,7 @@ namespace JSC { namespace DFG {
     macro(GetScope, NodeResultJS) \
     macro(SkipScope, NodeResultJS) \
     macro(ResolveScope, NodeResultJS | NodeMustGenerate) \
+    macro(ResolveScopeForHoistingFuncDeclInEval, NodeResultJS | NodeMustGenerate) \
     macro(GetGlobalObject, NodeResultJS) \
     macro(GetClosureVar, NodeResultJS) \
     macro(PutClosureVar, NodeMustGenerate) \
@@ -245,6 +246,18 @@ namespace JSC { namespace DFG {
     macro(CheckStringIdent, NodeMustGenerate) \
     macro(CheckTypeInfoFlags, NodeMustGenerate) /* Takes an OpInfo with the flags you want to test are set */\
     macro(ParseInt, NodeMustGenerate | NodeResultJS) \
+    \
+    /* Atomics object functions. */\
+    macro(AtomicsAdd, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsAnd, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsCompareExchange, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsExchange, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsIsLockFree, NodeResultBoolean) \
+    macro(AtomicsLoad, NodeResultJS | NodeMustGenerate) \
+    macro(AtomicsOr, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsStore, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsSub, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(AtomicsXor, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     \
     /* Optimizations for array mutation. */\
     macro(ArrayPush, NodeResultJS | NodeMustGenerate) \
@@ -335,6 +348,7 @@ namespace JSC { namespace DFG {
     macro(ToNumber, NodeResultJS | NodeMustGenerate) \
     macro(CallObjectConstructor, NodeResultJS) \
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
+    macro(NumberToStringWithRadix, NodeResultJS | NodeMustGenerate) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(In, NodeResultBoolean | NodeMustGenerate) \
@@ -435,6 +449,48 @@ inline NodeFlags defaultFlags(NodeType op)
 #define DFG_OP_ENUM(opcode, flags) case opcode: return flags;
     FOR_EACH_DFG_OP(DFG_OP_ENUM)
 #undef DFG_OP_ENUM
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+inline bool isAtomicsIntrinsic(NodeType op)
+{
+    switch (op) {
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsCompareExchange:
+    case AtomicsExchange:
+    case AtomicsLoad:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor:
+    case AtomicsIsLockFree:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static const unsigned maxNumExtraAtomicsArgs = 2;
+
+inline unsigned numExtraAtomicsArgs(NodeType op)
+{
+    switch (op) {
+    case AtomicsLoad:
+        return 0;
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsExchange:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor:
+        return 1;
+    case AtomicsCompareExchange:
+        return 2;
     default:
         RELEASE_ASSERT_NOT_REACHED();
         return 0;

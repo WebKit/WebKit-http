@@ -30,6 +30,7 @@
 #include "GraphicsLayerUpdater.h"
 #include "RenderLayer.h"
 #include <wtf/HashMap.h>
+#include <wtf/OptionSet.h>
 
 namespace WebCore {
 
@@ -54,36 +55,34 @@ enum CompositingUpdateType {
     CompositingUpdateOnCompositedScroll
 };
 
-enum {
-    CompositingReasonNone                                   = 0,
-    CompositingReason3DTransform                            = 1 << 0,
-    CompositingReasonVideo                                  = 1 << 1,
-    CompositingReasonCanvas                                 = 1 << 2,
-    CompositingReasonPlugin                                 = 1 << 3,
-    CompositingReasonIFrame                                 = 1 << 4,
-    CompositingReasonBackfaceVisibilityHidden               = 1 << 5,
-    CompositingReasonClipsCompositingDescendants            = 1 << 6,
-    CompositingReasonAnimation                              = 1 << 7,
-    CompositingReasonFilters                                = 1 << 8,
-    CompositingReasonPositionFixed                          = 1 << 9,
-    CompositingReasonPositionSticky                         = 1 << 10,
-    CompositingReasonOverflowScrollingTouch                 = 1 << 11,
-    CompositingReasonStacking                               = 1 << 12,
-    CompositingReasonOverlap                                = 1 << 13,
-    CompositingReasonNegativeZIndexChildren                 = 1 << 14,
-    CompositingReasonTransformWithCompositedDescendants     = 1 << 15,
-    CompositingReasonOpacityWithCompositedDescendants       = 1 << 16,
-    CompositingReasonMaskWithCompositedDescendants          = 1 << 17,
-    CompositingReasonReflectionWithCompositedDescendants    = 1 << 18,
-    CompositingReasonFilterWithCompositedDescendants        = 1 << 19,
-    CompositingReasonBlendingWithCompositedDescendants      = 1 << 20,
-    CompositingReasonPerspective                            = 1 << 21,
-    CompositingReasonPreserve3D                             = 1 << 22,
-    CompositingReasonWillChange                             = 1 << 23,
-    CompositingReasonRoot                                   = 1 << 24,
-    CompositingReasonIsolatesCompositedBlendingDescendants  = 1 << 25,
+enum class CompositingReason {
+    Transform3D                            = 1 << 0,
+    Video                                  = 1 << 1,
+    Canvas                                 = 1 << 2,
+    Plugin                                 = 1 << 3,
+    IFrame                                 = 1 << 4,
+    BackfaceVisibilityHidden               = 1 << 5,
+    ClipsCompositingDescendants            = 1 << 6,
+    Animation                              = 1 << 7,
+    Filters                                = 1 << 8,
+    PositionFixed                          = 1 << 9,
+    PositionSticky                         = 1 << 10,
+    OverflowScrollingTouch                 = 1 << 11,
+    Stacking                               = 1 << 12,
+    Overlap                                = 1 << 13,
+    NegativeZIndexChildren                 = 1 << 14,
+    TransformWithCompositedDescendants     = 1 << 15,
+    OpacityWithCompositedDescendants       = 1 << 16,
+    MaskWithCompositedDescendants          = 1 << 17,
+    ReflectionWithCompositedDescendants    = 1 << 18,
+    FilterWithCompositedDescendants        = 1 << 19,
+    BlendingWithCompositedDescendants      = 1 << 20,
+    Perspective                            = 1 << 21,
+    Preserve3D                             = 1 << 22,
+    WillChange                             = 1 << 23,
+    Root                                   = 1 << 24,
+    IsolatesCompositedBlendingDescendants  = 1 << 25,
 };
-typedef unsigned CompositingReasons;
 
 // RenderLayerCompositor manages the hierarchy of
 // composited RenderLayers. It determines which RenderLayers
@@ -303,7 +302,7 @@ public:
 
     bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
 
-    CompositingReasons reasonsForCompositing(const RenderLayer&) const;
+    OptionSet<CompositingReason> reasonsForCompositing(const RenderLayer&) const;
 
     void setLayerFlushThrottlingEnabled(bool);
     void disableLayerFlushThrottlingTemporarilyForInteraction();
@@ -312,6 +311,8 @@ public:
 
     void setRootExtendedBackgroundColor(const Color&);
     const Color& rootExtendedBackgroundColor() const { return m_rootExtendedBackgroundColor; }
+
+    void updateRootContentLayerClipping();
 
 #if ENABLE(CSS_SCROLL_SNAP)
     void updateScrollSnapPropertiesWithFrameView(const FrameView&);
@@ -431,6 +432,7 @@ private:
     bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     bool requiresCompositingForOverflowScrolling(const RenderLayer&) const;
     bool requiresCompositingForIndirectReason(RenderLayerModelObject&, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
+    static bool styleChangeMayAffectIndirectCompositingReasons(const RenderLayerModelObject& renderer, const RenderStyle& oldStyle);
 
 #if PLATFORM(IOS)
     bool requiresCompositingForScrolling(const RenderLayer&) const;

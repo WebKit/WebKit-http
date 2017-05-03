@@ -35,6 +35,12 @@
     min-height: 50px !important;
 }
 
+* {
+    --inline-controls-bar-height: 50px;
+    --inline-compact-controls-bar-height: 25px;
+    --fullscreen-controls-bar-height: 75px;
+}
+
 /* We need to use relative positioning due to webkit.org/b/163603 */
 .media-controls-container {
     position: relative;
@@ -52,6 +58,7 @@
 .media-controls-container * {
     -webkit-text-zoom: reset;
     -webkit-text-size-adjust: auto;
+    -webkit-font-smoothing: subpixel-antialiased;
 }
 
 .media-controls-container > * {
@@ -63,6 +70,7 @@
     font-family: -apple-system;
     -webkit-user-select: none;
     white-space: nowrap;
+    text-align: initial;
     cursor: default;
 }
 

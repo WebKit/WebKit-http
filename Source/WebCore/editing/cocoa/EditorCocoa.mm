@@ -152,6 +152,14 @@ FragmentAndResources Editor::createFragment(NSAttributedString *string)
     return result;
 }
 
+static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *attributedString)
+{
+    if (!attributedString.length)
+        return nullptr;
+
+    return SharedBuffer::create([NSKeyedArchiver archivedDataWithRootObject:attributedString]);
+}
+
 void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 {
     NSAttributedString *attributedString = attributedStringFromRange(*selectedRange());
@@ -161,6 +169,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     content.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     content.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;
     content.dataInRTFFormat = dataInRTFFormat(attributedString);
+    content.dataInAttributedStringFormat = archivedDataForAttributedString(attributedString);
     // FIXME: Why don't we want this on iOS?
 #if PLATFORM(MAC)
     content.dataInHTMLFormat = selectionInHTMLFormat();
@@ -180,6 +189,7 @@ void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
     webContent.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     webContent.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;
     webContent.dataInRTFFormat = dataInRTFFormat(attributedString);
+    webContent.dataInAttributedStringFormat = archivedDataForAttributedString(attributedString);
     // FIXME: Why don't we want this on iOS?
 #if PLATFORM(MAC)
     webContent.dataInHTMLFormat = selectionInHTMLFormat();
@@ -195,7 +205,7 @@ RefPtr<SharedBuffer> Editor::selectionInWebArchiveFormat()
     RefPtr<LegacyWebArchive> archive = LegacyWebArchive::createFromSelection(&m_frame);
     if (!archive)
         return nullptr;
-    return SharedBuffer::wrapCFData(archive->rawDataRepresentation().get());
+    return SharedBuffer::create(archive->rawDataRepresentation().get());
 }
 
 // FIXME: Makes no sense that selectedTextForDataTransfer always includes alt text, but stringSelectionForPasteboard does not.
@@ -266,7 +276,7 @@ RefPtr<SharedBuffer> Editor::dataInRTFDFormat(NSAttributedString *string)
         return nullptr;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    return SharedBuffer::wrapNSData([string RTFDFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
+    return SharedBuffer::create([string RTFDFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;
@@ -279,7 +289,7 @@ RefPtr<SharedBuffer> Editor::dataInRTFFormat(NSAttributedString *string)
         return nullptr;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    return SharedBuffer::wrapNSData([string RTFFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
+    return SharedBuffer::create([string RTFFromRange:NSMakeRange(0, length) documentAttributes:@{ }]);
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;

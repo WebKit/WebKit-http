@@ -243,9 +243,12 @@ void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const G
     matrix.d = -matrix.d;
     if (platformData.syntheticOblique()) {
         static float obliqueSkew = tanf(syntheticObliqueAngle() * piFloat / 180);
-        if (platformData.orientation() == Vertical)
-            matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, obliqueSkew, 0, 1, 0, 0));
-        else
+        if (platformData.orientation() == Vertical) {
+            if (font.isTextOrientationFallback())
+                matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, obliqueSkew, 0, 1, 0, 0));
+            else
+                matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, -obliqueSkew, 0, 1, 0, 0));
+        } else
             matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, 0, -obliqueSkew, 1, 0, 0));
     }
     ScopedTextMatrix restorer(matrix, cgContext);
@@ -519,6 +522,8 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, unsign
         // Exploit the fact that the sum of the paint advances is equal to
         // the sum of the layout advances.
         initialAdvance = controller.totalWidth();
+        for (unsigned i = 0; i < dummyGlyphBuffer.size(); ++i)
+            initialAdvance -= dummyGlyphBuffer.advanceAt(i).width();
         for (unsigned i = 0; i < glyphBuffer.size(); ++i)
             initialAdvance -= glyphBuffer.advanceAt(i).width();
         glyphBuffer.reverse(0, glyphBuffer.size());

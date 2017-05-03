@@ -29,7 +29,7 @@
 #include "DocumentRuleSets.h"
 #include "ElementIterator.h"
 #include "ShadowRoot.h"
-#include "StyleInvalidationAnalysis.h"
+#include "StyleInvalidator.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
 
@@ -39,7 +39,7 @@ namespace Style {
 static bool mayBeAffectedByAttributeChange(DocumentRuleSets& ruleSets, bool isHTML, const QualifiedName& attributeName)
 {
     auto& nameSet = isHTML ? ruleSets.features().attributeCanonicalLocalNamesInRules : ruleSets.features().attributeLocalNamesInRules;
-    return nameSet.contains(attributeName.localName().impl());
+    return nameSet.contains(attributeName.localName());
 }
 
 static bool mayBeAffectedByHostRules(const Element& element, const QualifiedName& attributeName)
@@ -96,7 +96,7 @@ void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attribute
     if (!childrenOfType<Element>(m_element).first())
         return;
 
-    auto* attributeRules = ruleSets.ancestorAttributeRulesForHTML(attributeName.localName().impl());
+    auto* attributeRules = ruleSets.ancestorAttributeRulesForHTML(attributeName.localName());
     if (!attributeRules)
         return;
 
@@ -116,8 +116,8 @@ void AttributeChangeInvalidation::invalidateDescendants()
 {
     if (!m_descendantInvalidationRuleSet)
         return;
-    StyleInvalidationAnalysis invalidationAnalysis(*m_descendantInvalidationRuleSet);
-    invalidationAnalysis.invalidateStyle(m_element);
+    Invalidator invalidator(*m_descendantInvalidationRuleSet);
+    invalidator.invalidateStyle(m_element);
 }
 
 }

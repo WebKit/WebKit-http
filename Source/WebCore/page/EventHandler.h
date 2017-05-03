@@ -147,9 +147,7 @@ public:
     WEBCORE_EXPORT void dispatchFakeMouseMoveEventSoon();
     void dispatchFakeMouseMoveEventSoonInQuad(const FloatQuad&);
 
-    WEBCORE_EXPORT HitTestResult hitTestResultAtPoint(const LayoutPoint&,
-        HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent,
-        const LayoutSize& padding = LayoutSize());
+    WEBCORE_EXPORT HitTestResult hitTestResultAtPoint(const LayoutPoint&, HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent, const LayoutSize& padding = LayoutSize()) const;
 
     bool mousePressed() const { return m_mousePressed; }
     Node* mousePressNode() const { return m_mousePressNode.get(); }
@@ -346,6 +344,8 @@ private:
 #endif
 
     WEBCORE_EXPORT bool handleMouseReleaseEvent(const MouseEventWithHitTestResults&);
+
+    bool internalKeyEvent(const PlatformKeyboardEvent&);
 
     std::optional<Cursor> selectCursor(const HitTestResult&, bool shiftKey);
     void updateCursor(FrameView&, const HitTestResult&, bool shiftKey);

@@ -33,9 +33,11 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
+#include "Frame.h"
 #include "Logging.h"
 #include "MediaStreamRegistry.h"
 #include "MediaStreamTrackEvent.h"
+#include "NetworkingContext.h"
 #include "Page.h"
 #include "RealtimeMediaSource.h"
 #include "URL.h"
@@ -57,40 +59,49 @@ Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, const Medi
     return adoptRef(*new MediaStream(context, tracks));
 }
 
-Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, RefPtr<MediaStreamPrivate>&& streamPrivate)
+Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, Ref<MediaStreamPrivate>&& streamPrivate)
 {
     return adoptRef(*new MediaStream(context, WTFMove(streamPrivate)));
 }
 
+static inline MediaStreamTrackPrivateVector createTrackPrivateVector(const MediaStreamTrackVector& tracks)
+{
+    MediaStreamTrackPrivateVector trackPrivates;
+    trackPrivates.reserveCapacity(tracks.size());
+    for (auto& track : tracks)
+        trackPrivates.append(&track->privateTrack());
+    return trackPrivates;
+}
+
 MediaStream::MediaStream(ScriptExecutionContext& context, const MediaStreamTrackVector& tracks)
     : ContextDestructionObserver(&context)
+    , m_private(MediaStreamPrivate::create(createTrackPrivateVector(tracks)))
     , m_activityEventTimer(*this, &MediaStream::activityEventTimerFired)
+    , m_mediaSession(PlatformMediaSession::create(*this))
 {
     // This constructor preserves MediaStreamTrack instances and must be used by calls originating
     // from the JavaScript MediaStream constructor.
-    MediaStreamTrackPrivateVector trackPrivates;
-    trackPrivates.reserveCapacity(tracks.size());
 
     for (auto& track : tracks) {
         track->addObserver(*this);
         m_trackSet.add(track->id(), track);
-        trackPrivates.append(&track->privateTrack());
     }
 
-    m_private = MediaStreamPrivate::create(trackPrivates);
     setIsActive(m_private->active());
     m_private->addObserver(*this);
     MediaStreamRegistry::shared().registerStream(*this);
     document()->addAudioProducer(this);
 }
 
-MediaStream::MediaStream(ScriptExecutionContext& context, RefPtr<MediaStreamPrivate>&& streamPrivate)
+MediaStream::MediaStream(ScriptExecutionContext& context, Ref<MediaStreamPrivate>&& streamPrivate)
     : ContextDestructionObserver(&context)
-    , m_private(streamPrivate)
+    , m_private(WTFMove(streamPrivate))
     , m_activityEventTimer(*this, &MediaStream::activityEventTimerFired)
+    , m_mediaSession(PlatformMediaSession::create(*this))
 {
-    ASSERT(m_private);
     setIsActive(m_private->active());
+    if (document()->page() && document()->page()->isMediaCaptureMuted())
+        m_private->setCaptureTracksMuted(true);
     m_private->addObserver(*this);
     MediaStreamRegistry::shared().registerStream(*this);
 
@@ -104,7 +115,7 @@ MediaStream::MediaStream(ScriptExecutionContext& context, RefPtr<MediaStreamPriv
 
 MediaStream::~MediaStream()
 {
-    // Set isActive to false immediately so an callbacks triggered by shutting down, e.g.
+    // Set isActive to false immediately so any callbacks triggered by shutting down, e.g.
     // mediaState(), are short circuited.
     m_isActive = false;
     MediaStreamRegistry::shared().unregisterStream(*this);
@@ -121,10 +132,10 @@ MediaStream::~MediaStream()
 RefPtr<MediaStream> MediaStream::clone()
 {
     MediaStreamTrackVector clonedTracks;
-    clonedTracks.reserveCapacity(m_trackSet.size());
+    clonedTracks.reserveInitialCapacity(m_trackSet.size());
 
     for (auto& track : m_trackSet.values())
-        clonedTracks.append(track->clone());
+        clonedTracks.uncheckedAppend(track->clone());
 
     return MediaStream::create(*scriptExecutionContext(), clonedTracks);
 }
@@ -283,11 +294,23 @@ void MediaStream::startProducingData()
         return;
     }
 
+    if (m_isProducingData)
+        return;
+    m_isProducingData = true;
+
+    m_mediaSession->canProduceAudioChanged();
+
     m_private->startProducingData();
 }
 
 void MediaStream::stopProducingData()
 {
+    if (!m_isProducingData)
+        return;
+    m_isProducingData = false;
+
+    m_mediaSession->canProduceAudioChanged();
+
     m_private->stopProducingData();
 }
 
@@ -300,15 +323,7 @@ void MediaStream::pageMutedStateDidChange()
     if (!document)
         return;
 
-    bool pageMuted = document->page()->isMediaCaptureMuted();
-    if (m_externallyMuted == pageMuted)
-        return;
-
-    m_externallyMuted = pageMuted;
-    if (pageMuted)
-        stopProducingData();
-    else
-        startProducingData();
+    m_private->setCaptureTracksMuted(document->page()->isMediaCaptureMuted());
 }
 
 MediaProducer::MediaStateFlags MediaStream::mediaState() const
@@ -320,14 +335,22 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
 
     if (m_private->hasAudio()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasCaptureAudioSource() && m_private->isProducingData())
-            state |= HasActiveAudioCaptureDevice;
+        if (m_private->hasCaptureAudioSource()) {
+            if (m_private->muted())
+                state |= HasMutedAudioCaptureDevice;
+            else if (m_isProducingData)
+                state |= HasActiveAudioCaptureDevice;
+        }
     }
 
     if (m_private->hasVideo()) {
         state |= HasAudioOrVideo;
-        if (m_private->hasCaptureVideoSource() && m_private->isProducingData())
-            state |= HasActiveVideoCaptureDevice;
+        if (m_private->hasCaptureVideoSource()) {
+            if (m_private->muted())
+                state |= HasMutedVideoCaptureDevice;
+            else if (m_isProducingData)
+                state |= HasActiveVideoCaptureDevice;
+        }
     }
 
     return state;
@@ -335,6 +358,8 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
 
 void MediaStream::statusDidChange()
 {
+    m_mediaSession->canProduceAudioChanged();
+
     if (Document* document = this->document()) {
         if (m_isActive)
             document->setHasActiveMediaStreamTrack();
@@ -370,7 +395,7 @@ void MediaStream::scheduleActiveStateChange()
     m_scheduledActivityEvents.append(Event::create(eventName, false, false));
 
     if (!m_activityEventTimer.isActive())
-        m_activityEventTimer.startOneShot(0);
+        m_activityEventTimer.startOneShot(0_s);
 }
 
 void MediaStream::activityEventTimerFired()
@@ -414,6 +439,63 @@ void MediaStream::removeObserver(MediaStream::Observer* observer)
 Document* MediaStream::document() const
 {
     return downcast<Document>(scriptExecutionContext());
+}
+
+PlatformMediaSession::MediaType MediaStream::mediaType() const
+{
+    // We only need to override the type when capturing audio, HTMLMediaElement and/or WebAudio
+    // will do the right thing when a stream is attached to a media element or an audio context.
+    if (m_private->hasAudio() && m_isProducingData && m_private->hasCaptureAudioSource())
+        return PlatformMediaSession::MediaStreamCapturingAudio;
+
+    return PlatformMediaSession::None;
+}
+
+PlatformMediaSession::MediaType MediaStream::presentationType() const
+{
+    return mediaType();
+}
+
+PlatformMediaSession::CharacteristicsFlags MediaStream::characteristics() const
+{
+    PlatformMediaSession::CharacteristicsFlags state = PlatformMediaSession::HasNothing;
+
+    if (!m_isProducingData)
+        return state;
+
+    if (m_private->hasAudio())
+        state |= PlatformMediaSession::HasAudio;
+
+    if (m_private->hasVideo())
+        state |= PlatformMediaSession::HasVideo;
+
+    return state;
+}
+
+void MediaStream::mayResumePlayback(bool)
+{
+    // FIXME: should a media stream pay attention to this directly, or only when attached to a media element?
+}
+
+void MediaStream::suspendPlayback()
+{
+    // FIXME: should a media stream pay attention to this directly, or only when attached to a media element?
+}
+
+String MediaStream::sourceApplicationIdentifier() const
+{
+    Document* document = this->document();
+    if (document && document->frame()) {
+        if (NetworkingContext* networkingContext = document->frame()->loader().networkingContext())
+            return networkingContext->sourceApplicationIdentifier();
+    }
+
+    return emptyString();
+}
+
+bool MediaStream::canProduceAudio() const
+{
+    return !muted() && active() && m_private->hasAudio() && m_isProducingData;
 }
 
 } // namespace WebCore

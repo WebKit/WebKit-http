@@ -37,47 +37,64 @@
 
 namespace WebCore {
 
-Ref<RTCRtpSender> RTCRtpSender::create(Ref<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
+Ref<RTCRtpSender> RTCRtpSender::create(Ref<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, Backend& backend)
 {
-    auto sender = adoptRef(*new RTCRtpSender(track->kind(), WTFMove(mediaStreamIds), client));
+    auto sender = adoptRef(*new RTCRtpSender(String(track->kind()), WTFMove(mediaStreamIds), backend));
     sender->setTrack(WTFMove(track));
     return sender;
 }
 
-Ref<RTCRtpSender> RTCRtpSender::create(const String& trackKind, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
+Ref<RTCRtpSender> RTCRtpSender::create(String&& trackKind, Vector<String>&& mediaStreamIds, Backend& backend)
 {
-    return adoptRef(*new RTCRtpSender(trackKind, WTFMove(mediaStreamIds), client));
+    return adoptRef(*new RTCRtpSender(WTFMove(trackKind), WTFMove(mediaStreamIds), backend));
 }
 
-RTCRtpSender::RTCRtpSender(const String& trackKind, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
+RTCRtpSender::RTCRtpSender(String&& trackKind, Vector<String>&& mediaStreamIds, Backend& backend)
     : RTCRtpSenderReceiverBase()
-    , m_trackKind(trackKind)
+    , m_trackKind(WTFMove(trackKind))
     , m_mediaStreamIds(WTFMove(mediaStreamIds))
-    , m_client(&client)
+    , m_backend(&backend)
 {
+}
+
+void RTCRtpSender::setTrackToNull()
+{
+    ASSERT(m_track);
+    m_trackId = { };
+    m_track = nullptr;
 }
 
 void RTCRtpSender::setTrack(Ref<MediaStreamTrack>&& track)
 {
     ASSERT(!isStopped());
-    ASSERT(!m_track);
-    m_trackId = track->id();
+    if (!m_track)
+        m_trackId = track->id();
     m_track = WTFMove(track);
 }
 
-ExceptionOr<void> RTCRtpSender::replaceTrack(Ref<MediaStreamTrack>&& withTrack, DOMPromise<void>&& promise)
+void RTCRtpSender::replaceTrack(RefPtr<MediaStreamTrack>&& withTrack, DOMPromise<void>&& promise)
 {
     if (isStopped()) {
         promise.reject(INVALID_STATE_ERR);
-        return { };
+        return;
     }
 
-    if (m_trackKind != withTrack->kind())
-        return Exception { TypeError };
+    if (withTrack && m_trackKind != withTrack->kind()) {
+        promise.reject(TypeError);
+        return;
+    }
 
-    m_client->replaceTrack(*this, WTFMove(withTrack), WTFMove(promise));
+    if (!withTrack && m_track)
+        m_track->stopTrack();
 
-    return { };
+    m_backend->replaceTrack(*this, WTFMove(withTrack), WTFMove(promise));
+}
+
+RTCRtpParameters RTCRtpSender::getParameters()
+{
+    if (isStopped())
+        return { };
+    return m_backend->getParameters(*this);
 }
 
 } // namespace WebCore

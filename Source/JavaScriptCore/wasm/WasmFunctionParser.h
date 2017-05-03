@@ -46,7 +46,7 @@ public:
     typedef typename Context::ControlType ControlType;
     typedef typename Context::ExpressionList ExpressionList;
 
-    FunctionParser(VM*, Context&, const uint8_t* functionStart, size_t functionLength, const Signature*, const ModuleInformation&, const Vector<SignatureIndex>&);
+    FunctionParser(Context&, const uint8_t* functionStart, size_t functionLength, const Signature&, const ModuleInformation&);
 
     Result WARN_UNUSED_RETURN parse();
 
@@ -55,12 +55,15 @@ public:
         ControlType controlData;
     };
 
+    OpType currentOpcode() const { return m_currentOpcode; }
+    size_t currentOpcodeStartingOffset() const { return m_currentOpcodeStartingOffset; }
+
 private:
     static const bool verbose = false;
 
     PartialResult WARN_UNUSED_RETURN parseBody();
-    PartialResult WARN_UNUSED_RETURN parseExpression(OpType);
-    PartialResult WARN_UNUSED_RETURN parseUnreachableExpression(OpType);
+    PartialResult WARN_UNUSED_RETURN parseExpression();
+    PartialResult WARN_UNUSED_RETURN parseUnreachableExpression();
     PartialResult WARN_UNUSED_RETURN unifyControl(Vector<ExpressionType>&, unsigned level);
 
 #define WASM_TRY_POP_EXPRESSION_STACK_INTO(result, what) do {                               \
@@ -81,22 +84,25 @@ private:
     Context& m_context;
     ExpressionList m_expressionStack;
     Vector<ControlEntry> m_controlStack;
-    const Signature* m_signature;
+    const Signature& m_signature;
     const ModuleInformation& m_info;
-    const Vector<SignatureIndex>& m_moduleSignatureIndicesToUniquedSignatureIndices;
+
+    OpType m_currentOpcode;
+    size_t m_currentOpcodeStartingOffset { 0 };
+
     unsigned m_unreachableBlocks { 0 };
 };
 
 template<typename Context>
-FunctionParser<Context>::FunctionParser(VM* vm, Context& context, const uint8_t* functionStart, size_t functionLength, const Signature* signature, const ModuleInformation& info, const Vector<SignatureIndex>& moduleSignatureIndicesToUniquedSignatureIndices)
-    : Parser(vm, functionStart, functionLength)
+FunctionParser<Context>::FunctionParser(Context& context, const uint8_t* functionStart, size_t functionLength, const Signature& signature, const ModuleInformation& info)
+    : Parser(functionStart, functionLength)
     , m_context(context)
     , m_signature(signature)
     , m_info(info)
-    , m_moduleSignatureIndicesToUniquedSignatureIndices(moduleSignatureIndicesToUniquedSignatureIndices)
 {
     if (verbose)
         dataLogLn("Parsing function starting at: ", (uintptr_t)functionStart, " of length: ", functionLength);
+    m_context.setParser(this);
 }
 
 template<typename Context>
@@ -104,7 +110,7 @@ auto FunctionParser<Context>::parse() -> Result
 {
     uint32_t localCount;
 
-    WASM_PARSER_FAIL_IF(!m_context.addArguments(m_signature), "can't add ", m_signature->argumentCount(), " arguments to Function");
+    WASM_PARSER_FAIL_IF(!m_context.addArguments(m_signature), "can't add ", m_signature.argumentCount(), " arguments to Function");
     WASM_PARSER_FAIL_IF(!parseVarUInt32(localCount), "can't get local count");
     WASM_PARSER_FAIL_IF(localCount == std::numeric_limits<uint32_t>::max(), "Function section's local count is too big ", localCount);
 
@@ -115,7 +121,7 @@ auto FunctionParser<Context>::parse() -> Result
         WASM_PARSER_FAIL_IF(!parseVarUInt32(numberOfLocals), "can't get Function's number of locals in group ", i);
         WASM_PARSER_FAIL_IF(numberOfLocals == std::numeric_limits<uint32_t>::max(), "Function section's ", i, "th local group count is too big ", numberOfLocals);
         WASM_PARSER_FAIL_IF(!parseValueType(typeOfLocal), "can't get Function local's type in group ", i);
-        WASM_PARSER_FAIL_IF(!m_context.addLocal(typeOfLocal, numberOfLocals), "can't add ", numberOfLocals, " Function locals from group ", i);
+        WASM_TRY_ADD_TO_CONTEXT(addLocal(typeOfLocal, numberOfLocals));
     }
 
     WASM_FAIL_IF_HELPER_FAILS(parseBody());
@@ -126,11 +132,14 @@ auto FunctionParser<Context>::parse() -> Result
 template<typename Context>
 auto FunctionParser<Context>::parseBody() -> PartialResult
 {
-    m_controlStack.append({ ExpressionList(), m_context.addTopLevel(m_signature->returnType()) });
+    m_controlStack.append({ ExpressionList(), m_context.addTopLevel(m_signature.returnType()) });
     uint8_t op;
     while (m_controlStack.size()) {
+        m_currentOpcodeStartingOffset = m_offset;
         WASM_PARSER_FAIL_IF(!parseUInt8(op), "can't decode opcode");
         WASM_PARSER_FAIL_IF(!isValidOpType(op), "invalid opcode ", op);
+
+        m_currentOpcode = static_cast<OpType>(op);
 
         if (verbose) {
             dataLogLn("processing op (", m_unreachableBlocks, "): ",  RawPointer(reinterpret_cast<void*>(op)), ", ", makeString(static_cast<OpType>(op)), " at offset: ", RawPointer(reinterpret_cast<void*>(m_offset)));
@@ -138,9 +147,9 @@ auto FunctionParser<Context>::parseBody() -> PartialResult
         }
 
         if (m_unreachableBlocks)
-            WASM_FAIL_IF_HELPER_FAILS(parseUnreachableExpression(static_cast<OpType>(op)));
+            WASM_FAIL_IF_HELPER_FAILS(parseUnreachableExpression());
         else
-            WASM_FAIL_IF_HELPER_FAILS(parseExpression(static_cast<OpType>(op)));
+            WASM_FAIL_IF_HELPER_FAILS(parseExpression());
     }
 
     ASSERT(op == OpType::End);
@@ -178,9 +187,9 @@ auto FunctionParser<Context>::unaryCase() -> PartialResult
 }
 
 template<typename Context>
-auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
+auto FunctionParser<Context>::parseExpression() -> PartialResult
 {
-    switch (op) {
+    switch (m_currentOpcode) {
 #define CREATE_CASE(name, id, b3op, inc) case OpType::name: return binaryCase<OpType::name>();
     FOR_EACH_WASM_BINARY_OP(CREATE_CASE)
 #undef CREATE_CASE
@@ -215,7 +224,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         // FIXME validate alignment. https://bugs.webkit.org/show_bug.cgi?id=168836
         WASM_PARSER_FAIL_IF(!parseVarUInt32(offset), "can't get load offset");
         WASM_TRY_POP_EXPRESSION_STACK_INTO(pointer, "load pointer");
-        WASM_TRY_ADD_TO_CONTEXT(load(static_cast<LoadOpType>(op), pointer, result, offset));
+        WASM_TRY_ADD_TO_CONTEXT(load(static_cast<LoadOpType>(m_currentOpcode), pointer, result, offset));
         m_expressionStack.append(result);
         return { };
     }
@@ -230,7 +239,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         WASM_PARSER_FAIL_IF(!parseVarUInt32(offset), "can't get store offset");
         WASM_TRY_POP_EXPRESSION_STACK_INTO(value, "store value");
         WASM_TRY_POP_EXPRESSION_STACK_INTO(pointer, "store pointer");
-        WASM_TRY_ADD_TO_CONTEXT(store(static_cast<StoreOpType>(op), pointer, value, offset));
+        WASM_TRY_ADD_TO_CONTEXT(store(static_cast<StoreOpType>(m_currentOpcode), pointer, value, offset));
         return { };
     }
 #undef CREATE_CASE
@@ -267,7 +276,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         uint32_t index;
         ExpressionType result;
         WASM_PARSER_FAIL_IF(!parseVarUInt32(index), "can't get index for get_local");
-        WASM_PARSER_FAIL_IF(!m_context.getLocal(index, result), "can't get_local at index", index);
+        WASM_TRY_ADD_TO_CONTEXT(getLocal(index, result));
         m_expressionStack.append(result);
         return { };
     }
@@ -304,7 +313,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         WASM_PARSER_FAIL_IF(!parseVarUInt32(index), "can't get set_global's index");
         WASM_TRY_POP_EXPRESSION_STACK_INTO(value, "set_global value");
         WASM_TRY_ADD_TO_CONTEXT(setGlobal(index, value));
-        return m_context.setGlobal(index, value);
+        return { };
     }
 
     case Call: {
@@ -313,12 +322,12 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         WASM_PARSER_FAIL_IF(functionIndex >= m_info.functionIndexSpaceSize(), "call function index ", functionIndex, " exceeds function index space ", m_info.functionIndexSpaceSize());
 
         SignatureIndex calleeSignatureIndex = m_info.signatureIndexFromFunctionIndexSpace(functionIndex);
-        const Signature* calleeSignature = SignatureInformation::get(m_vm, calleeSignatureIndex);
-        WASM_PARSER_FAIL_IF(calleeSignature->argumentCount() > m_expressionStack.size(), "call function index ", functionIndex, " has ", calleeSignature->argumentCount(), " arguments, but the expression stack currently holds ", m_expressionStack.size(), " values");
+        const Signature& calleeSignature = SignatureInformation::get(calleeSignatureIndex);
+        WASM_PARSER_FAIL_IF(calleeSignature.argumentCount() > m_expressionStack.size(), "call function index ", functionIndex, " has ", calleeSignature.argumentCount(), " arguments, but the expression stack currently holds ", m_expressionStack.size(), " values");
 
-        size_t firstArgumentIndex = m_expressionStack.size() - calleeSignature->argumentCount();
+        size_t firstArgumentIndex = m_expressionStack.size() - calleeSignature.argumentCount();
         Vector<ExpressionType> args;
-        WASM_PARSER_FAIL_IF(!args.tryReserveCapacity(calleeSignature->argumentCount()), "can't allocate enough memory for call's ", calleeSignature->argumentCount(), " arguments");
+        WASM_PARSER_FAIL_IF(!args.tryReserveCapacity(calleeSignature.argumentCount()), "can't allocate enough memory for call's ", calleeSignature.argumentCount(), " arguments");
         for (size_t i = firstArgumentIndex; i < m_expressionStack.size(); ++i)
             args.uncheckedAppend(m_expressionStack[i]);
         m_expressionStack.shrink(firstArgumentIndex);
@@ -339,11 +348,10 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         WASM_PARSER_FAIL_IF(!parseVarUInt32(signatureIndex), "can't get call_indirect's signature index");
         WASM_PARSER_FAIL_IF(!parseVarUInt1(reserved), "can't get call_indirect's reserved byte");
         WASM_PARSER_FAIL_IF(reserved, "call_indirect's 'reserved' varuint1 must be 0x0");
-        WASM_PARSER_FAIL_IF(m_moduleSignatureIndicesToUniquedSignatureIndices.size() <= signatureIndex, "call_indirect's signature index ", signatureIndex, " exceeds known signatures ", m_moduleSignatureIndicesToUniquedSignatureIndices.size());
+        WASM_PARSER_FAIL_IF(m_info.usedSignatures.size() <= signatureIndex, "call_indirect's signature index ", signatureIndex, " exceeds known signatures ", m_info.usedSignatures.size());
 
-        SignatureIndex calleeSignatureIndex = m_moduleSignatureIndicesToUniquedSignatureIndices[signatureIndex];
-        const Signature* calleeSignature = SignatureInformation::get(m_vm, calleeSignatureIndex);
-        size_t argumentCount = calleeSignature->argumentCount() + 1; // Add the callee's index.
+        const Signature& calleeSignature = m_info.usedSignatures[signatureIndex].get();
+        size_t argumentCount = calleeSignature.argumentCount() + 1; // Add the callee's index.
         WASM_PARSER_FAIL_IF(argumentCount > m_expressionStack.size(), "call_indirect expects ", argumentCount, " arguments, but the expression stack currently holds ", m_expressionStack.size(), " values");
 
         Vector<ExpressionType> args;
@@ -354,7 +362,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         m_expressionStack.shrink(firstArgumentIndex);
 
         ExpressionType result = Context::emptyExpression;
-        WASM_TRY_ADD_TO_CONTEXT(addCallIndirect(calleeSignature, calleeSignatureIndex, args, result));
+        WASM_TRY_ADD_TO_CONTEXT(addCallIndirect(calleeSignature, args, result));
 
         if (result != Context::emptyExpression)
             m_expressionStack.append(result);
@@ -403,7 +411,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
         ExpressionType condition = Context::emptyExpression;
         WASM_PARSER_FAIL_IF(!parseVarUInt32(target), "can't get br / br_if's target");
         WASM_PARSER_FAIL_IF(target >= m_controlStack.size(), "br / br_if's target ", target, " exceeds control stack size ", m_controlStack.size());
-        if (op == BrIf)
+        if (m_currentOpcode == BrIf)
             WASM_TRY_POP_EXPRESSION_STACK_INTO(condition, "br / br_if condition");
         else
             m_unreachableBlocks = 1;
@@ -443,7 +451,7 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
 
     case Return: {
         ExpressionList returnValues;
-        if (m_signature->returnType() != Void) {
+        if (m_signature.returnType() != Void) {
             ExpressionType returnValue;
             WASM_TRY_POP_EXPRESSION_STACK_INTO(returnValue, "return");
             returnValues.append(returnValue);
@@ -518,11 +526,11 @@ auto FunctionParser<Context>::parseExpression(OpType op) -> PartialResult
 
 // FIXME: We should try to use the same decoder function for both unreachable and reachable code. https://bugs.webkit.org/show_bug.cgi?id=165965
 template<typename Context>
-auto FunctionParser<Context>::parseUnreachableExpression(OpType op) -> PartialResult
+auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
 {
     ASSERT(m_unreachableBlocks);
 #define CREATE_CASE(name, id, b3op, inc) case OpType::name:
-    switch (op) {
+    switch (m_currentOpcode) {
     case Else: {
         if (m_unreachableBlocks > 1)
             return { };
@@ -549,7 +557,7 @@ auto FunctionParser<Context>::parseUnreachableExpression(OpType op) -> PartialRe
     case Block: {
         m_unreachableBlocks++;
         Type unused;
-        WASM_PARSER_FAIL_IF(!parseResultType(unused), "can't get inline type for ", op, " in unreachable context");
+        WASM_PARSER_FAIL_IF(!parseResultType(unused), "can't get inline type for ", m_currentOpcode, " in unreachable context");
         return { };
     }
 
@@ -590,8 +598,8 @@ auto FunctionParser<Context>::parseUnreachableExpression(OpType op) -> PartialRe
     FOR_EACH_WASM_MEMORY_LOAD_OP(CREATE_CASE)
     FOR_EACH_WASM_MEMORY_STORE_OP(CREATE_CASE) {
         uint32_t unused;
-        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get first immediate for ", op, " in unreachable context");
-        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get second immediate for ", op, " in unreachable context");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get first immediate for ", m_currentOpcode, " in unreachable context");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get second immediate for ", m_currentOpcode, " in unreachable context");
         return { };
     }
 
@@ -607,7 +615,7 @@ auto FunctionParser<Context>::parseUnreachableExpression(OpType op) -> PartialRe
     case BrIf:
     case Call: {
         uint32_t unused;
-        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get immediate for ", op, " in unreachable context");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
         return { };
     }
 

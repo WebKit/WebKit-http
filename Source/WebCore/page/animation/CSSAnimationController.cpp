@@ -49,9 +49,9 @@
 namespace WebCore {
 
 // Allow a little more than 60fps to make sure we can at least hit that frame rate.
-static const Seconds animationTimerDelay { 0.015 };
+static const Seconds animationTimerDelay { 15_ms };
 // Allow a little more than 30fps to make sure we can at least hit that frame rate.
-static const Seconds animationTimerThrottledDelay { 0.030 };
+static const Seconds animationTimerThrottledDelay { 30_ms };
 
 class AnimationPrivateUpdateBlock {
 public:
@@ -123,19 +123,19 @@ bool CSSAnimationControllerPrivate::clear(RenderElement& renderer)
     return animation->isSuspended();
 }
 
-double CSSAnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
+std::optional<Seconds> CSSAnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
 {
     AnimationPrivateUpdateBlock updateBlock(*this);
-    double timeToNextService = -1;
+    std::optional<Seconds> timeToNextService;
     bool calledSetChanged = false;
 
     for (auto& compositeAnimation : m_compositeAnimations) {
         CompositeAnimation& animation = *compositeAnimation.value;
         if (!animation.isSuspended() && animation.hasAnimations()) {
-            double t = animation.timeToNextService();
-            if (t != -1 && (t < timeToNextService || timeToNextService == -1))
-                timeToNextService = t;
-            if (!timeToNextService) {
+            std::optional<Seconds> t = animation.timeToNextService();
+            if (t && (!timeToNextService || t.value() < timeToNextService.value()))
+                timeToNextService = t.value();
+            if (timeToNextService && timeToNextService.value() == 0_s) {
                 if (callSetChanged != CallSetChanged)
                     break;
                 Element* element = compositeAnimation.key->element();
@@ -155,44 +155,47 @@ double CSSAnimationControllerPrivate::updateAnimations(SetChanged callSetChanged
 
 void CSSAnimationControllerPrivate::updateAnimationTimerForRenderer(RenderElement& renderer)
 {
-    double timeToNextService = 0;
+    std::optional<Seconds> timeToNextService;
 
     const CompositeAnimation* compositeAnimation = m_compositeAnimations.get(&renderer);
     if (!compositeAnimation->isSuspended() && compositeAnimation->hasAnimations())
         timeToNextService = compositeAnimation->timeToNextService();
 
-    if (m_animationTimer.isActive() && (m_animationTimer.repeatInterval() || m_animationTimer.nextFireInterval() <= timeToNextService))
+    if (!timeToNextService)
         return;
 
-    m_animationTimer.startOneShot(timeToNextService);
+    if (m_animationTimer.isActive() && (m_animationTimer.repeatInterval() || m_animationTimer.nextFireInterval() <= timeToNextService.value()))
+        return;
+
+    m_animationTimer.startOneShot(timeToNextService.value());
 }
 
 void CSSAnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
 {
-    double timeToNextService = updateAnimations(callSetChanged);
+    std::optional<Seconds> timeToNextService = updateAnimations(callSetChanged);
 
-    LOG(Animations, "updateAnimationTimer: timeToNextService is %.2f", timeToNextService);
-
-    // If we want service immediately, we start a repeating timer to reduce the overhead of starting
-    if (!timeToNextService) {
-        auto* page = m_frame.page();
-        bool shouldThrottle = page && page->isLowPowerModeEnabled();
-        Seconds delay = shouldThrottle ? animationTimerThrottledDelay : animationTimerDelay;
-
-        if (!m_animationTimer.isActive() || m_animationTimer.repeatInterval() != delay.value())
-            m_animationTimer.startRepeating(delay);
-        return;
-    }
+    LOG(Animations, "updateAnimationTimer: timeToNextService is %.2f", timeToNextService.value_or(Seconds { -1 }).value());
 
     // If we don't need service, we want to make sure the timer is no longer running
-    if (timeToNextService < 0) {
+    if (!timeToNextService) {
         if (m_animationTimer.isActive())
             m_animationTimer.stop();
         return;
     }
 
+    // If we want service immediately, we start a repeating timer to reduce the overhead of starting
+    if (!timeToNextService.value()) {
+        auto* page = m_frame.page();
+        bool shouldThrottle = page && page->isLowPowerModeEnabled();
+        Seconds delay = shouldThrottle ? animationTimerThrottledDelay : animationTimerDelay;
+
+        if (!m_animationTimer.isActive() || m_animationTimer.repeatInterval() != delay)
+            m_animationTimer.startRepeating(delay);
+        return;
+    }
+
     // Otherwise, we want to start a one-shot timer so we get here again
-    m_animationTimer.startOneShot(timeToNextService);
+    m_animationTimer.startOneShot(timeToNextService.value());
 }
 
 void CSSAnimationControllerPrivate::updateStyleIfNeededDispatcherFired()
@@ -229,7 +232,7 @@ void CSSAnimationControllerPrivate::fireEventsAndUpdateStyle()
 void CSSAnimationControllerPrivate::startUpdateStyleIfNeededDispatcher()
 {
     if (!m_updateStyleIfNeededDispatcher.isActive())
-        m_updateStyleIfNeededDispatcher.startOneShot(0);
+        m_updateStyleIfNeededDispatcher.startOneShot(0_s);
 }
 
 void CSSAnimationControllerPrivate::addEventToDispatch(Element& element, const AtomicString& eventType, const String& name, double elapsedTime)
@@ -247,9 +250,9 @@ void CSSAnimationControllerPrivate::addElementChangeToDispatch(Element& element)
 
 void CSSAnimationControllerPrivate::animationFrameCallbackFired()
 {
-    double timeToNextService = updateAnimations(CallSetChanged);
+    std::optional<Seconds> timeToNextService = updateAnimations(CallSetChanged);
 
-    if (timeToNextService >= 0)
+    if (timeToNextService)
         m_frame.document()->view()->scheduleAnimation();
 }
 

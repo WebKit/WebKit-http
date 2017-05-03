@@ -36,7 +36,6 @@
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
 #include "SharedBuffer.h"
-#include "UUID.h"
 #include "VideoSinkGStreamer.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <wtf/glib/GMutexLocker.h>
@@ -44,6 +43,7 @@
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
+#include <wtf/UUID.h>
 
 #include <gst/audio/streamvolume.h>
 #include <gst/video/gstvideometa.h>
@@ -133,7 +133,6 @@
 #include "SharedBuffer.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-#include "UUID.h"
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint8Array.h>
@@ -946,7 +945,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (!m_renderingCanBeAccelerated) {
         LockHolder locker(m_drawMutex);
-        m_drawTimer.startOneShot(0);
+        m_drawTimer.startOneShot(0_s);
         m_drawCondition.wait(m_drawMutex);
         return;
     }
@@ -968,7 +967,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
         ASSERT(!isMainThread());
 
         LockHolder locker(m_drawMutex);
-        m_drawTimer.startOneShot(0);
+        m_drawTimer.startOneShot(0_s);
         m_drawCondition.wait(m_drawMutex);
     }
 #else
@@ -1004,12 +1003,11 @@ void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
     m_sample.clear();
 
-    {
-        LockHolder locker(m_platformLayerProxy->lock());
+    LockHolder holder(m_platformLayerProxy->lock());
 
-        if (m_platformLayerProxy->isActive())
-            m_platformLayerProxy->dropCurrentBufferWhilePreservingTexture();
-    }
+    if (!m_platformLayerProxy->isActive())
+        return;
+
     // FIXME: Remove this black frame while drain or flush event
     // we can make a copy current frame to the temporal texture,
     // or make the decoder's buffer pool more flexible.

@@ -39,7 +39,7 @@ public:
     explicit PerActivityStateCPUUsageSampler(WebProcessPool&);
     ~PerActivityStateCPUUsageSampler();
 
-    void reportWebContentCPUTime(int64_t cpuTime, WebCore::ActivityStateForCPUSampling);
+    void reportWebContentCPUTime(Seconds cpuTime, WebCore::ActivityStateForCPUSampling);
 
 private:
     void loggingTimerFired();
@@ -47,9 +47,9 @@ private:
 
     WebProcessPool& m_processPool;
     RunLoop::Timer<PerActivityStateCPUUsageSampler> m_loggingTimer;
-    typedef HashMap<WebCore::ActivityStateForCPUSampling, int64_t, WTF::IntHash<WebCore::ActivityStateForCPUSampling>, WTF::StrongEnumHashTraits<WebCore::ActivityStateForCPUSampling>> CPUTimeInActivityStateMap;
+    typedef HashMap<WebCore::ActivityStateForCPUSampling, Seconds, WTF::IntHash<WebCore::ActivityStateForCPUSampling>, WTF::StrongEnumHashTraits<WebCore::ActivityStateForCPUSampling>> CPUTimeInActivityStateMap;
     CPUTimeInActivityStateMap m_cpuTimeInActivityState;
-    double m_lastCPUTime;
+    MonotonicTime m_lastCPUTime;
 };
 
 } // namespace WebKit

@@ -132,7 +132,7 @@ public:
 
     // Subtree push/pop
     void pushLayoutState(RenderObject&);
-    void pushLayoutStateForPagination(RenderBlockFlow&);
+    bool pushLayoutStateForPaginationIfNeeded(RenderBlockFlow&);
     void popLayoutState(RenderObject&) { return popLayoutState(); } // Just doing this to keep popLayoutState() private and to make the subtree calls symmetrical.
 
     // Returns true if layoutState should be used for its cached offset and clip.
@@ -229,8 +229,9 @@ public:
     void registerForVisibleInViewportCallback(RenderElement&);
     void unregisterForVisibleInViewportCallback(RenderElement&);
     void resumePausedImageAnimationsIfNeeded(IntRect visibleRect);
-    void addRendererWithPausedImageAnimations(RenderElement&);
+    void addRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
+    void removeRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
 
     class RepaintRegionAccumulator {
         WTF_MAKE_NONCOPYABLE(RepaintRegionAccumulator);
@@ -389,7 +390,7 @@ private:
     bool m_inHitTesting { false };
 #endif
 
-    HashSet<RenderElement*> m_renderersWithPausedImageAnimation;
+    HashMap<RenderElement*, Vector<CachedImage*>> m_renderersWithPausedImageAnimation;
     HashSet<RenderElement*> m_visibleInViewportRenderers;
     Vector<RefPtr<RenderWidget>> m_protectedRenderWidgets;
 

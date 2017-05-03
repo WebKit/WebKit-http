@@ -73,11 +73,11 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         columns.priority.width = "5%";
         columns.priority.hidden = true;
 
-        columns.remoteAddress.title = WebInspector.UIString("Remote Address");
+        columns.remoteAddress.title = WebInspector.UIString("IP Address");
         columns.remoteAddress.width = "8%";
         columns.remoteAddress.hidden = true;
 
-        columns.connectionIdentifier.title = WebInspector.UIString("Connection");
+        columns.connectionIdentifier.title = WebInspector.UIString("Connection ID");
         columns.connectionIdentifier.width = "5%";
         columns.connectionIdentifier.hidden = true;
         columns.connectionIdentifier.aligned = "right";
@@ -190,35 +190,23 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
 
     dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2)
     {
-        if (sortColumnIdentifier !== "name")
-            return null;
+        if (sortColumnIdentifier === "priority")
+            return WebInspector.Resource.comparePriority(node1.data.priority, node2.data.priority) * sortDirection;
+        
+        if (sortColumnIdentifier == "name") {
+            let displayName1 = node1.displayName();
+            let displayName2 = node2.displayName();
 
-        let displayName1 = node1.displayName();
-        let displayName2 = node2.displayName();
-        if (displayName1 !== displayName2)
-            return displayName1.localeCompare(displayName2) * sortDirection;
+            if (displayName1 !== displayName2)
+                return displayName1.localeCompare(displayName2) * sortDirection;
 
-        return node1.resource.url.localeCompare(node2.resource.url) * sortDirection;
+            return node1.resource.url.localeCompare(node2.resource.url) * sortDirection;
+        }
+
+        return null;
     }
 
     // Protected
-
-    canShowContentViewForTreeElement(treeElement)
-    {
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement)
-            return true;
-        return super.canShowContentViewForTreeElement(treeElement);
-    }
-
-    showContentViewForTreeElement(treeElement)
-    {
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
-            WebInspector.showSourceCode(treeElement.representedObject, {ignoreNetworkTab: true});
-            return;
-        }
-
-        console.error("Unknown tree element selected.", treeElement);
-    }
 
     dataGridNodePathComponentSelected(event)
     {

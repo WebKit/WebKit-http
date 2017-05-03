@@ -560,7 +560,6 @@ def mipsAsRegister(preList, postList, operand, needRestore)
         tmp = operand
     end
     if needRestore
-        preList << Instruction.new(operand.codeOrigin, "move", [MIPS_GP_REG, MIPS_GPSAVE_REG])
         postList << Instruction.new(operand.codeOrigin, "move", [MIPS_GPSAVE_REG, MIPS_GP_REG])
     end
     tmp

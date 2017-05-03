@@ -44,6 +44,7 @@
 #include "HTMLPlugInElement.h"
 #include "InspectorInstrumentation.h"
 #include "KeyframeList.h"
+#include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PluginViewBase.h"
@@ -299,6 +300,10 @@ static TiledBacking::TileCoverage computePageTiledBackingCoverage(RenderLayerBac
 {
     // FIXME: When we use TiledBacking for overflow, this should look at RenderView scrollability.
     FrameView& frameView = backing->owningLayer().renderer().view().frameView();
+
+    // If the page is non-visible, don't incur the cost of keeping extra tiles for scrolling.
+    if (!backing->owningLayer().page().isVisible())
+        return TiledBacking::CoverageForVisibleArea;
 
     TiledBacking::TileCoverage tileCoverage = TiledBacking::CoverageForVisibleArea;
     bool useMinimalTilesDuringLiveResize = frameView.inLiveResize();
@@ -1776,11 +1781,13 @@ void RenderLayerBacking::detachFromScrollingCoordinator(LayerScrollCoordinationR
         return;
 
     if ((roles & Scrolling) && m_scrollingNodeID) {
+        LOG(Compositing, "Detaching Scrolling node %llu", m_scrollingNodeID);
         scrollingCoordinator->detachFromStateTree(m_scrollingNodeID);
         m_scrollingNodeID = 0;
     }
     
     if ((roles & ViewportConstrained) && m_viewportConstrainedNodeID) {
+        LOG(Compositing, "Detaching ViewportConstrained node %llu", m_viewportConstrainedNodeID);
         scrollingCoordinator->detachFromStateTree(m_viewportConstrainedNodeID);
         m_viewportConstrainedNodeID = 0;
     }

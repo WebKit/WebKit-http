@@ -37,10 +37,10 @@
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
 #include "URL.h"
-#include "UUID.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
+#include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -1130,7 +1130,7 @@ RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
         Vector<char> blob;
         cacheStatement.getColumnBlobAsVector(6, blob);
         
-        auto data = SharedBuffer::adoptVector(blob);
+        auto data = SharedBuffer::create(WTFMove(blob));
         
         String path = cacheStatement.getColumnText(7);
         long long size = 0;

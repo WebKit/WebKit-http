@@ -25,18 +25,18 @@
 
 WebInspector.XHRBreakpoint = class XHRBreakpoint extends WebInspector.Object
 {
-    constructor(documentURL, url, disabled)
+    constructor(type, url, disabled)
     {
         super();
 
-        this._documentURL = documentURL;
-        this._url = url;
+        this._type = type || WebInspector.XHRBreakpoint.Type.Text;
+        this._url = url || "";
         this._disabled = disabled || false;
     }
 
     // Public
 
-    get documentURL() { return this._documentURL; }
+    get type() { return this._type; }
     get url() { return this._url; }
 
     get disabled()
@@ -56,7 +56,7 @@ WebInspector.XHRBreakpoint = class XHRBreakpoint extends WebInspector.Object
 
     get serializableInfo()
     {
-        let info = {documentURL: this._documentURL, url: this._url};
+        let info = {type: this._type, url: this._url};
         if (this._disabled)
             info.disabled = true;
 
@@ -65,15 +65,18 @@ WebInspector.XHRBreakpoint = class XHRBreakpoint extends WebInspector.Object
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WebInspector.XHRBreakpoint.DocumentURLCookieKey] = this._documentURL;
         cookie[WebInspector.XHRBreakpoint.URLCookieKey] = this._url;
     }
 };
 
-WebInspector.XHRBreakpoint.DocumentURLCookieKey = "xhr-breakpoint-document-url";
 WebInspector.XHRBreakpoint.URLCookieKey = "xhr-breakpoint-url";
 
 WebInspector.XHRBreakpoint.Event = {
     DisabledStateDidChange: "xhr-breakpoint-disabled-state-did-change",
     ResolvedStateDidChange: "xhr-breakpoint-resolved-state-did-change",
+};
+
+WebInspector.XHRBreakpoint.Type = {
+    Text: "text",
+    RegularExpression: "regex",
 };

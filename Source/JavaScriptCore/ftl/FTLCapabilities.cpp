@@ -267,6 +267,7 @@ inline CapabilityLevel canCompile(Node* node)
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
     case ResolveScope:
+    case ResolveScopeForHoistingFuncDeclInEval:
     case GetDynamicVar:
     case PutDynamicVar:
     case CompareEq:
@@ -279,11 +280,22 @@ inline CapabilityLevel canCompile(Node* node)
     case DefineDataProperty:
     case DefineAccessorProperty:
     case ToLowerCase:
+    case NumberToStringWithRadix:
     case CheckDOM:
     case CallDOM:
     case CallDOMGetter:
     case ArraySlice:
     case ParseInt:
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsCompareExchange:
+    case AtomicsExchange:
+    case AtomicsLoad:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor:
+    case AtomicsIsLockFree:
         // These are OK.
         break;
 
@@ -292,6 +304,16 @@ inline CapabilityLevel canCompile(Node* node)
         // for capabilities before optimization. It would be a deep error to remove this
         // case because it would prevent us from catching bugs where the FTL backend
         // pipeline failed to optimize out an Identity.
+        break;
+    case Arrayify:
+        switch (node->arrayMode().type()) {
+        case Array::Int32:
+        case Array::Double:
+        case Array::Contiguous:
+            break;
+        default:
+            return CannotCompile;
+        }
         break;
     case CheckArray:
         switch (node->arrayMode().type()) {

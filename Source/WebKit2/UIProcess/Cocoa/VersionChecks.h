@@ -35,9 +35,13 @@ enum class SDKVersion : uint32_t {
     FirstWithMediaTypesRequiringUserActionForPlayback = DYLD_IOS_VERSION_10_0,
     FirstWithExceptionsForDuplicateCompletionHandlerCalls = DYLD_IOS_VERSION_11_0,
     FirstToExcludeLocalStorageFromBackup = DYLD_IOS_VERSION_11_0,
+    FirstToUseSelectionGranularityCharacterByDefault = DYLD_IOS_VERSION_11_0,
+    FirstWithExpiredOnlyReloadBehavior = DYLD_IOS_VERSION_11_0,
 #elif PLATFORM(MAC)
     FirstWithNetworkCache = DYLD_MACOSX_VERSION_10_11,
     FirstWithExceptionsForDuplicateCompletionHandlerCalls = DYLD_MACOSX_VERSION_10_13,
+    FirstWithDropToNavigateDisallowedByDefault = DYLD_MACOSX_VERSION_10_13,
+    FirstWithExpiredOnlyReloadBehavior = DYLD_MACOSX_VERSION_10_13,
 #endif
 };
 

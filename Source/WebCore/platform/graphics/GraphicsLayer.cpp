@@ -39,7 +39,7 @@
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
-#if ENABLE(TREE_DEBUGGING)
+#ifndef NDEBUG
 #include <stdio.h>
 #endif
 

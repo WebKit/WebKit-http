@@ -157,15 +157,20 @@ public:
         if (setjmp(JMPBUF(m_png)))
             return decoder->setFailed();
 
-        const char* segment;
-        while (unsigned segmentLength = data.getSomeData(segment, m_readOffset)) {
-            m_readOffset += segmentLength;
+        auto bytesToSkip = m_readOffset;
+        for (const auto& segment : data) {
+            if (bytesToSkip > segment->size()) {
+                bytesToSkip -= segment->size();
+                continue;
+            }
+            m_readOffset += segment->size();
             m_currentBufferSize = m_readOffset;
-            png_process_data(m_png, m_info, reinterpret_cast<png_bytep>(const_cast<char*>(segment)), segmentLength);
-            // We explicitly specify the superclass isSizeAvailable() because we
+            png_process_data(m_png, m_info, reinterpret_cast<png_bytep>(const_cast<char*>(segment->data() + bytesToSkip)), segment->size() - bytesToSkip);
+            bytesToSkip = 0;
+            // We explicitly specify the superclass encodedDataStatus() because we
             // merely want to check if we've managed to set the size, not
             // (recursively) trigger additional decoding if we haven't.
-            if (sizeOnly ? decoder->ImageDecoder::isSizeAvailable() : decoder->isCompleteAtIndex(haltAtFrame))
+            if (sizeOnly ? decoder->ImageDecoder::encodedDataStatus() >= EncodedDataStatus::SizeAvailable : decoder->isCompleteAtIndex(haltAtFrame))
                 return true;
         }
         return false;
@@ -227,13 +232,17 @@ PNGImageDecoder::~PNGImageDecoder()
 {
 }
 
-bool PNGImageDecoder::isSizeAvailable()
+#if ENABLE(APNG)
+RepetitionCount PNGImageDecoder::repetitionCount() const
 {
-    if (!ImageDecoder::isSizeAvailable())
-        decode(true, 0);
+    // APNG format uses 0 to indicate that an animation must play indefinitely. But
+    // the RepetitionCount enumeration uses RepetitionCountInfinite, so we need to adapt this.
+    if (!m_playCount)
+        return RepetitionCountInfinite;
 
-    return ImageDecoder::isSizeAvailable();
+    return m_playCount;
 }
+#endif
 
 bool PNGImageDecoder::setSize(const IntSize& size)
 {
@@ -247,7 +256,7 @@ bool PNGImageDecoder::setSize(const IntSize& size)
 ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
 {
 #if ENABLE(APNG)
-    if (!isSizeAvailable())
+    if (ImageDecoder::encodedDataStatus() < EncodedDataStatus::SizeAvailable)
         return nullptr;
 
     if (index >= frameCount())
@@ -262,7 +271,7 @@ ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
 
     ImageFrame& frame = m_frameBufferCache[index];
     if (!frame.isComplete())
-        decode(false, index);
+        decode(false, index, isAllDataReceived());
     return &frame;
 }
 
@@ -549,7 +558,7 @@ void PNGImageDecoder::pngComplete()
         m_frameBufferCache.first().setDecoding(ImageFrame::Decoding::Complete);
 }
 
-void PNGImageDecoder::decode(bool onlySize, unsigned haltAtFrame)
+void PNGImageDecoder::decode(bool onlySize, unsigned haltAtFrame, bool allDataReceived)
 {
     if (failed())
         return;
@@ -559,7 +568,7 @@ void PNGImageDecoder::decode(bool onlySize, unsigned haltAtFrame)
 
     // If we couldn't decode the image but we've received all the data, decoding
     // has failed.
-    if (!m_reader->decode(*m_data, onlySize, haltAtFrame) && isAllDataReceived())
+    if (!m_reader->decode(*m_data, onlySize, haltAtFrame) && allDataReceived)
         setFailed();
     // If we're done decoding the image, we don't need the PNGImageReader
     // anymore.  (If we failed, |m_reader| has already been cleared.)
@@ -931,10 +940,8 @@ int PNGImageDecoder::processingFinish()
 void PNGImageDecoder::fallbackNotAnimated()
 {
     m_isAnimated = false;
-    m_frameCount = 1;
     m_playCount = 0;
     m_currentFrame = 0;
-    m_frameBufferCache.resize(1);
 }
 #endif
 

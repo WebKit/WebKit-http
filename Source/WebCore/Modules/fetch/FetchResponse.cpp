@@ -123,7 +123,7 @@ void FetchResponse::BodyLoader::didSucceed()
     ASSERT(m_response.hasPendingActivity());
     m_response.m_body->loadingSucceeded();
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
     if (m_response.m_readableStreamSource && !m_response.body().consumer().hasData())
         m_response.closeStream();
 #endif
@@ -140,7 +140,7 @@ void FetchResponse::BodyLoader::didFail()
     if (m_promise)
         std::exchange(m_promise, std::nullopt)->reject(TypeError);
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
     if (m_response.m_readableStreamSource) {
         if (!m_response.m_readableStreamSource->isCancelling())
             m_response.m_readableStreamSource->error(ASCIILiteral("Loading failed"));
@@ -179,7 +179,7 @@ void FetchResponse::BodyLoader::didReceiveResponse(const ResourceResponse& resou
 
 void FetchResponse::BodyLoader::didReceiveData(const char* data, size_t size)
 {
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
     ASSERT(m_response.m_readableStreamSource);
     auto& source = *m_response.m_readableStreamSource;
 
@@ -246,11 +246,14 @@ void FetchResponse::consume(unsigned type, Ref<DeferredPromise>&& wrapper)
     }
 }
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
 void FetchResponse::startConsumingStream(unsigned type)
 {
     m_isDisturbed = true;
-    m_consumer.setType(static_cast<FetchBodyConsumer::Type>(type));
+    auto consumerType = static_cast<FetchBodyConsumer::Type>(type);
+    m_consumer.setType(consumerType);
+    if (consumerType == FetchBodyConsumer::Type::Blob)
+        m_consumer.setContentType(Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType)));
 }
 
 void FetchResponse::consumeChunk(Ref<JSC::Uint8Array>&& chunk)
@@ -278,7 +281,7 @@ void FetchResponse::consumeBodyAsStream()
 
     RefPtr<SharedBuffer> data = m_bodyLoader->startStreaming();
     if (data) {
-        if (!m_readableStreamSource->enqueue(data->createArrayBuffer())) {
+        if (!m_readableStreamSource->enqueue(data->tryCreateArrayBuffer())) {
             stop();
             return;
         }

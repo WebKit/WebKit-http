@@ -2729,6 +2729,23 @@ def check_for_null(clean_lines, line_number, file_state, error):
         error(line_number, 'readability/null', 4, 'Use nullptr instead of NULL (even in *comments*).')
 
 
+def check_soft_link_class_alloc(clean_lines, line_number, error):
+    """Checks that allocating an instance of a soft-linked class uses alloc[Class]Instance.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      error: The function to call with any errors found.
+    """
+
+    line = clean_lines.elided[line_number]
+
+    matched = search(r'\[get(\w+)Class\(\)\s+alloc\]', line)
+    if matched:
+        error(line_number, 'runtime/soft-linked-alloc', 4,
+              'Using +alloc with a soft-linked class. Use alloc%sInstance() instead.' % matched.group(1))
+
+
 def get_line_width(line):
     """Determines the width of the line in column positions.
 
@@ -2822,6 +2839,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_check(clean_lines, line_number, error)
     check_for_comparisons_to_zero(clean_lines, line_number, error)
     check_for_null(clean_lines, line_number, file_state, error)
+    check_soft_link_class_alloc(clean_lines, line_number, error)
     check_indentation_amount(clean_lines, line_number, error)
     check_enum_casing(clean_lines, line_number, enum_state, error)
 
@@ -3162,12 +3180,12 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
 
     # Check if some verboten C functions are being used.
     if search(r'\bsprintf\b', line):
-        error(line_number, 'runtime/printf', 5,
+        error(line_number, 'security/printf', 5,
               'Never use sprintf.  Use snprintf instead.')
     matched = search(r'\b(strcpy|strcat)\b', line)
     if matched:
-        error(line_number, 'runtime/printf', 4,
-              'Almost always, snprintf is better than %s' % matched.group(1))
+        error(line_number, 'security/printf', 4,
+              'Almost always, snprintf is better than %s.' % matched.group(1))
 
     if search(r'\bsscanf\b', line):
         error(line_number, 'runtime/printf', 1,
@@ -3184,7 +3202,7 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
     # Not perfect but it can catch printf(foo.c_str()) and printf(foo->c_str())
     matched = re.search(r'\b((?:string)?printf)\s*\(([\w.\->()]+)\)', line, re.I)
     if matched:
-        error(line_number, 'runtime/printf', 4,
+        error(line_number, 'security/printf', 4,
               'Potential format string bug. Do %s("%%s", %s) instead.'
               % (matched.group(1), matched.group(2)))
 
@@ -3902,11 +3920,13 @@ class CppChecker(object):
         'runtime/references',
         'runtime/rtti',
         'runtime/sizeof',
+        'runtime/soft-linked-alloc',
         'runtime/string',
         'runtime/threadsafe_fn',
         'runtime/unsigned',
         'runtime/virtual',
         'runtime/wtf_move',
+        'security/printf',
         'whitespace/blank_line',
         'whitespace/braces',
         'whitespace/brackets',

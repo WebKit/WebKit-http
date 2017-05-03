@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(READABLE_STREAM_API) && ENABLE(READABLE_BYTE_STREAM_API)
+// @conditional=ENABLE(STREAMS_API)
 
 function respond(bytesWritten)
 {
@@ -42,8 +42,19 @@ function respondWithNewView(view)
 {
     "use strict";
 
-    // FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableStreamBYOBRequest respondWithNewView() is not implemented");
+    if (!@isReadableStreamBYOBRequest(this))
+        throw @makeThisTypeError("ReadableStreamBYOBRequest", "respond");
+
+    if (this.@associatedReadableByteStreamController === @undefined)
+        @throwTypeError("ReadableStreamBYOBRequest.associatedReadableByteStreamController is undefined");
+
+    if (!@isObject(view))
+        @throwTypeError("Provided view is not an object");
+
+    if (!@ArrayBuffer.@isView(view))
+        @throwTypeError("Provided view is not an ArrayBufferView");
+
+    return @readableByteStreamControllerRespondWithNewView(this.@associatedReadableByteStreamController, view);
 }
 
 function view()

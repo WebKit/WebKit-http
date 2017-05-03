@@ -123,13 +123,15 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 #if ENABLE(NETWORK_CACHE)
     SoupNetworkSession::clearCache(WebCore::directoryName(m_diskCacheDirectory));
 
-    NetworkCache::Cache::Parameters cacheParameters {
-        parameters.shouldEnableNetworkCacheEfficacyLogging
+    OptionSet<NetworkCache::Cache::Option> cacheOptions;
+    if (parameters.shouldEnableNetworkCacheEfficacyLogging)
+        cacheOptions |= NetworkCache::Cache::Option::EfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-        , parameters.shouldEnableNetworkCacheSpeculativeRevalidation
+    if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
+        cacheOptions |= NetworkCache::Cache::Option::SpeculativeRevalidation;
 #endif
-    };
-    NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheParameters);
+
+    NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheOptions);
 #else
     // We used to use the given cache directory for the soup cache, but now we use a subdirectory to avoid
     // conflicts with other cache files in the same directory. Remove the old cache files if they still exist.

@@ -6,15 +6,17 @@ class BuildRequest extends DataModelObject {
     {
         super(id, object);
         this._triggerable = object.triggerable;
+        console.assert(!object.repositoryGroup || object.repositoryGroup instanceof TriggerableRepositoryGroup);
         this._analysisTaskId = object.task;
         this._testGroupId = object.testGroupId;
         console.assert(!object.testGroup || object.testGroup instanceof TestGroup);
         this._testGroup = object.testGroup;
         if (this._testGroup)
             this._testGroup.addBuildRequest(this);
+        this._repositoryGroup = object.repositoryGroup;
         console.assert(object.platform instanceof Platform);
         this._platform = object.platform;
-        console.assert(object.test instanceof Test);
+        console.assert(!object.test || object.test instanceof Test);
         this._test = object.test;
         this._order = object.order;
         console.assert(object.commitSet instanceof CommitSet);
@@ -36,11 +38,15 @@ class BuildRequest extends DataModelObject {
         this._buildId = object.build;
     }
 
+    triggerable() { return this._triggerable; }
     analysisTaskId() { return this._analysisTaskId; }
     testGroupId() { return this._testGroupId; }
     testGroup() { return this._testGroup; }
+    repositoryGroup() { return this._repositoryGroup; }
     platform() { return this._platform; }
     test() { return this._test; }
+    isBuild() { return this._order < 0; }
+    isTest() { return this._order >= 0; }
     order() { return +this._order; }
     commitSet() { return this._commitSet; }
 
@@ -108,28 +114,6 @@ class BuildRequest extends DataModelObject {
         return label;
     }
 
-    result() { return this._result; }
-    setResult(result)
-    {
-        this._result = result;
-        this._testGroup.didSetResult(this);
-    }
-
-    static fetchTriggerables()
-    {
-        return this.cachedFetch('/api/triggerables/').then(function (response) {
-            return response.triggerables.map(function (entry) { return {id: entry.id, name: entry.name}; });
-        });
-    }
-
-    // FIXME: Create a real model object for triggerables.
-    static cachedRequestsForTriggerableID(id)
-    {
-        return this.all().filter(function (request) {
-            return request._triggerable == id;
-        });
-    }
-
     static fetchForTriggerable(triggerable)
     {
         return RemoteAPI.getJSONWithStatus('/api/build-requests/' + triggerable).then(function (data) {
@@ -139,18 +123,26 @@ class BuildRequest extends DataModelObject {
 
     static constructBuildRequestsFromData(data)
     {
-        const commitIdMap = {};
-        for (let commit of data['commits']) {
-            commitIdMap[commit.id] = commit;
-            commit.repository = Repository.findById(commit.repository);
+        for (let rawData of data['commits']) {
+            rawData.repository = Repository.findById(rawData.repository);
+            CommitLog.ensureSingleton(rawData.id, rawData);
         }
 
-        const commitSets = data['commitSets'].map((row) => {
-            row.commits = row.commits.map((commitId) => commitIdMap[commitId]);
-            return CommitSet.ensureSingleton(row.id, row);
+        for (let uploadedFile of data['uploadedFiles'])
+            UploadedFile.ensureSingleton(uploadedFile.id, uploadedFile);
+
+        const commitSets = data['commitSets'].map((rawData) => {
+            for (const item of rawData.revisionItems) {
+                item.commit = CommitLog.findById(item.commit);
+                item.patch = item.patch ? UploadedFile.findById(item.patch) : null;
+            }
+            rawData.customRoots = rawData.customRoots.map((fileId) => UploadedFile.findById(fileId));
+            return CommitSet.ensureSingleton(rawData.id, rawData);
         });
 
         return data['buildRequests'].map(function (rawData) {
+            rawData.triggerable = Triggerable.findById(rawData.triggerable);
+            rawData.repositoryGroup = TriggerableRepositoryGroup.findById(rawData.repositoryGroup);
             rawData.platform = Platform.findById(rawData.platform);
             rawData.test = Test.findById(rawData.test);
             rawData.testGroupId = rawData.testGroup;

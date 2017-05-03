@@ -89,7 +89,7 @@ void HistoryController::saveScrollPositionAndViewStateToItem(HistoryItem* item)
     if (page && m_frame.isMainFrame()) {
         item->setPageScaleFactor(page->pageScaleFactor() / page->viewScaleFactor());
 #if PLATFORM(IOS)
-        item->setObscuredInset(page->obscuredInset());
+        item->setObscuredInsets(page->obscuredInsets());
 #endif
     }
 
@@ -292,7 +292,7 @@ bool HistoryController::shouldStopLoadingForHistoryItem(HistoryItem& targetItem)
 // This includes recursion to handle loading into framesets properly
 void HistoryController::goToItem(HistoryItem& targetItem, FrameLoadType type)
 {
-    LOG(History, "HistoryController %p goToItem %p type=%d", this, &targetItem, type);
+    LOG(History, "HistoryController %p goToItem %p type=%d", this, &targetItem, static_cast<int>(type));
 
     ASSERT(!m_frame.tree().parent());
     

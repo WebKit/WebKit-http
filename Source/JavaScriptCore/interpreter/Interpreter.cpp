@@ -46,6 +46,7 @@
 #include "JSArrayInlines.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
+#include "JSFixedArray.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
 #include "JSString.h"
@@ -191,6 +192,9 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
     case ScopedArgumentsType:
         length = jsCast<ScopedArguments*>(cell)->length(callFrame);
         break;
+    case JSFixedArrayType:
+        length = jsCast<JSFixedArray*>(cell)->size();
+        break;
     case StringType:
     case SymbolType:
         throwException(callFrame, scope, createInvalidFunctionApplyParameterError(callFrame,  arguments));
@@ -252,6 +256,9 @@ void loadVarargs(CallFrame* callFrame, VirtualRegister firstElementDest, JSValue
         return;
     case ScopedArgumentsType:
         jsCast<ScopedArguments*>(cell)->copyToArguments(callFrame, firstElementDest, offset, length);
+        return;
+    case JSFixedArrayType:
+        jsCast<JSFixedArray*>(cell)->copyToArguments(callFrame, firstElementDest, offset, length);
         return;
     default: {
         ASSERT(arguments.isObject());
@@ -472,14 +479,15 @@ public:
         }
 
         if (m_remainingCapacityForFrameCapture) {
-            if (!visitor->isWasmFrame()
-                && !!visitor->codeBlock()
-                && !visitor->codeBlock()->unlinkedCodeBlock()->isBuiltinFunction()) {
+            if (visitor->isWasmFrame()) {
+                std::optional<unsigned> wasmFunctionIndex = visitor->wasmFunctionIndex();
+                m_results.append(StackFrame::wasm(wasmFunctionIndex ? *wasmFunctionIndex : StackFrame::invalidWasmIndex));
+            } else if (!!visitor->codeBlock() && !visitor->codeBlock()->unlinkedCodeBlock()->isBuiltinFunction()) {
                 m_results.append(
-                    StackFrame(m_vm, visitor->callee(), visitor->codeBlock(), visitor->bytecodeOffset()));
+                    StackFrame(m_vm, visitor->callee().asCell(), visitor->codeBlock(), visitor->bytecodeOffset()));
             } else {
                 m_results.append(
-                    StackFrame(m_vm,  visitor->callee()));
+                    StackFrame(m_vm, visitor->callee().asCell()));
             }
     
             m_remainingCapacityForFrameCapture--;
@@ -503,7 +511,7 @@ void Interpreter::getStackTrace(Vector<StackFrame>& results, size_t framesToSkip
         return;
 
     size_t framesCount = 0;
-    callFrame->iterate([&] (StackVisitor&) -> StackVisitor::Status {
+    StackVisitor::visit(callFrame, &vm, [&] (StackVisitor&) -> StackVisitor::Status {
         framesCount++;
         return StackVisitor::Continue;
     });
@@ -514,7 +522,7 @@ void Interpreter::getStackTrace(Vector<StackFrame>& results, size_t framesToSkip
     framesCount = std::min(maxStackSize, framesCount);
 
     GetStackTraceFunctor functor(vm, results, framesToSkip, framesCount);
-    callFrame->iterate(functor);
+    StackVisitor::visit(callFrame, &vm, functor);
     ASSERT(results.size() == results.capacity());
 }
 
@@ -575,13 +583,13 @@ private:
     mutable HandlerInfo* m_handler;
 };
 
-ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
+ALWAYS_INLINE static void notifyDebuggerOfUnwinding(VM& vm, CallFrame* callFrame)
 {
-    VM& vm = callFrame->vm();
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
-    if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
+    if (Debugger* debugger = callFrame->vmEntryGlobalObject(vm)->debugger()) {
         SuspendExceptionScope scope(&vm);
-        if (jsDynamicCast<JSFunction*>(vm, callFrame->jsCallee()))
+        if (callFrame->isAnyWasmCallee()
+            || (callFrame->callee().isCell() && callFrame->callee().asCell()->inherits(vm, JSFunction::info())))
             debugger->unwindEvent(callFrame);
         else
             debugger->didExecuteProgram(callFrame);
@@ -591,8 +599,9 @@ ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
 
 class UnwindFunctor {
 public:
-    UnwindFunctor(CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
-        : m_callFrame(callFrame)
+    UnwindFunctor(VM& vm, CallFrame*& callFrame, bool isTermination, CodeBlock*& codeBlock, HandlerInfo*& handler)
+        : m_vm(vm)
+        , m_callFrame(callFrame)
         , m_isTermination(isTermination)
         , m_codeBlock(codeBlock)
         , m_handler(handler)
@@ -614,7 +623,7 @@ public:
             }
         }
 
-        notifyDebuggerOfUnwinding(m_callFrame);
+        notifyDebuggerOfUnwinding(m_vm, m_callFrame);
 
         copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
 
@@ -634,13 +643,12 @@ private:
         if (!currentCalleeSaves)
             return;
 
-        VM& vm = m_callFrame->vm();
-        RegisterAtOffsetList* allCalleeSaves = vm.getAllCalleeSaveRegisterOffsets();
+        RegisterAtOffsetList* allCalleeSaves = VM::getAllCalleeSaveRegisterOffsets();
         RegisterSet dontCopyRegisters = RegisterSet::stackRegisters();
         intptr_t* frame = reinterpret_cast<intptr_t*>(m_callFrame->registers());
 
         unsigned registerCount = currentCalleeSaves->size();
-        VMEntryRecord* record = vmEntryRecord(vm.topVMEntryFrame);
+        VMEntryRecord* record = vmEntryRecord(m_vm.topVMEntryFrame);
         for (unsigned i = 0; i < registerCount; i++) {
             RegisterAtOffset currentEntry = currentCalleeSaves->at(i);
             if (dontCopyRegisters.get(currentEntry.reg()))
@@ -654,6 +662,7 @@ private:
 #endif
     }
 
+    VM& m_vm;
     CallFrame*& m_callFrame;
     bool m_isTermination;
     CodeBlock*& m_codeBlock;
@@ -682,22 +691,21 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
     if (exceptionValue.isEmpty() || (exceptionValue.isCell() && !exceptionValue.asCell()))
         exceptionValue = jsNull();
 
-    ASSERT_UNUSED(scope, scope.exception() && scope.exception()->stack().size());
+    ASSERT_UNUSED(scope, scope.exception() && (!Options::exceptionStackTraceLimit() || scope.exception()->stack().size()));
 
     // Calculate an exception handler vPC, unwinding call frames as necessary.
     HandlerInfo* handler = nullptr;
-    UnwindFunctor functor(callFrame, isTerminatedExecutionException(vm, exception), codeBlock, handler);
-    callFrame->iterate(functor);
+    UnwindFunctor functor(vm, callFrame, isTerminatedExecutionException(vm, exception), codeBlock, handler);
+    StackVisitor::visit(callFrame, &vm, functor);
     if (!handler)
         return nullptr;
 
     return handler;
 }
 
-void Interpreter::notifyDebuggerOfExceptionToBeThrown(CallFrame* callFrame, Exception* exception)
+void Interpreter::notifyDebuggerOfExceptionToBeThrown(VM& vm, CallFrame* callFrame, Exception* exception)
 {
-    VM& vm = callFrame->vm();
-    Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger();
+    Debugger* debugger = callFrame->vmEntryGlobalObject(vm)->debugger();
     if (debugger && debugger->needsExceptionCallbacks() && !exception->didNotifyInspectorOfThrow()) {
         // This code assumes that if the debugger is enabled then there is no inlining.
         // If that assumption turns out to be false then we'll ignore the inlined call
@@ -710,7 +718,7 @@ void Interpreter::notifyDebuggerOfExceptionToBeThrown(CallFrame* callFrame, Exce
             hasCatchHandler = false;
         else {
             GetCatchHandlerFunctor functor;
-            callFrame->iterate(functor);
+            StackVisitor::visit(callFrame, &vm, functor);
             HandlerInfo* handler = functor.handler();
             ASSERT(!handler || handler->isCatchHandler());
             hasCatchHandler = !!handler;
@@ -1091,10 +1099,11 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         return checkedReturn(throwStackOverflowError(callFrame, throwScope));
 
     unsigned numVariables = eval->numVariables();
-    int numFunctions = eval->numberOfFunctionDecls();
+    unsigned numTopLevelFunctionDecls = eval->numTopLevelFunctionDecls();
+    unsigned numFunctionHoistingCandidates = eval->numFunctionHoistingCandidates();
 
     JSScope* variableObject;
-    if ((numVariables || numFunctions) && eval->isStrictMode()) {
+    if ((numVariables || numTopLevelFunctionDecls) && eval->isStrictMode()) {
         scope = StrictEvalActivation::create(callFrame, scope);
         variableObject = scope;
     } else {
@@ -1125,7 +1134,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     }
 
     // We can't declare a "var"/"function" that overwrites a global "let"/"const"/"class" in a sloppy-mode eval.
-    if (variableObject->isGlobalObject() && !eval->isStrictMode() && (numVariables || numFunctions)) {
+    if (variableObject->isGlobalObject() && !eval->isStrictMode() && (numVariables || numTopLevelFunctionDecls)) {
         JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalObject*>(variableObject)->globalLexicalEnvironment();
         for (unsigned i = 0; i < numVariables; ++i) {
             const Identifier& ident = codeBlock->variable(i);
@@ -1135,7 +1144,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
             }
         }
 
-        for (int i = 0; i < numFunctions; ++i) {
+        for (unsigned i = 0; i < numTopLevelFunctionDecls; ++i) {
             FunctionExecutable* function = codeBlock->functionDecl(i);
             PropertySlot slot(globalLexicalEnvironment, PropertySlot::InternalMethodType::VMInquiry);
             if (JSGlobalLexicalEnvironment::getOwnPropertySlot(globalLexicalEnvironment, callFrame, function->name(), slot)) {
@@ -1147,7 +1156,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     if (variableObject->structure()->isUncacheableDictionary())
         variableObject->flattenDictionaryObject(vm);
 
-    if (numVariables || numFunctions) {
+    if (numVariables || numTopLevelFunctionDecls || numFunctionHoistingCandidates) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
         if (variableObject->next() && !eval->isStrictMode())
             variableObject->globalObject()->varInjectionWatchpoint()->fireAll(vm, "Executed eval, fired VarInjection watchpoint");
@@ -1158,16 +1167,43 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
             RETURN_IF_EXCEPTION(throwScope, checkedReturn(throwScope.exception()));
             if (!hasProperty) {
                 PutPropertySlot slot(variableObject);
+                if (!variableObject->isExtensible(callFrame))
+                    return checkedReturn(throwTypeError(callFrame, throwScope, ASCIILiteral(NonExtensibleObjectPropertyDefineError)));
                 variableObject->methodTable()->put(variableObject, callFrame, ident, jsUndefined(), slot);
                 RETURN_IF_EXCEPTION(throwScope, checkedReturn(throwScope.exception()));
             }
         }
+        
+        if (eval->isStrictMode()) {
+            for (unsigned i = 0; i < numTopLevelFunctionDecls; ++i) {
+                FunctionExecutable* function = codeBlock->functionDecl(i);
+                PutPropertySlot slot(variableObject);
+                // We need create this variables because it will be used to emits code by bytecode generator
+                variableObject->methodTable()->put(variableObject, callFrame, function->name(), jsUndefined(), slot);
+            }
+        } else {
+            for (unsigned i = 0; i < numTopLevelFunctionDecls; ++i) {
+                FunctionExecutable* function = codeBlock->functionDecl(i);
+                JSValue resolvedScope = JSScope::resolveScopeForHoistingFuncDeclInEval(callFrame, scope, function->name());
+                if (resolvedScope.isUndefined())
+                    return checkedReturn(throwSyntaxError(callFrame, throwScope, makeString("Can't create duplicate variable in eval: '", String(function->name().impl()), "'")));
+                PutPropertySlot slot(variableObject);
+                // We need create this variables because it will be used to emits code by bytecode generator
+                variableObject->methodTable()->put(variableObject, callFrame, function->name(), jsUndefined(), slot);
+                RETURN_IF_EXCEPTION(throwScope, checkedReturn(throwScope.exception()));
+            }
 
-        for (int i = 0; i < numFunctions; ++i) {
-            FunctionExecutable* function = codeBlock->functionDecl(i);
-            PutPropertySlot slot(variableObject);
-            variableObject->methodTable()->put(variableObject, callFrame, function->name(), JSFunction::create(vm, function, scope), slot);
-            RETURN_IF_EXCEPTION(throwScope, checkedReturn(throwScope.exception()));
+            for (unsigned i = 0; i < numFunctionHoistingCandidates; ++i) {
+                const Identifier& ident = codeBlock->functionHoistingCandidate(i);
+                JSValue resolvedScope = JSScope::resolveScopeForHoistingFuncDeclInEval(callFrame, scope, ident);
+                if (!resolvedScope.isUndefined()) {
+                    if (!variableObject->hasProperty(callFrame, ident)) {
+                        PutPropertySlot slot(variableObject);
+                        variableObject->methodTable()->put(variableObject, callFrame, ident, jsUndefined(), slot);
+                        RETURN_IF_EXCEPTION(throwScope, checkedReturn(throwScope.exception()));
+                    }
+                }
+            }
         }
     }
 

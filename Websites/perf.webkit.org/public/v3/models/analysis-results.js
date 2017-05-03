@@ -2,25 +2,54 @@
 class AnalysisResults {
     constructor()
     {
-        this._buildToMetricsMap = {};
+        this._metricToBuildMap = {};
+        this._metricIds = [];
+        this._lazilyComputedHighestTests = new LazilyEvaluatedFunction(this._computeHighestTests);
     }
 
-    find(buildId, metric)
+    findResult(buildId, metricId)
     {
-        var map = this._buildToMetricsMap[buildId];
+        const map = this._metricToBuildMap[metricId];
         if (!map)
             return null;
-        return map[metric.id()];
+        return map[buildId];
+    }
+
+    highestTests() { return this._lazilyComputedHighestTests.evaluate(this._metricIds); }
+
+    _computeHighestTests(metricIds)
+    {
+        const testsInResults = new Set(metricIds.map((metricId) => Metric.findById(metricId).test()));
+        return [...testsInResults].filter((test) => !testsInResults.has(test.parentTest()));
     }
 
     add(measurement)
     {
         console.assert(measurement.configType == 'current');
-        if (!this._buildToMetricsMap[measurement.buildId])
-            this._buildToMetricsMap[measurement.buildId] = {};
-        var map = this._buildToMetricsMap[measurement.buildId];
-        console.assert(!map[measurement.metricId]);
-        map[measurement.metricId] = measurement;
+        const metricId = measurement.metricId;
+        if (!(metricId in this._metricToBuildMap)) {
+            this._metricToBuildMap[metricId] = {};
+            this._metricIds = Object.keys(this._metricToBuildMap);
+        }
+        const map = this._metricToBuildMap[metricId];
+        console.assert(!map[measurement.buildId]);
+        map[measurement.buildId] = measurement;
+    }
+
+    commitSetForRequest(buildRequest)
+    {
+        if (!this._metricIds.length)
+            return null;
+        const result = this.findResult(buildRequest.buildId(), this._metricIds[0]);
+        if (!result)
+            return null;
+        return result.commitSet();
+    }
+
+    viewForMetric(metric)
+    {
+        console.assert(metric instanceof Metric);
+        return new AnalysisResultsView(this, metric);
     }
 
     static fetch(taskId)
@@ -30,14 +59,31 @@ class AnalysisResults {
 
             Instrumentation.startMeasuringTime('AnalysisResults', 'fetch');
 
-            var adaptor = new MeasurementAdaptor(response['formatMap']);
-            var results = new AnalysisResults;
-            for (var rawMeasurement of response['measurements'])
+            const adaptor = new MeasurementAdaptor(response['formatMap']);
+            const results = new AnalysisResults;
+            for (const rawMeasurement of response['measurements'])
                 results.add(adaptor.applyToAnalysisResults(rawMeasurement));
 
             Instrumentation.endMeasuringTime('AnalysisResults', 'fetch');
 
             return results;
         });
+    }
+}
+
+class AnalysisResultsView {
+    constructor(analysisResults, metric)
+    {
+        console.assert(analysisResults instanceof AnalysisResults);
+        console.assert(metric instanceof Metric);
+        this._results = analysisResults;
+        this._metric = metric;
+    }
+
+    metric() { return this._metric; }
+
+    resultForRequest(buildRequest)
+    {
+        return this._results.findResult(buildRequest.buildId(), this._metric.id());
     }
 }

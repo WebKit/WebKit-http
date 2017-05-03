@@ -31,14 +31,15 @@ WebInspector.XHRBreakpointTreeController = class XHRBreakpointsTreeController ex
 
         this._treeOutline = treeOutline;
 
-        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
-
         WebInspector.domDebuggerManager.addEventListener(WebInspector.DOMDebuggerManager.Event.XHRBreakpointAdded, this._xhrBreakpointAdded, this);
         WebInspector.domDebuggerManager.addEventListener(WebInspector.DOMDebuggerManager.Event.XHRBreakpointRemoved, this._xhrBreakpointRemoved, this);
 
         this._allReqestsBreakpointTreeElement = new WebInspector.XHRBreakpointTreeElement(WebInspector.domDebuggerManager.allRequestsBreakpoint, WebInspector.DebuggerSidebarPanel.AssertionIconStyleClassName, WebInspector.UIString("All Requests"));
 
         this._treeOutline.appendChild(this._allReqestsBreakpointTreeElement);
+
+        for (let breakpoint of WebInspector.domDebuggerManager.xhrBreakpoints)
+            this._addTreeElement(breakpoint);
     }
 
     // Public
@@ -62,13 +63,7 @@ WebInspector.XHRBreakpointTreeController = class XHRBreakpointsTreeController ex
 
     _xhrBreakpointAdded(event)
     {
-        let breakpoint = event.data.breakpoint;
-        let treeElement = this._treeOutline.findTreeElement(breakpoint);
-        console.assert(!treeElement);
-        if (treeElement)
-            return;
-
-        this._treeOutline.appendChild(new WebInspector.XHRBreakpointTreeElement(breakpoint));
+        this._addTreeElement(event.data.breakpoint);
     }
 
     _xhrBreakpointRemoved(event)
@@ -81,12 +76,13 @@ WebInspector.XHRBreakpointTreeController = class XHRBreakpointsTreeController ex
         this._treeOutline.removeChild(treeElement);
     }
 
-    _mainResourceDidChange(event)
+    _addTreeElement(breakpoint)
     {
-        if (!event.target.isMainFrame())
+        let treeElement = this._treeOutline.findTreeElement(breakpoint);
+        console.assert(!treeElement);
+        if (treeElement)
             return;
 
-        while (this._treeOutline.children.length > 1)
-            this._treeOutline.removeChild(this._treeOutline.children.lastValue);
+        this._treeOutline.appendChild(new WebInspector.XHRBreakpointTreeElement(breakpoint));
     }
 };

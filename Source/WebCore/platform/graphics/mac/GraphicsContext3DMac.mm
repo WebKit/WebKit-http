@@ -278,8 +278,8 @@ void GraphicsContext3DManager::updateHighPerformanceState()
             LOG(WebGL, "Set a timer to turn off high-performance GPU.");
             // FIXME: Expose this value as a Setting, which would require this class
             // to reference a frame, page or document.
-            static const int timeToKeepHighPerformanceGPUAliveInSeconds = 10;
-            m_disableHighPerformanceGPUTimer.startOneShot(timeToKeepHighPerformanceGPUAliveInSeconds);
+            static const Seconds timeToKeepHighPerformanceGPUAlive { 10_s };
+            m_disableHighPerformanceGPUTimer.startOneShot(timeToKeepHighPerformanceGPUAlive);
         }
     }
 #endif
@@ -331,7 +331,8 @@ static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBi
     // allowing us to request the integrated graphics on a dual GPU
     // system, and not force the discrete GPU.
     // See https://developer.apple.com/library/mac/technotes/tn2229/_index.html
-    attribs.append(kCGLPFAAllowOfflineRenderers);
+    if (hasMuxableGPU())
+        attribs.append(kCGLPFAAllowOfflineRenderers);
 
     if (accelerated)
         attribs.append(kCGLPFAAccelerated);
@@ -536,7 +537,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
     // ANGLE initialization.
 
     ShBuiltInResources ANGLEResources;
-    ShInitBuiltInResources(&ANGLEResources);
+    sh::InitBuiltInResources(&ANGLEResources);
 
     getIntegerv(GraphicsContext3D::MAX_VERTEX_ATTRIBS, &ANGLEResources.MaxVertexAttribs);
     getIntegerv(GraphicsContext3D::MAX_VERTEX_UNIFORM_VECTORS, &ANGLEResources.MaxVertexUniformVectors);

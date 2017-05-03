@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WPEViewClient.h"
 
-#include "WPEView.h"
 #include "WKAPICast.h"
 #include "WKBase.h"
+#include "WPEView.h"
 
 using namespace WebKit;
 

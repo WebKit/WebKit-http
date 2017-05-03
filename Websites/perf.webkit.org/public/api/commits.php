@@ -24,13 +24,23 @@ function main($paths) {
     $commits = array();
     if (!$filter) {
         $keyword = array_get($_GET, 'keyword'); // V2 UI compatibility.
-        $from = array_get($_GET, 'from');
-        $to = array_get($_GET, 'to');
-        $commits = $fetcher->fetch_between($repository_id, $from, $to, $keyword);
+        $preceding_revision = array_get($_GET, 'precedingRevision');
+        $last_revision = array_get($_GET, 'lastRevision');
+        $commits = $fetcher->fetch_between($repository_id, $preceding_revision, $last_revision, $keyword);
     } else if ($filter == 'oldest') {
         $commits = $fetcher->fetch_oldest($repository_id);
     } else if ($filter == 'latest') {
-        $commits = $fetcher->fetch_latest($repository_id);
+        $platform_id = array_get($_GET, 'platform');
+        if ($platform_id) {
+            if (!is_numeric($platform_id))
+                exit_with_error('InvalidPlatform', array('platform' => $platform_id));
+            $platform_id = intval($platform_id);
+            $commits = $fetcher->fetch_latest_for_platform($repository_id, $platform_id);
+        } else
+            $commits = $fetcher->fetch_latest($repository_id);
+    } else if ($filter == 'sub-commits') {
+        $owner_revision = array_get($_GET, 'owner-revision');
+        $commits = $fetcher->fetch_subcommits_for_revision($repository_id, $owner_revision);
     } else if ($filter == 'last-reported') {
         $from = array_get($_GET, 'from');
         $to = array_get($_GET, 'to');
@@ -38,14 +48,8 @@ function main($paths) {
             $commits = $fetcher->fetch_last_reported_between_orders($repository_id, $from, $to);
         else
             $commits = $fetcher->fetch_last_reported($repository_id);
-    } else if (ctype_alnum($filter)) {
+    } else
         $commits = $fetcher->fetch_revision($repository_id, $filter);
-    } else { // V2 UI compatibility.
-        $matches = array();
-        if (!preg_match('/([A-Za-z0-9]+)[\:\-]([A-Za-z0-9]+)/', $filter, $matches))
-            exit_with_error('UnknownFilter', array('repositoryName' => $repository_name, 'filter' => $filter));
-        $commits = $fetcher->fetch_between($repository_id, $matches[1], $matches[2]);
-    }
 
     if (!is_array($commits))
         exit_with_error('FailedToFetchCommits', array('repository' => $repository_id, 'filter' => $filter));

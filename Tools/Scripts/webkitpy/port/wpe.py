@@ -31,6 +31,7 @@ from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
 from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
 
+
 class WPEPort(Port):
     port_name = "wpe"
 
@@ -40,6 +41,9 @@ class WPEPort(Port):
         if self._should_use_jhbuild():
             self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--wpe', 'run']
             self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
+
+    def default_timeout_ms(self):
+        return 6000
 
     def _built_executables_path(self, *path):
         return self._build_path(*(('bin',) + path))

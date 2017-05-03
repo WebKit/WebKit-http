@@ -33,7 +33,7 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
+#if HAVE(CORE_PREDICTION)
 #include "ResourceLoadStatisticsClassifierCocoa.h"
 #endif
 
@@ -63,7 +63,7 @@ public:
     void setResourceLoadStatisticsEnabled(bool);
     bool resourceLoadStatisticsEnabled() const;
     void registerSharedResourceLoadObserver();
-    void registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)>&& shouldPartitionCookiesForDomainsHandler);
+    void registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)>&& shouldPartitionCookiesForDomainsHandler);
     
     void resourceLoadStatisticsUpdated(const Vector<WebCore::ResourceLoadStatistics>& origins);
 
@@ -92,9 +92,10 @@ private:
     void writeStoreToDisk();
     void writeEncoderToDisk(WebCore::KeyedEncoder&, const String& label) const;
     std::unique_ptr<WebCore::KeyedDecoder> createDecoderFromDisk(const String& label) const;
+    void platformExcludeFromBackup() const;
 
     Ref<WebCore::ResourceLoadStatisticsStore> m_resourceLoadStatisticsStore;
-#if PLATFORM(COCOA)
+#if HAVE(CORE_PREDICTION)
     ResourceLoadStatisticsClassifierCocoa m_resourceLoadStatisticsClassifier;
 #else
     ResourceLoadStatisticsClassifier m_resourceLoadStatisticsClassifier;

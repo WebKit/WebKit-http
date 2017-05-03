@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPlaybackSessionManager_h
-#define WebPlaybackSessionManager_h
+#pragma once
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
@@ -82,8 +81,10 @@ private:
     void rateChanged(bool isPlaying, float playbackRate) final;
     void seekableRangesChanged(const WebCore::TimeRanges&) final;
     void canPlayFastReverseChanged(bool value) final;
-    void audioMediaSelectionOptionsChanged(const Vector<String>& options, uint64_t selectedIndex) final;
-    void legibleMediaSelectionOptionsChanged(const Vector<String>& options, uint64_t selectedIndex) final;
+    void audioMediaSelectionOptionsChanged(const Vector<WebCore::MediaSelectionOption>& options, uint64_t selectedIndex) final;
+    void legibleMediaSelectionOptionsChanged(const Vector<WebCore::MediaSelectionOption>& options, uint64_t selectedIndex) final;
+    void audioMediaSelectionIndexChanged(uint64_t) final;
+    void legibleMediaSelectionIndexChanged(uint64_t) final;
     void externalPlaybackChanged(bool enabled, WebCore::WebPlaybackSessionModel::ExternalPlaybackTargetType, const String& localizedDeviceName) final;
     void wirelessVideoPlaybackDisabledChanged(bool) final;
 
@@ -128,8 +129,10 @@ protected:
     void rateChanged(uint64_t contextId, bool isPlaying, float playbackRate);
     void seekableRangesChanged(uint64_t contextId, const WebCore::TimeRanges&);
     void canPlayFastReverseChanged(uint64_t contextId, bool value);
-    void audioMediaSelectionOptionsChanged(uint64_t contextId, const Vector<String>& options, uint64_t selectedIndex);
-    void legibleMediaSelectionOptionsChanged(uint64_t contextId, const Vector<String>& options, uint64_t selectedIndex);
+    void audioMediaSelectionOptionsChanged(uint64_t contextId, const Vector<WebCore::MediaSelectionOption>& options, uint64_t selectedIndex);
+    void legibleMediaSelectionOptionsChanged(uint64_t contextId, const Vector<WebCore::MediaSelectionOption>& options, uint64_t selectedIndex);
+    void audioMediaSelectionIndexChanged(uint64_t contextId, uint64_t selectedIndex);
+    void legibleMediaSelectionIndexChanged(uint64_t contextId, uint64_t selectedIndex);
     void externalPlaybackChanged(uint64_t contextId, bool enabled, WebCore::WebPlaybackSessionModel::ExternalPlaybackTargetType, String localizedDeviceName);
     void wirelessVideoPlaybackDisabledChanged(uint64_t contextId, bool);
 
@@ -147,6 +150,7 @@ protected:
     void selectAudioMediaOption(uint64_t contextId, uint64_t index);
     void selectLegibleMediaOption(uint64_t contextId, uint64_t index);
     void handleControlledElementIDRequest(uint64_t contextId);
+    void togglePictureInPicture(uint64_t contextId);
 
     WebPage* m_page;
     HashMap<WebCore::HTMLMediaElement*, uint64_t> m_mediaElements;
@@ -158,5 +162,3 @@ protected:
 } // namespace WebKit
 
 #endif // PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-
-#endif // WebPlaybackSessionManager_h

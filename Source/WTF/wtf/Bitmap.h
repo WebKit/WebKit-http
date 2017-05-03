@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -45,8 +45,8 @@ public:
     void set(size_t, bool);
     bool testAndSet(size_t);
     bool testAndClear(size_t);
-    bool concurrentTestAndSet(size_t, Dependency = nullDependency(), TransactionAbortLikelihood = TransactionAbortLikelihood::Likely);
-    bool concurrentTestAndClear(size_t, Dependency = nullDependency(), TransactionAbortLikelihood = TransactionAbortLikelihood::Likely);
+    bool concurrentTestAndSet(size_t, Dependency = nullDependency());
+    bool concurrentTestAndClear(size_t, Dependency = nullDependency());
     size_t nextPossiblyUnset(size_t) const;
     void clear(size_t);
     void clearAll();
@@ -59,8 +59,53 @@ public:
     void filter(const Bitmap&);
     void exclude(const Bitmap&);
     
+    bool subsumes(const Bitmap&) const;
+    
     template<typename Func>
     void forEachSetBit(const Func&) const;
+    
+    size_t findBit(size_t startIndex, bool value) const;
+    
+    class iterator {
+    public:
+        iterator()
+            : m_bitmap(nullptr)
+            , m_index(0)
+        {
+        }
+        
+        iterator(const Bitmap& bitmap, size_t index)
+            : m_bitmap(&bitmap)
+            , m_index(index)
+        {
+        }
+        
+        size_t operator*() const { return m_index; }
+        
+        iterator& operator++()
+        {
+            m_index = m_bitmap->findBit(m_index + 1, true);
+            return *this;
+        }
+        
+        bool operator==(const iterator& other) const
+        {
+            return m_index == other.m_index;
+        }
+        
+        bool operator!=(const iterator& other) const
+        {
+            return !(*this == other);
+        }
+
+    private:
+        const Bitmap* m_bitmap;
+        size_t m_index;
+    };
+    
+    // Use this to iterate over set bits.
+    iterator begin() const { return iterator(*this, findBit(0, true)); }
+    iterator end() const { return iterator(*this, bitmapSize); }
     
     void mergeAndClear(Bitmap&);
     void setAndClear(Bitmap&);
@@ -132,7 +177,7 @@ inline bool Bitmap<bitmapSize, WordType>::testAndClear(size_t n)
 }
 
 template<size_t bitmapSize, typename WordType>
-ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, Dependency dependency, TransactionAbortLikelihood abortLikelihood)
+ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, Dependency dependency)
 {
     WordType mask = one << (n % wordSize);
     size_t index = n / wordSize;
@@ -144,12 +189,11 @@ ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, 
             
             value |= mask;
             return true;
-        },
-        abortLikelihood);
+        });
 }
 
 template<size_t bitmapSize, typename WordType>
-ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n, Dependency dependency, TransactionAbortLikelihood abortLikelihood)
+ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n, Dependency dependency)
 {
     WordType mask = one << (n % wordSize);
     size_t index = n / wordSize;
@@ -161,8 +205,7 @@ ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n
             
             value &= ~mask;
             return true;
-        },
-        abortLikelihood);
+        });
 }
 
 template<size_t bitmapSize, typename WordType>
@@ -258,6 +301,18 @@ inline void Bitmap<bitmapSize, WordType>::exclude(const Bitmap& other)
 }
 
 template<size_t bitmapSize, typename WordType>
+inline bool Bitmap<bitmapSize, WordType>::subsumes(const Bitmap& other) const
+{
+    for (size_t i = 0; i < words; ++i) {
+        WordType myBits = bits[i];
+        WordType otherBits = other.bits[i];
+        if ((myBits | otherBits) != myBits)
+            return false;
+    }
+    return true;
+}
+
+template<size_t bitmapSize, typename WordType>
 template<typename Func>
 inline void Bitmap<bitmapSize, WordType>::forEachSetBit(const Func& func) const
 {
@@ -272,6 +327,28 @@ inline void Bitmap<bitmapSize, WordType>::forEachSetBit(const Func& func) const
             word >>= 1;
         }
     }
+}
+
+template<size_t bitmapSize, typename WordType>
+inline size_t Bitmap<bitmapSize, WordType>::findBit(size_t startIndex, bool value) const
+{
+    WordType skipValue = -(static_cast<WordType>(value) ^ 1);
+    size_t wordIndex = startIndex / wordSize;
+    size_t startIndexInWord = startIndex - wordIndex * wordSize;
+    
+    while (wordIndex < words) {
+        WordType word = bits[wordIndex];
+        if (word != skipValue) {
+            size_t index = startIndexInWord;
+            if (findBitInWord(word, index, wordSize, value))
+                return wordIndex * wordSize + index;
+        }
+        
+        wordIndex++;
+        startIndexInWord = 0;
+    }
+    
+    return bitmapSize;
 }
 
 template<size_t bitmapSize, typename WordType>

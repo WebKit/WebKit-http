@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<style>
+    .box {
+        width: 200px;
+        height: 100px;
+        display: inline-block;
+    }
+    .image-background {
+        background-image: url(resources/sprite-sheet-red-green-blue.png);
+        background-position: 0px -1000px;
+    }
+    @media (-webkit-min-device-pixel-ratio: 2) {
+        .box {
+            width: 100px;
+            height: 50px;
+        }
+        .image-background {
+            background-position: 0px -500px;
+            background-size: 100px, 1050px;
+        }
+    }
+</style>
+<body>
+    <div class="box image-background"></div>
+    <script>
+        function forceRedraw(element) {
+            var disp = element.style.display;
+            element.style.display = 'none';
+            var trick = element.offsetHeight;
+            element.style.display = disp;
+        }
+
+        (function() {
+            var divElement = document.getElementsByClassName("image-background")[0];
+
+            if (window.internals) {
+                internals.clearMemoryCache();
+                internals.settings.setLargeImageAsyncDecodingEnabled(true);
+            }
+
+            if (window.testRunner) {
+                testRunner.waitUntilDone();
+                forceRedraw(divElement);
+                setTimeout(function() {
+                    forceRedraw(divElement);
+                    testRunner.notifyDone();
+                }, 50);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -142,7 +142,7 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substr", stringProtoFuncSubstr, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substring", stringProtoFuncSubstring, DontEnum, 2);
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, DontEnum, 0, ToLowerCaseIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, DontEnum, 0, StringPrototypeToLowerCaseIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toUpperCase", stringProtoFuncToUpperCase, DontEnum, 0);
 #if ENABLE(INTL)
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("localeCompare", stringPrototypeLocaleCompareCodeGenerator, DontEnum);
@@ -765,7 +765,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingStringSearch(VM& vm, ExecState* 
 
     size_t matchEnd = matchStart + searchString.impl()->length();
     int ovector[2] = { static_cast<int>(matchStart),  static_cast<int>(matchEnd)};
-    String middlePart = substituteBackreferences(replaceString, string, ovector, 0);
+    String middlePart = callType != CallType::None ? replaceString : substituteBackreferences(replaceString, string, ovector, 0);
 
     size_t leftLength = stringImpl->length() - matchEnd;
     String rightPart(StringImpl::createSubstringSharingImpl(*stringImpl, matchEnd, leftLength));

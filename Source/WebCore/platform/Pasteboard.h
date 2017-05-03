@@ -69,6 +69,7 @@ struct PasteboardWebContent {
     RefPtr<SharedBuffer> dataInWebArchiveFormat;
     RefPtr<SharedBuffer> dataInRTFDFormat;
     RefPtr<SharedBuffer> dataInRTFFormat;
+    RefPtr<SharedBuffer> dataInAttributedStringFormat;
     String dataInHTMLFormat;
     String dataInStringFormat;
     Vector<String> clientTypes;
@@ -200,6 +201,8 @@ public:
 #endif
 
 #if PLATFORM(IOS)
+    explicit Pasteboard(long changeCount);
+
     static NSArray* supportedPasteboardTypes();
     static String resourceMIMEType(const NSString *mimeType);
 #endif
@@ -220,6 +223,11 @@ public:
 #endif
 
 private:
+#if PLATFORM(IOS)
+    bool respectsUTIFidelities() const;
+    void readRespectingUTIFidelities(PasteboardWebContentReader&);
+#endif
+
 #if PLATFORM(WIN)
     void finishCreatingPasteboard();
     void writeRangeToDataObject(Range&, Frame&); // FIXME: Layering violation.

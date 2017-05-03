@@ -52,13 +52,13 @@ namespace WebCore {
 
 static const int sizingTinyDimensionThreshold = 40;
 static const float sizingFullPageAreaRatioThreshold = 0.96;
-static const float autostartSoonAfterUserGestureThreshold = 5.0;
+static const Seconds autostartSoonAfterUserGestureThreshold = 5_s;
 
 // This delay should not exceed the snapshot delay in PluginView.cpp
-static const auto simulatedMouseClickTimerDelay = std::chrono::milliseconds { 750 };
+static const Seconds simulatedMouseClickTimerDelay { 750_ms };
 
 #if PLATFORM(COCOA)
-static const auto removeSnapshotTimerDelay = std::chrono::milliseconds { 1500 };
+static const Seconds removeSnapshotTimerDelay { 1500_ms };
 #endif
 
 static const String titleText(Page& page, const String& mimeType)
@@ -499,11 +499,11 @@ void HTMLPlugInImageElement::simulatedMouseClickTimerFired()
 
 static bool documentHadRecentUserGesture(Document& document)
 {
-    double lastKnownUserGestureTimestamp = document.lastHandledUserGestureTimestamp();
+    MonotonicTime lastKnownUserGestureTimestamp = document.lastHandledUserGestureTimestamp();
     if (document.frame() != &document.page()->mainFrame() && document.page()->mainFrame().document())
         lastKnownUserGestureTimestamp = std::max(lastKnownUserGestureTimestamp, document.page()->mainFrame().document()->lastHandledUserGestureTimestamp());
 
-    return monotonicallyIncreasingTime() - lastKnownUserGestureTimestamp < autostartSoonAfterUserGestureThreshold;
+    return MonotonicTime::now() - lastKnownUserGestureTimestamp < autostartSoonAfterUserGestureThreshold;
 }
 
 void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()

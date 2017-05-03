@@ -35,6 +35,7 @@
 #include "CSSBorderImageSliceValue.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
+#include "CSSFontStyleValue.h"
 #include "CSSFontValue.h"
 #include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
@@ -161,6 +162,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFontSynthesis,
     CSSPropertyFontVariant,
     CSSPropertyFontWeight,
+#if ENABLE(VARIATION_FONTS)
+    CSSPropertyFontOpticalSizing,
+#endif
     CSSPropertyHangingPunctuation,
     CSSPropertyHeight,
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -323,6 +327,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyJustifySelf,
     CSSPropertyJustifyItems,
     CSSPropertyPlaceContent,
+    CSSPropertyPlaceItems,
 #if ENABLE(FILTERS_LEVEL_2)
     CSSPropertyWebkitBackdropFilter,
 #endif
@@ -455,6 +460,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyRx,
     CSSPropertyRy,
     CSSPropertyStroke,
+    CSSPropertyStrokeColor,
     CSSPropertyStrokeDasharray,
     CSSPropertyStrokeDashoffset,
     CSSPropertyStrokeLinecap,
@@ -1913,28 +1919,55 @@ static Ref<CSSPrimitiveValue> fontSizeFromStyle(const RenderStyle& style)
     return zoomAdjustedPixelValue(style.fontDescription().computedSize(), style);
 }
 
-static Ref<CSSPrimitiveValue> fontWeightFromStyle(const RenderStyle& style)
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontNonKeywordWeightFromStyleValue(FontSelectionValue weight)
 {
-    auto weight = style.fontDescription().weight();
+    return CSSValuePool::singleton().createValue(static_cast<float>(weight), CSSPrimitiveValue::CSS_NUMBER);
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontWeightFromStyleValue(FontSelectionValue weight)
+{
     if (auto value = fontWeightKeyword(weight))
         return CSSValuePool::singleton().createIdentifierValue(value.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(weight), CSSPrimitiveValue::CSS_NUMBER);
+    return fontNonKeywordWeightFromStyleValue(weight);
+}
+
+static Ref<CSSPrimitiveValue> fontWeightFromStyle(const RenderStyle& style)
+{
+    return ComputedStyleExtractor::fontWeightFromStyleValue(style.fontDescription().weight());
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontNonKeywordStretchFromStyleValue(FontSelectionValue stretch)
+{
+    return CSSValuePool::singleton().createValue(static_cast<float>(stretch), CSSPrimitiveValue::CSS_PERCENTAGE);
+}
+
+Ref<CSSPrimitiveValue> ComputedStyleExtractor::fontStretchFromStyleValue(FontSelectionValue stretch)
+{
+    if (auto keyword = fontStretchKeyword(stretch))
+        return CSSValuePool::singleton().createIdentifierValue(keyword.value());
+    return fontNonKeywordStretchFromStyleValue(stretch);
 }
 
 static Ref<CSSPrimitiveValue> fontStretchFromStyle(const RenderStyle& style)
 {
-    auto stretch = style.fontDescription().stretch();
-    if (auto keyword = fontStretchKeyword(stretch))
-        return CSSValuePool::singleton().createIdentifierValue(keyword.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(stretch), CSSPrimitiveValue::CSS_PERCENTAGE);
+    return ComputedStyleExtractor::fontStretchFromStyleValue(style.fontDescription().stretch());
 }
 
-static Ref<CSSPrimitiveValue> fontStyleFromStyle(const RenderStyle& style)
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue(FontSelectionValue italic)
 {
-    auto italic = style.fontDescription().italic();
-    if (auto italicValue = fontStyleKeyword(italic))
-        return CSSValuePool::singleton().createIdentifierValue(italicValue.value());
-    return CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG);
+    return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG));
+}
+
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic)
+{
+    if (auto keyword = fontStyleKeyword(italic))
+        return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(keyword.value()));
+    return fontNonKeywordStyleFromStyleValue(italic);
+}
+
+static Ref<CSSFontStyleValue> fontStyleFromStyle(const RenderStyle& style)
+{
+    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic());
 }
 
 static Ref<CSSValue> fontVariantFromStyle(const RenderStyle& style)
@@ -2431,7 +2464,13 @@ static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSe
     auto result = CSSValueList::createSpaceSeparated();
     if (data.positionType() == LegacyPosition)
         result->append(cssValuePool.createIdentifierValue(CSSValueLegacy));
-    result->append(cssValuePool.createValue(data.position()));
+    if (data.position() == ItemPositionBaseline)
+        result->append(cssValuePool.createIdentifierValue(CSSValueBaseline));
+    else if (data.position() == ItemPositionLastBaseline) {
+        result->append(cssValuePool.createIdentifierValue(CSSValueLast));
+        result->append(cssValuePool.createIdentifierValue(CSSValueBaseline));
+    } else
+        result->append(cssValuePool.createValue(data.position()));
     if (data.position() >= ItemPositionCenter && data.overflow() != OverflowAlignmentDefault)
         result->append(cssValuePool.createValue(data.overflow()));
     ASSERT(result->length() <= 2);
@@ -2442,16 +2481,29 @@ static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlign
 {
     auto& cssValuePool = CSSValuePool::singleton();
     auto result = CSSValueList::createSpaceSeparated();
+    // Handle content-distribution values
     if (data.distribution() != ContentDistributionDefault)
         result->append(cssValuePool.createValue(data.distribution()));
-    if (data.distribution() == ContentDistributionDefault || data.position() != ContentPositionNormal) {
-        bool gridEnabled = false;
-        gridEnabled = RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
-        if (data.position() != ContentPositionNormal || gridEnabled)
-            result->append(cssValuePool.createValue(data.position()));
-        else
-            result->append(cssValuePool.createIdentifierValue(normalBehaviorValueID));
+
+    bool gridEnabled = false;
+    gridEnabled = RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
+
+    // Handle content-position values (either as fallback or actual value)
+    switch (data.position()) {
+    case ContentPositionNormal:
+        // Handle 'normal' value, not valid as content-distribution fallback.
+        if (data.distribution() == ContentDistributionDefault)
+            result->append(cssValuePool.createIdentifierValue(gridEnabled ? CSSValueNormal : normalBehaviorValueID));
+        break;
+    case ContentPositionLastBaseline:
+        result->append(cssValuePool.createIdentifierValue(CSSValueLast));
+        result->append(cssValuePool.createIdentifierValue(CSSValueBaseline));
+        break;
+    default:
+        result->append(cssValuePool.createValue(data.position()));
     }
+
+    // Handle overflow-alignment (only allowed for content-position values)
     if ((data.position() >= ContentPositionCenter || data.distribution() != ContentDistributionDefault) && data.overflow() != OverflowAlignmentDefault)
         result->append(cssValuePool.createValue(data.overflow()));
     ASSERT(result->length() > 0);
@@ -2550,7 +2602,7 @@ static Ref<CSSFontValue> fontShorthandValueForSelectionProperties(const FontDesc
         return CSSFontValue::create();
 
     if (auto italic = fontStyleKeyword(fontDescription.italic()))
-        computedFont->style = CSSValuePool::singleton().createIdentifierValue(italic.value());
+        computedFont->style = CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(italic.value()));
     else
         return CSSFontValue::create();
 
@@ -2900,6 +2952,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledElement->parentNode()));
         case CSSPropertyPlaceContent:
             return getCSSPropertyValuesForShorthandProperties(placeContentShorthand());
+        case CSSPropertyPlaceItems:
+            return getCSSPropertyValuesForShorthandProperties(placeItemsShorthand());
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -2946,6 +3000,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
             return WTFMove(list);
         }
+        case CSSPropertyFontOpticalSizing:
+            return cssValuePool.createValue(style->fontDescription().opticalSizing());
 #endif
         case CSSPropertyGridAutoFlow: {
             auto list = CSSValueList::createSpaceSeparated();
@@ -3865,6 +3921,10 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return CSSPrimitiveValue::create(style->joinStyle());
         case CSSPropertyStrokeWidth:
             return zoomAdjustedPixelValueForLength(style->strokeWidth(), *style);
+        case CSSPropertyStrokeColor:
+            return currentColorOrValidColor(style, style->strokeColor());
+        case CSSPropertyStrokeMiterlimit:
+            return CSSPrimitiveValue::create(style->strokeMiterLimit(), CSSPrimitiveValue::CSS_NUMBER);
 
         /* Unimplemented CSS 3 properties (including CSS3 shorthand properties) */
         case CSSPropertyAll:
@@ -3966,7 +4026,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyShapeRendering:
         case CSSPropertyStroke:
         case CSSPropertyStrokeDasharray:
-        case CSSPropertyStrokeMiterlimit:
         case CSSPropertyStrokeOpacity:
         case CSSPropertyAlignmentBaseline:
         case CSSPropertyBaselineShift:

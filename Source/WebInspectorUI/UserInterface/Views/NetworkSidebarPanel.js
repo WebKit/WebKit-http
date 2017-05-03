@@ -94,11 +94,6 @@ WebInspector.NetworkSidebarPanel = class NetworkSidebarPanel extends WebInspecto
         return !this.restoringState || !this._restoredShowingNetworkGridContentView;
     }
 
-    hasRepresentedObject(representedObject)
-    {
-        return this._networkGridView.hasRepresentedObject(representedObject);
-    }
-
     // Protected
 
     saveStateToCookie(cookie)
@@ -191,9 +186,7 @@ WebInspector.NetworkSidebarPanel = class NetworkSidebarPanel extends WebInspecto
     _networkTimelineReset(event)
     {
         this.contentBrowser.contentViewContainer.closeAllContentViews();
-
-        if (this.visible)
-            this.showDefaultContentView();
+        this.showDefaultContentView();
     }
 
     _contentBrowserCurrentContentViewDidChange(event)

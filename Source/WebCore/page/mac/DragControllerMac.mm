@@ -44,6 +44,10 @@
 #import "Pasteboard.h"
 #import "Range.h"
 
+#if ENABLE(DATA_INTERACTION)
+#import <MobileCoreServices/MobileCoreServices.h>
+#endif
+
 namespace WebCore {
 
 const int DragController::LinkDragBorderInset = -2;
@@ -61,7 +65,16 @@ bool DragController::isCopyKeyDown(const DragData& dragData)
     
 DragOperation DragController::dragOperation(const DragData& dragData)
 {
-    if ((dragData.flags() & DragApplicationIsModal) || !(dragData.containsURL() || dragData.containsPromise()))
+    if (dragData.flags() & DragApplicationIsModal)
+        return DragOperationNone;
+
+    bool mayContainURL;
+    if (canLoadDataFromDraggingPasteboard())
+        mayContainURL = dragData.containsURL();
+    else
+        mayContainURL = dragData.containsURLTypeIdentifier();
+
+    if (!mayContainURL && !dragData.containsPromise())
         return DragOperationNone;
 
     if (!m_documentUnderMouse || (!(dragData.flags() & (DragApplicationHasAttachedSheet | DragApplicationIsSource))))
@@ -88,6 +101,32 @@ void DragController::cleanupAfterSystemDrag()
     if (m_page.mainFrame().view()->platformWidget())
         dragEnded();
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+void DragController::updatePreferredTypeIdentifiersForDragHandlingMethod(DragHandlingMethod dragHandlingMethod, const DragData& dragData) const
+{
+    Vector<String> supportedTypes;
+    switch (dragHandlingMethod) {
+    case DragHandlingMethod::PageLoad:
+        supportedTypes.append(kUTTypeURL);
+        break;
+    case DragHandlingMethod::EditPlainText:
+        supportedTypes.append(kUTTypeURL);
+        supportedTypes.append(kUTTypePlainText);
+        break;
+    case DragHandlingMethod::EditRichText:
+        for (NSString *type in Pasteboard::supportedPasteboardTypes())
+            supportedTypes.append(type);
+        break;
+    default:
+        supportedTypes.append(kUTTypeContent);
+        break;
+    }
+    dragData.updatePreferredTypeIdentifiers(supportedTypes);
+}
+
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 void DragController::declareAndWriteAttachment(DataTransfer& dataTransfer, Element& element, const URL& url)

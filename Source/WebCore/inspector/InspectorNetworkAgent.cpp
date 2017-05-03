@@ -223,6 +223,19 @@ Ref<Inspector::Protocol::Network::Metrics> InspectorNetworkAgent::buildObjectFor
         metrics->setRemoteAddress(*networkLoadMetrics.remoteAddress);
     if (networkLoadMetrics.connectionIdentifier)
         metrics->setConnectionIdentifier(*networkLoadMetrics.connectionIdentifier);
+    if (networkLoadMetrics.requestHeaders)
+        metrics->setRequestHeaders(buildObjectForHeaders(*networkLoadMetrics.requestHeaders));
+
+    if (networkLoadMetrics.requestHeaderBytesSent)
+        metrics->setRequestHeaderBytesSent(*networkLoadMetrics.requestHeaderBytesSent);
+    if (networkLoadMetrics.requestBodyBytesSent)
+        metrics->setRequestBodyBytesSent(*networkLoadMetrics.requestBodyBytesSent);
+    if (networkLoadMetrics.responseHeaderBytesReceived)
+        metrics->setResponseHeaderBytesReceived(*networkLoadMetrics.responseHeaderBytesReceived);
+    if (networkLoadMetrics.responseBodyBytesReceived)
+        metrics->setResponseBodyBytesReceived(*networkLoadMetrics.responseBodyBytesReceived);
+    if (networkLoadMetrics.responseBodyDecodedSize)
+        metrics->setResponseBodyDecodedSize(*networkLoadMetrics.responseBodyDecodedSize);
 
     return metrics;
 }
@@ -341,12 +354,6 @@ void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLo
 
     for (auto& entry : m_extraRequestHeaders)
         request.setHTTPHeaderField(entry.key, entry.value);
-
-    if (m_cacheDisabled) {
-        request.setHTTPHeaderField(HTTPHeaderName::Pragma, "no-cache");
-        request.setCachePolicy(ReloadIgnoringCacheData);
-        request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "no-cache");
-    }
 
     Inspector::Protocol::Page::ResourceType resourceType = InspectorPageAgent::resourceTypeJson(type);
 
@@ -615,7 +622,8 @@ void InspectorNetworkAgent::didReceiveWebSocketFrame(unsigned long identifier, c
     auto frameObject = Inspector::Protocol::Network::WebSocketFrame::create()
         .setOpcode(frame.opCode)
         .setMask(frame.masked)
-        .setPayloadData(String(frame.payload, frame.payloadLength))
+        .setPayloadData(String::fromUTF8WithLatin1Fallback(frame.payload, frame.payloadLength))
+        .setPayloadLength(frame.payloadLength)
         .release();
     m_frontendDispatcher->webSocketFrameReceived(IdentifiersFactory::requestId(identifier), timestamp(), WTFMove(frameObject));
 }
@@ -625,7 +633,8 @@ void InspectorNetworkAgent::didSendWebSocketFrame(unsigned long identifier, cons
     auto frameObject = Inspector::Protocol::Network::WebSocketFrame::create()
         .setOpcode(frame.opCode)
         .setMask(frame.masked)
-        .setPayloadData(String(frame.payload, frame.payloadLength))
+        .setPayloadData(String::fromUTF8WithLatin1Fallback(frame.payload, frame.payloadLength))
+        .setPayloadLength(frame.payloadLength)
         .release();
     m_frontendDispatcher->webSocketFrameSent(IdentifiersFactory::requestId(identifier), timestamp(), WTFMove(frameObject));
 }
@@ -654,6 +663,8 @@ void InspectorNetworkAgent::disable(ErrorString&)
     m_instrumentingAgents.setInspectorNetworkAgent(nullptr);
     m_resourcesData->clear();
     m_extraRequestHeaders.clear();
+
+    m_pageAgent->page().setResourceCachingDisabledOverride(false);
 }
 
 void InspectorNetworkAgent::setExtraHTTPHeaders(ErrorString&, const InspectorObject& headers)
@@ -698,11 +709,9 @@ void InspectorNetworkAgent::getResponseBody(ErrorString& errorString, const Stri
     errorString = ASCIILiteral("No data found for resource with given identifier");
 }
 
-void InspectorNetworkAgent::setCacheDisabled(ErrorString&, bool cacheDisabled)
+void InspectorNetworkAgent::setResourceCachingDisabled(ErrorString&, bool disabled)
 {
-    m_cacheDisabled = cacheDisabled;
-    if (cacheDisabled)
-        MemoryCache::singleton().evictResources();
+    m_pageAgent->page().setResourceCachingDisabledOverride(disabled);
 }
 
 void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String& frameId, const String& urlString, Ref<LoadResourceCallback>&& callback)
@@ -783,9 +792,6 @@ void InspectorNetworkAgent::searchInRequest(ErrorString& errorString, const Stri
 
 void InspectorNetworkAgent::mainFrameNavigated(DocumentLoader& loader)
 {
-    if (m_cacheDisabled)
-        MemoryCache::singleton().evictResources();
-
     m_resourcesData->clear(m_pageAgent->loaderId(&loader));
 }
 

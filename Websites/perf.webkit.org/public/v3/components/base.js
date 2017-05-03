@@ -16,8 +16,11 @@ class ComponentBase {
         this._element = element;
         this._shadow = null;
         this._actionCallbacks = new Map;
+        this._oldSizeToCheckForResize = null;
 
-        if (!window.customElements && new.target.enqueueToRenderOnResize)
+        if (!ComponentBase.useNativeCustomElements)
+            element.addEventListener('DOMNodeInsertedIntoDocument', () => this.enqueueToRender());
+        if (!ComponentBase.useNativeCustomElements && new.target.enqueueToRenderOnResize)
             ComponentBase._connectedComponentToRenderOnResize(this);
     }
 
@@ -72,18 +75,55 @@ class ComponentBase {
     {
         Instrumentation.startMeasuringTime('ComponentBase', 'renderingTimerDidFire');
 
+        const componentsToRender = ComponentBase._componentsToRender;
+        this._renderLoop();
+        if (ComponentBase._componentsToRenderOnResize) {
+            const resizedComponents = this._resizedComponents(ComponentBase._componentsToRenderOnResize);
+            if (resizedComponents.length) {
+                ComponentBase._componentsToRender = new Set(resizedComponents);
+                this._renderLoop();
+            }
+        }
+
+        Instrumentation.endMeasuringTime('ComponentBase', 'renderingTimerDidFire');
+    }
+
+    static _renderLoop()
+    {
+        const componentsToRender = ComponentBase._componentsToRender;
         do {
-            const currentSet = [...ComponentBase._componentsToRender];
-            ComponentBase._componentsToRender.clear();
+            const currentSet = [...componentsToRender];
+            componentsToRender.clear();
+            const resizeSet = ComponentBase._componentsToRenderOnResize;
             for (let component of currentSet) {
                 Instrumentation.startMeasuringTime('ComponentBase', 'renderingTimerDidFire.render');
                 component.render();
+                if (resizeSet && resizeSet.has(component)) {
+                    const element = component.element();
+                    component._oldSizeToCheckForResize = {width: element.offsetWidth, height: element.offsetHeight};
+                }
                 Instrumentation.endMeasuringTime('ComponentBase', 'renderingTimerDidFire.render');
             }
-        } while (ComponentBase._componentsToRender.size);
+        } while (componentsToRender.size);
         ComponentBase._componentsToRender = null;
+    }
 
-        Instrumentation.endMeasuringTime('ComponentBase', 'renderingTimerDidFire');
+    static _resizedComponents(componentSet)
+    {
+        if (!componentSet)
+            return [];
+
+        const resizedList = [];
+        for (let component of componentSet) {
+            const element = component.element();
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+            const oldSize = component._oldSizeToCheckForResize;
+            if (oldSize && oldSize.width == width && oldSize.height == height)
+                continue;
+            resizedList.push(component);
+        }
+        return resizedList;
     }
 
     static _connectedComponentToRenderOnResize(component)
@@ -91,7 +131,8 @@ class ComponentBase {
         if (!ComponentBase._componentsToRenderOnResize) {
             ComponentBase._componentsToRenderOnResize = new Set;
             window.addEventListener('resize', () => {
-                for (let component of ComponentBase._componentsToRenderOnResize)
+                const resized = this._resizedComponents(ComponentBase._componentsToRenderOnResize);
+                for (const component of resized)
                     component.enqueueToRender();
             });
         }
@@ -174,7 +215,7 @@ class ComponentBase {
 
         const enqueueToRenderOnResize = elementInterface.enqueueToRenderOnResize;
 
-        if (!window.customElements)
+        if (!ComponentBase.useNativeCustomElements)
             return;
 
         class elementClass extends HTMLElement {
@@ -194,6 +235,7 @@ class ComponentBase {
 
             connectedCallback()
             {
+                this.component().enqueueToRender();
                 if (enqueueToRenderOnResize)
                     ComponentBase._connectedComponentToRenderOnResize(this.component());
             }
@@ -215,17 +257,19 @@ class ComponentBase {
     static createElement(name, attributes, content)
     {
         var element = document.createElement(name);
-        if (!content && (attributes instanceof Array || attributes instanceof Node
+        if (!content && (Array.isArray(attributes) || attributes instanceof Node
             || attributes instanceof ComponentBase || typeof(attributes) != 'object')) {
             content = attributes;
             attributes = {};
         }
 
         if (attributes) {
-            for (var name in attributes) {
+            for (let name in attributes) {
                 if (name.startsWith('on'))
                     element.addEventListener(name.substring(2), attributes[name]);
-                else
+                else if (attributes[name] === true)
+                    element.setAttribute(name, name);
+                else if (attributes[name] !== false)
                     element.setAttribute(name, attributes[name]);
             }
         }
@@ -238,7 +282,7 @@ class ComponentBase {
 
     static _addContentToElement(element, content)
     {
-        if (content instanceof Array) {
+        if (Array.isArray(content)) {
             for (var nestedChild of content)
                 this._addContentToElement(element, nestedChild);
         } else if (content instanceof Node)
@@ -283,6 +327,7 @@ class ComponentBase {
     }
 }
 
+ComponentBase.useNativeCustomElements = !!window.customElements;
 ComponentBase._componentByName = new Map;
 ComponentBase._componentByClass = new Map;
 ComponentBase._currentlyConstructedByInterface = new Map;

@@ -88,7 +88,7 @@ JIT::CodeRef JIT::stringGetByValStubGenerator(VM* vm)
     jit.move(TrustedImm32(0), regT0);
     jit.ret();
     
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     return FINALIZE_CODE(patchBuffer, ("String get_by_val stub"));
 }
 
@@ -764,6 +764,12 @@ void JIT::emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, u
     emitPutVirtualRegister(dst);
 }
 
+void JIT::emit_op_resolve_scope_for_hoisting_func_decl_in_eval(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_resolve_scope_for_hoisting_func_decl_in_eval);
+    slowPathCall.call();
+}
+
 void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -1217,7 +1223,7 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
         ownerNotCell = branchTest64(NonZero, regT0, tagMaskRegister);
 
-    Jump ownerIsRememberedOrInEden = barrierBranch(regT0, regT1);
+    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), regT0, regT1);
     callOperation(operationWriteBarrierSlowPath, regT0);
     ownerIsRememberedOrInEden.link(this);
 
@@ -1255,7 +1261,7 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
         ownerNotCell = branch32(NotEqual, regT0, TrustedImm32(JSValue::CellTag));
 
-    Jump ownerIsRememberedOrInEden = barrierBranch(regT1, regT2);
+    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), regT1, regT2);
     callOperation(operationWriteBarrierSlowPath, regT1);
     ownerIsRememberedOrInEden.link(this);
 
@@ -1283,7 +1289,7 @@ void JIT::emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode mode)
 
 void JIT::emitWriteBarrier(JSCell* owner)
 {
-    Jump ownerIsRememberedOrInEden = barrierBranch(owner, regT0);
+    Jump ownerIsRememberedOrInEden = barrierBranch(*vm(), owner, regT0);
     callOperation(operationWriteBarrierSlowPath, owner);
     ownerIsRememberedOrInEden.link(this);
 }
@@ -1336,7 +1342,7 @@ void JIT::privateCompileGetByVal(ByValInfo* byValInfo, ReturnAddressPtr returnAd
     
     Jump done = jump();
 
-    LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
+    LinkBuffer patchBuffer(*this, m_codeBlock);
     
     patchBuffer.link(badType, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
@@ -1362,7 +1368,7 @@ void JIT::privateCompileGetByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
     JITGetByIdGenerator gen = emitGetByValWithCachedId(byValInfo, currentInstruction, propertyName, fastDoneCase, slowDoneCase, slowCases);
 
     ConcurrentJSLocker locker(m_codeBlock->m_lock);
-    LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
+    LinkBuffer patchBuffer(*this, m_codeBlock);
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(fastDoneCase, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
     patchBuffer.link(slowDoneCase, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToNextHotPath));
@@ -1419,7 +1425,7 @@ void JIT::privateCompilePutByVal(ByValInfo* byValInfo, ReturnAddressPtr returnAd
     
     Jump done = jump();
 
-    LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
+    LinkBuffer patchBuffer(*this, m_codeBlock);
     patchBuffer.link(badType, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(done, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
@@ -1453,7 +1459,7 @@ void JIT::privateCompilePutByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
     JITPutByIdGenerator gen = emitPutByValWithCachedId(byValInfo, currentInstruction, putKind, propertyName, doneCases, slowCases);
 
     ConcurrentJSLocker locker(m_codeBlock->m_lock);
-    LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
+    LinkBuffer patchBuffer(*this, m_codeBlock);
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(doneCases, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
     if (!m_exceptionChecks.empty())

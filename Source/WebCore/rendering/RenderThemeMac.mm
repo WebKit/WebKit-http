@@ -114,10 +114,10 @@
 
 // We estimate the animation rate of a Mac OS X progress bar is 33 fps.
 // Hard code the value here because we haven't found API for it.
-const double progressAnimationFrameRate = 0.033;
+static const Seconds progressAnimationFrameRate = 33_ms;
 
 // Mac OS X progress bar animation seems to have 256 frames.
-const double progressAnimationNumFrames = 256;
+static const double progressAnimationNumFrames = 256;
 
 @interface WebCoreRenderThemeNotificationObserver : NSObject
 {
@@ -292,15 +292,15 @@ String RenderThemeMac::mediaControlsScript()
 #endif
 }
 
-String RenderThemeMac::mediaControlsBase64StringForIconAndPlatform(const String& iconName, const String& platform)
+String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
         return emptyString();
 
-    String directory = "modern-media-controls/images/" + platform;
+    String directory = "modern-media-controls/images";
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
-    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:@"png" inDirectory:directory]] base64EncodedStringWithOptions:0];
+    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 #else
     return emptyString();
 #endif
@@ -1129,14 +1129,14 @@ int RenderThemeMac::minimumProgressBarHeight(const RenderStyle& style) const
     return sizeForSystemFont(style, progressBarSizes()).height();
 }
 
-double RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
+Seconds RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
 {
     return progressAnimationFrameRate;
 }
 
 double RenderThemeMac::animationDurationForProgressBar(RenderProgress&) const
 {
-    return progressAnimationNumFrames * progressAnimationFrameRate;
+    return progressAnimationNumFrames * progressAnimationFrameRate.value();
 }
 
 void RenderThemeMac::adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const

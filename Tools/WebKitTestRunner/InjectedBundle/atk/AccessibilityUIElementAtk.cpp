@@ -71,10 +71,17 @@ enum AttributeDomain {
 enum AttributesIndex {
     // Attribute names.
     InvalidNameIndex = 0,
+    ColumnCount,
+    ColumnIndex,
+    ColumnSpan,
+    RowCount,
+    RowIndex,
+    RowSpan,
     PosInSetIndex,
     SetSizeIndex,
     PlaceholderNameIndex,
     SortNameIndex,
+    CurrentNameIndex,
 
     // Attribute values.
     SortAscendingValueIndex,
@@ -88,10 +95,17 @@ enum AttributesIndex {
 const String attributesMap[][2] = {
     // Attribute names.
     { "AXInvalid", "invalid" },
+    { "AXARIAColumnCount", "colcount" },
+    { "AXARIAColumnIndex", "colindex" },
+    { "AXARIAColumnSpan", "colspan" },
+    { "AXARIARowCount", "rowcount" },
+    { "AXARIARowIndex", "rowindex" },
+    { "AXARIARowSpan", "rowspan" },
     { "AXARIAPosInSet", "posinset" },
     { "AXARIASetSize", "setsize" },
     { "AXPlaceholderValue", "placeholder-text" } ,
     { "AXSortDirection", "sort" },
+    { "AXARIACurrent", "current" },
 
     // Attribute values.
     { "AXAscendingSortDirection", "ascending" },
@@ -132,6 +146,10 @@ String coreAttributeToAtkAttribute(JSStringRef attribute)
 String atkAttributeValueToCoreAttributeValue(AtkAttributeType type, const String& id, const String& value)
 {
     if (type == ObjectAttributeType) {
+        // We don't expose the "current" attribute if there is no author-provided value.
+        if (id == attributesMap[CurrentNameIndex][AtkDomain] && value.isEmpty())
+            return "false";
+
         // We need to translate ATK values exposed for 'aria-sort' (e.g. 'ascending')
         // into those expected by the layout tests (e.g. 'AXAscendingSortDirection').
         if (id == attributesMap[SortNameIndex][AtkDomain] && !value.isEmpty()) {
@@ -328,6 +346,46 @@ const gchar* roleToString(AtkObject* object)
             return landmarkStringComplementary;
         if (equalLettersIgnoringASCIICase(xmlRolesValue, "contentinfo"))
             return landmarkStringContentinfo;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-acknowledgments"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-afterword"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-appendix"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-bibliography"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-chapter"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-conclusion"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-credits"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-endnotes"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-epilogue"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-errata"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-foreword"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-glossary"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-glossref"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-index"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-introduction"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-pagelist"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-part"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-preface"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-prologue"))
+            return landmarkStringRegion;
+        if (equalLettersIgnoringASCIICase(xmlRolesValue, "doc-toc"))
+            return landmarkStringRegion;
         if (equalLettersIgnoringASCIICase(xmlRolesValue, "main"))
             return landmarkStringMain;
         if (equalLettersIgnoringASCIICase(xmlRolesValue, "navigation"))
@@ -981,6 +1039,12 @@ double AccessibilityUIElement::numberAttributeValue(JSStringRef attribute)
             return attributeValue.toDouble();
     }
 
+    if (atkAttributeName.startsWith("row") || atkAttributeName.startsWith("col")) {
+        String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, atkAttributeName);
+        if (!attributeValue.isEmpty())
+            return attributeValue.toInt();
+    }
+
     return 0;
 }
 
@@ -1064,14 +1128,23 @@ bool AccessibilityUIElement::boolAttributeValue(JSStringRef attribute)
         return checkElementState(m_element.get(), ATK_STATE_FOCUSED);
     if (attributeString == "AXInvalid")
         return checkElementState(m_element.get(), ATK_STATE_INVALID);
+    if (attributeString == "AXModal")
+        return checkElementState(m_element.get(), ATK_STATE_MODAL);
     if (attributeString == "AXMultiSelectable")
         return checkElementState(m_element.get(), ATK_STATE_MULTISELECTABLE);
     if (attributeString == "AXRequired")
         return checkElementState(m_element.get(), ATK_STATE_REQUIRED);
     if (attributeString == "AXSelected")
         return checkElementState(m_element.get(), ATK_STATE_SELECTED);
+    if (attributeString == "AXSupportsAutoCompletion")
+        return checkElementState(m_element.get(), ATK_STATE_SUPPORTS_AUTOCOMPLETION);
     if (attributeString == "AXVisited")
         return checkElementState(m_element.get(), ATK_STATE_VISITED);
+
+    if (attributeString == "AXInterfaceTable")
+        return ATK_IS_TABLE(m_element.get());
+    if (attributeString == "AXInterfaceTableCell")
+        return ATK_IS_TABLE_CELL(m_element.get());
 
     return false;
 }
@@ -1221,9 +1294,8 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::orientation() const
         axOrientation = "AXOrientation: AXHorizontalOrientation";
     else if (checkElementState(m_element.get(), ATK_STATE_VERTICAL))
         axOrientation = "AXOrientation: AXVerticalOrientation";
-
-    if (!axOrientation)
-        return JSStringCreateWithCharacters(0, 0);
+    else
+        axOrientation = "AXOrientation: AXUnknownOrientation";
 
     return JSStringCreateWithUTF8CString(axOrientation);
 }
@@ -1947,11 +2019,7 @@ bool AccessibilityUIElement::isMultiLine() const
 
 bool AccessibilityUIElement::hasPopup() const
 {
-    if (!ATK_IS_OBJECT(m_element.get()))
-        return false;
-
-    String hasPopupValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, "haspopup");
-    return equalLettersIgnoringASCIICase(hasPopupValue, "true");
+    return checkElementState(m_element.get(), ATK_STATE_HAS_POPUP);
 }
 
 void AccessibilityUIElement::takeFocus()

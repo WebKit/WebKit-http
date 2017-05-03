@@ -350,7 +350,7 @@ static void webkit_website_data_manager_class_init(WebKitWebsiteDataManagerClass
 WebKitWebsiteDataManager* webkitWebsiteDataManagerCreate(WebsiteDataStore::Configuration&& configuration)
 {
     WebKitWebsiteDataManager* manager = WEBKIT_WEBSITE_DATA_MANAGER(g_object_new(WEBKIT_TYPE_WEBSITE_DATA_MANAGER, nullptr));
-    manager->priv->websiteDataStore = API::WebsiteDataStore::create(WTFMove(configuration));
+    manager->priv->websiteDataStore = API::WebsiteDataStore::createLegacy(WTFMove(configuration));
 
     return manager;
 }
@@ -369,7 +369,7 @@ API::WebsiteDataStore& webkitWebsiteDataManagerGetDataStore(WebKitWebsiteDataMan
         configuration.webSQLDatabaseDirectory = !priv->webSQLDirectory ?
             API::WebsiteDataStore::defaultWebSQLDatabaseDirectory() : WebCore::stringFromFileSystemRepresentation(priv->webSQLDirectory.get());
         configuration.mediaKeysStorageDirectory = API::WebsiteDataStore::defaultMediaKeysStorageDirectory();
-        priv->websiteDataStore = API::WebsiteDataStore::create(WTFMove(configuration));
+        priv->websiteDataStore = API::WebsiteDataStore::createLegacy(WTFMove(configuration));
     }
 
     return *priv->websiteDataStore;
@@ -641,8 +641,10 @@ static OptionSet<WebsiteDataType> toWebsiteDataTypes(WebKitWebsiteDataTypes type
         returnValue |= WebsiteDataType::WebSQLDatabases;
     if (types & WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES)
         returnValue |= WebsiteDataType::IndexedDBDatabases;
+#if ENABLE(NETSCAPE_PLUGIN_API)
     if (types & WEBKIT_WEBSITE_DATA_PLUGIN_DATA)
         returnValue |= WebsiteDataType::PlugInData;
+#endif
     if (types & WEBKIT_WEBSITE_DATA_COOKIES)
         returnValue |= WebsiteDataType::Cookies;
     return returnValue;

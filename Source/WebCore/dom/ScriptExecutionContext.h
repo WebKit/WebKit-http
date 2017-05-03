@@ -40,6 +40,7 @@
 namespace JSC {
 class Exception;
 class ExecState;
+class JSPromise;
 class VM;
 template<typename> class Strong;
 }
@@ -56,6 +57,7 @@ class EventQueue;
 class EventTarget;
 class MessagePort;
 class PublicURLManager;
+class RejectedPromiseTracker;
 class ResourceRequest;
 class SecurityOrigin;
 class SocketProvider;
@@ -94,6 +96,7 @@ public:
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, JSC::Strong<JSC::Unknown>& error, CachedScript* = nullptr);
     void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, JSC::Exception*, RefPtr<Inspector::ScriptCallStack>&&, CachedScript* = nullptr);
+    void reportUnhandledPromiseRejection(JSC::ExecState&, JSC::JSPromise&, RefPtr<Inspector::ScriptCallStack>&&);
 
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0);
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
@@ -196,6 +199,7 @@ public:
     virtual Seconds domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) const;
 
     virtual EventQueue& eventQueue() const = 0;
+    virtual EventTarget* errorEventTarget() = 0;
 
     DatabaseContext* databaseContext() { return m_databaseContext.get(); }
     void setDatabaseContext(DatabaseContext*);
@@ -207,6 +211,13 @@ public:
 
     int timerNestingLevel() const { return m_timerNestingLevel; }
     void setTimerNestingLevel(int timerNestingLevel) { m_timerNestingLevel = timerNestingLevel; }
+
+    RejectedPromiseTracker& ensureRejectedPromiseTracker()
+    {
+        if (m_rejectedPromiseTracker)
+            return *m_rejectedPromiseTracker.get();
+        return ensureRejectedPromiseTrackerSlow();
+    }
 
     JSC::ExecState* execState();
 
@@ -227,12 +238,13 @@ protected:
 
 private:
     virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) = 0;
-    virtual EventTarget* errorEventTarget() = 0;
     virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) = 0;
     bool dispatchErrorEvent(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, JSC::Exception*, CachedScript*);
 
     virtual void refScriptExecutionContext() = 0;
     virtual void derefScriptExecutionContext() = 0;
+
+    RejectedPromiseTracker& ensureRejectedPromiseTrackerSlow();
 
     void checkConsistency() const;
 
@@ -240,24 +252,26 @@ private:
     HashSet<ContextDestructionObserver*> m_destructionObservers;
     HashSet<ActiveDOMObject*> m_activeDOMObjects;
 
-    int m_circularSequentialID { 0 };
     HashMap<int, RefPtr<DOMTimer>> m_timeouts;
 
-    bool m_inDispatchErrorEvent { false };
     struct PendingException;
     std::unique_ptr<Vector<std::unique_ptr<PendingException>>> m_pendingExceptions;
+    std::unique_ptr<RejectedPromiseTracker> m_rejectedPromiseTracker;
 
-    bool m_activeDOMObjectsAreSuspended { false };
     ActiveDOMObject::ReasonForSuspension m_reasonForSuspendingActiveDOMObjects { static_cast<ActiveDOMObject::ReasonForSuspension>(-1) };
-    bool m_activeDOMObjectsAreStopped { false };
 
     std::unique_ptr<PublicURLManager> m_publicURLManager;
 
     RefPtr<DatabaseContext> m_databaseContext;
 
+    int m_circularSequentialID { 0 };
+    int m_timerNestingLevel { 0 };
+
+    bool m_activeDOMObjectsAreSuspended { false };
+    bool m_activeDOMObjectsAreStopped { false };
+    bool m_inDispatchErrorEvent { false };
     bool m_activeDOMObjectAdditionForbidden { false };
     bool m_willProcessMessagePortMessagesSoon { false };
-    int m_timerNestingLevel { 0 };
 
 #if !ASSERT_DISABLED
     bool m_inScriptExecutionContextDestructor { false };

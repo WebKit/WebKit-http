@@ -290,12 +290,10 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         // Data going from the client to the server is always masked.
         let isOutgoing = !!response.mask;
 
-        let data = response.payloadData;
-        let opcode = response.opcode;
-
+        let {payloadData, payloadLength, opcode} = response;
         let elapsedTime = WebInspector.timelineManager.computeElapsedTime(timestamp);
 
-        resource.addFrame(data, isOutgoing, opcode, timestamp, elapsedTime);
+        resource.addFrame(payloadData, payloadLength, isOutgoing, opcode, timestamp, elapsedTime);
     }
 
     markResourceRequestAsServedFromMemoryCache(requestIdentifier)
@@ -336,6 +334,7 @@ WebInspector.FrameResourceManager = class FrameResourceManager extends WebInspec
         resource.updateForResponse(cachedResourcePayload.url, response.mimeType, cachedResourcePayload.type, response.headers, response.status, response.statusText, elapsedTime, response.timing, responseSource);
         resource.increaseSize(cachedResourcePayload.bodySize, elapsedTime);
         resource.increaseTransferSize(cachedResourcePayload.bodySize);
+        resource.setCachedResponseBodySize(cachedResourcePayload.bodySize);
         resource.markAsFinished(elapsedTime);
 
         console.assert(resource.cached, "This resource should be classified as cached since it was served from the MemoryCache", resource);

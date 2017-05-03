@@ -184,7 +184,7 @@ function setLocalDescription()
 
     const peerConnection = this;
 
-    // FIXME: According the spec, we should throw when receiving a RTCSessionDescription.
+    // FIXME 169644: According the spec, we should throw when receiving a RTCSessionDescription.
     const objectInfo = {
         "constructor": @RTCSessionDescription,
         "argName": "description",
@@ -215,7 +215,7 @@ function setRemoteDescription()
 
     const peerConnection = this;
 
-    // FIXME: According the spec, we should throw when receiving a RTCSessionDescription.
+    // FIXME: According the spec, we should only expect RTCSessionDescriptionInit.
     const objectInfo = {
         "constructor": @RTCSessionDescription,
         "argName": "description",
@@ -237,12 +237,15 @@ function setRemoteDescription()
     });
 }
 
-function addIceCandidate()
+function addIceCandidate(candidate)
 {
     "use strict";
 
     if (!@isRTCPeerConnection(this))
         return @Promise.@reject(@makeThisTypeError("RTCPeerConnection", "addIceCandidate"));
+
+    if (arguments.length < 1)
+        return @Promise.@reject(new @TypeError("Not enough arguments"));
 
     const peerConnection = this;
 
@@ -250,7 +253,8 @@ function addIceCandidate()
         "constructor": @RTCIceCandidate,
         "argName": "candidate",
         "argType": "RTCIceCandidate",
-        "maybeDictionary": "true"
+        "maybeDictionary": "true",
+        "defaultsToNull" : "true"
     };
     return @objectAndCallbacksOverload(arguments, "addIceCandidate", objectInfo, function (candidate) {
         // Promise mode

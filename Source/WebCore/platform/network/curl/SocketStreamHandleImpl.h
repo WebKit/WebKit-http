@@ -51,15 +51,15 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&, SourceApplicationAuditToken&&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
 
     virtual ~SocketStreamHandleImpl();
 
+    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
+    void platformClose() final;
 private:
     SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
 
-    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
-    void platformClose() final;
     size_t bufferedAmount() final;
     std::optional<size_t> platformSendInternal(const char*, size_t);
     bool sendPendingData();
@@ -92,7 +92,7 @@ private:
         size_t size { 0 };
     };
 
-    ThreadIdentifier m_workerThread { 0 };
+    RefPtr<Thread> m_workerThread;
     std::atomic<bool> m_stopThread { false };
     Lock m_mutexSend;
     Lock m_mutexReceive;

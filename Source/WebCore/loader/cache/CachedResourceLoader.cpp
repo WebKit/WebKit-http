@@ -79,11 +79,12 @@
 #include "CachedTextTrack.h"
 #endif
 
-#define PRELOAD_DEBUG 0
-
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - CachedResourceLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
+
+// Timeout for link preloads to be used after window.onload
+static const Seconds unusedPreloadTimeout { 3_s };
 
 static CachedResource* createResource(CachedResource::Type type, CachedResourceRequest&& request, SessionID sessionID)
 {
@@ -129,6 +130,7 @@ CachedResourceLoader::CachedResourceLoader(DocumentLoader* documentLoader)
     : m_document(nullptr)
     , m_documentLoader(documentLoader)
     , m_requestCount(0)
+    , m_unusedPreloadsTimer(*this, &CachedResourceLoader::warnUnusedPreloads)
     , m_garbageCollectDocumentResourcesTimer(*this, &CachedResourceLoader::garbageCollectDocumentResources)
     , m_autoLoadImages(true)
     , m_imagesEnabled(true)
@@ -147,6 +149,7 @@ CachedResourceLoader::~CachedResourceLoader()
 
     // Make sure no requests still point to this CachedResourceLoader
     ASSERT(m_requestCount == 0);
+    m_unusedPreloadsTimer.stop();
 }
 
 CachedResource* CachedResourceLoader::cachedResource(const String& resourceURL) const
@@ -773,12 +776,12 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 #if ENABLE(WEB_TIMING)
             loadTiming.setResponseEnd(MonotonicTime::now());
 
-            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
-                ResourceTiming resourceTiming = ResourceTiming::fromCache(url, request.initiatorName(), loadTiming);
+            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled() && document() && !resource->isLoading()) {
+                auto resourceTiming = ResourceTiming::fromCache(url, request.initiatorName(), loadTiming, resource->response(), *request.origin());
                 if (initiatorContext == InitiatorContext::Worker) {
                     ASSERT(is<CachedRawResource>(resource.get()));
                     downcast<CachedRawResource>(resource.get())->finishedTimingForWorkerLoad(WTFMove(resourceTiming));
-                } else if (document()) {
+                } else {
                     ASSERT(initiatorContext == InitiatorContext::Document);
                     m_resourceTimingInfo.storeResourceTimingInitiatorInformation(resource, request.initiatorName(), frame());
                     m_resourceTimingInfo.addResourceTiming(*resource.get(), *document(), WTFMove(resourceTiming));
@@ -821,6 +824,16 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 void CachedResourceLoader::documentDidFinishLoadEvent()
 {
     m_validatedURLs.clear();
+
+    // If m_preloads is not empty here, it's full of link preloads,
+    // as speculative preloads were cleared at DCL.
+    if (m_preloads && m_preloads->size() && !m_unusedPreloadsTimer.isActive())
+        m_unusedPreloadsTimer.startOneShot(unusedPreloadTimeout);
+}
+
+void CachedResourceLoader::stopUnusedPreloadsTimer()
+{
+    m_unusedPreloadsTimer.stop();
 }
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(CachedResourceRequest&& request, CachedResource& resource)
@@ -922,12 +935,8 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
 
     auto* textDecoder = existingResource->textResourceDecoder();
-    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset())) {
-        if (!existingResource->hasUnknownEncoding())
-            return Reload;
-        existingResource->setHasUnknownEncoding(false);
+    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset()) && !textDecoder->encodingSet())
         existingResource->setEncoding(cachedResourceRequest.charset());
-    }
 
     // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
     //        while the normal subresource policy is too loose.
@@ -960,8 +969,10 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Use;
     ASSERT(!existingResource->validationInProgress());
 
+    auto cachePolicy = this->cachePolicy(type, request.url());
+
     // Validate the redirect chain.
-    bool cachePolicyIsHistoryBuffer = cachePolicy(type) == CachePolicyHistoryBuffer;
+    bool cachePolicyIsHistoryBuffer = cachePolicy == CachePolicyHistoryBuffer;
     if (!existingResource->redirectChainAllowsReuse(cachePolicyIsHistoryBuffer ? ReuseExpiredRedirection : DoNotReuseExpiredRedirection)) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to not cached or expired redirections.");
         logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::inMemoryCacheKey(), DiagnosticLoggingKeys::unusedReasonRedirectChainKey());
@@ -1000,7 +1011,7 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Use;
 
     // CachePolicyReload always reloads
-    if (cachePolicy(type) == CachePolicyReload) {
+    if (cachePolicy == CachePolicyReload) {
         LOG(ResourceLoading, "CachedResourceLoader::determineRevalidationPolicy reloading due to CachePolicyReload.");
         logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::inMemoryCacheKey(), DiagnosticLoggingKeys::unusedReasonReloadKey());
         return Reload;
@@ -1024,7 +1035,7 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Use;
     }
 
-    auto revalidationDecision = existingResource->makeRevalidationDecision(cachePolicy(type));
+    auto revalidationDecision = existingResource->makeRevalidationDecision(cachePolicy);
     logResourceRevalidationDecision(revalidationDecision, frame());
 
     // Check if the cache headers requires us to revalidate (cache expiration for example).
@@ -1108,14 +1119,14 @@ void CachedResourceLoader::reloadImagesIfNotDeferred()
     }
 }
 
-CachePolicy CachedResourceLoader::cachePolicy(CachedResource::Type type) const
+CachePolicy CachedResourceLoader::cachePolicy(CachedResource::Type type, const URL& url) const
 {
     Frame* frame = this->frame();
     if (!frame)
         return CachePolicyVerify;
 
     if (type != CachedResource::MainResource)
-        return frame->loader().subresourceCachePolicy();
+        return frame->loader().subresourceCachePolicy(url);
 
     if (Page* page = frame->page()) {
         if (page->isResourceCachingDisabled())
@@ -1158,7 +1169,7 @@ void CachedResourceLoader::loadDone(bool shouldPerformPostLoadActions)
         performPostLoadActions();
 
     if (!m_garbageCollectDocumentResourcesTimer.isActive())
-        m_garbageCollectDocumentResourcesTimer.startOneShot(0);
+        m_garbageCollectDocumentResourcesTimer.startOneShot(0_s);
 }
 
 // Garbage collecting m_documentResources is a workaround for the
@@ -1222,10 +1233,20 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::preload(CachedResourc
         m_preloads = std::make_unique<ListHashSet<CachedResource*>>();
     m_preloads->add(resource.get());
 
-#if PRELOAD_DEBUG
-    printf("PRELOADING %s\n",  resource->url().latin1().data());
-#endif
     return resource;
+}
+
+void CachedResourceLoader::warnUnusedPreloads()
+{
+    if (!m_preloads)
+        return;
+    for (const auto& resource : *m_preloads) {
+        if (resource && resource->isLinkPreload() && resource->preloadResult() == CachedResource::PreloadNotReferenced && document()) {
+            document()->addConsoleMessage(MessageSource::Other, MessageLevel::Warning,
+                "The resource " + resource->url().string() +
+                " was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it wasn't preloaded for nothing.");
+        }
+    }
 }
 
 bool CachedResourceLoader::isPreloaded(const String& urlString) const
@@ -1243,9 +1264,6 @@ bool CachedResourceLoader::isPreloaded(const String& urlString) const
 
 void CachedResourceLoader::clearPreloads(ClearPreloadsMode mode)
 {
-#if PRELOAD_DEBUG
-    printPreloadStats();
-#endif
     if (!m_preloads)
         return;
 
@@ -1265,53 +1283,6 @@ void CachedResourceLoader::clearPreloads(ClearPreloadsMode mode)
     }
     m_preloads = WTFMove(remainingLinkPreloads);
 }
-
-#if PRELOAD_DEBUG
-void CachedResourceLoader::printPreloadStats()
-{
-    unsigned scripts = 0;
-    unsigned scriptMisses = 0;
-    unsigned stylesheets = 0;
-    unsigned stylesheetMisses = 0;
-    unsigned images = 0;
-    unsigned imageMisses = 0;
-    for (auto& resource : m_preloads) {
-        if (resource->preloadResult() == CachedResource::PreloadNotReferenced)
-            printf("!! UNREFERENCED PRELOAD %s\n", resource->url().latin1().data());
-        else if (resource->preloadResult() == CachedResource::PreloadReferencedWhileComplete)
-            printf("HIT COMPLETE PRELOAD %s\n", resource->url().latin1().data());
-        else if (resource->preloadResult() == CachedResource::PreloadReferencedWhileLoading)
-            printf("HIT LOADING PRELOAD %s\n", resource->url().latin1().data());
-
-        if (resource->type() == CachedResource::Script) {
-            scripts++;
-            if (resource->preloadResult() < CachedResource::PreloadReferencedWhileLoading)
-                scriptMisses++;
-        } else if (resource->type() == CachedResource::CSSStyleSheet) {
-            stylesheets++;
-            if (resource->preloadResult() < CachedResource::PreloadReferencedWhileLoading)
-                stylesheetMisses++;
-        } else {
-            images++;
-            if (resource->preloadResult() < CachedResource::PreloadReferencedWhileLoading)
-                imageMisses++;
-        }
-
-        if (resource->errorOccurred() && resource->preloadResult() == CachedResource::PreloadNotReferenced)
-            MemoryCache::singleton().remove(resource);
-
-        resource->decreasePreloadCount();
-    }
-    m_preloads = nullptr;
-
-    if (scripts)
-        printf("SCRIPTS: %d (%d hits, hit rate %d%%)\n", scripts, scripts - scriptMisses, (scripts - scriptMisses) * 100 / scripts);
-    if (stylesheets)
-        printf("STYLESHEETS: %d (%d hits, hit rate %d%%)\n", stylesheets, stylesheets - stylesheetMisses, (stylesheets - stylesheetMisses) * 100 / stylesheets);
-    if (images)
-        printf("IMAGES:  %d (%d hits, hit rate %d%%)\n", images, images - imageMisses, (images - imageMisses) * 100 / images);
-}
-#endif
 
 const ResourceLoaderOptions& CachedResourceLoader::defaultCachedResourceOptions()
 {

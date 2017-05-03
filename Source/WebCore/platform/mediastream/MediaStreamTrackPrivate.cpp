@@ -32,7 +32,7 @@
 #include "AudioSourceProvider.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "UUID.h"
+#include <wtf/UUID.h>
 
 namespace WebCore {
 
@@ -78,11 +78,6 @@ const String& MediaStreamTrackPrivate::label() const
 bool MediaStreamTrackPrivate::muted() const
 {
     return m_source->muted();
-}
-
-bool MediaStreamTrackPrivate::readonly() const
-{
-    return m_source->readonly();
 }
 
 bool MediaStreamTrackPrivate::isCaptureTrack() const
@@ -141,7 +136,7 @@ const RealtimeMediaSourceSettings& MediaStreamTrackPrivate::settings() const
     return m_source->settings();
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> MediaStreamTrackPrivate::capabilities() const
+const RealtimeMediaSourceCapabilities& MediaStreamTrackPrivate::capabilities() const
 {
     return m_source->capabilities();
 }

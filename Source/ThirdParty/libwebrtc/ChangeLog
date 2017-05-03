@@ -1,3 +1,180 @@
+2017-04-29  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] libwebrtc SRCROOT includes examples
+        https://bugs.webkit.org/show_bug.cgi?id=171478
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Exclude the Source/webrtc/examples subdirectory from
+          installsrc. Its contents are not used for building any of the targets in the project.
+
+2017-04-19  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Allow customizing H264 encoder
+        https://bugs.webkit.org/show_bug.cgi?id=170829
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.mm:
+        (webrtc::H264VideoToolboxEncoder::ResetCompressionSession):
+        (webrtc::H264VideoToolboxEncoder::CreateCompressionSession): Default implementation, fixing memory leak for dictionary.
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc:
+
+2017-04-18  Youenn Fablet  <youenn@apple.com>
+
+        Add NDEBUG and CodeStripping to libwebrtc build system
+        https://bugs.webkit.org/show_bug.cgi?id=170954
+
+        Reviewed by Alex Christensen.
+
+        This optimizes libwebrtc library size and efficiency.
+        This allows allocating libwebrtc objects in WebCore without issues.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/boringssl.xcconfig:
+        * Configurations/libsrtp.xcconfig:
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/opus.xcconfig:
+        * Configurations/usrsctp.xcconfig:
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Add an external libwebrtc encoder factory in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=170883
+
+        Reviewed by Alex Christensen.
+
+        Exporting some symbols.
+        Allowing to customize the creation of the H264 encoder.
+
+        * Source/webrtc/media/base/codec.h:
+        * Source/webrtc/media/engine/webrtcvideoencoderfactory.h
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc:
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.h:
+        * Source/webrtc/video_decoder.h
+        * Source/webrtc/video_encoder.h
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/opus.xcconfig:
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/opus.xcconfig:
+
+2017-04-07  Alex Christensen  <achristensen@webkit.org>
+
+        Enable SSE4 and NEON optimizations of libopus where available
+        https://bugs.webkit.org/show_bug.cgi?id=170592
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/opus.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-04-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC aborts when trying to sleep on a wrong thread
+        https://bugs.webkit.org/show_bug.cgi?id=170492
+        <rdar://problem/31446377>
+
+        Reviewed by Eric Carlson.
+
+        Libwebrtc network thread is set up so that it does not accept blocking calls to other threads.
+        as per ChannelManager::Init() in channelmanager.cc.
+        But rtc::Thread::SleepMs expects to block it.
+        Marking thread as blockable before calling SleepMs and resetting the value if needed afterwards.
+        * Source/webrtc/media/sctp/sctptransport.cc:
+
+2017-03-27  Alejandro G. Castro  <alex@igalia.com>
+
+        Fixes for libwebrtc logging after r214288
+        https://bugs.webkit.org/show_bug.cgi?id=170116
+
+        Reviewed by Youenn Fablet.
+
+        * Source/webrtc/base/logging.cc: Added the critical section
+        requirement and the call to the new getter for g_log_crit.
+
+2017-03-27  Alex Christensen  <achristensen@webkit.org>
+
+        Build libwebrtc with even more warnings
+        https://bugs.webkit.org/show_bug.cgi?id=169997
+
+        Reviewed by Tim Horton.
+
+        There are still OSAtomic* functions I don't want to worry about right now,
+        so I'm keeping a few -Wno-deprecated-declarations, but everything else can go.
+
+        * Configurations/libsrtp.xcconfig:
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+
+2017-03-27  Youenn Fablet  <youenn@apple.com>
+
+        Add support for RTCRtpReceiver/RTCRtpSender getParameters
+        https://bugs.webkit.org/show_bug.cgi?id=170057
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/api/mediatypes.h:
+
+2017-03-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix warnings in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=169973
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/boringssl.xcconfig:
+        * Configurations/libsrtp.xcconfig:
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/libyuv.xcconfig:
+        * Configurations/opus.xcconfig:
+        * Configurations/usrsctp.xcconfig:
+        Build with more warnings.
+        opus still needs some incompatible pointer warnings disabled because it converts 
+        const opus_int16 * to const opus_val16 * and opus_int32 * to opus_val32 *
+        and that's ok because its a codec and that's what codecs do.
+        * Source/webrtc/base/logging.cc:
+        * Source/webrtc/base/logging.h:
+        * Source/webrtc/base/neverdestroyed.h: Added.
+        (webrtc::NeverDestroyed::NeverDestroyed):
+        (webrtc::NeverDestroyed::operator T&):
+        (webrtc::NeverDestroyed::get):
+        (webrtc::NeverDestroyed::operator&):
+        (webrtc::NeverDestroyed::asPtr):
+        Added webrtc::NeverDestroyed which may or may not be based on WTF::NeverDestroyed.
+        This allows us to avoid exit time destructors, which would slow down program termination for no reason.
+        * Source/webrtc/base/virtualsocketserver.cc:
+        * Source/webrtc/modules/audio_coding/codecs/builtin_audio_decoder_factory_internal.cc:
+        Adopt NeverDestroyed in function scope so we don't have global constructors or destructors.
+        * Source/webrtc/modules/audio_processing/beamformer/array_util.h:
+        (webrtc::DegreesToRadians):
+        (webrtc::RadiansToDegrees):
+        Add constexpr so we can calculate values at compile time instead of launch time.
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_utility.cc:
+        * Source/webrtc/system_wrappers/source/clock.cc:
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Don't compile ssl_test.cc.  We don't need it.
+
 2017-03-10  Youenn Fablet  <youenn@apple.com>
 
         Move libwebrtc backend to using tracks

@@ -126,6 +126,8 @@ public:
     static void applyValueBaselineShift(StyleResolver&, CSSValue&);
     static void applyValueDirection(StyleResolver&, CSSValue&);
     static void applyValueVerticalAlign(StyleResolver&, CSSValue&);
+    static void applyInitialTextAlign(StyleResolver&);
+    static void applyValueTextAlign(StyleResolver&, CSSValue&);
 #if ENABLE(DASHBOARD_SUPPORT)
     static void applyValueWebkitDashboardRegion(StyleResolver&, CSSValue&);
 #endif
@@ -140,6 +142,7 @@ public:
     static void applyValueWillChange(StyleResolver&, CSSValue&);
 
     static void applyValueStrokeWidth(StyleResolver&, CSSValue&);
+    static void applyValueStrokeColor(StyleResolver&, CSSValue&);
 
 private:
     static void resetEffectiveZoom(StyleResolver&);
@@ -167,6 +170,18 @@ inline void StyleBuilderCustom::applyValueDirection(StyleResolver& styleResolver
 {
     styleResolver.style()->setDirection(downcast<CSSPrimitiveValue>(value));
     styleResolver.style()->setHasExplicitlySetDirection(true);
+}
+
+inline void StyleBuilderCustom::applyInitialTextAlign(StyleResolver& styleResolver)
+{
+    styleResolver.style()->setTextAlign(RenderStyle::initialTextAlign());
+    styleResolver.style()->setHasExplicitlySetTextAlign(true);
+}
+
+inline void StyleBuilderCustom::applyValueTextAlign(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.style()->setTextAlign(StyleBuilderConverter::convertTextAlign(styleResolver, value));
+    styleResolver.style()->setHasExplicitlySetTextAlign(true);
 }
 
 inline void StyleBuilderCustom::resetEffectiveZoom(StyleResolver& styleResolver)
@@ -1786,6 +1801,16 @@ inline void StyleBuilderCustom::applyValueStrokeWidth(StyleResolver& styleResolv
 {
     styleResolver.style()->setStrokeWidth(StyleBuilderConverter::convertLength(styleResolver, value));
     styleResolver.style()->setHasExplicitlySetStrokeWidth(true);
+}
+
+inline void StyleBuilderCustom::applyValueStrokeColor(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (styleResolver.applyPropertyToRegularStyle())
+        styleResolver.style()->setStrokeColor(styleResolver.colorFromPrimitiveValue(primitiveValue, /* forVisitedLink */ false));
+    if (styleResolver.applyPropertyToVisitedLinkStyle())
+        styleResolver.style()->setVisitedLinkStrokeColor(styleResolver.colorFromPrimitiveValue(primitiveValue, /* forVisitedLink */ true));
+    styleResolver.style()->setHasExplicitlySetStrokeColor(true);
 }
 
 } // namespace WebCore

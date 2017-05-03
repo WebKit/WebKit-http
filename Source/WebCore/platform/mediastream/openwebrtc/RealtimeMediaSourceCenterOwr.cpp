@@ -43,16 +43,15 @@
 #include "RealtimeAudioSourceOwr.h"
 #include "RealtimeMediaSourceCapabilities.h"
 #include "RealtimeVideoSourceOwr.h"
-#include "UUID.h"
 #include <owr/owr.h>
 #include <owr/owr_local.h>
 #include <owr/owr_media_source.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/UUID.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
-
 
 namespace WebCore {
 
@@ -109,7 +108,7 @@ void RealtimeMediaSourceCenterOwr::createMediaStream(NewMediaStreamHandler compl
     if (!videoDeviceID.isEmpty())
         types |= OWR_MEDIA_TYPE_VIDEO;
 
-    m_completionHandler = completionHandler;
+    m_completionHandler = WTFMove(completionHandler);
 
     owr_get_capture_sources(static_cast<OwrMediaType>(types), mediaSourcesAvailableCallback, this);
 }

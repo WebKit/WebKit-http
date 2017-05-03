@@ -47,14 +47,9 @@
 #include "StrongInlines.h"
 #include "VM.h"
 #include <wtf/HashSet.h>
-#include <wtf/RandomNumber.h>
 #include <wtf/RefPtr.h>
+#include <wtf/StackTrace.h>
 #include <wtf/text/StringBuilder.h>
-
-#if OS(DARWIN) || OS(LINUX)
-#include <cxxabi.h>
-#include <dlfcn.h>
-#endif
 
 namespace JSC {
 
@@ -118,13 +113,13 @@ protected:
     void recordJSFrame(Vector<UnprocessedStackFrame>& stackTrace)
     {
         CallSiteIndex callSiteIndex;
-        JSValue unsafeCallee = m_callFrame->unsafeCallee();
+        CalleeBits unsafeCallee = m_callFrame->unsafeCallee();
         CodeBlock* codeBlock = m_callFrame->unsafeCodeBlock();
         if (codeBlock) {
             ASSERT(isValidCodeBlock(codeBlock));
             callSiteIndex = m_callFrame->unsafeCallSiteIndex();
         }
-        stackTrace[m_depth] = UnprocessedStackFrame(codeBlock, JSValue::encode(unsafeCallee), callSiteIndex);
+        stackTrace[m_depth] = UnprocessedStackFrame(codeBlock, unsafeCallee, callSiteIndex);
         m_depth++;
     }
 
@@ -168,9 +163,10 @@ protected:
     bool isValidFramePointer(void* exec)
     {
         uint8_t* fpCast = bitwise_cast<uint8_t*>(exec);
-        for (MachineThreads::Thread* thread = m_vm.heap.machineThreads().threadsListHead(m_machineThreadsLocker); thread; thread = thread->next) {
-            uint8_t* stackBase = static_cast<uint8_t*>(thread->stackBase);
-            uint8_t* stackLimit = static_cast<uint8_t*>(thread->stackEnd);
+        const auto& threadList = m_vm.heap.machineThreads().threadsListHead(m_machineThreadsLocker);
+        for (MachineThreads::MachineThread* thread = threadList.head(); thread; thread = thread->next()) {
+            uint8_t* stackBase = static_cast<uint8_t*>(thread->stackBase());
+            uint8_t* stackLimit = static_cast<uint8_t*>(thread->stackEnd());
             RELEASE_ASSERT(stackBase);
             RELEASE_ASSERT(stackLimit);
             if (fpCast <= stackBase && fpCast >= stackLimit)
@@ -277,9 +273,9 @@ private:
 
 SamplingProfiler::SamplingProfiler(VM& vm, RefPtr<Stopwatch>&& stopwatch)
     : m_vm(vm)
+    , m_weakRandom()
     , m_stopwatch(WTFMove(stopwatch))
     , m_timingInterval(std::chrono::microseconds(Options::sampleInterval()))
-    , m_threadIdentifier(0)
     , m_jscExecutionThread(nullptr)
     , m_isPaused(false)
     , m_isShutDown(false)
@@ -300,11 +296,11 @@ void SamplingProfiler::createThreadIfNecessary(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
 
-    if (m_threadIdentifier)
+    if (m_thread)
         return;
 
     RefPtr<SamplingProfiler> profiler = this;
-    m_threadIdentifier = createThread("jsc.sampling-profiler.thread", [profiler] {
+    m_thread = Thread::create("jsc.sampling-profiler.thread", [profiler] {
         profiler->timerLoop();
     });
 }
@@ -328,7 +324,7 @@ void SamplingProfiler::timerLoop()
         // fluctuation here. The main idea is to prevent our timer from being in sync
         // with some system process such as a scheduled context switch.
         // http://plv.colorado.edu/papers/mytkowicz-pldi10.pdf
-        double randomSignedNumber = (randomNumber() * 2.0) - 1.0; // A random number between [-1, 1).
+        double randomSignedNumber = (m_weakRandom.get() * 2.0) - 1.0; // A random number between [-1, 1).
         std::chrono::microseconds randomFluctuation = std::chrono::microseconds(static_cast<int64_t>(randomSignedNumber * static_cast<double>(m_timingInterval.count()) * 0.20l));
         std::this_thread::sleep_for(m_timingInterval - std::min(m_timingInterval, stackTraceProcessingTime) + randomFluctuation);
     }
@@ -342,9 +338,9 @@ void SamplingProfiler::takeSample(const AbstractLocker&, std::chrono::microsecon
 
         LockHolder machineThreadsLocker(m_vm.heap.machineThreads().getLock());
         LockHolder codeBlockSetLocker(m_vm.heap.codeBlockSet().getLock());
-        LockHolder executableAllocatorLocker(m_vm.executableAllocator.getLock());
+        LockHolder executableAllocatorLocker(ExecutableAllocator::singleton().getLock());
 
-        bool didSuspend = m_jscExecutionThread->suspend();
+        auto didSuspend = m_jscExecutionThread->suspend();
         if (didSuspend) {
             // While the JSC thread is suspended, we can't do things like malloc because the JSC thread
             // may be holding the malloc lock.
@@ -354,17 +350,16 @@ void SamplingProfiler::takeSample(const AbstractLocker&, std::chrono::microsecon
             bool topFrameIsLLInt = false;
             void* llintPC;
             {
-                MachineThreads::Thread::Registers registers;
+                MachineThreads::MachineThread::Registers registers;
                 m_jscExecutionThread->getRegisters(registers);
                 machineFrame = registers.framePointer();
                 callFrame = static_cast<ExecState*>(machineFrame);
                 machinePC = registers.instructionPointer();
                 llintPC = registers.llintPC();
-                m_jscExecutionThread->freeRegisters(registers);
             }
             // FIXME: Lets have a way of detecting when we're parsing code.
             // https://bugs.webkit.org/show_bug.cgi?id=152761
-            if (m_vm.executableAllocator.isValidExecutableMemory(executableAllocatorLocker, machinePC)) {
+            if (ExecutableAllocator::singleton().isValidExecutableMemory(executableAllocatorLocker, machinePC)) {
                 if (m_vm.isExecutingInRegExpJIT) {
                     // FIXME: We're executing a regexp. Lets gather more intersting data.
                     // https://bugs.webkit.org/show_bug.cgi?id=152729
@@ -485,11 +480,16 @@ void SamplingProfiler::processUnverifiedStackTraces()
             stackTrace.frames.append(StackFrame());
         };
 
-        auto storeCalleeIntoLastFrame = [&] (EncodedJSValue encodedCallee) {
+        auto storeCalleeIntoLastFrame = [&] (CalleeBits calleeBits) {
             // Set the callee if it's a valid GC object.
-            JSValue callee = JSValue::decode(encodedCallee);
             StackFrame& stackFrame = stackTrace.frames.last();
             bool alreadyHasExecutable = !!stackFrame.executable;
+            if (calleeBits.isWasm()) {
+                stackFrame.frameType = FrameType::Unknown;
+                return;
+            }
+
+            JSValue callee = calleeBits.asCell();
             if (!HeapUtil::isValueGCObject(m_vm.heap, filter, callee)) {
                 if (!alreadyHasExecutable)
                     stackFrame.frameType = FrameType::Unknown;
@@ -746,17 +746,11 @@ String SamplingProfiler::StackFrame::displayName(VM& vm)
     }
 
     if (frameType == FrameType::Unknown || frameType == FrameType::C) {
-#if OS(DARWIN) || OS(LINUX)
+#if HAVE(DLADDR)
         if (frameType == FrameType::C) {
-            const char* mangledName = nullptr;
-            const char* cxaDemangled = nullptr;
-            Dl_info info;
-            if (dladdr(cCodePC, &info) && info.dli_sname)
-                mangledName = info.dli_sname;
-            if (mangledName) {
-                cxaDemangled = abi::__cxa_demangle(mangledName, 0, 0, 0);
-                return String(cxaDemangled ? cxaDemangled : mangledName);
-            }
+            auto demangled = WTF::StackTrace::demangle(cCodePC);
+            if (demangled)
+                return String(demangled->demangledName() ? demangled->demangledName() : demangled->mangledName());
             WTF::dataLog("couldn't get a name");
         }
 #endif

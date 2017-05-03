@@ -48,11 +48,6 @@ endif ()
 if (NOT APPLE)
     find_package(ICU REQUIRED)
 else ()
-    set(ICU_INCLUDE_DIRS
-        "${WEBCORE_DIR}/icu"
-        "${JAVASCRIPTCORE_DIR}/icu"
-        "${WTF_DIR}/icu"
-    )
     set(ICU_LIBRARIES libicucore.dylib)
 endif ()
 

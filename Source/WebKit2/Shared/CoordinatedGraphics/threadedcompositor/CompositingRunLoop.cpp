@@ -35,7 +35,7 @@
 #include <wtf/WorkQueue.h>
 
 #if USE(GLIB_EVENT_LOOP)
-#include <glib.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
 namespace WebKit {
@@ -111,17 +111,12 @@ private:
 
 CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     : m_updateTimer(WorkQueuePool::singleton().runLoop(this), this, &CompositingRunLoop::updateTimerFired)
-#ifndef NDEBUG
-    , m_runLoop(WorkQueuePool::singleton().runLoop(this))
-#endif
     , m_updateFunction(WTFMove(updateFunction))
 {
     m_updateState.store(UpdateState::Completed);
 
-#if PLATFORM(GTK)
-    m_updateTimer.setPriority(G_PRIORITY_HIGH_IDLE);
-#elif PLATFORM(WPE)
-    m_updateTimer.setPriority(G_PRIORITY_HIGH + 30);
+#if USE(GLIB_EVENT_LOOP)
+    m_updateTimer.setPriority(RunLoopSourcePriority::CompositingThreadUpdateTimer);
 #endif
 }
 
@@ -191,13 +186,6 @@ void CompositingRunLoop::updateTimerFired()
 {
     m_updateFunction();
 }
-
-#ifndef NDEBUG
-bool CompositingRunLoop::isCurrent()
-{
-    return &RunLoop::current() == &m_runLoop;
-}
-#endif
 
 } // namespace WebKit
 

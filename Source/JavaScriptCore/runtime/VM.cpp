@@ -85,6 +85,7 @@
 #include "Parser.h"
 #include "ProfilerDatabase.h"
 #include "ProgramCodeBlock.h"
+#include "PromiseDeferredTimer.h"
 #include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
@@ -103,6 +104,7 @@
 #include "UnlinkedCodeBlock.h"
 #include "VMEntryScope.h"
 #include "VMInspector.h"
+#include "WasmWorklist.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
@@ -163,9 +165,6 @@ static bool enableAssembler(ExecutableAllocator& executableAllocator)
 
 VM::VM(VMType vmType, HeapType heapType)
     : m_apiLock(adoptRef(new JSLock(this)))
-#if ENABLE(ASSEMBLER)
-    , executableAllocator(*this)
-#endif
     , heap(this, heapType)
     , auxiliarySpace("Auxiliary", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::Auxiliary))
     , cellSpace("JSCell", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::JSCell))
@@ -177,7 +176,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , clientData(0)
     , topVMEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
-    , topJSWebAssemblyInstance(nullptr)
+    , promiseDeferredTimer(std::make_unique<PromiseDeferredTimer>(*this))
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
     , emptyList(new ArgList)
@@ -196,7 +195,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_rtTraceList(new RTTraceList())
 #endif
 #if ENABLE(ASSEMBLER)
-    , m_canUseAssembler(enableAssembler(executableAllocator))
+    , m_canUseAssembler(enableAssembler(ExecutableAllocator::singleton()))
 #endif
 #if ENABLE(JIT)
     , m_canUseJIT(m_canUseAssembler && Options::useJIT())
@@ -238,10 +237,8 @@ VM::VM(VMType vmType, HeapType heapType)
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
 #if ENABLE(WEBASSEMBLY)
-    webAssemblyCalleeStructure.set(*this, JSWebAssemblyCallee::createStructure(*this, 0, jsNull()));
     webAssemblyToJSCalleeStructure.set(*this, WebAssemblyToJSCallee::createStructure(*this, 0, jsNull()));
     webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
-    webAssemblyToJSCallee.set(*this, WebAssemblyToJSCallee::create(*this, webAssemblyToJSCalleeStructure.get()));
 #endif
     moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
@@ -285,7 +282,6 @@ VM::VM(VMType vmType, HeapType heapType)
 
 #if ENABLE(JIT)
     jitStubs = std::make_unique<JITThunks>();
-    allCalleeSaveRegisterOffsets = std::make_unique<RegisterAtOffsetList>(RegisterSet::vmCalleeSaveRegisters(), RegisterAtOffsetList::ZeroBased);
 #endif
     arityCheckData = std::make_unique<CommonSlowPaths::ArityCheckData>();
 
@@ -357,6 +353,11 @@ VM::VM(VMType vmType, HeapType heapType)
 
 VM::~VM()
 {
+    promiseDeferredTimer->stopRunningTasks();
+#if ENABLE(WEBASSEMBLY)
+    if (Wasm::existingWorklistOrNull())
+        Wasm::ensureWorklist().stopAllPlansForVM(*this);
+#endif
     if (UNLIKELY(m_watchdog))
         m_watchdog->willDestroyVM(this);
     m_traps.willDestroyVM();
@@ -604,24 +605,20 @@ void VM::throwException(ExecState* exec, Exception* exception)
 {
     if (Options::breakOnThrow()) {
         CodeBlock* codeBlock = exec->codeBlock();
-        dataLog("Throwing exception in call frame ", RawPointer(exec), " for code block ");
-        if (codeBlock)
-            dataLog(*codeBlock, "\n");
-        else
-            dataLog("<nullptr>\n");
+        dataLog("Throwing exception in call frame ", RawPointer(exec), " for code block ", codeBlock, "\n");
         CRASH();
     }
 
     ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
 
-    interpreter->notifyDebuggerOfExceptionToBeThrown(exec, exception);
+    interpreter->notifyDebuggerOfExceptionToBeThrown(*this, exec, exception);
 
     setException(exception);
 }
 
 JSValue VM::throwException(ExecState* exec, JSValue thrownValue)
 {
-    VM& vm = exec->vm();
+    VM& vm = *this;
     Exception* exception = jsDynamicCast<Exception*>(vm, thrownValue);
     if (!exception)
         exception = Exception::create(*this, thrownValue);
@@ -935,5 +932,19 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
     }
 }
 #endif
+
+#if ENABLE(JIT)
+RegisterAtOffsetList* VM::getAllCalleeSaveRegisterOffsets()
+{
+    static RegisterAtOffsetList* result;
+
+    static std::once_flag calleeSavesFlag;
+    std::call_once(calleeSavesFlag, [] () {
+        result = new RegisterAtOffsetList(RegisterSet::vmCalleeSaveRegisters(), RegisterAtOffsetList::ZeroBased);
+    });
+
+    return result;
+}
+#endif // ENABLE(JIT)
 
 } // namespace JSC

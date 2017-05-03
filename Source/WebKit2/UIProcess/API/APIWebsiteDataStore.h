@@ -37,16 +37,15 @@ class WebsiteDataStore final : public ObjectImpl<Object::Type::WebsiteDataStore>
 public:
     static Ref<WebsiteDataStore> defaultDataStore();
     static Ref<WebsiteDataStore> createNonPersistentDataStore();
-    static Ref<WebsiteDataStore> create(WebKit::WebsiteDataStore::Configuration);
+    static Ref<WebsiteDataStore> createLegacy(WebKit::WebsiteDataStore::Configuration);
 
-    explicit WebsiteDataStore(WebKit::WebsiteDataStore::Configuration);
+    explicit WebsiteDataStore(WebKit::WebsiteDataStore::Configuration, WebCore::SessionID);
     virtual ~WebsiteDataStore();
 
     bool isPersistent();
 
     bool resourceLoadStatisticsEnabled() const;
     void setResourceLoadStatisticsEnabled(bool);
-    void registerSharedResourceLoadObserver();
 
     WebKit::WebsiteDataStore& websiteDataStore() { return *m_websiteDataStore; }
     HTTPCookieStore& httpCookieStore();

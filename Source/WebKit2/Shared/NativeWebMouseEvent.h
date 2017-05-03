@@ -52,7 +52,7 @@ public:
     NativeWebMouseEvent(const NativeWebMouseEvent&);
     NativeWebMouseEvent(GdkEvent*, int);
 #elif PLATFORM(WPE)
-    NativeWebMouseEvent(struct wpe_input_pointer_event*);
+    NativeWebMouseEvent(struct wpe_input_pointer_event*, float deviceScaleFactor);
 #endif
 
 #if USE(APPKIT)

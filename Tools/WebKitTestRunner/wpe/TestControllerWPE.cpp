@@ -114,6 +114,11 @@ void TestController::runModal(PlatformWebView*)
 {
 }
 
+WKContextRef TestController::platformContext()
+{
+    return nullptr;
+}
+
 const char* TestController::platformLibraryPathForTesting()
 {
     return nullptr;

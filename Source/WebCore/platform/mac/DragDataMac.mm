@@ -83,13 +83,13 @@ static inline String tiffPasteboardType()
 
 namespace WebCore {
 
-DragData::DragData(DragDataRef data, const IntPoint& clientPosition, const IntPoint& globalPosition, 
-    DragOperation sourceOperationMask, DragApplicationFlags flags)
+DragData::DragData(DragDataRef data, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation sourceOperationMask, DragApplicationFlags flags, DragDestinationAction destinationAction)
     : m_clientPosition(clientPosition)
     , m_globalPosition(globalPosition)
     , m_platformDragData(data)
     , m_draggingSourceOperationMask(sourceOperationMask)
     , m_applicationFlags(flags)
+    , m_dragDestinationAction(destinationAction)
 #if PLATFORM(MAC)
     , m_pasteboardName([[m_platformDragData draggingPasteboard] name])
 #else
@@ -98,15 +98,22 @@ DragData::DragData(DragDataRef data, const IntPoint& clientPosition, const IntPo
 {
 }
 
-DragData::DragData(const String& dragStorageName, const IntPoint& clientPosition, const IntPoint& globalPosition,
-    DragOperation sourceOperationMask, DragApplicationFlags flags)
+DragData::DragData(const String& dragStorageName, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation sourceOperationMask, DragApplicationFlags flags, DragDestinationAction destinationAction)
     : m_clientPosition(clientPosition)
     , m_globalPosition(globalPosition)
     , m_platformDragData(0)
     , m_draggingSourceOperationMask(sourceOperationMask)
     , m_applicationFlags(flags)
+    , m_dragDestinationAction(destinationAction)
     , m_pasteboardName(dragStorageName)
 {
+}
+
+bool DragData::containsURLTypeIdentifier() const
+{
+    Vector<String> types;
+    platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
+    return types.contains(urlPasteboardType());
 }
     
 bool DragData::canSmartReplace() const
@@ -123,30 +130,31 @@ bool DragData::containsColor() const
 
 bool DragData::containsFiles() const
 {
-#if PLATFORM(MAC)
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
-    return types.contains(String(NSFilenamesPboardType)) || types.contains(String(NSFilesPromisePboardType));
+    for (auto& type : types) {
+#if PLATFORM(MAC)
+        if (type == String(NSFilesPromisePboardType) || type == String(NSFilenamesPboardType))
+            return true;
 #else
-    return false;
+        if (UTTypeConformsTo(type.createCFString().autorelease(), kUTTypeContent))
+            return true;
 #endif
+    }
+    return false;
 }
 
 unsigned DragData::numberOfFiles() const
 {
-    Vector<String> files;
-#if PLATFORM(MAC)
-    platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(NSFilenamesPboardType), m_pasteboardName);
-    if (!files.size())
-        platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(NSFilesPromisePboardType), m_pasteboardName);
-#endif
-    return files.size();
+    return platformStrategies()->pasteboardStrategy()->getNumberOfFiles(m_pasteboardName);
 }
 
 void DragData::asFilenames(Vector<String>& result) const
 {
 #if PLATFORM(MAC)
     platformStrategies()->pasteboardStrategy()->getPathnamesForType(result, String(NSFilenamesPboardType), m_pasteboardName);
+#endif
+#if PLATFORM(MAC) || ENABLE(DATA_INTERACTION)
     if (!result.size())
         result = fileNames();
 #else
@@ -189,8 +197,11 @@ Color DragData::asColor() const
     return platformStrategies()->pasteboardStrategy()->color(m_pasteboardName);
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose purpose) const
 {
+    if (purpose == DraggingPurpose::ForFileUpload)
+        return containsFiles();
+
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
     return types.contains(String(WebArchivePboardType))
@@ -280,6 +291,43 @@ String DragData::asURL(FilenameConversionPolicy, String* title) const
 
     return String();        
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+static bool typeIsAppropriateForSupportedTypes(const String& type, const Vector<String>& supportedTypes)
+{
+    CFStringRef cfType = type.createCFString().autorelease();
+    for (auto supportedType : supportedTypes) {
+        if (UTTypeConformsTo(cfType, supportedType.createCFString().get()))
+            return true;
+    }
+    return false;
+}
+
+void DragData::updatePreferredTypeIdentifiers(const Vector<String>& supportedTypes) const
+{
+    Vector<String> bestTypeIdentifiers;
+    auto& strategy = *platformStrategies()->pasteboardStrategy();
+    uint64_t itemCount = strategy.getPasteboardItemsCount(m_pasteboardName);
+    for (uint64_t itemIndex = 0; itemIndex < itemCount; ++itemIndex) {
+        Vector<String> typeIdentifiers;
+        strategy.getTypesByFidelityForItemAtIndex(typeIdentifiers, itemIndex, m_pasteboardName);
+
+        String bestTypeIdentifier = emptyString();
+        for (auto& type : typeIdentifiers) {
+            if (!typeIsAppropriateForSupportedTypes(type, supportedTypes))
+                continue;
+
+            bestTypeIdentifier = type;
+            break;
+        }
+        bestTypeIdentifiers.append(bestTypeIdentifier);
+    }
+
+    strategy.updatePreferredTypeIdentifiers(bestTypeIdentifiers, m_pasteboardName);
+}
+
+#endif
 
 } // namespace WebCore
 

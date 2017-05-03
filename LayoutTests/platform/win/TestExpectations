@@ -325,9 +325,6 @@ fast/forms/file/open-file-panel.html [ Skip ]
 # ENABLE_GAMEPAD not enabled.
 gamepad/ [ Skip ]
 
-# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
-webkit.org/b/136452 http/tests/security/contentTypeOptions
-
 # TODO Userscripts stuff is not implemented
 webkit.org/b/140258 userscripts/ [ Skip ]
 userscripts/window-onerror-for-isolated-world-1.html [ Skip ]
@@ -450,6 +447,7 @@ fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 http/tests/download/anchor-download-no-extension.html [ Skip ]
 http/tests/download/area-download.html [ Skip ]
 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -2315,7 +2313,6 @@ http/tests/navigation/no-referrer-target-blank.html [ Failure ] # Easy
 http/tests/navigation/post-goback-same-url.html [ Failure ] # Easy
 http/tests/navigation/restore-form-state-https.html [ Failure ]
 http/tests/navigation/target-blank-opener.html [ Skip ] # Timeout
-http/tests/security/contentTypeOptions/nosniff-script-blocked.html [ Failure ]
 http/tests/security/cross-frame-access-call.html [ Failure ]
 http/tests/security/cross-frame-access-get.html [ Failure ]
 http/tests/security/cross-frame-access-getOwnPropertyDescriptor.html [ Failure ]
@@ -2682,7 +2679,6 @@ webkit.org/b/113946 compositing/filters/sw-shadow-overlaps-hw-layer.html [ Failu
 webkit.org/b/113946 compositing/filters/sw-shadow-overlaps-hw-shadow.html [ Failure ]
 webkit.org/b/112867 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
 compositing/iframes/fixed-position-iframe.html [ Failure ]
-compositing/iframes/iframe-size-from-zero.html [ Failure ]
 compositing/iframes/invisible-nested-iframe-show.html [ Failure ]
 webkit.org/b/116564 compositing/layer-creation/animation-overlap-with-children.html [ Failure ]
 compositing/iframes/overlapped-iframe-iframe.html [ Failure ]
@@ -3792,9 +3788,12 @@ fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
 
-# Resource Timing networking data not yet available.
+# Resource Timing Metrics not available.
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
+# Request Header information only available in WebKit2
+http/tests/inspector/network/resource-request-headers.html [ Failure ]
 
 # WebCrypto tests are failing.
 webkit.org/b/165090 imported/w3c/WebCryptoAPI [ Skip ]
@@ -3802,3 +3801,13 @@ webkit.org/b/165090 imported/w3c/web-platform-tests/WebCryptoAPI [ Skip ]
 
 # webglcontextchanged event not supported
 fast/canvas/webgl/webglcontextchangedevent.html [ Skip ]
+
+# There is not NetworkProcess in WK1, so it can't crash.
+http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
+
+# We don't support Wasm on Windows.
+workers/wasm-hashset-many-2.html [ Skip ]
+workers/wasm-hashset-many.html [ Skip ]
+workers/wasm-hashset.html [ Skip ]
+workers/wasm-long-compile-many.html [ Skip ]
+workers/wasm-long-compile.html [ Skip ]

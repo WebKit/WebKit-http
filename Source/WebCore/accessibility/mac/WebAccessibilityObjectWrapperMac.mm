@@ -63,6 +63,8 @@
 #import "LocalizedStrings.h"
 #import "MainFrame.h"
 #import "Page.h"
+#import "PluginDocument.h"
+#import "PluginViewBase.h"
 #import "RenderTextControl.h"
 #import "RenderView.h"
 #import "RenderWidget.h"
@@ -184,6 +186,10 @@ using namespace HTMLNames;
 
 #ifndef NSAccessibilityGrabbedAttribute
 #define NSAccessibilityGrabbedAttribute @"AXGrabbed"
+#endif
+
+#ifndef NSAccessibilityDatetimeValueAttribute
+#define NSAccessibilityDatetimeValueAttribute @"AXDateTimeValue"
 #endif
 
 #ifndef NSAccessibilityDropEffectsAttribute
@@ -1168,6 +1174,9 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache* cache, const Visibl
         [additional addObject:NSAccessibilityValueAttribute];
     }
 
+    if (m_object->supportsDatetimeAttribute())
+        [additional addObject:NSAccessibilityDatetimeValueAttribute];
+    
     if (m_object->supportsRequiredAttribute()) {
         [additional addObject:NSAccessibilityRequiredAttribute];
     }
@@ -1682,6 +1691,21 @@ static NSMutableArray *convertStringsToNSArray(const Vector<String>& vector)
     return [self textMarkerRangeFromVisiblePositions:selection.visibleStart() endPosition:selection.visibleEnd()];
 }
 
+- (id)associatedPluginParent
+{
+    if (!m_object || !m_object->hasAttribute(x_apple_pdf_annotationAttr))
+        return nil;
+    
+    if (!m_object->document()->isPluginDocument())
+        return nil;
+        
+    Widget* pluginWidget = static_cast<PluginDocument*>(m_object->document())->pluginWidget();
+    if (!pluginWidget || !pluginWidget->isPluginViewBase())
+        return nil;
+
+    return static_cast<PluginViewBase*>(pluginWidget)->accessibilityAssociatedPluginParentForElement(m_object->element());
+}
+
 - (CGPoint)convertPointToScreenSpace:(FloatPoint &)point
 {
     FrameView* frameView = m_object->documentFrameView();
@@ -1802,6 +1826,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { TableRole, NSAccessibilityTableRole },
         { ApplicationRole, NSAccessibilityApplicationRole },
         { GroupRole, NSAccessibilityGroupRole },
+        { TextGroupRole, NSAccessibilityGroupRole },
         { RadioGroupRole, NSAccessibilityRadioGroupRole },
         { ListRole, NSAccessibilityListRole },
         { DirectoryRole, NSAccessibilityListRole },
@@ -1837,6 +1862,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { LinkRole, NSAccessibilityLinkRole },
         { DisclosureTriangleRole, NSAccessibilityDisclosureTriangleRole },
         { GridRole, NSAccessibilityTableRole },
+        { TreeGridRole, NSAccessibilityTableRole },
         { WebCoreLinkRole, NSAccessibilityLinkRole },
         { ImageMapLinkRole, NSAccessibilityLinkRole },
         { ImageMapRole, @"AXImageMap" },
@@ -1853,11 +1879,13 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { DefinitionRole, NSAccessibilityGroupRole },
         { DescriptionListDetailRole, NSAccessibilityGroupRole },
         { DescriptionListTermRole, NSAccessibilityGroupRole },
+        { TermRole, NSAccessibilityGroupRole },
         { DescriptionListRole, NSAccessibilityListRole },
         { SliderThumbRole, NSAccessibilityValueIndicatorRole },
         { WebApplicationRole, NSAccessibilityGroupRole },
         { LandmarkBannerRole, NSAccessibilityGroupRole },
         { LandmarkComplementaryRole, NSAccessibilityGroupRole },
+        { LandmarkDocRegionRole, NSAccessibilityGroupRole },
         { LandmarkContentInfoRole, NSAccessibilityGroupRole },
         { LandmarkMainRole, NSAccessibilityGroupRole },
         { LandmarkNavigationRole, NSAccessibilityGroupRole },
@@ -1866,6 +1894,8 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { ApplicationAlertRole, NSAccessibilityGroupRole },
         { ApplicationAlertDialogRole, NSAccessibilityGroupRole },
         { ApplicationDialogRole, NSAccessibilityGroupRole },
+        { ApplicationGroupRole, NSAccessibilityGroupRole },
+        { ApplicationTextGroupRole, NSAccessibilityGroupRole },
         { ApplicationLogRole, NSAccessibilityGroupRole },
         { ApplicationMarqueeRole, NSAccessibilityGroupRole },
         { ApplicationStatusRole, NSAccessibilityGroupRole },
@@ -1911,6 +1941,9 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { SVGTSpanRole, NSAccessibilityGroupRole },
         { InlineRole, NSAccessibilityGroupRole },
         { MarkRole, NSAccessibilityGroupRole },
+        { TimeRole, NSAccessibilityGroupRole },
+        { FeedRole, NSAccessibilityGroupRole },
+        { FigureRole, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -2013,6 +2046,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXLandmarkMain";
         case LandmarkNavigationRole:
             return @"AXLandmarkNavigation";
+        case LandmarkDocRegionRole:
         case LandmarkRegionRole:
             return @"AXLandmarkRegion";
         case LandmarkSearchRole:
@@ -2023,6 +2057,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXApplicationAlertDialog";
         case ApplicationDialogRole:
             return @"AXApplicationDialog";
+        case ApplicationGroupRole:
+        case ApplicationTextGroupRole:
+        case FeedRole:
+            return @"AXApplicationGroup";
         case ApplicationLogRole:
             return @"AXApplicationLog";
         case ApplicationMarqueeRole:
@@ -2046,6 +2084,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         case DefinitionRole:
             return @"AXDefinition";
         case DescriptionListTermRole:
+        case TermRole:
             return @"AXTerm";
         case DescriptionListDetailRole:
             return @"AXDescription";
@@ -2101,7 +2140,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return @"AXDetails";
     if (role == SummaryRole)
         return @"AXSummary";
-    
+    if (role == TimeRole)
+        return @"AXTimeGroup";
+
     if (m_object->isMediaTimeline())
         return NSAccessibilityTimelineSubrole;
 
@@ -2180,20 +2221,22 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         if (ariaLandmarkRoleDescription)
             return ariaLandmarkRoleDescription;
         
-        if (m_object->isFigure())
-            return AXFigureText();
-        
         switch (m_object->roleValue()) {
         case AudioRole:
             return localizedMediaControlElementString("AudioElement");
         case DefinitionRole:
             return AXDefinitionText();
         case DescriptionListTermRole:
+        case TermRole:
             return AXDescriptionListTermText();
         case DescriptionListDetailRole:
             return AXDescriptionListDetailText();
         case DetailsRole:
             return AXDetailsText();
+        case FeedRole:
+            return AXFeedText();
+        case FigureRole:
+            return AXFigureText();
         case FooterRole:
             return AXFooterRoleDescriptionText();
         case MarkRole:
@@ -2895,25 +2938,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString: NSAccessibilitySelectedAttribute])
         return [NSNumber numberWithBool:m_object->isSelected()];
     
-    if ([attributeName isEqualToString: NSAccessibilityARIACurrentAttribute]) {
-        switch (m_object->ariaCurrentState()) {
-        case ARIACurrentFalse:
-            return @"false";
-        case ARIACurrentPage:
-            return @"page";
-        case ARIACurrentStep:
-            return @"step";
-        case ARIACurrentLocation:
-            return @"location";
-        case ARIACurrentTime:
-            return @"time";
-        case ARIACurrentDate:
-            return @"date";
-        default:
-        case ARIACurrentTrue:
-            return @"true";
-        }
-    }
+    if ([attributeName isEqualToString: NSAccessibilityARIACurrentAttribute])
+        return m_object->ariaCurrentValue();
     
     if ([attributeName isEqualToString: NSAccessibilityServesAsTitleForUIElementsAttribute] && m_object->isMenuButton()) {
         AccessibilityObject* uiElement = downcast<AccessibilityRenderObject>(*m_object).menuForMenuButton();
@@ -3026,7 +3052,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 
     if ([attributeName isEqualToString:NSAccessibilityHasPopupAttribute])
         return [NSNumber numberWithBool:m_object->ariaHasPopup()];
-    
+
+    if ([attributeName isEqualToString:NSAccessibilityDatetimeValueAttribute])
+        return m_object->datetimeAttributeValue();
+
     // ARIA Live region attributes.
     if ([attributeName isEqualToString:NSAccessibilityARIALiveAttribute])
         return m_object->ariaLiveRegionStatus();
@@ -3079,6 +3108,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         m_object->classList(classList);
         return convertStringsToNSArray(classList);
     }
+    
+    // This allows us to connect to a plugin that creates a shadow node for editing (like PDFs).
+    if ([attributeName isEqualToString:@"_AXAssociatedPluginParent"])
+        return [self associatedPluginParent];
     
     // this is used only by DumpRenderTree for testing
     if ([attributeName isEqualToString:@"AXClickPoint"])

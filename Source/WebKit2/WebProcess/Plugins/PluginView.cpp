@@ -82,7 +82,7 @@ using namespace WebCore;
 namespace WebKit {
 
 // This simulated mouse click delay in HTMLPlugInImageElement.cpp should generally be the same or shorter than this delay.
-static const auto pluginSnapshotTimerDelay = std::chrono::milliseconds { 1100 };
+static const Seconds pluginSnapshotTimerDelay { 1100_ms };
 
 class PluginView::URLRequest : public RefCounted<URLRequest> {
 public:
@@ -553,6 +553,13 @@ bool PluginView::sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier,
 
     m_plugin->sendComplexTextInput(textInput);
     return true;
+}
+    
+id PluginView::accessibilityAssociatedPluginParentForElement(Element* element) const
+{
+    if (!m_plugin)
+        return nil;
+    return m_plugin->accessibilityAssociatedPluginParentForElement(element);
 }
     
 NSObject *PluginView::accessibilityObject() const
@@ -1145,7 +1152,7 @@ void PluginView::pendingURLRequestsTimerFired()
 
     // If there are more requests to perform, reschedule the timer.
     if (!m_pendingURLRequests.isEmpty())
-        m_pendingURLRequestsTimer.startOneShot(0);
+        m_pendingURLRequestsTimer.startOneShot(0_s);
     
     performURLRequest(urlRequest.get());
 }
@@ -1304,14 +1311,8 @@ void PluginView::redeliverManualStream()
 
     // Deliver the data.
     if (m_manualStreamData) {
-        const char* data;
-        unsigned position = 0;
-
-        while (unsigned length = m_manualStreamData->getSomeData(data, position)) {
-            manualLoadDidReceiveData(data, length);
-            position += length;
-        }
-
+        for (const auto& segment : *m_manualStreamData)
+            manualLoadDidReceiveData(segment->data(), segment->size());
         m_manualStreamData = nullptr;
     }
 
@@ -1404,7 +1405,7 @@ void PluginView::loadURL(uint64_t requestID, const String& method, const String&
         frameLoadRequest.resourceRequest().setHTTPReferrer(referrer);
 
     m_pendingURLRequests.append(URLRequest::create(requestID, frameLoadRequest, allowPopups));
-    m_pendingURLRequestsTimer.startOneShot(0);
+    m_pendingURLRequestsTimer.startOneShot(0_s);
 }
 
 void PluginView::cancelStreamLoad(uint64_t streamID)

@@ -28,6 +28,7 @@
 #include "JSCInlines.h"
 #include "MachineStackMarker.h"
 #include "SamplingProfiler.h"
+#include "WasmMachineThreads.h"
 #include <thread>
 
 namespace JSC {
@@ -109,7 +110,7 @@ void JSLock::lock(intptr_t lockCount)
         m_lock.lock();
     }
 
-    m_ownerThread = currentPlatformThread();
+    m_ownerThread = &Thread::current();
     WTF::storeStoreFence();
     m_hasOwnerThread = true;
     ASSERT(!m_lockCount);
@@ -143,6 +144,9 @@ void JSLock::didAcquireLock()
     m_vm->setLastStackTop(threadData.savedLastStackTop());
 
     m_vm->heap.machineThreads().addCurrentThread();
+#if ENABLE(WEBASSEMBLY)
+    Wasm::startTrackingCurrentThread();
+#endif
 
     m_vm->traps().notifyGrabAllLocks();
 

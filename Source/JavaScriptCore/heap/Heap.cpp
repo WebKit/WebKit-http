@@ -62,6 +62,7 @@
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
 #include "VM.h"
+#include "WasmMemory.h"
 #include "WeakSetInlines.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
@@ -250,6 +251,7 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_sizeAfterLastEdenCollect(0)
     , m_sizeBeforeLastEdenCollect(0)
     , m_bytesAllocatedThisCycle(0)
+    , m_webAssemblyFastMemoriesAllocatedThisCycle(0)
     , m_bytesAbandonedSinceLastFullCollect(0)
     , m_maxEdenSize(m_minBytesPerCycle)
     , m_maxHeapSize(m_minBytesPerCycle)
@@ -350,7 +352,7 @@ void Heap::lastChanceToFinalize()
             m_shouldStopCollectingContinuously = true;
             m_collectContinuouslyCondition.notifyOne();
         }
-        waitForThreadCompletion(m_collectContinuouslyThread);
+        m_collectContinuouslyThread->waitForCompletion();
     }
     
     if (Options::logGC())
@@ -459,8 +461,29 @@ void Heap::reportExtraMemoryAllocatedSlowCase(size_t size)
 
 void Heap::deprecatedReportExtraMemorySlowCase(size_t size)
 {
-    m_deprecatedExtraMemorySize += size;
+    // FIXME: Change this to use SaturatedArithmetic when available.
+    // https://bugs.webkit.org/show_bug.cgi?id=170411
+    Checked<size_t, RecordOverflow> checkedNewSize = m_deprecatedExtraMemorySize;
+    checkedNewSize += size;
+    m_deprecatedExtraMemorySize = UNLIKELY(checkedNewSize.hasOverflowed()) ? std::numeric_limits<size_t>::max() : checkedNewSize.unsafeGet();
     reportExtraMemoryAllocatedSlowCase(size);
+}
+
+void Heap::reportWebAssemblyFastMemoriesAllocated(size_t count)
+{
+    didAllocateWebAssemblyFastMemories(count);
+    collectIfNecessaryOrDefer();
+}
+
+bool Heap::webAssemblyFastMemoriesThisCycleAtThreshold() const
+{
+    // WebAssembly fast memories use large amounts of virtual memory and we
+    // don't know how many can exist in this process. We keep track of the most
+    // fast memories that have existed at any point in time. The GC uses this
+    // top watermark as an indication of whether recent allocations should cause
+    // a collection: get too close and we may be close to the actual limit.
+    size_t fastMemoryThreshold = std::max<size_t>(1, Wasm::Memory::maxFastMemoryCount() / 2);
+    return m_webAssemblyFastMemoriesAllocatedThisCycle > fastMemoryThreshold;
 }
 
 void Heap::reportAbandonedObjectGraph()
@@ -707,7 +730,15 @@ size_t Heap::objectCount()
 
 size_t Heap::extraMemorySize()
 {
-    return m_extraMemorySize + m_deprecatedExtraMemorySize + m_arrayBuffers.size();
+    // FIXME: Change this to use SaturatedArithmetic when available.
+    // https://bugs.webkit.org/show_bug.cgi?id=170411
+    Checked<size_t, RecordOverflow> checkedTotal = m_extraMemorySize;
+    checkedTotal += m_deprecatedExtraMemorySize;
+    checkedTotal += m_arrayBuffers.size();
+    size_t total = UNLIKELY(checkedTotal.hasOverflowed()) ? std::numeric_limits<size_t>::max() : checkedTotal.unsafeGet();
+
+    ASSERT(m_objectSpace.capacity() >= m_objectSpace.size());
+    return std::min(total, std::numeric_limits<size_t>::max() - m_objectSpace.capacity());
 }
 
 size_t Heap::size()
@@ -1938,7 +1969,7 @@ Heap::Ticket Heap::requestCollection(std::optional<CollectionScope> scope)
     // right now. This is an optimization that prevents the collector thread from ever starting in most
     // cases.
     ASSERT(m_lastServedTicket <= m_lastGrantedTicket);
-    if (m_lastServedTicket == m_lastGrantedTicket) {
+    if ((m_lastServedTicket == m_lastGrantedTicket) && (m_currentPhase == CollectorPhase::NotRunning)) {
         if (false)
             dataLog("Taking the conn.\n");
         m_worldState.exchangeOr(mutatorHasConnBit);
@@ -2068,6 +2099,7 @@ void Heap::updateAllocationLimits()
     if (verbose) {
         dataLog("\n");
         dataLog("bytesAllocatedThisCycle = ", m_bytesAllocatedThisCycle, "\n");
+        dataLog("webAssemblyFastMemoriesAllocatedThisCycle = ", m_webAssemblyFastMemoriesAllocatedThisCycle, "\n");
     }
     
     // Calculate our current heap size threshold for the purpose of figuring out when we should
@@ -2089,6 +2121,11 @@ void Heap::updateAllocationLimits()
     // It's up to the user to ensure that extraMemorySize() ends up corresponding to allocation-time
     // extra memory reporting.
     currentHeapSize += extraMemorySize();
+    if (!ASSERT_DISABLED) {
+        Checked<size_t, RecordOverflow> checkedCurrentHeapSize = m_totalBytesVisited;
+        checkedCurrentHeapSize += extraMemorySize();
+        ASSERT(!checkedCurrentHeapSize.hasOverflowed() && checkedCurrentHeapSize.unsafeGet() == currentHeapSize);
+    }
 
     if (verbose)
         dataLog("extraMemorySize() = ", extraMemorySize(), ", currentHeapSize = ", currentHeapSize, "\n");
@@ -2140,6 +2177,7 @@ void Heap::updateAllocationLimits()
     if (verbose)
         dataLog("sizeAfterLastCollect = ", m_sizeAfterLastCollect, "\n");
     m_bytesAllocatedThisCycle = 0;
+    m_webAssemblyFastMemoriesAllocatedThisCycle = 0;
 
     if (Options::logGC())
         dataLog("=> ", currentHeapSize / 1024, "kb, ");
@@ -2213,6 +2251,11 @@ void Heap::didAllocate(size_t bytes)
     performIncrement(bytes);
 }
 
+void Heap::didAllocateWebAssemblyFastMemories(size_t count)
+{
+    m_webAssemblyFastMemoriesAllocatedThisCycle += count;
+}
+
 bool Heap::isValidAllocation(size_t)
 {
     if (!isValidThreadState(m_vm))
@@ -2265,7 +2308,7 @@ bool Heap::shouldDoFullCollection(std::optional<CollectionScope> scope) const
         return true;
 
     if (!scope)
-        return m_shouldDoFullCollection;
+        return m_shouldDoFullCollection || webAssemblyFastMemoriesThisCycleAtThreshold();
     return *scope == CollectionScope::Full;
 }
 
@@ -2363,7 +2406,12 @@ void Heap::reportExtraMemoryVisited(size_t size)
     
     for (;;) {
         size_t oldSize = *counter;
-        if (WTF::atomicCompareExchangeWeakRelaxed(counter, oldSize, oldSize + size))
+        // FIXME: Change this to use SaturatedArithmetic when available.
+        // https://bugs.webkit.org/show_bug.cgi?id=170411
+        Checked<size_t, RecordOverflow> checkedNewSize = oldSize;
+        checkedNewSize += size;
+        size_t newSize = UNLIKELY(checkedNewSize.hasOverflowed()) ? std::numeric_limits<size_t>::max() : checkedNewSize.unsafeGet();
+        if (WTF::atomicCompareExchangeWeakRelaxed(counter, oldSize, newSize))
             return;
     }
 }
@@ -2383,7 +2431,7 @@ void Heap::reportExternalMemoryVisited(size_t size)
 
 void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
 {
-    ASSERT(!DisallowGC::isGCDisallowedOnCurrentThread());
+    ASSERT(deferralContext || isDeferred() || !DisallowGC::isInEffectOnCurrentThread());
 
     if (!m_isSafeToCollect)
         return;
@@ -2411,7 +2459,8 @@ void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
         if (m_bytesAllocatedThisCycle <= Options::gcMaxHeapSize())
             return;
     } else {
-        if (m_bytesAllocatedThisCycle <= m_maxEdenSize)
+        if (!webAssemblyFastMemoriesThisCycleAtThreshold()
+            && m_bytesAllocatedThisCycle <= m_maxEdenSize)
             return;
     }
 
@@ -2636,7 +2685,7 @@ void Heap::notifyIsSafeToCollect()
     m_isSafeToCollect = true;
     
     if (Options::collectContinuously()) {
-        m_collectContinuouslyThread = createThread(
+        m_collectContinuouslyThread = WTF::Thread::create(
             "JSC DEBUG Continuous GC",
             [this] () {
                 MonotonicTime initialTime = MonotonicTime::now();

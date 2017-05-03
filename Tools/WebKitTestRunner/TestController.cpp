@@ -32,7 +32,6 @@
 #include "StringFunctions.h"
 #include "TestInvocation.h"
 #include "WebCoreTestSupport.h"
-#include <WebCore/UUID.h>
 #include <WebKit/WKArray.h>
 #include <WebKit/WKAuthenticationChallenge.h>
 #include <WebKit/WKAuthenticationDecisionListener.h>
@@ -74,6 +73,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RunLoop.h>
 #include <wtf/SetForScope.h>
+#include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -656,7 +656,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetSubpixelAntialiasedLayerTextEnabled(preferences, false);
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
     WKPreferencesSetWebAudioEnabled(preferences, true);
-    WKPreferencesSetMediaStreamEnabled(preferences, true);
+    WKPreferencesSetMediaDevicesEnabled(preferences, true);
+    WKPreferencesSetWebRTCLegacyAPIEnabled(preferences, true);
     WKPreferencesSetDeveloperExtrasEnabled(preferences, true);
     WKPreferencesSetJavaScriptRuntimeFlags(preferences, kWKJavaScriptRuntimeFlagsAllEnabled);
     WKPreferencesSetJavaScriptCanOpenWindowsAutomatically(preferences, true);
@@ -783,13 +784,6 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     WKPageClearWheelEventTestTrigger(m_mainWebView->page());
 
-#if PLATFORM(EFL)
-    // EFL uses a real window while other ports such as Qt don't.
-    // In EFL, we need to resize the window to the original size after calls to window.resizeTo.
-    WKRect rect = m_mainWebView->windowFrame();
-    m_mainWebView->setWindowFrame(WKRectMake(rect.origin.x, rect.origin.y, TestController::viewWidth, TestController::viewHeight));
-#endif
-
     WKPageSetMuted(m_mainWebView->page(), true);
 
     WKPageClearUserMediaState(m_mainWebView->page());
@@ -886,6 +880,11 @@ const char* TestController::databaseProcessName()
 #else
     return "DatabaseProcess";
 #endif
+}
+
+void TestController::setAllowsAnySSLCertificate(bool allows)
+{
+    WKContextSetAllowsAnySSLCertificateForWebSocketTesting(platformContext(), allows);
 }
 
 static std::string testPath(WKURLRef url)
@@ -1306,23 +1305,6 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
             
             // Forward to WebProcess
             m_eventSenderProxy->mouseScrollByWithWheelAndMomentumPhases(x, y, phase, momentum);
-
-            return;
-        }
-
-        if (WKStringIsEqualToUTF8CString(subMessageName, "SwipeGestureWithWheelAndMomentumPhases")) {
-            WKRetainPtr<WKStringRef> xKey = adoptWK(WKStringCreateWithUTF8CString("X"));
-            double x = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, xKey.get())));
-
-            WKRetainPtr<WKStringRef> yKey = adoptWK(WKStringCreateWithUTF8CString("Y"));
-            double y = WKDoubleGetValue(static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, yKey.get())));
-
-            WKRetainPtr<WKStringRef> phaseKey = adoptWK(WKStringCreateWithUTF8CString("Phase"));
-            int phase = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, phaseKey.get()))));
-            WKRetainPtr<WKStringRef> momentumKey = adoptWK(WKStringCreateWithUTF8CString("Momentum"));
-            int momentum = static_cast<int>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, momentumKey.get()))));
-
-            m_eventSenderProxy->swipeGestureWithWheelAndMomentumPhases(x, y, phase, momentum);
 
             return;
         }
@@ -1896,28 +1878,6 @@ void TestController::setUserMediaPermission(bool enabled)
     decidePolicyForUserMediaPermissionRequestIfPossible();
 }
 
-static String createCanonicalUUIDString()
-{
-    unsigned randomData[4];
-    cryptographicallyRandomValues(reinterpret_cast<unsigned char*>(randomData), sizeof(randomData));
-
-    // Format as Version 4 UUID.
-    StringBuilder builder;
-    builder.reserveCapacity(36);
-    appendUnsignedAsHexFixedSize(randomData[0], builder, 8, Lowercase);
-    builder.append('-');
-    appendUnsignedAsHexFixedSize(randomData[1] >> 16, builder, 4, Lowercase);
-    builder.appendLiteral("-4");
-    appendUnsignedAsHexFixedSize(randomData[1] & 0x00000fff, builder, 3, Lowercase);
-    builder.append('-');
-    appendUnsignedAsHexFixedSize((randomData[2] >> 30) | 0x8, builder, 1, Lowercase);
-    appendUnsignedAsHexFixedSize((randomData[2] >> 16) & 0x00000fff, builder, 3, Lowercase);
-    builder.append('-');
-    appendUnsignedAsHexFixedSize(randomData[2] & 0x0000ffff, builder, 4, Lowercase);
-    appendUnsignedAsHexFixedSize(randomData[3], builder, 8, Lowercase);
-    return builder.toString();
-}
-
 class OriginSettings : public RefCounted<OriginSettings> {
 public:
     explicit OriginSettings()
@@ -2268,14 +2228,24 @@ void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
     WKResourceLoadStatisticsManagerSetTimeToLiveUserInteraction(seconds);
 }
 
+void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetTimeToLiveCookiePartitionFree(seconds);
+}
+
 void TestController::statisticsFireDataModificationHandler()
 {
     WKResourceLoadStatisticsManagerFireDataModificationHandler();
 }
     
-void TestController::statisticsFireShouldPartitionCookiesHandler(WKStringRef hostName, bool value)
+void TestController::statisticsFireShouldPartitionCookiesHandler()
 {
-    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler(hostName, value);
+    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler();
+}
+
+void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandlerForOneDomain(hostName, value);
 }
 
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
@@ -2302,7 +2272,12 @@ void TestController::statisticsResetToConsistentState()
 {
     WKResourceLoadStatisticsManagerResetToConsistentState();
 }
-    
+
+void TestController::terminateNetworkProcess()
+{
+    WKContextTerminateNetworkProcess(platformContext());
+}
+
 #if !PLATFORM(COCOA)
 void TestController::platformWillRunTest(const TestInvocation&)
 {

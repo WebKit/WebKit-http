@@ -73,6 +73,12 @@ bool ImageDecoder::isSizeAvailable() const
     return m_nativeDecoder ? true : false;
 }
 
+EncodedDataStatus ImageDecoder::encodedDataStatus() const
+{
+    notImplemented();
+    return EncodedDataStatus::Unknown;
+}
+
 IntSize ImageDecoder::size() const
 {
     if (!m_nativeDecoder)
@@ -180,7 +186,7 @@ void ImageDecoder::setTargetContext(ID2D1RenderTarget* renderTarget)
     m_renderTarget = renderTarget;
 }
 
-NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const std::optional<IntSize>&) const
+NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const DecodingOptions&) const
 {
     if (!m_nativeDecoder || !m_renderTarget)
         return nullptr;

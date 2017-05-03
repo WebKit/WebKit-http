@@ -31,6 +31,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/AtomicString.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #include "Timer.h"
@@ -72,9 +73,10 @@ public:
     void resume();
 
     enum class ThrottlingReason {
-        VisuallyIdle    = 1 << 0,
-        OutsideViewport = 1 << 1,
-        LowPowerMode    = 1 << 2,
+        VisuallyIdle                    = 1 << 0,
+        OutsideViewport                 = 1 << 1,
+        LowPowerMode                    = 1 << 2,
+        NonInteractedCrossOriginFrame   = 1 << 3,
     };
     void addThrottlingReason(ThrottlingReason);
     void removeThrottlingReason(ThrottlingReason);
@@ -96,6 +98,7 @@ private:
     int m_suspendCount { 0 };
 
     void scheduleAnimation();
+    void dispatchLoggingEventIfRequired(const AtomicString&);
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
     void animationTimerFired();

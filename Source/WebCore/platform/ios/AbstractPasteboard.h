@@ -25,15 +25,30 @@
 
 #import <Foundation/Foundation.h>
 
+#if TARGET_OS_IPHONE
+
+NS_ASSUME_NONNULL_BEGIN
+
 @protocol AbstractPasteboard <NSObject>
 @required
 
 @property (readonly, nonatomic) NSInteger numberOfItems;
 
 - (NSArray<NSString *> *)pasteboardTypes;
-- (void)setItems:(NSArray *)items;
 - (NSArray *)dataForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
 - (NSArray *)valuesForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
 - (NSInteger)changeCount;
 
+@optional
+- (void)setItemsUsingRegistrationInfoLists:(NSArray *)itemLists;
+- (void)setItems:(NSArray<NSDictionary *> *)items;
+- (NSArray<NSString *> *)pasteboardTypesByFidelityForItemAtIndex:(NSUInteger)index;
+@property (readonly, nonatomic) NSInteger numberOfFiles;
+@property (readonly, nonatomic) NSArray<NSURL *> *fileURLsForDataInteraction;
+- (void)updatePreferredTypeIdentifiers:(NSArray<NSString *> *)types;
+
 @end
+
+NS_ASSUME_NONNULL_END
+
+#endif // TARGET_OS_IPHONE

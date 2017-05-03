@@ -33,6 +33,7 @@
 #include "AirCode.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
+#include "AirPrintSpecial.h"
 #include "AirStackSlot.h"
 #include "B3ArgumentRegValue.h"
 #include "B3AtomicValue.h"
@@ -439,8 +440,9 @@ private:
         ASSERT_NOT_REACHED();
         return true;
     }
-    
-    std::optional<unsigned> scaleForShl(Value* shl, int32_t offset, std::optional<Width> width = std::nullopt)
+
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    std::optional<unsigned> scaleForShl(Value* shl, Int offset, std::optional<Width> width = std::nullopt)
     {
         if (shl->opcode() != Shl)
             return std::nullopt;
@@ -463,7 +465,8 @@ private:
     }
     
     // This turns the given operand into an address.
-    Arg effectiveAddr(Value* address, int32_t offset, Width width)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    Arg effectiveAddr(Value* address, Int offset, Width width)
     {
         ASSERT(Arg::isValidAddrForm(offset, width));
         
@@ -552,7 +555,7 @@ private:
         if (value->requiresSimpleAddr())
             return Arg::simpleAddr(tmp(value->lastChild()));
 
-        int32_t offset = value->offset();
+        Value::OffsetType offset = value->offset();
         Width width = value->accessWidth();
 
         Arg result = effectiveAddr(value->lastChild(), offset, width);
@@ -1125,10 +1128,38 @@ private:
         return Air::Oops;
     }
 
+#if ENABLE(MASM_PROBE)
+    template<typename... Arguments>
+    void print(Arguments&&... arguments)
+    {
+        Value* origin = m_value;
+        print(origin, std::forward<Arguments>(arguments)...);
+    }
+
+    template<typename... Arguments>
+    void print(Value* origin, Arguments&&... arguments)
+    {
+        auto printList = Printer::makePrintRecordList(arguments...);
+        auto printSpecial = static_cast<PrintSpecial*>(m_code.addSpecial(std::make_unique<PrintSpecial>(printList)));
+        Inst inst(Patch, origin, Arg::special(printSpecial));
+        Printer::appendAirArgs(inst, std::forward<Arguments>(arguments)...);
+        append(WTFMove(inst));
+    }
+#else
+    template<typename... Arguments>
+    void print(Arguments&&...) { }
+#endif // ENABLE(MASM_PROBE)
+
     template<typename... Arguments>
     void append(Air::Opcode opcode, Arguments&&... arguments)
     {
         m_insts.last().append(Inst(opcode, m_value, std::forward<Arguments>(arguments)...));
+    }
+    
+    template<typename... Arguments>
+    void appendTrapping(Air::Opcode opcode, Arguments&&... arguments)
+    {
+        m_insts.last().append(trappingInst(m_value, opcode, m_value, std::forward<Arguments>(arguments)...));
     }
     
     void append(Inst&& inst)
@@ -2023,12 +2054,12 @@ private:
         // Add(Shl(@x, $c), @y)
         // Add(@x, Shl(@y, $c))
         // Add(@x, @y) (only if offset != 0)
-        int32_t offset = 0;
-        if (value->child(1)->isRepresentableAs<int32_t>()
+        Value::OffsetType offset = 0;
+        if (value->child(1)->isRepresentableAs<Value::OffsetType>()
             && canBeInternal(value->child(0))
             && value->child(0)->opcode() == Add) {
             innerAdd = value->child(0);
-            offset = static_cast<int32_t>(value->child(1)->asInt());
+            offset = static_cast<Value::OffsetType>(value->child(1)->asInt());
             value = value->child(0);
         }
         
@@ -2172,13 +2203,13 @@ private:
         if (isX86()) {
             append(relaxedMoveForType(atomic->accessType()), immOrTmp(atomic->child(0)), m_eax);
             if (returnsOldValue) {
-                append(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), m_eax, newValueTmp, address);
+                appendTrapping(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), m_eax, newValueTmp, address);
                 append(relaxedMoveForType(atomic->accessType()), m_eax, valueResultTmp);
             } else if (isBranch) {
-                append(OPCODE_FOR_WIDTH(BranchAtomicStrongCAS, width), Arg::statusCond(MacroAssembler::Success), m_eax, newValueTmp, address);
+                appendTrapping(OPCODE_FOR_WIDTH(BranchAtomicStrongCAS, width), Arg::statusCond(MacroAssembler::Success), m_eax, newValueTmp, address);
                 m_blockToBlock[m_block]->setSuccessors(success, failure);
             } else
-                append(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), Arg::statusCond(invert ? MacroAssembler::Failure : MacroAssembler::Success), m_eax, tmp(atomic->child(1)), address, boolResultTmp);
+                appendTrapping(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), Arg::statusCond(invert ? MacroAssembler::Failure : MacroAssembler::Success), m_eax, tmp(atomic->child(1)), address, boolResultTmp);
             return;
         }
         
@@ -2228,11 +2259,11 @@ private:
         append(Air::Jump);
         beginBlock->setSuccessors(reloopBlock);
         
-        reloopBlock->append(loadLinkOpcode(width, atomic->hasFence()), m_value, address, valueResultTmp);
+        reloopBlock->append(trappingInst(m_value, loadLinkOpcode(width, atomic->hasFence()), m_value, address, valueResultTmp));
         reloopBlock->append(OPCODE_FOR_CANONICAL_WIDTH(Branch, width), m_value, Arg::relCond(MacroAssembler::NotEqual), valueResultTmp, expectedValueTmp);
         reloopBlock->setSuccessors(comparisonFail, storeBlock);
         
-        storeBlock->append(storeCondOpcode(width, atomic->hasFence()), m_value, newValueTmp, address, successBoolResultTmp);
+        storeBlock->append(trappingInst(m_value, storeCondOpcode(width, atomic->hasFence()), m_value, newValueTmp, address, successBoolResultTmp));
         if (isBranch) {
             storeBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), boolResultTmp, boolResultTmp);
             storeBlock->setSuccessors(success, weakFail);
@@ -2262,7 +2293,7 @@ private:
         
         if (isStrong && hasFence) {
             Tmp tmp = m_code.newTmp(GP);
-            strongFailBlock->append(storeCondOpcode(width, atomic->hasFence()), m_value, valueResultTmp, address, tmp);
+            strongFailBlock->append(trappingInst(m_value, storeCondOpcode(width, atomic->hasFence()), m_value, valueResultTmp, address, tmp));
             strongFailBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), tmp, tmp);
             strongFailBlock->setSuccessors(failure, reloopBlock);
         }
@@ -2336,7 +2367,7 @@ private:
             RELEASE_ASSERT(isARM64());
             prepareOpcode = loadLinkOpcode(atomic->accessWidth(), atomic->hasFence());
         }
-        reloopBlock->append(prepareOpcode, m_value, address, oldValue);
+        reloopBlock->append(trappingInst(m_value, prepareOpcode, m_value, address, oldValue));
         
         if (opcode != Air::Nop) {
             // FIXME: If we ever have to write this again, we need to find a way to share the code with
@@ -2362,11 +2393,11 @@ private:
         if (isX86()) {
             Air::Opcode casOpcode = OPCODE_FOR_WIDTH(BranchAtomicStrongCAS, atomic->accessWidth());
             reloopBlock->append(relaxedMoveForType(atomic->type()), m_value, oldValue, m_eax);
-            reloopBlock->append(casOpcode, m_value, Arg::statusCond(MacroAssembler::Success), m_eax, newValue, address);
+            reloopBlock->append(trappingInst(m_value, casOpcode, m_value, Arg::statusCond(MacroAssembler::Success), m_eax, newValue, address));
         } else {
             RELEASE_ASSERT(isARM64());
             Tmp boolResult = m_code.newTmp(GP);
-            reloopBlock->append(storeCondOpcode(atomic->accessWidth(), atomic->hasFence()), m_value, newValue, address, boolResult);
+            reloopBlock->append(trappingInst(m_value, storeCondOpcode(atomic->accessWidth(), atomic->hasFence()), m_value, newValue, address, boolResult));
             reloopBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), boolResult, boolResult);
         }
         reloopBlock->setSuccessors(doneBlock, reloopBlock);
@@ -2598,7 +2629,7 @@ private:
             // can be done with zero cost on x86 (just flip the set from E to NE) and it's a progression
             // on ARM64 (since STX returns 0 on success, so ordinarily we have to flip it).
             if (m_value->child(1)->isInt(1)
-                && isAtomicCAS(m_value->child(0)->opcode())
+                && m_value->child(0)->opcode() == AtomicWeakCAS
                 && canBeInternal(m_value->child(0))) {
                 commitInternal(m_value->child(0));
                 appendCAS(m_value->child(0), true);
@@ -3148,18 +3179,34 @@ private:
 
             Value* ptr = value->child(0);
 
-            Arg temp = m_code.newTmp(GP);
-            append(Inst(Move32, value, tmp(ptr), temp));
+            Arg ptrPlusImm = m_code.newTmp(GP);
+            append(Inst(Move32, value, tmp(ptr), ptrPlusImm));
             if (value->offset()) {
                 if (imm(value->offset()))
-                    append(Add64, imm(value->offset()), temp);
+                    append(Add64, imm(value->offset()), ptrPlusImm);
                 else {
                     Arg bigImm = m_code.newTmp(GP);
                     append(Move, Arg::bigImm(value->offset()), bigImm);
-                    append(Add64, bigImm, temp);
+                    append(Add64, bigImm, ptrPlusImm);
                 }
             }
-            append(Inst(Air::WasmBoundsCheck, value, temp, Arg(value->pinnedGPR())));
+
+            Arg limit;
+            switch (value->boundsType()) {
+            case WasmBoundsCheckValue::Type::Pinned:
+                limit = Arg(value->bounds().pinned);
+                break;
+
+            case WasmBoundsCheckValue::Type::Maximum:
+                limit = m_code.newTmp(GP);
+                if (imm(value->bounds().maximum))
+                    append(Move, imm(value->bounds().maximum), limit);
+                else
+                    append(Move, Arg::bigImm(value->bounds().maximum), limit);
+                break;
+            }
+
+            append(Inst(Air::WasmBoundsCheck, value, ptrPlusImm, limit));
             return;
         }
 
@@ -3377,10 +3424,10 @@ private:
         RELEASE_ASSERT_NOT_REACHED();
     }
     
-    IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.
-    IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
-    IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
-    IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
+    IndexSet<Value*> m_locked; // These are values that will have no Tmp in Air.
+    IndexMap<Value*, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
+    IndexMap<Value*, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
+    IndexMap<B3::BasicBlock*, Air::BasicBlock*> m_blockToBlock;
     HashMap<B3::StackSlot*, Air::StackSlot*> m_stackToStack;
     HashMap<Variable*, Tmp> m_variableToTmp;
 

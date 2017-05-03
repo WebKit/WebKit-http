@@ -454,7 +454,7 @@ void DocumentLoader::handleSubstituteDataLoadNow()
 
 void DocumentLoader::startDataLoadTimer()
 {
-    m_dataLoadTimer.startOneShot(0);
+    m_dataLoadTimer.startOneShot(0_s);
 
 #if HAVE(RUNLOOP_TIMER)
     if (SchedulePairHashSet* scheduledPairs = m_frame->page()->scheduledRunLoopPairs())
@@ -567,7 +567,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
 
     ASSERT(!m_waitingForNavigationPolicy);
     m_waitingForNavigationPolicy = true;
-    frameLoader()->policyChecker().checkNavigationPolicy(newRequest, didReceiveRedirectResponse, [this] (const ResourceRequest& request, FormState*, bool shouldContinue) {
+    frameLoader()->policyChecker().checkNavigationPolicy(newRequest, didReceiveRedirectResponse, [this, protectedThis = makeRef(*this)] (const ResourceRequest& request, FormState*, bool shouldContinue) {
         continueAfterNavigationPolicy(request, shouldContinue);
     });
 }
@@ -1021,12 +1021,7 @@ void DocumentLoader::detachFromFrame()
 
     cancelPolicyCheckIfNeeded();
 
-    // Even though we ASSERT at the top of this method that we have an m_frame, we're seeing crashes where m_frame is null.
-    // This means either that a DocumentLoader is detaching twice, or is detaching before ever having attached.
-    // Until we figure out how that is happening, null check m_frame before dereferencing it here.
-    // <rdar://problem/21293082> and https://bugs.webkit.org/show_bug.cgi?id=146786
-    if (m_frame)
-        InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
+    InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
 
     m_frame = nullptr;
 }
@@ -1189,7 +1184,7 @@ void DocumentLoader::deliverSubstituteResourcesAfterDelay()
         return;
 
     if (!m_substituteResourceDeliveryTimer.isActive())
-        m_substituteResourceDeliveryTimer.startOneShot(0);
+        m_substituteResourceDeliveryTimer.startOneShot(0_s);
 }
 
 void DocumentLoader::substituteResourceDeliveryTimerFired()

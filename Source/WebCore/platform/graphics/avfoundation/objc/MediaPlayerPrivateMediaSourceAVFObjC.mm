@@ -73,12 +73,6 @@ SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
 #define AVAudioTimePitchAlgorithmVarispeed getAVAudioTimePitchAlgorithmVarispeed()
 
 #pragma mark -
-#pragma mark AVSampleBufferDisplayLayer
-
-@interface AVSampleBufferDisplayLayer : CALayer
-@end
-
-#pragma mark -
 #pragma mark AVVideoPerformanceMetrics
 
 @interface AVVideoPerformanceMetrics : NSObject
@@ -396,7 +390,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekWithTolerance(const MediaTime& ti
 
     if (m_seekTimer.isActive())
         m_seekTimer.stop();
-    m_seekTimer.startOneShot(0);
+    m_seekTimer.startOneShot(0_s);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal()
@@ -417,9 +411,24 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal()
 
     LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s)", this, toString(m_lastSeekTime).utf8().data());
 
+    MediaTime synchronizerTime = toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
+    bool doesNotRequireSeek = synchronizerTime == m_lastSeekTime;
+
     m_mediaSourcePrivate->willSeek();
     [m_synchronizer setRate:0 time:toCMTime(m_lastSeekTime)];
     m_mediaSourcePrivate->seekToTime(m_lastSeekTime);
+
+    // In cases where the destination seek time precisely matches the synchronizer's existing time
+    // no time jumped notification will be issued. In this case, just notify the MediaPlayer that
+    // the seek completed successfully.
+    if (doesNotRequireSeek) {
+        m_seeking = false;
+
+        if (shouldBePlaying())
+            [m_synchronizer setRate:m_rate];
+        if (!seeking() && m_seekCompleted)
+            m_player->timeChanged();
+    }
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::waitForSeekCompleted()

@@ -36,7 +36,6 @@
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
 #include "PureNaN.h"
-#include "VM.h"
 #include <cmath>
 #include <map>
 #include <string>
@@ -80,14 +79,12 @@ StaticLock crashLock;
         CRASH();                                                        \
     } while (false)
 
-VM* vm;
-
 std::unique_ptr<B3::Compilation> compile(B3::Procedure& proc)
 {
     prepareForGeneration(proc.code());
-    CCallHelpers jit(vm);
+    CCallHelpers jit;
     generate(proc.code(), jit);
-    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    LinkBuffer linkBuffer(jit, nullptr);
 
     return std::make_unique<B3::Compilation>(
         FINALIZE_CODE(linkBuffer, ("testair compilation")), proc.releaseByproducts());
@@ -1849,7 +1846,6 @@ void testX86VMULSDBaseIndexNeedRex()
 void run(const char* filter)
 {
     JSC::initializeThreading();
-    vm = &VM::create(LargeHeap).leakRef();
 
     Deque<RefPtr<SharedTask<void()>>> tasks;
 
@@ -1917,10 +1913,10 @@ void run(const char* filter)
 
     Lock lock;
 
-    Vector<ThreadIdentifier> threads;
+    Vector<RefPtr<Thread>> threads;
     for (unsigned i = filter ? 1 : WTF::numberOfProcessorCores(); i--;) {
         threads.append(
-            createThread(
+            Thread::create(
                 "testb3 thread",
                 [&] () {
                     for (;;) {
@@ -1937,8 +1933,8 @@ void run(const char* filter)
                 }));
     }
 
-    for (ThreadIdentifier thread : threads)
-        waitForThreadCompletion(thread);
+    for (RefPtr<Thread> thread : threads)
+        thread->waitForCompletion();
     crashLock.lock();
 }
 

@@ -48,6 +48,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
+#if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
+#include "RealtimeMediaSourceCenterMac.h"
+#endif
+
 #if ENABLE(MEDIA_STREAM)
 #include "MockRealtimeMediaSourceCenter.h"
 #endif
@@ -94,6 +98,7 @@ bool Settings::gMockScrollAnimatorEnabled = false;
 #if ENABLE(MEDIA_STREAM)
 bool Settings::gMockCaptureDevicesEnabled = false;
 bool Settings::gMediaCaptureRequiresSecureConnection = true;
+bool Settings::gUseAVFoundationAudioCapture = false;
 #endif
 
 #if PLATFORM(WIN)
@@ -212,7 +217,7 @@ Settings::Settings(Page* page)
     , m_touchEventEmulationEnabled(false)
 #endif
     , m_scrollingPerformanceLoggingEnabled(false)
-    , m_timeWithoutMouseMovementBeforeHidingControls(3)
+    , m_timeWithoutMouseMovementBeforeHidingControls(3_s)
     , m_setImageLoadingSettingsTimer(*this, &Settings::imageLoadingSettingsTimerFired)
     , m_hiddenPageDOMTimerThrottlingEnabled(false)
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
@@ -374,7 +379,7 @@ void Settings::setLoadsImagesAutomatically(bool loadsImagesAutomatically)
     // Starting these loads synchronously is not important.  By putting it on a 0-delay, properly closing the Page cancels them
     // before they have a chance to really start.
     // See http://webkit.org/b/60572 for more discussion.
-    m_setImageLoadingSettingsTimer.startOneShot(0);
+    m_setImageLoadingSettingsTimer.startOneShot(0_s);
 }
 
 void Settings::imageLoadingSettingsTimerFired()
@@ -412,7 +417,7 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
     m_areImagesEnabled = areImagesEnabled;
 
     // See comment in setLoadsImagesAutomatically.
-    m_setImageLoadingSettingsTimer.startOneShot(0);
+    m_setImageLoadingSettingsTimer.startOneShot(0_s);
 }
 
 void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
@@ -619,6 +624,19 @@ bool Settings::mediaCaptureRequiresSecureConnection() const
 void Settings::setMediaCaptureRequiresSecureConnection(bool mediaCaptureRequiresSecureConnection)
 {
     gMediaCaptureRequiresSecureConnection = mediaCaptureRequiresSecureConnection;
+}
+
+bool Settings::useAVFoundationAudioCapture()
+{
+    return gUseAVFoundationAudioCapture;
+}
+
+void Settings::setUseAVFoundationAudioCapture(bool useAVFoundationAudioCapture)
+{
+    gUseAVFoundationAudioCapture = useAVFoundationAudioCapture;
+#if USE(AVFOUNDATION)
+    RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture(useAVFoundationAudioCapture);
+#endif
 }
 #endif
 

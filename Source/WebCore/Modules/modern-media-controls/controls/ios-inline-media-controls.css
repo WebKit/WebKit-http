@@ -29,7 +29,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 50px;
+    height: var(--inline-controls-bar-height);
 }
 
 .media-controls.ios.inline > .controls-bar:before {
@@ -43,7 +43,8 @@
     will-change: transform;
 }
 
-:host(audio) .media-controls.ios.inline > .controls-bar:before {
+:host(audio) .media-controls.ios.inline > .controls-bar:before,
+:host(.media-document.audio) .media-controls.ios.inline > .controls-bar:before {
     -webkit-appearance: none;
     background-color: rgb(212, 212, 212);
 }

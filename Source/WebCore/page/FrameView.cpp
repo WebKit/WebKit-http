@@ -296,7 +296,8 @@ FrameView::FrameView(Frame& frame)
 Ref<FrameView> FrameView::create(Frame& frame)
 {
     Ref<FrameView> view = adoptRef(*new FrameView(frame));
-    view->show();
+    if (frame.page() && frame.page()->isVisible())
+        view->show();
     return view;
 }
 
@@ -304,7 +305,8 @@ Ref<FrameView> FrameView::create(Frame& frame, const IntSize& initialSize)
 {
     Ref<FrameView> view = adoptRef(*new FrameView(frame));
     view->Widget::setFrameRect(IntRect(view->location(), initialSize));
-    view->show();
+    if (frame.page() && frame.page()->isVisible())
+        view->show();
     return view;
 }
 
@@ -1229,7 +1231,9 @@ bool FrameView::isEnclosedInCompositingLayer() const
 
 bool FrameView::flushCompositingStateIncludingSubframes()
 {
+#if PLATFORM(COCOA)
     InspectorInstrumentation::willComposite(frame());
+#endif
 
     bool allFramesFlushed = flushCompositingStateForThisFrame(frame());
 
@@ -1543,7 +1547,7 @@ void FrameView::layout(bool allowSubtree)
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    document.dirtyTouchEventRects();
+    document.setTouchEventRegionsNeedUpdate();
 #endif
 
     updateCanBlitOnScrollRecursively();
@@ -1572,7 +1576,7 @@ void FrameView::layout(bool allowSubtree)
             // defer widget updates and event dispatch until after we return. postLayoutTasks()
             // can make us need to update again, and we can get stuck in a nasty cycle unless
             // we call it through the timer here.
-            m_postLayoutTasksTimer.startOneShot(0);
+            m_postLayoutTasksTimer.startOneShot(0_s);
             if (needsLayout())
                 layout();
         }
@@ -2513,7 +2517,7 @@ void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const S
         m_delayedScrollEventTimer.stop();
         sendScrollEvent();
     } else if (!m_delayedScrollEventTimer.isActive())
-        m_delayedScrollEventTimer.startOneShot(throttlingDelay.value());
+        m_delayedScrollEventTimer.startOneShot(throttlingDelay);
 
     if (Document* document = frame().document())
         document->sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize());
@@ -2929,10 +2933,16 @@ void FrameView::enableSpeculativeTilingIfNeeded()
     }
     if (!shouldEnableSpeculativeTilingDuringLoading(*this))
         return;
+
+    if (m_speculativeTilingDelayDisabledForTesting) {
+        speculativeTilingEnableTimerFired();
+        return;
+    }
+
     if (m_speculativeTilingEnableTimer.isActive())
         return;
     // Delay enabling a bit as load completion may trigger further loading from scripts.
-    static const double speculativeTilingEnableDelay = 0.5;
+    static const Seconds speculativeTilingEnableDelay { 500_ms };
     m_speculativeTilingEnableTimer.startOneShot(speculativeTilingEnableDelay);
 }
 
@@ -2956,6 +2966,13 @@ void FrameView::show()
         adjustTiledBackingCoverage();
     }
 }
+
+void FrameView::hide()
+{
+    ScrollView::hide();
+    adjustTiledBackingCoverage();
+}
+
 void FrameView::convertSubtreeLayoutToFullLayout()
 {
     ASSERT(m_layoutRoot);
@@ -3223,9 +3240,6 @@ void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool t
 
 bool FrameView::hasExtendedBackgroundRectForPainting() const
 {
-    if (!frame().settings().backgroundShouldExtendBeyondPage())
-        return false;
-
     TiledBacking* tiledBacking = this->tiledBacking();
     if (!tiledBacking)
         return false;
@@ -3244,18 +3258,18 @@ void FrameView::updateExtendBackgroundIfNecessary()
 
 FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() const
 {
-    // Just because Settings::backgroundShouldExtendBeyondPage() is true does not necessarily mean
-    // that the background rect needs to be extended for painting. Simple backgrounds can be extended
-    // just with RenderLayerCompositor::setRootExtendedBackgroundColor(). More complicated backgrounds,
-    // such as images, require extending the background rect to continue painting into the extended
-    // region. This function finds out if it is necessary to extend the background rect for painting.
-
 #if PLATFORM(IOS)
     // <rdar://problem/16201373>
     return ExtendedBackgroundModeNone;
 #else
     if (!frame().settings().backgroundShouldExtendBeyondPage())
         return ExtendedBackgroundModeNone;
+
+    // Just because Settings::backgroundShouldExtendBeyondPage() is true does not necessarily mean
+    // that the background rect needs to be extended for painting. Simple backgrounds can be extended
+    // just with RenderLayerCompositor::setRootExtendedBackgroundColor(). More complicated backgrounds,
+    // such as images, require extending the background rect to continue painting into the extended
+    // region. This function finds out if it is necessary to extend the background rect for painting.
 
     if (!frame().isMainFrame())
         return ExtendedBackgroundModeNone;
@@ -3286,9 +3300,6 @@ FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() c
 
 void FrameView::updateTilesForExtendedBackgroundMode(ExtendedBackgroundMode mode)
 {
-    if (!frame().settings().backgroundShouldExtendBeyondPage())
-        return;
-
     RenderView* renderView = this->renderView();
     if (!renderView)
         return;
@@ -3520,7 +3531,7 @@ void FrameView::performPostLayoutTasks()
     // is called through the post layout timer.
     Ref<FrameView> protectedThis(*this);
 
-    m_updateEmbeddedObjectsTimer.startOneShot(0);
+    m_updateEmbeddedObjectsTimer.startOneShot(0_s);
 
     if (auto* page = frame().page()) {
         if (auto* scrollingCoordinator = page->scrollingCoordinator())
@@ -3542,7 +3553,7 @@ void FrameView::performPostLayoutTasks()
     updateScrollSnapState();
 
     if (AXObjectCache* cache = frame().document()->existingAXObjectCache())
-        cache->performDeferredIsIgnoredChange();
+        cache->performDeferredCacheUpdate();
 }
 
 IntSize FrameView::sizeForResizeEvent() const
@@ -3716,6 +3727,9 @@ void FrameView::autoSizeIfEnabled()
         setHorizontalScrollbarLock(false);
         setScrollbarModes(horizonalScrollbarMode, verticalScrollbarMode, true, true);
     }
+
+    // All the resizing above may have invalidated style (for example if viewport units are being used).
+    document->updateStyleIfNeeded();
 
     m_autoSizeContentSize = contentsSize();
 

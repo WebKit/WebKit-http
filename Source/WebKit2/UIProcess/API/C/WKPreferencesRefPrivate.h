@@ -421,6 +421,10 @@ WK_EXPORT bool WKPreferencesGetEnumeratingAllNetworkInterfacesEnabled(WKPreferen
 WK_EXPORT void WKPreferencesSetMediaCaptureRequiresSecureConnection(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef);
 
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetUseAVFoundationAudioCapture(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetUseAVFoundationAudioCapture(WKPreferencesRef);
+    
 // Defaults to false
 WK_EXPORT void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetFetchAPIEnabled(WKPreferencesRef);
@@ -472,6 +476,10 @@ WK_EXPORT bool WKPreferencesGetLinkPreloadEnabled(WKPreferencesRef);
 // Defaults to false
 WK_EXPORT void WKPreferencesSetCredentialManagementEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetCredentialManagementEnabled(WKPreferencesRef);
+
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetInvisibleMediaAutoplayPermitted(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetInvisibleMediaAutoplayPermitted(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

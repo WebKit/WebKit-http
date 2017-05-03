@@ -104,8 +104,8 @@ public:
 
     enum CoordinateSystem { LogicalCoordinateSystem, BackingStoreCoordinateSystem };
 
-    RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
-    RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
 
     void putByteArray(Multiply multiplied, Uint8ClampedArray*, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem = LogicalCoordinateSystem);
     
@@ -123,10 +123,6 @@ public:
     AffineTransform baseTransform() const { return AffineTransform(1, 0, 0, -1, 0, m_data.backingStoreSize.height()); }
 #endif
     PlatformLayer* platformLayer() const;
-
-#if USE(CAIRO)
-    NativeImagePtr nativeImage() const;
-#endif
 
     size_t memoryCost() const;
     size_t externalMemoryCost() const;

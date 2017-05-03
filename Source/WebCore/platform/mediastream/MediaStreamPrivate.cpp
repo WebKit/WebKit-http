@@ -38,7 +38,6 @@
 
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "UUID.h"
 #include <wtf/MainThread.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -59,14 +58,9 @@ Ref<MediaStreamPrivate> MediaStreamPrivate::create(const Vector<Ref<RealtimeMedi
     return MediaStreamPrivate::create(tracks);
 }
 
-Ref<MediaStreamPrivate> MediaStreamPrivate::create(const MediaStreamTrackPrivateVector& tracks)
-{
-    return adoptRef(*new MediaStreamPrivate(createCanonicalUUIDString(), tracks));
-}
-
-MediaStreamPrivate::MediaStreamPrivate(const String& id, const MediaStreamTrackPrivateVector& tracks)
+MediaStreamPrivate::MediaStreamPrivate(const MediaStreamTrackPrivateVector& tracks, String&& id)
     : m_weakPtrFactory(this)
-    , m_id(id)
+    , m_id(WTFMove(id))
 {
     ASSERT(!m_id.isEmpty());
 
@@ -181,6 +175,14 @@ bool MediaStreamPrivate::isProducingData() const
     return false;
 }
 
+void MediaStreamPrivate::setCaptureTracksMuted(bool muted)
+{
+    for (auto& track : m_trackSet.values()) {
+        if (track->isCaptureTrack())
+            track->setMuted(muted);
+    }
+}
+
 bool MediaStreamPrivate::hasVideo() const
 {
     for (auto& track : m_trackSet.values()) {
@@ -220,7 +222,7 @@ bool MediaStreamPrivate::hasCaptureAudioSource() const
 bool MediaStreamPrivate::muted() const
 {
     for (auto& track : m_trackSet.values()) {
-        if (!track->muted())
+        if (!track->muted() && !track->ended())
             return false;
     }
     return true;
@@ -294,6 +296,14 @@ void MediaStreamPrivate::scheduleDeferredTask(Function<void ()>&& function)
 
         function();
     });
+}
+
+void MediaStreamPrivate::monitorOrientation(OrientationNotifier& notifier)
+{
+    for (auto& track : m_trackSet.values()) {
+        if (track->source().isCaptureSource() && track->type() == RealtimeMediaSource::Type::Video)
+            track->source().monitorOrientation(notifier);
+    }
 }
 
 } // namespace WebCore

@@ -56,12 +56,14 @@
 #include "JSSourceCode.h"
 #include "JSString.h"
 #include "JSTypedArrays.h"
-#include "JSWebAssemblyCallee.h"
+#include "JSWebAssemblyInstance.h"
+#include "JSWebAssemblyMemory.h"
 #include "LLIntData.h"
 #include "LLIntThunks.h"
 #include "ObjectConstructor.h"
 #include "ParserError.h"
 #include "ProfilerDatabase.h"
+#include "PromiseDeferredTimer.h"
 #include "ProtoCallFrame.h"
 #include "ReleaseHeapAccessScope.h"
 #include "SamplingProfiler.h"
@@ -72,9 +74,12 @@
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
+#include "WasmBBQPlanInlines.h"
+#include "WasmCallee.h"
+#include "WasmContext.h"
 #include "WasmFaultSignalHandler.h"
-#include "WasmPlan.h"
 #include "WasmMemory.h"
+#include "WasmWorklist.h"
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
@@ -907,8 +912,8 @@ const ClassInfo DOMJITGetterComplex::s_info = { "DOMJITGetterComplex", &Base::s_
 const ClassInfo DOMJITFunctionObject::s_info = { "DOMJITFunctionObject", &Base::s_info, nullptr, CREATE_METHOD_TABLE(DOMJITFunctionObject) };
 const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, nullptr, CREATE_METHOD_TABLE(RuntimeArray) };
 const ClassInfo SimpleObject::s_info = { "SimpleObject", &Base::s_info, nullptr, CREATE_METHOD_TABLE(SimpleObject) };
-static bool test262AsyncPassed { false };
-static bool test262AsyncTest { false };
+static unsigned asyncTestPasses { 0 };
+static unsigned asyncTestExpectedPasses { 0 };
 
 ElementHandleOwner* Element::handleOwner()
 {
@@ -1077,9 +1082,12 @@ static EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecStat
 #endif
 
 static EncodedJSValue JSC_HOST_CALL functionMaxArguments(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionAsyncTestStart(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionAsyncTestPassed(ExecState*);
 
 #if ENABLE(WEBASSEMBLY)
 static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionWebAssemblyMemoryMode(ExecState*);
 #endif
 
 #if ENABLE(SAMPLING_FLAGS)
@@ -1349,8 +1357,12 @@ protected:
 
         addFunction(vm, "maxArguments", functionMaxArguments, 0);
 
+        addFunction(vm, "asyncTestStart", functionAsyncTestStart, 1);
+        addFunction(vm, "asyncTestPassed", functionAsyncTestPassed, 1);
+
 #if ENABLE(WEBASSEMBLY)
         addFunction(vm, "testWasmModuleFunctions", functionTestWasmModuleFunctions, 0);
+        addFunction(vm, "WebAssemblyMemoryMode", functionWebAssemblyMemoryMode, 1);
 #endif
 
         if (!arguments.isEmpty()) {
@@ -1419,14 +1431,15 @@ const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = {
     &supportsRichSourceInfo,
     &shouldInterruptScript,
     &javaScriptRuntimeFlags,
-    nullptr,
+    nullptr, // queueTaskToEventLoop
     &shouldInterruptScriptBeforeTimeout,
     &moduleLoaderImportModule,
     &moduleLoaderResolve,
     &moduleLoaderFetch,
-    nullptr,
-    nullptr,
-    nullptr
+    nullptr, // moduleLoaderInstantiate
+    nullptr, // moduleLoaderEvaluate
+    nullptr, // promiseRejectionTracker
+    nullptr, // defaultLanguage
 };
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -1732,11 +1745,12 @@ static EncodedJSValue printInternal(ExecState* exec, FILE* out)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (test262AsyncTest) {
+    if (asyncTestExpectedPasses) {
         JSValue value = exec->argument(0);
-        if (value.isString() && WTF::equal(asString(value)->value(exec).impl(), "Test262:AsyncTestComplete"))
-            test262AsyncPassed = true;
-        return JSValue::encode(jsUndefined());
+        if (value.isString() && WTF::equal(asString(value)->value(exec).impl(), "Test262:AsyncTestComplete")) {
+            asyncTestPasses++;
+            return JSValue::encode(jsUndefined());
+        }
     }
 
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
@@ -2531,7 +2545,7 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentStart(ExecState* exec)
     Condition didStartCondition;
     bool didStart = false;
     
-    ThreadIdentifier thread = createThread(
+    RefPtr<Thread> thread = Thread::create(
         "JSC Agent",
         [sourceCode, &didStartLock, &didStartCondition, &didStart] () {
             CommandLine commandLine(0, nullptr);
@@ -2558,7 +2572,7 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentStart(ExecState* exec)
                     return success;
                 });
         });
-    detachThread(thread);
+    thread->detach();
     
     {
         auto locker = holdLock(didStartLock);
@@ -3049,6 +3063,25 @@ EncodedJSValue JSC_HOST_CALL functionMaxArguments(ExecState*)
     return JSValue::encode(jsNumber(JSC::maxArguments));
 }
 
+EncodedJSValue JSC_HOST_CALL functionAsyncTestStart(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSValue numberOfAsyncPasses = exec->argument(0);
+    if (!numberOfAsyncPasses.isUInt32())
+        return throwVMError(exec, scope, ASCIILiteral("Expected first argument to a uint32"));
+
+    asyncTestExpectedPasses += numberOfAsyncPasses.asUInt32();
+    return encodedJSUndefined();
+}
+
+EncodedJSValue JSC_HOST_CALL functionAsyncTestPassed(ExecState*)
+{
+    asyncTestPasses++;
+    return encodedJSUndefined();
+}
+
 #if ENABLE(WEBASSEMBLY)
 
 static CString valueWithTypeOfWasmValue(ExecState* exec, VM& vm, JSValue value, JSValue wasmValue)
@@ -3125,7 +3158,7 @@ static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
 }
 
 // FIXME: https://bugs.webkit.org/show_bug.cgi?id=168582.
-static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, JSWebAssemblyCallee* wasmCallee, const ArgList& boxedArgs)
+static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, Wasm::Callee* wasmCallee, const ArgList& boxedArgs)
 {
     JSValue firstArgument;
     int argCount = 1;
@@ -3159,29 +3192,30 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
     if (exec->argumentCount() != functionCount + 2)
         CRASH();
 
-    Wasm::Plan plan(&vm, static_cast<uint8_t*>(source->vector()), source->length());
-    plan.run();
-    if (plan.failed()) {
-        dataLogLn("failed to parse module: ", plan.errorMessage());
+    Ref<Wasm::BBQPlan> plan = adoptRef(*new Wasm::BBQPlan(nullptr, static_cast<uint8_t*>(source->vector()), source->length(), Wasm::BBQPlan::FullCompile, Wasm::Plan::dontFinalize()));
+    Wasm::ensureWorklist().enqueue(plan.copyRef());
+    Wasm::ensureWorklist().completePlanSynchronously(plan.get());
+    if (plan->failed()) {
+        dataLogLn("failed to parse module: ", plan->errorMessage());
         CRASH();
     }
 
-    if (plan.internalFunctionCount() != functionCount)
+    if (plan->internalFunctionCount() != functionCount)
         CRASH();
 
-    MarkedArgumentBuffer callees;
-    MarkedArgumentBuffer keepAlive;
+    Vector<Ref<Wasm::Callee>> jsEntrypointCallees;
+    Vector<Ref<Wasm::Callee>> wasmEntrypointCallees;
     {
         unsigned lastIndex = UINT_MAX;
-        plan.initializeCallees(exec->lexicalGlobalObject(),
-            [&] (unsigned calleeIndex, JSWebAssemblyCallee* jsEntrypointCallee, JSWebAssemblyCallee* wasmEntrypointCallee) {
+        plan->initializeCallees(
+            [&] (unsigned calleeIndex, Ref<Wasm::Callee>&& jsEntrypointCallee, Ref<Wasm::Callee>&& wasmEntrypointCallee) {
                 RELEASE_ASSERT(!calleeIndex || (calleeIndex - 1 == lastIndex));
-                callees.append(jsEntrypointCallee);
-                keepAlive.append(wasmEntrypointCallee);
+                jsEntrypointCallees.append(WTFMove(jsEntrypointCallee));
+                wasmEntrypointCallees.append(WTFMove(wasmEntrypointCallee));
                 lastIndex = calleeIndex;
             });
     }
-    std::unique_ptr<Wasm::ModuleInformation> moduleInformation = plan.takeModuleInformation();
+    Ref<Wasm::ModuleInformation> moduleInformation = plan->takeModuleInformation();
     RELEASE_ASSERT(!moduleInformation->memory);
 
     for (uint32_t i = 0; i < functionCount; ++i) {
@@ -3192,13 +3226,20 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
             JSArray* arguments = jsCast<JSArray*>(test->getIndexQuickly(1));
 
             MarkedArgumentBuffer boxedArgs;
+            if (!Wasm::useFastTLSForContext()) {
+                // When not using fast TLS, the code we emit expects Wasm::Context*
+                // as the first argument. These tests that this API supports don't ever
+                // use a Context. So this is just a hack to get it to not barf.
+                // We really need to remove this API.
+                boxedArgs.append(jsNumber(0xbadbeef));
+            }
             for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
                 boxedArgs.append(box(exec, vm, arguments->getIndexQuickly(argIndex)));
 
             JSValue callResult;
             {
                 auto scope = DECLARE_THROW_SCOPE(vm);
-                callResult = callWasmFunction(&vm, exec->lexicalGlobalObject(), jsCast<JSWebAssemblyCallee*>(callees.at(i)), boxedArgs);
+                callResult = callWasmFunction(&vm, exec->lexicalGlobalObject(), jsEntrypointCallees[i].ptr(), boxedArgs);
                 RETURN_IF_EXCEPTION(scope, { });
             }
             JSValue expected = box(exec, vm, result);
@@ -3216,6 +3257,24 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
     }
 
     return encodedJSUndefined();
+}
+
+static EncodedJSValue JSC_HOST_CALL functionWebAssemblyMemoryMode(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    
+    if (!Options::useWebAssembly())
+        return throwVMTypeError(exec, scope, ASCIILiteral("WebAssemblyMemoryMode should only be called if the useWebAssembly option is set"));
+
+    if (JSObject* object = exec->argument(0).getObject()) {
+        if (auto* memory = jsDynamicCast<JSWebAssemblyMemory*>(vm, object))
+            return JSValue::encode(jsString(&vm, makeString(memory->memory().mode())));
+        if (auto* instance = jsDynamicCast<JSWebAssemblyInstance*>(vm, object))
+            return JSValue::encode(jsString(&vm, makeString(instance->memoryMode())));
+    }
+
+    return throwVMTypeError(exec, scope, ASCIILiteral("WebAssemblyMemoryMode expects either a WebAssembly.Memory or WebAssembly.Instance"));
 }
 
 #endif // ENABLE(WEBASSEBLY)
@@ -3253,7 +3312,7 @@ static void startTimeoutThreadIfNeeded()
             dataLog("WARNING: timeout string is malformed, got ", timeoutString,
                 " but expected a number. Not using a timeout.\n");
         } else
-            createThread(timeoutThreadMain, 0, "jsc Timeout Thread");
+            Thread::create(timeoutThreadMain, 0, "jsc Timeout Thread");
     }
 }
 
@@ -3350,8 +3409,11 @@ static void dumpException(GlobalObject* globalObject, JSValue exception)
             lineNumberValue.toWTFString(globalObject->globalExec()).utf8().data());
     }
     
-    if (!stackValue.isUndefinedOrNull())
-        printf("%s\n", stackValue.toWTFString(globalObject->globalExec()).utf8().data());
+    if (!stackValue.isUndefinedOrNull()) {
+        auto stackString = stackValue.toWTFString(globalObject->globalExec());
+        if (stackString.length())
+            printf("%s\n", stackString.utf8().data());
+    }
 
 #undef CHECK_EXCEPTION
 }
@@ -3663,7 +3725,7 @@ void CommandLine::parseArguments(int argc, char** argv)
         }
 
         if (!strcmp(arg, "--test262-async")) {
-            test262AsyncTest = true;
+            asyncTestExpectedPasses++;
             continue;
         }
 
@@ -3735,48 +3797,62 @@ int runJSC(CommandLine options, const Func& func)
     Worker worker(Workers::singleton());
     
     VM& vm = VM::create(LargeHeap).leakRef();
-    JSLockHolder locker(&vm);
-
     int result;
-    if (options.m_profile && !vm.m_perBytecodeProfiler)
-        vm.m_perBytecodeProfiler = std::make_unique<Profiler::Database>(vm);
+    bool success;
+    {
+        JSLockHolder locker(vm);
 
-    GlobalObject* globalObject = GlobalObject::create(vm, GlobalObject::createStructure(vm, jsNull()), options.m_arguments);
-    globalObject->setRemoteDebuggingEnabled(options.m_enableRemoteDebugging);
-    bool success = func(vm, globalObject);
-    if (options.m_interactive && success)
-        runInteractive(globalObject);
+        if (options.m_profile && !vm.m_perBytecodeProfiler)
+            vm.m_perBytecodeProfiler = std::make_unique<Profiler::Database>(vm);
 
-    vm.drainMicrotasks();
-    result = success && (test262AsyncTest == test262AsyncPassed) ? 0 : 3;
+        GlobalObject* globalObject = GlobalObject::create(vm, GlobalObject::createStructure(vm, jsNull()), options.m_arguments);
+        globalObject->setRemoteDebuggingEnabled(options.m_enableRemoteDebugging);
+        success = func(vm, globalObject);
+        if (options.m_interactive && success)
+            runInteractive(globalObject);
 
-    if (options.m_exitCode)
-        printf("jsc exiting %d\n", result);
+        vm.drainMicrotasks();
+    }
+    vm.promiseDeferredTimer->runRunLoop();
+
+    result = success && (asyncTestExpectedPasses == asyncTestPasses) ? 0 : 3;
+
+    if (options.m_exitCode) {
+        printf("jsc exiting %d", result);
+        if (asyncTestExpectedPasses != asyncTestPasses)
+            printf(" because expected: %d async test passes but got: %d async test passes", asyncTestExpectedPasses, asyncTestPasses);
+        printf("\n");
+    }
 
     if (options.m_profile) {
+        JSLockHolder locker(vm);
         if (!vm.m_perBytecodeProfiler->save(options.m_profilerOutput.utf8().data()))
             fprintf(stderr, "could not save profiler output.\n");
     }
 
 #if ENABLE(JIT)
-    if (Options::useExceptionFuzz())
-        printf("JSC EXCEPTION FUZZ: encountered %u checks.\n", numberOfExceptionFuzzChecks());
-    bool fireAtEnabled =
-    Options::fireExecutableAllocationFuzzAt() || Options::fireExecutableAllocationFuzzAtOrAfter();
-    if (Options::useExecutableAllocationFuzz() && (!fireAtEnabled || Options::verboseExecutableAllocationFuzz()))
-        printf("JSC EXECUTABLE ALLOCATION FUZZ: encountered %u checks.\n", numberOfExecutableAllocationFuzzChecks());
-    if (Options::useOSRExitFuzz()) {
-        printf("JSC OSR EXIT FUZZ: encountered %u static checks.\n", numberOfStaticOSRExitFuzzChecks());
-        printf("JSC OSR EXIT FUZZ: encountered %u dynamic checks.\n", numberOfOSRExitFuzzChecks());
-    }
+    {
+        JSLockHolder locker(vm);
+        if (Options::useExceptionFuzz())
+            printf("JSC EXCEPTION FUZZ: encountered %u checks.\n", numberOfExceptionFuzzChecks());
+        bool fireAtEnabled =
+        Options::fireExecutableAllocationFuzzAt() || Options::fireExecutableAllocationFuzzAtOrAfter();
+        if (Options::useExecutableAllocationFuzz() && (!fireAtEnabled || Options::verboseExecutableAllocationFuzz()))
+            printf("JSC EXECUTABLE ALLOCATION FUZZ: encountered %u checks.\n", numberOfExecutableAllocationFuzzChecks());
+        if (Options::useOSRExitFuzz()) {
+            printf("JSC OSR EXIT FUZZ: encountered %u static checks.\n", numberOfStaticOSRExitFuzzChecks());
+            printf("JSC OSR EXIT FUZZ: encountered %u dynamic checks.\n", numberOfOSRExitFuzzChecks());
+        }
 
-    auto compileTimeStats = JIT::compileTimeStats();
-    Vector<CString> compileTimeKeys;
-    for (auto& entry : compileTimeStats)
-        compileTimeKeys.append(entry.key);
-    std::sort(compileTimeKeys.begin(), compileTimeKeys.end());
-    for (CString key : compileTimeKeys)
-        printf("%40s: %.3lf ms\n", key.data(), compileTimeStats.get(key));
+        
+        auto compileTimeStats = JIT::compileTimeStats();
+        Vector<CString> compileTimeKeys;
+        for (auto& entry : compileTimeStats)
+            compileTimeKeys.append(entry.key);
+        std::sort(compileTimeKeys.begin(), compileTimeKeys.end());
+        for (CString key : compileTimeKeys)
+            printf("%40s: %.3lf ms\n", key.data(), compileTimeStats.get(key));
+    }
 #endif
 
     if (Options::gcAtEnd()) {

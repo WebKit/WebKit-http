@@ -73,7 +73,7 @@ private:
     {
         Dominators& dominators = m_proc.dominators();
         HashMap<ValueKey, Value*> valueForConstant;
-        IndexMap<BasicBlock, Vector<Value*>> materializations(m_proc.size());
+        IndexMap<BasicBlock*, Vector<Value*>> materializations(m_proc.size());
 
         // We determine where things get materialized based on where they are used.
         for (BasicBlock* block : m_proc) {
@@ -209,7 +209,7 @@ private:
                         
                         if (bestPointer) {
                             memoryValue->lastChild() = bestPointer;
-                            memoryValue->setOffset(desiredOffset(bestPointer));
+                            memoryValue->setOffset(static_cast<int32_t>(desiredOffset(bestPointer)));
                         }
                     }
                 } else {
@@ -274,7 +274,7 @@ private:
         for (auto& entry : m_constTable)
             m_dataSection[entry.value] = entry.key.value();
 
-        IndexSet<Value> offLimits;
+        IndexSet<Value*> offLimits;
         for (BasicBlock* block : m_proc) {
             for (unsigned valueIndex = 0; valueIndex < block->size(); ++valueIndex) {
                 StackmapValue* value = block->at(valueIndex)->as<StackmapValue>();
@@ -308,12 +308,16 @@ private:
                 if (offLimits.contains(value))
                     continue;
 
+                auto offset = sizeof(int64_t) * m_constTable.get(key);
+                if (!isRepresentableAs<Value::OffsetType>(offset))
+                    continue;
+
                 Value* tableBase = m_insertionSet.insertIntConstant(
                     valueIndex, value->origin(), pointerType(),
                     bitwise_cast<intptr_t>(m_dataSection));
                 Value* result = m_insertionSet.insert<MemoryValue>(
                     valueIndex, Load, value->type(), value->origin(), tableBase,
-                    sizeof(int64_t) * m_constTable.get(key));
+                    static_cast<Value::OffsetType>(offset));
                 value->replaceWithIdentity(result);
             }
 

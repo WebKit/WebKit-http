@@ -1,3 +1,99 @@
+2017-04-24  James Craig  <jcraig@apple.com>
+
+        Upload demo files for prefers-reduced-motion post
+        https://bugs.webkit.org/show_bug.cgi?id=170663
+
+        Rubber stamped by Jon Davis.
+
+        * blog-files/prefers-reduced-motion: Added.
+        * blog-files/prefers-reduced-motion/axi.png: Added.
+        * blog-files/prefers-reduced-motion/prm.htm: Added.
+
+2017-04-18  Jon Davis  <jond@apple.com>
+
+        Images in WebKit.org blog article are stretched out
+        https://bugs.webkit.org/show_bug.cgi?id=169208
+
+        Reviewed by Michael Catanzaro.
+
+        * wp-content/themes/webkit/style.css:
+        (article figure > img):
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        * docs/b3/intermediate-representation.html: typos
+
+2017-04-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Update the css-status page to handle changes in CSSProperties.json.
+        
+        Change the page structure to allow the left sidebar to use sticky positioning.
+        
+        "Done" -> "Supported".
+        
+        Save the search in the URL.
+        
+        Other formatting changes.
+
+        * wp-content/themes/webkit/css-status.php:
+
+2017-04-06  Dean Jackson  <dino@apple.com>
+
+        Fix broken link.
+
+        * demos/webgpu/index.html:
+
+2017-04-06  Jon Davis  <jond@apple.com>
+
+        Updates feature status for recently shipped features
+        https://bugs.webkit.org/show_bug.cgi?id=170359
+
+        Reviewed by Brian Burg.
+        
+        Added styles for "Supported" status.
+
+        * wp-content/themes/webkit/status.php:
+
+2017-04-04  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. Add details on how to enable the experimental feature.
+
+        * demos/webgpu/index.html:
+
+2017-04-03  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. More WebGPU demos.
+
+        * demos/webgpu/2d.jpg: Added.
+        * demos/webgpu/2d.js:
+        * demos/webgpu/circle.svg: Added.
+        * demos/webgpu/cubes.jpg: Added.
+        * demos/webgpu/hello.html: Added.
+        * demos/webgpu/hello.jpg: Added.
+        * demos/webgpu/hello.js: Copied from Websites/webkit.org/demos/webgpu/2d.js.
+        (init):
+        (render):
+        * demos/webgpu/index.html: Added.
+        * demos/webgpu/simple.jpg: Added.
+
+2017-03-31  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. Add some WebGPU examples.
+
+        * demos/webgpu/2d.html: Added.
+        * demos/webgpu/2d.js: Added.
+        * demos/webgpu/cubes.html: Added.
+        * demos/webgpu/cubes.js: Added.
+        * demos/webgpu/shared.css: Added.
+        * demos/webgpu/shared.js: Added.
+        * demos/webgpu/simple.html: Added.
+        * demos/webgpu/simple.js: Added.
+
 2017-03-11  Jon Davis  <jond@apple.com>
 
         Add Swift syntax highlighting to webkit.org

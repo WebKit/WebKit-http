@@ -52,11 +52,11 @@
 
 namespace JSC { namespace B3 {
 
-void prepareForGeneration(Procedure& procedure, unsigned optLevel)
+void prepareForGeneration(Procedure& procedure)
 {
     TimingScope timingScope("prepareForGeneration");
 
-    generateToAir(procedure, optLevel);
+    generateToAir(procedure);
     Air::prepareForGeneration(procedure.code());
 }
 
@@ -65,7 +65,7 @@ void generate(Procedure& procedure, CCallHelpers& jit)
     Air::generate(procedure.code(), jit);
 }
 
-void generateToAir(Procedure& procedure, unsigned optLevel)
+void generateToAir(Procedure& procedure)
 {
     TimingScope timingScope("generateToAir");
     
@@ -80,7 +80,7 @@ void generateToAir(Procedure& procedure, unsigned optLevel)
     if (shouldValidateIR())
         validate(procedure);
 
-    if (optLevel >= 1) {
+    if (procedure.optLevel() >= 2) {
         reduceDoubleToFloat(procedure);
         reduceStrength(procedure);
         eliminateCommonSubexpressions(procedure);
@@ -91,12 +91,15 @@ void generateToAir(Procedure& procedure, unsigned optLevel)
         
         // FIXME: Add more optimizations here.
         // https://bugs.webkit.org/show_bug.cgi?id=150507
+    } else if (procedure.optLevel() >= 1) {
+        // FIXME: Explore better "quick mode" optimizations.
+        reduceStrength(procedure);
     }
 
     // This puts the IR in quirks mode.
     lowerMacros(procedure);
 
-    if (optLevel >= 1) {
+    if (procedure.optLevel() >= 2) {
         reduceStrength(procedure);
 
         // FIXME: Add more optimizations here.

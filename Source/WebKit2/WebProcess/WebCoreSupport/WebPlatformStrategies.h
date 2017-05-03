@@ -60,14 +60,19 @@ private:
     // WebCore::PasteboardStrategy
 #if PLATFORM(IOS)
     void writeToPasteboard(const WebCore::PasteboardWebContent&, const String& pasteboardName) override;
+    void writeToPasteboard(const WebCore:: PasteboardURL&, const String& pasteboardName) override;
     void writeToPasteboard(const WebCore::PasteboardImage&, const String& pasteboardName) override;
     void writeToPasteboard(const String& pasteboardType, const String&, const String& pasteboardName) override;
     int getPasteboardItemsCount(const String& pasteboardName) override;
     String readStringFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
     RefPtr<WebCore::SharedBuffer> readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
-    WebCore::URL readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
+    WebCore::URL readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName, String& title) override;
+    void getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName) override;
+    void updatePreferredTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName) override;
+    void getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName) override;
 #endif
 #if PLATFORM(COCOA)
+    int getNumberOfFiles(const String& pasteboardName) override;
     void getTypes(Vector<String>& types, const String& pasteboardName) override;
     RefPtr<WebCore::SharedBuffer> bufferForType(const String& pasteboardType, const String& pasteboardName) override;
     void getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName) override;
@@ -91,10 +96,10 @@ private:
 #endif
 
 #if PLATFORM(WPE)
-    virtual void getTypes(Vector<String>& types) override;
-    virtual String readStringFromPasteboard(int index, const String& pasteboardType) override;
-    virtual void writeToPasteboard(const WebCore::PasteboardWebContent&) override;
-    virtual void writeToPasteboard(const String& pasteboardType, const String&) override;
+    void getTypes(Vector<String>& types) override;
+    String readStringFromPasteboard(int index, const String& pasteboardType) override;
+    void writeToPasteboard(const WebCore::PasteboardWebContent&) override;
+    void writeToPasteboard(const String& pasteboardType, const String&) override;
 #endif
 };
 

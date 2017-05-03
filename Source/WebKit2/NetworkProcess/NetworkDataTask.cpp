@@ -92,7 +92,7 @@ void NetworkDataTask::scheduleFailure(FailureType type)
 {
     ASSERT(type != NoFailure);
     m_scheduledFailureType = type;
-    m_failureTimer.startOneShot(0);
+    m_failureTimer.startOneShot(0_s);
 }
 
 void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
@@ -108,6 +108,11 @@ void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, ResponseCo
         }
     }
     m_client->didReceiveResponseNetworkSession(WTFMove(response), WTFMove(completionHandler));
+}
+
+bool NetworkDataTask::shouldCaptureExtraNetworkLoadMetrics() const
+{
+    return m_client->shouldCaptureExtraNetworkLoadMetrics();
 }
 
 void NetworkDataTask::failureTimerFired()

@@ -135,6 +135,7 @@
 #include "WebKitCSSRegionRule.h"
 #include "WebKitFontFamilyNames.h"
 #include <bitset>
+#include <wtf/Seconds.h>
 #include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
@@ -227,7 +228,8 @@ void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& pro
 }
 
 StyleResolver::StyleResolver(Document& document)
-    : m_matchedPropertiesCacheAdditionsSinceLastSweep(0)
+    : m_ruleSets(*this)
+    , m_matchedPropertiesCacheAdditionsSinceLastSweep(0)
     , m_matchedPropertiesCacheSweepTimer(*this, &StyleResolver::sweepMatchedPropertiesCache)
     , m_document(document)
     , m_matchAuthorAndUserStyles(m_document.settings().authorAndUserStylesEnabled())
@@ -265,8 +267,6 @@ StyleResolver::StyleResolver(Document& document)
         m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType(), m_document, m_rootDefaultStyle.get() };
 
     m_ruleSets.resetAuthorStyle();
-
-    m_ruleSets.initUserStyle(m_document.extensionStyleSheets(), m_mediaQueryEvaluator, *this);
 
 #if ENABLE(SVG_FONTS)
     if (m_document.svgExtensions()) {
@@ -843,9 +843,11 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
                 style.setFloating(NoFloat);
             }
 
-            // FIXME: We shouldn't be overriding start/-webkit-auto like this. Do it in html.css instead.
-            // Table headers with a text-align of -webkit-auto will change the text-align to center.
-            if (element->hasTagName(thTag) && style.textAlign() == TASTART)
+            // User agents are expected to have a rule in their user agent stylesheet that matches th elements that have a parent
+            // node whose computed value for the 'text-align' property is its initial value, whose declaration block consists of
+            // just a single declaration that sets the 'text-align' property to the value 'center'.
+            // https://html.spec.whatwg.org/multipage/rendering.html#rendering
+            if (element->hasTagName(thTag) && !style.hasExplicitlySetTextAlign() && parentStyle.textAlign() == RenderStyle::initialTextAlign())
                 style.setTextAlign(CENTER);
 
             if (element->hasTagName(legendTag))
@@ -1251,8 +1253,8 @@ void StyleResolver::addToMatchedPropertiesCache(const RenderStyle* style, const 
     static const unsigned matchedDeclarationCacheAdditionsBetweenSweeps = 100;
     if (++m_matchedPropertiesCacheAdditionsSinceLastSweep >= matchedDeclarationCacheAdditionsBetweenSweeps
         && !m_matchedPropertiesCacheSweepTimer.isActive()) {
-        static const unsigned matchedDeclarationCacheSweepTimeInSeconds = 60;
-        m_matchedPropertiesCacheSweepTimer.startOneShot(matchedDeclarationCacheSweepTimeInSeconds);
+        static const Seconds matchedDeclarationCacheSweepTime { 1_min };
+        m_matchedPropertiesCacheSweepTimer.startOneShot(matchedDeclarationCacheSweepTime);
     }
 
     ASSERT(hash);
@@ -1467,6 +1469,7 @@ inline bool isValidVisitedLinkProperty(CSSPropertyID id)
     case CSSPropertyWebkitTextStrokeColor:
     case CSSPropertyFill:
     case CSSPropertyStroke:
+    case CSSPropertyStrokeColor:
         return true;
     default:
         break;

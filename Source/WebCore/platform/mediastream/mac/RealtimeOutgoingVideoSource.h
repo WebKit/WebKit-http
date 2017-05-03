@@ -32,10 +32,12 @@
 
 #include "LibWebRTCMacros.h"
 #include "RealtimeMediaSource.h"
+#include <Timer.h>
 #include <webrtc/api/mediastreaminterface.h>
 #include <webrtc/base/optional.h>
 #include <webrtc/common_video/include/i420_buffer_pool.h>
 #include <webrtc/media/base/videosinkinterface.h>
+#include <wtf/Optional.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
@@ -46,6 +48,8 @@ public:
     ~RealtimeOutgoingVideoSource() { stop(); }
 
     void stop();
+    bool setSource(Ref<RealtimeMediaSource>&&);
+    RealtimeMediaSource& source() const { return m_videoSource.get(); }
 
     int AddRef() const final { ref(); return refCount(); }
     int Release() const final { deref(); return refCount(); }
@@ -53,7 +57,10 @@ public:
 private:
     RealtimeOutgoingVideoSource(Ref<RealtimeMediaSource>&&);
 
-    void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&, webrtc::VideoRotation);
+    void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&);
+    void sendBlackFrame();
+    void sendOneBlackFrame();
+    void setSizeFromSource();
 
     // Notifier API
     void RegisterObserver(webrtc::ObserverInterface*) final { }
@@ -75,6 +82,7 @@ private:
     // RealtimeMediaSource::Observer API
     void sourceMutedChanged() final;
     void sourceEnabledChanged() final;
+    void sourceSettingsChanged() final { setSizeFromSource(); }
     void videoSampleAvailable(MediaSample&) final;
 
     Vector<rtc::VideoSinkInterface<webrtc::VideoFrame>*> m_sinks;
@@ -82,6 +90,13 @@ private:
     Ref<RealtimeMediaSource> m_videoSource;
     bool m_enabled { true };
     bool m_muted { false };
+    std::optional<RealtimeMediaSourceSettings> m_initialSettings;
+    webrtc::VideoRotation m_currentRotation { webrtc::kVideoRotation_0 };
+    uint32_t m_width { 0 };
+    uint32_t m_height { 0 };
+    bool m_isStopped { false };
+    Timer m_blackFrameTimer;
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> m_blackFrame;
 };
 
 } // namespace WebCore

@@ -105,7 +105,7 @@ void ScrollingCoordinatorMac::scheduleTreeStateCommit()
         return;
 
     LOG(Scrolling, "ScrollingCoordinatorMac::scheduleTreeStateCommit");
-    m_scrollingStateTreeCommitterTimer.startOneShot(0);
+    m_scrollingStateTreeCommitterTimer.startOneShot(0_s);
 }
 
 void ScrollingCoordinatorMac::commitTreeState()
@@ -117,7 +117,7 @@ void ScrollingCoordinatorMac::commitTreeState()
     if (!scrollingStateTree()->hasChangedProperties())
         return;
 
-    LOG(Scrolling, "%s", scrollingStateTreeAsText().utf8().data());
+    LOG(Scrolling, "%s", scrollingStateTreeAsText(ScrollingStateTreeAsTextBehaviorDebug).utf8().data());
 
     RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
     ScrollingStateTree* unprotectedTreeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation).release();

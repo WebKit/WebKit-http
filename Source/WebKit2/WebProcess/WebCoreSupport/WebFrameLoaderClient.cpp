@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -424,20 +424,24 @@ void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
     webPage->send(Messages::WebPageProxy::DidStartProvisionalLoadForFrame(m_frame->frameID(), provisionalLoader.navigationID(), url, unreachableURL, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
+static constexpr unsigned maxTitleLength = 1000; // Closest power of 10 above the W3C recommendation for Title length.
+
 void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& title)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return;
 
+    auto truncatedTitle = truncateFromEnd(title, maxTitleLength);
+    
     RefPtr<API::Object> userData;
 
     // Notify the bundle client.
     // FIXME: Use direction of title.
-    webPage->injectedBundleLoaderClient().didReceiveTitleForFrame(webPage, title.string, m_frame, userData);
+    webPage->injectedBundleLoaderClient().didReceiveTitleForFrame(webPage, truncatedTitle.string, m_frame, userData);
 
     // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidReceiveTitleForFrame(m_frame->frameID(), title.string, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidReceiveTitleForFrame(m_frame->frameID(), truncatedTitle.string, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureContent> hasInsecureContent)
@@ -685,20 +689,18 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     bool canShowMIMEType = webPage->canShowMIMEType(response.mimeType());
 
     uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
-    bool receivedPolicyAction;
     uint64_t policyAction;
     DownloadID downloadID;
 
     Ref<WebFrame> protect(*m_frame);
     WebCore::Frame* coreFrame = m_frame->coreFrame();
-    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForResponseSync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForResponseSync::Reply(receivedPolicyAction, policyAction, downloadID), Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend)) {
+    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForResponseSync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForResponseSync::Reply(policyAction, downloadID), Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend)) {
         m_frame->didReceivePolicyDecision(listenerID, PolicyIgnore, 0, { });
         return;
     }
 
     // We call this synchronously because CFNetwork can only convert a loading connection to a download from its didReceiveResponse callback.
-    if (receivedPolicyAction)
-        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), 0, downloadID);
+    m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), 0, downloadID);
 }
 
 void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request, FormState* formState, const String& frameName, FramePolicyFunction function)
@@ -763,7 +765,6 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     }
     
     uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
-    bool receivedPolicyAction;
     uint64_t newNavigationID;
     uint64_t policyAction;
     DownloadID downloadID;
@@ -808,7 +809,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     Ref<WebFrame> protect(*m_frame);
     WebCore::Frame* originatingCoreFrame = originatingFrame ? originatingFrame->coreFrame() : nullptr;
     WebsitePolicies websitePolicies;
-    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, SecurityOriginData::fromFrame(originatingCoreFrame), navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, newNavigationID, policyAction, downloadID, websitePolicies))) {
+    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, SecurityOriginData::fromFrame(originatingCoreFrame), navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(newNavigationID, policyAction, downloadID, websitePolicies))) {
         m_frame->didReceivePolicyDecision(listenerID, PolicyIgnore, 0, { });
         return;
     }
@@ -835,8 +836,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     }
 
     // We call this synchronously because WebCore cannot gracefully handle a frame load without a synchronous navigation policy reply.
-    if (receivedPolicyAction)
-        m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), newNavigationID, downloadID);
+    m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), newNavigationID, downloadID);
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()
@@ -1228,10 +1228,8 @@ void WebFrameLoaderClient::restoreViewState()
     if (FrameView* view = frame.view()) {
         if (m_frame->isMainFrame())
             m_frame->page()->restorePageState(*currentItem);
-        else if (!view->wasScrolledByUser()) {
-            WTFLogAlways("WebFrameLoaderClient::restoreViewState restoring scroll position %d,%d", currentItem->scrollPosition().x(), currentItem->scrollPosition().y());
+        else if (!view->wasScrolledByUser())
             view->setScrollPosition(currentItem->scrollPosition());
-        }
     }
 #else
     // Inform the UI process of the scale factor.

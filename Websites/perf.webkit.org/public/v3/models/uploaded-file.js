@@ -5,6 +5,7 @@ class UploadedFile extends DataModelObject {
     {
         super(id, object);
         this._createdAt = new Date(object.createdAt);
+        this._deletedAt = object.deletedAt ? new Date(object.deletedAt) : null;
         this._filename = object.filename;
         this._author = object.author;
         this._size = object.size;
@@ -12,15 +13,27 @@ class UploadedFile extends DataModelObject {
         this.ensureNamedStaticMap('sha256')[object.sha256] = this;
     }
 
-    static uploadFile(file)
+    createdAt() { return this._createdAt; }
+    deletedAt() { return this._deletedAt; }
+    filename() { return this._filename; }
+    author() { return this._author; }
+    size() { return this._size; }
+    label() { return this.filename(); }
+    url() { return `/api/uploaded-file/${this.id()}`; }
+
+    static uploadFile(file, uploadProgressCallback = null)
     {
-        return PrivilegedAPI.sendRequest('upload-file', {'newFile': file}, {useFormData: true}).then((rawData) => {
+        if (file.size > UploadedFile.fileUploadSizeLimit)
+            return Promise.reject('FileSizeLimitExceeded');
+        return PrivilegedAPI.sendRequest('upload-file', {'newFile': file}, {useFormData: true, uploadProgressCallback}).then((rawData) => {
             return UploadedFile.ensureSingleton(rawData['uploadedFile'].id, rawData['uploadedFile']);
         });
     }
 
     static fetchUnloadedFileWithIdenticalHash(file)
     {
+        if (file.size > UploadedFile.fileUploadSizeLimit)
+            return Promise.reject('FileSizeLimitExceeded');
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
@@ -32,9 +45,11 @@ class UploadedFile extends DataModelObject {
             const map = this.namedStaticMap('sha256');
             if (map && sha256 in map)
                 return map[sha256];
-            return RemoteAPI.getJSONWithStatus(`../api/uploaded-file?sha256=${sha256}`).then((rawData) => {
-                if (!rawData['uploadedFile'])
+            return RemoteAPI.getJSON(`../api/uploaded-file?sha256=${sha256}`).then((rawData) => {
+                if (rawData['status'] == 'NotFound' || !rawData['uploadedFile'])
                     return null;
+                if (rawData['status'] != 'OK')
+                    return Promise.reject(rawData['status']);
                 return UploadedFile.ensureSingleton(rawData['uploadedFile'].id, rawData['uploadedFile']);
             });
         });
@@ -52,3 +67,8 @@ class UploadedFile extends DataModelObject {
     }
 
 }
+
+UploadedFile.fileUploadSizeLimit = 0;
+
+if (typeof module != 'undefined')
+    module.exports.UploadedFile = UploadedFile;

@@ -128,7 +128,7 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
 
     // Switch to the main thread to get the default website data store
     RunLoop::main().dispatch([prevalentResourceDomains = WTFMove(prevalentResourceDomains), this] () mutable {
-        WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores(dataTypesToRemove, prevalentResourceDomains, notifyPages, [this](Vector<String> domainsWithDeletedWebsiteData) mutable {
+        WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(dataTypesToRemove, WTFMove(prevalentResourceDomains), notifyPages, [this](Vector<String> domainsWithDeletedWebsiteData) mutable {
             this->coreStore().updateStatisticsForRemovedDataRecords(domainsWithDeletedWebsiteData);
             m_dataRecordsRemovalPending = false;
         });
@@ -150,6 +150,8 @@ void WebResourceLoadStatisticsStore::processStatisticsAndDataRecords()
 void WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated(const Vector<WebCore::ResourceLoadStatistics>& origins)
 {
     coreStore().mergeStatistics(origins);
+    // Fire before processing statistics to propagate user
+    // interaction as fast as possible to the network process.
     coreStore().fireShouldPartitionCookiesHandler();
     processStatisticsAndDataRecords();
 }
@@ -179,11 +181,11 @@ void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
     });
 }
     
-void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)>&& shouldPartitionCookiesForDomainsHandler)
+void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)>&& shouldPartitionCookiesForDomainsHandler)
 {
     registerSharedResourceLoadObserver();
-    m_resourceLoadStatisticsStore->setShouldPartitionCookiesCallback([this, shouldPartitionCookiesForDomainsHandler = WTFMove(shouldPartitionCookiesForDomainsHandler)] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd) {
-        shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd);
+    m_resourceLoadStatisticsStore->setShouldPartitionCookiesCallback([this, shouldPartitionCookiesForDomainsHandler = WTFMove(shouldPartitionCookiesForDomainsHandler)] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst) {
+        shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd, clearFirst);
     });
     m_resourceLoadStatisticsStore->setWritePersistentStoreCallback([this]() {
         writeStoreToDisk();
@@ -196,7 +198,7 @@ void WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded()
         return;
 
     m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this)] {
-        coreStore().clear();
+        coreStore().clearInMemory();
 
         auto decoder = createDecoderFromDisk("full_browsing_session");
         if (!decoder)
@@ -251,8 +253,10 @@ void WebResourceLoadStatisticsStore::writeEncoderToDisk(KeyedEncoder& encoder, c
     if (resourceLog.isEmpty())
         return;
 
-    if (!m_statisticsStoragePath.isEmpty())
+    if (!m_statisticsStoragePath.isEmpty()) {
         makeAllDirectories(m_statisticsStoragePath);
+        platformExcludeFromBackup();
+    }
 
     auto handle = openFile(resourceLog, OpenForWrite);
     if (!handle)
@@ -264,6 +268,13 @@ void WebResourceLoadStatisticsStore::writeEncoderToDisk(KeyedEncoder& encoder, c
     if (writtenBytes != static_cast<int64_t>(rawData->size()))
         WTFLogAlways("WebResourceLoadStatisticsStore: We only wrote %d out of %d bytes to disk", static_cast<unsigned>(writtenBytes), rawData->size());
 }
+
+#if !PLATFORM(COCOA)
+void WebResourceLoadStatisticsStore::platformExcludeFromBackup() const
+{
+    // Do nothing
+}
+#endif
 
 std::unique_ptr<KeyedDecoder> WebResourceLoadStatisticsStore::createDecoderFromDisk(const String& label) const
 {

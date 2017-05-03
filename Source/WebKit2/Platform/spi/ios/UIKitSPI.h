@@ -30,6 +30,7 @@
 #import <UIKit/UIAlertController_Private.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItem_Private.h>
+#import <UIKit/UICalloutBar.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIDocumentMenuViewController_Private.h>
@@ -304,6 +305,13 @@ typedef enum {
 @end
 #endif
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+typedef NS_ENUM(NSInteger, UIScrollViewContentInsetAdjustmentBehavior) {
+    UIScrollViewContentInsetAdjustmentAutomatic = 0,
+    UIScrollViewContentInsetAdjustmentAlways = 3,
+};
+#endif
+
 @interface UIScrollView ()
 - (void)_stopScrollingAndZoomingAnimations;
 - (void)_zoomToCenter:(CGPoint)center scale:(CGFloat)scale duration:(CFTimeInterval)duration force:(BOOL)force;
@@ -315,8 +323,8 @@ typedef enum {
 @property (nonatomic) CGFloat verticalScrollDecelerationFactor;
 @property (nonatomic, readonly) BOOL _isInterruptingDeceleration;
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
-@property (nonatomic, setter=_setEdgesScrollingContentIntoSafeArea:) UIRectEdge _edgesScrollingContentIntoSafeArea;
 @property (nonatomic, readonly) UIEdgeInsets _systemContentInset;
+@property (nonatomic, setter=_setContentInsetAdjustmentBehavior:, getter=_contentInsetAdjustmentBehavior) UIScrollViewContentInsetAdjustmentBehavior contentInsetAdjustmentBehavior;
 #endif
 @end
 
@@ -864,6 +872,10 @@ typedef enum {
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
+
+@interface UIColor (IPI)
++ (UIColor *)insertionPointColor;
+@end
 
 @interface UIView (IPI)
 - (UIScrollView *)_scroller;

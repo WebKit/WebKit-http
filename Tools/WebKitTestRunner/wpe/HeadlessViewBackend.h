@@ -25,15 +25,15 @@
 
 #pragma once
 
-#include <cairo.h>
 #include <gbm.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <cairo.h>
 #include <glib.h>
 #include <unordered_map>
 #include <wpe-mesa/view-backend-exportable-dma-buf.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
 class HeadlessViewBackend {
 public:
@@ -49,11 +49,6 @@ private:
     void performUpdate();
 
     static struct wpe_mesa_view_backend_exportable_dma_buf_client s_exportableClient;
-
-    struct {
-        int fd { -1 };
-        struct gbm_device* device;
-    } m_gbm;
 
     struct {
         EGLDisplay display;

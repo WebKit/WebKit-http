@@ -36,6 +36,7 @@
 #include "LayoutRepainter.h"
 #include "Logging.h"
 #include "RenderCombineText.h"
+#include "RenderFlexibleBox.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
@@ -66,6 +67,25 @@ struct SameSizeAsMarginInfo {
 
 COMPILE_ASSERT(sizeof(RenderBlockFlow::MarginValues) == sizeof(LayoutUnit[4]), MarginValues_should_stay_small);
 COMPILE_ASSERT(sizeof(RenderBlockFlow::MarginInfo) == sizeof(SameSizeAsMarginInfo), MarginInfo_should_stay_small);
+
+class PaginatedLayoutStateMaintainer {
+public:
+    PaginatedLayoutStateMaintainer(RenderBlockFlow& flow)
+        : m_flow(flow)
+        , m_pushed(flow.view().pushLayoutStateForPaginationIfNeeded(flow))
+    {
+    }
+
+    ~PaginatedLayoutStateMaintainer()
+    {
+        if (m_pushed)
+            m_flow.view().popLayoutState(m_flow);
+    }
+
+private:
+    RenderBlockFlow& m_flow;
+    bool m_pushed { false };
+};
 
 // Our MarginInfo state used when laying out block children.
 RenderBlockFlow::MarginInfo::MarginInfo(const RenderBlockFlow& block, LayoutUnit beforeBorderPadding, LayoutUnit afterBorderPadding)
@@ -119,6 +139,7 @@ RenderBlockFlow::RenderBlockFlow(Document& document, RenderStyle&& style)
 
 RenderBlockFlow::~RenderBlockFlow()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
 void RenderBlockFlow::createMultiColumnFlowThread()
@@ -175,7 +196,7 @@ void RenderBlockFlow::willBeDestroyed()
 
     m_lineBoxes.deleteLineBoxes();
 
-    removeFromUpdateScrollInfoAfterLayoutTransaction();
+    blockWillBeDestroyed();
 
     // NOTE: This jumps down to RenderBox, bypassing RenderBlock since it would do duplicate work.
     RenderBox::willBeDestroyed();
@@ -1864,14 +1885,19 @@ bool RenderBlockFlow::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pag
 
 LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutUnit logicalOffset, LayoutUnit childBeforeMargin, LayoutUnit childAfterMargin)
 {
-    if (!childBoxIsUnsplittableForFragmentation(child))
+    // When flexboxes are embedded inside a block flow, they don't perform any adjustments for unsplittable
+    // children. We'll treat flexboxes themselves as unsplittable just to get them to paginate properly inside
+    // a block flow.
+    bool isUnsplittable = childBoxIsUnsplittableForFragmentation(child);
+    if (!isUnsplittable && !(child.isFlexibleBox() && !downcast<RenderFlexibleBox>(child).isFlexibleBoxImpl()))
         return logicalOffset;
-
+    
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     LayoutUnit childLogicalHeight = logicalHeightForChild(child) + childBeforeMargin + childAfterMargin;
     LayoutUnit pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
     bool hasUniformPageLogicalHeight = !flowThread || flowThread->regionsHaveUniformLogicalHeight();
-    updateMinimumPageHeight(logicalOffset, childLogicalHeight);
+    if (isUnsplittable)
+        updateMinimumPageHeight(logicalOffset, childLogicalHeight);
     if (!pageLogicalHeight || (hasUniformPageLogicalHeight && childLogicalHeight > pageLogicalHeight)
         || !hasNextPage(logicalOffset))
         return logicalOffset;
@@ -2152,8 +2178,11 @@ void RenderBlockFlow::addFloatsToNewParent(RenderBlockFlow& toBlockFlow) const
     if (!toBlockFlow.m_floatingObjects)
         toBlockFlow.createFloatingObjects();
 
-    for (auto& floatingObject : m_floatingObjects->set())
+    for (auto& floatingObject : m_floatingObjects->set()) {
+        if (toBlockFlow.containsFloat(floatingObject->renderer()))
+            continue;
         toBlockFlow.m_floatingObjects->add(floatingObject->cloneForNewParent());
+    }
 }
 
 void RenderBlockFlow::moveAllChildrenIncludingFloatsTo(RenderBlock& toBlock, bool fullRemoveInsert)
@@ -3721,9 +3750,11 @@ void RenderBlockFlow::ensureLineBoxes()
     LayoutUnit repaintLogicalTop;
     LayoutUnit repaintLogicalBottom;
     if (isPaginated) {
-        view().pushLayoutStateForPagination(*this);
+        PaginatedLayoutStateMaintainer state(*this);
         layoutLineBoxes(relayoutChildren, repaintLogicalTop, repaintLogicalBottom);
-        view().popLayoutState(*this);
+        // This matches relayoutToAvoidWidows.
+        if (shouldBreakAtLineToAvoidWidow())
+            layoutLineBoxes(relayoutChildren, repaintLogicalTop, repaintLogicalBottom);
     } else
         layoutLineBoxes(relayoutChildren, repaintLogicalTop, repaintLogicalBottom);
 

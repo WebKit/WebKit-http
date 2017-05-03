@@ -47,7 +47,20 @@ class Manifest {
             raw.acceptedRepositories = raw.acceptedRepositories.map((repositoryId) => {
                 return Repository.findById(repositoryId);
             });
+            raw.repositoryGroups = raw.repositoryGroups.map((group) => {
+                group.repositories = group.repositories.map((entry) => {
+                    return {repository: Repository.findById(entry.repository), acceptsPatch: entry.acceptsPatch};
+                });
+                return TriggerableRepositoryGroup.ensureSingleton(group.id, group);
+            });
+            raw.configurations = raw.configurations.map((configuration) => {
+                const [testId, platformId] = configuration;
+                return {test: Test.findById(testId), platform: Platform.findById(platformId)};
+            });
         });
+
+        if (typeof(UploadedFile) != 'undefined')
+            UploadedFile.fileUploadSizeLimit = rawResponse.fileUploadSizeLimit || 0;
 
         Instrumentation.endMeasuringTime('Manifest', '_didFetchManifest');
 

@@ -35,6 +35,7 @@
 #include <wtf/Lock.h>
 #include <wtf/Stopwatch.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakRandom.h>
 
 namespace JSC {
 
@@ -46,7 +47,7 @@ class SamplingProfiler : public ThreadSafeRefCounted<SamplingProfiler> {
 public:
 
     struct UnprocessedStackFrame {
-        UnprocessedStackFrame(CodeBlock* codeBlock, EncodedJSValue callee, CallSiteIndex callSiteIndex)
+        UnprocessedStackFrame(CodeBlock* codeBlock, CalleeBits callee, CallSiteIndex callSiteIndex)
             : unverifiedCallee(callee)
             , verifiedCodeBlock(codeBlock)
             , callSiteIndex(callSiteIndex)
@@ -56,13 +57,10 @@ public:
             : cCodePC(pc)
         { }
 
-        UnprocessedStackFrame()
-        {
-            unverifiedCallee = JSValue::encode(JSValue());
-        }
+        UnprocessedStackFrame() = default;
 
         void* cCodePC { nullptr };
-        EncodedJSValue unverifiedCallee;
+        CalleeBits unverifiedCallee;
         CodeBlock* verifiedCodeBlock { nullptr };
         CallSiteIndex callSiteIndex;
     };
@@ -190,14 +188,15 @@ private:
     void takeSample(const AbstractLocker&, std::chrono::microseconds& stackTraceProcessingTime);
 
     VM& m_vm;
+    WeakRandom m_weakRandom;
     RefPtr<Stopwatch> m_stopwatch;
     Vector<StackTrace> m_stackTraces;
     Vector<UnprocessedStackTrace> m_unprocessedStackTraces;
     std::chrono::microseconds m_timingInterval;
     double m_lastTime;
     Lock m_lock;
-    ThreadIdentifier m_threadIdentifier;
-    MachineThreads::Thread* m_jscExecutionThread;
+    RefPtr<Thread> m_thread;
+    MachineThreads::MachineThread* m_jscExecutionThread;
     bool m_isPaused;
     bool m_isShutDown;
     bool m_needsReportAtExit { false };

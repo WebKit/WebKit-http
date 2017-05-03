@@ -1288,9 +1288,12 @@ ArrayStorage* JSObject::convertDoubleToArrayStorage(VM& vm, NonPropertyTransitio
     Butterfly* butterfly = m_butterfly.get();
     for (unsigned i = 0; i < vectorLength; i++) {
         double value = butterfly->contiguousDouble()[i];
+        if (value != value) {
+            newStorage->m_vector[i].clear();
+            continue;
+        }
         newStorage->m_vector[i].setWithoutWriteBarrier(JSValue(JSValue::EncodeAsDouble, value));
-        if (value == value)
-            newStorage->m_numValuesInVector++;
+        newStorage->m_numValuesInVector++;
     }
     
     StructureID oldStructureID = this->structureID();
@@ -1704,7 +1707,7 @@ bool JSObject::putGetter(ExecState* exec, PropertyName propertyName, JSValue get
     if (!(attributes & DontEnum))
         descriptor.setEnumerable(true);
 
-    return defineOwnProperty(this, exec, propertyName, descriptor, false);
+    return defineOwnProperty(this, exec, propertyName, descriptor, true);
 }
 
 bool JSObject::putSetter(ExecState* exec, PropertyName propertyName, JSValue setter, unsigned attributes)
@@ -1718,7 +1721,7 @@ bool JSObject::putSetter(ExecState* exec, PropertyName propertyName, JSValue set
     if (!(attributes & DontEnum))
         descriptor.setEnumerable(true);
 
-    return defineOwnProperty(this, exec, propertyName, descriptor, false);
+    return defineOwnProperty(this, exec, propertyName, descriptor, true);
 }
 
 bool JSObject::putDirectAccessor(ExecState* exec, PropertyName propertyName, JSValue value, unsigned attributes)
@@ -1894,12 +1897,15 @@ static ALWAYS_INLINE JSValue callToPrimitiveFunction(ExecState* exec, const JSOb
 
     JSValue function = object->get(exec, propertyName);
     RETURN_IF_EXCEPTION(scope, scope.exception());
-    if (function.isUndefined() && mode == TypeHintMode::TakesHint)
+    if (function.isUndefinedOrNull() && mode == TypeHintMode::TakesHint)
         return JSValue();
     CallData callData;
     CallType callType = getCallData(function, callData);
-    if (callType == CallType::None)
+    if (callType == CallType::None) {
+        if (mode == TypeHintMode::TakesHint)
+            throwTypeError(exec, scope, ASCIILiteral("Symbol.toPrimitive is not a function, undefined, or null"));
         return scope.exception();
+    }
 
     MarkedArgumentBuffer callArgs;
     if (mode == TypeHintMode::TakesHint) {
@@ -1969,7 +1975,11 @@ JSValue JSObject::defaultValue(const JSObject* object, ExecState* exec, Preferre
 
 JSValue JSObject::toPrimitive(ExecState* exec, PreferredPrimitiveType preferredType) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue value = callToPrimitiveFunction<TypeHintMode::TakesHint>(exec, this, exec->propertyNames().toPrimitiveSymbol, preferredType);
+    RETURN_IF_EXCEPTION(scope, { });
     if (value)
         return value;
 
@@ -2014,13 +2024,12 @@ bool JSObject::hasInstance(ExecState* exec, JSValue value, JSValue hasInstanceVa
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    
 
     if (!hasInstanceValue.isUndefinedOrNull() && hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction()) {
         CallData callData;
         CallType callType = JSC::getCallData(hasInstanceValue, callData);
         if (callType == CallType::None) {
-            throwException(exec, scope, createInvalidInstanceofParameterErrorhasInstanceValueNotFunction(exec, this));
+            throwException(exec, scope, createInvalidInstanceofParameterErrorHasInstanceValueNotFunction(exec, this));
             return false;
         }
 
@@ -2923,6 +2932,16 @@ bool JSObject::putDirectNativeFunction(VM& vm, JSGlobalObject* globalObject, con
     return putDirect(vm, propertyName, function, attributes);
 }
 
+void JSObject::putDirectNativeFunctionWithoutTransition(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
+{
+    StringImpl* name = propertyName.publicName();
+    if (!name)
+        name = vm.propertyNames->anonymous.impl();
+    ASSERT(name);
+    JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic);
+    putDirectWithoutTransition(vm, propertyName, function, attributes);
+}
+
 JSFunction* JSObject::putDirectBuiltinFunction(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, FunctionExecutable* functionExecutable, unsigned attributes)
 {
     StringImpl* name = propertyName.publicName();
@@ -2939,16 +2958,6 @@ JSFunction* JSObject::putDirectBuiltinFunctionWithoutTransition(VM& vm, JSGlobal
     JSFunction* function = JSFunction::createBuiltinFunction(vm, static_cast<FunctionExecutable*>(functionExecutable), globalObject);
     putDirectWithoutTransition(vm, propertyName, function, attributes);
     return function;
-}
-
-void JSObject::putDirectNativeFunctionWithoutTransition(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
-{
-    StringImpl* name = propertyName.publicName();
-    if (!name)
-        name = vm.propertyNames->anonymous.impl();
-    ASSERT(name);
-    JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic);
-    putDirectWithoutTransition(vm, propertyName, function, attributes);
 }
 
 // NOTE: This method is for ArrayStorage vectors.

@@ -37,10 +37,10 @@
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <WebCore/URL.h>
-#include <WebCore/UUID.h>
 #include <algorithm>
 #include <wtf/HashMap.h>
 #include <wtf/Optional.h>
+#include <wtf/UUID.h>
 #include <wtf/text/StringConcatenate.h>
 
 using namespace Inspector;
@@ -137,7 +137,7 @@ String WebAutomationSession::handleForWebPageProxy(const WebPageProxy& webPagePr
     if (iter != m_webPageHandleMap.end())
         return iter->value;
 
-    String handle = "page-" + WebCore::createCanonicalUUIDString().convertToASCIIUppercase();
+    String handle = "page-" + createCanonicalUUIDString().convertToASCIIUppercase();
 
     auto firstAddResult = m_webPageHandleMap.add(webPageProxy.pageID(), handle);
     RELEASE_ASSERT(firstAddResult.isNewEntry);
@@ -177,7 +177,7 @@ String WebAutomationSession::handleForWebFrameID(uint64_t frameID)
     if (iter != m_webFrameHandleMap.end())
         return iter->value;
 
-    String handle = "frame-" + WebCore::createCanonicalUUIDString().convertToASCIIUppercase();
+    String handle = "frame-" + createCanonicalUUIDString().convertToASCIIUppercase();
 
     auto firstAddResult = m_webFrameHandleMap.add(frameID, handle);
     RELEASE_ASSERT(firstAddResult.isNewEntry);
@@ -285,6 +285,92 @@ void WebAutomationSession::switchToBrowsingContext(Inspector::ErrorString& error
 
     page->setFocus(true);
     page->process().send(Messages::WebAutomationSessionProxy::FocusFrame(page->pageID(), frameID.value()), 0);
+}
+
+void WebAutomationSession::resizeWindowOfBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const Inspector::InspectorObject& sizeObject)
+{
+#if PLATFORM(IOS)
+    FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
+#else
+    float width;
+    if (!sizeObject.getDouble(WTF::ASCIILiteral("width"), width))
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'width' parameter was not found or invalid.");
+
+    float height;
+    if (!sizeObject.getDouble(WTF::ASCIILiteral("height"), height))
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'height' parameter was not found or invalid.");
+
+    if (width < 0)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'width' parameter had an invalid value.");
+
+    if (height < 0)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'height' parameter had an invalid value.");
+
+    WebPageProxy* page = webPageProxyForHandle(handle);
+    if (!page)
+        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
+
+    WebCore::FloatRect originalFrame;
+    page->getWindowFrame(originalFrame);
+
+    WebCore::FloatRect newFrame = WebCore::FloatRect(originalFrame.location(), WebCore::FloatSize(width, height));
+    if (newFrame == originalFrame)
+        return;
+
+    page->setWindowFrame(newFrame);
+
+#if !PLATFORM(GTK)
+    // If nothing changed at all, it's probably fair to report that something went wrong.
+    // (We can't assume that the requested frame size will be honored exactly, however.)
+    WebCore::FloatRect updatedFrame;
+    page->getWindowFrame(updatedFrame);
+    if (originalFrame == updatedFrame)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InternalError, "The window size was expected to have changed, but did not.");
+#endif
+#endif
+}
+
+void WebAutomationSession::moveWindowOfBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const Inspector::InspectorObject& positionObject)
+{
+#if PLATFORM(IOS)
+    FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
+#else
+    float x;
+    if (!positionObject.getDouble(WTF::ASCIILiteral("x"), x))
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'x' parameter was not found or invalid.");
+
+    float y;
+    if (!positionObject.getDouble(WTF::ASCIILiteral("y"), y))
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The 'y' parameter was not found or invalid.");
+
+    if (x < 0)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'x' parameter had an invalid value.");
+
+    if (y < 0)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InvalidParameter, "The 'y' parameter had an invalid value.");
+
+    WebPageProxy* page = webPageProxyForHandle(handle);
+    if (!page)
+        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
+
+    WebCore::FloatRect originalFrame;
+    page->getWindowFrame(originalFrame);
+
+    WebCore::FloatRect newFrame = WebCore::FloatRect(WebCore::FloatPoint(x, y), originalFrame.size());
+    if (newFrame == originalFrame)
+        return;
+
+    page->setWindowFrame(newFrame);
+
+#if !PLATFORM(GTK)
+    // If nothing changed at all, it's probably fair to report that something went wrong.
+    // (We can't assume that the requested frame size will be honored exactly, however.)
+    WebCore::FloatRect updatedFrame;
+    page->getWindowFrame(updatedFrame);
+    if (originalFrame == updatedFrame)
+        FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(InternalError, "The window position was expected to have changed, but did not.");
+#endif
+#endif
 }
 
 void WebAutomationSession::navigateBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String& url, Ref<NavigateBrowsingContextCallback>&& callback)
@@ -750,7 +836,7 @@ void WebAutomationSession::deleteAllCookies(ErrorString& errorString, const Stri
     cookieManager->deleteCookiesForHostname(WebCore::SessionID::defaultSessionID(), activeURL.host());
 }
 
-#if USE(APPKIT)
+#if USE(APPKIT) || PLATFORM(GTK)
 static WebEvent::Modifiers protocolModifierToWebEventModifier(Inspector::Protocol::Automation::KeyModifier modifier)
 {
     switch (modifier) {
@@ -770,7 +856,7 @@ static WebEvent::Modifiers protocolModifierToWebEventModifier(Inspector::Protoco
 
 void WebAutomationSession::performMouseInteraction(Inspector::ErrorString& errorString, const String& handle, const Inspector::InspectorObject& requestedPositionObject, const String& mouseButtonString, const String& mouseInteractionString, const Inspector::InspectorArray& keyModifierStrings, RefPtr<Inspector::Protocol::Automation::Point>& updatedPositionObject)
 {
-#if !USE(APPKIT)
+#if !USE(APPKIT) && !PLATFORM(GTK)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -825,7 +911,7 @@ void WebAutomationSession::performMouseInteraction(Inspector::ErrorString& error
 
 void WebAutomationSession::performKeyboardInteractions(ErrorString& errorString, const String& handle, const Inspector::InspectorArray& interactions, Ref<PerformKeyboardInteractionsCallback>&& callback)
 {
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -932,13 +1018,13 @@ void WebAutomationSession::didTakeScreenshot(uint64_t callbackID, const Shareabl
 
 // Platform-dependent Implementation Stubs.
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(MAC) && !PLATFORM(GTK)
 void WebAutomationSession::platformSimulateMouseInteraction(WebKit::WebPageProxy&, const WebCore::IntPoint&, Inspector::Protocol::Automation::MouseInteraction, Inspector::Protocol::Automation::MouseButton, WebEvent::Modifiers)
 {
 }
 #endif // !PLATFORM(MAC)
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK)
 void WebAutomationSession::platformSimulateKeyStroke(WebPageProxy&, Inspector::Protocol::Automation::KeyboardInteractionType, Inspector::Protocol::Automation::VirtualKey)
 {
 }

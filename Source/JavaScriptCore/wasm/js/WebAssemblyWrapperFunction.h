@@ -43,8 +43,9 @@ public:
     static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, JSObject*, unsigned importIndex, JSWebAssemblyCodeBlock*, Wasm::SignatureIndex);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    Wasm::SignatureIndex signatureIndex() const { return m_signatureIndex; }
-    void* wasmEntrypoint() { return m_wasmEntrypointCode; }
+    Wasm::SignatureIndex signatureIndex() const { return m_wasmFunction.signatureIndex; }
+    Wasm::WasmEntrypointLoadLocation  wasmEntrypointLoadLocation() const { return m_wasmFunction.code; }
+    Wasm::CallableFunction callableFunction() const { return m_wasmFunction; }
     JSObject* function() { return m_function.get(); }
 
 protected:
@@ -53,14 +54,16 @@ protected:
     void finishCreation(VM&, NativeExecutable*, unsigned length, const String& name, JSObject*, JSWebAssemblyCodeBlock*);
 
 private:
-    WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, Wasm::SignatureIndex, void* wasmEntrypointCode);
+    WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, Wasm::CallableFunction);
 
     // We keep a reference to our CodeBlock because we have a raw
     // pointer to asm code that it owns.
     WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlock;
     WriteBarrier<JSObject> m_function;
-    void* m_wasmEntrypointCode;
-    Wasm::SignatureIndex m_signatureIndex;
+    // It's safe to just hold the raw CallableFunction because we have a reference
+    // to our CodeBlock, which points to the Module that exported us, which
+    // ensures that the actual Signature/code doesn't get deallocated.
+    Wasm::CallableFunction m_wasmFunction;
 };
 
 } // namespace JSC

@@ -1431,6 +1431,9 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(HTMLImageElement& imageEle
         image->setContainerSize(imageRect.size());
     }
 
+    if (image->isBitmapImage())
+        downcast<BitmapImage>(*image).updateFromSettings(imageElement.document().settings());
+
     if (rectContainsCanvas(normalizedDstRect)) {
         c->drawImage(*image, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
         didDrawEntireCanvas();
@@ -2013,7 +2016,7 @@ ExceptionOr<RefPtr<ImageData>> CanvasRenderingContext2D::getImageData(ImageBuffe
     if (!buffer)
         return createEmptyImageData(imageDataRect.size());
 
-    auto byteArray = buffer->getUnmultipliedImageData(imageDataRect, coordinateSystem);
+    auto byteArray = buffer->getUnmultipliedImageData(imageDataRect, nullptr, coordinateSystem);
     if (!byteArray) {
         StringBuilder consoleMessage;
         consoleMessage.appendLiteral("Unable to get image data from canvas. Requested size was ");
@@ -2102,8 +2105,10 @@ void CanvasRenderingContext2D::putImageData(ImageData& data, ImageBuffer::Coordi
         return;
     IntRect sourceRect(destRect);
     sourceRect.move(-destOffset);
+    sourceRect.intersect(IntRect(0, 0, data.width(), data.height()));
 
-    buffer->putByteArray(Unmultiplied, data.data(), IntSize(data.width(), data.height()), sourceRect, IntPoint(destOffset), coordinateSystem);
+    if (!sourceRect.isEmpty())
+        buffer->putByteArray(Unmultiplied, data.data(), IntSize(data.width(), data.height()), sourceRect, IntPoint(destOffset), coordinateSystem);
 
     didDraw(destRect, CanvasDidDrawApplyNone); // ignore transform, shadow and clip
 }

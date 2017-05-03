@@ -37,7 +37,6 @@
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/GraphicsLayerFactory.h>
 #include <WebCore/IntRect.h>
-#include <WebCore/Timer.h>
 
 namespace WebCore {
 class Page;
@@ -61,6 +60,7 @@ public:
         virtual void notifyFlushRequired() = 0;
         virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) = 0;
         virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) = 0;
+        virtual void releaseUpdateAtlases(Vector<uint32_t>&&) = 0;
     };
 
     CompositingCoordinator(WebCore::Page*, CompositingCoordinator::Client&);
@@ -149,6 +149,7 @@ private:
     typedef HashMap<WebCore::CoordinatedImageBackingID, RefPtr<WebCore::CoordinatedImageBacking> > ImageBackingMap;
     ImageBackingMap m_imageBackings;
     Vector<std::unique_ptr<UpdateAtlas>> m_updateAtlases;
+    Vector<uint32_t> m_atlasesToRemove;
 
     // We don't send the messages related to releasing resources to renderer during purging, because renderer already had removed all resources.
     bool m_isDestructing { false };
@@ -158,7 +159,7 @@ private:
     bool m_didInitializeRootCompositingLayer { false };
 
     WebCore::FloatRect m_visibleContentsRect;
-    WebCore::Timer m_releaseInactiveAtlasesTimer;
+    RunLoop::Timer<CompositingCoordinator> m_releaseInactiveAtlasesTimer;
 
     double m_lastAnimationServiceTime { 0 };
 };

@@ -22,24 +22,12 @@
 #pragma once
 
 #include "MachineContext.h"
-#include "PlatformThread.h"
 #include "RegisterState.h"
+#include <wtf/DoublyLinkedList.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ScopedLambda.h>
 #include <wtf/ThreadSpecific.h>
-
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
-#include <semaphore.h>
-#include <signal.h>
-// Using signal.h didn't make mcontext_t and ucontext_t available on FreeBSD.
-// This bug has been fixed in FreeBSD 11.0-CURRENT, so this workaround can be
-// removed after FreeBSD 10.x goes EOL.
-// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=207079
-#if OS(FREEBSD)
-#include <ucontext.h>
-#endif
-#endif
 
 namespace JSC {
 
@@ -64,14 +52,10 @@ public:
 
     JS_EXPORT_PRIVATE void addCurrentThread(); // Only needs to be called by clients that can use the same heap from multiple threads.
 
-    class Thread {
+    class MachineThread : public DoublyLinkedListNode<MachineThread> {
         WTF_MAKE_FAST_ALLOCATED;
-        Thread(const PlatformThread& platThread, void* base, void* end);
-
     public:
-        ~Thread();
-
-        static Thread* createForCurrentThread();
+        MachineThread();
 
         struct Registers {
             void* stackPointer() const;
@@ -80,62 +64,41 @@ public:
             void* instructionPointer() const;
             void* llintPC() const;
 #endif // ENABLE(SAMPLING_PROFILER)
-            
-#if OS(DARWIN) || OS(WINDOWS)
-            using PlatformRegisters = MachineContext::PlatformRegisters;
-#elif (OS(FREEBSD) || defined(__GLIBC__)) && ENABLE(JIT)
-            using PlatformRegisters = mcontext_t;
-#elif USE(PTHREADS)
-            struct PlatformRegisters {
-                pthread_attr_t attribute;
-            };
-#else
-#error Need a thread register struct for this platform
-#endif
-            
             PlatformRegisters regs;
         };
-        
-        bool operator==(const PlatformThread& other) const;
-        bool operator!=(const PlatformThread& other) const { return !(*this == other); }
 
-        bool suspend();
-        void resume();
-        size_t getRegisters(Registers&);
-        void freeRegisters(Registers&);
+        Expected<void, Thread::PlatformSuspendError> suspend() { return m_thread->suspend(); }
+        void resume() { m_thread->resume(); }
+        size_t getRegisters(Registers& regs);
         std::pair<void*, size_t> captureStack(void* stackTop);
 
-        Thread* next;
-        PlatformThread platformThread;
-        void* stackBase;
-        void* stackEnd;
-#if OS(WINDOWS)
-        HANDLE platformThreadHandle;
-#elif USE(PTHREADS) && !OS(DARWIN)
-        sem_t semaphoreForSuspendResume;
-        mcontext_t suspendedMachineContext;
-        int suspendCount { 0 };
-        std::atomic<bool> suspended { false };
-#endif
+        WTF::ThreadIdentifier threadID() const { return m_thread->id(); }
+        void* stackBase() const { return m_stackBase; }
+        void* stackEnd() const { return m_stackEnd; }
+
+        Ref<WTF::Thread> m_thread;
+        void* m_stackBase;
+        void* m_stackEnd;
+        MachineThread* m_next { nullptr };
+        MachineThread* m_prev { nullptr };
     };
 
     Lock& getLock() { return m_registeredThreadsMutex; }
-    Thread* threadsListHead(const AbstractLocker&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
-    Thread* machineThreadForCurrentThread();
+    const DoublyLinkedList<MachineThread>& threadsListHead(const AbstractLocker&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
+    MachineThread* machineThreadForCurrentThread();
 
 private:
     void gatherFromCurrentThread(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, CurrentThreadState&);
 
-    void tryCopyOtherThreadStack(Thread*, void*, size_t capacity, size_t*);
+    void tryCopyOtherThreadStack(MachineThread*, void*, size_t capacity, size_t*);
     bool tryCopyOtherThreadStacks(const AbstractLocker&, void*, size_t capacity, size_t*);
 
     static void THREAD_SPECIFIC_CALL removeThread(void*);
 
-    template<typename PlatformThread>
-    void removeThreadIfFound(PlatformThread);
+    void removeThreadIfFound(ThreadIdentifier);
 
     Lock m_registeredThreadsMutex;
-    Thread* m_registeredThreads;
+    DoublyLinkedList<MachineThread> m_registeredThreads;
     WTF::ThreadSpecificKey m_threadSpecificForMachineThreads;
 };
 

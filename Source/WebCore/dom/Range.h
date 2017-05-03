@@ -34,8 +34,7 @@
 
 namespace WebCore {
 
-class ClientRect;
-class ClientRectList;
+class DOMRect;
 class ContainerNode;
 class Document;
 class DocumentFragment;
@@ -124,8 +123,8 @@ public:
     WEBCORE_EXPORT void absoluteTextQuads(Vector<FloatQuad>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr) const;
     WEBCORE_EXPORT FloatRect absoluteBoundingRect() const;
 #if PLATFORM(IOS)
-    WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&);
-    WEBCORE_EXPORT int collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&);
+    WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&) const;
+    WEBCORE_EXPORT int collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&) const;
 #endif
 
     void nodeChildrenChanged(ContainerNode&);
@@ -142,8 +141,8 @@ public:
     // for details.
     WEBCORE_EXPORT ExceptionOr<void> expand(const String&);
 
-    Ref<ClientRectList> getClientRects() const;
-    Ref<ClientRect> getBoundingClientRect() const;
+    Vector<Ref<DOMRect>> getClientRects() const;
+    Ref<DOMRect> getBoundingClientRect() const;
 
 #if ENABLE(TREE_DEBUGGING)
     void formatForDebugger(char* buffer, unsigned length) const;

@@ -63,7 +63,6 @@
 #import "StyleProperties.h"
 #import "Text.h"
 #import "TypingCommand.h"
-#import "UUID.h"
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
 
@@ -204,7 +203,7 @@ RefPtr<SharedBuffer> Editor::imageInWebArchiveFormat(Element& imageElement)
     RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(imageElement);
     if (!archive)
         return nullptr;
-    return SharedBuffer::wrapCFData(archive->rawDataRepresentation().get());
+    return SharedBuffer::create(archive->rawDataRepresentation().get());
 }
 
 RefPtr<SharedBuffer> Editor::dataSelectionForPasteboard(const String& pasteboardType)

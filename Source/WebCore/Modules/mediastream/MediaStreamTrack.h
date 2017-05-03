@@ -64,15 +64,14 @@ public:
     void setEnabled(bool);
 
     bool muted() const;
-    bool readonly() const;
 
-    enum class State { New, Live, Ended };
+    enum class State { Live, Ended };
     State readyState() const;
 
     bool ended() const;
 
     Ref<MediaStreamTrack> clone();
-    void stopProducingData();
+    void stopTrack();
 
     bool isCaptureTrack() const;
 
@@ -89,7 +88,7 @@ public:
         String deviceId;
         String groupId;
     };
-    TrackSettings getSettings() const;
+    WEBCORE_EXPORT TrackSettings getSettings() const;
 
     struct TrackCapabilities {
         std::optional<LongRange> width;

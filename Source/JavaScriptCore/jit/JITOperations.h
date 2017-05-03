@@ -60,6 +60,7 @@ class Structure;
 class StructureStubInfo;
 class Symbol;
 class SymbolTable;
+class VM;
 class WatchpointSet;
 
 struct ByValInfo;
@@ -146,12 +147,13 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJArp)(ExecState*, Encoded
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJI)(ExecState*, EncodedJSValue, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJ)(ExecState*, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJAp)(ExecState*, EncodedJSValue, EncodedJSValue, ArrayProfile*);
-typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJBy)(ExecState*, EncodedJSValue, EncodedJSValue, ByValInfo*);
-typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJArp)(ExecState*, EncodedJSValue, EncodedJSValue, ArithProfile*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJBy)(ExecState*, EncodedJSValue, EncodedJSValue, ByValInfo*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJMic)(ExecState*, EncodedJSValue, EncodedJSValue, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJMic)(ExecState*, EncodedJSValue, void*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJscI)(ExecState*, JSScope*, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJssZ)(ExecState*, JSString*, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJss)(ExecState*, JSString*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJssReo)(ExecState*, JSString*, RegExpObject*);
@@ -231,6 +233,7 @@ typedef int32_t (JIT_OPERATION *Z_JITOperation_EJZ)(ExecState*, EncodedJSValue, 
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EJZZ)(ExecState*, EncodedJSValue, int32_t, int32_t);
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EOI)(ExecState*, JSObject*, UniquedStringImpl*);
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EOJ)(ExecState*, JSObject*, EncodedJSValue);
+typedef size_t (JIT_OPERATION *S_JITOperation_EO)(ExecState*, JSObject*);
 typedef size_t (JIT_OPERATION *S_JITOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef size_t (JIT_OPERATION *S_JITOperation_EGC)(ExecState*, JSGlobalObject*, JSCell*);
 typedef size_t (JIT_OPERATION *S_JITOperation_EGJJ)(ExecState*, JSGlobalObject*, EncodedJSValue, EncodedJSValue);
@@ -312,6 +315,8 @@ typedef char* (JIT_OPERATION *P_JITOperation_EStZ)(ExecState*, Structure*, int32
 typedef char* (JIT_OPERATION *P_JITOperation_EStZB)(ExecState*, Structure*, int32_t, Butterfly*);
 typedef char* (JIT_OPERATION *P_JITOperation_EStZP)(ExecState*, Structure*, int32_t, char*);
 typedef char* (JIT_OPERATION *P_JITOperation_EZZ)(ExecState*, int32_t, int32_t);
+typedef char* (JIT_OPERATION *P_JITOperation_EQZ)(ExecState*, int64_t, int32_t);
+typedef char* (JIT_OPERATION *P_JITOperation_EDZ)(ExecState*, double, int32_t);
 typedef SlowPathReturnType (JIT_OPERATION *Sprt_JITOperation_ECli)(ExecState*, CallLinkInfo*);
 typedef StringImpl* (JIT_OPERATION *T_JITOperation_EJss)(ExecState*, JSString*);
 typedef JSString* (JIT_OPERATION *Jss_JITOperation_EZ)(ExecState*, int32_t);

@@ -143,7 +143,7 @@ public:
     static const unsigned DontBuildStrings = LexerFlagsDontBuildStrings;
 
     int createSourceElements() { return SourceElementsResult; }
-    ExpressionType makeFunctionCallNode(const JSTokenLocation&, int, int, int, int, int) { return CallExpr; }
+    ExpressionType makeFunctionCallNode(const JSTokenLocation&, int, int, int, int, int, size_t) { return CallExpr; }
     ExpressionType createCommaExpr(const JSTokenLocation&, ExpressionType expr) { return expr; }
     ExpressionType appendToCommaExpr(const JSTokenLocation&, ExpressionType& head, ExpressionType, ExpressionType next) { head = next; return next; }
     ExpressionType makeAssignNode(const JSTokenLocation&, ExpressionType, Operator, ExpressionType, bool, bool, int, int, int) { return AssignmentExpr; }
@@ -206,7 +206,7 @@ public:
 
     int createArgumentsList(const JSTokenLocation&, int) { return ArgumentsListResult; }
     int createArgumentsList(const JSTokenLocation&, int, int) { return ArgumentsListResult; }
-    Property createProperty(const Identifier* name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete, SuperBinding, bool)
+    Property createProperty(const Identifier* name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete, SuperBinding, InferName, bool)
     {
         if (!complete)
             return Property(type);

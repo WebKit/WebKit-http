@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<style>
+    .box {
+        width: 300px;
+        height: 300px;
+    }
+    .image-background {
+        background-image: url(resources/red-green-blue-900-300.png);
+        background-position: -300px 0px;
+    }
+    @media (-webkit-min-device-pixel-ratio: 2) {
+        .box {
+            width: 150px;
+            height: 150px;
+        }
+        .image-background {
+            background-position: -150px 0px;
+            background-size: 450px, 150px;
+        }
+    }
+</style>
+<body>
+    <div class="box image-background"></div>
+    <script>
+        function forceRedraw(element) {
+            var disp = element.style.display;
+            element.style.display = 'none';
+            var trick = element.offsetHeight;
+            element.style.display = disp;
+        }
+
+        (function() {
+            var divElement = document.getElementsByClassName("image-background")[0];
+
+            if (window.internals) {
+                internals.clearMemoryCache();
+                internals.settings.setLargeImageAsyncDecodingEnabled(true);
+            }
+
+            if (window.testRunner) {
+                testRunner.waitUntilDone();
+                forceRedraw(divElement);
+                setTimeout(function() {
+                    forceRedraw(divElement);
+                    testRunner.notifyDone();
+                }, 50);
+            }
+        }
+    </script>
+</body>
+</html>

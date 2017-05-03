@@ -1,12 +1,3 @@
-/* File Upload multiple photos label */
-"# Photos (file upload on page label for multiple photos)" = "%@ Photos";
-
-/* File Upload images and videos label */
-"# Photos and # Videos (file upload on page label for image and videos)" = "%@ and %@";
-
-/* File Upload multiple videos label */
-"# Videos (file upload on page label for multiple videos)" = "%@ Videos";
-
 /* accessibility help text for media controller time value >= 1 day */
 "%1$d days %2$d hours %3$d minutes %4$d seconds" = "%1$d days %2$d hours %3$d minutes %4$d seconds";
 
@@ -67,6 +58,15 @@
 /* Label for PDF page number indicator. */
 "%d of %d" = "%d of %d";
 
+/* label next to file upload control; parameters are the number of photos and the number of videos */
+"%lu photo(s) and %lu video(s)" = "%lu photo(s) and %lu video(s)";
+
+/* window title for a standalone image (uses multiplication symbol, not x) */
+"%s %d×%d pixels" = "%s %d×%d pixels";
+
+/* Name of application's single WebCrypto master key in Keychain */
+"%s WebCrypto Master Key" = "%s WebCrypto Master Key";
+
 /* Present the number of selected <option> items in a <select multiple> element (iOS only) */
 "%zu Items" = "%zu Items";
 
@@ -76,20 +76,11 @@
 /* Present the element <select multiple> when a single <option> is selected (iOS only) */
 "1 Item" = "1 Item";
 
-/* File Upload single photo label */
-"1 Photo (file upload on page label for one photo)" = "1 Photo";
-
-/* File Upload single video label */
-"1 Video (file upload on page label for one video)" = "1 Video";
-
 /* Option in segmented control for choosing list type in text editing */
 "1. 2. 3." = "1. 2. 3.";
 
 /* Menu item title for KEYGEN pop-up menu */
 "2048 (High Grade)" = "2048 (High Grade)";
-
-/* window title for a standalone image (uses multiplication symbol, not x) */
-"<filename> %d×%d pixels" = "<filename> %d×%d pixels";
 
 /* WKErrorJavaScriptExceptionOccurred description */
 "A JavaScript exception occurred" = "A JavaScript exception occurred";
@@ -173,7 +164,7 @@
 "Click to restart" = "Click to restart";
 
 /* WKErrorContentExtensionStoreCompileFailed description */
-"Compiling a WKContentExtension failed" = "Compiling a WKContentExtension failed";
+"Compiling a WKUserContentExtension failed" = "Compiling a WKUserContentExtension failed";
 
 /* WebKitErrorCannotShowMIMEType description */
 "Content with specified MIME type can’t be shown" = "Content with specified MIME type can’t be shown";
@@ -256,11 +247,11 @@
 /* Validation message for input form controls of type 'email' that have an invalid value */
 "Enter an email address" = "Enter an email address";
 
-/* Video Exit Fullscreen context menu item */
+/* Button for exiting full screen when in full screen media playback */
 "Exit Full Screen" = "Exit Full Screen";
 
-/* Button for exiting fullscreen when in fullscreen media playback */
-"Exit Fullscreen" = "Exit Fullscreen";
+/* Video Exit Fullscreen context menu item */
+"Exit Full Screen (context menu)" = "Exit Full Screen";
 
 /* menu item */
 "Exit Picture in Picture" = "Exit Picture in Picture";
@@ -347,7 +338,7 @@
 "Live Broadcast" = "Live Broadcast";
 
 /* Media controller status message when the media is loading */
-"Loading..." = "Loading...";
+"Loading…" = "Loading…";
 
 /* 'Website' name displayed when local documents have stored local data */
 "Local documents on your computer" = "Local documents on your computer";
@@ -359,13 +350,13 @@
 "Look Up “%@”" = "Look Up “%@”";
 
 /* Look Up context menu item with selected word */
-"Look Up “<selection>”" = "Look Up “<selection>”";
+"Look Up “%s”" = "Look Up “%s”";
 
 /* WKErrorContentExtensionStoreLookupFailed description */
-"Looking up a WKContentExtension failed" = "Looking up a WKContentExtension failed";
+"Looking up a WKUserContentExtension failed" = "Looking up a WKUserContentExtension failed";
 
 /* WKErrorContentExtensionStoreVersionMismatch description */
-"Looking up a WKContentExtension found a binary that is incompatible" = "Looking up a WKContentExtension found a binary that is incompatible";
+"Looking up a WKUserContentExtension found a binary that is incompatible" = "Looking up a WKUserContentExtension found a binary that is incompatible";
 
 /* Media Loop context menu item */
 "Loop" = "Loop";
@@ -506,7 +497,7 @@
 "Reload" = "Reload";
 
 /* WKErrorContentExtensionStoreRemoveFailed description */
-"Removing a WKContentExtension failed" = "Removing a WKContentExtension failed";
+"Removing a WKUserContentExtension failed" = "Removing a WKUserContentExtension failed";
 
 /* default label for Reset buttons in forms on web pages */
 "Reset" = "Reset";
@@ -620,7 +611,7 @@
 "Stop Speaking" = "Stop Speaking";
 
 /* Styles context menu item */
-"Styles..." = "Styles...";
+"Styles…" = "Styles…";
 
 /* default label for Submit buttons in forms on web pages */
 "Submit" = "Submit";
@@ -763,8 +754,14 @@
 /* Validation message for input form controls with value lower than allowed minimum */
 "Value must be greater than or equal to %@" = "Value must be greater than or equal to %@";
 
+/* Validation message for input form controls with value lower than allowed minimum */
+"Value must be greater than or equal to %s" = "Value must be greater than or equal to %s";
+
 /* Validation message for input form controls with value higher than allowed maximum */
 "Value must be less than or equal to %@" = "Value must be less than or equal to %@";
+
+/* Validation message for input form controls with value higher than allowed maximum */
+"Value must be less than or equal to %s" = "Value must be less than or equal to %s";
 
 /* Web Inspector window title when inspecting Web Inspector */
 "Web Inspector [%d] — %@" = "Web Inspector [%d] — %@";
@@ -886,11 +883,11 @@
 /* accessibility role description for an email field. */
 "email field" = "email field";
 
-/* accessibility label for enter fullscreen button */
-"enter fullscreen" = "enter fullscreen";
+/* accessibility label for enter full screen button */
+"enter full screen" = "enter full screen";
 
-/* accessibility label for exit fullscreen button */
-"exit fullscreen" = "exit fullscreen";
+/* accessibility label for exit full screen button */
+"exit full screen" = "exit full screen";
 
 /* HTTP result code string */
 "expectation failed" = "expectation failed";
@@ -900,6 +897,9 @@
 
 /* accessibility label for fast reverse button */
 "fast reverse" = "fast reverse";
+
+/* An ARIA accessibility group containing a scrollable list of articles. */
+"feed" = "feed";
 
 /* accessibility role description for a figure element. */
 "figure" = "figure";
@@ -1069,12 +1069,6 @@
 /* HTTP result code string */
 "proxy authentication required" = "proxy authentication required";
 
-/* Validation message for input form controls with value higher than allowed maximum */
-"range overflow" = "range overflow";
-
-/* Validation message for input form controls with value lower than allowed minimum */
-"range underflow" = "range underflow";
-
 /* HTTP result code string */
 "redirected" = "redirected";
 
@@ -1124,7 +1118,7 @@
 "select" = "select";
 
 /* accessibility role description for a horizontal rule [<hr>] */
-"separator" = "separator";
+"rule" = "rule";
 
 /* HTTP result code string */
 "server error" = "server error";

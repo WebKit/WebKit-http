@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "B3Compilation.h"
 #include "B3Type.h"
 #include "CodeLocation.h"
 #include "Identifier.h"
@@ -45,6 +44,10 @@
 namespace JSC {
 
 class JSFunction;
+
+namespace B3 {
+class Compilation;
+}
 
 namespace Wasm {
 
@@ -89,30 +92,32 @@ static_assert(static_cast<int>(ExternalKind::Table)    == 1, "Wasm needs Table t
 static_assert(static_cast<int>(ExternalKind::Memory)   == 2, "Wasm needs Memory to have the value 2");
 static_assert(static_cast<int>(ExternalKind::Global)   == 3, "Wasm needs Global to have the value 3");
 
-static inline const char* makeString(ExternalKind kind)
+inline const char* makeString(ExternalKind kind)
 {
     switch (kind) {
-    case ExternalKind::Function: return "Function";
-    case ExternalKind::Table: return "Table";
-    case ExternalKind::Memory: return "Memory";
-    case ExternalKind::Global: return "Global";
+    case ExternalKind::Function: return "function";
+    case ExternalKind::Table: return "table";
+    case ExternalKind::Memory: return "memory";
+    case ExternalKind::Global: return "global";
     }
     RELEASE_ASSERT_NOT_REACHED();
     return "?";
 }
 
 struct Import {
-    Identifier module;
-    Identifier field;
+    const Vector<LChar> module;
+    const Vector<LChar> field;
     ExternalKind kind;
     unsigned kindIndex; // Index in the vector of the corresponding kind.
 };
 
 struct Export {
-    Identifier field;
+    const Vector<LChar> field;
     ExternalKind kind;
     unsigned kindIndex; // Index in the vector of the corresponding kind.
 };
+
+String makeString(const Vector<LChar>& characters);
 
 struct Global {
     enum Mutability : uint8_t {
@@ -226,51 +231,13 @@ private:
 };
     
 struct CustomSection {
-    String name;
+    Vector<LChar> name;
     Vector<uint8_t> payload;
 };
 
-struct ModuleInformation {
-    Vector<Import> imports;
-    Vector<SignatureIndex> importFunctionSignatureIndices;
-    Vector<SignatureIndex> internalFunctionSignatureIndices;
-
-    MemoryInformation memory;
-
-    Vector<Export> exports;
-    std::optional<uint32_t> startFunctionIndexSpace;
-    Vector<Segment::Ptr> data;
-    Vector<Element> elements;
-    TableInformation tableInformation;
-    Vector<Global> globals;
-    unsigned firstInternalGlobal { 0 };
-    Vector<CustomSection> customSections;
-
-    size_t functionIndexSpaceSize() const { return importFunctionSignatureIndices.size() + internalFunctionSignatureIndices.size(); }
-    bool isImportedFunctionFromFunctionIndexSpace(size_t functionIndex) const
-    {
-        ASSERT(functionIndex < functionIndexSpaceSize());
-        return functionIndex < importFunctionSignatureIndices.size();
-    }
-    SignatureIndex signatureIndexFromFunctionIndexSpace(size_t functionIndex) const
-    {
-        return isImportedFunctionFromFunctionIndexSpace(functionIndex)
-            ? importFunctionSignatureIndices[functionIndex]
-            : internalFunctionSignatureIndices[functionIndex - importFunctionSignatureIndices.size()];
-    }
-
-    uint32_t importFunctionCount() const { return importFunctionSignatureIndices.size(); }
-
-    ~ModuleInformation();
-};
-
 struct UnlinkedWasmToWasmCall {
-    CodeLocationCall callLocation;
-    size_t functionIndex;
-    enum class Target : uint8_t {
-        ToJs,
-        ToWasm,
-    } target;
+    CodeLocationNearCall callLocation;
+    size_t functionIndexSpace;
 };
 
 struct Entrypoint {
@@ -291,20 +258,24 @@ struct WasmExitStubs {
     MacroAssemblerCodeRef wasmToWasm;
 };
 
+typedef void** WasmEntrypointLoadLocation;
+
 // WebAssembly direct calls and call_indirect use indices into "function index space". This space starts with all imports, and then all internal functions.
 // CallableFunction and FunctionIndexSpace are only meant as fast lookup tables for these opcodes, and do not own code.
 struct CallableFunction {
     CallableFunction() = default;
 
-    CallableFunction(SignatureIndex signatureIndex, void* code = nullptr)
+    CallableFunction(SignatureIndex signatureIndex, WasmEntrypointLoadLocation code = nullptr)
         : signatureIndex(signatureIndex)
         , code(code)
     {
     }
 
+    static ptrdiff_t offsetOfWasmEntrypointLoadLocation() { return OBJECT_OFFSETOF(CallableFunction, code); }
+
     // FIXME pack the SignatureIndex and the code pointer into one 64-bit value. https://bugs.webkit.org/show_bug.cgi?id=165511
     SignatureIndex signatureIndex { Signature::invalidIndex };
-    void* code { nullptr };
+    WasmEntrypointLoadLocation code { nullptr };
 };
 typedef Vector<CallableFunction> FunctionIndexSpace;
 

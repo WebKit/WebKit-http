@@ -27,15 +27,19 @@
     overflow: auto;
 }
 
-.content-view.dom-tree.show-gutter .tree-outline.dom {
-    --gutter-padding-start: 13px;
+.content-view.dom-tree .tree-outline.dom {
+    --gutter-padding-start: 7px;
 }
 
-body[dir=ltr] .content-view.dom-tree.show-gutter .tree-outline.dom {
+.content-view.dom-tree.show-gutter .tree-outline.dom {
+    --gutter-padding-start: 20px;
+}
+
+body[dir=ltr] .content-view.dom-tree .tree-outline.dom {
     padding-left: var(--gutter-padding-start);
 }
 
-body[dir=rtl] .content-view.dom-tree.show-gutter .tree-outline.dom {
+body[dir=rtl] .content-view.dom-tree .tree-outline.dom {
     padding-right: var(--gutter-padding-start);
 }
 
@@ -79,4 +83,13 @@ body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li.sel
 .content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint.disabled {
     fill: var(--breakpoint-unresolved-disabled-fill-color);
     stroke: var(--breakpoint-unresolved-disabled-stroke-color);
+}
+
+.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.subtree {
+    fill: none;
+    opacity: 0.6;
+}
+
+.content-view.dom-tree .tree-outline.dom li.expanded .status-image.breakpoint.subtree {
+    display: none;
 }

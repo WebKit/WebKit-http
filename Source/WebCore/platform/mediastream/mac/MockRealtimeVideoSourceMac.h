@@ -28,23 +28,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MockRealtimeVideoSourceMac_h
-#define MockRealtimeVideoSourceMac_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "FontCascade.h"
 #include "MockRealtimeVideoSource.h"
+#include "OrientationNotifer.h"
 
 typedef struct __CVBuffer *CVBufferRef;
 typedef CVBufferRef CVImageBufferRef;
 typedef CVImageBufferRef CVPixelBufferRef;
+typedef struct __CVPixelBufferPool *CVPixelBufferPoolRef;
 
 namespace WebCore {
 
-class MockRealtimeVideoSourceMac final : public MockRealtimeVideoSource {
+class MockRealtimeVideoSourceMac final : public MockRealtimeVideoSource, private OrientationNotifier::Observer {
 public:
-
     virtual ~MockRealtimeVideoSourceMac() { }
 
 private:
@@ -55,14 +55,17 @@ private:
     RetainPtr<CVPixelBufferRef> pixelBufferFromCGImage(CGImageRef) const;
 
     PlatformLayer* platformLayer() const;
-    void updateSampleBuffer() override;
+    void updateSampleBuffer() final;
+    bool applySize(const IntSize&) final;
+
+    void orientationChanged(int orientation) final;
 
     mutable RetainPtr<CGImageRef> m_previewImage;
     mutable RetainPtr<PlatformLayer> m_previewLayer;
+    mutable RetainPtr<CVPixelBufferPoolRef> m_bufferPool;
+    MediaSample::VideoRotation m_deviceOrientation { MediaSample::VideoRotation::None };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MockRealtimeVideoSourceMac_h

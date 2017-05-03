@@ -107,7 +107,7 @@ inline SecureTextTimer::SecureTextTimer(RenderText& renderer)
 inline void SecureTextTimer::restart(unsigned offsetAfterLastTypedCharacter)
 {
     m_offsetAfterLastTypedCharacter = offsetAfterLastTypedCharacter;
-    startOneShot(m_renderer.settings().passwordEchoDurationInSeconds());
+    startOneShot(1_s * m_renderer.settings().passwordEchoDurationInSeconds());
 }
 
 inline unsigned SecureTextTimer::takeOffsetAfterLastTypedCharacter()
@@ -208,8 +208,8 @@ RenderText::RenderText(Document& document, const String& text)
 
 RenderText::~RenderText()
 {
-    if (m_originalTextDiffersFromRendered)
-        originalTextMap().remove(this);
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+    ASSERT(!originalTextMap().contains(this));
 }
 
 const char* RenderText::renderName() const
@@ -286,6 +286,10 @@ void RenderText::willBeDestroyed()
     secureTextTimers().remove(this);
 
     removeAndDestroyTextBoxes();
+
+    if (m_originalTextDiffersFromRendered)
+        originalTextMap().remove(this);
+
     RenderObject::willBeDestroyed();
 }
 
@@ -439,8 +443,8 @@ Vector<FloatQuad> RenderText::absoluteQuadsForRange(unsigned start, unsigned end
 
 Position RenderText::positionForPoint(const LayoutPoint& point)
 {
-    if (auto* layout = simpleLineLayout()) {
-        auto position = Position(textNode(), SimpleLineLayout::textOffsetForPoint(point, *this, *layout));
+    if (simpleLineLayout() && parent()->firstChild() == parent()->lastChild()) {
+        auto position = Position(textNode(), SimpleLineLayout::textOffsetForPoint(point, *this, *simpleLineLayout()));
         ASSERT(position == positionForPoint(point, nullptr).deepEquivalent());
         return position;
     }
@@ -816,8 +820,6 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     std::optional<unsigned> nextBreakable;
     unsigned lastWordBoundary = 0;
 
-    // Non-zero only when kerning is enabled, in which case we measure words with their trailing
-    // space, then subtract its width.
     WordTrailingSpace wordTrailingSpace(style);
     // If automatic hyphenation is allowed, we keep track of the width of the widest word (or word
     // fragment) encountered so far, and only try hyphenating words that are wider.
@@ -1279,7 +1281,7 @@ void RenderText::setText(const String& text, bool force)
         downcast<RenderBlockFlow>(*parent()).invalidateLineLayoutPath();
     
     if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->textChanged(this);
+        cache->deferTextChanged(*this);
 }
 
 String RenderText::textWithoutConvertingBackslashToYenSymbol() const

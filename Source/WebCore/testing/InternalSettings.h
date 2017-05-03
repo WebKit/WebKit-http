@@ -109,6 +109,9 @@ public:
     ForcedAccessibilityValue forcedPrefersReducedMotionAccessibilityValue() const;
     void setForcedPrefersReducedMotionAccessibilityValue(ForcedAccessibilityValue);
 
+    bool shouldDispatchRequestAnimationFrameEvents();
+    void setShouldDispatchRequestAnimationFrameEvents(bool);
+
     // RuntimeEnabledFeatures.
     static void setIndexedDBWorkersEnabled(bool);
     static void setCSSGridLayoutEnabled(bool);
@@ -156,7 +159,7 @@ private:
 #endif
         String m_defaultVideoPosterURL;
         bool m_forcePendingWebGLPolicy;
-        bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
+        Seconds m_originalTimeWithoutMouseMovementBeforeHidingControls;
         bool m_useLegacyBackgroundSizeShorthandBehavior;
         bool m_autoscrollForDragAndDropEnabled;
         bool m_quickTimePluginReplacementEnabled;

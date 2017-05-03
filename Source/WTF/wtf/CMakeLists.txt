@@ -12,6 +12,7 @@ set(WTF_HEADERS
     BubbleSort.h
     BumpPointerAllocator.h
     ByteOrder.h
+    CPUTime.h
     ClockType.h
     CompilationThread.h
     Compiler.h
@@ -57,10 +58,12 @@ set(WTF_HEADERS
     IteratorAdaptors.h
     IteratorRange.h
     ListHashSet.h
+    Liveness.h
     Lock.h
     LockAlgorithm.h
     LockedPrintStream.h
     Locker.h
+    LocklessBag.h
     LoggingHashID.h
     LoggingHashMap.h
     LoggingHashSet.h
@@ -94,11 +97,14 @@ set(WTF_HEADERS
     ParkingLot.h
     PassRefPtr.h
     Platform.h
+    PlatformRegisters.h
     PrintStream.h
     ProcessID.h
     RAMSize.h
+    RandomDevice.h
     RandomNumber.h
     RandomNumberSeed.h
+    Range.h
     RangeSet.h
     RawPointer.h
     RecursiveLockAdapter.h
@@ -119,19 +125,23 @@ set(WTF_HEADERS
     SmallPtrSet.h
     StackBounds.h
     StackStats.h
+    StackTrace.h
     StaticConstructors.h
     StdLibExtras.h
     Stopwatch.h
     StringExtras.h
     StringPrintStream.h
+    SystemFree.h
     SystemTracing.h
-    ThreadIdentifierDataPthreads.h
+    ThreadHolder.cpp
+    ThreadMessage.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
     Threading.h
     ThreadingPrimitives.h
     TimeWithDynamicClockType.h
     TinyPtrSet.h
+    UUID.h
     UniqueRef.h
     VMTags.h
     ValueCheck.h
@@ -181,6 +191,7 @@ set(WTF_HEADERS
     text/icu/UTextProviderUTF16.h
 
     threads/BinarySemaphore.h
+    threads/Signals.h
 
     unicode/CharacterNames.h
     unicode/Collator.h
@@ -192,6 +203,7 @@ set(WTF_SOURCES
     Atomics.cpp
     AutomaticThread.cpp
     BitVector.cpp
+    CPUTime.cpp
     ClockType.cpp
     CompilationThread.cpp
     CrossThreadCopier.cpp
@@ -225,6 +237,7 @@ set(WTF_SOURCES
     ParkingLot.cpp
     PrintStream.cpp
     RAMSize.cpp
+    RandomDevice.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
     RunLoop.cpp
@@ -233,9 +246,12 @@ set(WTF_SOURCES
     SixCharacterHash.cpp
     StackBounds.cpp
     StackStats.cpp
+    StackTrace.cpp
     StringPrintStream.cpp
+    ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
+    UUID.cpp
     WTFThreadData.cpp
     WallTime.cpp
     WordLock.cpp
@@ -274,6 +290,7 @@ set(WTF_SOURCES
     text/icu/UTextProviderUTF16.cpp
 
     threads/BinarySemaphore.cpp
+    threads/Signals.cpp
 
     unicode/UTF8.cpp
 )
@@ -281,6 +298,12 @@ set(WTF_SOURCES
 set(WTF_INCLUDE_DIRECTORIES
     "${BMALLOC_DIR}"
     "${WTF_DIR}"
+    "${CMAKE_BINARY_DIR}"
+    "${DERIVED_SOURCES_DIR}"
+    "${THIRDPARTY_DIR}"
+)
+
+set(WTF_PRIVATE_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
     "${WTF_DIR}/wtf/persistence"
@@ -288,9 +311,6 @@ set(WTF_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf/text/icu"
     "${WTF_DIR}/wtf/threads"
     "${WTF_DIR}/wtf/unicode"
-    "${THIRDPARTY_DIR}"
-    "${CMAKE_BINARY_DIR}"
-    "${DERIVED_SOURCES_DIR}"
 )
 
 set(WTF_LIBRARIES
@@ -325,16 +345,14 @@ list(APPEND WTF_LIBRARIES
 if (WIN32)
     list(APPEND WTF_SOURCES
         OSAllocatorWin.cpp
+        ThreadHolderWin.cpp
         ThreadSpecificWin.cpp
         ThreadingWin.cpp
     )
 else ()
-    list(APPEND WTF_HEADERS
-        ThreadIdentifierDataPthreads.h
-    )
     list(APPEND WTF_SOURCES
         OSAllocatorPosix.cpp
-        ThreadIdentifierDataPthreads.cpp
+        ThreadHolderPthreads.cpp
         ThreadingPthreads.cpp
     )
 endif ()

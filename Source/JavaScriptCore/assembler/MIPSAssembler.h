@@ -35,7 +35,6 @@
 #include <limits.h>
 #include <wtf/Assertions.h>
 #include <wtf/SegmentedVector.h>
-#include <limits.h>
 
 namespace JSC {
 

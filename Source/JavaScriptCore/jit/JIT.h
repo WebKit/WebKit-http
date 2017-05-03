@@ -294,12 +294,12 @@ namespace JSC {
 
         void exceptionCheck()
         {
-            m_exceptionChecks.append(emitExceptionCheck());
+            m_exceptionChecks.append(emitExceptionCheck(*vm()));
         }
 
         void exceptionCheckWithCallFrameRollback()
         {
-            m_exceptionChecksWithCallFrameRollback.append(emitExceptionCheck());
+            m_exceptionChecksWithCallFrameRollback.append(emitExceptionCheck(*vm()));
         }
 
         void privateCompileExceptionHandlers();
@@ -665,6 +665,7 @@ namespace JSC {
         void emitSlow_op_get_direct_pname(Instruction*, Vector<SlowCaseEntry>::iterator&);
 
         void emit_op_resolve_scope(Instruction*);
+        void emit_op_resolve_scope_for_hoisting_func_decl_in_eval(Instruction*);
         void emit_op_get_from_scope(Instruction*);
         void emit_op_put_to_scope(Instruction*);
         void emit_op_get_from_arguments(Instruction*);

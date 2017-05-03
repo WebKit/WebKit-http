@@ -125,9 +125,14 @@ class MediaControls extends LayoutNode
         this.markDirtyProperty("scaleFactor");
     }
 
+    get placard()
+    {
+        return this.children[0] instanceof Placard ? this.children[0] : null;
+    }
+
     get showsPlacard()
     {
-        return this.children[0] instanceof Placard;
+        return !!this.placard;
     }
 
     showPlacard(placard)
@@ -137,12 +142,13 @@ class MediaControls extends LayoutNode
             children.push(this.controlsBar);
 
         this.children = children;
+        this.layout();
     }
 
     hidePlacard()
     {
         if (this.showsPlacard)
-            this.children[0].remove();
+            this.placard.remove();
         this._invalidateChildren();
     }
 
@@ -171,9 +177,25 @@ class MediaControls extends LayoutNode
             this.layout();
     }
 
+    controlsBarFadedStateDidChange()
+    {
+        if (this.delegate && typeof this.delegate.controlsBarFadedStateDidChange === "function")
+            this.delegate.controlsBarFadedStateDidChange();
+    }
+
     layoutTraitsDidChange()
     {
         // Implemented by subclasses as needed.
+    }
+
+    layout()
+    {
+        super.layout();
+
+        if (this.showsPlacard) {
+            this.placard.width = this.width;
+            this.placard.height = this.height;
+        }
     }
 
     // Private

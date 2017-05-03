@@ -162,6 +162,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setSubtleCryptoEnabled:(BOOL)flag;
 - (BOOL)subtleCryptoEnabled;
 
+- (void)setMediaDevicesEnabled:(BOOL)flag;
+- (BOOL)mediaDevicesEnabled;
+
 - (void)setMediaStreamEnabled:(BOOL)flag;
 - (BOOL)mediaStreamEnabled;
 
@@ -511,6 +514,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag;
 - (BOOL)mediaCaptureRequiresSecureConnection;
 
+- (void)setUseAVFoundationAudioCapture:(BOOL)flag;
+- (BOOL)useAVFoundationAudioCapture;
+
 - (void)setShadowDOMEnabled:(BOOL)flag;
 - (BOOL)shadowDOMEnabled;
 
@@ -519,6 +525,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setFetchAPIEnabled:(BOOL)flag;
 - (BOOL)fetchAPIEnabled;
+
+- (void)setReadableByteStreamAPIEnabled:(BOOL)flag;
+- (BOOL)readableByteStreamAPIEnabled;
+
+- (void)setWritableStreamAPIEnabled:(BOOL)flag;
+- (BOOL)writableStreamAPIEnabled;
 
 - (void)setDownloadAttributeEnabled:(BOOL)flag;
 - (BOOL)downloadAttributeEnabled;

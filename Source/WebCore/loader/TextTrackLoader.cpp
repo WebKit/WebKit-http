@@ -91,12 +91,15 @@ void TextTrackLoader::processNewCueData(CachedResource& resource)
     if (!m_cueParser)
         m_cueParser = std::make_unique<WebVTTParser>(static_cast<WebVTTParserClient*>(this), m_scriptExecutionContext);
 
-    const char* data;
-    unsigned length;
-
-    while ((length = buffer->getSomeData(data, m_parseOffset))) {
-        m_cueParser->parseBytes(data, length);
-        m_parseOffset += length;
+    auto bytesToSkip = m_parseOffset;
+    for (const auto& segment : *buffer) {
+        if (bytesToSkip > segment->size()) {
+            bytesToSkip -= segment->size();
+            continue;
+        }
+        m_cueParser->parseBytes(segment->data() + bytesToSkip, segment->size() - bytesToSkip);
+        bytesToSkip = 0;
+        m_parseOffset += segment->size();
     }
 }
 
@@ -138,7 +141,7 @@ void TextTrackLoader::notifyFinished(CachedResource& resource)
         m_cueParser->flush();
 
     if (!m_cueLoadTimer.isActive())
-        m_cueLoadTimer.startOneShot(0);
+        m_cueLoadTimer.startOneShot(0_s);
 
     cancelLoad();
 }
@@ -171,7 +174,7 @@ void TextTrackLoader::newCuesParsed()
         return;
 
     m_newCuesAvailable = true;
-    m_cueLoadTimer.startOneShot(0);
+    m_cueLoadTimer.startOneShot(0_s);
 }
 
 void TextTrackLoader::newRegionsParsed()
@@ -186,7 +189,7 @@ void TextTrackLoader::fileFailedToParse()
     m_state = Failed;
 
     if (!m_cueLoadTimer.isActive())
-        m_cueLoadTimer.startOneShot(0);
+        m_cueLoadTimer.startOneShot(0_s);
 
     cancelLoad();
 }

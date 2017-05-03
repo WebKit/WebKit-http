@@ -29,6 +29,7 @@
 #include "SuspendableTimer.h"
 #include "UserGestureIndicator.h"
 #include <memory>
+#include <wtf/MonotonicTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Seconds.h>
 
@@ -48,6 +49,7 @@ public:
     static Seconds defaultMinimumInterval() { return 4_ms; }
     static Seconds defaultAlignmentInterval() { return 0_s; }
     static Seconds defaultAlignmentIntervalInLowPowerMode() { return 30_ms; }
+    static Seconds nonInteractedCrossOriginFrameAlignmentInterval() { return 30_ms; }
     static Seconds hiddenPageAlignmentInterval() { return 1_s; }
 
     // Creates a new timer owned by specified ScriptExecutionContext, starts it
@@ -73,7 +75,7 @@ private:
     // SuspendableTimer
     void fired() override;
     void didStop() override;
-    WEBCORE_EXPORT std::optional<Seconds> alignedFireTime(Seconds) const override;
+    WEBCORE_EXPORT std::optional<MonotonicTime> alignedFireTime(MonotonicTime) const override;
 
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;

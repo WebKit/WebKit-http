@@ -1,3 +1,1902 @@
+2017-04-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for scheduling a A/B testing with a patch.
+        https://bugs.webkit.org/show_bug.cgi?id=171209
+
+        Reviewed by Chris Dumez.
+
+        Added the support for creating a custom test group with a patch applied.
+
+        First, each repository in a repository group has a boolean indicating whether a given repository can have
+        a patch applied or not. When any configuration in a test group contains a patch, we create build requests
+        without a test specified in order to "build" those patches. These build requests have negative order numbers
+        to differentiate them from regular build requests. We can't simply build ones with patches since there could
+        be differences in SDK, build options, etc... when patches are applied.
+
+        The JSON format for commit sets returned by /api/build-requests have been changed from using an array of
+        commit IDs to an array of dictionaries indicate commit and acceptsPatch boolean. /api/update-triggerable now
+        uses a dictionary with two keys: repository and acceptsPatch to specify a set of repositories associated with
+        a repository group, and /privileged-api-create-test-group uses a dictionary with two keys: revision and patch
+        instead of a revision string to specify commit sets.
+
+        Furthermore, the syncing script's configuration have been updated to use a dictionary of repository names to
+        an options dictionary instead of an array of repositories names. For now, the only supported option is
+        acceptsPatch but will be extended when we add the support for rolling back system components.
+        e.g. {"WebKit": {acceptsPatch: true}, "macOS": {}} instead of ["WebKit", "macOS"]
+
+        On the UI side, InstantFileUploader has been changed to accept only one file by default, and added a new method
+        allowMultipleFiles() to allow multiple files to be selected for custom roots. Also replaced the input element
+        with type=file by a button with a custom label to show labels such as "Apply a patch" or "Add a new root"
+        instead of the generic label like "choose a file".
+
+
+        * init-database.sql: Added trigrepo_accepts_patch to triggerable_repositories to indicate whether a given
+        repository can have a patch applied or not. Made request_test optional in build_requests for when a build
+        request is created to build patches. Such a build request have a negative request_order. Updated the related
+        constraints accordingly.
+
+        * public/admin/triggerables.php: Added the support for updating whether a given repository can have a patch
+        applied in each repository group. Only show the repositories in the repository group for this purpose since
+        there is no way to accept a patch on a repository without it being a part of the group.
+        (generate_repository_form): Now takes the markup for checkboxes instead of generating one itself.
+        (generate_repository_checkboxes): Now takes an array of repositories to generate checkboxes. The checkbox is
+        shown when the repository ID exists as a key in this array, and is checked when its value is true. The new
+        capability to skip repositories not in the array is used to hide repositories not associated with the group
+        in the list of checkboxes to indicate a repository accepts a patch.
+
+        * public/api/update-triggerable.php:
+        (main): Now updates the description and acceptsRoots states of each repository group, and sets acceptsPatch
+        boolean for each repository in the group if set in the update.
+        (validate_repository_groups): Use a reference to $repository_groups in order to set repository_id_list, which
+        contains an array of repository IDs to find the existing repository group that matches the set via
+        RepositoryGroupFinder's find_by_repositories. Also added a various validations for acceptsRoots, a dictionary
+        specifying repository and acceptsPatch.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::fetch_commits_for_set_if_needed): Instead of returning an array of commit IDs as
+        "commits", it now returns an array of dictionaries with "commit" and "patch" keys specifying the commit ID
+        and the patch file's ID respectively as "revisionItems". 
+        (BuildRequestsFetcher::add_uploaded_file): Added. Extracted from fetch_commits_for_set_if_needed. Used to
+        add either a patch file or a custom root file in the list of uploaded files in the result.
+
+        * public/include/manifest-generator.php:
+        (fetch_triggerables): Each element in repository group's "repositories" field is now an array of dictionaries
+        with "repository" and "acceptsPatch" as keys.
+
+        * public/include/repository-group-finder.php:
+        (RepositoryGroupFinder::__construct): Added a map for boolean indicating whether a given repository group
+        allows a patch on a repository. Used in /privileged-api/create-test-group.
+        (RepositoryGroupFinder::accepts_patch): Added.
+        (RepositoryGroupFinder::populate_map): Build up the map for acceptsPatch boolean per repository per group.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Fixed a bug that we were not explicitly checking for a duplicate test group name (with a test). Create
+        build requests to "build" patches if there is any patch file specified.
+        (commit_sets_from_revision_sets): Updated to take a dictionary with "revision" and "patch" as keys to specify
+        a revision and a patch if any instead of just a revision string for each repository. Also validate that each
+        repository is allowed to have a patch once the repository group has been found for the set of repositories.
+        (ensure_commit_sets):
+
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator): Added _patchUploaders as an instance variable, which is a dictionary of
+        configuration names to a map of InstantFileUploader's used to upload a patch. Also renamed _fileUploaders to
+        _customRootUploaders for clarity.
+        (CustomAnalysisTaskConfigurator.prototype.setCommitSets):
+        (CustomAnalysisTaskConfigurator.prototype.didConstructShadowTree.createRootUploader): Added.
+        (CustomAnalysisTaskConfigurator.prototype.didConstructShadowTree):
+        (CustomAnalysisTaskConfigurator.prototype._ensurePatchUploader): Added. Creates an instant file uploader for
+        patches. We only allow a single patch per repository.
+        (CustomAnalysisTaskConfigurator.prototype._computeCommitSet): Include a patch in the commit set as needed.
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionTable): Show the patch file uploader for repositories
+        which can have patches in the current repository group.
+        (CustomAnalysisTaskConfigurator.cssTemplate): Show borders between every rows instead of just between tbody's
+        now that each row can have a patch file uploader.
+
+        * public/v3/components/instant-file-uploader.js:
+        (InstantFileUploader): Added _fileInput and _allowMultipleFiles as instance variables. We now show a button
+        in the UI instead of an input with type=file. _fileInput is a hidden input with type=file used inside a click
+        event of the button to let the user pick a file.
+        (InstantFileUploader.prototype.allowMultipleFiles): Added. Allows this instance to accept multiple files.
+        (InstantFileUploader.prototype.didConstructShadowTree): Synthetically click on the hidden input element when
+        the newly added button element is clicked to open the browser's file picker.
+        (InstantFileUploader.prototype.render): Hide the button to add a file if this instance can only select one file
+        and there is already some file being uploaded in this instance.
+        (InstantFileUploader.htmlTemplate): Replaced the input element with type=file with a button. Its label comes
+        from the default slot content.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest): Made the test optional.
+        (BuildRequest.prototype.isBuild): Returns true if this is a build request for building a patch.
+        (BuildRequest.prototype.isTest): Returns true if this is a build request for running tests.
+        (BuildRequest.constructBuildRequestsFromData): Create each commit log here instead of relying on CommitSet's
+        constructor to construct its commit logs. Also updated per the replacement of an array of commit IDs by
+        an array of dictionaries with commit and patch properties.
+
+        * public/v3/models/commit-set.js:
+        (CommitSet): Made _repositoryToCommitMap a real Map object. Also added _repositoryToPatchMap. Also got rid of
+        the code to instantiate commit logs since that's now done in BuildRequest.constructBuildRequestsFromData.
+        (CommitSet.prototype.commitForRepository):
+        (CommitSet.prototype.revisionForRepository):
+        (CommitSet.prototype.patchForRepository): Added.
+        (CommitSet.prototype.latestCommitTime): Modernized the code.
+        (CommitSet.prototype.equals): Modernized the code. Also added the check for patches.
+        (MeasurementCommitSet): Updated per the change to make _repositoryToCommitMap a real Map.
+        (CustomCommitSet.prototype.setRevisionForRepository):
+        (CustomCommitSet.prototype.equals): Added the check for patches.
+        (CustomCommitSet.prototype.revisionForRepository):
+        (CustomCommitSet.prototype.patchForRepository): Added.
+
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Updated per the replacement of an array of commit IDs by an array of dictionaries
+        with commit and patch properties.
+
+        * public/v3/models/repository.js:
+        (Repository.prototype.ownerId): Renamed from owner for clarity.
+
+        * public/v3/models/test-group.js:
+        (TestGroup): Modernized the code by using LazilyEvaluatedFunction. Removed _requestsAreInOrder since it's not
+        necessary anymore with LazilyEvaluatedFunction.
+        (TestGroup.prototype.addBuildRequest):
+        (TestGroup.prototype.test): Use the last build request's test since the first few requests could be requests to
+        build patches.
+        (TestGroup.prototype.platform): Ditto.
+        (TestGroup.prototype._lastRequest): Added.
+        (TestGroup.prototype._orderedBuildRequests): Added.
+        (TestGroup.prototype.repetitionCount): Only count the build requests for testing (skipping any requests to
+        build patches).
+        (TestGroup.prototype.requestedCommitSets): Simply call _computeRequestedCommitSetsLazily.
+        (TestGroup.prototype._computeRequestedCommitSets): Extracted from requestedCommitSets.
+        (TestGroup.prototype.requestsForCommitSet):
+        (TestGroup.prototype.labelForCommitSet): Rewritten. Just compute the label here instead of relying on
+        _commitSetToLabel since requestedSets is always of the length two at the moment.
+        (TestGroup._revisionSetsFromCommitSets): Specify both the revision and the patch in the revision set.        
+
+        * public/v3/models/triggerable.js:
+        (TriggerableRepositoryGroup): Added _patchAcceptingSet as an instance variable. Use
+        sortByNamePreferringOnesWithURL to sort repositories instead of simple sortByName.
+        (TriggerableRepositoryGroup.prototype.accepts): Added checks for the custom roots and patches.
+        (TriggerableRepositoryGroup.prototype.acceptsPatchForRepository): Added.
+
+        * server-tests/api-build-requests-tests.js: Updated the test cases per the replacement of an array of commit
+        IDs by an array of dictionaries with commit and patch properties.
+
+        * server-tests/api-manifest-tests.js: Updated the test case per the name of Repository's owner to ownerId.
+
+        * server-tests/api-update-triggerable.js: Updated the test case per the name of Repository's owner to ownerId,
+        and added a test case for updating whether a given repository group allows custom roots as well as patches
+        on repositories via /api/update-triggerable. 
+        (.updateWithOSXRepositoryGroup): Updated the sample syncing script configuration per the format change.
+        (.refetchManifest): Added.
+
+        * server-tests/privileged-api-create-test-group-tests.js: Updated per the syncing script configuration format
+        change. Also added a test for creating a test group with a duplicate name, which is expected to fail with 
+        DuplicateTestGroupName, and creating a test group with a patch both when it's allowed and when it's not allowed
+        in the matching repository group.
+        (.addTriggerableAndCreateTask): Updated per the format change.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.addEmptyTriggerable): Added a metric and its configuration to make it appear in the manifest file.
+        The new test case in api-update-triggerable.js requires this.
+        (MockData.mockTestSyncConfigWithSingleBuilder): Updated per the syncing script configuration format change.
+        (MockData.mockTestSyncConfigWithTwoBuilders): Ditto.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Removed the useless assertions about test configurations,
+        and added assertions about custom roots and patches in the test case for updateTriggerables.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer._parseRepositoryGroup): Made each assertion explicitly refer to the specific repository group
+        to make it more user friendly. Now each repository group uses a dictionary of repository names to its options
+        in the syncing script configurations. When parsed, we insert it as an array of dictionaries with repository ID
+        and acceptsPatch boolean specified separately since this is the format /api/update-triggerable expects.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.updateTriggerable):
+
+        * unit-tests/build-request-tests.js:
+        (sampleBuildRequestData): Updated per the commit sets format change in /api/build-requests.
+
+        * unit-tests/buildbot-syncer-tests.js: Updated the existing tests per various format changes and added a couple
+        of new test cases for the syncing script's configuration validation.
+        (sampleiOSConfig):
+        (smallConfiguration):
+        (createSampleBuildRequest):
+
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject): Updated per the repository group format change.
+
+        * unit-tests/test-groups-tests.js:
+        (sampleTestGroup): Updated per the commit sets format change in /api/build-requests. 
+
+2017-04-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename commit_set_relationships to commit_set_items
+        https://bugs.webkit.org/show_bug.cgi?id=171143
+
+        Reviewed by Joseph Pecoraro.
+
+        Renamed commit_set_relationships to commit_set_items. Also added commitset_patch_file in the preparation to add
+        the support for applying patches in custom test groups. To migrate an existing database, run:
+
+        ```sql
+        BEGIN;
+        ALTER TABLE commit_set_relationships RENAME TO commit_set_items;
+        ALTER TABLE commit_set_items ADD COLUMN commitset_patch_file integer REFERENCES uploaded_files;
+        ALTER TABLE commit_set_items ADD CONSTRAINT commitset_with_patch_must_have_commit
+            CHECK (commitset_patch_file IS NULL OR commitset_commit IS NOT NULL);
+        END;
+        ```
+
+        * init-database.sql:
+        * public/include/build-requests-fetcher.php:
+        * public/privileged-api/create-test-group.php:
+        * server-tests/resources/mock-data.js:
+        (MockData.addMockData):
+        (MockData.addMockTestGroupWithGitWebKit):
+        * tools/js/database.js:
+
+2017-04-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for creating a custom test group in the analysis task page
+
+        Make it possible to create more custom test groups in the analysis task page
+        https://bugs.webkit.org/show_bug.cgi?id=171138
+
+        Rubber-stamped by Chris Dumez.
+
+        Extracted CustomConfigurationTestGroupForm out of CreateAnalysisTaskPage and added it to AnalysisTaskPage inside
+        AnalysisTaskConfiguratorPane. This allows configuration of a new test group within a custom analysis task.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Fixed the bug that the triggerable wasn't resolved when creating a test group in a custom analysis task.
+
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator.prototype.selectTests): Added. Used by CustomConfigurationTestGroupForm's
+        setConfigurations.
+        (CustomAnalysisTaskConfigurator.prototype.selectPlatform): Ditto.
+        (CustomAnalysisTaskConfigurator.prototype.setCommitSets): Ditto. 
+        (CustomAnalysisTaskConfigurator.prototype._setUploadedFilesIfEmpty): Added.
+        (CustomAnalysisTaskConfigurator.prototype._revisionMapFromCommitSet): Added.
+        (CustomAnalysisTaskConfigurator.prototype.render): Update the currently selected platforms and tests now that
+        they can be set externally via selectTests and selectPlatform.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerableTests): Return the result of _renderRadioButtonList
+        so that the caller can update the currently selected tests without having to reconstruct the list.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerablePlatforms): Ditto.
+        (CustomAnalysisTaskConfigurator.prototype._renderRadioButtonList): Renamed from _buildCheckboxList. Now returns
+        a function which updates the currently selected items. We still pretend that multiple items can be selected to
+        make it future-proof.
+
+        * public/v3/components/custom-configuration-test-group-form.js: Added.
+        (CustomConfigurationTestGroupForm): Added. Inherits from TestGroupForm. Extracted from CreateAnalysisTaskPage.
+        (CustomConfigurationTestGroupForm.prototype.setHasTask): Added.
+        (CustomConfigurationTestGroupForm.prototype.hasCommitSets): Added.
+        (CustomConfigurationTestGroupForm.prototype.setConfigurations): Added. Used by AnalysisTaskConfiguratorPane to
+        set the default configuration to what the latest test group used.
+        (CustomConfigurationTestGroupForm.prototype.startTesting): Added. Dispatches "startTesting" action with
+        platform, test, taskName in addition to what CustomizedTestGroupForm emits.
+        (CustomConfigurationTestGroupForm.prototype.didConstructShadowTree): Added.
+        (CustomConfigurationTestGroupForm.prototype.render): Added.
+        (CustomConfigurationTestGroupForm.prototype._updateTestGroupName): Added.
+        (CustomConfigurationTestGroupForm.cssTemplate): Added.
+        (CustomConfigurationTestGroupForm.htmlTemplate): Added.
+
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm.cssTemplate): Make the form display: block.
+
+        * public/v3/index.html:
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.test): Added.
+        (TestGroup.prototype.platform): Added.
+        (TestGroup.createWithCustomConfiguration): Added. Creates a custom test group with an existing analysis task.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile): Fixed a bug that _deletedAt was set to a Date object even when object.deletedAt is null.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskConfiguratorPane): Added.
+        (AnalysisTaskConfiguratorPane.prototype.didConstructShadowTree): Added. Dispatch createCustomTestGroup action
+        in turn when receiving startTesting from CustomConfigurationTestGroupForm.
+        (AnalysisTaskConfiguratorPane.prototype.setTestGroups): Added.
+        (AnalysisTaskConfiguratorPane.prototype.render): Added.
+        (AnalysisTaskConfiguratorPane.htmlTemplate): Added. We override this instead of formContent to display the
+        "Start" button at the end instead of at the beginnning.
+        (AnalysisTaskConfiguratorPane.cssTemplate): Added.
+        (AnalysisTaskPage.prototype.didConstructShadowTree): Listen to createCustomTestGroup.
+        (AnalysisTaskPage.prototype.render): Hide AnalysisTaskConfiguratorPane when the analysis task is not custom.
+        (AnalysisTaskPage.prototype._showTestGroup): Let AnalysisTaskConfiguratorPane know of the current test group
+        so that it can update the default configuration if the user hasn't modified yet.
+        (AnalysisTaskPage.prototype._createCustomTestGroup): Added. 
+
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage.prototype.didConstructShadowTree):
+        (CreateAnalysisTaskPage.prototype._createAnalysisTaskWithGroup):
+        (CreateAnalysisTaskPage.prototype.render):
+        (CreateAnalysisTaskPage.prototype._renderMessage):
+        (CreateAnalysisTaskPage.htmlTemplate):
+        (CreateAnalysisTaskPage.cssTemplate):
+
+        * server-tests/privileged-api-create-test-group-tests.js: Added a test case for creating a custom test group for
+        an existing analysis task.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.otherPlatformId): Added.
+        (MockData.addMockData): Added a test configuration for otherPlatformId.
+
+2017-04-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make it possible to view results for sub tests and metrics in A/B testing
+        https://bugs.webkit.org/show_bug.cgi?id=170975
+
+        Reviewed by Chris Dumez.
+
+        Replaced TestGroupResultsTable, which was a single table that presented the test results with a set of revisions
+        each build request used, with TestGroupResultsViewer and TestGroupRevisionTable. TestGroupResultsViewer provides
+        an UI to look the results of sub-tests and sub-metrics and TestGroupRevisionTable provides an UI to display
+        the set of revisions each build request used. TestGroupRevisionTable can also show the list of custom roots now
+        that we've added UI to schedule an analysis task with a custom test group.
+
+        This patch extends BarGraphGroup to show multiple bars per SingleBarGraph using a canvas with bars indicating
+        their mean and confidence interval.
+
+        * browser-tests/index.html:
+        (ChartTest.importChartScripts): Include lazily-evaluated-function.js now that Test model object uses
+        LazilyEvaluatedFunction.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._valuesForCommitSet):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._computeTestGroupStatus):
+
+        * public/v3/components/bar-graph-group.js:
+        (BarGraphGroup): No longer takes formatter. Added _computeRangeLazily and _showLabels as instance variables.
+        (BarGraphGroup.prototype.addBar): Now takes a list of values, their labels, mean, confidence interval, and
+        the colors of bar graphs shown for each value and the mean indicator.
+        (BarGraphGroup.prototype.showLabels): Added.
+        (BarGraphGroup.prototype.setShowLabels): Added.
+        (BarGraphGroup.prototype.range): Added.
+        (BarGraphGroup.prototype._computeRange): Renamed from updateGroupRendering. Now returns the range instead off
+        setting it to each bar, and each SingleBarGraph's render function uses the value via BarGraphGroup's range.
+        (BarGraph): Renamed from SingleBarGraph. Added various arguments introduced in addBar, and now stores various
+        lazily evaluated functions used for rendering.
+        (BarGraph.prototype.render): Rewritten to use canvas to draw bar graphs and show a label when group's
+        showLabels() returns true.
+        (BarGraph.prototype._resizeCanvas): Added.
+        (BarGraph.prototype._renderCanvas): Added.
+        (BarGraph.prototype._renderLabels): Added. We align the top of each label to the middle of each bar and shift it
+        back up by half the height of the label (0.4rem) using margin-top in css.
+        (BarGraph.htmlTemplate): Uses a canvas now.
+        (BarGraph.cssTemplate):
+
+        * public/v3/components/results-table.js:
+        (ResultsTable.prototype.renderTable): Updated per code changes to BarGraphGroup.
+        (ResultsTableRow.prototype.resultContent): Ditto.
+
+        * public/v3/components/test-group-results-table.js: Removed.
+        * public/v3/components/test-group-results-viewer.js: Added.
+        (TestGroupResultsViewer): Added. Shows a list of test results with bar graphs with mean and confidence interval
+        indicators. The results of sub tests and metrics can be expanded via "(Breakdown)" link shown below each test. 
+        (TestGroupResultsViewer.prototype.setTestGroup): Added.
+        (TestGroupResultsViewer.prototype.setAnalysisResults): Added.
+        (TestGroupResultsViewer.prototype.render): Added.
+        (TestGroupResultsViewer.prototype._renderResultsTable): Compute the depth of the test tree we show, and construct
+        the header rows. Each sub test is "indented" by a new column.
+        (TestGroupResultsViewer.prototype._buildRowForTest): Added. Build rows for metrics of the given test. Expand the
+        list of its child tests if it's in expandedTests. Otherwise add a link to "Breakdown" if it has any child tests.
+        (TestGroupResultsViewer.prototype._buildRowForMetric): Added. Builds rows of table cells to show the results for
+        the given metric for each configuration.
+        (TestGroupResultsViewer.prototype._buildRowForMetric.createConfigurationRow): Added. A helper to build cells for
+        a given configuration represented by a requested commit set.
+        (TestGroupResultsViewer.prototype._buildValueMap): Added. Creates a mappting between a requested commit set, and
+        the list of values, mean, etc... associated with the results for the commit set.
+        (TestGroupResultsViewer.prototype._buildEmptyCells): Added. A helper to create empty cells to indent sub tests.
+        (TestGroupResultsViewer.prototype._expandCurrentMetrics): Added. Highlights the current metrics and renders the
+        label for each bar in the results.
+        (TestGroupResultsViewer.htmlTemplate): Added.
+        (TestGroupResultsViewer.cssTemplate): Added.
+
+        * public/v3/components/test-group-revision-table.js: Added.
+        (TestGroupRevisionTable): Added. Renders the list of revisions requested for each test configuration as well as
+        ones used in actual testing, and additional repositories being reported (e.g. repositories for helper scripts).
+        (TestGroupRevisionTable.prototype.setTestGroup): Added.
+        (TestGroupRevisionTable.prototype.setAnalysisResults): Added.
+        (TestGroupRevisionTable.prototype.render): Added.
+        (TestGroupRevisionTable.prototype._renderTable): Added. The basic algorithm here is to first create a row entry
+        object for each build request, merge cells that use the same revision of the same repository, and then render
+        the entire table.
+        (TestGroupRevisionTable.prototype._buildCommitCell): Added.
+        (TestGroupRevisionTable.prototype._buildCustomRootsCell): Added.
+        (TestGroupRevisionTable.prototype._mergeCellsWithSameCommitsAcrossRows): Added. Compute rowspan for each cell
+        by traversing the rows that use the same revision per repository, and store it in rowCountByRepository while
+        adding the repository to each succeeding row's repositoriesToSkip.
+        (TestGroupRevisionTable.htmlTemplate): Added.
+        (TestGroupRevisionTable.cssTemplate): Added.
+
+        * public/v3/index.html:
+        * public/v3/models/analysis-results.js:
+        (AnalysisResults): Added _metricIds and _lazilyComputedHighestTests as instance variables.
+        (AnalysisResults.prototype.findResult): Renamed from find.
+        (AnalysisResults.prototype.highestTests): Added.
+        (AnalysisResults.prototype._computeHighestTests): Added. Finds the root tests for this analysis result.
+        (AnalysisResults.prototype.add): Update _metricIds.
+        (AnalysisResults.prototype.commitSetForRequest): Added. Returns the reported commit set for the build request.
+        This commit set contains the set of revisions reported to /api/report by A/B testers.
+        (AnalysisResultsView.prototype.resultForRequest): Renamed from resultForBuildId.
+
+        * public/v3/models/metric.js:
+        (Metric.prototype.relativeName): Added. Computes the relative name given the test/metric path. This function is
+        used to determine the label for each test/metric in TestGroupResultsViewer.
+        (Metric.prototype.aggregatorLabel): Extracted from label.
+        (Metric.prototype.label):
+        (Metric.makeFormatter): Added the default value of false to alwaysShowSign.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.compareTestResults): Now takes a metric instead of retrieving it from the analysis task
+        since a custom analysis task may not have a metric associated with it.
+
+        * public/v3/models/test.js:
+        (Test): Added _computePathLazily as an instance variable.
+        (Test.prototype.path): Lazily computes the path now that this function can be called on the same test for many
+        times in TestGroupResultsViewer while computing relative names of tests and metrics.
+        (Test.prototype._computePath): Extracted path.
+        (Test.prototype.fullName): Modernized the code.
+        (Test.prototype.relativeName): Added.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile):
+        (UploadedFile.prototype.deletedAt): Added.
+        (UploadedFile.prototype.label): Added.
+        (UploadedFile.prototype.url): Added.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskTestGroupPane.prototype.setTestGroups):
+        (AnalysisTaskTestGroupPane.prototype.setAnalysisResults): Replaced setAnalysisResultsView. Now takes an
+        analysisResults instead of its view.
+        (AnalysisTaskTestGroupPane.prototype.render): No longer enqueues the results table and the retry form to render
+        since the results table no longer exists, and the retry form re-renders itself as needed.
+        (AnalysisTaskTestGroupPane.htmlTemplate): Now uses test-group-results-viewer and test-group-revision-table
+        instead of test-group-results-table, which has been removed.
+        (AnalysisTaskTestGroupPane.cssTemplate):
+        (AnalysisTaskPage.prototype._assignTestResultsIfPossible):
+
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage.prototype._createAnalysisTaskWithGroup): Removed superflous console.log's.
+
+        * tools/js/v3-models.js: Import LazilyEvaluatedFunction now that it's used in the Test model.
+
+        * unit-tests/test-model-tests.js: Added.
+
+2017-04-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix after r215061. Clear TriggerableRepositoryGroup's static map in each iteration.
+
+        * tools/sync-buildbot.js:
+        (syncLoop):
+
+2017-04-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r215061.
+
+        There was a mismatch between the format updateTriggerable and /api/update-triggerable were using.
+        Namely, each repository group was assumed to contain a name field in /api/update-triggerable
+        but updateTriggerable was not including that at all.
+
+        We didn't catch this because the test for updateTriggerable also used the wrong format :(
+
+        * server-tests/tools-buildbot-triggerable-tests.js:
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.updateTriggerable):
+
+2017-04-14  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add sub-commit UI in commit log viewer.
+        https://bugs.webkit.org/show_bug.cgi?id=170379
+
+        Reviewed by Ryosuke Niwa.
+
+        Add an API to return sub-commits for a given commit.
+        Add sub-commit difference viewer into commit log viewer to show changed sub-commits between two commits.
+        Add 'ownsSubCommits' info in 'api/commits' return values.
+        Extend 'api/manifest' to include whether a repositories owns other repositories.
+        Only show this sub-commit difference viewer when a repository owns other repositories and both commits owns sub-commits.
+        Add unit tests for those new features.
+
+        * browser-tests/commit-log-viewer-tests.js: Updated test cases.
+        * public/api/commits.php: Added 'sub-commits' to provide sub-commit for a given commit.
+        * public/include/commit-log-fetcher.php: Added function to query sub-commit from database. Added 'repository' and 'ownsSubCommits' fields in returning commits.
+        * public/v3/components/expand-collapse-button.js: Added.
+        (ExpandCollapseButton):
+        (ExpandCollapseButton.prototype.didConstructShadowTree): Changes state on click and dispatches 'toggle' event.
+        (ExpandCollapseButton.sizeFactor):
+        (ExpandCollapseButton.buttonContent):
+        (ExpandCollapseButton.cssTemplate):
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer.prototype._renderCommitList): Added sub-commit viewer if two adjacent commits both have sub-commits.
+        (CommitLogViewer.cssTemplate):
+        * public/v3/components/sub-commit-viewer.js: Added.
+        (SubCommitViewer): Added 'SubCommitViewer' class to represent the sub-commit differences between two given commits.`
+        (SubCommitViewer.prototype.didConstructShadowTree): Makes 'expand-collapse' button listen to 'toggle' event.
+        (SubCommitViewer.prototype._toggleVisibility): Updates UI once 'expand-collapse' button is clicked.
+        (SubCommitViewer.prototype.render): Render sub-commit view based on the state.
+        (SubCommitViewer.prototype._renderSubcommitTable): Generates sub-commits difference table entries.
+        (SubCommitViewer.htmlTemplate):
+        (SubCommitViewer.cssTemplate):
+        * public/v3/index.html: Added 'sub-commit-viewer.js' and 'expand-collapse-button.js'.
+        * public/v3/models/commit-log.js:
+        (CommitLog): Added '_subCommits'.
+        (CommitLog.prototype.updateSingleton): Updates 'rawData.ownsSubCommits' as well.
+        (CommitLog.prototype.ownsSubCommits):
+        (CommitLog.prototype.subCommits): Added. Returns sub-commits.
+        (CommitLog.prototype.fetchSubCommits): Added. Fetches sub-commits if haven't fetched them before.
+        (CommitLog.prototype._buildSubCommitMap): Added. Creates a map which maps repositories to commits.
+        (CommitLog.diffSubCommits): Added. Finds difference between two given commits.
+        (CommitLog.fetchBetweenRevisions): Updated due to '_constructFromRawData' change.
+        (CommitLog.fetchForSingleRevision): Updated due to '_constructFromRawData' change.
+        (CommitLog._constructFromRawData): Removed first argument 'repository' as it can be determined by calling 'Repository.findById'.
+        * public/v3/models/repository.js:
+        (Repository):
+        (Repository.prototype.owner): Returns the owner id.
+        (Repository.prototype.ownedRepositories): Returns a list of repositories owned by this repository.
+        * server-tests/api-commits-tests.js: Added tests for 'sub-commits' filter.
+        * server-tests/api-manifest-tests.js: Added a test.
+        * unit-tests/commit-log-tests.js: Added tests for 'fetchSubCommits' and 'diffSubCommits'.
+        * unit-tests/resources/mock-v3-models.js: Added 'ownerRepository' and 'ownedRepository'.
+
+2017-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Retrying an A/B testing does not set the repetition count in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=170695
+
+        Reviewed by Joseph Pecoraro.
+
+        When selecting an existing A/B test group, the analysis task page automatically sets the repetition count
+        of its retry to be that of the original test group. However, this information wasn't being passed correctly
+        to the code that actually created a test group. As a result, the retried test group's repetition count does
+        not match that of the original group or the number shown to the user on UI.
+
+        Fixed the bug by updating this._repetitionCount in setRepetitionCount.
+
+        * browser-tests/index.html:
+        * browser-tests/test-group-form-tests.js: Added. Added tests.
+        (.createTestGroupFormWithContext): Added.
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm.prototype.setRepetitionCount):
+        (TestGroupForm.formContent):
+        (TestGroupForm):
+
+2017-04-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the UI for scheduling a A/B testing with a custom root
+        https://bugs.webkit.org/show_bug.cgi?id=170622
+
+        Reviewed by Anders Carlsson.
+
+        This patch adds the support for creating a new analysis task with a custom darwinup roots. A follow up patch
+        would update the syncing script to schedule such an A/B testing job to a buildbot instance.
+
+
+        * ReadMe.md: Updated instructions for backing up and restoring the database so that it's easier to replace
+        the file path for the backup.
+
+        * init-database.sql: Make task_platform and task_metric optional in each analysis task. Also added a column
+        to store the root file in commit_set_relationships.
+
+        * public/api/build-requests.php:
+        (main): Include the uploaded files.
+
+        * public/api/commits.php:
+        (main): Added the support for querying the latest commits for a given platform. This is used in a new page
+        to create a custom analysis task to autofill the latest revisions for a given platform.
+
+        * public/api/test-groups.php:
+        (main): Include the uploaded files.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::__construct): Added a list of uploaded_files and a map from its id.
+        (BuildRequestsFetcher::uploaded_files): Added.
+        (BuildRequestsFetcher::fetch_commits_for_set_if_needed): Added the support for including custom roots' id in
+        each commit set, and inserting its meta data in the list of uplaoded files.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_latest_for_platform): Added. Finds the latest commit for a given platform. Ideally,
+        we should be finding the latest commit for a given platform, but this is very slow so instead find the commit
+        of the latest build for a given platform.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Added the support for creating an analysis task along with a group.
+        (commit_sets_from_revision_sets): Added the support for custom roots. Verify the specified uploaded file exists
+        and include it in commit_set_relationships. Because commits and upload files are stored in a different column
+        in commit_set_relationships, this function now stores the information for each row of commit_set_relationships
+        except the commit set ID, which is unknown until the set is created, instead of a commit ID.
+        (ensure_commit_sets): Made the each entry in a commit set a row instead of a commit ID as done. As this format
+        is only by v2 UI and detect-changes.js, we don't add the support for specifying custom roots here.
+
+        * public/privileged-api/upload-file.php:
+        (main): Fixed a typo. Also added one more error check.
+
+        * public/v3/components/custom-analysis-task-configurator.js: Added. The UI for selecting a test, a platform,
+        and a set of revisions, as well as custom roots for a custom A/B testing job. The first set of revision with
+        custom roots is referred as "baseline", and the second configuration is referred as "comparison" in this class.
+        (CustomAnalysisTaskConfigurator):
+        (CustomAnalysisTaskConfigurator.prototype.tests): Added.
+        (CustomAnalysisTaskConfigurator.prototype.platform): Added.
+        (CustomAnalysisTaskConfigurator.prototype.commitSets): Added. Returns a pair of baseline and comparsion if both
+        have been configured by the user.
+        (CustomAnalysisTaskConfigurator.prototype.didConstructShadowTree): Added.
+        (CustomAnalysisTaskConfigurator.prototype._configureComparison): Added. Called when the user is to configu the
+        "comparison" configuration.
+        (CustomAnalysisTaskConfigurator.prototype.render): Added.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerableTests): Added. Renders the list of top-level tests
+        that can be scheduled by a triggerable.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerablePlatforms): Added. Renders the list of platforms
+        that can be schedule with the currently selected list of tests by a triggerable. Note that the current UI only
+        lets the user select a single test but the intent is to allow multiple tests to be selected in the near future.
+        (CustomAnalysisTaskConfigurator.prototype._buildCheckboxList): Added. Creates a list of radio boxes to select
+        an item with a callback for each. It automatically sets "selected" class on the selected item. It's used to
+        render both the list of tests and platforms.
+        (CustomAnalysisTaskConfigurator.prototype._updateTriggerable): Added. Finds the triggerable for a given list of
+        tests and platforms. Returns an error when some tests belong to another triggearalbe.
+        (CustomAnalysisTaskConfigurator.prototype._updateRepositoryGroups): Added. Finds a repository group to use when
+        the current triggerable has changed. We try to use the repository group of the same name if there is any, and
+        defaults to the first repository group if there is none. This allows the set of repositories to be specified to
+        more or less persist across different triggerables. For example, if iOS platforms and Mac platforms use two
+        distinct triggerables , and both triggerables have two repository groups: one that only specify the OS and the
+        other that specifies both teh OS and WebKit revision, then this code allows the choice the user had made to
+        specify either just the OS or the OS and WebKit will be preserved when the user switches from an iOS platform
+        to a Mac platform.
+        (CustomAnalysisTaskConfigurator.prototype._updateCommitSetMap): Added. Create a commit set map, the format that
+        TestGroup.createWithTask accepts given "baseline" and "comparison" commit sets. Pretend "comparison" is not set
+        if two sets are identical since it makes no sense to schedule an A/B testing job when A and B are identical.
+        (CustomAnalysisTaskConfigurator.prototype._computeCommitSet): Added. Creates a commit set using the revisions
+        and the csutom roots the user had specified.
+        (CustomAnalysisTaskConfigurator.prototype._renderRepositoryPanes): Added. Renders the pane to specify revisions
+        and custom roots for "baseline" and "comparison".
+        (CustomAnalysisTaskConfigurator.prototype._renderBaselineRevisionTable): Added.
+        (CustomAnalysisTaskConfigurator.prototype._renderComparisonRevisionTable): Added.
+        (CustomAnalysisTaskConfigurator.prototype._optionalRepositoryList): Added.
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionTable): Added. Creates a table for specifying revisions
+        and custom roots along with a list of repository groups to pick. The set of repositories and custom roots are
+        shown at the all if all repository groups require them. Otherwise, they are grouped at the bottom as optional.
+        (CustomAnalysisTaskConfigurator.prototype._buildRepositoryGroupList): Added.
+        (CustomAnalysisTaskConfigurator.prototype._selectRepositoryGroup): Added.
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionInput): Added. Creates an input element to specify
+        a revision for a given repository. Autofills it with the latest commit for the currently selected platform if
+        the user had not modified the field by the time the revisions are fetched.
+        (CustomAnalysisTaskConfigurator.htmlTemplate): Added.
+        (CustomAnalysisTaskConfigurator.cssTemplate): Added.
+
+        * public/v3/components/instant-file-uploader.js: Added. A form to upload a custom darwinup root in "baseline"
+        or "comparison" configurations of CustomAnalysisTaskConfigurator. It's "instant" because it auto-detects when a
+        file to be uploaded had already been uploaded elsewhere by checking its SHA-256 hash.
+        (InstantFileUploader):
+        (InstantFileUploader.prototype.hasFileToUpload): Added.
+        (InstantFileUploader.prototype.uploadedFiles): Added.
+        (InstantFileUploader.prototype.addUploadedFile): Added. It's called on the uploader for "comparison"
+        configuration when the uploader for "baseline" configuration dipsatches "uploadedFile" action to automatically
+        mirror the newly uploaded custom root to "comparision" configuration.
+        (InstantFileUploader.prototype.didConstructShadowTree): Added.
+        (InstantFileUploader.prototype.render): Added.
+        (InstantFileUploader.prototype._renderUploadedFiles): Added. Renders the list of the uploaded files.
+        (InstantFileUploader.prototype._renderPreuploadFiles): Added. Renders the list of the files to be uploaded with
+        a progress bar.
+        (InstantFileUploader.prototype._updateUploadStatus): Added. Updates the progress bar for uploading the file.
+        (InstantFileUploader.prototype._formatUploadError): Added.
+        (InstantFileUploader.prototype._didFileInputChange): Added. Called when the user picks a file to uploaded on
+        the input element. Fetch the meta data for the uploaded file with the same SHA-256 hash if there is any, and
+        start uploading the file if there isn't one.
+        (InstantFileUploader.prototype._removeUploadedFile): Added.
+        (InstantFileUploader.prototype._didUploadFile): Added. Move a file from the list of files to be uploaded to
+        the list of uploaded files.
+        (InstantFileUploader.htmlTemplate): Added.
+        (InstantFileUploader.cssTemplate): Added.
+
+        * public/v3/index.html:
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask): Made platform and metric optional as it is now.
+        (AnalysisTask.findByPlatformAndMetric): Skip analysis tasks without a platform or a metric.
+        (AnalysisTask.prototype.isCustom): Added. Returns true for a custom analysis task.
+        (AnalysisTask.fetchRelatedTasks): Skip custom analysis tasks.
+        (AnalysisTask._constructAnalysisTasksFromRawData): Construct analysis tasks even if they were missing a metric
+        or a platform instead of silently skipping them.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.constructBuildRequestsFromData): Construct uploaded file objects returned by /api/build-requests.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.fetchLatestCommitForPlatform): Added.
+
+        * public/v3/models/commit-set.js:
+        (CommitSet): Added this._customRoots.
+        (CommitSet.prototype.customRoots): Returns this._customRoots.
+        (CommitSet.prototype.equals): Returns false when the set of custom roots are not equal.
+        (CommitSet.areCustomRootsEqual): Added.
+        (CustomCommitSet):
+        (CustomCommitSet.prototype.equals): Added.
+        (CustomCommitSet.prototype.customRoots): Added.
+        (CustomCommitSet.prototype.addCustomRoot): Added.
+
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Store fileUploadSizeLimit in the manifest as UploadedFile.fileUploadSizeLimit.
+        This allows a file size check in the client size instead of uploading it to the server and receiving an error.
+
+        * public/v3/models/metric.js:
+        (Metric.formatTime): Moved from ChartPaneStatusView to be also used by InstantFileUploader._renderUploadedFiles.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.createWithTask): Added.
+        (TestGroup.prototype.createAndRefetchTestGroups):
+        (TestGroup.prototype._revisionSetsFromCommitSets): Added. Extracted from createAndRefetchTestGroups.
+        (TestGroup.prototype._fetchTestGroupsForTask): Added. Extracted from createAndRefetchTestGroups.
+
+        * public/v3/models/triggerable.js:
+        (Triggerable.triggerablePlatformsForTests): Added.
+        (Triggerable.sortByNamePreferringSmallerRepositories): Added.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile.prototype.createdAt): Added.
+        (UploadedFile.prototype.filename): Added.
+        (UploadedFile.prototype.author): Added.
+        (UploadedFile.prototype.size): Added.
+        (UploadedFile.uploadFile): Added a client-side check for the file size using UploadedFile.fileUploadSizeLimit.
+        (UploadedFile.fetchUnloadedFileWithIdenticalHash): Ditto. Also fixed a bug that 404 was resulting in a rejected
+        promise instead of a resolved promise with null.
+
+        * public/v3/pages/analysis-category-page.js:
+        (AnalysisCategoryPage.prototype._reconstructTaskList): Modernized the code. Added the support for platform and
+        metric being null for some analysis tasks.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._didFetchTask): Don't fetch the measurement set or create a chart for custom tasks.
+        (AnalysisTaskPage.prototype.render): Don't display the charts or the stacking table for custom tasks.
+        (AnalysisTaskPage.prototype._renderTaskNameAndStatus): Don't try to show the full test name for custom tasks
+        since it's not associated with exactly one pair.
+
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView.prototype._renderBuildRevisionTable):
+        (ChartPaneStatusView.prototype._formatTime): Moved to Metric.formatTime.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._analyzeRange): Set inProgress to true to hide CustomAnalysisTaskConfigurator in
+        CreateAnalysisTaskPage when creating a non-custom analysis task for a specific range.
+
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage): This page now shows CustomAnalysisTaskConfigurator by default, and lets a user create
+        a custom analysis task by picking a test, a platform, and a set of revisions and custom darwinup roots.
+        (CreateAnalysisTaskPage.prototype.updateFromSerializedState): Show a message when inProgress is set. This is
+        the old behavior of this page.
+        (CreateAnalysisTaskPage.prototype.didConstructShadowTree): Added.
+        (CreateAnalysisTaskPage.prototype._createAnalysisTaskWithGroup): Added.
+        (CreateAnalysisTaskPage.prototype.render):
+        (CreateAnalysisTaskPage.prototype._renderMessage): Added. Hides CustomAnalysisTaskConfigurator and the select
+        element to specify the numebr of iterations when a message is set.
+        (CreateAnalysisTaskPage.htmlTemplate):
+        (CreateAnalysisTaskPage.cssTemplate):
+
+        * public/v3/pages/page-router.js:
+        (PageRouter.prototype.route): Always enqueue the page to re-render when the route has changed.
+
+        * server-tests/api-build-requests-tests.js: Updated test cases now that the response contains a list of
+        uploaded files associated with build requests.
+
+        * server-tests/privileged-api-create-test-group-tests.js: Added test cases for creating a custom analysis task
+        and a test group with custom roots. 
+
+        * server-tests/resources/mock-data.js:
+        (MockData.addMockData): Updated the mock data to satisfy new constraint on analysis-tasks table.
+
+        * tools/js/remote.js: Include global.FormData from form-data.js.
+
+        * unit-tests/build-request-tests.js:
+        (sampleBuildRequestData): Updated the mock response.
+        * unit-tests/buildbot-syncer-tests.js:
+        (createSampleBuildRequest): Ditto.
+        * unit-tests/test-groups-tests.js:
+        (sampleTestGroup): Ditto.
+
+2017-04-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215202.
+        https://bugs.webkit.org/show_bug.cgi?id=170694
+
+        Committed incorrectly (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Add the UI for scheduling a A/B testing with a custom root"
+        https://bugs.webkit.org/show_bug.cgi?id=170622
+        http://trac.webkit.org/changeset/215202
+
+2017-04-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the UI for scheduling a A/B testing with a custom root
+        https://bugs.webkit.org/show_bug.cgi?id=170622
+
+        Reviewed by Anders Carlsson.
+
+        This patch adds the support for creating a new analysis task with a custom darwinup roots. A follow up patch
+        would update the syncing script to schedule such an A/B testing job to a buildbot instance.
+
+
+        * ReadMe.md: Updated instructions for backing up and restoring the database so that it's easier to replace
+        the file path for the backup.
+
+        * init-database.sql: Make task_platform and task_metric optional in each analysis task. Also added a column
+        to store the root file in commit_set_relationships.
+
+        * public/api/build-requests.php:
+        (main): Include the uploaded files.
+
+        * public/api/commits.php:
+        (main): Added the support for querying the latest commits for a given platform. This is used in a new page
+        to create a custom analysis task to autofill the latest revisions for a given platform.
+
+        * public/api/test-groups.php:
+        (main): Include the uploaded files.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::__construct): Added a list of uploaded_files and a map from its id.
+        (BuildRequestsFetcher::uploaded_files): Added.
+        (BuildRequestsFetcher::fetch_commits_for_set_if_needed): Added the support for including custom roots' id in
+        each commit set, and inserting its meta data in the list of uplaoded files.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_latest_for_platform): Added. Finds the latest commit for a given platform. Ideally,
+        we should be finding the latest commit for a given platform, but this is very slow so instead find the commit
+        of the latest build for a given platform.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Added the support for creating an analysis task along with a group.
+        (commit_sets_from_revision_sets): Added the support for custom roots. Verify the specified uploaded file exists
+        and include it in commit_set_relationships. Because commits and upload files are stored in a different column
+        in commit_set_relationships, this function now stores the information for each row of commit_set_relationships
+        except the commit set ID, which is unknown until the set is created, instead of a commit ID.
+        (ensure_commit_sets): Made the each entry in a commit set a row instead of a commit ID as done. As this format
+        is only by v2 UI and detect-changes.js, we don't add the support for specifying custom roots here.
+
+        * public/privileged-api/upload-file.php:
+        (main): Fixed a typo. Also added one more error check.
+
+        * public/v3/components/custom-analysis-task-configurator.js: Added. The UI for selecting a test, a platform,
+        and a set of revisions, as well as custom roots for a custom A/B testing job. The first set of revision with
+        custom roots is referred as "baseline", and the second configuration is referred as "comparison" in this class.
+        (CustomAnalysisTaskConfigurator):
+        (CustomAnalysisTaskConfigurator.prototype.tests): Added.
+        (CustomAnalysisTaskConfigurator.prototype.platform): Added.
+        (CustomAnalysisTaskConfigurator.prototype.commitSets): Added. Returns a pair of baseline and comparsion if both
+        have been configured by the user.
+        (CustomAnalysisTaskConfigurator.prototype.didConstructShadowTree): Added.
+        (CustomAnalysisTaskConfigurator.prototype._configureComparison): Added. Called when the user is to configu the
+        "comparison" configuration.
+        (CustomAnalysisTaskConfigurator.prototype.render): Added.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerableTests): Added. Renders the list of top-level tests
+        that can be scheduled by a triggerable.
+        (CustomAnalysisTaskConfigurator.prototype._renderTriggerablePlatforms): Added. Renders the list of platforms
+        that can be schedule with the currently selected list of tests by a triggerable. Note that the current UI only
+        lets the user select a single test but the intent is to allow multiple tests to be selected in the near future.
+        (CustomAnalysisTaskConfigurator.prototype._buildCheckboxList): Added. Creates a list of radio boxes to select
+        an item with a callback for each. It automatically sets "selected" class on the selected item. It's used to
+        render both the list of tests and platforms.
+        (CustomAnalysisTaskConfigurator.prototype._updateTriggerable): Added. Finds the triggerable for a given list of
+        tests and platforms. Returns an error when some tests belong to another triggearalbe.
+        (CustomAnalysisTaskConfigurator.prototype._updateRepositoryGroups): Added. Finds a repository group to use when
+        the current triggerable has changed. We try to use the repository group of the same name if there is any, and
+        defaults to the first repository group if there is none. This allows the set of repositories to be specified to
+        more or less persist across different triggerables. For example, if iOS platforms and Mac platforms use two
+        distinct triggerables , and both triggerables have two repository groups: one that only specify the OS and the
+        other that specifies both teh OS and WebKit revision, then this code allows the choice the user had made to
+        specify either just the OS or the OS and WebKit will be preserved when the user switches from an iOS platform
+        to a Mac platform.
+        (CustomAnalysisTaskConfigurator.prototype._updateCommitSetMap): Added. Create a commit set map, the format that
+        TestGroup.createWithTask accepts given "baseline" and "comparison" commit sets. Pretend "comparison" is not set
+        if two sets are identical since it makes no sense to schedule an A/B testing job when A and B are identical.
+        (CustomAnalysisTaskConfigurator.prototype._computeCommitSet): Added. Creates a commit set using the revisions
+        and the csutom roots the user had specified.
+        (CustomAnalysisTaskConfigurator.prototype._renderRepositoryPanes): Added. Renders the pane to specify revisions
+        and custom roots for "baseline" and "comparison".
+        (CustomAnalysisTaskConfigurator.prototype._renderBaselineRevisionTable): Added.
+        (CustomAnalysisTaskConfigurator.prototype._renderComparisonRevisionTable): Added.
+        (CustomAnalysisTaskConfigurator.prototype._optionalRepositoryList): Added.
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionTable): Added. Creates a table for specifying revisions
+        and custom roots along with a list of repository groups to pick. The set of repositories and custom roots are
+        shown at the all if all repository groups require them. Otherwise, they are grouped at the bottom as optional.
+        (CustomAnalysisTaskConfigurator.prototype._buildRepositoryGroupList): Added.
+        (CustomAnalysisTaskConfigurator.prototype._selectRepositoryGroup): Added.
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionInput): Added. Creates an input element to specify
+        a revision for a given repository. Autofills it with the latest commit for the currently selected platform if
+        the user had not modified the field by the time the revisions are fetched.
+        (CustomAnalysisTaskConfigurator.htmlTemplate): Added.
+        (CustomAnalysisTaskConfigurator.cssTemplate): Added.
+
+        * public/v3/components/instant-file-uploader.js: Added. A form to upload a custom darwinup root in "baseline"
+        or "comparison" configurations of CustomAnalysisTaskConfigurator. It's "instant" because it auto-detects when a
+        file to be uploaded had already been uploaded elsewhere by checking its SHA-256 hash.
+        (InstantFileUploader):
+        (InstantFileUploader.prototype.hasFileToUpload): Added.
+        (InstantFileUploader.prototype.uploadedFiles): Added.
+        (InstantFileUploader.prototype.addUploadedFile): Added. It's called on the uploader for "comparison"
+        configuration when the uploader for "baseline" configuration dipsatches "uploadedFile" action to automatically
+        mirror the newly uploaded custom root to "comparision" configuration.
+        (InstantFileUploader.prototype.didConstructShadowTree): Added.
+        (InstantFileUploader.prototype.render): Added.
+        (InstantFileUploader.prototype._renderUploadedFiles): Added. Renders the list of the uploaded files.
+        (InstantFileUploader.prototype._renderPreuploadFiles): Added. Renders the list of the files to be uploaded with
+        a progress bar.
+        (InstantFileUploader.prototype._updateUploadStatus): Added. Updates the progress bar for uploading the file.
+        (InstantFileUploader.prototype._formatUploadError): Added.
+        (InstantFileUploader.prototype._didFileInputChange): Added. Called when the user picks a file to uploaded on
+        the input element. Fetch the meta data for the uploaded file with the same SHA-256 hash if there is any, and
+        start uploading the file if there isn't one.
+        (InstantFileUploader.prototype._removeUploadedFile): Added.
+        (InstantFileUploader.prototype._didUploadFile): Added. Move a file from the list of files to be uploaded to
+        the list of uploaded files.
+        (InstantFileUploader.htmlTemplate): Added.
+        (InstantFileUploader.cssTemplate): Added.
+
+        * public/v3/index.html:
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask): Made platform and metric optional as it is now.
+        (AnalysisTask.findByPlatformAndMetric): Skip analysis tasks without a platform or a metric.
+        (AnalysisTask.prototype.isCustom): Added. Returns true for a custom analysis task.
+        (AnalysisTask.fetchRelatedTasks): Skip custom analysis tasks.
+        (AnalysisTask._constructAnalysisTasksFromRawData): Construct analysis tasks even if they were missing a metric
+        or a platform instead of silently skipping them.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.constructBuildRequestsFromData): Construct uploaded file objects returned by /api/build-requests.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.fetchLatestCommitForPlatform): Added.
+
+        * public/v3/models/commit-set.js:
+        (CommitSet): Added this._customRoots.
+        (CommitSet.prototype.customRoots): Returns this._customRoots.
+        (CommitSet.prototype.equals): Returns false when the set of custom roots are not equal.
+        (CommitSet.areCustomRootsEqual): Added.
+        (CustomCommitSet):
+        (CustomCommitSet.prototype.equals): Added.
+        (CustomCommitSet.prototype.customRoots): Added.
+        (CustomCommitSet.prototype.addCustomRoot): Added.
+
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Store fileUploadSizeLimit in the manifest as UploadedFile.fileUploadSizeLimit.
+        This allows a file size check in the client size instead of uploading it to the server and receiving an error.
+
+        * public/v3/models/metric.js:
+        (Metric.formatTime): Moved from ChartPaneStatusView to be also used by InstantFileUploader._renderUploadedFiles.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.createWithTask): Added.
+        (TestGroup.prototype.createAndRefetchTestGroups):
+        (TestGroup.prototype._revisionSetsFromCommitSets): Added. Extracted from createAndRefetchTestGroups.
+        (TestGroup.prototype._fetchTestGroupsForTask): Added. Extracted from createAndRefetchTestGroups.
+
+        * public/v3/models/triggerable.js:
+        (Triggerable.triggerablePlatformsForTests): Added.
+        (Triggerable.sortByNamePreferringSmallerRepositories): Added.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile.prototype.createdAt): Added.
+        (UploadedFile.prototype.filename): Added.
+        (UploadedFile.prototype.author): Added.
+        (UploadedFile.prototype.size): Added.
+        (UploadedFile.uploadFile): Added a client-side check for the file size using UploadedFile.fileUploadSizeLimit.
+        (UploadedFile.fetchUnloadedFileWithIdenticalHash): Ditto. Also fixed a bug that 404 was resulting in a rejected
+        promise instead of a resolved promise with null.
+
+        * public/v3/pages/analysis-category-page.js:
+        (AnalysisCategoryPage.prototype._reconstructTaskList): Modernized the code. Added the support for platform and
+        metric being null for some analysis tasks.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._didFetchTask): Don't fetch the measurement set or create a chart for custom tasks.
+        (AnalysisTaskPage.prototype.render): Don't display the charts or the stacking table for custom tasks.
+        (AnalysisTaskPage.prototype._renderTaskNameAndStatus): Don't try to show the full test name for custom tasks
+        since it's not associated with exactly one pair.
+
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView.prototype._renderBuildRevisionTable):
+        (ChartPaneStatusView.prototype._formatTime): Moved to Metric.formatTime.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._analyzeRange): Set inProgress to true to hide CustomAnalysisTaskConfigurator in
+        CreateAnalysisTaskPage when creating a non-custom analysis task for a specific range.
+
+        * public/v3/pages/create-analysis-task-page.js:
+        (CreateAnalysisTaskPage): This page now shows CustomAnalysisTaskConfigurator by default, and lets a user create
+        a custom analysis task by picking a test, a platform, and a set of revisions and custom darwinup roots.
+        (CreateAnalysisTaskPage.prototype.updateFromSerializedState): Show a message when inProgress is set. This is
+        the old behavior of this page.
+        (CreateAnalysisTaskPage.prototype.didConstructShadowTree): Added.
+        (CreateAnalysisTaskPage.prototype._createAnalysisTaskWithGroup): Added.
+        (CreateAnalysisTaskPage.prototype.render):
+        (CreateAnalysisTaskPage.prototype._renderMessage): Added. Hides CustomAnalysisTaskConfigurator and the select
+        element to specify the numebr of iterations when a message is set.
+        (CreateAnalysisTaskPage.htmlTemplate):
+        (CreateAnalysisTaskPage.cssTemplate):
+
+        * public/v3/pages/page-router.js:
+        (PageRouter.prototype.route): Always enqueue the page to re-render when the route has changed.
+
+        * server-tests/api-build-requests-tests.js: Updated test cases now that the response contains a list of
+        uploaded files associated with build requests.
+        *server-tests/api-commits-tests.js: Added a test case for /api/commits/<repository-name>/latest?platform=X.
+        * server-tests/privileged-api-create-test-group-tests.js: Added test cases for creating a custom analysis task
+        and a test group with custom roots. 
+        * server-tests/resources/mock-data.js:
+        (MockData.addMockData): Updated the mock data to satisfy new constraint on analysis-tasks table. Also inserted
+        more commits, builds, and build_commits rows for testing /api/commits/<repository-name>/latest?platform=X.
+
+        * tools/js/remote.js: Include global.FormData from form-data.js.
+
+        * unit-tests/analysis-task-tests.js: Added a test for calling findByPlatformAndMetric when there is a custom
+        analysis task.
+        (sampleAnalysisTask): Removed the category since /api/analysis-tasks/ no longer generate this property.
+        (sampleCustomAnalysisTask): Added.
+        * unit-tests/build-request-tests.js:
+        (sampleBuildRequestData): Updated the mock response. Added a test case for fetcing custom roots.
+        * unit-tests/buildbot-syncer-tests.js:
+        (createSampleBuildRequest): Ditto.
+        * unit-tests/test-groups-tests.js:
+        (sampleTestGroup): Ditto.
+
+2017-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make cycler page scroll down when a dashboard is too tall for the current viewport size
+        https://bugs.webkit.org/show_bug.cgi?id=170588
+
+        Rubber-stamped by Chris Dumez.
+
+        Updated the cycler page to scroll down smoothly over 500ms and scroll up again before moving to the next page
+        when a dashboard page is too tall to be shown at once. For now, we assume that each dashboard's height is no
+        more than 2x the height of the viewport.
+
+        * public/cycler.html:
+
+2017-04-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Each build request should be associated with a repository group
+        https://bugs.webkit.org/show_bug.cgi?id=170528
+
+        Rubber-stamped by Chris Dumez.
+
+        Make the buildbot syncing script use the concept of repository groups so that each repository group can post
+        a different set of properties to buildbot. In order to do this, we associate each build request with
+        a repository group to use. Each triggerable's repository groups is now updated by the syncing scripts via
+        /api/update-triggerable just the same way the set of the supported platform, test pairs are updated.
+
+        Each repository group specifies the list of repositories, a dictionary that maps the buildbot property name
+        to either a string value or a repository name enclosed in < and >:
+
+        ```js
+        "repositoryGroups": {
+            "webkit-svn": {
+                "repositories": ["WebKit", "macOS"],
+                "properties": {"os": "<macOS>", "wk": "<WebKit>"}
+            }
+        }
+        ```
+
+        With this, removed the support for specifying a repository to use in generic dictionary of properties via
+        a dictionary with a single key of "root", "rootOptions", and "rootsExcluding". We now validate that the list of
+        repositories in each repository group matches exactly the ones used in buildbot properties as well as ones in
+        build requests.
+
+        After this patch, sync-with-buildbot.js will no longer schedule a build request without a repository group.
+        Run the appropriate database queries to set the repository group on each build request. Because of this change,
+        this patch also makes BuildbotTriggerable.prototype.syncOnce more robust against invalid build requests.
+        Instead of throwing an exception and exiting early, it simply skips all build requests that belong to the same
+        test group if the next build request to be scheduled does not specify a repository group.
+
+        * init-database.sql: Add request_repository_group column to build_requests table, and a unique constraint for
+        repository and group pair in triggerable_repositories table.
+
+        * public/api/update-triggerable.php:
+        (main): Validate and insert repository groups.
+        (validate_configurations): Extracted from main.
+        (validate_repository_groups): Added.
+
+        * public/v3/models/repository.js:
+        (Repository.findTopLevelByName): Added.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::results_internal): Include the repository group of each request in the JSON response.
+
+        * public/include/repository-group-finder.php: Added. A helper class to find the repository group for a given
+        triggerable for a list of repositories.
+        (RepositoryGroupFinder): Added. 
+        (RepositoryGroupFinder::__construct): Added.
+        (RepositoryGroupFinder::find_by_repositories): Added.
+        (RepositoryGroupFinder::populate_map): Added.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Each element in an array returned by ensure_commit_sets and commit_sets_from_revision_sets now contains
+        "set", the list of commit IDs, and "repository_group", the repository group identified for each commit set.
+        Use that to set the repository group in each new build request. 
+        (commit_sets_from_revision_sets): Use RepositoryGroupFinder to find the right repository group.
+        (ensure_commit_sets): Ditto. There is no need to find a repository group for each commit set here since its
+        argument is keyed by the repository name. e.g. {"WebKit": [123, 456], "macOS": ["16A323", "16A323"]}
+
+        * public/v3/models/build-request.js:
+        (BuildRequest):
+        (BuildRequest.prototype.triggerable): Added.
+        (BuildRequest.prototype.repositoryGroup): Added.
+        (BuildRequest.constructBuildRequestsFromData): Resolve the triggerable and the repository group.
+
+        * public/v3/models/triggerable.js:
+        (Triggerable.prototype.name): Added.
+        (Triggerable.prototype.acceptedRepositories): Deleted.
+        (TriggerableRepositoryGroup):
+        (TriggerableRepositoryGroup.prototype.accepts): Added. Retruns true if the repository group
+
+        * server-tests/api-build-requests-tests.js: Added a test for getting the repository group of a build request.
+        * server-tests/api-manifest-tests.js: Added assertions for the repository groups.
+        * server-tests/api-report-tests.js:
+        (.emptyReport):
+        (.reportWithTwoLevelsOfAggregations):
+        * server-tests/api-update-triggerable.js: Added test cases for updating the repository groups associated with
+        a triggerable.
+        (.updateWithOSXRepositoryGroup):
+        (.mapRepositoriesByGroup):
+        * server-tests/privileged-api-create-test-group-tests.js:
+        (addTriggerableAndCreateTask): Add two repository groups for testing. Added assertions for repository groups
+        in existing test cases, and added a test case for creating a test group with two different repository groups.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.resetV3Models): Reset TriggerableRepositoryGroup's static maps.
+        (MockData.emptyTriggeragbleId): Added.
+        (MockData.macosRepositoryId): Added.
+        (MockData.webkitRepositoryId): Added.
+        (MockData.gitWebkitRepositoryId): Added.
+        (MockData.addMockData): Create repository groups as needed. Renamed the "OS X" repository to "macOS" since some
+        tests were using the latter, and now we need mock data to be consistent across tests due to stricter checks.
+        (MockData.addEmptyTriggerable): Added. Used in api-update-triggerable.js.
+        (MockData.addMockTestGroupWithGitWebKit): Added. Used in api-build-requests-tests.js.
+        (MockData.addAnotherMockTestGroup): Cleanup.
+        (MockData.mockTestSyncConfigWithSingleBuilder): Updated the mock configuration per code changes.
+        (MockData.mockTestSyncConfigWithTwoBuilders): Ditto.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Updated a test case testing /api/update-triggerable to test
+        updating the set of repository groups in addition to the set of test, platform pairs.
+        (.refetchManifest): Added.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer): Now takes a set of configurations shared across syncers: repositoryGroups, slaveArgument,
+        and buildRequestArgument as the third argument.
+        (BuildbotSyncer.prototype.repositoryGroups): Added.
+        (BuildbotSyncer.prototype._testGroupMapForBuildRequests): Cleaned up the code to use Array.prototype.find.
+        Also added an assertion that the build request is associated with a repository group.
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Removed the support for using an arbitary property to
+        specify a revision in favor of explicity listing each property and repository name in a repository group.
+        (BuildbotSyncer._loadConfig): Removed the support for "shared", which specified the set of buildbot properties
+        shared across syncers, the name of properties which specifies the build slave name and build request ID. These
+        values are not stored as top-level properties and superseded by the concept of repository groups.
+        (BuildbotSyncer._parseRepositoryGroup): Parses and validates repository groups.
+        (BuildbotSyncer._createTestConfiguration): We no longer expect each configuration to specify a dictionary of
+        properties or buildRequestArgument (often inherited from shared).
+        (BuildbotSyncer._validateAndMergeConfig): Removed "slaveArgument" and "buildRequestArgument" from the list of
+        allowed proeprties in each configuration now that they're specified as top-level properties.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.updateTriggerable): Update the associated repository groups.
+        (BuildbotTriggerable.prototype.syncOnce): Skip test groups for which the next build request to be scheduled is
+        not included in the list of valid build requests.
+        (BuildbotTriggerable.prototype._validateRequests): Now returns the list of valid build requests, which excludes
+        those that lack a repository group set.
+        (BuildbotTriggerable.prototype._nextRequestInGroup): Extracted from _scheduleRequestIfSlaveIsAvailable. Finds
+        the next build request to be scheduled for the test group.
+        (BuildbotTriggerable.prototype._scheduleRequestIfSlaveIsAvailable): Renamed from
+        _scheduleNextRequestInGroupIfSlaveIsAvailable. Now takes the syncer and the slave name as arguments instead of
+        a test group information since syncOnce now calls _nextRequestInGroup to find the next build request.
+
+        * tools/js/v3-models.js:
+
+        * unit-tests/build-request-tests.js: Fixed the test name.
+
+        * unit-tests/buildbot-syncer-tests.js: Removed tests for "rootOptions" and "rootsExcluding", and added tests
+        for parsing repository groups.
+        (sampleiOSConfig): Updated the mock configuration per code changes.
+        (sampleiOSConfigWithExpansions): Ditto.
+        (smallConfiguration): Ditto. Now returns the entire configuration instead of a single builder configuration.
+        Various test cases have been updated to reflect this.
+        (createSampleBuildRequest): Removed the git hash of WebKit to match the repository groups listed in the mock
+        configurations. The git hash was there to test "rootOptions", which this patch removed.
+        (samplePendingBuild): Removed "root_dict" from the list of properties. This was used to test "rootsExcluding"
+        which, again, this patch removed.
+        (sampleInProgressBuild): Ditto.
+        (sampleFinishedBuild): Ditto.
+
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject): Added ock repository groups so that existing tests will continue to function.
+
+2017-04-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Introduce the notion of repository groups to triggerables
+        https://bugs.webkit.org/show_bug.cgi?id=170228
+
+        Reviewed by Chris Dumez.
+
+        On some triggerable, it's desirable to specify multiple sets of repositories that are accepted.
+
+        For example, if a repository X transitioned from Subversion to Git, and if a triggerable accepted X and
+        some other repository Y, then it's desirable to two sets: (X-Subversion, Y) and (X-Git, Y) since neither
+        (X-Subversion, X-Git) nor (X-Subversion, X-Git, Y) makes sense as a set.
+
+        This patch introduces triggerable_repository_groups table to represent a set of repositories accepted by
+        a triggerable. It has many to one relationship to build_triggerables and triggerable_repositories in turn
+        now has many to one relationship to triggerable_repository_groups instead of build_triggerables.
+
+        Also make it possible to disable a triggerable e.g. a set of tests and platforms are no longer supported.
+        We don't want to delete the triggerable completely from the database since it would result in the associated
+        A/B testing results being purged, which is not desirale.
+
+        To migrate an existing database, run the following transaction:
+        ```sql
+        BEGIN;
+        ALTER TABLE build_triggerables ADD COLUMN triggerable_disabled boolean NOT NULL DEFAULT FALSE;
+
+        CREATE TABLE triggerable_repository_groups (
+            repositorygroup_id serial PRIMARY KEY,
+            repositorygroup_triggerable integer REFERENCES build_triggerables NOT NULL,
+            repositorygroup_name varchar(256) NOT NULL,
+            repositorygroup_description varchar(256),
+            repositorygroup_accepts_roots boolean NOT NULL DEFAULT FALSE,
+            CONSTRAINT repository_group_name_must_be_unique_for_triggerable
+                UNIQUE(repositorygroup_triggerable, repositorygroup_name));
+        INSERT INTO triggerable_repository_groups (repositorygroup_triggerable, repositorygroup_name)
+            SELECT triggerable_id, 'default' FROM build_triggerables;
+
+        ALTER TABLE triggerable_repositories ADD COLUMN trigrepo_group integer REFERENCES triggerable_repository_groups;
+        UPDATE triggerable_repositories SET trigrepo_group = repositorygroup_id FROM triggerable_repository_groups
+            WHERE trigrepo_triggerable = repositorygroup_triggerable;
+        ALTER TABLE triggerable_repositories ALTER COLUMN trigrepo_group SET NOT NULL;
+
+        ALTER TABLE triggerable_repositories DROP COLUMN trigrepo_triggerable;
+        ALTER TABLE triggerable_repositories DROP COLUMN trigrepo_sub_roots;
+        END;
+        ```
+
+        * init-database.sql:
+        * public/admin/triggerables.php: Use a custom column to make forms to add and configure repository groups.
+        (insert_triggerable_repositories): Added.
+        (generate_repository_list): Added.
+        (generate_repository_form): Added.
+        (generate_repository_checkboxes): Now generates checkboxes for a repository group instead of a triggerable.
+
+        * public/include/manifest-generator.php:
+        (fetch_triggerables): Fixed the bug that we were not filtering results with query in /api/triggerable.
+        Rewrote it to include an array of repository groups, which in turn contains an array of repositories along
+        with its name and a description, and a boolean indicating whether it accepts a custom root file or not.
+        The boolean will be used when we're adding the support for perf try bots. We will keep acceptedRepositories
+        since it's still used by detect-changes.js.
+
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Resolve repositoriy, test, and platform IDs to their respective objects.
+
+        * public/v3/models/triggerable.js:
+        (Triggerable):
+        (Triggerable.prototype.isDisabled): Added.
+        (Triggerable.prototype.repositoryGroups): Added.
+        (Triggerable.prototype.acceptsTest): Added.
+        (TriggerableRepositoryGroup): Added.
+        (TriggerableRepositoryGroup.prototype.description): Added.
+        (TriggerableRepositoryGroup.prototype.acceptsCustomRoots): Added.
+        (TriggerableRepositoryGroup.prototype.repositories): Added.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._didFetchTask): Don't use a disabled triggerable.
+
+        * server-tests/api-manifest-tests.js: Updated a test case to test repository groups.
+
+        * tools/js/database.js:
+        (tableToPrefixMap): Added triggerable_repository_groups.
+
+        * tools/js/v3-models.js: Imported TriggerableRepositoryGroup from triggerable.js.
+
+2017-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. For OS versions, we can end up with non-alphanumeric revision.
+        Delete the code path only used by the v2 UI since nobody uses that now.
+
+        * public/api/commits.php:
+        (main):
+
+2017-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        sync-buildbot.js can schedule more than one build per builder
+        https://bugs.webkit.org/show_bug.cgi?id=170318
+
+        Reviewed by Saam Barati.
+
+        The bug was caused by _scheduleNextRequestInGroupIfSlaveIsAvailable not returning a promise when
+        scheduling the first build request of a test group. This resulted in _pullBuildbotOnAllSyncers
+        to prematurely resolve before POST'ing new build had finished. That in turn could result in the
+        next cycle of syncing to occur before POST'ing has actually taken place.
+
+        More precisely, when the nextRequest was the first request or its associated syncer object could
+        not be identified, we were supposed to find the first available syncer, schedule the request,
+        and then return the promise returned by scheduleRequestInGroupIfAvailable. However, the for loop
+        which called scheduleRequestInGroupIfAvailable on every syncer was declaring its own variable
+        named "promise" thereby shadowing the outer variable, which is returned to the caller.
+
+        Fixed the bug by not declaring a shadowing variable, and refactored the code. Namely, the only
+        reason we had such a complicated logic with two local variables, promise and syncer, was so that
+        we could log that we're scheduling a build. Extracted this code as _scheduleRequestWithLog.
+
+        _scheduleNextRequestInGroupIfSlaveIsAvailable can now simply exit early with a call to
+        _scheduleRequestWithLog when the syncer is readily identified. When looping over syncers, it can
+        simply return the first non-null result of _scheduleNextRequestInGroupIfSlaveIsAvailable.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Added a test case where we wait 10ms after
+        receiving the request to POST a build. There should be no new network request until we resolve
+        this request.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Fixed the bug.
+        (BuildbotTriggerable.prototype._scheduleRequestWithLog): Extracted.
+
+2017-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Modernize BuildbotSyncer and BuildbotTriggerable
+        https://bugs.webkit.org/show_bug.cgi?id=170310
+
+        Reviewed by Chris Dumez.
+
+        Modernized the code to use arrow functions and other modern idoms in ES2016.
+
+        * ReadMe.md: Added instructions on how to run tests, and moved the steps to configure postgres
+        above the steps to configure Apache since only the former is needed to run tests.
+        * tools/js/buildbot-syncer.js:
+        * tools/js/buildbot-triggerable.js:
+
+2017-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Yet another build fix after r214502. Workaround webkit.org/b/169907 for now.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.cssTemplate):
+
+2017-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert an erronously change in the previous commit.
+
+        * public/v3/components/base.js:
+
+2017-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r214280. Don't render components until its element is inserted into a document.
+
+        * public/v3/components/base.js:
+        (ComponentBase):
+
+2017-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix after r214502.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype.render): this._groupToCellMap.get may not contain the cell when startPoint
+        or metric had not been fetched yet even if currentTestGroup is set.
+
+2017-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r214502. Analysis tasks without any test groups are throwing exceptions.
+
+        * public/v3/components/results-table.js:
+        (ResultsTable.prototype.renderTable): Don't show the header row when there are no content to show. 
+        (ResultsTable.prototype._computeRepositoryList): Return a pair of arrays. The caller expects the repository
+        list to be an array, not undefined.
+
+2017-03-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Modernize AnalysisTaskPage
+        https://bugs.webkit.org/show_bug.cgi?id=170165
+
+        Reviewed by Antti Koivisto.
+
+        Modernized AnalysisTaskPage and related components. The main refactoring happened in AnalysisTaskPage
+        from which AnalysisTaskResultsPane and AnalysisTaskTestGroupPane have been extracted.
+
+        Decoupled BuildRequest from its results. AnalysisResultsViewer and TestGroupResultsTable now stores
+        a reference to AnalysisResultsView and Metric to find the results for each build request.
+        This refactoring is necessary in order to view results of an arbitrary metric in the future.
+
+        Also refactored ResultsTable and its subclasses extensively. Instead of making its render() to invoke
+        subclass' methods such as buildRowGroups, heading, and additionalHeading, rely on each subclass call
+        to invoke renderTable(), renamed from render(), with callbacks to add extra headers and columns.
+
+        This patch also fixes a number of usability issues found by the user such as changing the test name
+        resets the customized revisions by the virtue of the modern code being naturally more correct.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer):
+        (AnalysisResultsViewer.prototype.setTestGroupCallback): Deleted. Replaced by "testGroupClick" action.
+        (AnalysisResultsViewer.prototype.setRangeSelectorLabels): Moved here from ResultsTable since it's
+        never used in ResultsTable or TestGroupResultsTable.
+        (AnalysisResultsViewer.prototype.selectedRange): Ditto.
+        (AnalysisResultsViewer.prototype.setPoints): Now takes metric as the third argument.
+        (AnalysisResultsViewer.prototype.setTestGroups): Now takes the current test group.
+        (AnalysisResultsViewer.prototype.didUpdateResults): Deleted.
+        (AnalysisResultsViewer.prototype.setAnalysisResultsView): Added.
+        (AnalysisResultsViewer.prototype.render): Invoke _renderTestGroups lazily. Also simplified the logic
+        to find the selected list item. Since we always use a shadow DOM now, we can simply look for an element
+        with ".seleted" instead of crafting a unique class name.
+        (AnalysisResultsViewer.prototype.renderTestGroups): Renamed from buildRowGroups. Specify callbacks to
+        insert headers for A/B radio buttons, which has been moved from ResultsTable.prototype.render, and the
+        stacked blocks of testing results.
+        (AnalysisResultsViewer.prototype._classForTestGroup): Deleted.
+        (AnalysisResultsViewer.prototype._openStackingBlock): Deleted.
+        (AnalysisResultsViewer.prototype._expandBetween): Create a new set for expandedPoints to make
+        _renderTestGroupsLazily.evaluate do the work.
+        (AnalysisResultsViewer._layoutBlocks): Moved from TestGroupStackingGrid.layout.
+        (AnalysisResultsViewer._sortBlocksByRow): Moved from AnalysisResultsViewer.TestGroupStackingGrid.
+        (AnalysisResultsViewer._insertAfterBlockWithSameRange): Ditto.
+        (AnalysisResultsViewer._insertBlockInFirstAvailableColumn): Ditto.
+        (AnalysisResultsViewer._createCellsForRow): Ditto.
+
+        (AnalysisResultsViewer.TestGroupStackingBlock):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.addRowIndex):
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.createStackingCell): No longer creates a unique
+        class name here. See the inline comment for AnalysisResultsViewer.prototype.render.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype.isThin): Deleted. We used to collapse "failed"
+        test groups as a thin vertical line, and we wanted to show them next to each other in _layoutBlock but
+        we don't do that anymore.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._valuesForCommitSet): Added. Uses
+        this._analysisResultsView to extract the results for the current metrics.
+        (AnalysisResultsViewer.TestGroupStackingBlock.prototype._computeTestGroupStatus):
+
+        * public/v3/components/analysis-task-bug-list.js: Added.
+        (AnalysisTaskBugList): Added. Extracted from AnalysisTaskChartPane.
+        (AnalysisTaskBugList.prototype.setTask): Added.
+        (AnalysisTaskBugList.prototype.didConstructShadowTree): Added.
+        (AnalysisTaskBugList.prototype.render): Added.
+        (AnalysisTaskBugList.prototype._associateBug): Added.
+        (AnalysisTaskBugList.prototype._dissociateBug): Added.
+        (AnalysisTaskBugList.htmlTemplate): Added.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.htmlTemplate): Added a hook to insert more content at the end in AnalysisTaskChartPane.
+        (ChartPaneBase.paneFooterTemplate): Added.
+
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm):
+        (CustomizableTestGroupForm.prototype.setCommitSetMap):
+        (CustomizableTestGroupForm.prototype.startTesting): Renamed from _submitted. Now dispatches an action
+        by the name of "startTesting" instead of calling this._startCallback.
+        (CustomizableTestGroupForm.prototype.didConstructShadowTree): Added. Moved the logic to attach event
+        handlers here to avoid eagerly creating the shadow tree in the constructor.
+        (CustomizableTestGroupForm.prototype._computeCommitSetMap): Use the newly added this._revisionEditorMap
+        to find the relevant input element instead of running a querySelector.
+        (CustomizableTestGroupForm.prototype.render): Lazily invoke _renderCustomRevisionTable. This avoids
+        overriding the customized revisions when the user finally types in the test group name.
+        (CustomizableTestGroupForm.prototype._renderCustomRevisionTable): Extracted from render.
+        (CustomizableTestGroupForm.prototype._constructRevisionRadioButtons): Made this a non-static method
+        since it needs to update this._revisionEditorMap now. Merged _constructRevisionRadioButtons.
+        (CustomizableTestGroupForm.prototype._createRadioButton): Deleted. See above.
+        (CustomizableTestGroupForm.cssTemplate):
+        (CustomizableTestGroupForm.formContent): Use IDs instead of classes to make this.content(ID) work.
+
+        * public/v3/components/mutable-list-view.js:
+        (MutableListView.prototype.setList):
+        (MutableListView.prototype.setKindList):
+        (MutableListView.prototype.setAddCallback): Deleted. Replaced by "addItem" action.
+        (MutableListView.prototype.render):
+        (MutableListItem.prototype.content):
+
+        * public/v3/components/results-table.js:
+        (ResultsTable): Removed this._rangeSelectorLabels, this._rangeSelectorCallback, and this._selectedRange
+        as they are only used by AnalysisResultsViewer. Also replaced this._valueFormatter by
+        this._analysisResultsView which knows a metric.
+        (ResultsTable.prototype.setValueFormatter): Deleted.
+        (ResultsTable.prototype.setRangeSelectorLabels): Deleted.
+        (ResultsTable.prototype.setRangeSelectorCallback): Deleted.
+        (ResultsTable.prototype.selectedRange): Deleted.
+        (ResultsTable.prototype._rangeSelectorClicked): Deleted.
+        (ResultsTable.prototype.setAnalysisResultsView): Added.
+        (ResultsTable.prototype.renderTable): Added. Removed the logic to add _rangeSelectorLabels since it has
+        been moved to AnalysisResultsViewer.prototype.render inside buildColumns, which also inserts additional
+        columns which used to be stored on each ResultsTableRow. Use the same technique to insert additional
+        headers. Also take the name (thead tr th) of row header (tbody tr td) as an argument and automatically
+        create a table cell of an appropriate colspan.
+        (ResultsTable.prototype._createRevisionListCells):
+        (ResultsTable.prototype.heading): Deleted. Superseded by buildHeaders callback.
+        (ResultsTable.prototype.additionalHeading): Ditto.
+        (ResultsTable.prototype.buildRowGroups): Deleted. It is now the responsibility of each subclass to call
+        ResultsTable's renderTable() in the subclass' render() function.
+        (ResultsTable.prototype._computeRepositoryList): No longer takes extraRepositories as an argument.
+        Instead, this function now returns a pair of the repository list and the list of constant commits.
+        (ResultsTable.htmlTemplate):
+        (ResultsTable.cssTemplate):
+
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm): Avoid eagerly creating the shadow tree. Also removed the removed the dead code.
+        (TestGroupForm.prototype.setRepetitionCount): Simply override the value of the select element.
+        (TestGroupForm.prototype.didConstructShadowTree): Added. Attach event handlers here to avoid eagerly
+        creating the shadow tree in the constructor.
+        (TestGroupForm.prototype.startTesting): Renamed from _submitted. Dispatch "startTesting" action instead
+        of invoking _startCallback which has been removed.
+        (TestGroupForm.htmlTemplate):
+        (TestGroupForm.formContent):
+
+        * public/v3/components/test-group-results-table.js:
+        (TestGroupResultsTable):
+        (TestGroupResultsTable.prototype.didUpdateResults): Deleted. No longer neeed per setAnalysisResultsView
+        in ResultsTable.
+        (TestGroupResultsTable.prototype.setTestGroup):
+        (TestGroupResultsTable.prototype.heading): Deleted.
+        (TestGroupResultsTable.prototype.render):
+        (TestGroupResultsTable.prototype._renderTestGroup): Extracted from render.
+        (TestGroupResultsTable.prototype._buildRowGroups): Renamed from buildRowGroups.
+        (TestGroupResultsTable.prototype._buildRowGroupForCommitSet): Extracted from buildRowGroups.
+        (TestGroupResultsTable.prototype._buildComparisonRow): Extracted from buildRowGroups.buildRowGroups
+
+        * public/v3/index.html: Include analysis-task-bug-list.js.
+
+        * public/v3/models/analysis-results.js:
+        (AnalysisResults): Inverted the map so that we can easily create a view based on metric.
+        (AnalysisResults.prototype.find): Ditto.
+        (AnalysisResults.prototype.add): Ditto.
+        (AnalysisResults.prototype.viewForMetric): Added.
+        (AnalysisResults.fetch):
+        (AnalysisResultsView): Added.
+        (AnalysisResultsView.prototype.metric): Added.
+        (AnalysisResultsView.prototype.resultForBuildId): Added.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.result): Deleted.
+        (BuildRequest.setResult): Deleted.
+
+        * public/v3/models/test-group.js:
+        (TestGroup): Removed this._allCommitSets since it was never used.
+        (TestGroup.prototype.didSetResult): Deleted since it was never used.
+        (TestGroup.prototype.compareTestResults): Now takes an array of measurement set values.
+        (TestGroup.prototype._valuesForCommitSet): Deleted.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane): This class now includes the form to cutomize the revisions.
+        (AnalysisTaskChartPane.prototype.setShowForm): Added.
+        (AnalysisTaskChartPane.prototype._mainSelectionDidChange):
+        (AnalysisTaskChartPane.prototype.didConstructShadowTree): Added. Dispatches "newTestGroup" action when
+        the user presses the button to start a new A/B testing from the chart.
+        (AnalysisTaskChartPane.prototype.render): Added.
+        (AnalysisTaskChartPane.prototype.paneFooterTemplate): Added.
+        (AnalysisTaskChartPane.cssTemplate):
+
+        (AnalysisTaskResultsPane): Added. Encapsulates AnalysisResultsViewer and CustomizableTestGroupForm.
+        (AnalysisTaskResultsPane.prototype.setPoints): Added.
+        (AnalysisTaskResultsPane.prototype.setTestGroups): Added.
+        (AnalysisTaskResultsPane.prototype.setAnalysisResultsView): Added.
+        (AnalysisTaskResultsPane.prototype.setShowForm): Added.
+        (AnalysisTaskResultsPane.prototype.didConstructShadowTree): Added. Dispatches "newTestGroup" action
+        when the user presses the button to start a new A/B testing from the chart.
+        (AnalysisTaskResultsPane.prototype.render): Added.
+        (AnalysisTaskResultsPane.htmlTemplate): Added.
+        (AnalysisTaskResultsPane.cssTemplate): Added.
+
+        (AnalysisTaskTestGroupPane): Added. Encapsulates TestGroupResultsTable and CustomizableTestGroupForm.
+        (AnalysisTaskTestGroupPane.prototype.didConstructShadowTree): Added.
+        (AnalysisTaskTestGroupPane.prototype.setTestGroups): Added.
+        (AnalysisTaskTestGroupPane.prototype.setAnalysisResultsView): Added.
+        (AnalysisTaskTestGroupPane.prototype.render): Added.
+        (AnalysisTaskTestGroupPane.prototype._renderTestGroups): Added. Updates the list of test groups. Hide
+        the hidden groups unless showHiddenGroups is set. Updates this._testGroupMap so that the visibility of
+        groups and their names can be updated without having to re-render the entire list.
+        (AnalysisTaskTestGroupPane.prototype._renderTestGroupVisibility): Added.
+        (AnalysisTaskTestGroupPane.prototype._renderTestGroupNames): Added.
+        (AnalysisTaskTestGroupPane.prototype._renderCurrentTestGroup): Added. Update TestGroupResultsTable with
+        the selected test group. Also highlight the list view, and update the hide-unhide toggle button's label
+        as needed.
+        (AnalysisTaskTestGroupPane.htmlTemplate): Added.
+        (AnalysisTaskTestGroupPane.cssTemplate): Added.
+
+        (AnalysisTaskPage): Deleted a massive number of instance variables. They are now manged by newly added
+        AnalysisTaskChartPane, AnalysisTaskResultsPane, and AnalysisTaskTestGroupPane
+        (AnalysisTaskPage.prototype.didConstructShadowTree): Added. Attach various event handlers here to avoid
+        eagerly creating the shadow tree in the constructor.
+        (AnalysisTaskPage.prototype._fetchRelatedInfoForTaskId):
+        (AnalysisTaskPage.prototype._didFetchTask): No longer sets the value formatter to the results viewer
+        and the results table as they now recieve AnalysisResultsView later in _assignTestResultsIfPossible.
+        (AnalysisTaskPage.prototype._didFetchMeasurement): Set the metric to the results viewer.
+        (AnalysisTaskPage.prototype._didUpdateTestGroupHiddenState):
+        (AnalysisTaskPage.prototype._assignTestResultsIfPossible): Create AnalysisResultsView from the newly
+        retrieved AnalysisResults and pass it to AnalysisTaskResultsPane and AnalysisTaskTestGroupPane.
+        (AnalysisTaskPage.prototype.render): Dramatically simplified.
+        (AnalysisTaskPage.prototype._renderTaskNameAndStatus): Extracted from render.
+        (AnalysisTaskPage.prototype._renderRelatedTasks): Ditto.
+        (AnalysisTaskPage.prototype._renderCauseAndFixes): Ditto.
+        (AnalysisTaskPage.prototype._showTestGroup):
+        (AnalysisTaskPage.prototype._updateTaskName): Now takes the new name as an argument.
+        (AnalysisTaskPage.prototype._updateTestGroupName): Now takes the new name as the second argument.
+        (AnalysisTaskPage.prototype._hideCurrentTestGroup): Now takes the test group to hide.
+        (AnalysisTaskPage.prototype._associateCommit): Moved to AnalysisTaskBugList.
+        (AnalysisTaskPage.prototype._dissociateCommit): Ditto.
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup): Now takes the test group as the first argument.
+        (AnalysisTaskPage.prototype._chartSelectionDidChange): Deleted.
+        (AnalysisTaskPage.prototype._createNewTestGroupFromChart): Deleted.
+        (AnalysisTaskPage.prototype._selectedRowInAnalysisResultsViewer): Deleted.
+        (AnalysisTaskPage.prototype._createNewTestGroupFromViewer): Deleted.
+        (AnalysisTaskPage.htmlTemplate):
+        (AnalysisTaskPage.cssTemplate):
+
+        * unit-tests/test-groups-tests.js: Updated a test case which was expecting BuildReqeust's result, which
+        has been removed, to exist.
+
+2017-03-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Share more code between ManifestGenerator and /api/triggerables
+        https://bugs.webkit.org/show_bug.cgi?id=169993
+
+        Reviewed by Chris Dumez.
+
+        Shared the code to fetch the list of triggerables from the database between ManifestGenerator
+        and /api/triggerables.
+
+        * public/api/triggerables.php:
+        (main):
+        * public/include/manifest-generator.php:
+        (ManifestGenerator::fetch_triggerables): Extracted as a static function. Also include the ID
+        in the triggerable data.
+
+2017-03-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        create-test-group should allow a different set of repositories to be used in each configuration
+        https://bugs.webkit.org/show_bug.cgi?id=169992
+
+        Rubber-stamped by Antti Koivisto.
+
+        Added the support for new POST parameter, revisionSets, to /privileged-api/create-test-group.
+        This new parameter now specifies an array of repository id to revision dictionaries, and allows
+        different set of repositories' revisions to be specified in each dictionary.
+
+        We keep the old API for v2 UI and detect-changes.js compatibility for now.
+
+        * public/privileged-api/create-test-group.php:
+        (main):
+        (commit_sets_from_revision_sets): Added.
+        (ensure_commit_sets): Only fetch the top-level repository per r213788 and r213976.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.createAndRefetchTestGroups): Use the newly added revisionSets parameter instead of
+        the now depreacted commitSets parameter.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingCommitSetList): Simplified this code
+        by simply verifying the consistency of commit sets now that createAndRefetchTestGroups takes
+        an array of commit sets instead of a dictionary of repository name to a list of revisions.
+
+        * server-tests/privileged-api-create-test-group-tests.js: Added test cases for new parameter.
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        /api/uploaded-file should return createdAt as a POSIX timestamp
+        https://bugs.webkit.org/show_bug.cgi?id=169980
+
+        Rubber-stamped by Antti Koivisto.
+
+        Call Database::to_js_time on createdAt to return it as a POSIX timestamp.
+
+        * public/include/uploaded-file-helpers.php:
+        (format_uploaded_file): Fixed the bug.
+        * server-tests/api-manifest-tests.js: Renamed from api-manifest.js.
+        * server-tests/api-uploaded-file-tests.js: Renamed from api-uploaded-file.js. Added a test case.
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        UploadedFile should support a callback for upload progress
+        https://bugs.webkit.org/show_bug.cgi?id=169977
+
+        Reviewed by Andreas Kling.
+
+        Added a new option dictionary to CommonRemoteAPI.sendHttpRequest with uploadProgressCallback
+
+        Moved request headers and responseHandler callback in NodeRemoteAPI to this dictionary,
+        and updated the tests which relied on this code.
+
+        * public/shared/common-remote.js:
+        (CommonRemoteAPI.prototype.postJSON):
+        (CommonRemoteAPI.prototype.postJSONWithStatus):
+        (CommonRemoteAPI.prototype.postFormData):
+        (CommonRemoteAPI.prototype.postFormDataWithStatus):
+        * public/v3/privileged-api.js:
+        (PrivilegedAPI.prototype.sendRequest):
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.sendHttpRequest):
+        (BrowserRemoteAPI.prototype.sendHttpRequestWithFormData):
+        (BrowserRemoteAPI):
+        * server-tests/api-uploaded-file.js:
+        * tools/js/remote.js:
+        (NodeRemoteAPI.prototype.sendHttpRequest):
+        (NodeRemoteAPI.prototype.sendHttpRequestWithFormData):
+        (NodeRemoteAPI):
+
+2017-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ComponentBase should enqueue itself to render when it becomes connected
+        https://bugs.webkit.org/show_bug.cgi?id=169905
+
+        Reviewed by Antti Koivisto.
+
+        When a component becomes connected to a document, enqueue itself to render automatically.
+        Also added the support for boolean attribute to ComponentBase.createElement.
+
+        * ReadMe.md: Added an instruction to raise the upload limit per r214065.
+        * browser-tests/component-base-tests.js: Added tests for the new behavior and createElement. Also moved
+        the tests related to enqueueToRenderOnResize out of defineElement tests.
+
+        * browser-tests/index.html:
+        (BrowsingContext.prototype.constructor): Override requestAnimationFrame so that the callback would be
+        involved immediately durign testing.
+
+        * public/v3/components/base.js:
+        (ComponentBase): Enqueue itself to render during construction if custom elements is not available.
+        (ComponentBase.defineElement):
+        (ComponentBase.defineElement.elementClass.prototype.connectedCallback): Enqueue itself to render when
+        the component's element became connected.
+        (ComponentBase.createElement): Use Array.isArray instead of instanceof to make it work with arrays made
+        in other realms (global objects) during testing. Added the support for boolean attributes. Setting an
+        attribute value to true would set the attribute, and setting it to false would not set the attribute.
+        (ComponentBase.useNativeCustomElements): Added. True iff window.customElements is defined.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.render): No longer need to call enqueueToRender on the commit log viewer.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer.prototype.render): No longer need to call enqueueToRender on the spinner icon.
+
+        * public/v3/models/time-series.js:
+        (TimeSeries): Made this a proper class declaration now that we don't include data.js after r213300.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._renderActionToolbar): No longer need to call enqueueToRender on the close icon.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype._renderCell): No longer need to call enqueueToRender on the spinner icon.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Delete another function that was supposed to be removed in the previous commit.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.cachedRequestsForTriggerableID): Deleted.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Modernize BuildRequestQueuePage
+        https://bugs.webkit.org/show_bug.cgi?id=169903
+
+        Reviewed by Antti Koivisto.
+
+        Modernized the code for /v3/#/analysis/queue.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.fetchTriggerables): Deleted since the manifest JSON now contains all the triggerables.
+
+        * public/v3/pages/build-request-queue-page.js:
+        (BuildRequestQueuePage): Deleted this._triggerables. Added this._buildRequestsByTriggerable.
+        (BuildRequestQueuePage.prototype.open): Modernized the code.
+        (BuildRequestQueuePage.prototype.render): Ditto.
+        (BuildRequestQueuePage.prototype._constructBuildRequestTable): Ditto.
+
+2017-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Charts page show an inconsistent list of revisions for Git and Subversion
+        https://bugs.webkit.org/show_bug.cgi?id=169888
+
+        Reviewed by Andreas Kling.
+
+        With Git, CommitLogViewer was showing the list of revisions including the starting hash,
+        which was the last data point's revision instead of all revisions after the last data point.
+
+        Fixed the bug by always specifying the revision at the last data point in both Subversion
+        and Git and then making /api/commits/<repository>/?from=X&to=Y exclude the first revision.
+        For clarity, "from" and "to" query parameters have been renamed to "precedingRevision" and
+        "lastRevision" respectively.
+
+        We also no longer adds 1 to the starting revision of Subversion-like starting revisions. e.g.
+        when the last data point was at r1234, new data point is at r1250, the label is now "r1234-r1250"
+        instead of "r1235-r1250".
+
+        * browser-tests/chart-revision-range-tests.js: Fixed the tests since revisionList no longer
+        specifies from/to revisions.
+        * browser-tests/commit-log-viewer-tests.js: Added. Added tests for CommitLogViewer.
+        * browser-tests/index.html: Include the new test. Also use a local copy of mocha.js/css.
+
+        * public/api/commits.php:
+        (main): Renamed "from" and "to" query parameters.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_between): Added a check that commit time should either be specified
+        in both rows or not specified in either. Also reject when before_first_revision is identical
+        or after last_revision instead of re-ordering them since it no longer makes sense to do so with
+        new query parameter names.
+
+        * public/v3/components/base.js:
+        (ComponentBase._addContentToElement): Use Array.isArray instead of instanceof. It's resilient
+        againt realm (global object) differences.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype._updateCommitLogViewer): No longer calls enqueueToRender on this since
+        CommitLogViewer does that on its own now.
+        (ChartPaneBase.prototype.render): Juse use this._openRepository instead of relying on CommitLogViewer
+        to remember which repository is current. This was the only use of currentRepository.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer):
+        (CommitLogViewer.prototype.currentRepository): Deleted.
+        (CommitLogViewer.prototype.view):
+        (CommitLogViewer.prototype._fetchCommitLogs): Modernized and extracted from view to make it lazy.
+        Call fetchForSingleRevision when precedingRevision is not specified or it's identical to lastRevision
+        since the generic JSON API no longer supports being called with the identical revisions.
+        (CommitLogViewer.prototype.render): Modernized & simplified the code.
+        (CommitLogViewer.prototype._renderCommitList): Extracted from render to make it lazy.
+        (CommitLogViewer.htmlTemplate): Add ID on caption & tbody so that they're more easily addressable.
+        (CommitLogViewer.cssTemplate):
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): No longer includes from/to revisions in the result. Also avoid adding
+        1 to a Subversion-like starting revision for creating the label. See above. But we still do this
+        for forming URLs due to the way tools like Trac work with Subversion revisions.
+        (CommitLog.fetchBetweenRevisions): Rewritten using DataModel.prototype.cachedFetch with FIXME for
+        what this function is supposed to be doing.
+        (CommitLog._cachedCommitLogs): Deleted.
+        (CommitLog.fetchForSingleRevision): Added.
+        (CommitLog._constructFromRawData): Added.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.cachedFetch): Don't parse query values as an integer. Just URL-escape them.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.sendHttpRequest): Fixed a typo.
+
+        * server-tests/api-commits-tests.js: Renamed from api-commits.js. Updated the existing tests to
+        use new query parameters and added more test cases.
+
+        * unit-tests/commit-log-tests.js: Updated the test cases now that CommitLog.prototype.diff no longer
+        includes from/to values. They're computed in ChartRevisionRange instead.
+
+2017-03-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix os-build-fetcher.js and subprocess.js to make them work
+        https://bugs.webkit.org/show_bug.cgi?id=169844
+
+        Reviewed by Antti Koivisto.
+
+        The script added in r213976 has a bug that it can execute commands to fetch subcommits in parallel.
+        Some commands to poll the lsit of system components is not desirable to be ran in parallel.
+
+        * server-tests/resources/mock-subprocess.js:
+        (MockSubprocess): Use const declaration.
+        (MockSubprocess.resetAndWaitForInvocation): Added.
+        (MockSubprocess.waitForInvocation): Renamed from waitingForInvocation. A function name must be a verb.
+        See https://webkit.org/code-style-guidelines/#names-verb
+        (MockSubprocess.reset): Set invocations.length to 0 so that tests can store a reference to the array
+        regardless of whether reset is called or when it's called.
+
+        * server-tests/tools-os-build-fetcher-tests.js: Updated tests per the code change. Most of codes now
+        expect each command to be ran seprately. e.g. if there were two commands to run, instead of expecting
+        them to be both ran, and resolving invocation promises, we'd wait for one command to run, resolve,
+        its subcommand to run, and then move onto the second top-level command. Also use a local reference
+        to MockSubprocess.invocations instead of using the fully qualified name.
+
+        * tools/js/os-build-fetcher.js:
+        (mapInSerialPromiseChain): Added. Calling a closure that returns a promise on each item in an array
+        in serial (not asynchronous) is a very common pattern in this class.
+        (OSBuildFetcher.fetchAndReportAllInOrder): Added.
+        (OSBuildFetcher.prototype.fetchAndReportNewBuilds): Log what the number of builds being submitted.
+        (OSBuildFetcher.prototype._fetchAvailableBuilds): Fixed the main bug. Using Promise.all would result
+        in each top-level command to be execued in parallel. Since each subcommand is executed as soon as
+        its parent command is executed, this results in commands to be executed in parallel.
+        Added a whole bunch of logging so that we can at least detect a bug like this in the future.
+        (OSBuildFetcher.prototype._commitsForAvailableBuilds): Cleanup the coding style.
+        (OSBuildFetcher.prototype._addSubCommitsForBuild): Use mapInSerialPromiseChain. Tightened the assertion
+        about the content returned by a subcommand.
+
+        * tools/js/subprocess.js: Fixed the bug that we were importing require('child_process').ChildProcess.
+        execFile is defined on require('child_process') itself.
+        (Subprocess.prototype.execute): Fixed a typo. this._childProcess doesn't exist.
+        (Subprocess):
+
+        * tools/sync-os-versions.js: Renamed from tools/pull-os-versions.js.
+        (syncLoop): Cleaned up the coding style a little. Also added logging about how long we're about to sleep.
+
 2017-03-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add the file uploading capability to the perf dashboard.

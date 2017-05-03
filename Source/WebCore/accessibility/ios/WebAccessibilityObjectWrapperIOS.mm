@@ -521,6 +521,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
+    case LandmarkDocRegionRole:
     case LandmarkMainRole:
     case LandmarkNavigationRole:
     case LandmarkRegionRole:
@@ -555,6 +556,15 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return nil;
 }
 
+- (AccessibilityObjectWrapper*)_accessibilityArticleAncestor
+{
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [self] (const AccessibilityObject& object) {
+        return object.roleValue() == DocumentArticleRole;
+    }))
+        return parent->wrapper();
+    return nil;
+}
+
 - (AccessibilityObjectWrapper*)_accessibilityLandmarkAncestor
 {
     if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [self] (const AccessibilityObject& object) {
@@ -568,7 +578,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 {
     
     if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
-        return object.roleValue() == TableRole || object.roleValue() == GridRole;
+        return object.isTable();
     }))
         return parent->wrapper();
     return nil;
@@ -637,6 +647,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
                 break;
             case GridRole:
             case TableRole:
+            case TreeGridRole:
                 traits |= [self _axContainedByTableTrait];
                 break;
             default:
@@ -833,9 +844,11 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case ApplicationAlertRole:
         case ApplicationAlertDialogRole:
         case ApplicationDialogRole:
+        case ApplicationGroupRole:
         case ApplicationLogRole:
         case ApplicationMarqueeRole:
         case ApplicationStatusRole:
+        case ApplicationTextGroupRole:
         case ApplicationTimerRole:
         case AudioRole:
         case BlockquoteRole:
@@ -859,6 +872,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case DocumentNoteRole:
         case DrawerRole:
         case EditableTextRole:
+        case FeedRole:
+        case FigureRole:
         case FooterRole:
         case FormRole:
         case GridRole:
@@ -871,6 +886,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case LandmarkBannerRole:
         case LandmarkComplementaryRole:
         case LandmarkContentInfoRole:
+        case LandmarkDocRegionRole:
         case LandmarkMainRole:
         case LandmarkNavigationRole:
         case LandmarkRegionRole:
@@ -917,6 +933,9 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case TabPanelRole:
         case TableRole:
         case TableHeaderContainerRole:
+        case TermRole:
+        case TextGroupRole:
+        case TimeRole:
         case TreeRole:
         case TreeItemRole:
         case TreeGridRole:
@@ -1258,6 +1277,17 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     return m_object->blockquoteLevel();
 }
 
+- (NSString *)accessibilityDatetimeValue
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    if (auto parent = AccessibilityObject::matchedParent(*m_object, true, [] (const AccessibilityObject& object) { return object.supportsDatetimeAttribute(); }))
+        return parent->datetimeAttributeValue();
+
+    return nil;
+}
+
 - (NSString *)accessibilityPlaceholderValue
 {
     if (![self _prepareAccessibilityCall])
@@ -1563,7 +1593,7 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     
     for (unsigned i = 0; i < childrenSize; ++i) {
         AccessibilityRole role = children[i]->roleValue();
-        if (role != StaticTextRole && role != ImageRole && role != GroupRole)
+        if (role != StaticTextRole && role != ImageRole && role != GroupRole && role != TextGroupRole)
             return NO;
     }
     

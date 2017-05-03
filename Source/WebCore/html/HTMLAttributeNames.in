@@ -15,6 +15,7 @@ alt
 archive
 aria-activedescendant
 aria-atomic
+aria-autocomplete
 aria-busy
 aria-checked
 aria-colcount
@@ -202,6 +203,7 @@ oncontextmenu
 oncopy
 oncut
 ondblclick
+ondevicechange
 ondrag
 ondragend
 ondragenter
@@ -392,3 +394,5 @@ x-itunes-inherit-uri-query-component
 x-apple-data-detectors
 x-apple-data-detectors-type
 x-apple-data-detectors-result
+
+x-apple-pdf-annotation

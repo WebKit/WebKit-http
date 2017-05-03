@@ -29,11 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSourceCenter_h
-#define RealtimeMediaSourceCenter_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "ExceptionOr.h"
 #include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceSupportedConstraints.h"
 #include <wtf/PassRefPtr.h>
@@ -42,6 +42,7 @@
 namespace WebCore {
 
 class CaptureDevice;
+class CaptureDeviceManager;
 class MediaConstraints;
 class RealtimeMediaSourceSettings;
 class RealtimeMediaSourceSupportedConstraints;
@@ -65,16 +66,36 @@ public:
     
     virtual const RealtimeMediaSourceSupportedConstraints& supportedConstraints() { return m_supportedConstraints; }
 
-    virtual RealtimeMediaSource::CaptureFactory* defaultAudioFactory() { return nullptr; }
-    virtual RealtimeMediaSource::CaptureFactory* defaultVideoFactory() { return nullptr; }
+    virtual RealtimeMediaSource::AudioCaptureFactory* defaultAudioFactory() { return nullptr; }
+    virtual RealtimeMediaSource::VideoCaptureFactory* defaultVideoFactory() { return nullptr; }
 
-    WEBCORE_EXPORT void setAudioFactory(RealtimeMediaSource::CaptureFactory&);
-    WEBCORE_EXPORT void unsetAudioFactory(RealtimeMediaSource::CaptureFactory&);
-    RealtimeMediaSource::CaptureFactory* audioFactory() const { return m_audioFactory; }
+    WEBCORE_EXPORT void setAudioFactory(RealtimeMediaSource::AudioCaptureFactory&);
+    WEBCORE_EXPORT void unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory&);
+    RealtimeMediaSource::AudioCaptureFactory* audioFactory() const { return m_audioFactory; }
 
-    WEBCORE_EXPORT void setVideoFactory(RealtimeMediaSource::CaptureFactory&);
-    WEBCORE_EXPORT void unsetVideoFactory(RealtimeMediaSource::CaptureFactory&);
-    RealtimeMediaSource::CaptureFactory* videoFactory() const { return m_videoFactory; }
+    WEBCORE_EXPORT void setVideoFactory(RealtimeMediaSource::VideoCaptureFactory&);
+    WEBCORE_EXPORT void unsetVideoFactory(RealtimeMediaSource::VideoCaptureFactory&);
+    RealtimeMediaSource::VideoCaptureFactory* videoFactory() const { return m_videoFactory; }
+
+    virtual CaptureDeviceManager* defaultAudioCaptureDeviceManager() { return nullptr; }
+    virtual CaptureDeviceManager* defaultVideoCaptureDeviceManager() { return nullptr; }
+
+    WEBCORE_EXPORT void setAudioCaptureDeviceManager(CaptureDeviceManager&);
+    WEBCORE_EXPORT void unsetAudioCaptureDeviceManager(CaptureDeviceManager&);
+    CaptureDeviceManager* audioCaptureDeviceManager() const { return m_audioCaptureDeviceManager; }
+
+    WEBCORE_EXPORT void setVideoCaptureDeviceManager(CaptureDeviceManager&);
+    WEBCORE_EXPORT void unsetVideoCaptureDeviceManager(CaptureDeviceManager&);
+    CaptureDeviceManager* videoCaptureDeviceManager() const { return m_videoCaptureDeviceManager; }
+
+    String hashStringWithSalt(const String& id, const String& hashSalt);
+    WEBCORE_EXPORT std::optional<CaptureDevice> captureDeviceWithUniqueID(const String& id, const String& hashSalt);
+    virtual ExceptionOr<void> setDeviceEnabled(const String&, bool);
+
+    using DevicesChangedObserverToken = unsigned;
+    DevicesChangedObserverToken addDevicesChangedObserver(std::function<void()>&&);
+    void removeDevicesChangedObserver(DevicesChangedObserverToken);
+    void captureDevicesChanged();
 
 protected:
     RealtimeMediaSourceCenter();
@@ -82,12 +103,16 @@ protected:
     static RealtimeMediaSourceCenter& platformCenter();
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
 
-    RealtimeMediaSource::CaptureFactory* m_audioFactory { nullptr };
-    RealtimeMediaSource::CaptureFactory* m_videoFactory { nullptr };
+    RealtimeMediaSource::AudioCaptureFactory* m_audioFactory { nullptr };
+    RealtimeMediaSource::VideoCaptureFactory* m_videoFactory { nullptr };
+
+    CaptureDeviceManager* m_audioCaptureDeviceManager { nullptr };
+    CaptureDeviceManager* m_videoCaptureDeviceManager { nullptr };
+
+    HashMap<unsigned, std::function<void()>> m_devicesChangedObservers;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
 
-#endif // RealtimeMediaSourceCenter_h

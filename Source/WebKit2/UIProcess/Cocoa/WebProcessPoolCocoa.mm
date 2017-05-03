@@ -149,8 +149,7 @@ void WebProcessPool::platformInitialize()
 
     setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
 
-    if (m_websiteDataStore)
-        m_websiteDataStore->registerSharedResourceLoadObserver();
+    m_websiteDataStore->websiteDataStore().registerSharedResourceLoadObserver();
 }
 
 #if PLATFORM(IOS)
@@ -250,16 +249,14 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #endif
 #if ENABLE(MEDIA_STREAM)
     // Allow microphone access if either preference is set because WebRTC requires microphone access.
-    bool mediaStreamEnabled = m_defaultPageGroup->preferences().mediaStreamEnabled();
+    bool mediaDevicesEnabled = m_defaultPageGroup->preferences().mediaDevicesEnabled();
     bool webRTCEnabled = m_defaultPageGroup->preferences().peerConnectionEnabled();
     if ([defaults objectForKey:@"ExperimentalPeerConnectionEnabled"])
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
     
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (mediaStreamEnabled || webRTCEnabled)
+    if (!parameters.shouldCaptureAudioInUIProcess && (mediaDevicesEnabled || webRTCEnabled))
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
-
-    parameters.shouldCaptureAudioInUIProcess = m_defaultPageGroup->preferences().shouldCaptureAudioInUIProcess();
 #endif
 }
 
@@ -292,14 +289,10 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
-    parameters.loadThrottleLatency = std::chrono::milliseconds([defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey]);
+    parameters.loadThrottleLatency = Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. };
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, [[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]));
-
-    static int i = 0;
-    [(NSData *)cookieStorageData.get() writeToFile:[NSString stringWithFormat:@"/Volumes/Data/FujiUser/dump%i.plist", i++] atomically:NO];
-
     ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
     parameters.uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cookieStorageData.get()), CFDataGetLength(cookieStorageData.get()));
 #endif
@@ -345,7 +338,7 @@ String WebProcessPool::networkingCachesDirectory() const
     NSError *error = nil;
     NSString* nsPath = path;
     if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
-        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        NSLog(@"could not create networking caches directory \"%@\", error %@", nsPath, error);
         return String();
     }
 
@@ -364,7 +357,7 @@ String WebProcessPool::webContentCachesDirectory() const
     NSError *error = nil;
     NSString* nsPath = path;
     if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
-        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        NSLog(@"could not create web content caches directory \"%@\", error %@", nsPath, error);
         return String();
     }
 

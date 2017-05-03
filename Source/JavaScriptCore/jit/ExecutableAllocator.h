@@ -55,8 +55,6 @@
 
 namespace JSC {
 
-class VM;
-
 static const unsigned jitAllocationGranule = 32;
 
 typedef WTF::MetaAllocatorHandle ExecutableMemoryHandle;
@@ -82,6 +80,12 @@ static const double executablePoolReservationFraction = 0.25;
 
 extern JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
 extern JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;
+
+inline bool isJITPC(void* pc)
+{
+    return reinterpret_cast<void*>(startOfFixedExecutableMemoryPool) <= pc
+        && pc < reinterpret_cast<void*>(endOfFixedExecutableMemoryPool);
+}
 
 typedef void (*JITWriteSeparateHeapsFunction)(off_t, const void*, size_t);
 extern JS_EXPORTDATA JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
@@ -117,9 +121,7 @@ class ExecutableAllocator {
     enum ProtectionSetting { Writable, Executable };
 
 public:
-    ExecutableAllocator(VM&);
-    ~ExecutableAllocator();
-    
+    static ExecutableAllocator& singleton();
     static void initializeAllocator();
 
     bool isValid() const;
@@ -134,15 +136,22 @@ public:
     static void dumpProfile() { }
 #endif
 
-    RefPtr<ExecutableMemoryHandle> allocate(VM&, size_t sizeInBytes, void* ownerUID, JITCompilationEffort);
+    RefPtr<ExecutableMemoryHandle> allocate(size_t sizeInBytes, void* ownerUID, JITCompilationEffort);
 
     bool isValidExecutableMemory(const AbstractLocker&, void* address);
 
     static size_t committedByteCount();
 
     Lock& getLock() const;
+private:
+
+    ExecutableAllocator();
+    ~ExecutableAllocator();
 };
 
+#else
+inline bool isJITPC(void*) { return false; }
 #endif // ENABLE(JIT) && ENABLE(ASSEMBLER)
+
 
 } // namespace JSC

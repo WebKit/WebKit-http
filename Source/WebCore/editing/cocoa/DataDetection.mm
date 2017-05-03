@@ -274,7 +274,7 @@ static void removeResultLinksFromAnchor(Element& element)
 static bool searchForLinkRemovingExistingDDLinks(Node& startNode, Node& endNode, bool& didModifyDOM)
 {
     didModifyDOM = false;
-    for (Node* node = &startNode; node; node = NodeTraversal::next(*node, &startNode)) {
+    for (Node* node = &startNode; node; node = NodeTraversal::next(*node)) {
         if (is<HTMLAnchorElement>(*node)) {
             auto& anchor = downcast<HTMLAnchorElement>(*node);
             if (!equalIgnoringASCIICase(anchor.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
@@ -659,4 +659,16 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>&, DataDetectorTypes, 
     return nil;
 }
 #endif
+
+const String& DataDetection::dataDetectorURLProtocol()
+{
+    static NeverDestroyed<String> protocol(ASCIILiteral("x-apple-data-detectors"));
+    return protocol;
+}
+
+bool DataDetection::isDataDetectorURL(const URL& url)
+{
+    return url.protocolIs(dataDetectorURLProtocol());
+}
+
 } // namespace WebCore

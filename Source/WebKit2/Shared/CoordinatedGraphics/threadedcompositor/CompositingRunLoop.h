@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadedCompositor_CompositingRunLoop_h
-#define ThreadedCompositor_CompositingRunLoop_h
+#ifndef CompositingRunLoop_h
+#define CompositingRunLoop_h
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
@@ -71,9 +71,6 @@ private:
     void updateTimerFired();
 
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
-#ifndef NDEBUG
-    RunLoop& m_runLoop;
-#endif
     std::function<void ()> m_updateFunction;
     Atomic<UpdateState> m_updateState;
     Lock m_dispatchSyncConditionMutex;
@@ -84,4 +81,4 @@ private:
 
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
 
-#endif // ThreadedCompositor_CompositingRunLoop_h
+#endif // CompositingRunLoop_h

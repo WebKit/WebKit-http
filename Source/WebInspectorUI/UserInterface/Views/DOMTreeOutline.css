@@ -156,7 +156,11 @@ body[dir=rtl] .tree-outline.dom li {
     border-radius: 50%;
 }
 
-body[dir=rtl] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before {
+.content-view.dom-tree.show-gutter .tree-outline.dom {
+    --item-pseudo-class-enabled-selection-before-start: 17px;
+}
+
+body[dir=ltr] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before {
     left: var(--item-pseudo-class-enabled-selection-before-start);
 }
 
@@ -290,4 +294,12 @@ body[dir=rtl] .tree-outline.dom li.parent.shadow::after {
 
 .node-state-changed {
     animation: node-state-changed 1s cubic-bezier(0.25, 0, 0.25, 1);
+}
+
+@keyframes dom-tree-outline-highlight-fadeout {
+    from { background-color: highlight; }
+}
+
+.highlight .selection-area {
+    animation: "dom-tree-outline-highlight-fadeout" 2s;
 }

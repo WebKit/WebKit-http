@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,6 @@
 
 #include "WasmPageCount.h"
 
-#include <wtf/HashSet.h>
-#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -44,26 +42,33 @@ class VM;
 
 namespace Wasm {
 
+// FIXME: We should support other modes. see: https://bugs.webkit.org/show_bug.cgi?id=162693
+enum class MemoryMode : uint8_t {
+    BoundsChecking,
+    Signaling,
+    NumberOfMemoryModes
+};
+static constexpr size_t NumberOfMemoryModes = static_cast<size_t>(MemoryMode::NumberOfMemoryModes);
+JS_EXPORT_PRIVATE const char* makeString(MemoryMode);
+
 class Memory : public RefCounted<Memory> {
     WTF_MAKE_NONCOPYABLE(Memory);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     void dump(WTF::PrintStream&) const;
 
-    // FIXME: We should support other modes. see: https://bugs.webkit.org/show_bug.cgi?id=162693
-    enum Mode {
-        BoundsChecking,
-        Signaling,
-        NumberOfModes
-    };
-    const char* makeString(Mode) const;
-
     explicit operator bool() const { return !!m_memory; }
 
-    static RefPtr<Memory> create(VM&, PageCount initial, PageCount maximum, std::optional<Mode> requiredMode = std::nullopt);
+    static void initializePreallocations();
+    static RefPtr<Memory> create(VM&, PageCount initial, PageCount maximum);
 
     Memory() = default;
     ~Memory();
+
+    static size_t fastMappedRedzoneBytes();
+    static size_t fastMappedBytes(); // Includes redzone.
+    static size_t maxFastMemoryCount();
+    static bool addressIsInActiveFastMemory(void*);
 
     void* memory() const { return m_memory; }
     size_t size() const { return m_size; }
@@ -72,8 +77,7 @@ public:
     PageCount initial() const { return m_initial; }
     PageCount maximum() const { return m_maximum; }
 
-    static Mode lastAllocatedMode();
-    Mode mode() const { return m_mode; }
+    MemoryMode mode() const { return m_mode; }
 
     // grow() should only be called from the JSWebAssemblyMemory object since that object needs to update internal
     // pointers with the current base and size.
@@ -81,8 +85,7 @@ public:
 
     void check() {  ASSERT(!deletionHasBegun()); }
 private:
-    static RefPtr<Memory> createImpl(VM&, PageCount initial, PageCount maximum, std::optional<Mode> requiredMode = std::nullopt);
-    Memory(void* memory, PageCount initial, PageCount maximum, size_t mappedCapacity, Mode);
+    Memory(void* memory, PageCount initial, PageCount maximum, size_t mappedCapacity, MemoryMode);
     Memory(PageCount initial, PageCount maximum);
 
     // FIXME: we should move these to the instance to avoid a load on instance->instance calls.
@@ -91,14 +94,20 @@ private:
     PageCount m_initial;
     PageCount m_maximum;
     size_t m_mappedCapacity { 0 };
-    Mode m_mode { Mode::BoundsChecking };
+    MemoryMode m_mode { MemoryMode::BoundsChecking };
 };
 
-static_assert(sizeof(uint64_t) == sizeof(size_t), "We rely on allowing the maximum size of Memory we map to be 2^33 which is larger than fits in a 32-bit integer that we'd pass to mprotect if this didn't hold.");
+} } // namespace JSC::Wasm
 
-const size_t fastMemoryMappedBytes = (static_cast<size_t>(std::numeric_limits<uint32_t>::max()) + 1) * 2; // pointer max + offset max. This is all we need since a load straddling readable memory will trap.
-extern StaticLock memoryLock;
-const HashSet<void*>& viewActiveFastMemories(const AbstractLocker&);
+#else
+
+namespace JSC { namespace Wasm {
+
+class Memory {
+public:
+    static size_t maxFastMemoryCount() { return 0; }
+    static bool addressIsInActiveFastMemory(void*) { return false; }
+};
 
 } } // namespace JSC::Wasm
 

@@ -34,13 +34,38 @@
 #include "RealtimeMediaSourceCenterMac.h"
 
 #include "AVAudioCaptureSource.h"
+#include "AVAudioSessionCaptureDeviceManager.h"
 #include "AVCaptureDeviceManager.h"
 #include "AVVideoCaptureSource.h"
+#include "CoreAudioCaptureDeviceManager.h"
+#include "CoreAudioCaptureSource.h"
 #include "Logging.h"
 #include "MediaStreamPrivate.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
+
+void RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture(bool enabled)
+{
+    static bool active = false;
+    if (active == enabled)
+        return;
+
+    active = enabled;
+    if (active) {
+        RealtimeMediaSourceCenter::singleton().setAudioFactory(AVAudioCaptureSource::factory());
+        RealtimeMediaSourceCenter::singleton().setAudioCaptureDeviceManager(AVCaptureDeviceManager::singleton());
+    } else {
+        RealtimeMediaSourceCenter::singleton().setAudioFactory(CoreAudioCaptureSource::factory());
+#if PLATFORM(MAC)
+        RealtimeMediaSourceCenter::singleton().setAudioCaptureDeviceManager(CoreAudioCaptureDeviceManager::singleton());
+#else
+        RealtimeMediaSourceCenter::singleton().setAudioCaptureDeviceManager(AVAudioSessionCaptureDeviceManager::singleton());
+#endif
+    }
+}
+
+
 
 RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
 {
@@ -63,8 +88,16 @@ RealtimeMediaSourceCenterMac::RealtimeMediaSourceCenterMac()
     m_supportedConstraints.setSupportsDeviceId(true);
     m_supportedConstraints.setSupportsGroupId(true);
 
-    m_audioFactory = &AVAudioCaptureSource::factory();
+    m_audioFactory = &CoreAudioCaptureSource::factory();
     m_videoFactory = &AVVideoCaptureSource::factory();
+
+#if PLATFORM(MAC)
+    m_audioCaptureDeviceManager = &CoreAudioCaptureDeviceManager::singleton();
+#else
+    // FIXME 170861: Use AVAudioSession to enumerate audio capture devices on iOS
+    m_audioCaptureDeviceManager = &AVCaptureDeviceManager::singleton();
+#endif
+    m_videoCaptureDeviceManager = &AVCaptureDeviceManager::singleton();
 }
 
 RealtimeMediaSourceCenterMac::~RealtimeMediaSourceCenterMac()
@@ -102,27 +135,23 @@ void RealtimeMediaSourceCenterMac::createMediaStream(NewMediaStreamHandler compl
     Vector<Ref<RealtimeMediaSource>> videoSources;
     String invalidConstraint;
 
-    if (!audioDeviceID.isEmpty()) {
-        auto audioDevice = AVCaptureDeviceManager::singleton().deviceWithUID(audioDeviceID, RealtimeMediaSource::Type::Audio);
-        if (audioDevice && m_audioFactory) {
-            if (auto audioSource = m_audioFactory->createMediaSourceForCaptureDeviceWithConstraints(audioDevice.value(), audioConstraints, invalidConstraint))
-                audioSources.append(audioSource.releaseNonNull());
+    if (!audioDeviceID.isEmpty() && m_audioFactory) {
+        auto audioSource = m_audioFactory->createAudioCaptureSource(audioDeviceID, audioConstraints);
+        if (audioSource)
+            audioSources.append(audioSource.source());
 #if !LOG_DISABLED
-            if (!invalidConstraint.isEmpty())
-                LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), audio constraints failed to apply: %s", this, invalidConstraint.utf8().data());
+        if (!audioSource.errorMessage.isEmpty())
+            LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), audio constraints failed to apply: %s", this, audioSource.errorMessage.utf8().data());
 #endif
-        }
     }
-    if (!videoDeviceID.isEmpty()) {
-        auto videoDevice = AVCaptureDeviceManager::singleton().deviceWithUID(videoDeviceID, RealtimeMediaSource::Type::Video);
-        if (videoDevice && m_videoFactory) {
-            if (auto videoSource = m_videoFactory->createMediaSourceForCaptureDeviceWithConstraints(videoDevice.value(), videoConstraints, invalidConstraint))
-                videoSources.append(videoSource.releaseNonNull());
+    if (!videoDeviceID.isEmpty() && m_videoFactory) {
+        auto videoSource = m_videoFactory->createVideoCaptureSource(videoDeviceID, videoConstraints);
+        if (videoSource)
+            videoSources.append(videoSource.source());
 #if !LOG_DISABLED
-        if (!invalidConstraint.isEmpty())
-            LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), video constraints failed to apply: %s", this, invalidConstraint.utf8().data());
+        if (!videoSource.errorMessage.isEmpty())
+            LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), video constraints failed to apply: %s", this, videoSource.errorMessage.utf8().data());
 #endif
-        }
     }
 
     if (videoSources.isEmpty() && audioSources.isEmpty())
@@ -133,7 +162,15 @@ void RealtimeMediaSourceCenterMac::createMediaStream(NewMediaStreamHandler compl
 
 Vector<CaptureDevice> RealtimeMediaSourceCenterMac::getMediaStreamDevices()
 {
-    return AVCaptureDeviceManager::singleton().getSourcesInfo();
+    Vector<CaptureDevice> result;
+
+    if (m_audioCaptureDeviceManager)
+        result.appendVector(m_audioCaptureDeviceManager->getAudioSourcesInfo());
+
+    if (m_videoCaptureDeviceManager)
+        result.appendVector(m_videoCaptureDeviceManager->getVideoSourcesInfo());
+
+    return result;
 }
 
 Vector<String> RealtimeMediaSourceCenterMac::bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type type, const MediaConstraints& constraints, String& invalidConstraint)
@@ -152,12 +189,18 @@ Vector<String> RealtimeMediaSourceCenterMac::bestSourcesForTypeAndConstraints(Re
         if (!captureDevice.enabled() || captureDevice.type() != deviceType)
             continue;
 
-        RealtimeMediaSource::CaptureFactory* factory = type == RealtimeMediaSource::Type::Video ? m_videoFactory : m_audioFactory;
-        if (!factory)
-            continue;
+        CaptureSourceOrError sourceOrError;
+        if (type == RealtimeMediaSource::Type::Video && m_videoFactory)
+            sourceOrError = m_videoFactory->createVideoCaptureSource(captureDevice.persistentId(), &constraints);
+        else if (type == RealtimeMediaSource::Type::Audio && m_audioFactory)
+            sourceOrError = m_audioFactory->createAudioCaptureSource(captureDevice.persistentId(), &constraints);
 
-        if (auto captureSource = factory->createMediaSourceForCaptureDeviceWithConstraints(captureDevice, &constraints, invalidConstraint))
-            bestSources.append(captureSource.leakRef());
+        if (!sourceOrError) {
+            // FIXME: Handle the case of invalid constraints on more than one device.
+            invalidConstraint = WTFMove(sourceOrError.errorMessage);
+            continue;
+        }
+        bestSources.append(sourceOrError.source());
     }
 
     Vector<String> sourceUIDs;
@@ -172,12 +215,12 @@ Vector<String> RealtimeMediaSourceCenterMac::bestSourcesForTypeAndConstraints(Re
     return sourceUIDs;
 }
 
-RealtimeMediaSource::CaptureFactory* RealtimeMediaSourceCenterMac::defaultAudioFactory()
+RealtimeMediaSource::AudioCaptureFactory* RealtimeMediaSourceCenterMac::defaultAudioFactory()
 {
-    return &AVAudioCaptureSource::factory();
+    return &CoreAudioCaptureSource::factory();
 }
 
-RealtimeMediaSource::CaptureFactory* RealtimeMediaSourceCenterMac::defaultVideoFactory()
+RealtimeMediaSource::VideoCaptureFactory* RealtimeMediaSourceCenterMac::defaultVideoFactory()
 {
     return &AVVideoCaptureSource::factory();
 }

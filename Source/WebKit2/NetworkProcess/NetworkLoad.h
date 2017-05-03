@@ -76,15 +76,13 @@ public:
     void setSuggestedFilename(const String&);
     void setPendingDownload(PendingDownload&);
     DownloadID pendingDownloadID() { return m_task->pendingDownloadID(); }
+
+    bool shouldCaptureExtraNetworkLoadMetrics() const final;
 #else
     WebCore::ResourceHandle* handle() const { return m_handle.get(); }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpaceAsync(WebCore::ResourceHandle*, const WebCore::ProtectionSpace&) override;
-#endif
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    bool supportsDataArray() override;
-    void didReceiveDataArray(WebCore::ResourceHandle*, CFArrayRef) override;
 #endif
 #if PLATFORM(COCOA)
 #if USE(CFURLCONNECTION)

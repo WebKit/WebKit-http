@@ -65,6 +65,7 @@ struct WebProcessCreationParameters {
 
     String injectedBundlePath;
     SandboxExtension::Handle injectedBundlePathExtensionHandle;
+    SandboxExtension::HandleArray additionalSandboxExtensionHandles;
 
     UserData initializationUserData;
 
@@ -126,7 +127,7 @@ struct WebProcessCreationParameters {
     bool hasRichContentServices { false };
 #endif
 
-    double terminationTimeout { 0 };
+    Seconds terminationTimeout;
 
     TextCheckerState textCheckerState;
 

@@ -52,9 +52,10 @@ namespace Air {
 
 class BlockInsertionSet;
 class CCallSpecial;
+class CFG;
 class Disassembler;
 
-typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg);
 typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
 
 // This is an IR that is very close to the bare metal. It requires about 40x more bytes than the
@@ -87,8 +88,12 @@ public:
     const RegisterSet& mutableRegs() const { return m_mutableRegs; }
     
     bool isPinned(Reg reg) const { return !mutableRegs().get(reg); }
-    
     void pinRegister(Reg);
+    
+    void setOptLevel(unsigned optLevel) { m_optLevel = optLevel; }
+    unsigned optLevel() const { return m_optLevel; }
+    
+    bool needsUsedRegisters() const;
 
     JS_EXPORT_PRIVATE BasicBlock* addBlock(double frequency = 1);
 
@@ -124,6 +129,17 @@ public:
             return m_numFPTmps;
         }
         ASSERT_NOT_REACHED();
+    }
+    
+    template<typename Func>
+    void forEachTmp(const Func& func)
+    {
+        for (unsigned bankIndex = 0; bankIndex < numBanks; ++bankIndex) {
+            Bank bank = static_cast<Bank>(bankIndex);
+            unsigned numTmps = this->numTmps(bank);
+            for (unsigned i = 0; i < numTmps; ++i)
+                func(Tmp::tmpForIndex(bank, i));
+        }
     }
 
     unsigned callArgAreaSizeInBytes() const { return m_callArgAreaSize; }
@@ -170,13 +186,26 @@ public:
     {
         m_entrypointLabels = std::forward<Vector>(vector);
     }
+    
+    void setStackIsAllocated(bool value)
+    {
+        m_stackIsAllocated = value;
+    }
+    
+    bool stackIsAllocated() const { return m_stackIsAllocated; }
+    
+    // This sets the callee save registers.
+    void setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&&, StackSlot*);
 
-    const RegisterAtOffsetList& calleeSaveRegisters() const { return m_calleeSaveRegisters; }
-    RegisterAtOffsetList& calleeSaveRegisters() { return m_calleeSaveRegisters; }
+    // This returns the correctly offset list of callee save registers.
+    RegisterAtOffsetList calleeSaveRegisterAtOffsetList() const;
+    
+    // This just tells you what the callee saves are.
+    RegisterSet calleeSaveRegisters() const { return m_calleeSaveRegisters; }
 
     // Recomputes predecessors and deletes unreachable blocks.
     void resetReachability();
-
+    
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;
 
     unsigned size() const { return m_blocks.size(); }
@@ -256,6 +285,8 @@ public:
     void addFastTmp(Tmp);
     bool isFastTmp(Tmp tmp) const { return m_fastTmps.contains(tmp); }
     
+    CFG& cfg() const { return *m_cfg; }
+    
     void* addDataSection(size_t);
     
     // The name has to be a string literal, since we don't do any memory management for the string.
@@ -304,18 +335,23 @@ private:
     SparseCollection<StackSlot> m_stackSlots;
     Vector<std::unique_ptr<BasicBlock>> m_blocks;
     SparseCollection<Special> m_specials;
+    std::unique_ptr<CFG> m_cfg;
     HashSet<Tmp> m_fastTmps;
     CCallSpecial* m_cCallSpecial { nullptr };
     unsigned m_numGPTmps { 0 };
     unsigned m_numFPTmps { 0 };
     unsigned m_frameSize { 0 };
     unsigned m_callArgAreaSize { 0 };
-    RegisterAtOffsetList m_calleeSaveRegisters;
+    bool m_stackIsAllocated { false };
+    RegisterAtOffsetList m_uncorrectedCalleeSaveRegisterAtOffsetList;
+    RegisterSet m_calleeSaveRegisters;
+    StackSlot* m_calleeSaveStackSlot { nullptr };
     Vector<FrequentedBlock> m_entrypoints; // This is empty until after lowerEntrySwitch().
     Vector<CCallHelpers::Label> m_entrypointLabels; // This is empty until code generation.
     RefPtr<WasmBoundsCheckGenerator> m_wasmBoundsCheckGenerator;
     const char* m_lastPhaseName;
     std::unique_ptr<Disassembler> m_disassembler;
+    unsigned m_optLevel { defaultOptLevel() };
 };
 
 } } } // namespace JSC::B3::Air

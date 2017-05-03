@@ -36,9 +36,10 @@
 
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
+#include "Logging.h"
 #include "RTCIceCandidate.h"
-#include "RTCIceCandidateEvent.h"
 #include "RTCPeerConnection.h"
+#include "RTCPeerConnectionIceEvent.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -46,7 +47,7 @@ namespace WebCore {
 void PeerConnectionBackend::createOffer(RTCOfferOptions&& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
     ASSERT(!m_offerAnswerPromise);
-    ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
+    ASSERT(!m_peerConnection.isClosed());
 
     m_offerAnswerPromise = WTFMove(promise);
     doCreateOffer(WTFMove(options));
@@ -55,20 +56,22 @@ void PeerConnectionBackend::createOffer(RTCOfferOptions&& options, PeerConnectio
 void PeerConnectionBackend::createOfferSucceeded(String&& sdp)
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Creating offer succeeded:\n%s\n", sdp.utf8().data());
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
-    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSessionDescription::SdpType::Offer, WTFMove(sdp)));
+    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSdpType::Offer, WTFMove(sdp)));
     m_offerAnswerPromise = std::nullopt;
 }
 
 void PeerConnectionBackend::createOfferFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Creating offer failed:\n%s\n", exception.message().utf8().data());
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
@@ -79,7 +82,7 @@ void PeerConnectionBackend::createOfferFailed(Exception&& exception)
 void PeerConnectionBackend::createAnswer(RTCAnswerOptions&& options, PeerConnection::SessionDescriptionPromise&& promise)
 {
     ASSERT(!m_offerAnswerPromise);
-    ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
+    ASSERT(!m_peerConnection.isClosed());
 
     m_offerAnswerPromise = WTFMove(promise);
     doCreateAnswer(WTFMove(options));
@@ -88,20 +91,22 @@ void PeerConnectionBackend::createAnswer(RTCAnswerOptions&& options, PeerConnect
 void PeerConnectionBackend::createAnswerSucceeded(String&& sdp)
 {
     ASSERT(isMainThread());
-
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    LOG(WebRTC, "Creating answer succeeded:\n%s\n", sdp.utf8().data());
+    
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
-    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSessionDescription::SdpType::Answer, WTFMove(sdp)));
+    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSdpType::Answer, WTFMove(sdp)));
     m_offerAnswerPromise = std::nullopt;
 }
 
 void PeerConnectionBackend::createAnswerFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Creating answer failed:\n%s\n", exception.message().utf8().data());
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
@@ -109,17 +114,17 @@ void PeerConnectionBackend::createAnswerFailed(Exception&& exception)
     m_offerAnswerPromise = std::nullopt;
 }
 
-static inline bool isLocalDescriptionTypeValidForState(RTCSessionDescription::SdpType type, RTCSignalingState state)
+static inline bool isLocalDescriptionTypeValidForState(RTCSdpType type, RTCSignalingState state)
 {
     switch (state) {
     case RTCSignalingState::Stable:
-        return type == RTCSessionDescription::SdpType::Offer;
+        return type == RTCSdpType::Offer;
     case RTCSignalingState::HaveLocalOffer:
-        return type == RTCSessionDescription::SdpType::Offer;
+        return type == RTCSdpType::Offer;
     case RTCSignalingState::HaveRemoteOffer:
-        return type == RTCSessionDescription::SdpType::Answer || type == RTCSessionDescription::SdpType::Pranswer;
+        return type == RTCSdpType::Answer || type == RTCSdpType::Pranswer;
     case RTCSignalingState::HaveLocalPranswer:
-        return type == RTCSessionDescription::SdpType::Answer || type == RTCSessionDescription::SdpType::Pranswer;
+        return type == RTCSdpType::Answer || type == RTCSdpType::Pranswer;
     default:
         return false;
     };
@@ -130,7 +135,7 @@ static inline bool isLocalDescriptionTypeValidForState(RTCSessionDescription::Sd
 
 void PeerConnectionBackend::setLocalDescription(RTCSessionDescription& sessionDescription, DOMPromise<void>&& promise)
 {
-    ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
+    ASSERT(!m_peerConnection.isClosed());
 
     if (!isLocalDescriptionTypeValidForState(sessionDescription.type(), m_peerConnection.signalingState())) {
         promise.reject(INVALID_STATE_ERR, "Description type incompatible with current signaling state");
@@ -144,8 +149,9 @@ void PeerConnectionBackend::setLocalDescription(RTCSessionDescription& sessionDe
 void PeerConnectionBackend::setLocalDescriptionSucceeded()
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Setting local description succeeded\n");
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_setDescriptionPromise);
@@ -157,8 +163,9 @@ void PeerConnectionBackend::setLocalDescriptionSucceeded()
 void PeerConnectionBackend::setLocalDescriptionFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Setting local description failed:\n%s\n", exception.message().utf8().data());
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_setDescriptionPromise);
@@ -167,17 +174,17 @@ void PeerConnectionBackend::setLocalDescriptionFailed(Exception&& exception)
     m_setDescriptionPromise = std::nullopt;
 }
 
-static inline bool isRemoteDescriptionTypeValidForState(RTCSessionDescription::SdpType type, RTCSignalingState state)
+static inline bool isRemoteDescriptionTypeValidForState(RTCSdpType type, RTCSignalingState state)
 {
     switch (state) {
     case RTCSignalingState::Stable:
-        return type == RTCSessionDescription::SdpType::Offer;
+        return type == RTCSdpType::Offer;
     case RTCSignalingState::HaveLocalOffer:
-        return type == RTCSessionDescription::SdpType::Answer || type == RTCSessionDescription::SdpType::Pranswer;
+        return type == RTCSdpType::Answer || type == RTCSdpType::Pranswer;
     case RTCSignalingState::HaveRemoteOffer:
-        return type == RTCSessionDescription::SdpType::Offer;
+        return type == RTCSdpType::Offer;
     case RTCSignalingState::HaveRemotePranswer:
-        return type == RTCSessionDescription::SdpType::Answer || type == RTCSessionDescription::SdpType::Pranswer;
+        return type == RTCSdpType::Answer || type == RTCSdpType::Pranswer;
     default:
         return false;
     };
@@ -188,7 +195,7 @@ static inline bool isRemoteDescriptionTypeValidForState(RTCSessionDescription::S
 
 void PeerConnectionBackend::setRemoteDescription(RTCSessionDescription& sessionDescription, DOMPromise<void>&& promise)
 {
-    ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
+    ASSERT(!m_peerConnection.isClosed());
 
     if (!isRemoteDescriptionTypeValidForState(sessionDescription.type(), m_peerConnection.signalingState())) {
         promise.reject(INVALID_STATE_ERR, "Description type incompatible with current signaling state");
@@ -202,8 +209,9 @@ void PeerConnectionBackend::setRemoteDescription(RTCSessionDescription& sessionD
 void PeerConnectionBackend::setRemoteDescriptionSucceeded()
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Setting remote description succeeded\n");
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_setDescriptionPromise);
@@ -215,8 +223,9 @@ void PeerConnectionBackend::setRemoteDescriptionSucceeded()
 void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Setting remote description failed:\n%s\n", exception.message().utf8().data());
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_setDescriptionPromise);
@@ -225,23 +234,30 @@ void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
     m_setDescriptionPromise = std::nullopt;
 }
 
-void PeerConnectionBackend::addIceCandidate(RTCIceCandidate& iceCandidate, DOMPromise<void>&& promise)
+void PeerConnectionBackend::addIceCandidate(RTCIceCandidate* iceCandidate, DOMPromise<void>&& promise)
 {
-    ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
+    ASSERT(!m_peerConnection.isClosed());
 
-    if (iceCandidate.sdpMid().isNull() && !iceCandidate.sdpMLineIndex()) {
+    if (!iceCandidate) {
+        endOfIceCandidates(WTFMove(promise));
+        return;
+    }
+
+    // FIXME: As per https://w3c.github.io/webrtc-pc/#dom-rtcpeerconnection-addicecandidate(), this check should be done before enqueuing the task.
+    if (iceCandidate->sdpMid().isNull() && !iceCandidate->sdpMLineIndex()) {
         promise.reject(Exception { TypeError, ASCIILiteral("Trying to add a candidate that is missing both sdpMid and sdpMLineIndex") });
         return;
     }
     m_addIceCandidatePromise = WTFMove(promise);
-    doAddIceCandidate(iceCandidate);
+    doAddIceCandidate(*iceCandidate);
 }
 
 void PeerConnectionBackend::addIceCandidateSucceeded()
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Adding ice candidate succeeded\n");
 
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    if (m_peerConnection.isClosed())
         return;
 
     // FIXME: Update remote description and set ICE connection state to checking if not already done so.
@@ -254,7 +270,9 @@ void PeerConnectionBackend::addIceCandidateSucceeded()
 void PeerConnectionBackend::addIceCandidateFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    if (m_peerConnection.signalingState() == RTCSignalingState::Closed)
+    LOG(WebRTC, "Adding ice candidate failed:\n%s\n", exception.message().utf8().data());
+
+    if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_addIceCandidatePromise);
@@ -267,7 +285,7 @@ void PeerConnectionBackend::fireICECandidateEvent(RefPtr<RTCIceCandidate>&& cand
 {
     ASSERT(isMainThread());
 
-    m_peerConnection.fireEvent(RTCIceCandidateEvent::create(false, false, WTFMove(candidate)));
+    m_peerConnection.fireEvent(RTCPeerConnectionIceEvent::create(false, false, WTFMove(candidate)));
 }
 
 void PeerConnectionBackend::enableICECandidateFiltering()
@@ -316,6 +334,8 @@ static inline String filterICECandidate(String&& sdp)
 
 void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid)
 {
+    LOG(WebRTC, "Gathered ice candidate:\n%s\n", sdp.utf8().data());
+
     if (!m_shouldFilterICECandidates) {
         fireICECandidateEvent(RTCIceCandidate::create(WTFMove(sdp), WTFMove(mid), 0));
         return;
@@ -330,8 +350,9 @@ void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid)
 void PeerConnectionBackend::doneGatheringCandidates()
 {
     ASSERT(isMainThread());
+    LOG(WebRTC, "Finished ice candidate gathering\n");
 
-    m_peerConnection.fireEvent(RTCIceCandidateEvent::create(false, false, nullptr));
+    m_peerConnection.fireEvent(RTCPeerConnectionIceEvent::create(false, false, nullptr));
     m_peerConnection.updateIceGatheringState(RTCIceGatheringState::Complete);
 }
 

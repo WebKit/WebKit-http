@@ -58,7 +58,7 @@ class Variable;
 
 namespace Air { class Code; }
 
-typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg);
 typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
 
 // This represents B3's view of a piece of code. Note that this object must exist in a 1:1
@@ -116,6 +116,9 @@ public:
 
     Value* addIntConstant(Origin, Type, int64_t value);
     Value* addIntConstant(Value*, int64_t value);
+
+    // bits is a bitwise_cast of the constant you want.
+    Value* addConstant(Origin, Type, uint64_t bits);
 
     // You're guaranteed that bottom is zero.
     Value* addBottom(Origin, Type);
@@ -229,9 +232,18 @@ public:
 
     // This tells the register allocators to stay away from this register.
     JS_EXPORT_PRIVATE void pinRegister(Reg);
+    
+    JS_EXPORT_PRIVATE void setOptLevel(unsigned value);
+    unsigned optLevel() const { return m_optLevel; }
+    
+    // You can turn off used registers calculation. This may speed up compilation a bit. But if
+    // you turn it off then you cannot use StackmapGenerationParams::usedRegisters() or
+    // StackmapGenerationParams::unavailableRegisters().
+    void setNeedsUsedRegisters(bool value) { m_needsUsedRegisters = value; }
+    bool needsUsedRegisters() const { return m_needsUsedRegisters; }
 
     JS_EXPORT_PRIVATE unsigned frameSize() const;
-    JS_EXPORT_PRIVATE const RegisterAtOffsetList& calleeSaveRegisters() const;
+    JS_EXPORT_PRIVATE RegisterAtOffsetList calleeSaveRegisterAtOffsetList() const;
 
     PCToOriginMap& pcToOriginMap() { return m_pcToOriginMap; }
     PCToOriginMap releasePCToOriginMap() { return WTFMove(m_pcToOriginMap); }
@@ -264,6 +276,8 @@ private:
     RefPtr<SharedTask<void(PrintStream&, Origin)>> m_originPrinter;
     const void* m_frontendData;
     PCToOriginMap m_pcToOriginMap;
+    unsigned m_optLevel { defaultOptLevel() };
+    bool m_needsUsedRegisters { true };
     bool m_hasQuirks { false };
 };
 

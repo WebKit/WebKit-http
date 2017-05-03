@@ -1515,7 +1515,7 @@ void UniqueIDBDatabase::invokeOperationAndTransactionTimer()
     ASSERT(!m_hardClosedForUserDelete);
 
     if (!m_operationAndTransactionTimer.isActive())
-        m_operationAndTransactionTimer.startOneShot(0);
+        m_operationAndTransactionTimer.startOneShot(0_s);
 }
 
 void UniqueIDBDatabase::operationAndTransactionTimerFired()
@@ -1570,7 +1570,7 @@ void UniqueIDBDatabase::activateTransactionInBackingStore(UniqueIDBDatabaseTrans
     RefPtr<UniqueIDBDatabase> protectedThis(this);
     RefPtr<UniqueIDBDatabaseTransaction> refTransaction(&transaction);
 
-    auto callback = [this, protectedThis, refTransaction](const IDBError& error) {
+    auto callback = [protectedThis, refTransaction](const IDBError& error) {
         refTransaction->didActivateInBackingStore(error);
     };
 

@@ -41,12 +41,14 @@ namespace WebCore {
 
 #define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(m_page.isAlwaysOnLoggingAllowed(), channel, "%p - PerformanceMonitor::" fmt, this, ##__VA_ARGS__)
 
-static const std::chrono::seconds cpuUsageMeasurementDelay { 5 };
-static const std::chrono::seconds postLoadCPUUsageMeasurementDuration { 10 };
-static const std::chrono::minutes backgroundCPUUsageMeasurementDuration { 5 };
-static const std::chrono::minutes cpuUsageSamplingInterval { 10 };
+static const Seconds cpuUsageMeasurementDelay { 5_s };
+static const Seconds postLoadCPUUsageMeasurementDuration { 10_s };
+static const Seconds backgroundCPUUsageMeasurementDuration { 5_min };
+static const Seconds cpuUsageSamplingInterval { 10_min };
 
-static const std::chrono::seconds memoryUsageMeasurementDelay { 10 };
+static const Seconds memoryUsageMeasurementDelay { 10_s };
+
+static const Seconds delayBeforeProcessMayBecomeInactive { 8_min };
 
 static const double postPageLoadCPUUsageDomainReportingThreshold { 20.0 }; // Reporting pages using over 20% CPU is roughly equivalent to reporting the 10% worst pages.
 #if !PLATFORM(IOS)
@@ -69,11 +71,12 @@ PerformanceMonitor::PerformanceMonitor(Page& page)
     , m_perActivityStateCPUUsageTimer(*this, &PerformanceMonitor::measurePerActivityStateCPUUsage)
     , m_postPageLoadMemoryUsageTimer(*this, &PerformanceMonitor::measurePostLoadMemoryUsage)
     , m_postBackgroundingMemoryUsageTimer(*this, &PerformanceMonitor::measurePostBackgroundingMemoryUsage)
+    , m_processMayBecomeInactiveTimer(*this, &PerformanceMonitor::processMayBecomeInactiveTimerFired)
 {
     ASSERT(!page.isUtilityPage());
 
     if (Settings::isPerActivityStateCPUUsageMeasurementEnabled()) {
-        m_perActivityStateCPUTime = getCPUTime();
+        m_perActivityStateCPUTime = CPUTime::get();
         m_perActivityStateCPUUsageTimer.startRepeating(cpuUsageSamplingInterval);
     }
 }
@@ -127,6 +130,14 @@ void PerformanceMonitor::activityStateChanged(ActivityState::Flags oldState, Act
         else if (m_page.isOnlyNonUtilityPage())
             m_postBackgroundingMemoryUsageTimer.startOneShot(memoryUsageMeasurementDelay);
     }
+
+    if (newState & ActivityState::IsVisible && newState & ActivityState::WindowIsActive) {
+        m_processMayBecomeInactive = false;
+        m_processMayBecomeInactiveTimer.stop();
+    } else if (!m_processMayBecomeInactive && !m_processMayBecomeInactiveTimer.isActive())
+        m_processMayBecomeInactiveTimer.startOneShot(delayBeforeProcessMayBecomeInactive);
+
+    updateProcessStateForMemoryPressure();
 }
 
 enum class ReportingReason { HighCPUUsage, HighMemoryUsage };
@@ -163,12 +174,12 @@ void PerformanceMonitor::measurePostLoadCPUUsage()
     }
 
     if (!m_postLoadCPUTime) {
-        m_postLoadCPUTime = getCPUTime();
+        m_postLoadCPUTime = CPUTime::get();
         if (m_postLoadCPUTime)
             m_postPageLoadCPUUsageTimer.startOneShot(postLoadCPUUsageMeasurementDuration);
         return;
     }
-    std::optional<CPUTime> cpuTime = getCPUTime();
+    std::optional<CPUTime> cpuTime = CPUTime::get();
     if (!cpuTime)
         return;
 
@@ -220,12 +231,12 @@ void PerformanceMonitor::measurePostBackgroundingCPUUsage()
     }
 
     if (!m_postBackgroundingCPUTime) {
-        m_postBackgroundingCPUTime = getCPUTime();
+        m_postBackgroundingCPUTime = CPUTime::get();
         if (m_postBackgroundingCPUTime)
             m_postBackgroundingCPUUsageTimer.startOneShot(backgroundCPUUsageMeasurementDuration);
         return;
     }
-    std::optional<CPUTime> cpuTime = getCPUTime();
+    std::optional<CPUTime> cpuTime = CPUTime::get();
     if (!cpuTime)
         return;
 
@@ -263,11 +274,11 @@ void PerformanceMonitor::measureCPUUsageInActivityState(ActivityStateForCPUSampl
     }
 
     if (!m_perActivityStateCPUTime) {
-        m_perActivityStateCPUTime = getCPUTime();
+        m_perActivityStateCPUTime = CPUTime::get();
         return;
     }
 
-    std::optional<CPUTime> cpuTime = getCPUTime();
+    std::optional<CPUTime> cpuTime = CPUTime::get();
     if (!cpuTime) {
         m_perActivityStateCPUTime = std::nullopt;
         return;
@@ -280,6 +291,33 @@ void PerformanceMonitor::measureCPUUsageInActivityState(ActivityStateForCPUSampl
     m_page.chrome().client().reportProcessCPUTime((cpuTime.value().systemTime + cpuTime.value().userTime) - (m_perActivityStateCPUTime.value().systemTime + m_perActivityStateCPUTime.value().userTime), activityState);
 
     m_perActivityStateCPUTime = WTFMove(cpuTime);
+}
+
+void PerformanceMonitor::processMayBecomeInactiveTimerFired()
+{
+    m_processMayBecomeInactive = true;
+    updateProcessStateForMemoryPressure();
+}
+
+void PerformanceMonitor::updateProcessStateForMemoryPressure()
+{
+    bool hasAudiblePages = false;
+    bool hasCapturingPages = false;
+    bool mayBecomeInactive = true;
+
+    Page::forEachPage([&] (Page& page) {
+        if (!page.performanceMonitor())
+            return;
+        if (!page.performanceMonitor()->m_processMayBecomeInactive)
+            mayBecomeInactive = false;
+        if (page.activityState() & ActivityState::IsAudible)
+            hasAudiblePages = true;
+        if (page.activityState() & ActivityState::IsCapturingMedia)
+            hasCapturingPages = true;
+    });
+
+    bool isActiveProcess = !mayBecomeInactive || hasAudiblePages || hasCapturingPages;
+    MemoryPressureHandler::singleton().setProcessState(isActiveProcess ? WebsamProcessState::Active : WebsamProcessState::Inactive);
 }
 
 } // namespace WebCore

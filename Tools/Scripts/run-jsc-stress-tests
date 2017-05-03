@@ -294,7 +294,7 @@ end
 # Try to determine architecture. Return nil on failure.
 def machOArchitectureCode
     begin 
-        otoolLines = `otool -aSfh #{Shellwords.shellescape($jscPath.to_s)}`.split("\n")
+        otoolLines = `otool -afh #{Shellwords.shellescape($jscPath.to_s)}`.split("\n")
         otoolLines.each_with_index {
             | value, index |
             if value =~ /magic/ and value =~ /cputype/
@@ -340,6 +340,8 @@ def determineArchitectureFromELFBinary
     case code
     when 3
         "x86"
+    when 8
+        "mips"
     when 62
         "x86-64"
     when 40
@@ -411,7 +413,7 @@ end
 
 $hostOS = determineOS unless $hostOS
 $architecture = determineArchitecture unless $architecture
-$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $hostOS == "windows" || $hostOS == "linux" && $architecture == "arm64")
+$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $architecture == "mips" || $hostOS == "windows" || $hostOS == "linux" && $architecture == "arm64")
 
 if !$testRunnerType
     if $remote and $hostOS == "darwin"
@@ -428,6 +430,7 @@ $numPasses = 0
 BASE_OPTIONS = ["--useFTLJIT=false", "--useFunctionDotArguments=true", "--maxPerThreadStackUsage=1572864"]
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
 NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
+B3O1_OPTIONS = ["--defaultB3OptLevel=1"]
 FTL_OPTIONS = ["--useFTLJIT=true"]
 
 def shouldCollectContinuously?
@@ -853,6 +856,10 @@ def runFTLNoCJIT(*optionalTestSpecificOptions)
     run("misc-ftl-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
+def runFTLNoCJITB3O1(*optionalTestSpecificOptions)
+    run("ftl-no-cjit-b3o1", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
+end
+
 def runFTLNoCJITValidate(*optionalTestSpecificOptions)
     run("ftl-no-cjit-validate-sampling-profiler", "--validateGraph=true", "--useSamplingProfiler=true", "--airForceIRCAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
@@ -883,6 +890,10 @@ end
 
 def runFTLEagerNoCJITValidate(*optionalTestSpecificOptions)
     run("ftl-eager-no-cjit", "--validateGraph=true", "--airForceIRCAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runFTLEagerNoCJITB3O1(*optionalTestSpecificOptions)
+    run("ftl-eager-no-cjit-b3o1", "--validateGraph=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEagerNoCJITOSRValidation(*optionalTestSpecificOptions)
@@ -934,10 +945,12 @@ def defaultRun
 
             runNoFTL
             runFTLNoCJITValidate
+            runFTLNoCJITB3O1
             runFTLNoCJITNoPutStackValidate
             runFTLNoCJITNoInlineValidate
             runFTLEager
             runFTLEagerNoCJITValidate
+            runFTLEagerNoCJITB3O1
             runFTLNoCJITSmallPool
         end
     end
@@ -959,6 +972,7 @@ def defaultNoNoLLIntRun
 
             runNoFTL
             runFTLNoCJITValidate
+            runFTLNoCJITB3O1
             runFTLNoCJITNoPutStackValidate
             runFTLNoCJITNoInlineValidate
             runFTLEager
@@ -988,6 +1002,7 @@ def defaultSpotCheckNoMaximalFlush
 
     runFTLNoCJITOSRValidation
     runFTLNoCJITNoAccessInlining
+    runFTLNoCJITB3O1
 end
 
 def defaultSpotCheck
@@ -1010,6 +1025,7 @@ def defaultNoEagerRun
         runNoFTL
         runFTLNoCJITValidate
         runFTLNoCJITNoInlineValidate
+        runFTLNoCJITB3O1
     end
 end
 
@@ -1114,6 +1130,9 @@ def runTest262(mode, exception, includeFiles, flags)
     when :fail
         errorHandler = expectedFailErrorHandler
         outputHandler = noisyOutputHandler
+    when :failDueToOutdatedOrBadTest
+        errorHandler = expectedFailErrorHandler
+        outputHandler = noisyOutputHandler
     else
         raise "Invalid mode: #{mode}"
     end
@@ -1179,7 +1198,21 @@ def runWebAssembly
     modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
     prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
     prepareExtraRelativeFiles(modules.map { |f| "../" + f }, $collection)
-    run("default-wasm", "-m", "--useWebAssembly=1")
+    run("default-wasm", "-m", *FTL_OPTIONS)
+    run("wasm-no-cjit", "-m", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+end
+
+def runWebAssemblyEmscripten(mode)
+    case mode
+    when :skip
+        return
+    end
+    return if !$jitTests
+    return if !$isFTLPlatform
+    wasm = $benchmark.to_s.sub! '.js', '.wasm'
+    prepareExtraRelativeFiles([Pathname('..') + wasm], $collection)
+    run("default-wasm", *FTL_OPTIONS)
+    run("wasm-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
 end
 
 def runWebAssemblySpecTest(mode)
@@ -1190,11 +1223,16 @@ def runWebAssemblySpecTest(mode)
 
     return if !$jitTests
     return if !$isFTLPlatform
-    modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
     prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
+
+    modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
     prepareExtraRelativeFiles(modules.map { |f| "../../" + f }, $collection)
 
-    runWithOutputHandler("default-wasm", noisyOutputHandler, "-m", "--useWebAssembly=1")
+    harness = Dir[WASMTESTS_PATH + "spec-harness/" + "*.js"].map { |f| File.basename(f) }
+    prepareExtraRelativeFiles(harness.map { |f| "../../spec-harness/" + f }, $collection)
+
+    runWithOutputHandler("default-wasm", noisyOutputHandler, "../spec-harness.js", *FTL_OPTIONS)
+    runWithOutputHandler("wasm-no-cjit", noisyOutputHandler, "../spec-harness.js", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
 end
 
 def runChakra(mode, exception, baselineFile, extraFiles)
@@ -1277,6 +1315,10 @@ end
 
 def runLayoutTestFTLEagerNoCJIT
     runLayoutTest("ftl-eager-no-cjit", "--testTheFTL=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS))
+end
+
+def runLayoutTestFTLEagerNoCJITB3O1
+    runLayoutTest("ftl-eager-no-cjit-b3o1", "--testTheFTL=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + B3O1_OPTIONS))
 end
 
 def noFTLRunLayoutTest
@@ -1463,6 +1505,10 @@ def runNoisyTestNoCJIT
     runNoisyTest("ftl-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS))
 end
 
+def runNoisyTestNoCJITB3O1
+    runNoisyTest("ftl-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS))
+end
+
 def runNoisyTestEagerNoCJIT
     runNoisyTest("ftl-eager-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS))
 end
@@ -1472,6 +1518,7 @@ def defaultRunNoisyTest
     if $jitTests and $isFTLPlatform
         runNoisyTestNoFTL
         runNoisyTestNoCJIT
+        runNoisyTestNoCJITB3O1
         runNoisyTestEagerNoCJIT
     end
 end

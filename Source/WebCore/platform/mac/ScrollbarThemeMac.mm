@@ -130,8 +130,8 @@ static const int cButtonLength[] = { 14, 10 };
 static const int cOuterButtonLength[] = { 16, 14 }; // The outer button in a double button pair is a bit bigger.
 static const int cOuterButtonOverlap = 2;
 
-static float gInitialButtonDelay = 0.5f;
-static float gAutoscrollButtonDelay = 0.05f;
+static Seconds gInitialButtonDelay { 500_ms };
+static Seconds gAutoscrollButtonDelay { 50_ms };
 static bool gJumpOnTrackClick = false;
 static bool gUsesOverlayScrollbars = false;
 
@@ -234,17 +234,17 @@ void ScrollbarThemeMac::preferencesChanged()
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults synchronize];
-    gInitialButtonDelay = [defaults floatForKey:@"NSScrollerButtonDelay"];
-    gAutoscrollButtonDelay = [defaults floatForKey:@"NSScrollerButtonPeriod"];
+    gInitialButtonDelay = Seconds { [defaults floatForKey:@"NSScrollerButtonDelay"] };
+    gAutoscrollButtonDelay = Seconds { [defaults floatForKey:@"NSScrollerButtonPeriod"] };
     gJumpOnTrackClick = [defaults boolForKey:@"AppleScrollerPagingBehavior"];
     usesOverlayScrollbarsChanged();
 }
 
-int ScrollbarThemeMac::scrollbarThickness(ScrollbarControlSize controlSize)
+int ScrollbarThemeMac::scrollbarThickness(ScrollbarControlSize controlSize, ScrollbarExpansionState expansionState)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(controlSize) horizontal:NO replacingScrollerImp:nil];
-    [scrollerImp setExpanded:YES];
+    [scrollerImp setExpanded:(expansionState == ScrollbarExpansionState::Expanded)];
     return [scrollerImp trackBoxWidth];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
@@ -277,12 +277,12 @@ void ScrollbarThemeMac::updateScrollbarOverlayStyle(Scrollbar& scrollbar)
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-double ScrollbarThemeMac::initialAutoscrollTimerDelay()
+Seconds ScrollbarThemeMac::initialAutoscrollTimerDelay()
 {
     return gInitialButtonDelay;
 }
 
-double ScrollbarThemeMac::autoscrollTimerDelay()
+Seconds ScrollbarThemeMac::autoscrollTimerDelay()
 {
     return gAutoscrollButtonDelay;
 }

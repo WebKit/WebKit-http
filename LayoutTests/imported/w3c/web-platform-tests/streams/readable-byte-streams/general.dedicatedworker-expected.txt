@@ -1,6 +1,7 @@
 
 PASS getReader({mode: "byob"}) throws on non-bytes streams 
-PASS ReadableStream with byte source can be constructed with no errors 
+FAIL ReadableStream with byte source can be constructed with no errors ReadableStreamBYOBReader is not implemented
+FAIL getReader({mode}) must perform ToString() ReadableStreamBYOBReader is not implemented
 PASS ReadableStream with byte source: Construct and expect start and pull being called 
 PASS ReadableStream with byte source: No automatic pull call if start doesn't finish 
 PASS ReadableStream with byte source: Construct with highWaterMark of 0 
@@ -15,8 +16,8 @@ FAIL ReadableStream with byte source: Test that erroring a stream does not relea
 PASS ReadableStream with byte source: releaseLock() on ReadableStreamReader with pending read() must throw 
 PASS ReadableStream with byte source: Automatic pull() after start() 
 PASS ReadableStream with byte source: Automatic pull() after start() and read() 
-FAIL ReadableStream with byte source: autoAllocateChunkSize assert_equals: pull() must have been invoked once expected 1 but got 0
-FAIL ReadableStream with byte source: Mix of auto allocate and BYOB promise_test: Unhandled rejection with value: object "TypeError: Readable state is not yet supported"
+PASS ReadableStream with byte source: autoAllocateChunkSize 
+FAIL ReadableStream with byte source: Mix of auto allocate and BYOB promise_test: Unhandled rejection with value: object "TypeError: ReadableStreamBYOBReader is not implemented"
 PASS ReadableStream with byte source: Automatic pull() after start() and read(view) 
 PASS ReadableStream with byte source: enqueue(), getReader(), then read() 
 PASS ReadableStream with byte source: Push source that doesn't understand pull signal 

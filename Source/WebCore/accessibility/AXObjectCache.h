@@ -45,6 +45,7 @@ class Node;
 class Page;
 class RenderBlock;
 class RenderObject;
+class RenderText;
 class ScrollView;
 class VisiblePosition;
 class Widget;
@@ -143,7 +144,7 @@ public:
     // For AX objects with elements that back them.
     AccessibilityObject* getOrCreate(RenderObject*);
     AccessibilityObject* getOrCreate(Widget*);
-    AccessibilityObject* getOrCreate(Node*);
+    WEBCORE_EXPORT AccessibilityObject* getOrCreate(Node*);
 
     // used for objects without backing elements
     AccessibilityObject* getOrCreate(AccessibilityRole);
@@ -262,6 +263,7 @@ public:
         AXAutocorrectionOccured,
         AXCheckedStateChanged,
         AXChildrenChanged,
+        AXCurrentChanged,
         AXFocusedUIElementChanged,
         AXLayoutComplete,
         AXLoadComplete,
@@ -326,7 +328,8 @@ public:
     static void setShouldRepostNotificationsForTests(bool value);
 #endif
     void recomputeDeferredIsIgnored(RenderBlock& renderer);
-    void performDeferredIsIgnoredChange();
+    void deferTextChanged(RenderText& renderer);
+    void performDeferredCacheUpdate();
 
 protected:
     void postPlatformNotification(AccessibilityObject*, AXNotification);
@@ -428,7 +431,7 @@ private:
 
     AXTextStateChangeIntent m_textSelectionIntent;
     bool m_isSynchronizingSelection { false };
-    ListHashSet<RenderBlock*> m_deferredIsIgnoredChangeList;
+    ListHashSet<RenderObject*> m_deferredCacheUpdateList;
 };
 
 class AXAttributeCacheEnabler
@@ -491,7 +494,8 @@ inline void AXObjectCache::handleScrollbarUpdate(ScrollView*) { }
 inline void AXObjectCache::handleAttributeChanged(const QualifiedName&, Element*) { }
 inline void AXObjectCache::recomputeIsIgnored(RenderObject*) { }
 inline void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock&) { }
-inline void AXObjectCache::performDeferredIsIgnoredChange() { }
+inline void AXObjectCache::deferTextChanged(RenderText&) { }
+inline void AXObjectCache::performDeferredCacheUpdate() { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, const AXTextStateChangeIntent&, const VisibleSelection&) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, AXTextEditType, const String&, const VisiblePosition&) { }
@@ -526,10 +530,6 @@ inline void AXObjectCache::postTextReplacementPlatformNotification(Accessibility
 inline AXTextChange AXObjectCache::textChangeForEditType(AXTextEditType) { return AXTextInserted; }
 inline void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject*, AXTextChange, unsigned, const String&) { }
 #endif
-inline void AXObjectCache::notificationPostTimerFired() { }
-inline void AXObjectCache::passwordNotificationPostTimerFired() { }
-inline void AXObjectCache::liveRegionChangedNotificationPostTimerFired() { }
-inline void AXObjectCache::focusAriaModalNodeTimerFired() { }
 
 inline AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache*) { }
 inline AXAttributeCacheEnabler::~AXAttributeCacheEnabler() { }

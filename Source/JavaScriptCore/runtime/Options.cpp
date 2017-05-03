@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Options.h"
 
+#include "AssemblerCommon.h"
 #include "LLIntCommon.h"
 #include "LLIntData.h"
 #include "SigillCrashAnalyzer.h"
@@ -89,6 +90,16 @@ static bool parse(const char* string, int32_t& value)
 static bool parse(const char* string, unsigned& value)
 {
     return sscanf(string, "%u", &value) == 1;
+}
+
+static bool parse(const char* string, unsigned long& value)
+{
+    return sscanf(string, "%lu", &value);
+}
+
+static bool UNUSED_FUNCTION parse(const char* string, unsigned long long& value)
+{
+    return sscanf(string, "%llu", &value);
 }
 
 static bool parse(const char* string, double& value)
@@ -320,7 +331,10 @@ static void scaleJITPolicy()
 
 static void overrideDefaults()
 {
-    if (WTF::numberOfProcessorCores() < 4) {
+#if !PLATFORM(IOS)
+    if (WTF::numberOfProcessorCores() < 4)
+#endif
+    {
         Options::maximumMutatorUtilization() = 0.6;
         Options::concurrentGCMaxHeadroom() = 1.4;
         Options::minimumGCPauseMS() = 1;
@@ -337,6 +351,10 @@ static void overrideDefaults()
 
 #if !ENABLE(SIGNAL_BASED_VM_TRAPS)
     Options::usePollingTraps() = true;
+#endif
+
+#if !ENABLE(WEBASSEMBLY_FAST_MEMORY)
+    Options::useWebAssemblyFastMemory() = false;
 #endif
 }
 
@@ -375,6 +393,15 @@ static void recomputeDependentOptions()
     if (!MacroAssemblerX86::supportsFloatingPoint())
         Options::useJIT() = false;
 #endif
+
+    if (!Options::useJIT())
+        Options::useWebAssembly() = false;
+
+    if (!Options::useWebAssembly()) {
+        Options::webAssemblyFastMemoryPreallocateCount() = 0;
+        Options::useWebAssemblyFastTLS() = false;
+    }
+    
     if (Options::dumpDisassembly()
         || Options::dumpDFGDisassembly()
         || Options::dumpFTLDisassembly()
@@ -816,6 +843,9 @@ void Option::dump(StringBuilder& builder) const
     case Options::Type::unsignedType:
         builder.appendNumber(m_entry.unsignedVal);
         break;
+    case Options::Type::sizeType:
+        builder.appendNumber(m_entry.sizeVal);
+        break;
     case Options::Type::doubleType:
         builder.appendNumber(m_entry.doubleVal);
         break;
@@ -848,6 +878,8 @@ bool Option::operator==(const Option& other) const
         return m_entry.boolVal == other.m_entry.boolVal;
     case Options::Type::unsignedType:
         return m_entry.unsignedVal == other.m_entry.unsignedVal;
+    case Options::Type::sizeType:
+        return m_entry.sizeVal == other.m_entry.sizeVal;
     case Options::Type::doubleType:
         return (m_entry.doubleVal == other.m_entry.doubleVal) || (std::isnan(m_entry.doubleVal) && std::isnan(other.m_entry.doubleVal));
     case Options::Type::int32Type:

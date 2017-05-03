@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSObject.h"
-#include "js/JSWebAssemblyCallee.h"
 #include "js/JSWebAssemblyCompileError.h"
 #include "js/JSWebAssemblyInstance.h"
 #include "js/JSWebAssemblyLinkError.h"
@@ -67,7 +66,7 @@ public:
     DECLARE_INFO;
 
 protected:
-    void finishCreation(VM&, JSGlobalObject*);
+    void finishCreation(VM&);
 
 private:
     JSWebAssembly(VM&, Structure*);

@@ -1,5 +1,5 @@
 find_package(LibGBM REQUIRED)
-find_package(WPE-mesa REQUIRED)
+find_package(WPEBackend-mesa REQUIRED)
 
 add_custom_target(WebKitTestRunner-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_TESTRUNNER_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe
@@ -41,3 +41,7 @@ list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/TestRunnerWPE.cpp
 )
 
+add_definitions(
+    -DFONTS_CONF_DIR="${TOOLS_DIR}/WebKitTestRunner/gtk/fonts"
+    -DTOP_LEVEL_DIR="${CMAKE_SOURCE_DIR}"
+)

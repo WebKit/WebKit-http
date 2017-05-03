@@ -20,6 +20,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import atexit
 import logging
 import os
 import re
@@ -28,8 +29,8 @@ import subprocess
 import time
 
 from webkitpy.common.memoized import memoized
-from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port import image_diff
+from webkitpy.port.device import Device
 from webkitpy.port.ios import IOSPort
 from webkitpy.xcode.simulator import Simulator, Runtime, DeviceType
 from webkitpy.common.system.crashlogs import CrashLogs
@@ -52,7 +53,7 @@ class IOSSimulatorPort(IOSPort):
     SIMULATOR_BUNDLE_ID = 'com.apple.iphonesimulator'
     SIMULATOR_DIRECTORY = "/tmp/WebKitTestingSimulators/"
     LSREGISTER_PATH = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"
-    PROCESS_COUNT_ESTIMATE_PER_SIMULATOR_INSTANCE = 100
+    PROCESS_COUNT_ESTIMATE_PER_SIMULATOR_INSTANCE = 125
 
     DEVICE_CLASS_MAP = {
         'x86_64': {
@@ -66,6 +67,11 @@ class IOSSimulatorPort(IOSPort):
         },
     }
 
+    #FIXME: Ports are recreated in each process. This is a problem for IOSSimulatorPort, it means devices are not
+    # persistent and devices hold a listening socket expected to be persistent across processes.
+    _DEVICE_MAP = {}
+    _CURRENT_DEVICE = None
+
     def __init__(self, host, port_name, **kwargs):
         super(IOSSimulatorPort, self).__init__(host, port_name, **kwargs)
 
@@ -73,7 +79,9 @@ class IOSSimulatorPort(IOSPort):
         self._device_class = optional_device_class if optional_device_class else self.DEFAULT_DEVICE_CLASS
         _log.debug('IOSSimulatorPort _device_class is %s', self._device_class)
 
-        self._current_device = Simulator(host).current_device()
+        if not IOSSimulatorPort._CURRENT_DEVICE:
+            IOSSimulatorPort._CURRENT_DEVICE = Device(Simulator(host).current_device())
+        self._current_device = IOSSimulatorPort._CURRENT_DEVICE
         if not self._current_device:
             self.set_option('dedicated_simulators', True)
         if not self.get_option('dedicated_simulators'):
@@ -82,7 +90,7 @@ class IOSSimulatorPort(IOSPort):
             self.set_option('child_processes', 1)
 
     def _device_for_worker_number_map(self):
-        return Simulator.managed_devices
+        return IOSSimulatorPort._DEVICE_MAP
 
     @property
     @memoized
@@ -170,23 +178,37 @@ class IOSSimulatorPort(IOSPort):
         sdk = ['--sdk', 'iphonesimulator']
         return archs + sdk
 
-    def _generate_all_test_configurations(self):
-        configurations = []
-        for build_type in self.ALL_BUILD_TYPES:
-            for architecture in self.ARCHITECTURES:
-                configurations.append(TestConfiguration(version=self._version, architecture=architecture, build_type=build_type))
-        return configurations
-
-    def default_baseline_search_path(self):
-        if self.get_option('webkit_test_runner'):
-            fallback_names = [self._wk2_port_name()] + [self.port_name] + ['wk2']
-        else:
-            fallback_names = [self.port_name + '-wk1'] + [self.port_name]
-
-        return map(self._webkit_baseline_path, fallback_names)
-
     def _set_device_class(self, device_class):
         self._device_class = device_class if device_class else self.DEFAULT_DEVICE_CLASS
+
+    # This function may be called more than once.
+    def _teardown_managed_simulators(self):
+        if not self._using_dedicated_simulators():
+            return
+        self._quit_ios_simulator()
+
+        for i in xrange(len(Simulator.managed_devices)):
+            simulator_path = self.get_simulator_path(i)
+            device_udid = Simulator.managed_devices[i].udid
+            Simulator.remove_device(i)
+
+            if not os.path.exists(simulator_path):
+                continue
+            try:
+                self._executive.run_command([IOSSimulatorPort.LSREGISTER_PATH, "-u", simulator_path])
+
+                _log.debug('rmtree %s', simulator_path)
+                self._filesystem.rmtree(simulator_path)
+
+                logs_path = self._filesystem.join(self._filesystem.expanduser("~"), "Library/Logs/CoreSimulator/", device_udid)
+                _log.debug('rmtree %s', logs_path)
+                self._filesystem.rmtree(logs_path)
+
+                saved_state_path = self._filesystem.join(self._filesystem.expanduser("~"), "Library/Saved Application State/", IOSSimulatorPort.SIMULATOR_BUNDLE_ID + str(i) + ".savedState")
+                _log.debug('rmtree %s', saved_state_path)
+                self._filesystem.rmtree(saved_state_path)
+            except:
+                _log.warning('Unable to remove Simulator' + str(i))
 
     def _create_simulators(self):
         if (self.default_child_processes() < self.child_processes()):
@@ -195,19 +217,20 @@ class IOSSimulatorPort(IOSPort):
             _log.warn('This is very likely to fail.')
 
         if self._using_dedicated_simulators():
+            atexit.register(lambda: self._teardown_managed_simulators())
             self._createSimulatorApps()
 
             for i in xrange(self.child_processes()):
                 self._create_device(i)
 
             for i in xrange(self.child_processes()):
-                device_udid = self._testing_device(i).udid
+                device_udid = Simulator.managed_devices[i].udid
                 Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.SHUTDOWN)
                 Simulator.reset_device(device_udid)
         else:
             assert(self._current_device)
-            if self._current_device.name != self.simulator_device_type().name:
-                _log.warn("Expected simulator of type '" + self.simulator_device_type().name + "' but found simulator of type '" + self._current_device.name + "'")
+            if self._current_device.platform_device.name != self.simulator_device_type().name:
+                _log.warn("Expected simulator of type '" + self.simulator_device_type().name + "' but found simulator of type '" + self._current_device.platform_device.name + "'")
                 _log.warn('The next block of tests may fail due to device mis-match')
 
     def _create_devices(self, device_class):
@@ -224,7 +247,7 @@ class IOSSimulatorPort(IOSPort):
             return
 
         for i in xrange(self.child_processes()):
-            device_udid = self._testing_device(i).udid
+            device_udid = Simulator.managed_devices[i].udid
             _log.debug('testing device %s has udid %s', i, device_udid)
 
             # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
@@ -237,7 +260,11 @@ class IOSSimulatorPort(IOSPort):
 
         _log.info('Waiting for all iOS Simulators to finish booting.')
         for i in xrange(self.child_processes()):
-            Simulator.wait_until_device_is_booted(self._testing_device(i).udid)
+            Simulator.wait_until_device_is_booted(Simulator.managed_devices[i].udid)
+
+        IOSSimulatorPort._DEVICE_MAP = {}
+        for i in xrange(self.child_processes()):
+            IOSSimulatorPort._DEVICE_MAP[i] = Device(Simulator.managed_devices[i])
 
     def _quit_ios_simulator(self):
         if not self._using_dedicated_simulators():
@@ -249,7 +276,6 @@ class IOSSimulatorPort(IOSPort):
     def clean_up_test_run(self):
         super(IOSSimulatorPort, self).clean_up_test_run()
         _log.debug("clean_up_test_run")
-        self._quit_ios_simulator()
         fifos = [path for path in os.listdir('/tmp') if re.search('org.webkit.(DumpRenderTree|WebKitTestRunner).*_(IN|OUT|ERROR)', path)]
         for fifo in fifos:
             try:
@@ -261,29 +287,8 @@ class IOSSimulatorPort(IOSPort):
         if not self._using_dedicated_simulators():
             return
 
-        for i in xrange(self.child_processes()):
-            simulator_path = self.get_simulator_path(i)
-            device_udid = self._testing_device(i).udid
-            self._remove_device(i)
-
-            if not os.path.exists(simulator_path):
-                continue
-            try:
-                self._executive.run_command([self.LSREGISTER_PATH, "-u", simulator_path])
-
-                _log.debug('rmtree %s', simulator_path)
-                self._filesystem.rmtree(simulator_path)
-
-                logs_path = self._filesystem.join(self._filesystem.expanduser("~"), "Library/Logs/CoreSimulator/", device_udid)
-                _log.debug('rmtree %s', logs_path)
-                self._filesystem.rmtree(logs_path)
-
-                saved_state_path = self._filesystem.join(self._filesystem.expanduser("~"), "Library/Saved Application State/", self.SIMULATOR_BUNDLE_ID + str(i) + ".savedState")
-                _log.debug('rmtree %s', saved_state_path)
-                self._filesystem.rmtree(saved_state_path)
-
-            except:
-                _log.warning('Unable to remove Simulator' + str(i))
+        self._teardown_managed_simulators()
+        IOSSimulatorPort._DEVICE_MAP = {}
 
     def setup_environ_for_server(self, server_name=None):
         _log.debug("setup_environ_for_server")
@@ -319,9 +324,6 @@ class IOSSimulatorPort(IOSPort):
 
     def _create_device(self, number):
         return Simulator.create_device(number, self.simulator_device_type(), self.simulator_runtime)
-
-    def _remove_device(self, number):
-        Simulator.remove_device(number)
 
     def get_simulator_path(self, suffix=""):
         return os.path.join(self.SIMULATOR_DIRECTORY, "Simulator" + str(suffix) + ".app")

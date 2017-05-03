@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WebEventFactory.h"
 
-#include <wpe/input.h>
 #include <WebCore/Scrollbar.h>
 #include <cstdlib>
+#include <wpe/input.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {
@@ -84,7 +84,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(struct wpe_input_keyboa
         modifiersForEvent(event), event->time);
 }
 
-WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_event* event)
+WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_event* event, float deviceScaleFactor)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event->type) {
@@ -117,36 +117,42 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
 
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
     WebCore::IntPoint position(event->x, event->y);
+    position.scale(1 / deviceScaleFactor);
     return WebMouseEvent(type, button, position, position,
         0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(0), event->time);
 }
 
-WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* event)
+WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* event, float deviceScaleFactor)
 {
     // FIXME: We shouldn't hard-code this.
     enum Axis {
         Vertical,
-        Horizontal
+        Horizontal,
+        Smooth
     };
 
     WebCore::FloatSize wheelTicks;
+    WebCore::FloatSize delta;
     switch (event->axis) {
     case Vertical:
-        wheelTicks = WebCore::FloatSize(0, 1);
+        wheelTicks = WebCore::FloatSize(0, event->value / std::abs(event->value));
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
     case Horizontal:
-        wheelTicks = WebCore::FloatSize(1, 0);
+        wheelTicks = WebCore::FloatSize(event->value / std::abs(event->value), 0);
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
+    case Smooth:
+        wheelTicks = WebCore::FloatSize(0, event->value / deviceScaleFactor);
+        delta = wheelTicks;
     default:
         ASSERT_NOT_REACHED();
     };
 
-    wheelTicks.scale(event->value / std::abs(event->value));
-
-    WebCore::FloatSize delta = wheelTicks;
-    delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
-
     WebCore::IntPoint position(event->x, event->y);
+    position.scale(1 / deviceScaleFactor);
     return WebWheelEvent(WebEvent::Wheel, position, position,
         delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event->time);
 }
@@ -172,7 +178,7 @@ static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mai
     return WebKit::WebPlatformTouchPoint::TouchStationary;
 }
 
-WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event* event)
+WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event* event, float deviceScaleFactor)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event->type) {
@@ -197,8 +203,11 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
         if (point.type == wpe_input_touch_event_type_null)
             continue;
 
-        touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
-            WebCore::IntPoint(point.x, point.y), WebCore::IntPoint(point.x, point.y)));
+        WebCore::IntPoint pointCoordinates(point.x, point.y);
+        pointCoordinates.scale(1 / deviceScaleFactor);
+        touchPoints.uncheckedAppend(
+            WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
+                pointCoordinates, pointCoordinates));
     }
 
     return WebTouchEvent(type, WTFMove(touchPoints), WebEvent::Modifiers(0), event->time);

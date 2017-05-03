@@ -55,6 +55,12 @@ struct PluginInfo;
 
 namespace WebKit {
 
+enum class SimulatedCrashReason {
+    ExceededActiveMemoryLimit,
+    ExceededInactiveMemoryLimit,
+    ExceededBackgroundCPULimit,
+};
+
 class NetworkProcessProxy;
 class UserMediaCaptureManagerProxy;
 class WebBackForwardListItem;
@@ -72,7 +78,7 @@ public:
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
     typedef HashMap<uint64_t, RefPtr<API::UserInitiatedAction>> UserInitiatedActionMap;
 
-    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore*);
+    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore&);
     ~WebProcessProxy();
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
@@ -80,19 +86,19 @@ public:
     WebProcessPool& processPool() { return m_processPool; }
 
     // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2
-    WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
+    WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
 
     static WebPageProxy* webPage(uint64_t pageID);
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
-    void addExistingWebPage(WebPageProxy*, uint64_t pageID);
-    void removeWebPage(uint64_t pageID);
+    void addExistingWebPage(WebPageProxy&, uint64_t pageID);
+    void removeWebPage(WebPageProxy&, uint64_t pageID);
 
     WTF::IteratorRange<WebPageProxyMap::const_iterator::Values> pages() const { return m_pageMap.values(); }
     unsigned pageCount() const { return m_pageMap.size(); }
     unsigned visiblePageCount() const { return m_visiblePageCounter.value(); }
 
     void addVisitedLinkStore(VisitedLinkStore&);
-    void addWebUserContentControllerProxy(WebUserContentControllerProxy&);
+    void addWebUserContentControllerProxy(WebUserContentControllerProxy&, WebPageCreationParameters&);
     void didDestroyVisitedLinkStore(VisitedLinkStore&);
     void didDestroyWebUserContentControllerProxy(WebUserContentControllerProxy&);
 
@@ -130,7 +136,7 @@ public:
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, Function<void(WebsiteData)> completionHandler);
     void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, Function<void()> completionHandler);
     void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>&, Function<void()> completionHandler);
-    static void deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<String>& topPrivatelyOwnedDomains, bool shouldNotifyPages, std::function<void(Vector<String>)> completionHandler);
+    static void deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPages, std::function<void(Vector<String>)> completionHandler);
 
     void enableSuddenTermination();
     void disableSuddenTermination();
@@ -165,10 +171,13 @@ public:
     bool isUnderMemoryPressure() const { return m_isUnderMemoryPressure; }
 
     void processTerminated();
+
     void didExceedBackgroundCPULimit();
+    void didExceedActiveMemoryLimit();
+    void didExceedInactiveMemoryLimit();
 
 private:
-    explicit WebProcessProxy(WebProcessPool&, WebsiteDataStore*);
+    explicit WebProcessProxy(WebProcessPool&, WebsiteDataStore&);
 
     // From ChildProcessProxy
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
@@ -238,6 +247,8 @@ private:
 
     bool canTerminateChildProcess();
 
+    void simulateProcessCrash(SimulatedCrashReason);
+
     ResponsivenessTimer m_responsivenessTimer;
     BackgroundProcessResponsivenessTimer m_backgroundResponsivenessTimer;
     
@@ -271,7 +282,7 @@ private:
     VisibleWebPageCounter m_visiblePageCounter;
 
     // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2. Get rid of this member.
-    RefPtr<WebsiteDataStore> m_websiteDataStore;
+    Ref<WebsiteDataStore> m_websiteDataStore;
 
     bool m_isUnderMemoryPressure { false };
 

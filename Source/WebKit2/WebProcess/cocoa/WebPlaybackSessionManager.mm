@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,9 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebPlaybackSessionManager.h"
-
+#import "config.h"
+#import "WebPlaybackSessionManager.h"
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
@@ -114,16 +113,28 @@ void WebPlaybackSessionInterfaceContext::canPlayFastReverseChanged(bool value)
         m_manager->canPlayFastReverseChanged(m_contextId, value);
 }
 
-void WebPlaybackSessionInterfaceContext::audioMediaSelectionOptionsChanged(const Vector<String>& options, uint64_t selectedIndex)
+void WebPlaybackSessionInterfaceContext::audioMediaSelectionOptionsChanged(const Vector<MediaSelectionOption>& options, uint64_t selectedIndex)
 {
     if (m_manager)
         m_manager->audioMediaSelectionOptionsChanged(m_contextId, options, selectedIndex);
 }
 
-void WebPlaybackSessionInterfaceContext::legibleMediaSelectionOptionsChanged(const Vector<String>& options, uint64_t selectedIndex)
+void WebPlaybackSessionInterfaceContext::legibleMediaSelectionOptionsChanged(const Vector<MediaSelectionOption>& options, uint64_t selectedIndex)
 {
     if (m_manager)
         m_manager->legibleMediaSelectionOptionsChanged(m_contextId, options, selectedIndex);
+}
+
+void WebPlaybackSessionInterfaceContext::audioMediaSelectionIndexChanged(uint64_t selectedIndex)
+{
+    if (m_manager)
+        m_manager->audioMediaSelectionIndexChanged(m_contextId, selectedIndex);
+}
+
+void WebPlaybackSessionInterfaceContext::legibleMediaSelectionIndexChanged(uint64_t selectedIndex)
+{
+    if (m_manager)
+        m_manager->legibleMediaSelectionIndexChanged(m_contextId, selectedIndex);
 }
 
 void WebPlaybackSessionInterfaceContext::externalPlaybackChanged(bool enabled, WebPlaybackSessionModel::ExternalPlaybackTargetType type, const String& localizedDeviceName)
@@ -317,12 +328,12 @@ void WebPlaybackSessionManager::canPlayFastReverseChanged(uint64_t contextId, bo
     m_page->send(Messages::WebPlaybackSessionManagerProxy::SetCanPlayFastReverse(contextId, value), m_page->pageID());
 }
 
-void WebPlaybackSessionManager::audioMediaSelectionOptionsChanged(uint64_t contextId, const Vector<String>& options, uint64_t selectedIndex)
+void WebPlaybackSessionManager::audioMediaSelectionOptionsChanged(uint64_t contextId, const Vector<MediaSelectionOption>& options, uint64_t selectedIndex)
 {
     m_page->send(Messages::WebPlaybackSessionManagerProxy::SetAudioMediaSelectionOptions(contextId, options, selectedIndex), m_page->pageID());
 }
 
-void WebPlaybackSessionManager::legibleMediaSelectionOptionsChanged(uint64_t contextId, const Vector<String>& options, uint64_t selectedIndex)
+void WebPlaybackSessionManager::legibleMediaSelectionOptionsChanged(uint64_t contextId, const Vector<MediaSelectionOption>& options, uint64_t selectedIndex)
 {
     m_page->send(Messages::WebPlaybackSessionManagerProxy::SetLegibleMediaSelectionOptions(contextId, options, selectedIndex), m_page->pageID());
 }
@@ -330,6 +341,16 @@ void WebPlaybackSessionManager::legibleMediaSelectionOptionsChanged(uint64_t con
 void WebPlaybackSessionManager::externalPlaybackChanged(uint64_t contextId, bool enabled, WebPlaybackSessionModel::ExternalPlaybackTargetType targetType, String localizedDeviceName)
 {
     m_page->send(Messages::WebPlaybackSessionManagerProxy::SetExternalPlaybackProperties(contextId, enabled, static_cast<uint32_t>(targetType), localizedDeviceName), m_page->pageID());
+}
+
+void WebPlaybackSessionManager::audioMediaSelectionIndexChanged(uint64_t contextId, uint64_t selectedIndex)
+{
+    m_page->send(Messages::WebPlaybackSessionManagerProxy::SetAudioMediaSelectionIndex(contextId, selectedIndex), m_page->pageID());
+}
+
+void WebPlaybackSessionManager::legibleMediaSelectionIndexChanged(uint64_t contextId, uint64_t selectedIndex)
+{
+    m_page->send(Messages::WebPlaybackSessionManagerProxy::SetLegibleMediaSelectionIndex(contextId, selectedIndex), m_page->pageID());
 }
 
 void WebPlaybackSessionManager::wirelessVideoPlaybackDisabledChanged(uint64_t contextId, bool disabled)
@@ -416,6 +437,12 @@ void WebPlaybackSessionManager::handleControlledElementIDRequest(uint64_t contex
     auto element = ensureModel(contextId).mediaElement();
     if (element)
         m_page->send(Messages::WebPlaybackSessionManagerProxy::HandleControlledElementIDResponse(contextId, element->getIdAttribute()));
+}
+
+void WebPlaybackSessionManager::togglePictureInPicture(uint64_t contextId)
+{
+    UserGestureIndicator indicator(ProcessingUserGesture);
+    ensureModel(contextId).togglePictureInPicture();
 }
 
 } // namespace WebKit

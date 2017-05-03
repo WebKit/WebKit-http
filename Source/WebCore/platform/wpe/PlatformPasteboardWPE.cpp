@@ -24,14 +24,13 @@
  */
 
 #include "config.h"
+#include "PlatformPasteboard.h"
 
 #include "Pasteboard.h"
-#include "PlatformPasteboard.h"
-#include <wpe/pasteboard.h>
-#include <wtf/text/WTFString.h>
-#include <wtf/Assertions.h>
-
 #include <map>
+#include <wpe/pasteboard.h>
+#include <wtf/Assertions.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 

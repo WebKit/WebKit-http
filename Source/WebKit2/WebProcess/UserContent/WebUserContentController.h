@@ -62,14 +62,22 @@ public:
     void removeUserStyleSheets(InjectedBundleScriptWorld&);
     void removeAllUserContent();
 
+    void addUserContentWorlds(const Vector<std::pair<uint64_t, String>>&);
+    void addUserScripts(const Vector<WebUserScriptData>&);
+    void addUserStyleSheets(const Vector<WebUserStyleSheetData>&);
+    void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerData>&);
+#if ENABLE(CONTENT_EXTENSIONS)
+    void addContentExtensions(const Vector<std::pair<String, WebCompiledContentExtensionData>>&);
+#endif
+
 private:
     explicit WebUserContentController(uint64_t identifier);
 
     // WebCore::UserContentProvider
-    void forEachUserScript(const std::function<void(WebCore::DOMWrapperWorld&, const WebCore::UserScript&)>&) const override;
-    void forEachUserStyleSheet(const std::function<void(const WebCore::UserStyleSheet&)>&) const override;
+    void forEachUserScript(Function<void(WebCore::DOMWrapperWorld&, const WebCore::UserScript&)>&&) const final;
+    void forEachUserStyleSheet(Function<void(const WebCore::UserStyleSheet&)>&&) const final;
 #if ENABLE(USER_MESSAGE_HANDLERS)
-    void forEachUserMessageHandler(const std::function<void(const WebCore::UserMessageHandlerDescriptor&)>&) const override;
+    void forEachUserMessageHandler(Function<void(const WebCore::UserMessageHandlerDescriptor&)>&&) const final;
 #endif
 #if ENABLE(CONTENT_EXTENSIONS)
     WebCore::ContentExtensions::ContentExtensionsBackend& userContentExtensionBackend() override { return m_contentExtensionBackend; }
@@ -78,23 +86,18 @@ private:
     // IPC::MessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    void addUserContentWorlds(const Vector<std::pair<uint64_t, String>>&);
     void removeUserContentWorlds(const Vector<uint64_t>&);
 
-    void addUserScripts(const Vector<WebUserScriptData>&);
     void removeUserScript(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
     void removeAllUserScripts(const Vector<uint64_t>&);
 
-    void addUserStyleSheets(const Vector<WebUserStyleSheetData>&);
     void removeUserStyleSheet(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
     void removeAllUserStyleSheets(const Vector<uint64_t>&);
 
-    void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerData>&);
     void removeUserScriptMessageHandler(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
     void removeAllUserScriptMessageHandlers(const Vector<uint64_t>&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    void addContentExtensions(const Vector<std::pair<String, WebCompiledContentExtensionData>>&);
     void removeContentExtension(const String& name);
     void removeAllContentExtensions();
 #endif

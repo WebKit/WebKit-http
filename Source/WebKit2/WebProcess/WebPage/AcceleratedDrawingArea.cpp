@@ -38,6 +38,10 @@
 #include <WebCore/PageOverlayController.h>
 #include <WebCore/Settings.h>
 
+#if USE(GLIB_EVENT_LOOP)
+#include <wtf/glib/RunLoopSourcePriority.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -54,6 +58,9 @@ AcceleratedDrawingArea::AcceleratedDrawingArea(WebPage& webPage, const WebPageCr
     , m_exitCompositingTimer(RunLoop::main(), this, &AcceleratedDrawingArea::exitAcceleratedCompositingMode)
     , m_discardPreviousLayerTreeHostTimer(RunLoop::main(), this, &AcceleratedDrawingArea::discardPreviousLayerTreeHost)
 {
+#if USE(GLIB_EVENT_LOOP)
+    m_discardPreviousLayerTreeHostTimer.setPriority(RunLoopSourcePriority::ReleaseUnusedResourcesTimer);
+#endif
     if (!m_webPage.isVisible())
         suspendPainting();
 }
@@ -216,6 +223,15 @@ void AcceleratedDrawingArea::scheduleCompositingLayerFlushImmediately()
     scheduleCompositingLayerFlush();
 }
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+RefPtr<WebCore::DisplayRefreshMonitor> AcceleratedDrawingArea::createDisplayRefreshMonitor(WebCore::PlatformDisplayID displayID)
+{
+    if (!m_layerTreeHost || m_wantsToExitAcceleratedCompositingMode || exitAcceleratedCompositingModePending())
+        return nullptr;
+    return m_layerTreeHost->createDisplayRefreshMonitor(displayID);
+}
+#endif
+
 void AcceleratedDrawingArea::updateBackingStoreState(uint64_t stateID, bool respondImmediately, float deviceScaleFactor, const IntSize& size, const IntSize& scrollOffset)
 {
     ASSERT(!m_inUpdateBackingStoreState);
@@ -361,7 +377,7 @@ void AcceleratedDrawingArea::exitAcceleratedCompositingModeSoon()
     if (exitAcceleratedCompositingModePending())
         return;
 
-    m_exitCompositingTimer.startOneShot(0);
+    m_exitCompositingTimer.startOneShot(0_s);
 }
 
 void AcceleratedDrawingArea::exitAcceleratedCompositingModeNow()
@@ -377,7 +393,7 @@ void AcceleratedDrawingArea::exitAcceleratedCompositingModeNow()
     m_previousLayerTreeHost->setIsDiscardable(true);
     m_previousLayerTreeHost->pauseRendering();
     m_previousLayerTreeHost->setLayerFlushSchedulingEnabled(false);
-    m_discardPreviousLayerTreeHostTimer.startOneShot(5);
+    m_discardPreviousLayerTreeHostTimer.startOneShot(5_s);
 #else
     m_layerTreeHost = nullptr;
 #endif

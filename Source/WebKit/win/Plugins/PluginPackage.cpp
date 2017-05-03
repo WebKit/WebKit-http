@@ -32,6 +32,7 @@
 #include "PluginDebug.h"
 #include "PluginView.h"
 #include <JavaScriptCore/Completion.h>
+#include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSGlobalObject.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -67,7 +68,7 @@ void PluginPackage::freeLibrarySoon()
     ASSERT(m_module);
     ASSERT(!m_loadCount);
 
-    m_freeLibraryTimer.startOneShot(0);
+    m_freeLibraryTimer.startOneShot(0_s);
 }
 
 void PluginPackage::freeLibraryTimerFired()

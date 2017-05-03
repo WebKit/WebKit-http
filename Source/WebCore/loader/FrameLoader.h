@@ -186,7 +186,7 @@ public:
 
     WEBCORE_EXPORT FrameLoadType loadType() const;
 
-    CachePolicy subresourceCachePolicy() const;
+    CachePolicy subresourceCachePolicy(const URL&) const;
 
     void didReachLayoutMilestone(LayoutMilestones);
     void didFirstLayout();
@@ -347,7 +347,6 @@ private:
 
     void closeOldDataSources();
     void willRestoreFromCachedPage();
-    void didRestoreFromCachedPage();
 
     bool shouldReloadToHandleUnreachableURL(DocumentLoader*);
 
@@ -387,6 +386,8 @@ private:
     void dispatchGlobalObjectAvailableInAllWorlds();
 
     void applyShouldOpenExternalURLsPolicyToNewDocumentLoader(DocumentLoader&, ShouldOpenExternalURLsPolicy propagatedPolicy);
+
+    bool isNavigationAllowed() const;
 
     Frame& m_frame;
     FrameLoaderClient& m_client;

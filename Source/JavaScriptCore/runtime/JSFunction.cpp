@@ -237,7 +237,10 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSCell* callee = visitor->callee();
+        if (!visitor->callee().isCell())
+            return StackVisitor::Continue;
+
+        JSCell* callee = visitor->callee().asCell();
         if (callee != m_targetCallee)
             return StackVisitor::Continue;
 
@@ -279,7 +282,10 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSCell* callee = visitor->callee();
+        if (!visitor->callee().isCell())
+            return StackVisitor::Continue;
+
+        JSCell* callee = visitor->callee().asCell();
 
         if (callee && callee->inherits(*callee->vm(), JSBoundFunction::info()))
             return StackVisitor::Continue;
@@ -352,7 +358,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         PropertyOffset offset = thisObject->getDirectOffset(vm, propertyName, attributes);
         if (!isValidOffset(offset)) {
             JSObject* prototype = nullptr;
-            if (thisObject->jsExecutable()->parseMode() == SourceParseMode::GeneratorWrapperFunctionMode) {
+            if (isGeneratorWrapperParseMode(thisObject->jsExecutable()->parseMode())) {
                 // Unlike function instances, the object that is the value of the a GeneratorFunction's prototype
                 // property does not have a constructor property whose value is the GeneratorFunction instance.
                 // https://tc39.github.io/ecma262/#sec-generatorfunction-instances-prototype

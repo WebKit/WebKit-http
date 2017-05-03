@@ -25,6 +25,7 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
+#include "LengthBox.h"
 #include "MediaProducer.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
@@ -80,10 +81,10 @@ class BackForwardController;
 class BackForwardClient;
 class Chrome;
 class ChromeClient;
-class ClientRectList;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
+class DOMRect;
 class DatabaseProvider;
 class DiagnosticLoggingClient;
 class DragCaretController;
@@ -127,6 +128,7 @@ class Settings;
 class SocketProvider;
 class StorageNamespace;
 class StorageNamespaceProvider;
+class URL;
 class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
@@ -144,6 +146,9 @@ enum class EventThrottlingBehavior {
     Responsive,
     Unresponsive
 };
+
+enum class CanWrap : bool;
+enum class DidWrap : bool;
 
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
@@ -226,6 +231,7 @@ public:
 #endif
     LibWebRTCProvider& libWebRTCProvider() { return m_libWebRTCProvider.get(); }
     RTCController& rtcController() { return m_rtcController; }
+    PerformanceMonitor* performanceMonitor() { return m_performanceMonitor.get(); }
 
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
     void updateValidationBubbleStateIfNeeded();
@@ -234,7 +240,10 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects();
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> nonFastScrollableRects();
+
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> touchEventRectsForEvent(const String& eventName);
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> passiveTouchEventListenerRects();
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -260,7 +269,7 @@ public:
     void setTabKeyCyclesThroughElements(bool b) { m_tabKeyCyclesThroughElements = b; }
     bool tabKeyCyclesThroughElements() const { return m_tabKeyCyclesThroughElements; }
 
-    WEBCORE_EXPORT bool findString(const String&, FindOptions);
+    WEBCORE_EXPORT bool findString(const String&, FindOptions, DidWrap* = nullptr);
 
     WEBCORE_EXPORT RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
 
@@ -321,10 +330,13 @@ public:
     float topContentInset() const { return m_topContentInset; }
     WEBCORE_EXPORT void setTopContentInset(float);
 
+    const FloatBoxExtent& obscuredInsets() const { return m_obscuredInsets; }
+    void setObscuredInsets(const FloatBoxExtent& obscuredInsets) { m_obscuredInsets = obscuredInsets; }
+
+    const FloatBoxExtent& unobscuredSafeAreaInsets() const { return m_unobscuredSafeAreaInsets; }
+    WEBCORE_EXPORT void setUnobscuredSafeAreaInsets(const FloatBoxExtent&);
+
 #if PLATFORM(IOS)
-    FloatSize obscuredInset() const { return m_obscuredInset; }
-    void setObscuredInset(FloatSize inset) { m_obscuredInset = inset; }
-    
     bool enclosedInScrollableAncestorView() const { return m_enclosedInScrollableAncestorView; }
     void setEnclosedInScrollableAncestorView(bool f) { m_enclosedInScrollableAncestorView = f; }
 #endif
@@ -407,6 +419,9 @@ public:
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(RefPtr<StorageNamespace>&&);
 
+    StorageNamespace* ephemeralLocalStorage(bool optionalCreate = true);
+    void setEphemeralLocalStorage(RefPtr<StorageNamespace>&&);
+
     bool hasCustomHTMLTokenizerTimeDelay() const;
     double customHTMLTokenizerTimeDelay() const;
 
@@ -483,6 +498,8 @@ public:
     void forbidPrompts();
     void allowPrompts();
     bool arePromptsAllowed();
+
+    void mainFrameLoadStarted(const URL&, FrameLoadType);
 
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
@@ -562,8 +579,11 @@ public:
     String captionUserPreferencesStyleSheet();
     void setCaptionUserPreferencesStyleSheet(const String&);
 
-    bool isResourceCachingDisabled() const { return m_resourceCachingDisabled; }
+    bool isResourceCachingDisabled() const { return m_resourceCachingDisabled || m_resourceCachingDisabledOverride; }
     void setResourceCachingDisabled(bool disabled) { m_resourceCachingDisabled = disabled; }
+
+    // Web Inspector can override whatever value is set via WebKit SPI, but only while it is open.
+    void setResourceCachingDisabledOverride(bool disabled) { m_resourceCachingDisabledOverride = disabled; }
 
     std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
     void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
@@ -581,6 +601,12 @@ public:
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(std::optional<bool>);
 
 private:
+    struct Navigation {
+        String domain;
+        FrameLoadType type;
+    };
+    void logNavigation(const Navigation&);
+
     WEBCORE_EXPORT void initGroup();
 
     void setIsInWindowInternal(bool);
@@ -672,10 +698,10 @@ private:
     float m_viewScaleFactor { 1 };
 
     float m_topContentInset;
+    FloatBoxExtent m_obscuredInsets;
+    FloatBoxExtent m_unobscuredSafeAreaInsets;
 
 #if PLATFORM(IOS)
-    // This is only used for history scroll position restoration.
-    FloatSize m_obscuredInset;
     bool m_enclosedInScrollableAncestorView { false };
 #endif
 
@@ -706,6 +732,7 @@ private:
     bool m_canStartMedia;
 
     RefPtr<StorageNamespace> m_sessionStorage;
+    RefPtr<StorageNamespace> m_ephemeralLocalStorage;
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     ViewMode m_viewMode;
@@ -779,6 +806,7 @@ private:
     bool m_showAllPlugins { false };
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabled { false };
+    bool m_resourceCachingDisabledOverride { false };
     bool m_isUtilityPage;
     UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
     
@@ -788,6 +816,8 @@ private:
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
     std::unique_ptr<LowPowerModeNotifier> m_lowPowerModeNotifier;
     std::optional<bool> m_lowPowerModeEnabledOverrideForTesting;
+
+    std::optional<Navigation> m_navigationToLogWhenVisible;
 
     bool m_isRunningUserScripts { false };
 };

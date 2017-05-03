@@ -44,8 +44,12 @@ public:
         HasAudioOrVideo = 1 << 10,
         HasActiveAudioCaptureDevice = 1 << 11,
         HasActiveVideoCaptureDevice = 1 << 12,
+        HasMutedAudioCaptureDevice = 1 << 13,
+        HasMutedVideoCaptureDevice = 1 << 14,
     };
     typedef unsigned MediaStateFlags;
+
+    static bool isCapturing(MediaStateFlags state) { return (state & HasActiveAudioCaptureDevice) || (state & HasActiveVideoCaptureDevice) || (state & HasMutedAudioCaptureDevice) || (state & HasMutedVideoCaptureDevice); }
 
     virtual MediaStateFlags mediaState() const = 0;
 

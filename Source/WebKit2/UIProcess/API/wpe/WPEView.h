@@ -23,14 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEView_h
-#define WPEView_h
+#pragma once
 
 #include "APIObject.h"
 #include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
-#include "WebPageProxy.h"
 #include "WPEViewClient.h"
+#include "WebPageProxy.h"
 #include <WebCore/ActivityState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
@@ -70,7 +69,7 @@ private:
     View(struct wpe_view_backend*, const API::PageConfiguration&);
     virtual ~View();
 
-    void setSize(const WebCore::IntSize& size);
+    void setSize(const WebCore::IntSize&);
 
     ViewClient m_client;
 
@@ -84,5 +83,3 @@ private:
 };
 
 } // namespace WKWPE
-
-#endif // WPEView_h

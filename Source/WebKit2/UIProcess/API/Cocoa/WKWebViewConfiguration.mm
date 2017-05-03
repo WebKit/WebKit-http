@@ -129,9 +129,6 @@ private:
     BOOL _initialCapitalizationEnabled;
     BOOL _waitsForPaintAfterViewDidMoveToWindow;
     BOOL _controlledByAutomation;
-#if ENABLE(MEDIA_STREAM)
-    BOOL _mediaStreamEnabled;
-#endif
 
 #if ENABLE(APPLE_PAY)
     BOOL _applePayEnabled;
@@ -166,13 +163,7 @@ private:
 #endif
     _mainContentUserGestureOverrideEnabled = NO;
     _invisibleAutoplayNotPermitted = NO;
-
-// FIXME: <rdar://problem/25135244> Should default to NO once clients have adopted the setting.
-#if PLATFORM(IOS)
-    _attachmentElementEnabled = IOSApplication::isMobileMail();
-#else
-    _attachmentElementEnabled = MacApplication::isAppleMail();
-#endif
+    _attachmentElementEnabled = NO;
 
 #if PLATFORM(IOS)
     _respectsImageOrientation = YES;
@@ -201,6 +192,11 @@ private:
     _allowUniversalAccessFromFileURLs = NO;
     _treatsSHA1SignedCertificatesAsInsecure = YES;
     _needsStorageAccessFromFileURLsQuirk = YES;
+
+#if PLATFORM(IOS)
+    BOOL defaultToSelectionGranularityCharacter = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDebugDefaultSelectionGranularityCharacter"] && WebKit::linkedOnOrAfter(WebKit::SDKVersion::FirstToUseSelectionGranularityCharacterByDefault);
+    _selectionGranularity = defaultToSelectionGranularityCharacter ? WKSelectionGranularityCharacter : WKSelectionGranularityDynamic;
+#endif
 
     return self;
 }
@@ -302,9 +298,6 @@ private:
     configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
     configuration->_waitsForPaintAfterViewDidMoveToWindow = self->_waitsForPaintAfterViewDidMoveToWindow;
     configuration->_controlledByAutomation = self->_controlledByAutomation;
-#if ENABLE(MEDIA_STREAM)
-    configuration->_mediaStreamEnabled = self->_mediaStreamEnabled;
-#endif
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -730,22 +723,6 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setControlledByAutomation:(BOOL)controlledByAutomation
 {
     _controlledByAutomation = controlledByAutomation;
-}
-
-- (BOOL)_mediaStreamEnabled
-{
-#if ENABLE(MEDIA_STREAM)
-    return _mediaStreamEnabled;
-#else
-    return NO;
-#endif
-}
-
-- (void)_setMediaStreamEnabled:(BOOL)enabled
-{
-#if ENABLE(MEDIA_STREAM)
-    _mediaStreamEnabled = enabled;
-#endif
 }
 
 #if PLATFORM(MAC)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -114,9 +114,21 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 @property (copy) NSData *_sourceApplicationAuditTokenData;
 @property (nullable, copy) NSString *_sourceApplicationBundleIdentifier;
 @property (nullable, copy) NSString *_sourceApplicationSecondaryIdentifier;
+@property BOOL _shouldSkipPreferredClientCertificateLookup NS_AVAILABLE(10_10, 8_0);
 #if PLATFORM(IOS)
 @property (nullable, copy) NSString *_CTDataConnectionServiceType;
 #endif
+@end
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+@interface NSURLSessionTaskTransactionMetrics ()
+@property (copy, readonly) NSString* _remoteAddressAndPort;
+@property (copy, readonly) NSUUID* _connectionIdentifier;
+@property (assign, readonly) NSInteger _requestHeaderBytesSent;
+@property (assign, readonly) NSInteger _responseHeaderBytesReceived;
+@property (assign, readonly) int64_t _responseBodyBytesReceived;
+@property (assign, readonly) int64_t _responseBodyBytesDecoded;
 @end
 #endif
 
@@ -142,16 +154,28 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 WTF_EXTERN_C_BEGIN
 
 #if !PLATFORM(WIN)
+CFURLStorageSessionRef _CFURLStorageSessionCreate(CFAllocatorRef, CFStringRef, CFDictionaryRef);
+CFURLCacheRef _CFURLStorageSessionCopyCache(CFAllocatorRef, CFURLStorageSessionRef);
+
 void CFURLRequestSetShouldStartSynchronously(CFURLRequestRef, Boolean);
 
 CFURLCacheRef CFURLCacheCopySharedURLCache();
 void CFURLCacheSetMemoryCapacity(CFURLCacheRef, CFIndex memoryCapacity);
+CFIndex CFURLCacheMemoryCapacity(CFURLCacheRef);
+void CFURLCacheSetDiskCapacity(CFURLCacheRef, CFIndex);
+
 #if PLATFORM(COCOA)
 Boolean _CFNetworkIsKnownHSTSHostWithSession(CFURLRef, CFURLStorageSessionRef);
 void _CFNetworkResetHSTSHostsWithSession(CFURLStorageSessionRef);
 #endif
 
 void CFHTTPCookieStorageDeleteAllCookies(CFHTTPCookieStorageRef);
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
+void _CFHTTPCookieStorageFlushCookieStores();
+#else
+void CFHTTPCookieStorageFlushCookieStores();
+#endif
 
 #if PLATFORM(COCOA)
 CFDataRef _CFCachedURLResponseGetMemMappedData(CFCachedURLResponseRef);
@@ -166,8 +190,11 @@ extern const CFStringRef kCFURLRequestAllowAllPOSTCaching;
 extern const CFStringRef _kCFURLConnectionPropertyShouldSniff;
 
 CFHTTPCookieStorageRef _CFHTTPCookieStorageGetDefault(CFAllocatorRef);
+CFHTTPCookieStorageRef CFHTTPCookieStorageCreateFromFile(CFAllocatorRef, CFURLRef, CFHTTPCookieStorageRef);
+
 void CFHTTPCookieStorageSetCookie(CFHTTPCookieStorageRef, CFHTTPCookieRef);
 void CFHTTPCookieStorageSetCookieAcceptPolicy(CFHTTPCookieStorageRef, CFHTTPCookieStorageAcceptPolicy);
+CFHTTPCookieStorageAcceptPolicy CFHTTPCookieStorageGetCookieAcceptPolicy(CFHTTPCookieStorageRef);
 void _CFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
 CFURLCredentialStorageRef CFURLCredentialStorageCreate(CFAllocatorRef);
 CFURLCredentialRef CFURLCredentialStorageCopyDefaultCredentialForProtectionSpace(CFURLCredentialStorageRef, CFURLProtectionSpaceRef);

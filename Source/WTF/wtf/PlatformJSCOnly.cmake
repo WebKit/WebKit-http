@@ -6,10 +6,12 @@ list(APPEND WTF_SOURCES
 
 if (WIN32)
     list(APPEND WTF_SOURCES
+        win/CPUTimeWin.cpp
         text/win/TextBreakIteratorInternalICUWin.cpp
     )
 else ()
     list(APPEND WTF_SOURCES
+        unix/CPUTimeUnix.cpp
         text/unix/TextBreakIteratorInternalICUUnix.cpp
     )
 endif ()
@@ -38,3 +40,9 @@ endif ()
 list(APPEND WTF_LIBRARIES
     ${CMAKE_THREAD_LIBS_INIT}
 )
+
+if (APPLE)
+    list(APPEND WTF_INCLUDE_DIRECTORIES
+        "${WTF_DIR}/icu"
+    )
+endif ()

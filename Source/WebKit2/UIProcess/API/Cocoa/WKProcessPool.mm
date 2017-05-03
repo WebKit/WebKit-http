@@ -61,6 +61,7 @@ static WKProcessPool *sharedProcessPool;
     RetainPtr<_WKAutomationSession> _automationSession;
 #if PLATFORM(IOS)
     RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
+    RetainPtr<id <_WKGeolocationCoreLocationProvider>> _coreLocationProvider;
 #endif // PLATFORM(IOS)
 }
 
@@ -291,6 +292,16 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     _processPool->terminateDatabaseProcess();
 }
 
+- (void)_syncNetworkProcessCookies
+{
+    _processPool->syncNetworkProcessCookies();
+}
+
+- (size_t)_webProcessCount
+{
+    return _processPool->processes().size();
+}
+
 + (void)_forceGameControllerFramework
 {
 #if ENABLE(GAMEPAD)
@@ -307,6 +318,21 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 {
     _processPool->setCookieStoragePartitioningEnabled(enabled);
 }
+
+#if PLATFORM(IOS)
+- (id <_WKGeolocationCoreLocationProvider>)_coreLocationProvider
+{
+    return _coreLocationProvider.get();
+}
+
+- (void)_setCoreLocationProvider:(id<_WKGeolocationCoreLocationProvider>)coreLocationProvider
+{
+    if (_geolocationProvider)
+        [NSException raise:NSGenericException format:@"Changing the location provider is not supported after a web view in the process pool has begun servicing geolocation requests."];
+
+    _coreLocationProvider = coreLocationProvider;
+}
+#endif // PLATFORM(IOS)
 
 @end
 

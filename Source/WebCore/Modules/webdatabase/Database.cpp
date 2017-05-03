@@ -99,8 +99,7 @@ static const char* fullyQualifiedInfoTableName()
 
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-        strcpy(qualifiedName, qualifier);
-        strcpy(qualifiedName + sizeof(qualifier) - 1, unqualifiedInfoTableName);
+        snprintf(qualifiedName, sizeof(qualifiedName), "%s%s", qualifier, unqualifiedInfoTableName);
     });
 
     return qualifiedName;
@@ -770,8 +769,7 @@ SecurityOriginData Database::securityOrigin()
 {
     if (m_scriptExecutionContext->isContextThread())
         return SecurityOriginData::fromSecurityOrigin(m_contextThreadSecurityOrigin.get());
-    auto& thread = databaseThread();
-    if (currentThread() == thread.getThreadID())
+    if (currentThread() == databaseThread().getThreadID())
         return SecurityOriginData::fromSecurityOrigin(m_databaseThreadSecurityOrigin.get());
     RELEASE_ASSERT_NOT_REACHED();
 }

@@ -257,7 +257,7 @@ private:
         Value* value = memory->child(0);
         Value* ptr = memory->lastChild();
         HeapRange range = memory->range();
-        int32_t offset = memory->offset();
+        Value::OffsetType offset = memory->offset();
 
         switch (memory->opcode()) {
         case Store8:
@@ -305,7 +305,7 @@ private:
     {
         Value* ptr = memory->lastChild();
         HeapRange range = memory->range();
-        int32_t offset = memory->offset();
+        Value::OffsetType offset = memory->offset();
         Type type = memory->type();
 
         // FIXME: Empower this to insert more casts and shifts. For example, a Load8 could match a
@@ -682,7 +682,7 @@ private:
     Dominators& m_dominators;
     PureCSE m_pureCSE;
     
-    IndexMap<BasicBlock, ImpureBlockData> m_impureBlockData;
+    IndexMap<BasicBlock*, ImpureBlockData> m_impureBlockData;
 
     ImpureBlockData m_data;
 

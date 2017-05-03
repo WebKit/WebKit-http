@@ -603,6 +603,9 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
     _editingCancelled(element)
     {
         console.assert(this._editingNode.element === element.enclosingNodeOrSelfWithNodeName("tr"));
+
+        this._editingNode.refresh();
+
         this._editing = false;
         this._editingNode = null;
     }
@@ -919,6 +922,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
     {
         let column = this.columns.get(columnIdentifier);
         console.assert(column, "Missing column info for identifier: " + columnIdentifier);
+        console.assert(typeof visible === "boolean", "New visible state should be explicit boolean", typeof visible);
 
         if (!column || visible === !column.hidden)
             return;
@@ -1368,6 +1372,8 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
         if (!this.selectedNode || event.shiftKey || event.metaKey || event.ctrlKey || this._editing)
             return;
 
+        let isRTL = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL;
+
         var handled = false;
         var nextSelectedNode;
         if (event.keyIdentifier === "Up" && !event.altKey) {
@@ -1380,7 +1386,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
             while (nextSelectedNode && !nextSelectedNode.selectable)
                 nextSelectedNode = nextSelectedNode.traverseNextNode(true);
             handled = nextSelectedNode ? true : false;
-        } else if (event.keyIdentifier === "Left") {
+        } else if ((!isRTL && event.keyIdentifier === "Left") || (isRTL && event.keyIdentifier === "Right")) {
             if (this.selectedNode.expanded) {
                 if (event.altKey)
                     this.selectedNode.collapseRecursively();
@@ -1395,7 +1401,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
                 } else if (this.selectedNode.parent)
                     this.selectedNode.parent.collapse();
             }
-        } else if (event.keyIdentifier === "Right") {
+        } else if ((!isRTL && event.keyIdentifier === "Right") || (isRTL && event.keyIdentifier === "Left")) {
             if (!this.selectedNode.revealed) {
                 this.selectedNode.reveal();
                 handled = true;
@@ -1636,7 +1642,9 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
                     didAddSeparator = true;
                 }
 
-                contextMenu.appendCheckboxItem(columnInfo.title, () => { this.setColumnVisible(identifier, columnInfo.hidden); }, !columnInfo.hidden);
+                contextMenu.appendCheckboxItem(columnInfo.title, () => {
+                    this.setColumnVisible(identifier, !!columnInfo.hidden);
+                }, !columnInfo.hidden);
             }
         }
     }
@@ -1827,8 +1835,8 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
         let trailingEdgeOfNextColumn = leadingEdgeOfPreviousColumn + firstRowCells[leftColumnIndex].offsetWidth + firstRowCells[rightColumnIndex].offsetWidth;
 
         // Give each column some padding so that they don't disappear.
-        let leftMinimum = leadingEdgeOfPreviousColumn + this.ColumnResizePadding;
-        let rightMaximum = trailingEdgeOfNextColumn - this.ColumnResizePadding;
+        let leftMinimum = leadingEdgeOfPreviousColumn + WebInspector.DataGrid.ColumnResizePadding;
+        let rightMaximum = trailingEdgeOfNextColumn - WebInspector.DataGrid.ColumnResizePadding;
 
         dragPoint = Number.constrain(dragPoint, leftMinimum, rightMaximum);
 

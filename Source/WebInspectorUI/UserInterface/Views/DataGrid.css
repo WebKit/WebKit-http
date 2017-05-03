@@ -80,20 +80,12 @@
 .data-grid th {
     height: 22px;
     padding: 0 6px;
+    text-align: start;
     vertical-align: middle;
     font-weight: normal;
     white-space: nowrap;
     background-color: white;
     overflow: hidden;
-}
-
-/* FIXME: Use `text-align: start` once https://webkit.org/b/141417 is fixed. */
-body[dir=ltr] .data-grid th {
-    text-align: left;
-}
-
-body[dir=rtl] .data-grid th {
-    text-align: right;
 }
 
 body[dir=ltr] .data-grid :matches(th, td):not(:last-child) {
@@ -190,6 +182,13 @@ body[dir=rtl] .data-grid :matches(th, td):not(:last-child) {
     font-variant-numeric: tabular-nums;
 }
 
+.data-grid td.spanning {
+    text-align: center;
+    color: hsl(0, 0%, 30%);
+    background-color: hsl(0, 0%, 95%);
+    pointer-events: none;
+}
+
 body[dir=ltr] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child) {
     border-right-color: hsl(210, 100%, 40%);
 }
@@ -202,6 +201,11 @@ body[dir=rtl] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+}
+
+/* FIXME: Remove this once <https://webkit.org/b/169972> is fixed. */
+.data-grid td.editing > div {
+    text-overflow: clip;
 }
 
 .data-grid .centered div {

@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "AirCCallSpecial.h"
+#include "AirCFG.h"
 #include "B3BasicBlockUtils.h"
 #include "B3Procedure.h"
 #include "B3StackSlot.h"
@@ -38,6 +39,7 @@ namespace JSC { namespace B3 { namespace Air {
 
 Code::Code(Procedure& proc)
     : m_proc(proc)
+    , m_cfg(new CFG(*this))
     , m_lastPhaseName("initial")
 {
     // Come up with initial orderings of registers. The user may replace this with something else.
@@ -85,6 +87,11 @@ void Code::pinRegister(Reg reg)
     ASSERT(!regs.contains(reg));
 }
 
+bool Code::needsUsedRegisters() const
+{
+    return m_proc.needsUsedRegisters();
+}
+
 BasicBlock* Code::addBlock(double frequency)
 {
     std::unique_ptr<BasicBlock> block(new BasicBlock(m_blocks.size(), frequency));
@@ -95,7 +102,14 @@ BasicBlock* Code::addBlock(double frequency)
 
 StackSlot* Code::addStackSlot(unsigned byteSize, StackSlotKind kind, B3::StackSlot* b3Slot)
 {
-    return m_stackSlots.addNew(byteSize, kind, b3Slot);
+    StackSlot* result = m_stackSlots.addNew(byteSize, kind, b3Slot);
+    if (m_stackIsAllocated) {
+        // FIXME: This is unnecessarily awful. Fortunately, it doesn't run often.
+        unsigned extent = WTF::roundUpToMultipleOf(result->alignment(), frameSize() + byteSize);
+        result->setOffsetFromFP(-static_cast<ptrdiff_t>(extent));
+        setFrameSize(WTF::roundUpToMultipleOf(stackAlignmentBytes(), extent));
+    }
+    return result;
 }
 
 StackSlot* Code::addStackSlot(B3::StackSlot* b3Slot)
@@ -131,6 +145,28 @@ bool Code::isEntrypoint(BasicBlock* block) const
     return false;
 }
 
+void Code::setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&& registerAtOffsetList, StackSlot* slot)
+{
+    m_uncorrectedCalleeSaveRegisterAtOffsetList = WTFMove(registerAtOffsetList);
+    for (const RegisterAtOffset& registerAtOffset : m_uncorrectedCalleeSaveRegisterAtOffsetList)
+        m_calleeSaveRegisters.set(registerAtOffset.reg());
+    m_calleeSaveStackSlot = slot;
+}
+
+RegisterAtOffsetList Code::calleeSaveRegisterAtOffsetList() const
+{
+    RegisterAtOffsetList result = m_uncorrectedCalleeSaveRegisterAtOffsetList;
+    if (StackSlot* slot = m_calleeSaveStackSlot) {
+        ptrdiff_t offset = slot->byteSize() + slot->offsetFromFP();
+        for (size_t i = result.size(); i--;) {
+            result.at(i) = RegisterAtOffset(
+                result.at(i).reg(),
+                result.at(i).offset() + offset);
+        }
+    }
+    return result;
+}
+
 void Code::resetReachability()
 {
     clearPredecessors(m_blocks);
@@ -163,12 +199,13 @@ void Code::dump(PrintStream& out) const
         for (Special* special : specials())
             out.print("    ", deepDump(special), "\n");
     }
-    if (m_frameSize)
-        out.print("Frame size: ", m_frameSize, "\n");
+    if (m_frameSize || m_stackIsAllocated)
+        out.print("Frame size: ", m_frameSize, m_stackIsAllocated ? " (Allocated)" : "", "\n");
     if (m_callArgAreaSize)
         out.print("Call arg area size: ", m_callArgAreaSize, "\n");
-    if (m_calleeSaveRegisters.size())
-        out.print("Callee saves: ", m_calleeSaveRegisters, "\n");
+    RegisterAtOffsetList calleeSaveRegisters = this->calleeSaveRegisterAtOffsetList();
+    if (calleeSaveRegisters.size())
+        out.print("Callee saves: ", calleeSaveRegisters, "\n");
 }
 
 unsigned Code::findFirstBlockIndex(unsigned index) const

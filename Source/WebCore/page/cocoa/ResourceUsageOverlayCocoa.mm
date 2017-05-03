@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -154,14 +154,15 @@ struct HistoricResourceUsageData {
     RingBuffer<size_t> totalExternalSize;
     RingBuffer<size_t> gcHeapSize;
     std::array<HistoricMemoryCategoryInfo, MemoryCategory::NumberOfCategories> categories;
-    double timeOfNextEdenCollection { 0 };
-    double timeOfNextFullCollection { 0 };
+    MonotonicTime timeOfNextEdenCollection { MonotonicTime::nan() };
+    MonotonicTime timeOfNextFullCollection { MonotonicTime::nan() };
 };
 
 HistoricResourceUsageData::HistoricResourceUsageData()
 {
     // VM tag categories.
     categories[MemoryCategory::JSJIT] = HistoricMemoryCategoryInfo(MemoryCategory::JSJIT, 0xFFFF60FF, "JS JIT");
+    categories[MemoryCategory::WebAssembly] = HistoricMemoryCategoryInfo(MemoryCategory::WebAssembly, 0xFF654FF0, "WebAssembly");
     categories[MemoryCategory::Images] = HistoricMemoryCategoryInfo(MemoryCategory::Images, 0xFFFFFF00, "Images");
     categories[MemoryCategory::Layers] = HistoricMemoryCategoryInfo(MemoryCategory::Layers, 0xFF00FFFF, "Layers");
     categories[MemoryCategory::LibcMalloc] = HistoricMemoryCategoryInfo(MemoryCategory::LibcMalloc, 0xFF00FF00, "libc malloc");
@@ -433,11 +434,11 @@ static String formatByteNumber(size_t number)
     return String::format("%lu", number);
 }
 
-static String gcTimerString(double timerFireDate, double now)
+static String gcTimerString(MonotonicTime timerFireDate, MonotonicTime now)
 {
-    if (!timerFireDate)
+    if (std::isnan(timerFireDate))
         return ASCIILiteral("[not scheduled]");
-    return String::format("%g", timerFireDate - now);
+    return String::format("%g", (timerFireDate - now).seconds());
 }
 
 void ResourceUsageOverlay::platformDraw(CGContextRef context)
@@ -478,7 +479,7 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
     }
     y -= 5;
 
-    double now = WTF::currentTime();
+    MonotonicTime now = MonotonicTime::now();
     showText(context, 10, y + 10, colorForLabels, String::format("    Eden GC: %s", gcTimerString(data.timeOfNextEdenCollection, now).ascii().data()));
     showText(context, 10, y + 20, colorForLabels, String::format("    Full GC: %s", gcTimerString(data.timeOfNextFullCollection, now).ascii().data()));
 

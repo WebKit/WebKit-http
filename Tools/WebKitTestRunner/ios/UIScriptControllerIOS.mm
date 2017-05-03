@@ -668,6 +668,13 @@ void UIScriptController::platformClearAllCallbacks()
     webView.didEndScrollingCallback = nil;
 }
 
+void UIScriptController::setSafeAreaInsets(double top, double right, double bottom, double left)
+{
+    UIEdgeInsets insets = UIEdgeInsetsMake(top, left, bottom, right);
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.overrideSafeAreaInsets = insets;
+}
+
 }
 
 #endif // PLATFORM(IOS)

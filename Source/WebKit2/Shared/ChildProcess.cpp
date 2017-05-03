@@ -28,13 +28,13 @@
 
 #include "Logging.h"
 #include "SandboxInitializationParameters.h"
+#include <WebCore/SessionID.h>
 #include <unistd.h>
 
 namespace WebKit {
 
 ChildProcess::ChildProcess()
-    : m_terminationTimeout(0)
-    , m_terminationCounter(0)
+    : m_terminationCounter(0)
     , m_terminationTimer(RunLoop::main(), this, &ChildProcess::terminationTimerFired)
     , m_processSuppressionDisabled("Process Suppression Disabled by UIProcess")
 {
@@ -72,7 +72,10 @@ void ChildProcess::initialize(const ChildProcessInitializationParameters& parame
 
     SandboxInitializationParameters sandboxParameters;
     initializeSandbox(parameters, sandboxParameters);
-    
+
+    // In WebKit2, only the UI process should ever be generating non-default SessionIDs.
+    WebCore::SessionID::enableGenerationProtection();
+
     m_connection = IPC::Connection::createClientConnection(parameters.connectionIdentifier, *this);
     m_connection->setDidCloseOnConnectionWorkQueueCallback(didCloseOnConnectionWorkQueue);
     initializeConnection(m_connection.get());
@@ -197,8 +200,9 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
 {
 }
 
-void ChildProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
+void ChildProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
 {
+    WTFLogAlways("Received invalid message: '%s::%s'", messageReceiverName.toString().data(), messageName.toString().data());
     CRASH();
 }
 #endif

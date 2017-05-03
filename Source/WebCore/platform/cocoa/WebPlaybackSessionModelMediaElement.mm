@@ -36,6 +36,7 @@
 #import "HTMLMediaElement.h"
 #import "Logging.h"
 #import "MediaControlsHost.h"
+#import "MediaSelectionOption.h"
 #import "Page.h"
 #import "PageGroup.h"
 #import "SoftLinking.h"
@@ -64,6 +65,8 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
     if (m_mediaElement && m_isListening) {
         for (auto& eventName : observedEventNames())
             m_mediaElement->removeEventListener(eventName, *this, false);
+        m_mediaElement->audioTracks().removeEventListener(eventNames().changeEvent, *this, false);
+        m_mediaElement->textTracks().removeEventListener(eventNames().changeEvent, *this, false);
     }
     m_isListening = false;
 
@@ -75,6 +78,8 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
     if (m_mediaElement) {
         for (auto& eventName : observedEventNames())
             m_mediaElement->addEventListener(eventName, *this, false);
+        m_mediaElement->audioTracks().addEventListener(eventNames().changeEvent, *this, false);
+        m_mediaElement->textTracks().addEventListener(eventNames().changeEvent, *this, false);
         m_isListening = true;
     }
 
@@ -140,7 +145,7 @@ void WebPlaybackSessionModelMediaElement::updateForEventName(const WTF::AtomicSt
     if (all
         || eventName == eventNames().addtrackEvent
         || eventName == eventNames().removetrackEvent)
-        updateLegibleOptions();
+        updateMediaSelectionOptions();
 
     if (all
         || eventName == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent) {
@@ -155,6 +160,11 @@ void WebPlaybackSessionModelMediaElement::updateForEventName(const WTF::AtomicSt
             client->wirelessVideoPlaybackDisabledChanged(wirelessVideoPlaybackDisabled);
         }
     }
+
+    // We don't call updateMediaSelectionIndices() in the all case, since
+    // updateMediaSelectionOptions() will also update the selection indices.
+    if (eventName == eventNames().changeEvent)
+        updateMediaSelectionIndices();
 }
 void WebPlaybackSessionModelMediaElement::addClient(WebPlaybackSessionModelClient& client)
 {
@@ -251,7 +261,15 @@ void WebPlaybackSessionModelMediaElement::selectLegibleMediaOption(uint64_t inde
     m_mediaElement->setSelectedTextTrack(textTrack);
 }
 
-void WebPlaybackSessionModelMediaElement::updateLegibleOptions()
+void WebPlaybackSessionModelMediaElement::togglePictureInPicture()
+{
+    if (m_mediaElement->fullscreenMode() == MediaPlayerEnums::VideoFullscreenModePictureInPicture)
+        m_mediaElement->exitFullscreen();
+    else
+        m_mediaElement->enterFullscreen(MediaPlayerEnums::VideoFullscreenModePictureInPicture);
+}
+
+void WebPlaybackSessionModelMediaElement::updateMediaSelectionOptions()
 {
     if (!m_mediaElement)
         return;
@@ -280,6 +298,17 @@ void WebPlaybackSessionModelMediaElement::updateLegibleOptions()
     for (auto client : m_clients) {
         client->audioMediaSelectionOptionsChanged(audioOptions, audioIndex);
         client->legibleMediaSelectionOptionsChanged(legibleOptions, legibleIndex);
+    }
+}
+
+void WebPlaybackSessionModelMediaElement::updateMediaSelectionIndices()
+{
+    auto audioIndex = audioMediaSelectedIndex();
+    auto legibleIndex = legibleMediaSelectedIndex();
+
+    for (auto client : m_clients) {
+        client->audioMediaSelectionIndexChanged(audioIndex);
+        client->legibleMediaSelectionIndexChanged(legibleIndex);
     }
 }
 
@@ -348,20 +377,20 @@ bool WebPlaybackSessionModelMediaElement::canPlayFastReverse() const
     return m_mediaElement ? m_mediaElement->minFastReverseRate() < 0.0 : false;
 }
 
-Vector<String> WebPlaybackSessionModelMediaElement::audioMediaSelectionOptions() const
+Vector<MediaSelectionOption> WebPlaybackSessionModelMediaElement::audioMediaSelectionOptions() const
 {
-    Vector<String> audioTrackDisplayNames;
+    Vector<MediaSelectionOption> audioOptions;
 
     if (!m_mediaElement || !m_mediaElement->document().page())
-        return audioTrackDisplayNames;
+        return audioOptions;
 
     auto& captionPreferences = m_mediaElement->document().page()->group().captionPreferences();
 
-    audioTrackDisplayNames.reserveInitialCapacity(m_audioTracksForMenu.size());
+    audioOptions.reserveInitialCapacity(m_audioTracksForMenu.size());
     for (auto& audioTrack : m_audioTracksForMenu)
-        audioTrackDisplayNames.uncheckedAppend(captionPreferences.displayNameForTrack(audioTrack.get()));
+        audioOptions.uncheckedAppend(captionPreferences.mediaSelectionOptionForTrack(audioTrack.get()));
 
-    return audioTrackDisplayNames;
+    return audioOptions;
 }
 
 uint64_t WebPlaybackSessionModelMediaElement::audioMediaSelectedIndex() const
@@ -373,19 +402,19 @@ uint64_t WebPlaybackSessionModelMediaElement::audioMediaSelectedIndex() const
     return std::numeric_limits<uint64_t>::max();
 }
 
-Vector<WTF::String> WebPlaybackSessionModelMediaElement::legibleMediaSelectionOptions() const
+Vector<MediaSelectionOption> WebPlaybackSessionModelMediaElement::legibleMediaSelectionOptions() const
 {
-    Vector<String> trackDisplayNames;
+    Vector<MediaSelectionOption> legibleOptions;
 
     if (!m_mediaElement || !m_mediaElement->document().page())
-        return trackDisplayNames;
+        return legibleOptions;
 
     auto& captionPreferences = m_mediaElement->document().page()->group().captionPreferences();
 
     for (auto& track : m_legibleTracksForMenu)
-        trackDisplayNames.append(captionPreferences.displayNameForTrack(track.get()));
+        legibleOptions.append(captionPreferences.mediaSelectionOptionForTrack(track.get()));
 
-    return trackDisplayNames;
+    return legibleOptions;
 }
 
 uint64_t WebPlaybackSessionModelMediaElement::legibleMediaSelectedIndex() const
@@ -419,7 +448,7 @@ uint64_t WebPlaybackSessionModelMediaElement::legibleMediaSelectedIndex() const
         }
     }
 
-    if (offIndex && !trackMenuItemSelected && displayMode == MediaControlsHost::forcedOnlyKeyword())
+    if (offItem && !trackMenuItemSelected && displayMode == MediaControlsHost::forcedOnlyKeyword())
         selectedIndex = offIndex;
 
     return selectedIndex;

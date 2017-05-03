@@ -60,6 +60,7 @@
 #include "Watchpoint.h"
 #include <wtf/Bag.h>
 #include <wtf/BumpPointerAllocator.h>
+#include <wtf/CheckedArithmetic.h>
 #include <wtf/DateMath.h>
 #include <wtf/Deque.h>
 #include <wtf/DoublyLinkedList.h>
@@ -106,6 +107,7 @@ class JSObject;
 class JSWebAssemblyInstance;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
+class PromiseDeferredTimer;
 class RegExpCache;
 class Register;
 class RegisterAtOffsetList;
@@ -153,11 +155,6 @@ class Database;
 namespace DOMJIT {
 class Signature;
 }
-#if ENABLE(WEBASSEMBLY)
-namespace Wasm {
-class SignatureInformation;
-}
-#endif
 
 struct HashTable;
 struct Instruction;
@@ -223,7 +220,7 @@ struct ScratchBuffer {
         return result;
     }
 
-    static size_t allocationSize(size_t bufferSize) { return sizeof(ScratchBuffer) + bufferSize; }
+    static size_t allocationSize(Checked<size_t> bufferSize) { return (sizeof(ScratchBuffer) + bufferSize).unsafeGet(); }
     void setActiveLength(size_t activeLength) { u.m_activeLength = activeLength; }
     size_t activeLength() const { return u.m_activeLength; };
     size_t* activeLengthPtr() { return &u.m_activeLength; };
@@ -284,14 +281,6 @@ private:
     RefPtr<JSLock> m_apiLock;
 
 public:
-#if ENABLE(ASSEMBLER)
-    // executableAllocator should be destructed after the heap, as the heap can call executableAllocator
-    // in its destructor.
-    ExecutableAllocator executableAllocator;
-#endif
-
-    // The heap should be just after executableAllocator and before other members to ensure that it's
-    // destructed after all the objects that reference it.
     Heap heap;
     
     Subspace auxiliarySpace;
@@ -315,7 +304,8 @@ public:
     // FIXME: This should be a void*, because it might not point to a CallFrame.
     // https://bugs.webkit.org/show_bug.cgi?id=160441
     ExecState* topCallFrame { nullptr };
-    JSWebAssemblyInstance* topJSWebAssemblyInstance;
+    // FIXME: Save this state elsewhere to allow PIC. https://bugs.webkit.org/show_bug.cgi?id=169773
+    JSWebAssemblyInstance* wasmContext { nullptr };
     Strong<Structure> structureStructure;
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
@@ -332,10 +322,8 @@ public:
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
 #if ENABLE(WEBASSEMBLY)
-    Strong<Structure> webAssemblyCalleeStructure;
     Strong<Structure> webAssemblyToJSCalleeStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
-    Strong<JSCell> webAssemblyToJSCallee;
 #endif
     Strong<Structure> moduleProgramExecutableStructure;
     Strong<Structure> regExpStructure;
@@ -375,10 +363,7 @@ public:
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
-#if ENABLE(WEBASSEMBLY)
-    std::once_flag m_wasmSignatureInformationOnceFlag;
-    std::unique_ptr<Wasm::SignatureInformation> m_wasmSignatureInformation;
-#endif
+    std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     
     JSCell* currentlyDestructingCallbackObject;
     const ClassInfo* currentlyDestructingCallbackObjectClassInfo;
@@ -462,9 +447,7 @@ public:
         return jitStubs->ctiStub(this, generator);
     }
     
-    std::unique_ptr<RegisterAtOffsetList> allCalleeSaveRegisterOffsets;
-    
-    RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets() { return allCalleeSaveRegisterOffsets.get(); }
+    static RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets();
 
 #endif // ENABLE(JIT)
     std::unique_ptr<CommonSlowPaths::ArityCheckData> arityCheckData;
@@ -487,6 +470,11 @@ public:
     static ptrdiff_t targetMachinePCForThrowOffset()
     {
         return OBJECT_OFFSETOF(VM, targetMachinePCForThrow);
+    }
+
+    static ptrdiff_t topVMEntryFrameOffset()
+    {
+        return OBJECT_OFFSETOF(VM, topVMEntryFrame);
     }
 
     void restorePreviousException(Exception* exception) { setException(exception); }
@@ -672,7 +660,7 @@ public:
     template<typename Func>
     void logEvent(CodeBlock*, const char* summary, const Func& func);
 
-    std::optional<PlatformThread> ownerThread() const { return m_apiLock->ownerThread(); }
+    std::optional<RefPtr<Thread>> ownerThread() const { return m_apiLock->ownerThread(); }
 
     VMTraps& traps() { return m_traps; }
 

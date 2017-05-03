@@ -38,6 +38,7 @@
 #include <WebCore/SessionID.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/MainThread.h>
+#include <wtf/Seconds.h>
 
 #if PLATFORM(COCOA)
 #include "NetworkDataTaskCocoa.h"
@@ -54,7 +55,7 @@ using namespace WebCore;
 #if USE(NETWORK_SESSION)
 
 struct NetworkLoad::Throttle {
-    Throttle(NetworkLoad& load, std::chrono::milliseconds delay, ResourceResponse&& response, ResponseCompletionHandler&& handler)
+    Throttle(NetworkLoad& load, Seconds delay, ResourceResponse&& response, ResponseCompletionHandler&& handler)
         : timer(load, &NetworkLoad::throttleDelayCompleted)
         , response(WTFMove(response))
         , responseCompletionHandler(WTFMove(handler))
@@ -233,6 +234,13 @@ void NetworkLoad::continueDidReceiveResponse()
 #endif
 }
 
+#if USE(NETWORK_SESSION)
+bool NetworkLoad::shouldCaptureExtraNetworkLoadMetrics() const
+{
+    return m_client.get().shouldCaptureExtraNetworkLoadMetrics();
+}
+#endif
+
 NetworkLoadClient::ShouldContinueDidReceiveResponse NetworkLoad::sharedDidReceiveResponse(ResourceResponse&& response)
 {
     response.setSource(ResourceResponse::Source::Network);
@@ -371,7 +379,7 @@ void NetworkLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, 
     }
 
     auto delay = NetworkProcess::singleton().loadThrottleLatency();
-    if (delay > 0ms) {
+    if (delay > 0_s) {
         m_throttle = std::make_unique<Throttle>(*this, delay, WTFMove(response), WTFMove(completionHandler));
         return;
     }
@@ -513,20 +521,6 @@ void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
     m_waitingForContinueCanAuthenticateAgainstProtectionSpace = false;
     if (m_handle)
         m_handle->continueCanAuthenticateAgainstProtectionSpace(result);
-}
-#endif
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-bool NetworkLoad::supportsDataArray()
-{
-    notImplemented();
-    return false;
-}
-
-void NetworkLoad::didReceiveDataArray(ResourceHandle*, CFArrayRef)
-{
-    ASSERT_NOT_REACHED();
-    notImplemented();
 }
 #endif
 

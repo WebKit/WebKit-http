@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaProxyWPE_h
-#define DrawingAreaProxyWPE_h
+#pragma once
 
 #include "DrawingAreaProxy.h"
 
@@ -41,7 +40,7 @@ private:
     // DrawingAreaProxy
     void deviceScaleFactorDidChange() override;
     void sizeDidChange() override;
-    void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) override;
+    void dispatchAfterEnsuringDrawing(std::function<void(CallbackBase::Error)>) override;
 
     // IPC message handlers
     void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
@@ -55,6 +54,3 @@ private:
 };
 
 }
-
-
-#endif // DrawingAreaProxyWPE_h

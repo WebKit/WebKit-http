@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2009, 2011-2012, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2009, 2011-2012, 2015-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -42,7 +42,7 @@
 #include "SVGStyleElement.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "StyleInvalidationAnalysis.h"
+#include "StyleInvalidator.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
@@ -96,6 +96,12 @@ StyleResolver& Scope::resolver()
     if (!m_resolver) {
         SetForScope<bool> isUpdatingStyleResolver { m_isUpdatingStyleResolver, true };
         m_resolver = std::make_unique<StyleResolver>(m_document);
+
+        if (!m_shadowRoot)
+            m_resolver->ruleSets().initializeUserStyle();
+        else
+            m_resolver->ruleSets().setUsesSharedUserStyle(m_shadowRoot->mode() != ShadowRootMode::UserAgent);
+
         m_resolver->appendAuthorStyleSheets(m_activeStyleSheets);
     }
     ASSERT(!m_shadowRoot || &m_document == &m_shadowRoot->document());
@@ -231,6 +237,11 @@ bool Scope::hasPendingSheet(const Element& element) const
 bool Scope::hasPendingSheetInBody(const Element& element) const
 {
     return m_elementsInBodyWithPendingSheets.contains(&element);
+}
+
+bool Scope::hasPendingSheet(const ProcessingInstruction& processingInstruction) const
+{
+    return m_processingInstructionsWithPendingSheets.contains(&processingInstruction);
 }
 
 void Scope::addStyleSheetCandidateNode(Node& node, bool createdByParser)
@@ -389,17 +400,17 @@ Scope::StyleResolverUpdateType Scope::analyzeStyleSheetChange(const Vector<RefPt
     auto styleResolverUpdateType = hasInsertions ? Reset : Additive;
 
     // If we are already parsing the body and so may have significant amount of elements, put some effort into trying to avoid style recalcs.
-    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithNonFinalStyle())
+    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithNonFinalStyle() || m_document.hasNodesWithMissingStyle())
         return styleResolverUpdateType;
 
-    StyleInvalidationAnalysis invalidationAnalysis(addedSheets, styleResolver.mediaQueryEvaluator());
-    if (invalidationAnalysis.dirtiesAllStyle())
+    Invalidator invalidator(addedSheets, styleResolver.mediaQueryEvaluator());
+    if (invalidator.dirtiesAllStyle())
         return styleResolverUpdateType;
 
     if (m_shadowRoot)
-        invalidationAnalysis.invalidateStyle(*m_shadowRoot);
+        invalidator.invalidateStyle(*m_shadowRoot);
     else
-        invalidationAnalysis.invalidateStyle(m_document);
+        invalidator.invalidateStyle(m_document);
 
     requiresFullStyleRecalc = false;
 
@@ -437,15 +448,6 @@ void Scope::updateActiveStyleSheets(UpdateType updateType)
         m_document.scheduleForcedStyleRecalc();
         return;
     }
-
-    // Don't bother updating, since we haven't loaded all our style info yet
-    // and haven't calculated the style resolver for the first time.
-    if (!m_shadowRoot && !m_didUpdateActiveStyleSheets && hasPendingSheetsBeforeBody()) {
-        clearResolver();
-        return;
-    }
-
-    m_didUpdateActiveStyleSheets = true;
 
     Vector<RefPtr<StyleSheet>> activeStyleSheets;
     collectActiveStyleSheets(activeStyleSheets);
@@ -582,7 +584,7 @@ void Scope::scheduleUpdate(UpdateType update)
 
     if (m_pendingUpdateTimer.isActive())
         return;
-    m_pendingUpdateTimer.startOneShot(0);
+    m_pendingUpdateTimer.startOneShot(0_s);
 }
 
 void Scope::didChangeActiveStyleSheetCandidates()

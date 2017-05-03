@@ -158,7 +158,7 @@ bool SpellChecker::isCheckable(Range* range) const
 
 void SpellChecker::requestCheckingFor(PassRefPtr<SpellCheckRequest> request)
 {
-    if (!request || !canCheckAsynchronously(request->paragraphRange().get()))
+    if (!request || !canCheckAsynchronously(request->paragraphRange()))
         return;
 
     ASSERT(request->data().sequence() == unrequestedTextCheckingSequence);
@@ -216,7 +216,7 @@ void SpellChecker::didCheck(int sequence, const Vector<TextCheckingResult>& resu
 
     m_processingRequest = nullptr;
     if (!m_requestQueue.isEmpty())
-        m_timerToProcessQueuedRequest.startOneShot(0);
+        m_timerToProcessQueuedRequest.startOneShot(0_s);
 }
 
 void SpellChecker::didCheckSucceed(int sequence, const Vector<TextCheckingResult>& results)
@@ -229,7 +229,7 @@ void SpellChecker::didCheckSucceed(int sequence, const Vector<TextCheckingResult
         if (requestData.mask() & TextCheckingTypeGrammar)
             markers |= DocumentMarker::Grammar;
         if (markers)
-            m_frame.document()->markers().removeMarkers(m_processingRequest->checkingRange().get(), markers);
+            m_frame.document()->markers().removeMarkers(m_processingRequest->checkingRange(), markers);
     }
     didCheck(sequence, results);
 }

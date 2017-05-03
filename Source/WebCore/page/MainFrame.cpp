@@ -59,7 +59,6 @@ inline MainFrame::MainFrame(Page& page, PageConfiguration& configuration)
 MainFrame::~MainFrame()
 {
     m_recentWheelEventDeltaFilter = nullptr;
-    m_eventHandler = nullptr;
 
     setMainFrameWasDestroyed();
 }
@@ -97,7 +96,6 @@ void MainFrame::dropChildren()
 
 void MainFrame::didCompleteLoad()
 {
-    m_timeOfLastCompletedLoad = MonotonicTime::now();
     performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadCompleted);
 }
 

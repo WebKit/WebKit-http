@@ -26,6 +26,7 @@
 #include "config.h"
 #include "RenderBoxModelObject.h"
 
+#include "BitmapImage.h"
 #include "BorderEdge.h"
 #include "FloatRoundedRect.h"
 #include "Frame.h"
@@ -177,6 +178,7 @@ RenderBoxModelObject::RenderBoxModelObject(Document& document, RenderStyle&& sty
 
 RenderBoxModelObject::~RenderBoxModelObject()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
 void RenderBoxModelObject::willBeDestroyed()
@@ -876,8 +878,11 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
             auto compositeOp = op == CompositeSourceOver ? bgLayer.composite() : op;
             context.setDrawLuminanceMask(bgLayer.maskSourceType() == MaskLuminance);
 
+            if (is<BitmapImage>(image.get()))
+                downcast<BitmapImage>(*image).updateFromSettings(settings());
+
             auto interpolation = chooseInterpolationQuality(context, *image, &bgLayer, geometry.tileSize());
-            context.drawTiledImage(*image, geometry.destRect(), toLayoutPoint(geometry.relativePhase()), geometry.tileSize(), geometry.spaceSize(), ImagePaintingOptions(compositeOp, bgLayer.blendMode(), ImageOrientationDescription(), interpolation));
+            context.drawTiledImage(*image, geometry.destRect(), toLayoutPoint(geometry.relativePhase()), geometry.tileSize(), geometry.spaceSize(), ImagePaintingOptions(compositeOp, bgLayer.blendMode(), DecodingMode::Asynchronous, ImageOrientationDescription(), interpolation));
         }
     }
 
@@ -1732,6 +1737,10 @@ void RenderBoxModelObject::paintBorder(const PaintInfo& info, const LayoutRect& 
     BorderEdge::getBorderEdgeInfo(edges, style, document().deviceScaleFactor(), includeLogicalLeftEdge, includeLogicalRightEdge);
     RoundedRect outerBorder = style.getRoundedBorderFor(rect, includeLogicalLeftEdge, includeLogicalRightEdge);
     RoundedRect innerBorder = style.getRoundedInnerBorderFor(borderInnerRectAdjustedForBleedAvoidance(graphicsContext, rect, bleedAvoidance), includeLogicalLeftEdge, includeLogicalRightEdge);
+
+    // If no borders intersects with the dirty area, we can skip the border painting.
+    if (innerBorder.contains(info.rect))
+        return;
 
     bool haveAlphaColor = false;
     bool haveAllSolidEdges = true;

@@ -36,6 +36,7 @@
 namespace WebCore {
 class Color;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 }
 
@@ -68,15 +69,20 @@ private:
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
 #if PLATFORM(IOS)
+    void getPasteboardTypesByFidelityForItemAtIndex(uint64_t index, const String& pasteboardName, Vector<String>& types);
+    void writeURLToPasteboard(const WebCore::PasteboardURL&, const String& pasteboardName);
     void writeWebContentToPasteboard(const WebCore::PasteboardWebContent&, const String& pasteboardName);
     void writeImageToPasteboard(const WebCore::PasteboardImage&, const String& pasteboardName);
     void writeStringToPasteboard(const String& pasteboardType, const String&, const String& pasteboardName);
     void readStringFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, WTF::String&);
-    void readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String&);
+    void readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url, String& title);
     void readBufferFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, SharedMemory::Handle&, uint64_t& size);
     void getPasteboardItemsCount(const String& pasteboardName, uint64_t& itemsCount);
+    void getFilenamesForDataInteraction(const String& pasteboardName, Vector<String>& filenames);
+    void updatePreferredTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName);
 #endif
 #if PLATFORM(COCOA)
+    void getNumberOfFiles(const String& pasteboardName, uint64_t& numberOfFiles);
     void getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes);
     void getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames);
     void getPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, String&);

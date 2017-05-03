@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,11 @@
 #include "JITOperations.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
+
+#if ENABLE(WEBASSEMBLY)
+#include "WasmContext.h"
+#include "WasmMemoryInformation.h"
+#endif
 
 namespace JSC {
 
@@ -187,7 +192,7 @@ void AssemblyHelpers::clearSamplingFlag(int32_t flag)
 #if USE(JSVALUE64)
 void AssemblyHelpers::jitAssertIsInt32(GPRReg gpr)
 {
-#if CPU(X86_64)
+#if CPU(X86_64) || CPU(ARM64)
     Jump checkInt32 = branch64(BelowOrEqual, gpr, TrustedImm64(static_cast<uintptr_t>(0xFFFFFFFFu)));
     abortWithReason(AHIsNotInt32);
     checkInt32.link(this);
@@ -301,24 +306,24 @@ void AssemblyHelpers::jitAssertArgumentCountSane()
 
 #endif // !ASSERT_DISABLED
 
-void AssemblyHelpers::jitReleaseAssertNoException()
+void AssemblyHelpers::jitReleaseAssertNoException(VM& vm)
 {
     Jump noException;
 #if USE(JSVALUE64)
-    noException = branchTest64(Zero, AbsoluteAddress(vm()->addressOfException()));
+    noException = branchTest64(Zero, AbsoluteAddress(vm.addressOfException()));
 #elif USE(JSVALUE32_64)
-    noException = branch32(Equal, AbsoluteAddress(vm()->addressOfException()), TrustedImm32(0));
+    noException = branch32(Equal, AbsoluteAddress(vm.addressOfException()), TrustedImm32(0));
 #endif
     abortWithReason(JITUncoughtExceptionAfterCall);
     noException.link(this);
 }
 
-void AssemblyHelpers::callExceptionFuzz()
+void AssemblyHelpers::callExceptionFuzz(VM& vm)
 {
     if (!Options::useExceptionFuzz())
         return;
 
-    EncodedJSValue* buffer = vm()->exceptionFuzzingBuffer(sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters));
+    EncodedJSValue* buffer = vm.exceptionFuzzingBuffer(sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters));
 
     for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
 #if USE(JSVALUE64)
@@ -354,23 +359,23 @@ void AssemblyHelpers::callExceptionFuzz()
     }
 }
 
-AssemblyHelpers::Jump AssemblyHelpers::emitJumpIfException()
+AssemblyHelpers::Jump AssemblyHelpers::emitJumpIfException(VM& vm)
 {
-    return emitExceptionCheck(NormalExceptionCheck);
+    return emitExceptionCheck(vm, NormalExceptionCheck);
 }
 
-AssemblyHelpers::Jump AssemblyHelpers::emitExceptionCheck(ExceptionCheckKind kind, ExceptionJumpWidth width)
+AssemblyHelpers::Jump AssemblyHelpers::emitExceptionCheck(VM& vm, ExceptionCheckKind kind, ExceptionJumpWidth width)
 {
-    callExceptionFuzz();
+    callExceptionFuzz(vm);
 
     if (width == FarJumpWidth)
         kind = (kind == NormalExceptionCheck ? InvertedExceptionCheck : NormalExceptionCheck);
     
     Jump result;
 #if USE(JSVALUE64)
-    result = branchTest64(kind == NormalExceptionCheck ? NonZero : Zero, AbsoluteAddress(vm()->addressOfException()));
+    result = branchTest64(kind == NormalExceptionCheck ? NonZero : Zero, AbsoluteAddress(vm.addressOfException()));
 #elif USE(JSVALUE32_64)
-    result = branch32(kind == NormalExceptionCheck ? NotEqual : Equal, AbsoluteAddress(vm()->addressOfException()), TrustedImm32(0));
+    result = branch32(kind == NormalExceptionCheck ? NotEqual : Equal, AbsoluteAddress(vm.addressOfException()), TrustedImm32(0));
 #endif
     
     if (width == NormalJumpWidth)
@@ -382,15 +387,15 @@ AssemblyHelpers::Jump AssemblyHelpers::emitExceptionCheck(ExceptionCheckKind kin
     return realJump.m_jump;
 }
 
-AssemblyHelpers::Jump AssemblyHelpers::emitNonPatchableExceptionCheck()
+AssemblyHelpers::Jump AssemblyHelpers::emitNonPatchableExceptionCheck(VM& vm)
 {
-    callExceptionFuzz();
+    callExceptionFuzz(vm);
 
     Jump result;
 #if USE(JSVALUE64)
-    result = branchTest64(NonZero, AbsoluteAddress(vm()->addressOfException()));
+    result = branchTest64(NonZero, AbsoluteAddress(vm.addressOfException()));
 #elif USE(JSVALUE32_64)
-    result = branch32(NotEqual, AbsoluteAddress(vm()->addressOfException()), TrustedImm32(0));
+    result = branch32(NotEqual, AbsoluteAddress(vm.addressOfException()), TrustedImm32(0));
 #endif
     
     return result;
@@ -449,15 +454,16 @@ void AssemblyHelpers::loadProperty(GPRReg object, GPRReg offset, JSValueRegs res
         result);
 }
 
-void AssemblyHelpers::emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch)
+void AssemblyHelpers::emitLoadStructure(VM& vm, RegisterID source, RegisterID dest, RegisterID scratch)
 {
 #if USE(JSVALUE64)
     ASSERT(dest != scratch);
     load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
-    loadPtr(vm()->heap.structureIDTable().base(), scratch);
+    loadPtr(vm.heap.structureIDTable().base(), scratch);
     loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
 #else
     UNUSED_PARAM(scratch);
+    UNUSED_PARAM(vm);
     loadPtr(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
 #endif
 }
@@ -549,10 +555,10 @@ void AssemblyHelpers::emitRandomThunk(JSGlobalObject* globalObject, GPRReg scrat
     emitRandomThunkImpl(*this, scratch0, scratch1, scratch2, result, loadFromHigh, storeToHigh, loadFromLow, storeToLow);
 }
 
-void AssemblyHelpers::emitRandomThunk(GPRReg scratch0, GPRReg scratch1, GPRReg scratch2, GPRReg scratch3, FPRReg result)
+void AssemblyHelpers::emitRandomThunk(VM& vm, GPRReg scratch0, GPRReg scratch1, GPRReg scratch2, GPRReg scratch3, FPRReg result)
 {
     emitGetFromCallFrameHeaderPtr(CallFrameSlot::callee, scratch3);
-    emitLoadStructure(scratch3, scratch3, scratch0);
+    emitLoadStructure(vm, scratch3, scratch3, scratch0);
     loadPtr(Address(scratch3, Structure::globalObjectOffset()), scratch3);
     // Now, scratch3 holds JSGlobalObject*.
 
@@ -573,10 +579,10 @@ void AssemblyHelpers::emitRandomThunk(GPRReg scratch0, GPRReg scratch1, GPRReg s
 }
 #endif
 
-void AssemblyHelpers::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer()
+void AssemblyHelpers::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(VM& vm)
 {
 #if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-    RegisterAtOffsetList* allCalleeSaves = m_vm->getAllCalleeSaveRegisterOffsets();
+    RegisterAtOffsetList* allCalleeSaves = VM::getAllCalleeSaveRegisterOffsets();
     RegisterSet dontRestoreRegisters = RegisterSet::stackRegisters();
     unsigned registerCount = allCalleeSaves->size();
 
@@ -596,7 +602,7 @@ void AssemblyHelpers::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer()
     }
     ASSERT(scratch != InvalidGPRReg);
 
-    loadPtr(&m_vm->topVMEntryFrame, scratch);
+    loadPtr(&vm.topVMEntryFrame, scratch);
     addPtr(TrustedImm32(VMEntryFrame::calleeSaveRegistersBufferOffset()), scratch);
 
     // Restore all callee saves except for the scratch.
@@ -617,17 +623,19 @@ void AssemblyHelpers::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer()
     ASSERT(entry.reg().isGPR());
     ASSERT(scratch == entry.reg().gpr());
     loadPtr(Address(scratch, entry.offset()), scratch);
+#else
+    UNUSED_PARAM(vm);
 #endif
 }
 
-void AssemblyHelpers::emitDumbVirtualCall(CallLinkInfo* info)
+void AssemblyHelpers::emitDumbVirtualCall(VM& vm, CallLinkInfo* info)
 {
     move(TrustedImmPtr(info), GPRInfo::regT2);
     Call call = nearCall();
     addLinkTask(
-        [=] (LinkBuffer& linkBuffer) {
-            MacroAssemblerCodeRef virtualThunk = virtualThunkFor(&linkBuffer.vm(), *info);
-            info->setSlowStub(createJITStubRoutine(virtualThunk, linkBuffer.vm(), nullptr, true));
+        [=, &vm] (LinkBuffer& linkBuffer) {
+            MacroAssemblerCodeRef virtualThunk = virtualThunkFor(&vm, *info);
+            info->setSlowStub(createJITStubRoutine(virtualThunk, vm, nullptr, true));
             linkBuffer.link(call, CodeLocationLabel(virtualThunk.code()));
         });
 }
@@ -678,7 +686,7 @@ void AssemblyHelpers::wangsInt64Hash(GPRReg inputAndResult, GPRReg scratch)
 }
 #endif // USE(JSVALUE64)
 
-void AssemblyHelpers::emitConvertValueToBoolean(JSValueRegs value, GPRReg result, GPRReg scratch, FPRReg valueAsFPR, FPRReg tempFPR, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject* globalObject, bool negateResult)
+void AssemblyHelpers::emitConvertValueToBoolean(VM& vm, JSValueRegs value, GPRReg result, GPRReg scratch, FPRReg valueAsFPR, FPRReg tempFPR, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject* globalObject, bool negateResult)
 {
     // Implements the following control flow structure:
     // if (value is boolean) {
@@ -748,7 +756,7 @@ void AssemblyHelpers::emitConvertValueToBoolean(JSValueRegs value, GPRReg result
         ASSERT(scratch != InvalidGPRReg);
         JumpList isNotMasqueradesAsUndefined;
         isNotMasqueradesAsUndefined.append(branchTest8(Zero, Address(value.payloadGPR(), JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined)));
-        emitLoadStructure(value.payloadGPR(), result, scratch);
+        emitLoadStructure(vm, value.payloadGPR(), result, scratch);
         move(TrustedImmPtr(globalObject), scratch);
         isNotMasqueradesAsUndefined.append(branchPtr(NotEqual, Address(result, Structure::globalObjectOffset()), scratch));
         // We act like we are "undefined" here.
@@ -764,6 +772,127 @@ void AssemblyHelpers::emitConvertValueToBoolean(JSValueRegs value, GPRReg result
     move(negateResult ? TrustedImm32(1) : TrustedImm32(0), result);
 
     done.link(this);
+}
+
+#if ENABLE(WEBASSEMBLY)
+void AssemblyHelpers::loadWasmContext(GPRReg dst)
+{
+#if ENABLE(FAST_TLS_JIT)
+    if (Wasm::useFastTLSForContext()) {
+        loadFromTLSPtr(fastTLSOffsetForKey(WTF_WASM_CONTEXT_KEY), dst);
+        return;
+    }
+#endif
+    move(Wasm::PinnedRegisterInfo::get().wasmContextPointer, dst);
+}
+
+void AssemblyHelpers::storeWasmContext(GPRReg src)
+{
+#if ENABLE(FAST_TLS_JIT)
+    if (Wasm::useFastTLSForContext()) {
+        storeToTLSPtr(src, fastTLSOffsetForKey(WTF_WASM_CONTEXT_KEY));
+        return;
+    }
+#endif
+    move(src, Wasm::PinnedRegisterInfo::get().wasmContextPointer);
+}
+
+bool AssemblyHelpers::loadWasmContextNeedsMacroScratchRegister()
+{
+#if ENABLE(FAST_TLS_JIT)
+    if (Wasm::useFastTLSForContext())
+        return loadFromTLSPtrNeedsMacroScratchRegister();
+#endif
+    return false;
+}
+
+bool AssemblyHelpers::storeWasmContextNeedsMacroScratchRegister()
+{
+#if ENABLE(FAST_TLS_JIT)
+    if (Wasm::useFastTLSForContext())
+        return storeToTLSPtrNeedsMacroScratchRegister();
+#endif
+    return false;
+}
+
+#endif // ENABLE(WEBASSEMBLY)
+
+void AssemblyHelpers::debugCall(VM& vm, V_DebugOperation_EPP function, void* argument)
+{
+    size_t scratchSize = sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters);
+    ScratchBuffer* scratchBuffer = vm.scratchBufferForSize(scratchSize);
+    EncodedJSValue* buffer = static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer());
+
+    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+        store64(GPRInfo::toRegister(i), buffer + i);
+#else
+        store32(GPRInfo::toRegister(i), buffer + i);
+#endif
+    }
+
+    for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
+        move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
+        storeDouble(FPRInfo::toRegister(i), GPRInfo::regT0);
+    }
+
+    // Tell GC mark phase how much of the scratch buffer is active during call.
+    move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
+
+#if CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)
+    move(TrustedImmPtr(buffer), GPRInfo::argumentGPR2);
+    move(TrustedImmPtr(argument), GPRInfo::argumentGPR1);
+    move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    GPRReg scratch = selectScratchGPR(GPRInfo::argumentGPR0, GPRInfo::argumentGPR1, GPRInfo::argumentGPR2);
+#elif CPU(X86)
+    poke(GPRInfo::callFrameRegister, 0);
+    poke(TrustedImmPtr(argument), 1);
+    poke(TrustedImmPtr(buffer), 2);
+    GPRReg scratch = GPRInfo::regT0;
+#else
+#error "JIT not supported on this platform."
+#endif
+    move(TrustedImmPtr(reinterpret_cast<void*>(function)), scratch);
+    call(scratch);
+
+    move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    storePtr(TrustedImmPtr(0), GPRInfo::regT0);
+
+    for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
+        move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
+        loadDouble(GPRInfo::regT0, FPRInfo::toRegister(i));
+    }
+    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+#if USE(JSVALUE64)
+        load64(buffer + i, GPRInfo::toRegister(i));
+#else
+        load32(buffer + i, GPRInfo::toRegister(i));
+#endif
+    }
+}
+
+void AssemblyHelpers::copyCalleeSavesToVMEntryFrameCalleeSavesBufferImpl(GPRReg calleeSavesBuffer)
+{
+#if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    addPtr(TrustedImm32(VMEntryFrame::calleeSaveRegistersBufferOffset()), calleeSavesBuffer);
+
+    RegisterAtOffsetList* allCalleeSaves = VM::getAllCalleeSaveRegisterOffsets();
+    RegisterSet dontCopyRegisters = RegisterSet::stackRegisters();
+    unsigned registerCount = allCalleeSaves->size();
+    
+    for (unsigned i = 0; i < registerCount; i++) {
+        RegisterAtOffset entry = allCalleeSaves->at(i);
+        if (dontCopyRegisters.get(entry.reg()))
+            continue;
+        if (entry.reg().isGPR())
+            storePtr(entry.reg().gpr(), Address(calleeSavesBuffer, entry.offset()));
+        else
+            storeDouble(entry.reg().fpr(), Address(calleeSavesBuffer, entry.offset()));
+    }
+#else
+    UNUSED_PARAM(calleeSavesBuffer);
+#endif
 }
 
 } // namespace JSC

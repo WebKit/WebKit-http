@@ -59,12 +59,24 @@ WebInspector.WebSocketResource = class WebSocketResource extends WebInspector.Re
         this.dispatchEventToListeners(WebInspector.WebSocketResource.Event.ReadyStateChanged, {previousState, state});
     }
 
-    addFrame(data, isOutgoing, opcode, timestamp, elapsedTime)
+    addFrame(data, payloadLength, isOutgoing, opcode, timestamp, elapsedTime)
     {
-        let frame = {data, isOutgoing, opcode, walltime: this._walltimeForWebSocketTimestamp(timestamp)};
+        let frameData;
+
+        // Binary data is never shown in the UI, don't clog memory with it.
+        if (opcode === WebInspector.WebSocketResource.OpCodes.BinaryFrame)
+            frameData = null;
+        else
+            frameData = data;
+
+        let frame = {data: frameData, isOutgoing, opcode, walltime: this._walltimeForWebSocketTimestamp(timestamp)};
         this._frames.push(frame);
 
-        this.increaseSize(data.length, elapsedTime);
+        // COMPATIBILITY (iOS 10.3): `payloadLength` did not exist in 10.3 and earlier.
+        if (payloadLength === undefined)
+            payloadLength = new TextEncoder("utf-8").encode(data).length;
+
+        this.increaseSize(payloadLength, elapsedTime);
 
         this.dispatchEventToListeners(WebInspector.WebSocketResource.Event.FrameAdded, frame);
     }

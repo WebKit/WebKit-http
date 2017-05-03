@@ -51,10 +51,8 @@
 #include "JSCanvasPattern.cpp"
 #include "JSCanvasProxy.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
-#if ENABLE(READABLE_STREAM_API)
 #include "JSByteLengthQueuingStrategy.cpp"
 #include "JSCountQueuingStrategy.cpp"
-#endif
 #if ENABLE(WEB_AUDIO)
 #include "JSChannelMergerNode.cpp"
 #include "JSChannelSplitterNode.cpp"
@@ -109,8 +107,6 @@
 #endif
 #include "JSCDATASection.cpp"
 #include "JSCharacterData.cpp"
-#include "JSClientRect.cpp"
-#include "JSClientRectList.cpp"
 #include "JSCloseEvent.cpp"
 #include "JSCommandLineAPIHost.cpp"
 #include "JSComment.cpp"
@@ -180,7 +176,6 @@
 #include "JSDOMTokenList.cpp"
 #include "JSDOMURL.cpp"
 #include "JSDOMURLMediaSource.cpp"
-#include "JSDOMURLMediaStream.cpp"
 #include "JSDOMWindow.cpp"
 #include "JSDOMWindowFetch.cpp"
 #include "JSDOMWindowIndexedDatabase.cpp"
@@ -382,6 +377,7 @@
 #include "JSPositionOptions.cpp"
 #include "JSProcessingInstruction.cpp"
 #include "JSProgressEvent.cpp"
+#include "JSPromiseRejectionEvent.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
 #include "JSReadableByteStreamController.cpp"
@@ -396,9 +392,9 @@
 #include "JSRTCDTMFSender.cpp"
 #include "JSRTCDTMFToneChangeEvent.cpp"
 #include "JSRTCIceCandidate.cpp"
-#include "JSRTCIceCandidateEvent.cpp"
 #include "JSRTCIceServer.cpp"
 #include "JSRTCPeerConnection.cpp"
+#include "JSRTCPeerConnectionIceEvent.cpp"
 #include "JSRTCRtpReceiver.cpp"
 #include "JSRTCRtpSender.cpp"
 #include "JSRTCSessionDescription.cpp"
@@ -651,9 +647,7 @@
 #include "JSWorkerGlobalScopeNotifications.cpp"
 #include "JSWorkerLocation.cpp"
 #include "JSWorkerNavigator.cpp"
-#if ENABLE(WRITABLE_STREAM_API)
 #include "JSWritableStream.cpp"
-#endif
 #include "JSXMLDocument.cpp"
 #include "JSXMLHttpRequest.cpp"
 #include "JSXMLHttpRequestEventTarget.cpp"

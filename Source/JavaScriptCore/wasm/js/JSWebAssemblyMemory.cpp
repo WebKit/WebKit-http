@@ -73,9 +73,9 @@ JSArrayBuffer* JSWebAssemblyMemory::buffer(VM& vm, JSGlobalObject* globalObject)
     return m_bufferWrapper.get();
 }
 
-Wasm::PageCount JSWebAssemblyMemory::grow(ExecState* exec, uint32_t delta, bool shouldThrowExceptionsOnFailure)
+Wasm::PageCount JSWebAssemblyMemory::grow(VM& vm, ExecState* exec, uint32_t delta, bool shouldThrowExceptionsOnFailure)
 {
-    VM& vm = exec->vm();
+    // Note: We can only use exec if shouldThrowExceptionsOnFailure is true.
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     Wasm::PageCount oldPageCount = memory().sizeInPages();
@@ -117,6 +117,7 @@ Wasm::PageCount JSWebAssemblyMemory::grow(ExecState* exec, uint32_t delta, bool 
     }
 
     memory().check();
+    // FIXME Should we report extra memory to the GC on allocation / grow / visit? https://bugs.webkit.org/show_bug.cgi?id=170690
     return oldPageCount;
 }
 
@@ -124,6 +125,8 @@ void JSWebAssemblyMemory::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
+    // FIXME Should we report extra memory to the GC on allocation / grow / visit? https://bugs.webkit.org/show_bug.cgi?id=170690
+    vm.heap.reportWebAssemblyFastMemoriesAllocated(1);
 }
 
 void JSWebAssemblyMemory::destroy(JSCell* cell)
@@ -141,6 +144,7 @@ void JSWebAssemblyMemory::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_bufferWrapper);
+    // FIXME Should we report extra memory to the GC on allocation / grow / visit? https://bugs.webkit.org/show_bug.cgi?id=170690
 }
 
 } // namespace JSC

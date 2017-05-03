@@ -466,7 +466,7 @@ void DeleteSelectionCommand::makeStylingElementsDirectChildrenOfEditableRootToPr
             RefPtr<ContainerNode> rootEditableElement = node->rootEditableElement();
             if (rootEditableElement) {
                 removeNode(node);
-                appendNode(node, rootEditableElement);
+                appendNode(*node, *rootEditableElement);
             }
         }
         node = nextNode;
@@ -657,7 +657,7 @@ void DeleteSelectionCommand::mergeParagraphs()
     
     // We need to merge into m_upstreamStart's block, but it's been emptied out and collapsed by deletion.
     if (!mergeDestination.deepEquivalent().deprecatedNode() || !mergeDestination.deepEquivalent().deprecatedNode()->isDescendantOf(enclosingBlock(m_upstreamStart.containerNode())) || m_startsAtEmptyLine) {
-        insertNodeAt(HTMLBRElement::create(document()).ptr(), m_upstreamStart);
+        insertNodeAt(HTMLBRElement::create(document()), m_upstreamStart);
         mergeDestination = VisiblePosition(m_upstreamStart);
     }
     
@@ -763,7 +763,7 @@ void DeleteSelectionCommand::calculateTypingStyleAfterDelete()
     // In this case if we start typing, the new characters should have the same style as the just deleted ones,
     // but, if we change the selection, come back and start typing that style should be lost.  Also see 
     // preserveTypingStyle() below.
-    frame().selection().setTypingStyle(m_typingStyle);
+    frame().selection().setTypingStyle(m_typingStyle.copyRef());
 }
 
 void DeleteSelectionCommand::clearTransientState()
@@ -791,9 +791,8 @@ String DeleteSelectionCommand::originalStringForAutocorrectionAtBeginningOfSelec
     if (nextPosition.isNull())
         return String();
 
-    RefPtr<Range> rangeOfFirstCharacter = Range::create(document(), startOfSelection.deepEquivalent(), nextPosition.deepEquivalent());
-    Vector<RenderedDocumentMarker*> markers = document().markers().markersInRange(rangeOfFirstCharacter.get(), DocumentMarker::Autocorrected);
-    for (auto* marker : markers) {
+    auto rangeOfFirstCharacter = Range::create(document(), startOfSelection.deepEquivalent(), nextPosition.deepEquivalent());
+    for (auto* marker : document().markers().markersInRange(rangeOfFirstCharacter, DocumentMarker::Autocorrected)) {
         int startOffset = marker->startOffset();
         if (startOffset == startOfSelection.deepEquivalent().offsetInContainerNode())
             return marker->description();

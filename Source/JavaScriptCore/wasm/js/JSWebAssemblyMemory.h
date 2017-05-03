@@ -44,11 +44,11 @@ public:
     static JSWebAssemblyMemory* create(VM&, Structure*, Ref<Wasm::Memory>&&);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
 
     Wasm::Memory& memory() { return m_memory.get(); }
     JSArrayBuffer* buffer(VM& vm, JSGlobalObject*);
-    Wasm::PageCount grow(ExecState*, uint32_t delta, bool shouldThrowExceptionsOnFailure);
+    Wasm::PageCount grow(VM&, ExecState*, uint32_t delta, bool shouldThrowExceptionsOnFailure);
 
     static ptrdiff_t offsetOfMemory() { return OBJECT_OFFSETOF(JSWebAssemblyMemory, m_memoryBase); }
     static ptrdiff_t offsetOfSize() { return OBJECT_OFFSETOF(JSWebAssemblyMemory, m_memorySize); }

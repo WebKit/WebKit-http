@@ -56,8 +56,20 @@ RenderVideo::RenderVideo(HTMLVideoElement& element, RenderStyle&& style)
 
 RenderVideo::~RenderVideo()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderVideo::willBeDestroyed()
+{
     if (MediaPlayer* player = videoElement().player())
         player->setVisible(false);
+
+    RenderMedia::willBeDestroyed();
+}
+
+void RenderVideo::visibleInViewportStateChanged()
+{
+    videoElement().isVisibleInViewportChanged();
 }
 
 IntSize RenderVideo::defaultSize()

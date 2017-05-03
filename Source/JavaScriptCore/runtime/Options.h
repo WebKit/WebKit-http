@@ -225,6 +225,7 @@ typedef const char* optionString;
     v(bool, useFTLJIT, true, Normal, "allows the FTL JIT to be used if true") \
     v(bool, useFTLTBAA, true, Normal, nullptr) \
     v(bool, validateFTLOSRExitLiveness, false, Normal, nullptr) \
+    v(unsigned, defaultB3OptLevel, 2, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeCompile, false, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeLink, false, Normal, nullptr) \
     v(bool, ftlCrashes, false, Normal, nullptr) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
@@ -252,6 +253,7 @@ typedef const char* optionString;
     v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8, 2) - 1, Normal, nullptr) \
     v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), Normal, nullptr) \
+    v(int32, priorityDeltaOfWasmCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     \
     v(bool, useProfiler, false, Normal, nullptr) \
     v(bool, disassembleBaselineForProfiler, true, Normal, nullptr) \
@@ -378,6 +380,8 @@ typedef const char* optionString;
     v(bool, verifyHeap, false, Normal, nullptr) \
     v(unsigned, numberOfGCCyclesToRecordForVerification, 3, Normal, nullptr) \
     \
+    v(unsigned, exceptionStackTraceLimit, 100, Normal, "Stack trace limit for internal Exception object") \
+    v(unsigned, defaultErrorStackTraceLimit, 100, Normal, "The default value for Error.stackTraceLimit") \
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
@@ -396,9 +400,11 @@ typedef const char* optionString;
     \
     v(bool, logB3PhaseTimes, false, Normal, nullptr) \
     v(double, rareBlockPenalty, 0.001, Normal, nullptr) \
-    v(bool, airSpillsEverything, false, Normal, nullptr) \
+    v(bool, airLinearScanVerbose, false, Normal, nullptr) \
+    v(bool, airLinearScanSpillsEverything, false, Normal, nullptr) \
     v(bool, airForceBriggsAllocator, false, Normal, nullptr) \
     v(bool, airForceIRCAllocator, false, Normal, nullptr) \
+    v(bool, coalesceSpillSlots, true, Normal, nullptr) \
     v(bool, logAirRegisterPressure, false, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSize, 3, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSuccessors, 3, Normal, nullptr) \
@@ -427,8 +433,22 @@ typedef const char* optionString;
     v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
     \
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
-    v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
-    v(bool, useWebAssemblyFastMemory, true, Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.")
+    \
+    v(bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
+    v(size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
+    v(unsigned, webAssemblyBBQOptimizationLevel, 1, Normal, "B3 Optimization level for BBQ Web Assembly module compilations.") \
+    v(unsigned, webAssemblyOMGOptimizationLevel, Options::defaultB3OptLevel(), Normal, "B3 Optimization level for OMG Web Assembly module compilations.") \
+    \
+    v(unsigned, webAssemblyOMGTierUpCount, 5000, Normal, "The countdown before we tier up a function to OMG.") \
+    v(unsigned, webAssemblyLoopDecrement, 15, Normal, "The amount the tier up countdown is decremented on each loop backedge.") \
+    v(unsigned, webAssemblyFunctionEntryDecrement, 1, Normal, "The amount the tier up countdown is decremented on each function entry.") \
+    \
+    /* FIXME: enable fast memories on iOS and pre-allocate them. https://bugs.webkit.org/show_bug.cgi?id=170774 */ \
+    v(bool, useWebAssemblyFastMemory, !isIOS(), Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
+    v(unsigned, webAssemblyFastMemoryRedzonePages, 128, Normal, "WebAssembly fast memories use 4GiB virtual allocations, plus a redzone (counted as multiple of 64KiB WebAssembly pages) at the end to catch reg+imm accesses which exceed 32-bit, anything beyond the redzone is explicitly bounds-checked") \
+    v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
+    v(unsigned, webAssemblyFastMemoryPreallocateCount, 0, Normal, "WebAssembly fast memories can be pre-allocated at program startup and remain cached to avoid fragmentation leading to bounds-checked memory. This number is an upper bound on initial allocation as well as total count of fast memories. Zero means no pre-allocation, no caching, and no limit to the number of runtime allocations.") \
+    v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.")
 
 
 enum OptionEquivalence {
@@ -487,6 +507,7 @@ public:
     // This typedef is to allow us to eliminate the '_' in the field name in
     // union inside Entry. This is needed to keep the style checker happy.
     typedef int32_t int32;
+    typedef size_t size;
 
     // Declare the option IDs:
     enum ID {
@@ -502,6 +523,7 @@ public:
         unsignedType,
         doubleType,
         int32Type,
+        sizeType,
         optionRangeType,
         optionStringType,
         gcLogLevelType,
@@ -541,6 +563,7 @@ private:
         unsigned unsignedVal;
         double doubleVal;
         int32 int32Val;
+        size sizeVal;
         OptionRange optionRangeVal;
         const char* optionStringVal;
         GCLogging::Level gcLogLevelVal;

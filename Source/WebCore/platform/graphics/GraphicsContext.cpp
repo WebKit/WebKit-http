@@ -728,7 +728,7 @@ void GraphicsContext::drawImage(Image& image, const FloatRect& destination, cons
     }
 
     InterpolationQualityMaintainer interpolationQualityForThisScope(*this, imagePaintingOptions.m_interpolationQuality);
-    image.draw(*this, destination, source, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode, imagePaintingOptions.m_orientationDescription);
+    image.draw(*this, destination, source, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode, imagePaintingOptions.m_decodingMode, imagePaintingOptions.m_orientationDescription);
 }
 
 void GraphicsContext::drawTiledImage(Image& image, const FloatRect& destination, const FloatPoint& source, const FloatSize& tileSize, const FloatSize& spacing, const ImagePaintingOptions& imagePaintingOptions)
@@ -742,7 +742,7 @@ void GraphicsContext::drawTiledImage(Image& image, const FloatRect& destination,
     }
 
     InterpolationQualityMaintainer interpolationQualityForThisScope(*this, imagePaintingOptions.m_interpolationQuality);
-    image.drawTiled(*this, destination, source, tileSize, spacing, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode);
+    image.drawTiled(*this, destination, source, tileSize, spacing, imagePaintingOptions.m_compositeOperator, imagePaintingOptions.m_blendMode, imagePaintingOptions.m_decodingMode);
 }
 
 void GraphicsContext::drawTiledImage(Image& image, const FloatRect& destination, const FloatRect& source, const FloatSize& tileScaleFactor,
@@ -1035,6 +1035,13 @@ FloatSize GraphicsContext::scaleFactor() const
 {
     AffineTransform transform = getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
     return FloatSize(transform.xScale(), transform.yScale());
+}
+    
+FloatSize GraphicsContext::scaleFactorForDrawing(const FloatRect& destRect, const FloatRect& srcRect) const
+{
+    AffineTransform transform = getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
+    auto transformedDestRect = transform.mapRect(destRect);
+    return { static_cast<float>(transformedDestRect.width() / srcRect.width()), static_cast<float>(transformedDestRect.height() / srcRect.height()) };
 }
 
 void GraphicsContext::fillEllipse(const FloatRect& ellipse)

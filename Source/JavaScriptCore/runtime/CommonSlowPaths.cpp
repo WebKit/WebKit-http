@@ -826,6 +826,18 @@ SLOW_PATH_DECL(slow_path_push_with_scope)
     RETURN(JSWithScope::create(vm, exec->lexicalGlobalObject(), newScope, currentScope));
 }
 
+SLOW_PATH_DECL(slow_path_resolve_scope_for_hoisting_func_decl_in_eval)
+{
+    BEGIN();
+    const Identifier& ident = exec->codeBlock()->identifier(pc[3].u.operand);
+    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
+    JSValue resolvedScope = JSScope::resolveScopeForHoistingFuncDeclInEval(exec, scope, ident);
+
+    CHECK_EXCEPTION();
+
+    RETURN(resolvedScope);
+}
+
 SLOW_PATH_DECL(slow_path_resolve_scope)
 {
     BEGIN();
@@ -1023,7 +1035,9 @@ SLOW_PATH_DECL(slow_path_new_array_with_spread)
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
-    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, arraySize);
+    JSArray* result = JSArray::tryCreate(vm, structure, arraySize);
+    if (UNLIKELY(!result))
+        THROW(createOutOfMemoryError(exec));
     CHECK_EXCEPTION();
 
     unsigned index = 0;
@@ -1034,12 +1048,12 @@ SLOW_PATH_DECL(slow_path_new_array_with_spread)
             JSFixedArray* array = jsCast<JSFixedArray*>(value);
             for (unsigned i = 0; i < array->size(); i++) {
                 RELEASE_ASSERT(array->get(i));
-                result->initializeIndex(vm, index, array->get(i));
+                result->putDirectIndex(exec, index, array->get(i));
                 ++index;
             }
         } else {
             // We are not spreading.
-            result->initializeIndex(vm, index, value);
+            result->putDirectIndex(exec, index, value);
             ++index;
         }
     }

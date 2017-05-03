@@ -63,7 +63,7 @@ void PlatformWebView::focus()
 
 WKRect PlatformWebView::windowFrame()
 {
-    return WKRect{ 0, 0, 1, 1 };
+    return WKRect { 0, 0, 1, 1 };
 }
 
 void PlatformWebView::setWindowFrame(WKRect, WebViewSizingMode)
@@ -99,7 +99,7 @@ void PlatformWebView::makeWebViewFirstResponder()
 {
 }
 
-WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
+cairo_surface_t* PlatformWebView::windowSnapshotImage()
 {
     {
         struct TimeoutTimer {
@@ -117,9 +117,7 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     }
 
     cairo_surface_t* imageSurface = m_window->createSnapshot();
-    WKRetainPtr<WKImageRef> wkImage = adoptWK(WKImageCreateFromCairoSurface(imageSurface, kWKImageOptionsShareable));
-    cairo_surface_destroy(imageSurface);
-    return wkImage;
+    return imageSurface;
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)

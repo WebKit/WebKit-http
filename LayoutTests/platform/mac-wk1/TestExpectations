@@ -5,7 +5,6 @@
 # Platform-specific tests. Skipped globally, then re-enabled here.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
-editing/execCommand/execCommand-across-different-documents.html [ Pass ]
 fast/forms/attributed-strings.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -30,8 +29,6 @@ webkit.org/b/132421 [ Yosemite+ ] fast/multicol/fixed-stack.html [ ImageOnlyFail
 webkit.org/b/104104 fast/overflow/scrollbar-click-retains-focus.html [ Failure ]
 
 webkit.org/b/82981 http/tests/misc/favicon-loads-with-icon-loading-override.html [ Failure ]
-
-webkit.org/b/90724 compositing/iframes/iframe-size-from-zero.html [ Failure ]
 
 webkit.org/b/138697 fast/events/overflow-scroll-fake-mouse-move.html [ Pass Failure ]
 
@@ -98,6 +95,8 @@ http/tests/ssl/media-stream
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
+webrtc/datachannel [ Pass ]
+webrtc/captureCanvas-webrtc.html [ Pass ]
 
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
@@ -123,6 +122,10 @@ http/tests/navigation/page-cache-iframe-no-current-historyItem.html
 fast/images/animated-gif-body-outside-viewport.html [ Skip ]
 fast/images/animated-gif-window-resizing.html [ Skip ]
 fast/images/animated-gif-zooming.html [ Skip ]
+svg/animations/animated-svg-image-outside-viewport-paused.html [ Skip ]
+svg/animations/animated-svg-image-removed-from-document-paused.html [ Skip ]
+svg/animations/animations-paused-in-background-page-iframe.html [ Skip ]
+svg/animations/animations-paused-in-background-page.html [ Skip ]
 
 # WK1 uses the native scrollview for scrolling by page.
 scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html
@@ -148,6 +151,7 @@ compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
 http/tests/inspector/network/resource-response-source-disk-cache.html
+http/tests/inspector/network/resource-sizes-disk-cache.html
 
 [ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 
@@ -166,7 +170,7 @@ storage/indexeddb/modern/exceed-open-file-limit.html
 ### END OF (2) Failures without bug reports
 ########################################
 
-# This test is WebKit2-only
+# These tests are WebKit2-only
 http/tests/contentfiltering/load-substitute-data-from-appcache.html
 fast/dom/Window/child-window-focus.html
 
@@ -222,6 +226,7 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-include
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+webkit.org/b/156069 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
@@ -302,9 +307,12 @@ webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-fr
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
 
-# Resource Timing networking data not yet available in WebKit1.
+# Resource Metrics data not available in WebKit1.
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+http/tests/inspector/network/resource-request-headers.html [ Failure ]
+http/tests/inspector/network/resource-sizes-network.html [ Failure ]
+http/tests/inspector/network/resource-sizes-memory-cache.html [ Failure ]
 
 webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
@@ -317,6 +325,9 @@ webkit.org/b/154612 [ Sierra ] compositing/repaint/fixed-background-scroll.html 
 
 webkit.org/b/165589 pointer-lock/lock-lost-on-esc-in-fullscreen.html [ Skip ]
 
+imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors.html [ Failure ]
+imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Failure ]
+
 # webkit.org/b/163585
 media/track/track-cues-cuechange.html [ Pass Crash ]
 media/track/track-cue-rendering-horizontal.html [ Pass Crash ]
@@ -327,10 +338,33 @@ webkit.org/b/167127 pointer-lock/locked-element-removed-from-dom.html
 
 webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]
 
-webkit.org/b/168409 [ Debug ] media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure Timeout ]
+webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure Timeout ]
 webkit.org/b/169654 [ Debug ] media/modern-media-controls/airplay-placard/airplay-placard-text-section.html [ Pass Timeout ]
-webkit.org/b/169677 [ Release ] http/tests/media/modern-media-controls/time-labels-support/long-time.html [ Pass Timeout ]
+webkit.org/b/167371 [ Debug ] media/modern-media-controls/buttons-container/buttons-container-buttons-property.html [ Pass Timeout ]
+webkit.org/b/171391 [ Debug ] media/modern-media-controls/fullscreen-button/fullscreen-button.html [ Pass Timeout ]
+webkit.org/b/169678 [ Debug ] media/modern-media-controls/time-label/time-label.html [ Pass Timeout ]
 webkit.org/b/167589 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html [ Pass Timeout ]
 webkit.org/b/169117 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html [ Pass Timeout ]
+webkit.org/b/170456 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Timeout ]
 webkit.org/b/167752 media/modern-media-controls/icon-button/icon-button-active-state.html [ Pass Timeout ]
 webkit.org/b/167477 [ Debug ] media/modern-media-controls/play-pause-button/play-pause-button.html [ Pass Timeout ]
+webkit.org/b/171245 [ Debug ] media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Timeout ]
+webkit.org/b/167475 [ Debug ] media/modern-media-controls/volume-slider/volume-slider-value.html [ Pass Timeout ]
+webkit.org/b/170682 [ Debug ] media/modern-media-controls/volume-up-support/volume-up-support.html [ Pass Timeout ]
+
+# There is not NetworkProcess in WK1, so it can't crash.
+http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
+
+webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [ Pass Failure ]
+
+# selectors4
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-001.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-002.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-003.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-004.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-005.html [ ImageOnlyFailure ]
+
+# auto-sizing produces inconsistent image results
+css3/viewport-percentage-lengths/vh-auto-size.html [ Skip ]
+
+webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-reserved-words.html [ Pass Timeout ]

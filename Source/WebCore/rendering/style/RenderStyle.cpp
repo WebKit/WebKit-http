@@ -642,6 +642,13 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
 
         if (textStrokeWidth() != other.textStrokeWidth())
             return true;
+        
+        // These properties affect the cached stroke bounding box rects.
+        if (m_rareInheritedData->capStyle != other.m_rareInheritedData->capStyle
+            || m_rareInheritedData->joinStyle != other.m_rareInheritedData->joinStyle
+            || m_rareInheritedData->strokeWidth != other.m_rareInheritedData->strokeWidth
+            || m_rareInheritedData->miterLimit != other.m_rareInheritedData->miterLimit)
+            return true;
     }
 
     if (m_inheritedData->lineHeight != other.m_inheritedData->lineHeight
@@ -836,8 +843,20 @@ bool RenderStyle::changeRequiresLayerRepaint(const RenderStyle& other, unsigned&
     return false;
 }
 
+static bool requiresPainting(const RenderStyle& style)
+{
+    if (style.visibility() == HIDDEN)
+        return false;
+    if (!style.opacity())
+        return false;
+    return true;
+}
+
 bool RenderStyle::changeRequiresRepaint(const RenderStyle& other, unsigned& changedContextSensitiveProperties) const
 {
+    if (!requiresPainting(*this) && !requiresPainting(other))
+        return false;
+
     if (m_inheritedFlags.visibility != other.m_inheritedFlags.visibility
         || m_inheritedFlags.printColorAdjust != other.m_inheritedFlags.printColorAdjust
         || m_inheritedFlags.insideLink != other.m_inheritedFlags.insideLink
@@ -879,7 +898,8 @@ bool RenderStyle::changeRequiresRepaintIfTextOrBorderOrOutline(const RenderStyle
         || m_rareInheritedData->textFillColor != other.m_rareInheritedData->textFillColor
         || m_rareInheritedData->textStrokeColor != other.m_rareInheritedData->textStrokeColor
         || m_rareInheritedData->textEmphasisColor != other.m_rareInheritedData->textEmphasisColor
-        || m_rareInheritedData->textEmphasisFill != other.m_rareInheritedData->textEmphasisFill)
+        || m_rareInheritedData->textEmphasisFill != other.m_rareInheritedData->textEmphasisFill
+        || m_rareInheritedData->strokeColor != other.m_rareInheritedData->strokeColor)
         return true;
 
     return false;
@@ -909,12 +929,6 @@ StyleDifference RenderStyle::diff(const RenderStyle& other, unsigned& changedCon
         if (svgChange == StyleDifferenceLayout)
             return svgChange;
     }
-
-    // These properties affect the cached stroke bounding box rects.
-    if (m_rareInheritedData->capStyle != other.m_rareInheritedData->capStyle
-        || m_rareInheritedData->joinStyle != other.m_rareInheritedData->joinStyle
-        || m_rareInheritedData->strokeWidth != other.m_rareInheritedData->strokeWidth)
-        return StyleDifferenceLayout;
 
     if (changeRequiresLayout(other, changedContextSensitiveProperties))
         return StyleDifferenceLayout;
@@ -1610,6 +1624,36 @@ void RenderStyle::setFontVariationSettings(FontVariationSettings settings)
 }
 #endif
 
+void RenderStyle::setFontWeight(FontSelectionValue value)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setWeight(value);
+
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+
+void RenderStyle::setFontStretch(FontSelectionValue value)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setStretch(value);
+
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+
+void RenderStyle::setFontItalic(FontSelectionValue value)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setItalic(value);
+
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+
 void RenderStyle::getShadowExtent(const ShadowData* shadow, LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const
 {
     top = 0;
@@ -1723,6 +1767,9 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
         break;
     case CSSPropertyWebkitTextStrokeColor:
         result = visitedLink ? visitedLinkTextStrokeColor() : textStrokeColor();
+        break;
+    case CSSPropertyStrokeColor:
+        result = visitedLink ? visitedLinkStrokeColor() : strokeColor();
         break;
     default:
         ASSERT_NOT_REACHED();

@@ -34,7 +34,8 @@
 #if ENABLE(WEB_RTC)
 
 #include "JSDOMPromise.h"
-#include "RTCEnums.h"
+#include "RTCRtpParameters.h"
+#include "RTCSignalingState.h"
 
 namespace WebCore {
 
@@ -61,7 +62,6 @@ using StatsPromise = DOMPromise<IDLInterface<RTCStatsReport>>;
 
 using CreatePeerConnectionBackend = std::unique_ptr<PeerConnectionBackend> (*)(RTCPeerConnection&);
 
-// FIXME: What is the value of this abstract class? There is only one concrete class derived from it.
 class PeerConnectionBackend {
 public:
     WEBCORE_EXPORT static CreatePeerConnectionBackend create;
@@ -73,7 +73,7 @@ public:
     void createAnswer(RTCAnswerOptions&&, PeerConnection::SessionDescriptionPromise&&);
     void setLocalDescription(RTCSessionDescription&, DOMPromise<void>&&);
     void setRemoteDescription(RTCSessionDescription&, DOMPromise<void>&&);
-    void addIceCandidate(RTCIceCandidate&, DOMPromise<void>&&);
+    void addIceCandidate(RTCIceCandidate*, DOMPromise<void>&&);
 
     virtual std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) = 0;
 
@@ -96,6 +96,9 @@ public:
     virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
     virtual void replaceTrack(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromise<void>&&) = 0;
     virtual void notifyAddedTrack(RTCRtpSender&) { }
+    virtual void notifyRemovedTrack(RTCRtpSender&) { }
+
+    virtual RTCRtpParameters getParameters(RTCRtpSender&) const { return { }; }
 
     void markAsNeedingNegotiation();
     bool isNegotiationNeeded() const { return m_negotiationNeeded; };
@@ -134,6 +137,7 @@ private:
     virtual void doSetLocalDescription(RTCSessionDescription&) = 0;
     virtual void doSetRemoteDescription(RTCSessionDescription&) = 0;
     virtual void doAddIceCandidate(RTCIceCandidate&) = 0;
+    virtual void endOfIceCandidates(DOMPromise<void>&& promise) { promise.resolve(); }
     virtual void doStop() = 0;
 
 protected:

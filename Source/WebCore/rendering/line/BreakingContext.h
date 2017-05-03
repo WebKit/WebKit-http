@@ -64,30 +64,29 @@ struct WordMeasurement {
 };
 
 struct WordTrailingSpace {
-    WordTrailingSpace(const RenderStyle& style, TextLayout* textLayout = nullptr)
+    WordTrailingSpace(const RenderStyle& style, bool measuringWithTrailingWhitespaceEnabled = true)
         : m_style(style)
-        , m_textLayout(textLayout)
     {
+        if (!measuringWithTrailingWhitespaceEnabled || !m_style.fontCascade().enableKerning())
+            m_state = WordTrailingSpaceState::Initialized;
     }
 
     std::optional<float> width(HashSet<const Font*>& fallbackFonts)
     {
-        if (m_state == WordTrailingSpaceState::Computed)
+        if (m_state == WordTrailingSpaceState::Initialized)
             return m_width;
 
-        const FontCascade& font = m_style.fontCascade();
-        if (font.enableKerning() && !m_textLayout)
-            m_width = font.width(RenderBlock::constructTextRun(&space, 1, m_style), &fallbackFonts) + font.wordSpacing();
-        m_state = WordTrailingSpaceState::Computed;
+        auto& font = m_style.fontCascade();
+        m_width = font.width(RenderBlock::constructTextRun(&space, 1, m_style), &fallbackFonts) + font.wordSpacing();
+        m_state = WordTrailingSpaceState::Initialized;
         return m_width;
     }
 
 private:
-    enum class WordTrailingSpaceState { Uninitialized, Computed };
+    enum class WordTrailingSpaceState { Uninitialized, Initialized };
+    const RenderStyle& m_style;
     WordTrailingSpaceState m_state { WordTrailingSpaceState::Uninitialized };
     std::optional<float> m_width;
-    const RenderStyle& m_style;
-    TextLayout* m_textLayout { nullptr };
 };
 
 class BreakingContext {
@@ -581,9 +580,9 @@ inline void BreakingContext::handleReplaced()
             m_ignoringSpaces = true;
         }
         if (downcast<RenderListMarker>(*m_current.renderer()).isInside())
-            m_width.addUncommittedWidth(replacedLogicalWidth);
+            m_width.addUncommittedReplacedWidth(replacedLogicalWidth);
     } else
-        m_width.addUncommittedWidth(replacedLogicalWidth);
+        m_width.addUncommittedReplacedWidth(replacedLogicalWidth);
     if (is<RenderRubyRun>(*m_current.renderer())) {
         m_width.applyOverhang(downcast<RenderRubyRun>(m_current.renderer()), m_lastObject, m_nextObject);
         downcast<RenderRubyRun>(m_current.renderer())->updatePriorContextFromCachedBreakIterator(m_renderTextInfo.lineBreakIterator);
@@ -794,12 +793,13 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
     float lastSpaceWordSpacing = 0;
     float wordSpacingForWordMeasurement = 0;
 
-    float wrapW = m_width.uncommittedWidth() + inlineLogicalWidth(m_current.renderer(), !m_appliedStartWidth, true);
+    float wrapWidthOffset = m_width.uncommittedWidth() + inlineLogicalWidth(m_current.renderer(), !m_appliedStartWidth, true);
+    float wrapW = wrapWidthOffset;
     float charWidth = 0;
     bool breakNBSP = m_autoWrap && m_currentStyle->nbspMode() == SPACE;
     // Auto-wrapping text should wrap in the middle of a word only if it could not wrap before the word,
     // which is only possible if the word is the first thing on the line.
-    bool breakWords = m_currentStyle->breakWords() && ((m_autoWrap && !m_width.hasCommitted()) || m_currWS == PRE);
+    bool breakWords = m_currentStyle->breakWords() && ((m_autoWrap && (!m_width.committedWidth() && !m_width.hasCommittedReplaced())) || m_currWS == PRE);
     bool midWordBreak = false;
     bool breakAll = m_currentStyle->wordBreak() == BreakAllWordBreak && m_autoWrap;
     bool keepAllWords = m_currentStyle->wordBreak() == KeepAllWordBreak;
@@ -824,15 +824,14 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
         m_renderTextInfo.layout = font.createLayout(renderText, m_width.currentWidth(), m_collapseWhiteSpace);
     }
 
-    TextLayout* textLayout = m_renderTextInfo.layout.get();
-
-    // Non-zero only when kerning is enabled and TextLayout isn't used, in which case we measure
-    // words with their trailing space, then subtract its width.
     HashSet<const Font*> fallbackFonts;
     UChar lastCharacterFromPreviousRenderText = m_renderTextInfo.lineBreakIterator.lastCharacter();
     UChar lastCharacter = m_renderTextInfo.lineBreakIterator.lastCharacter();
     UChar secondToLastCharacter = m_renderTextInfo.lineBreakIterator.secondToLastCharacter();
-    WordTrailingSpace wordTrailingSpace(style, textLayout);
+    // Non-zero only when kerning is enabled and TextLayout isn't used, in which case we measure
+    // words with their trailing space, then subtract its width.
+    TextLayout* textLayout = m_renderTextInfo.layout.get();
+    WordTrailingSpace wordTrailingSpace(style, !textLayout);
     for (; m_current.offset() < renderText.textLength(); m_current.fastIncrementInTextNode()) {
         bool previousCharacterIsSpace = m_currentCharacterIsSpace;
         bool previousCharacterIsWS = m_currentCharacterIsWS;
@@ -1028,7 +1027,8 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
 
             if (m_autoWrap && betweenWords) {
                 commitLineBreakAtCurrentWidth(renderObject, m_current.offset(), m_current.nextBreakablePosition());
-                wrapW = 0;
+                wrapWidthOffset = 0;
+                wrapW = wrapWidthOffset;
                 // Auto-wrapping text should not wrap in the middle of a word once it has had an
                 // opportunity to break after a word.
                 breakWords = false;
@@ -1060,7 +1060,12 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
                     m_trailingObjects.updateWhitespaceCollapsingTransitionsForTrailingBoxes(m_lineWhitespaceCollapsingState, InlineIterator(), TrailingObjects::DoNotCollapseFirstSpace);
                 }
             }
-            
+            // Measuring the width of complex text character-by-character, rather than measuring it all together,
+            // could produce considerably different width values.
+            if (!renderText.canUseSimpleFontCodePath() && midWordBreak && m_width.fitsOnLine()) {
+                midWordBreak = false;
+                wrapW = wrapWidthOffset + additionalTempWidth;
+            }
             isLineEmpty = m_lineInfo.isEmpty();
         } else {
             if (m_ignoringSpaces) {

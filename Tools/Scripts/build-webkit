@@ -99,7 +99,6 @@ Usage: $programName [options] [options to pass to build system]
   --coverage                        Enable code coverage support (Mac only)
   --analyze                         Enable static anaylsis (iOS and Mac only)
 
-  --efl                             Build the EFL port
   --gtk                             Build the GTK+ port
   --wpe                             Build the WPE port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
@@ -295,6 +294,24 @@ if (isAppleWinWebKit() || isWinCairo()) {
         # Various build* calls above may change the CWD.
         chdirWebKit();
 
+        if (exitStatus($result)) {
+            exit exitStatus($result);
+        }
+
+        # Build ImageDiff for host
+        my @command = File::Spec->catfile(getcwd(), "/Tools/Scripts/build-imagediff");
+        chdirWebKit();
+        if (!-e $command[0]) {
+          die "build-imagediff script not found";
+        }
+
+        if ($clean) {
+          push @command, " --clean";
+        }
+        push @command, argumentsForConfiguration();
+        push @command, @ARGV;
+        @command = extractNonMacOSHostConfiguration(\@command);
+        $result = system(@command);
         if (exitStatus($result)) {
             exit exitStatus($result);
         }

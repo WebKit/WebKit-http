@@ -54,7 +54,7 @@
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKSecurityOriginInternal.h"
-#import "WKURLSchemeHandlerTaskInternal.h"
+#import "WKURLSchemeTaskInternal.h"
 #import "WKUserContentControllerInternal.h"
 #import "WKUserScriptInternal.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
@@ -72,6 +72,7 @@
 #import "_WKDownloadInternal.h"
 #import "_WKExperimentalFeatureInternal.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKGeolocationPositionInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKUserContentWorldInternal.h"
@@ -179,6 +180,12 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKFrameInfo alloc];
         break;
 
+#if PLATFORM(IOS)
+    case Type::GeolocationPosition:
+        wrapper = [_WKGeolocationPosition alloc];
+        break;
+#endif
+
     case Type::HTTPCookieStore:
         wrapper = [WKHTTPCookieStore alloc];
         break;
@@ -231,8 +238,8 @@ void* Object::newObject(size_t size, Type type)
         wrapper = NSAllocateObject([WKNSURLRequest class], size, nullptr);
         break;
 
-    case Type::URLSchemeHandlerTask:
-        wrapper = [WKURLSchemeHandlerTaskImpl alloc];
+    case Type::URLSchemeTask:
+        wrapper = [WKURLSchemeTaskImpl alloc];
         break;
 
     case Type::UserContentController:

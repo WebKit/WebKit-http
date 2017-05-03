@@ -38,7 +38,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/wasm"
     "${JAVASCRIPTCORE_DIR}/wasm/js"
     "${JAVASCRIPTCORE_DIR}/yarr"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
+    "${FORWARDING_HEADERS_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
 )
@@ -55,12 +55,14 @@ set(JavaScriptCore_SOURCES
     API/JSCallbackObject.cpp
     API/JSClassRef.cpp
     API/JSContextRef.cpp
+    API/JSMarkingConstraintPrivate.cpp
     API/JSObjectRef.cpp
     API/JSTypedArray.cpp
     API/JSScriptRef.cpp
     API/JSStringRef.cpp
     API/JSValueRef.cpp
     API/JSWeakObjectMapRefPrivate.cpp
+    API/JSWeakPrivate.cpp
     API/OpaqueJSString.cpp
 
     assembler/ARMAssembler.cpp
@@ -72,9 +74,11 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssemblerCodeRef.cpp
     assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
+    assembler/Printer.cpp
 
+    b3/air/AirAllocateRegistersAndStackByLinearScan.cpp
     b3/air/AirAllocateRegistersByGraphColoring.cpp
-    b3/air/AirAllocateStack.cpp
+    b3/air/AirAllocateStackByGraphColoring.cpp
     b3/air/AirArg.cpp
     b3/air/AirBasicBlock.cpp
     b3/air/AirBlockInsertionSet.cpp
@@ -88,6 +92,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirEmitShuffle.cpp
     b3/air/AirFixObviousSpills.cpp
     b3/air/AirFixPartialRegisterStalls.cpp
+    b3/air/AirFixSpillsAfterTerminals.cpp
     b3/air/AirGenerate.cpp
     b3/air/AirGenerated.cpp
     b3/air/AirHandleCalleeSaves.cpp
@@ -98,13 +103,17 @@ set(JavaScriptCore_SOURCES
     b3/air/AirLowerAfterRegAlloc.cpp
     b3/air/AirLowerEntrySwitch.cpp
     b3/air/AirLowerMacros.cpp
+    b3/air/AirLowerStackArgs.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPadInterference.cpp
+    b3/air/AirPhaseInsertionSet.cpp
     b3/air/AirPhaseScope.cpp
+    b3/air/AirPrintSpecial.cpp
+    b3/air/AirRegLiveness.cpp
     b3/air/AirReportUsedRegisters.cpp
     b3/air/AirSimplifyCFG.cpp
     b3/air/AirSpecial.cpp
-    b3/air/AirSpillEverything.cpp
+    b3/air/AirStackAllocation.cpp
     b3/air/AirStackSlot.cpp
     b3/air/AirStackSlotKind.cpp
     b3/air/AirTmp.cpp
@@ -139,7 +148,6 @@ set(JavaScriptCore_SOURCES
     b3/B3FoldPathConstants.cpp
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
-    b3/B3HeapRange.cpp
     b3/B3InferSwitches.cpp
     b3/B3InsertionSet.cpp
     b3/B3Kind.cpp
@@ -179,6 +187,7 @@ set(JavaScriptCore_SOURCES
     b3/B3ValueKey.cpp
     b3/B3ValueRep.cpp
     b3/B3Variable.cpp
+    b3/B3VariableLiveness.cpp
     b3/B3VariableValue.cpp
     b3/B3WasmAddressValue.cpp
     b3/B3WasmBoundsCheckValue.cpp
@@ -501,7 +510,6 @@ set(JavaScriptCore_SOURCES
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
     heap/HeapSnapshotBuilder.cpp
-    heap/HeapTimer.cpp
     heap/IncrementalSweeper.cpp
     heap/JITStubRoutineSet.cpp
     heap/LargeAllocation.cpp
@@ -707,6 +715,7 @@ set(JavaScriptCore_SOURCES
     runtime/DirectArguments.cpp
     runtime/DirectArgumentsOffset.cpp
     runtime/DirectEvalExecutable.cpp
+    runtime/DisallowVMReentry.cpp
     runtime/DumpContext.cpp
     runtime/ECMAScriptSpecInternalFunctions.cpp
     runtime/Error.cpp
@@ -800,6 +809,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSPropertyNameEnumerator.cpp
     runtime/JSPropertyNameIterator.cpp
     runtime/JSProxy.cpp
+    runtime/JSRunLoopTimer.cpp
     runtime/JSScope.cpp
     runtime/JSScriptFetcher.cpp
     runtime/JSSegmentedVariableObject.cpp
@@ -845,10 +855,12 @@ set(JavaScriptCore_SOURCES
     runtime/NumberObject.cpp
     runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp
+    runtime/ObjectInitializationScope.cpp
     runtime/ObjectPrototype.cpp
     runtime/Operations.cpp
     runtime/Options.cpp
     runtime/ProgramExecutable.cpp
+    runtime/PromiseDeferredTimer.cpp
     runtime/PropertyDescriptor.cpp
     runtime/PropertySlot.cpp
     runtime/PropertyTable.cpp
@@ -925,24 +937,33 @@ set(JavaScriptCore_SOURCES
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
     tools/SigillCrashAnalyzer.cpp
-    tools/StackTrace.cpp
     tools/VMInspector.cpp
 
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp
+    wasm/WasmBBQPlan.cpp
     wasm/WasmBinding.cpp
+    wasm/WasmCallee.cpp
     wasm/WasmCallingConvention.cpp
+    wasm/WasmCodeBlock.cpp
+    wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
+    wasm/WasmMachineThreads.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
+    wasm/WasmModule.cpp
+    wasm/WasmModuleInformation.cpp
     wasm/WasmModuleParser.cpp
+    wasm/WasmOMGPlan.cpp
+    wasm/WasmOpcodeOrigin.cpp
     wasm/WasmPageCount.cpp
     wasm/WasmPlan.cpp
     wasm/WasmSignature.cpp
+    wasm/WasmThunks.cpp
     wasm/WasmValidate.cpp
+    wasm/WasmWorklist.cpp
 
-    wasm/js/JSWebAssemblyCallee.cpp
     wasm/js/JSWebAssemblyCodeBlock.cpp
     wasm/js/JSWebAssemblyCompileError.cpp
     wasm/js/JSWebAssemblyInstance.cpp
@@ -1057,7 +1078,7 @@ set(JavaScriptCore_SCRIPTS_SOURCES_PATHS
 )
 
 # Force JavaScriptCore to run scripts from the same staging path as WebCore.
-set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
+set(JavaScriptCore_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/JavaScriptCore/Scripts")
 
 file(MAKE_DIRECTORY ${JavaScriptCore_SCRIPTS_DIR})
 
@@ -1257,6 +1278,8 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     inspector/agents
     inspector/augmentable
     inspector/remote
+
+    wasm/js
 )
 
 # GENERATOR 1-B: particular LUT creator (for 1 file only)

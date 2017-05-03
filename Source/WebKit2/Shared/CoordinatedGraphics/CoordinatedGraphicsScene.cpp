@@ -125,18 +125,14 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations() && m_client)
-        m_client->updateViewport();
+    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
+        updateViewport();
 }
 
 void CoordinatedGraphicsScene::updateViewport()
 {
-    if (!m_client)
-        return;
-    dispatchOnClientRunLoop([this] {
-        if (m_client)
-            m_client->updateViewport();
-    });
+    if (m_client)
+        m_client->updateViewport();
 }
 
 void CoordinatedGraphicsScene::adjustPositionForFixedLayers(const FloatPoint& contentPosition)
@@ -173,8 +169,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
-    if (m_client)
-        m_client->updateViewport();
+    updateViewport();
 }
 
 TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
@@ -441,9 +436,6 @@ void CoordinatedGraphicsScene::syncUpdateAtlases(const CoordinatedGraphicsState&
 {
     for (auto& atlas : state.updateAtlasesToCreate)
         createUpdateAtlas(atlas.first, atlas.second);
-
-    for (auto& atlas : state.updateAtlasesToRemove)
-        removeUpdateAtlas(atlas);
 }
 
 void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface> surface)
@@ -456,6 +448,12 @@ void CoordinatedGraphicsScene::removeUpdateAtlas(uint32_t atlasID)
 {
     ASSERT(m_surfaces.contains(atlasID));
     m_surfaces.remove(atlasID);
+}
+
+void CoordinatedGraphicsScene::releaseUpdateAtlases(const Vector<uint32_t>& atlasesToRemove)
+{
+    for (auto& atlas : atlasesToRemove)
+        removeUpdateAtlas(atlas);
 }
 
 void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState& state)
@@ -660,6 +658,9 @@ void CoordinatedGraphicsScene::detach()
 
 void CoordinatedGraphicsScene::appendUpdate(std::function<void()>&& function)
 {
+    if (!m_isActive)
+        return;
+
     ASSERT(isMainThread());
     LockHolder locker(m_renderQueueMutex);
     m_renderQueue.append(WTFMove(function));
@@ -673,6 +674,10 @@ void CoordinatedGraphicsScene::setActive(bool active)
     if (m_isActive == active)
         return;
 
+    // Have to clear render queue in both cases.
+    // If there are some updates in queue during activation then those updates are from previous instance of paint node
+    // and cannot be applied to the newly created instance.
+    m_renderQueue.clear();
     m_isActive = active;
     if (m_isActive)
         renderNextFrame();

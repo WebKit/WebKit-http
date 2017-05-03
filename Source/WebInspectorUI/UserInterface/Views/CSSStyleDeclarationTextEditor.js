@@ -109,16 +109,14 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
         if (this._style) {
             this._style.removeEventListener(WebInspector.CSSStyleDeclaration.Event.PropertiesChanged, this._propertiesChanged, this);
-            if (this._style.ownerRule && this._style.ownerRule.sourceCodeLocation)
-                WebInspector.notifications.removeEventListener(WebInspector.Notification.GlobalModifierKeysDidChange, this._updateJumpToSymbolTrackingMode, this);
+            WebInspector.notifications.removeEventListener(WebInspector.Notification.GlobalModifierKeysDidChange, this._updateJumpToSymbolTrackingMode, this);
         }
 
         this._style = style || null;
 
         if (this._style) {
             this._style.addEventListener(WebInspector.CSSStyleDeclaration.Event.PropertiesChanged, this._propertiesChanged, this);
-            if (this._style.ownerRule && this._style.ownerRule.sourceCodeLocation)
-                WebInspector.notifications.addEventListener(WebInspector.Notification.GlobalModifierKeysDidChange, this._updateJumpToSymbolTrackingMode, this);
+            WebInspector.notifications.addEventListener(WebInspector.Notification.GlobalModifierKeysDidChange, this._updateJumpToSymbolTrackingMode, this);
         }
 
         this._updateJumpToSymbolTrackingMode();
@@ -388,6 +386,14 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             this._propertiesChanged();
     }
 
+    completionControllerCompletionsNeeded(completionController, prefix, defaultCompletions, base, suffix, forced)
+    {
+        let properties = this._style.nodeStyles.computedStyle.properties;
+        let variables = properties.filter((property) => property.variable && property.name.startsWith(prefix));
+        let variableNames = variables.map((property) => property.name);
+        completionController.updateCompletions(defaultCompletions.concat(variableNames));
+    }
+
     layout()
     {
         this._codeMirror.refresh();
@@ -403,25 +409,27 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _highlightNextNameOrValue(codeMirror, cursor, text)
     {
-        var nextAnchor;
-        var nextHead;
+        let range = this._rangeForNextNameOrValue(codeMirror, cursor, text);
+        codeMirror.setSelection(range.from, range.to);
+    }
 
-        if (this._textAtCursorIsComment(codeMirror, cursor)) {
-            nextAnchor = 0;
+    _rangeForNextNameOrValue(codeMirror, cursor, text)
+    {
+        let nextAnchor = 0;
+        let nextHead = 0;
+
+        if (this._textAtCursorIsComment(codeMirror, cursor))
             nextHead = text.length;
-        } else {
-            var colonIndex = text.indexOf(":");
-            var substringIndex = colonIndex >= 0 && cursor.ch >= colonIndex ? colonIndex : 0;
-
-            var regExp = /(?:[^:;\s]\s*)+/g;
-            regExp.lastIndex = substringIndex;
-            var match = regExp.exec(text);
-
-            nextAnchor = match.index;
-            nextHead = nextAnchor + match[0].length;
+        else {
+            let range = WebInspector.rangeForNextCSSNameOrValue(text, cursor.ch);
+            nextAnchor = range.from;
+            nextHead = range.to;
         }
 
-        codeMirror.setSelection({line: cursor.line, ch: nextAnchor}, {line: cursor.line, ch: nextHead});
+        return {
+            from: {line: cursor.line, ch: nextAnchor},
+            to: {line: cursor.line, ch: nextHead},
+        };
     }
 
     _handleMouseDown(event)
@@ -459,41 +467,17 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                     this._codeMirror.replaceRange(replacement, cursor);
                 }
             } else if (WebInspector.settings.stylesSelectOnFirstClick.value && this._mouseDownCursorPosition.previousRange) {
-                let from = {line: cursor.line, ch: 0};
-                let to = {line: cursor.line, ch: 0};
-
-                let colonIndex = line.indexOf(":");
-                if (colonIndex === -1) // Select entire line if unable to find colon, such as for a comment.
-                    colonIndex = line.length;
-
-                let text = line;
-
-                if (cursor.ch <= colonIndex) {
-                    text = text.substring(0, colonIndex);
-
-                    to.ch += colonIndex;
-                } else {
-                    text = text.substring(colonIndex + 1);
-
-                    from.ch += colonIndex + 1;
-                    to.ch += line.length;
-                }
-
-                let leadingSpacesCount = text.match(/^\s*/)[0].length;
-                let trailingNonWordCount = text.match(/[\s\;]*$/)[0].length;
-
-                from.ch += leadingSpacesCount;
-                to.ch -= trailingNonWordCount;
+                let range = this._rangeForNextNameOrValue(this._codeMirror, cursor, line);
 
                 let clickedDifferentLine = this._mouseDownCursorPosition.previousRange.from.line !== cursor.line || this._mouseDownCursorPosition.previousRange.to.line !== cursor.line;
                 let cursorInPreviousRange = cursor.ch >= this._mouseDownCursorPosition.previousRange.from.ch && cursor.ch <= this._mouseDownCursorPosition.previousRange.to.ch;
-                let previousInNewRange = this._mouseDownCursorPosition.previousRange.from.ch >= from.ch && this._mouseDownCursorPosition.previousRange.to.ch <= to.ch;
+                let previousInNewRange = this._mouseDownCursorPosition.previousRange.from.ch >= range.from.ch && this._mouseDownCursorPosition.previousRange.to.ch <= range.to.ch;
 
                 // Only select the new range if the editor is not focused, a new line is being clicked,
                 // or the new cursor position is outside of the previous range and the previous range is
                 // outside of the new range (meaning you're not clicking in the same area twice).
                 if (!this._codeMirror.hasFocus() || clickedDifferentLine || (!cursorInPreviousRange && !previousInNewRange))
-                    this._codeMirror.setSelection(from, to);
+                    this._codeMirror.setSelection(range.from, range.to);
             }
         }
 
@@ -1156,16 +1140,14 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         }
 
         if (propertyNameIsValid) {
-            // The property's name is valid but its value is not (either it is not supported for this property or there is no value).
-            var semicolon = /:\s*/.exec(property.text);
-            var start = {line: from.line, ch: semicolon.index + semicolon[0].length};
-            var end = {line: to.line, ch: start.ch + property.value.length};
+            let start = {line: from.line, ch: from.ch + property.name.length + 2};
+            let end = {line: to.line, ch: start.ch + property.value.length};
 
             this._codeMirror.markText(start, end, {className: "invalid"});
 
             if (/^(?:\d+)$/.test(property.value)) {
                 invalidMarkerInfo = {
-                    position: start,
+                    position: from,
                     title: WebInspector.UIString("The value “%s” needs units.\nClick to add “px” to the value.").format(property.value),
                     correction: property.name + ": " + property.value + "px;",
                     autocomplete: false
@@ -1174,7 +1156,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                 var valueReplacement = property.value.length ? WebInspector.UIString("The value “%s” is not supported for this property.\nClick to delete and open autocomplete.").format(property.value) : WebInspector.UIString("This property needs a value.\nClick to open autocomplete.");
 
                 invalidMarkerInfo = {
-                    position: start,
+                    position: from,
                     title: valueReplacement,
                     correction: property.name + ": ",
                     autocomplete: true
@@ -1694,7 +1676,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
     {
         var oldJumpToSymbolTrackingModeEnabled = this._jumpToSymbolTrackingModeEnabled;
 
-        if (!this._style || !this._style.ownerRule || !this._style.ownerRule.sourceCodeLocation)
+        if (!this._style)
             this._jumpToSymbolTrackingModeEnabled = false;
         else
             this._jumpToSymbolTrackingModeEnabled = WebInspector.modifierKeys.altKey && !WebInspector.modifierKeys.metaKey && !WebInspector.modifierKeys.shiftKey;
@@ -1702,7 +1684,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         if (oldJumpToSymbolTrackingModeEnabled !== this._jumpToSymbolTrackingModeEnabled) {
             if (this._jumpToSymbolTrackingModeEnabled) {
                 this._tokenTrackingController.highlightLastHoveredRange();
-                this._tokenTrackingController.enabled = !this._codeMirror.getOption("readOnly");
+                this._tokenTrackingController.enabled = true;
             } else {
                 this._tokenTrackingController.removeHighlightedRange();
                 this._tokenTrackingController.enabled = false;
@@ -1712,32 +1694,44 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     tokenTrackingControllerHighlightedRangeWasClicked(tokenTrackingController)
     {
-        let sourceCodeLocation = this._style.ownerRule.sourceCodeLocation;
-        console.assert(sourceCodeLocation);
-        if (!sourceCodeLocation)
-            return;
-
         let candidate = tokenTrackingController.candidate;
         console.assert(candidate);
         if (!candidate)
             return;
 
+        let sourceCodeLocation = null;
+        if (this._style.ownerRule)
+            sourceCodeLocation = this._style.ownerRule.sourceCodeLocation;
+
         let token = candidate.hoveredToken;
 
-        // Special case command clicking url(...) links.
+        const options = {
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+
+        // Special case option-clicking url(...) links.
         if (token && /\blink\b/.test(token.type)) {
             let url = token.string;
-            let baseURL = sourceCodeLocation.sourceCode.url;
-            WebInspector.openURL(absoluteURL(url, baseURL));
+            let baseURL = sourceCodeLocation ? sourceCodeLocation.sourceCode.url : this._style.node.ownerDocument.documentURL;
+            WebInspector.openURL(absoluteURL(url, baseURL), options);
             return;
         }
+
+        // Only allow other text to be clicked if there is a source code location.
+        if (!this._style.ownerRule || !this._style.ownerRule.sourceCodeLocation)
+            return;
+
+        console.assert(sourceCodeLocation);
+        if (!sourceCodeLocation)
+            return;
 
         function showRangeInSourceCode(sourceCode, range)
         {
             if (!sourceCode || !range)
                 return false;
 
-            WebInspector.showSourceCodeLocation(sourceCode.createSourceCodeLocation(range.startLine, range.startColumn), {ignoreNetworkTab: true});
+            WebInspector.showSourceCodeLocation(sourceCode.createSourceCodeLocation(range.startLine, range.startColumn), options);
             return true;
         }
 
@@ -1760,6 +1754,13 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     tokenTrackingControllerNewHighlightCandidate(tokenTrackingController, candidate)
     {
+        // Do not highlight if the style has no source code location.
+        if (!this._style.ownerRule || !this._style.ownerRule.sourceCodeLocation) {
+            // Special case option-clicking url(...) links.
+            if (!candidate.hoveredToken || !/\blink\b/.test(candidate.hoveredToken.type))
+                return;
+        }
+
         this._tokenTrackingController.highlightRange(candidate.hoveredTokenRange);
     }
 };

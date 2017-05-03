@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +27,7 @@
 
 #if ENABLE(WEB_RTC)
 
+#include "ActiveDOMObject.h"
 #include "Event.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
@@ -44,19 +46,19 @@ namespace WebCore {
 class Blob;
 class RTCPeerConnectionHandler;
 
-class RTCDataChannel final : public RTCDataChannelHandlerClient, public EventTargetWithInlineData {
+class RTCDataChannel final : public ActiveDOMObject, public RTCDataChannelHandlerClient, public EventTargetWithInlineData {
 public:
     static Ref<RTCDataChannel> create(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
 
-    bool ordered() const { return m_options.ordered; }
-    unsigned short maxRetransmitTime() const { return m_options.maxRetransmitTime; }
-    unsigned short maxRetransmits() const { return m_options.maxRetransmits; }
+    bool ordered() const { return *m_options.ordered; }
+    std::optional<unsigned short> maxPacketLifeTime() const { return m_options.maxPacketLifeTime; }
+    std::optional<unsigned short> maxRetransmits() const { return m_options.maxRetransmits; }
     String protocol() const { return m_options.protocol; }
-    bool negotiated() const { return m_options.negotiated; };
-    unsigned short id() const { return m_options.id; };
+    bool negotiated() const { return *m_options.negotiated; };
+    std::optional<unsigned short> id() const { return m_options.id; };
 
     String label() const { return m_label; }
-    const AtomicString& readyState() const;
+    RTCDataChannelState readyState() const {return m_readyState; }
     size_t bufferedAmount() const;
     size_t bufferedAmountLowThreshold() const { return m_bufferedAmountLowThreshold; }
     void setBufferedAmountLowThreshold(size_t value) { m_bufferedAmountLowThreshold = value; }
@@ -70,8 +72,6 @@ public:
     ExceptionOr<void> send(Blob&);
 
     void close();
-
-    void stop();
 
     using RTCDataChannelHandlerClient::ref;
     using RTCDataChannelHandlerClient::deref;
@@ -88,20 +88,23 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    ScriptExecutionContext* m_scriptExecutionContext;
+    // ActiveDOMObject API
+    void stop() final;
+    const char* activeDOMObjectName() const final { return "RTCDataChannel"; }
+    bool canSuspendForDocumentSuspension() const final { return m_readyState == RTCDataChannelState::Closed; }
 
     // RTCDataChannelHandlerClient API
-    void didChangeReadyState(ReadyState) final;
+    void didChangeReadyState(RTCDataChannelState) final;
     void didReceiveStringData(const String&) final;
     void didReceiveRawData(const char*, size_t) final;
     void didDetectError() final;
-    void bufferedAmountIsDecreasing() final;
+    void bufferedAmountIsDecreasing(size_t) final;
 
     std::unique_ptr<RTCDataChannelHandler> m_handler;
 
+    // FIXME: m_stopped is probably redundant with m_readyState.
     bool m_stopped { false };
-
-    ReadyState m_readyState { ReadyStateConnecting };
+    RTCDataChannelState m_readyState { RTCDataChannelState::Connecting };
 
     enum class BinaryType { Blob, ArrayBuffer };
     BinaryType m_binaryType { BinaryType::ArrayBuffer };

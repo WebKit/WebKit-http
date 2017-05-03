@@ -149,7 +149,7 @@ static String makeSaltFilePath(const String& baseDirectoryPath)
     return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), saltFileName);
 }
 
-std::unique_ptr<Storage> Storage::open(const String& cachePath)
+std::unique_ptr<Storage> Storage::open(const String& cachePath, Mode mode)
 {
     ASSERT(RunLoop::isMain());
 
@@ -158,7 +158,7 @@ std::unique_ptr<Storage> Storage::open(const String& cachePath)
     auto salt = readOrMakeSalt(makeSaltFilePath(cachePath));
     if (!salt)
         return nullptr;
-    return std::unique_ptr<Storage>(new Storage(cachePath, *salt));
+    return std::unique_ptr<Storage>(new Storage(cachePath, mode, *salt));
 }
 
 void traverseRecordsFiles(const String& recordsPath, const String& expectedType, const RecordFileTraverseFunction& function)
@@ -207,9 +207,10 @@ static void deleteEmptyRecordsDirectories(const String& recordsPath)
     });
 }
 
-Storage::Storage(const String& baseDirectoryPath, Salt salt)
+Storage::Storage(const String& baseDirectoryPath, Mode mode, Salt salt)
     : m_basePath(baseDirectoryPath)
     , m_recordsPath(makeRecordsDirectoryPath(baseDirectoryPath))
+    , m_mode(mode)
     , m_salt(salt)
     , m_canUseSharedMemoryForBodyData(canUseSharedMemoryForPath(baseDirectoryPath))
     , m_readOperationTimeoutTimer(*this, &Storage::cancelAllReadOperations)
@@ -573,9 +574,12 @@ void Storage::dispatchReadOperation(std::unique_ptr<ReadOperation> readOperation
     auto& readOperation = *readOperationPtr;
     m_activeReadOperations.add(WTFMove(readOperationPtr));
 
-    // I/O pressure may make disk operations slow. If they start taking very long time we rather go to network.
-    const auto readTimeout = 1500ms;
-    m_readOperationTimeoutTimer.startOneShot(readTimeout);
+    // Avoid randomness during testing.
+    if (m_mode != Mode::Testing) {
+        // I/O pressure may make disk operations slow. If they start taking very long time we rather go to network.
+        const Seconds readTimeout = 1500_ms;
+        m_readOperationTimeoutTimer.startOneShot(readTimeout);
+    }
 
     bool shouldGetBodyBlob = mayContainBlob(readOperation.key);
 
@@ -796,7 +800,7 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
 
     // Delay the start of writes a bit to avoid affecting early page load.
     // Completing writes will dispatch more writes without delay.
-    static const auto initialWriteDelay = 1s;
+    static const Seconds initialWriteDelay = 1_s;
     m_writeOperationDispatchTimer.startOneShot(initialWriteDelay);
 }
 
@@ -859,11 +863,13 @@ void Storage::traverse(const String& type, TraverseFlags flags, TraverseHandler&
                 return traverseOperation.activeCount <= maximumParallelReadCount;
             });
         });
-        // Wait for all reads to finish.
-        std::unique_lock<Lock> lock(traverseOperation.activeMutex);
-        traverseOperation.activeCondition.wait(lock, [&traverseOperation] {
-            return !traverseOperation.activeCount;
-        });
+        {
+            // Wait for all reads to finish.
+            std::unique_lock<Lock> lock(traverseOperation.activeMutex);
+            traverseOperation.activeCondition.wait(lock, [&traverseOperation] {
+                return !traverseOperation.activeCount;
+            });
+        }
         RunLoop::main().dispatch([this, &traverseOperation] {
             traverseOperation.handler(nullptr, { });
             m_activeTraverseOperations.remove(&traverseOperation);
@@ -962,6 +968,10 @@ static double deletionProbability(FileTimes times, unsigned bodyShareCount)
 void Storage::shrinkIfNeeded()
 {
     ASSERT(RunLoop::isMain());
+
+    // Avoid randomness caused by cache shrinks.
+    if (m_mode == Mode::Testing)
+        return;
 
     if (approximateSize() > m_capacity)
         shrink();

@@ -53,6 +53,7 @@ public:
     void updateFromElement() final;
 
 private:
+    void willBeDestroyed() override;
     void mediaElement() const = delete;
 
     void intrinsicSizeChanged() final;
@@ -69,6 +70,8 @@ private:
     void paintReplaced(PaintInfo&, const LayoutPoint&) final;
 
     void layout() final;
+
+    void visibleInViewportStateChanged() final;
 
     LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const final;
     LayoutUnit minimumReplacedHeight() const final;

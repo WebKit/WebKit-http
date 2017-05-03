@@ -29,22 +29,37 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSCInlines.h"
+#include "JSWebAssemblyLinkError.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyModule.h"
+#include "WasmBinding.h"
+#include "WasmModuleInformation.h"
+
+#include <wtf/CurrentTime.h>
 
 namespace JSC {
 
 const ClassInfo JSWebAssemblyCodeBlock::s_info = { "WebAssemblyCodeBlock", nullptr, 0, CREATE_METHOD_TABLE(JSWebAssemblyCodeBlock) };
 
-JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock(VM& vm, JSWebAssemblyModule* owner, Bag<CallLinkInfo>&& callLinkInfos, Vector<Wasm::WasmExitStubs>&& wasmExitStubs, Wasm::Memory::Mode mode, unsigned calleeCount)
-    : Base(vm, vm.webAssemblyCodeBlockStructure.get())
-    , m_callLinkInfos(WTFMove(callLinkInfos))
-    , m_wasmExitStubs(WTFMove(wasmExitStubs))
-    , m_mode(mode)
-    , m_calleeCount(calleeCount)
+JSWebAssemblyCodeBlock* JSWebAssemblyCodeBlock::create(VM& vm, Ref<Wasm::CodeBlock> codeBlock, const Wasm::ModuleInformation& moduleInformation)
 {
-    m_module.set(vm, this, owner);
-    memset(callees(), 0, m_calleeCount * sizeof(WriteBarrier<JSWebAssemblyCallee>) * 2);
+    auto* result = new (NotNull, allocateCell<JSWebAssemblyCodeBlock>(vm.heap, allocationSize(moduleInformation.importFunctionCount()))) JSWebAssemblyCodeBlock(vm, WTFMove(codeBlock), moduleInformation);
+    result->finishCreation(vm);
+    return result;
+}
+
+JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock(VM& vm, Ref<Wasm::CodeBlock>&& codeBlock, const Wasm::ModuleInformation& moduleInformation)
+    : Base(vm, vm.webAssemblyCodeBlockStructure.get())
+    , m_codeBlock(WTFMove(codeBlock))
+{
+    // FIXME: We should not need to do this synchronously.
+    // https://bugs.webkit.org/show_bug.cgi?id=170567
+    m_wasmToJSExitStubs.reserveCapacity(m_codeBlock->functionImportCount());
+    for (unsigned importIndex = 0; importIndex < m_codeBlock->functionImportCount(); ++importIndex) {
+        Wasm::SignatureIndex signatureIndex = moduleInformation.importFunctionSignatureIndices.at(importIndex);
+        m_wasmToJSExitStubs.uncheckedAppend(Wasm::wasmToJs(&vm, m_callLinkInfos, signatureIndex, importIndex));
+        importWasmToJSStub(importIndex) = m_wasmToJSExitStubs[importIndex].code().executableAddress();
+    }
 }
 
 void JSWebAssemblyCodeBlock::destroy(JSCell* cell)
@@ -52,11 +67,9 @@ void JSWebAssemblyCodeBlock::destroy(JSCell* cell)
     static_cast<JSWebAssemblyCodeBlock*>(cell)->JSWebAssemblyCodeBlock::~JSWebAssemblyCodeBlock();
 }
 
-bool JSWebAssemblyCodeBlock::isSafeToRun(JSWebAssemblyMemory* memory)
+bool JSWebAssemblyCodeBlock::isSafeToRun(JSWebAssemblyMemory* memory) const
 {
-    if (mode() == Wasm::Memory::Signaling)
-        return memory->memory().mode() == mode();
-    return true;
+    return m_codeBlock->isSafeToRun(memory->memory().mode());
 }
 
 void JSWebAssemblyCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -66,8 +79,6 @@ void JSWebAssemblyCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_module);
-    for (unsigned i = 0; i < thisObject->m_calleeCount * 2; i++)
-        visitor.append(thisObject->callees()[i]);
 
     visitor.addUnconditionalFinalizer(&thisObject->m_unconditionalFinalizer);
 }

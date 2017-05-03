@@ -37,7 +37,6 @@
 #include "NotImplemented.h"
 #include "SecurityOrigin.h"
 #include "TimeRanges.h"
-#include "UUID.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <glib.h>
 #include <gst/gst.h>
@@ -48,6 +47,7 @@
 #include <wtf/HexNumber.h>
 #include <wtf/MediaTime.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/UUID.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
@@ -468,7 +468,7 @@ bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
     if (newState == GST_STATE_READY && !m_readyTimerHandler.isActive()) {
         // Max interval in seconds to stay in the READY state on manual
         // state change requests.
-        static const double readyStateTimerDelay = 60;
+        static const Seconds readyStateTimerDelay { 1_min };
         m_readyTimerHandler.startOneShot(readyStateTimerDelay);
     } else if (newState != GST_STATE_READY)
         m_readyTimerHandler.stop();
@@ -2157,7 +2157,7 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
     if (shouldDownload) {
         GST_DEBUG("Enabling on-disk buffering");
         g_object_set(m_pipeline.get(), "flags", flags | flagDownload, nullptr);
-        m_fillTimer.startRepeating(0.2);
+        m_fillTimer.startRepeating(200_ms);
     } else {
         GST_DEBUG("Disabling on-disk buffering");
         g_object_set(m_pipeline.get(), "flags", flags & ~flagDownload, nullptr);

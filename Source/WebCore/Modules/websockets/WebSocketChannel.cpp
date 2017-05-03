@@ -61,7 +61,7 @@
 
 namespace WebCore {
 
-const double TCPMaximumSegmentLifetime = 2 * 60.0;
+const Seconds TCPMaximumSegmentLifetime { 2_min };
 
 WebSocketChannel::WebSocketChannel(Document& document, WebSocketChannelClient& client, SocketProvider& provider)
     : m_document(&document)
@@ -207,7 +207,7 @@ void WebSocketChannel::close(int code, const String& reason)
     Ref<WebSocketChannel> protectedThis(*this); // An attempt to send closing handshake may fail, which will get the channel closed and dereferenced.
     startClosingHandshake(code, reason);
     if (m_closing && !m_closingTimer.isActive())
-        m_closingTimer.startOneShot(2 * TCPMaximumSegmentLifetime);
+        m_closingTimer.startOneShot(TCPMaximumSegmentLifetime * 2);
 }
 
 void WebSocketChannel::fail(const String& reason)
@@ -238,10 +238,7 @@ void WebSocketChannel::fail(const String& reason)
     m_client->didReceiveMessageError();
 
     if (m_handle && !m_closed)
-        m_handle->disconnect(); // Will call didClose().
-
-    // We should be closed by now, but if we never got a handshake then we never even opened.
-    ASSERT(m_closed || !m_handshake);
+        m_handle->disconnect(); // Will call didCloseSocketStream() but maybe not synchronously.
 }
 
 void WebSocketChannel::disconnect()
@@ -266,7 +263,7 @@ void WebSocketChannel::resume()
 {
     m_suspended = false;
     if ((!m_buffer.isEmpty() || m_closed) && m_client && !m_resumeTimer.isActive())
-        m_resumeTimer.startOneShot(0);
+        m_resumeTimer.startOneShot(0_s);
 }
 
 void WebSocketChannel::didOpenSocketStream(SocketStreamHandle& handle)
@@ -278,7 +275,7 @@ void WebSocketChannel::didOpenSocketStream(SocketStreamHandle& handle)
     if (m_identifier)
         InspectorInstrumentation::willSendWebSocketHandshakeRequest(m_document, m_identifier, m_handshake->clientHandshakeRequest());
     CString handshakeMessage = m_handshake->clientHandshakeMessage();
-    handle.send(handshakeMessage.data(), handshakeMessage.length(), [this, protectedThis = makeRef(*this)] (bool success) {
+    handle.sendData(handshakeMessage.data(), handshakeMessage.length(), [this, protectedThis = makeRef(*this)] (bool success) {
         if (!success)
             fail("Failed to send WebSocket handshake.");
     });
@@ -366,6 +363,8 @@ void WebSocketChannel::didFailSocketStream(SocketStreamHandle& handle, const Soc
         m_document->addConsoleMessage(MessageSource::Network, MessageLevel::Error, message);
     }
     m_shouldDiscardReceivedData = true;
+    if (m_client)
+        m_client->didReceiveMessageError();
     handle.disconnect();
 }
 
@@ -829,7 +828,7 @@ void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data
     Vector<char> frameData;
     frame.makeFrameData(frameData);
 
-    m_handle->send(frameData.data(), frameData.size(), WTFMove(completionHandler));
+    m_handle->sendData(frameData.data(), frameData.size(), WTFMove(completionHandler));
 }
 
 }  // namespace WebCore

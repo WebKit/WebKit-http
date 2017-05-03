@@ -40,6 +40,8 @@
 #include "NetworkResourceLoadParameters.h"
 #include "NetworkResourceLoader.h"
 #include "NetworkResourceLoaderMessages.h"
+#include "NetworkSocketStream.h"
+#include "NetworkSocketStreamMessages.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
@@ -95,6 +97,16 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
         auto loaderIterator = m_networkResourceLoaders.find(decoder.destinationID());
         if (loaderIterator != m_networkResourceLoaders.end())
             loaderIterator->value->didReceiveNetworkResourceLoaderMessage(connection, decoder);
+        return;
+    }
+
+    if (decoder.messageReceiverName() == Messages::NetworkSocketStream::messageReceiverName()) {
+        auto socketIterator = m_networkSocketStreams.find(decoder.destinationID());
+        if (socketIterator != m_networkSocketStreams.end()) {
+            socketIterator->value->didReceiveMessage(connection, decoder);
+            if (decoder.messageName() == Messages::NetworkSocketStream::Close::name())
+                m_networkSocketStreams.remove(socketIterator);
+        }
         return;
     }
 
@@ -160,6 +172,22 @@ void NetworkConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection&, I
 {
 }
 
+void NetworkConnectionToWebProcess::createSocketStream(URL&& url, SessionID sessionID, String cachePartition, uint64_t identifier)
+{
+    ASSERT(!m_networkSocketStreams.contains(identifier));
+    WebCore::SourceApplicationAuditToken token = { };
+#if PLATFORM(COCOA)
+    token = { NetworkProcess::singleton().sourceApplicationAuditData() };
+#endif
+    m_networkSocketStreams.set(identifier, NetworkSocketStream::create(WTFMove(url), sessionID, cachePartition, identifier, m_connection, WTFMove(token)));
+}
+
+void NetworkConnectionToWebProcess::destroySocketStream(uint64_t identifier)
+{
+    ASSERT(m_networkSocketStreams.get(identifier));
+    m_networkSocketStreams.remove(identifier);
+}
+
 void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLoadParameters& loadParameters)
 {
     auto loader = NetworkResourceLoader::create(loadParameters, *this);
@@ -217,12 +245,14 @@ void NetworkConnectionToWebProcess::prefetchDNS(const String& hostname)
 
 static NetworkStorageSession& storageSession(SessionID sessionID)
 {
-    if (sessionID.isEphemeral()) {
-        if (auto* privateStorageSession = NetworkStorageSession::storageSession(sessionID))
-            return *privateStorageSession;
+    ASSERT(sessionID.isValid());
+    if (sessionID != SessionID::defaultSessionID()) {
+        if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
+            return *storageSession;
+
         // Some requests with private browsing mode requested may still be coming shortly after NetworkProcess was told to destroy its session.
         // FIXME: Find a way to track private browsing sessions more rigorously.
-        LOG_ERROR("Private browsing was requested, but there was no session for it. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
+        LOG_ERROR("Non-default storage session was requested, but there was no session for it. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
     }
     return NetworkStorageSession::defaultStorageSession();
 }
@@ -363,6 +393,11 @@ void NetworkConnectionToWebProcess::storeDerivedDataToCache(const WebKit::Networ
     NetworkCache::singleton().storeData(dataKey, data.data(), data.size());
 }
 #endif
+
+void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
+{
+    m_captureExtraNetworkLoadMetricsEnabled = enabled;
+}
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
 {

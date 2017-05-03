@@ -60,17 +60,6 @@ Color nativeImageSinglePixelSolidColor(const NativeImagePtr& image)
     return Color();
 }
 
-float subsamplingScale(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect)
-{
-    D2D1_MATRIX_3X2_F ctm;
-    context.platformContext()->GetTransform(&ctm);
-
-    AffineTransform transform(ctm);
-
-    auto transformedDestinationRect = transform.mapRect(destRect);
-    return std::min<float>(1, std::max(transformedDestinationRect.width() / srcRect.width(), transformedDestinationRect.height() / srcRect.height()));
-}
-
 void drawNativeImage(const NativeImagePtr& image, GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, const IntSize& srcSize, CompositeOperator compositeOp, BlendMode blendMode, const ImageOrientation& orientation)
 {
     auto platformContext = context.platformContext();

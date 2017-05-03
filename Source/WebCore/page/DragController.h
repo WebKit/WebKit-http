@@ -79,6 +79,8 @@ struct DragState;
         const IntPoint& dragOffset() const { return m_dragOffset; }
         DragSourceAction dragSourceAction() const { return m_dragSourceAction; }
 
+        enum class DragHandlingMethod { None, EditPlainText, EditRichText, UploadFile, PageLoad, SetColor, NonDefault };
+        bool documentIsHandlingNonDefaultDrag() const { return m_dragHandlingMethod == DragHandlingMethod::NonDefault; }
         Document* documentUnderMouse() const { return m_documentUnderMouse.get(); }
         DragDestinationAction dragDestinationAction() const { return m_dragDestinationAction; }
         DragSourceAction delegateDragSourceAction(const IntPoint& rootViewPoint);
@@ -98,12 +100,13 @@ struct DragState;
         static const float DragImageAlpha;
 
     private:
+        void updatePreferredTypeIdentifiersForDragHandlingMethod(DragHandlingMethod, const DragData&) const;
         bool dispatchTextInputEventFor(Frame*, const DragData&);
         bool canProcessDrag(const DragData&);
         bool concludeEditDrag(const DragData&);
         DragOperation dragEnteredOrUpdated(const DragData&);
         DragOperation operationForLoad(const DragData&);
-        bool tryDocumentDrag(const DragData&, DragDestinationAction, DragOperation&);
+        DragHandlingMethod tryDocumentDrag(const DragData&, DragDestinationAction, DragOperation&);
         bool tryDHTMLDrag(const DragData&, DragOperation&);
         DragOperation dragOperation(const DragData&);
         void clearDragCaret();
@@ -111,11 +114,21 @@ struct DragState;
         bool isCopyKeyDown(const DragData&);
 
         void mouseMovedIntoDocument(Document*);
+        bool shouldUseCachedImageForDragImage(const Image&) const;
 
         void doImageDrag(Element&, const IntPoint&, const IntRect&, DataTransfer&, Frame&, IntPoint&);
         void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, const IntRect& dragImageBounds, DataTransfer&, Frame&, DragSourceAction);
 
         void beginDrag(DragItem, Frame&, const IntPoint& mouseDownPoint, const IntPoint& mouseDraggedPoint, DataTransfer&, DragSourceAction);
+
+        bool canLoadDataFromDraggingPasteboard() const
+        {
+#if ENABLE(DATA_INTERACTION)
+            return m_isPerformingDrop;
+#else
+            return true;
+#endif
+        }
 
         void cleanupAfterSystemDrag();
         void declareAndWriteDragImage(DataTransfer&, Element&, const URL&, const String& label);
@@ -129,14 +142,16 @@ struct DragState;
         RefPtr<Document> m_dragInitiator; // The Document (if any) that initiated the drag.
         RefPtr<HTMLInputElement> m_fileInputElementUnderMouse;
         unsigned m_numberOfItemsToBeAccepted;
-        bool m_documentIsHandlingDrag;
+        DragHandlingMethod m_dragHandlingMethod;
 
         DragDestinationAction m_dragDestinationAction;
         DragSourceAction m_dragSourceAction;
+        Vector<String> m_preferredTypeIdentifiersToLoad;
         bool m_didInitiateDrag;
         DragOperation m_sourceDragOperation; // Set in startDrag when a drag starts from a mouse down within WebKit
         IntPoint m_dragOffset;
         URL m_draggingImageURL;
+        bool m_isPerformingDrop { false };
 #if ENABLE(ATTACHMENT_ELEMENT)
         URL m_draggingAttachmentURL;
 #endif

@@ -247,7 +247,12 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
                 appendSelectorTextKnownToMatch.call(this, this._style.ownerRule.selectorText);
 
             if (this._style.ownerRule.sourceCodeLocation) {
-                let sourceCodeLink = WebInspector.createSourceCodeLocationLink(this._style.ownerRule.sourceCodeLocation, true);
+                const options = {
+                    dontFloat: true,
+                    ignoreNetworkTab: true,
+                    ignoreSearchTab: true,
+                };
+                let sourceCodeLink = WebInspector.createSourceCodeLocationLink(this._style.ownerRule.sourceCodeLocation, options);
                 this._originElement.appendChild(sourceCodeLink);
             } else {
                 let originString;
@@ -638,7 +643,8 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
     _handleKeyDown(event)
     {
         if (event.keyCode === WebInspector.KeyboardShortcut.Key.Enter.keyCode) {
-            this._selectorInput.blur();
+            event.preventDefault();
+            this.focus();
             return;
         }
 
@@ -679,7 +685,7 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
         this._highlightNodesWithSelector();
     }
 
-    _handleBlur()
+    _handleBlur(event)
     {
         this._hideDOMNodeHighlight();
 
@@ -688,6 +694,11 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
             // Revert to the current selector (by doing a refresh) since the new selector is empty.
             this.refresh();
             return;
+        }
+
+        if (event.relatedTarget && event.relatedTarget.isDescendant(this.element)) {
+            this._editorActive = true;
+            this.focus();
         }
 
         this._style.ownerRule.selectorText = newSelectorText;

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaWPE_h
-#define DrawingAreaWPE_h
+#pragma once
 
 #include "DrawingArea.h"
 
@@ -41,42 +40,42 @@ public:
 
 private:
     // DrawingArea
-    virtual void setNeedsDisplay() override;
-    virtual void setNeedsDisplayInRect(const WebCore::IntRect&) override;
-    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) override;
+    void setNeedsDisplay() override;
+    void setNeedsDisplayInRect(const WebCore::IntRect&) override;
+    void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) override;
 
-    virtual void pageBackgroundTransparencyChanged() override;
-    virtual void forceRepaint() override;
-    virtual bool forceRepaintAsync(uint64_t callbackID) override;
-    virtual void setLayerTreeStateIsFrozen(bool) override;
-    virtual bool layerTreeStateIsFrozen() const override { return m_layerTreeStateIsFrozen; }
-    virtual LayerTreeHost* layerTreeHost() const override { return m_layerTreeHost.get(); }
+    void pageBackgroundTransparencyChanged() override;
+    void forceRepaint() override;
+    bool forceRepaintAsync(uint64_t callbackID) override;
+    void setLayerTreeStateIsFrozen(bool) override;
+    bool layerTreeStateIsFrozen() const override { return m_layerTreeStateIsFrozen; }
+    LayerTreeHost* layerTreeHost() const override { return m_layerTreeHost.get(); }
 
-    virtual void setPaintingEnabled(bool) override;
-    virtual void updatePreferences(const WebPreferencesStore&) override;
-    virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
+    void setPaintingEnabled(bool) override;
+    void updatePreferences(const WebPreferencesStore&) override;
+    void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
 
-    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
-    virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
-    virtual void scheduleCompositingLayerFlush() override;
-    virtual void scheduleCompositingLayerFlushImmediately() override;
+    WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
+    void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void scheduleCompositingLayerFlush() override;
+    void scheduleCompositingLayerFlushImmediately() override;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) override;
+    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) override;
 #endif
 
-    virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
+    void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
+    void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
 #endif
 
 #if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
-    virtual void deviceOrPageScaleFactorChanged() override;
+    void deviceOrPageScaleFactorChanged() override;
 #endif
 
-    virtual void updateBackingStoreState(uint64_t, bool, float, const WebCore::IntSize&, const WebCore::IntSize&) override;
-    virtual void didUpdate() override;
+    void updateBackingStoreState(uint64_t, bool, float, const WebCore::IntSize&, const WebCore::IntSize&) override;
+    void didUpdate() override;
 
     void enterAcceleratedCompositingMode(WebCore::GraphicsLayer*);
 
@@ -89,5 +88,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // DrawingAreaWPE_h

@@ -60,6 +60,7 @@
 #include "ModuleProgramExecutable.h"
 #include "ObjectAllocationProfile.h"
 #include "Options.h"
+#include "Printer.h"
 #include "ProfilerJettisonReason.h"
 #include "ProgramExecutable.h"
 #include "PutPropertySlot.h"
@@ -921,7 +922,7 @@ private:
 
     bool setConstantIdentifierSetRegisters(VM&, const Vector<ConstantIndentifierSetEntry>& constants);
 
-    void setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation);
+    bool setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation);
 
     void replaceConstant(int index, JSValue value)
     {
@@ -1087,4 +1088,13 @@ JSObject* ScriptExecutable::prepareForExecution(VM& vm, JSFunction* function, JS
 #define CODEBLOCK_LOG_EVENT(codeBlock, summary, details) \
     (codeBlock->vm()->logEvent(codeBlock, summary, [&] () { return toCString details; }))
 
+
+void setPrinter(Printer::PrintRecord&, CodeBlock*);
+
 } // namespace JSC
+
+namespace WTF {
+    
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::CodeBlock*);
+
+} // namespace WTF

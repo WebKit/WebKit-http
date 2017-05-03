@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageClientImpl_h
-#define PageClientImpl_h
+#pragma once
 
 #include "PageClient.h"
 #include "WebFullScreenManagerProxy.h"
@@ -35,6 +34,8 @@ class View;
 
 namespace WebKit {
 
+class ScrollGestureController;
+
 class PageClientImpl final : public PageClient 
 #if ENABLE(FULLSCREEN_API)
     , public WebFullScreenManagerProxyClient
@@ -43,85 +44,88 @@ class PageClientImpl final : public PageClient
 {
 public:
     PageClientImpl(WKWPE::View&);
+    virtual ~PageClientImpl();
 
 private:
     // PageClient
-    virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
-    virtual void setViewNeedsDisplay(const WebCore::Region&) override;
-    virtual void requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool) override;
+    std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
+    void setViewNeedsDisplay(const WebCore::Region&) override;
+    void requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool) override;
     WebCore::FloatPoint viewScrollPosition() override;
-    virtual WebCore::IntSize viewSize() override;
-    virtual bool isViewWindowActive() override;
-    virtual bool isViewFocused() override;
-    virtual bool isViewVisible() override;
-    virtual bool isViewInWindow() override;
+    WebCore::IntSize viewSize() override;
+    bool isViewWindowActive() override;
+    bool isViewFocused() override;
+    bool isViewVisible() override;
+    bool isViewInWindow() override;
 
-    virtual void processDidExit() override;
-    virtual void didRelaunchProcess() override;
-    virtual void pageClosed() override;
-    virtual void preferencesDidChange() override;
-    virtual void toolTipChanged(const String&, const String&) override;
+    void processDidExit() override;
+    void didRelaunchProcess() override;
+    void pageClosed() override;
+    void preferencesDidChange() override;
+    void toolTipChanged(const String&, const String&) override;
 
-    virtual void didCommitLoadForMainFrame(const String&, bool) override;
-    virtual void handleDownloadRequest(DownloadProxy*) override;
+    void didCommitLoadForMainFrame(const String&, bool) override;
+    void handleDownloadRequest(DownloadProxy*) override;
 
-    virtual void didChangeContentSize(const WebCore::IntSize&) override;
+    void didChangeContentSize(const WebCore::IntSize&) override;
 
-    virtual void setCursor(const WebCore::Cursor&) override;
-    virtual void setCursorHiddenUntilMouseMoves(bool) override;
-    virtual void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
+    void setCursor(const WebCore::Cursor&) override;
+    void setCursorHiddenUntilMouseMoves(bool) override;
+    void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
 
-    virtual void registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo) override;
-    virtual void clearAllEditCommands() override;
-    virtual bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
-    virtual void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
+    void registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo) override;
+    void clearAllEditCommands() override;
+    bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
+    void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
 
-    virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
-    virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
-    virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) override;
-    virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) override;
+    WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
+    WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
+    WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) override;
+    WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) override;
 
-    virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
+    void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
 #if ENABLE(TOUCH_EVENTS)
-    virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
+    void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
 #endif
-    virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
+    void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
 
-    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
+    RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
 #if ENABLE(CONTEXT_MENUS)
-    virtual std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
+    std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
 #endif
 
-    virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
-    virtual void exitAcceleratedCompositingMode() override;
-    virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
+    void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
+    void exitAcceleratedCompositingMode() override;
+    void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
 
-    virtual void didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&) override;
+    void didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&) override;
 
-    virtual void navigationGestureDidBegin() override;
-    virtual void navigationGestureWillEnd(bool, WebBackForwardListItem&) override;
-    virtual void navigationGestureDidEnd(bool, WebBackForwardListItem&) override;
-    virtual void navigationGestureDidEnd() override;
-    virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
-    virtual void didRemoveNavigationGestureSnapshot() override;
+    void navigationGestureDidBegin() override;
+    void navigationGestureWillEnd(bool, WebBackForwardListItem&) override;
+    void navigationGestureDidEnd(bool, WebBackForwardListItem&) override;
+    void navigationGestureDidEnd() override;
+    void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
+    void didRemoveNavigationGestureSnapshot() override;
 
-    virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
-    virtual void didFinishLoadForMainFrame() override;
-    virtual void didFailLoadForMainFrame() override;
-    virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
+    void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
+    void didFinishLoadForMainFrame() override;
+    void didFailLoadForMainFrame() override;
+    void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
-    virtual void didChangeBackgroundColor() override;
+    void didChangeBackgroundColor() override;
 
-    virtual void refView() override;
-    virtual void derefView() override;
+    void refView() override;
+    void derefView() override;
 
 #if ENABLE(VIDEO)
-    virtual bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
+    bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
 #endif
 
-    virtual void didRestoreScrollPosition() override;
+    void didRestoreScrollPosition() override;
 
-    virtual WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+
+    void didChangeAvoidsUnsafeArea(bool) override { }
 
 #if ENABLE(FULLSCREEN_API)
     virtual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
@@ -134,8 +138,8 @@ private:
 #endif
 
     WKWPE::View& m_view;
+
+    std::unique_ptr<ScrollGestureController> m_scrollGestureController;
 };
 
 } // namespace WebKit
-
-#endif // PageClientImpl_h

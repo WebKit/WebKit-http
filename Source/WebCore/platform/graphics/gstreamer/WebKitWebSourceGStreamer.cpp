@@ -55,70 +55,78 @@
 using namespace WebCore;
 
 class StreamingClient {
-    public:
-        StreamingClient(WebKitWebSrc*);
-        virtual ~StreamingClient();
+public:
+    StreamingClient(WebKitWebSrc*, ResourceRequest&&);
+    virtual ~StreamingClient();
 
-    protected:
-        char* createReadBuffer(size_t requestedSize, size_t& actualSize);
-        void handleResponseReceived(const ResourceResponse&);
-        void handleDataReceived(const char*, int);
-        void handleNotifyFinished();
+protected:
+    char* createReadBuffer(size_t requestedSize, size_t& actualSize);
+    void handleResponseReceived(const ResourceResponse&);
+    void handleDataReceived(const char*, int);
+    void handleNotifyFinished();
 
-        GstElement* m_src;
+    GRefPtr<GstElement> m_src;
+    ResourceRequest m_request;
 };
 
 class CachedResourceStreamingClient final : public PlatformMediaResourceClient, public StreamingClient {
     WTF_MAKE_NONCOPYABLE(CachedResourceStreamingClient);
-    public:
-        CachedResourceStreamingClient(WebKitWebSrc*);
-        virtual ~CachedResourceStreamingClient();
+public:
+    CachedResourceStreamingClient(WebKitWebSrc*, ResourceRequest&&);
+    virtual ~CachedResourceStreamingClient();
 
-    private:
-        // PlatformMediaResourceClient virtual methods.
+private:
+    // PlatformMediaResourceClient virtual methods.
 #if USE(SOUP)
-        char* getOrCreateReadBuffer(PlatformMediaResource&, size_t requestedSize, size_t& actualSize) override;
+    char* getOrCreateReadBuffer(PlatformMediaResource&, size_t requestedSize, size_t& actualSize) override;
 #endif
-        void responseReceived(PlatformMediaResource&, const ResourceResponse&) override;
-        void dataReceived(PlatformMediaResource&, const char*, int) override;
-        void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) override;
-        void loadFailed(PlatformMediaResource&, const ResourceError&) override;
-        void loadFinished(PlatformMediaResource&) override;
+    void responseReceived(PlatformMediaResource&, const ResourceResponse&) override;
+    void dataReceived(PlatformMediaResource&, const char*, int) override;
+    void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) override;
+    void loadFailed(PlatformMediaResource&, const ResourceError&) override;
+    void loadFinished(PlatformMediaResource&) override;
 };
 
-class ResourceHandleStreamingClient : public ResourceHandleClient, public StreamingClient {
-    WTF_MAKE_NONCOPYABLE(ResourceHandleStreamingClient); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        ResourceHandleStreamingClient(WebKitWebSrc*, ResourceRequest&&);
-        virtual ~ResourceHandleStreamingClient();
+class ResourceHandleStreamingClient : public ThreadSafeRefCounted<ResourceHandleStreamingClient>, public ResourceHandleClient, public StreamingClient {
+public:
+    static Ref<ResourceHandleStreamingClient> create(WebKitWebSrc* src, ResourceRequest&& request)
+    {
+        return adoptRef(*new ResourceHandleStreamingClient(src, WTFMove(request)));
+    }
+    virtual ~ResourceHandleStreamingClient();
 
-        // StreamingClient virtual methods.
-        bool loadFailed() const;
-        void setDefersLoading(bool);
+    void invalidate();
 
-    private:
-        // ResourceHandleClient virtual methods.
+    // StreamingClient virtual methods.
+    bool loadFailed() const;
+    void setDefersLoading(bool);
+
+private:
+    ResourceHandleStreamingClient(WebKitWebSrc*, ResourceRequest&&);
+    void cleanupAndStopRunLoop();
+
+    // ResourceHandleClient virtual methods.
 #if USE(SOUP)
-        char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
+    char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
 #endif
-        ResourceRequest willSendRequest(ResourceHandle*, ResourceRequest&&, ResourceResponse&&) override;
-        void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
-        void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
-        void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int encodedLength) override;
-        void didFinishLoading(ResourceHandle*) override;
-        void didFail(ResourceHandle*, const ResourceError&) override;
-        void wasBlocked(ResourceHandle*) override;
-        void cannotShowURL(ResourceHandle*) override;
+    ResourceRequest willSendRequest(ResourceHandle*, ResourceRequest&&, ResourceResponse&&) override;
+    void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
+    void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
+    void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int encodedLength) override;
+    void didFinishLoading(ResourceHandle*) override;
+    void didFail(ResourceHandle*, const ResourceError&) override;
+    void wasBlocked(ResourceHandle*) override;
+    void cannotShowURL(ResourceHandle*) override;
 
-        ThreadIdentifier m_thread { 0 };
-        Lock m_initializeRunLoopConditionMutex;
-        Condition m_initializeRunLoopCondition;
-        RunLoop* m_runLoop { nullptr };
-        Lock m_terminateRunLoopConditionMutex;
-        Condition m_terminateRunLoopCondition;
-        RefPtr<ResourceHandle> m_resource;
+    RefPtr<Thread> m_thread;
+    Lock m_initializeRunLoopConditionMutex;
+    Condition m_initializeRunLoopCondition;
+    RunLoop* m_runLoop { nullptr };
+    Lock m_terminateRunLoopConditionMutex;
+    Condition m_terminateRunLoopCondition;
+    RefPtr<ResourceHandle> m_resource;
 #if USE(SOUP)
-        std::unique_ptr<SoupNetworkSession> m_session;
+    std::unique_ptr<SoupNetworkSession> m_session;
 #endif
 };
 
@@ -135,7 +143,7 @@ struct _WebKitWebSrcPrivate {
     GstAppSrc* appsrc;
     GstPad* srcpad;
     CString originalURI;
-    CString resolvedURI;
+    CString redirectedURI;
     bool keepAlive;
     GUniquePtr<GstStructure> extraHeaders;
     bool compress;
@@ -146,7 +154,7 @@ struct _WebKitWebSrcPrivate {
 
     RefPtr<PlatformMediaResourceLoader> loader;
     RefPtr<PlatformMediaResource> resource;
-    std::unique_ptr<ResourceHandleStreamingClient> client;
+    RefPtr<ResourceHandleStreamingClient> client;
 
     bool didPassAccessControlCheck;
 
@@ -313,6 +321,8 @@ static void webkit_web_src_init(WebKitWebSrc* src)
     // This might need tweaking for ports not using libsoup.
     g_object_set(priv->appsrc, "min-percent", 20, nullptr);
 
+    gst_base_src_set_automatic_eos(GST_BASE_SRC(priv->appsrc), FALSE);
+
     gst_app_src_set_caps(priv->appsrc, nullptr);
     gst_app_src_set_size(priv->appsrc, -1);
 }
@@ -375,7 +385,7 @@ static void webKitWebSrcGetProperty(GObject* object, guint propID, GValue* value
         g_value_set_string(value, priv->originalURI.data());
         break;
     case PROP_RESOLVED_LOCATION:
-        g_value_set_string(value, priv->resolvedURI.data());
+        g_value_set_string(value, priv->redirectedURI.isNull() ? priv->originalURI.data() : priv->redirectedURI.data());
         break;
     case PROP_KEEP_ALIVE:
         g_value_set_boolean(value, priv->keepAlive);
@@ -417,11 +427,14 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
         });
     }
 
+    if (priv->client) {
+        priv->client->invalidate();
+        priv->client = nullptr;
+    }
+
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
 
     bool wasSeeking = std::exchange(priv->isSeeking, false);
-
-    priv->client = nullptr;
 
     if (priv->buffer) {
         unmapGstBuffer(priv->buffer.get());
@@ -571,10 +584,9 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
     request.setHTTPHeaderField(HTTPHeaderName::IcyMetadata, "1");
 
     if (!priv->player || !priv->createdInMainThread) {
-        priv->client = std::make_unique<ResourceHandleStreamingClient>(src, WTFMove(request));
+        priv->client = ResourceHandleStreamingClient::create(src, WTFMove(request));
         if (priv->client->loadFailed()) {
             GST_ERROR_OBJECT(src, "Failed to setup streaming client");
-            priv->client = nullptr;
             locker.unlock();
             webKitWebSrcStop(src);
         } else
@@ -599,10 +611,9 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
         PlatformMediaResourceLoader::LoadOptions loadOptions = 0;
         if (request.url().protocolIsBlob())
             loadOptions |= PlatformMediaResourceLoader::LoadOption::BufferData;
-        // FIXME: request should be moved for efficiency
         priv->resource = priv->loader->requestResource(ResourceRequest(request), loadOptions);
         if (priv->resource) {
-            priv->resource->setClient(std::make_unique<CachedResourceStreamingClient>(protector.get()));
+            priv->resource->setClient(std::make_unique<CachedResourceStreamingClient>(protector.get(), ResourceRequest(request)));
             GST_DEBUG_OBJECT(protector.get(), "Started request");
         } else {
             GST_ERROR_OBJECT(protector.get(), "Failed to setup streaming client");
@@ -680,6 +691,8 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
     case GST_QUERY_URI: {
         WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
         gst_query_set_uri(query, src->priv->originalURI.data());
+        if (!src->priv->redirectedURI.isNull())
+            gst_query_set_uri_redirection(query, src->priv->redirectedURI.data());
         result = TRUE;
         break;
     }
@@ -762,6 +775,7 @@ static gboolean webKitWebSrcSetUri(GstURIHandler* handler, const gchar* uri, GEr
 
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
 
+    priv->redirectedURI = CString();
     priv->originalURI = CString();
     if (!uri)
         return TRUE;
@@ -882,19 +896,19 @@ bool webKitSrcPassedCORSAccessCheck(WebKitWebSrc* src)
     return src->priv->didPassAccessControlCheck;
 }
 
-StreamingClient::StreamingClient(WebKitWebSrc* src)
-    : m_src(static_cast<GstElement*>(gst_object_ref(src)))
+StreamingClient::StreamingClient(WebKitWebSrc* src, ResourceRequest&& request)
+    : m_src(GST_ELEMENT(src))
+    , m_request(WTFMove(request))
 {
 }
 
 StreamingClient::~StreamingClient()
 {
-    gst_object_unref(m_src);
 }
 
 char* StreamingClient::createReadBuffer(size_t requestedSize, size_t& actualSize)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     WebKitWebSrcPrivate* priv = src->priv;
 
     ASSERT(!priv->buffer);
@@ -913,12 +927,14 @@ char* StreamingClient::createReadBuffer(size_t requestedSize, size_t& actualSize
 
 void StreamingClient::handleResponseReceived(const ResourceResponse& response)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     WebKitWebSrcPrivate* priv = src->priv;
 
     GST_DEBUG_OBJECT(src, "Received response: %d", response.httpStatusCode());
 
-    priv->resolvedURI = response.url().string().utf8();
+    auto responseURI = response.url().string().utf8();
+    if (priv->originalURI != responseURI)
+        priv->redirectedURI = WTFMove(responseURI);
 
     if (response.httpStatusCode() >= 400) {
         GST_ELEMENT_ERROR(src, RESOURCE, READ, ("Received %d HTTP error code", response.httpStatusCode()), (nullptr));
@@ -964,11 +980,26 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
         gst_app_src_set_size(priv->appsrc, -1);
 
     gst_app_src_set_caps(priv->appsrc, nullptr);
+
+    // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event to let GStreamer know about the HTTP headers sent and received.
+    GstStructure* httpHeaders = gst_structure_new_empty("http-headers");
+    gst_structure_set(httpHeaders, "uri", G_TYPE_STRING, priv->originalURI.data(), nullptr);
+    if (!priv->redirectedURI.isNull())
+        gst_structure_set(httpHeaders, "redirection-uri", G_TYPE_STRING, priv->redirectedURI.data(), nullptr);
+    GUniquePtr<GstStructure> headers(gst_structure_new_empty("request-headers"));
+    for (const auto& header : m_request.httpHeaderFields())
+        gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
+    gst_structure_set(httpHeaders, "request-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
+    headers.reset(gst_structure_new_empty("response-headers"));
+    for (const auto& header : response.httpHeaderFields())
+        gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
+    gst_structure_set(httpHeaders, "response-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
+    gst_pad_push_event(GST_BASE_SRC_PAD(priv->appsrc), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_STICKY, httpHeaders));
 }
 
 void StreamingClient::handleDataReceived(const char* data, int length)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     WebKitWebSrcPrivate* priv = src->priv;
 
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
@@ -1034,7 +1065,7 @@ void StreamingClient::handleDataReceived(const char* data, int length)
 
 void StreamingClient::handleNotifyFinished()
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     WebKitWebSrcPrivate* priv = src->priv;
 
     GST_DEBUG_OBJECT(src, "Have EOS");
@@ -1046,8 +1077,8 @@ void StreamingClient::handleNotifyFinished()
     }
 }
 
-CachedResourceStreamingClient::CachedResourceStreamingClient(WebKitWebSrc* src)
-    : StreamingClient(src)
+CachedResourceStreamingClient::CachedResourceStreamingClient(WebKitWebSrc* src, ResourceRequest&& request)
+    : StreamingClient(src, WTFMove(request))
 {
 }
 
@@ -1067,7 +1098,7 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     if (!m_src)
         return;
 
-    WebKitWebSrcPrivate* priv = WEBKIT_WEB_SRC(m_src)->priv;
+    WebKitWebSrcPrivate* priv = WEBKIT_WEB_SRC(m_src.get())->priv;
     if (!priv || !priv->resource)
         return;
 
@@ -1082,7 +1113,7 @@ void CachedResourceStreamingClient::dataReceived(PlatformMediaResource&, const c
 
 void CachedResourceStreamingClient::accessControlCheckFailed(PlatformMediaResource&, const ResourceError& error)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     GST_ELEMENT_ERROR(src, RESOURCE, READ, ("%s", error.localizedDescription().utf8().data()), (nullptr));
     gst_app_src_end_of_stream(src->priv->appsrc);
     webKitWebSrcStop(src);
@@ -1090,7 +1121,7 @@ void CachedResourceStreamingClient::accessControlCheckFailed(PlatformMediaResour
 
 void CachedResourceStreamingClient::loadFailed(PlatformMediaResource&, const ResourceError& error)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
 
     if (!error.isCancellation()) {
         GST_ERROR_OBJECT(src, "Have failure: %s", error.localizedDescription().utf8().data());
@@ -1106,19 +1137,19 @@ void CachedResourceStreamingClient::loadFinished(PlatformMediaResource&)
 }
 
 ResourceHandleStreamingClient::ResourceHandleStreamingClient(WebKitWebSrc* src, ResourceRequest&& request)
-    : StreamingClient(src)
+    : StreamingClient(src, WTFMove(request))
 {
     LockHolder locker(m_initializeRunLoopConditionMutex);
-    m_thread = createThread("ResourceHandleStreamingClient", [this, request = WTFMove(request)] {
+    m_thread = Thread::create("ResourceHandleStreamingClient", [this] {
         {
             LockHolder locker(m_initializeRunLoopConditionMutex);
             m_runLoop = &RunLoop::current();
 #if USE(SOUP)
             m_session = std::make_unique<SoupNetworkSession>();
-            m_resource = ResourceHandle::create(*m_session, request, this, true, false);
+            m_resource = ResourceHandle::create(*m_session, m_request, this, true, false);
 #else
             // FIXME: This create will hit an assert in debug builds. See https://bugs.webkit.org/show_bug.cgi?id=167003.
-            m_resource = ResourceHandle::create(nullptr /*context*/, request, this, true, false);
+            m_resource = ResourceHandle::create(nullptr, m_request, this, true, false);
 #endif
             m_initializeRunLoopCondition.notifyOne();
         }
@@ -1127,17 +1158,6 @@ ResourceHandleStreamingClient::ResourceHandleStreamingClient(WebKitWebSrc* src, 
 
         m_runLoop->dispatch([this] { m_resource->setDefersLoading(false); });
         m_runLoop->run();
-        {
-            LockHolder locker(m_terminateRunLoopConditionMutex);
-            m_runLoop = nullptr;
-            m_resource->clearClient();
-            m_resource->cancel();
-            m_resource = nullptr;
-#if USE(SOUP)
-            m_session = nullptr;
-#endif
-            m_terminateRunLoopCondition.notifyOne();
-        }
     });
     m_initializeRunLoopCondition.wait(m_initializeRunLoopConditionMutex);
 }
@@ -1145,17 +1165,36 @@ ResourceHandleStreamingClient::ResourceHandleStreamingClient(WebKitWebSrc* src, 
 ResourceHandleStreamingClient::~ResourceHandleStreamingClient()
 {
     if (m_thread) {
-        detachThread(m_thread);
-        m_thread = 0;
+        m_thread->detach();
+        m_thread = nullptr;
+    }
+}
+
+void ResourceHandleStreamingClient::cleanupAndStopRunLoop()
+{
+    m_resource->clearClient();
+    m_resource->cancel();
+    m_resource = nullptr;
+#if USE(SOUP)
+    m_session = nullptr;
+#endif
+    m_runLoop->stop();
+}
+
+void ResourceHandleStreamingClient::invalidate()
+{
+    if (m_runLoop == &RunLoop::current()) {
+        cleanupAndStopRunLoop();
+        return;
     }
 
-    if (m_runLoop == &RunLoop::current())
-        m_runLoop->stop();
-    else {
+    LockHolder locker(m_terminateRunLoopConditionMutex);
+    m_runLoop->dispatch([this, protectedThis = makeRef(*this)] {
+        cleanupAndStopRunLoop();
         LockHolder locker(m_terminateRunLoopConditionMutex);
-        m_runLoop->stop();
-        m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
-    }
+        m_terminateRunLoopCondition.notifyOne();
+    });
+    m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
 }
 
 bool ResourceHandleStreamingClient::loadFailed() const
@@ -1165,7 +1204,7 @@ bool ResourceHandleStreamingClient::loadFailed() const
 
 void ResourceHandleStreamingClient::setDefersLoading(bool defers)
 {
-    m_runLoop->dispatch([this, defers] {
+    m_runLoop->dispatch([this, protectedThis = makeRef(*this), defers] {
         if (m_resource)
             m_resource->setDefersLoading(defers);
     });
@@ -1185,7 +1224,8 @@ ResourceRequest ResourceHandleStreamingClient::willSendRequest(ResourceHandle*, 
 
 void ResourceHandleStreamingClient::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
 {
-    handleResponseReceived(response);
+    if (m_resource)
+        handleResponseReceived(response);
 }
 
 void ResourceHandleStreamingClient::didReceiveData(ResourceHandle*, const char* /* data */, unsigned /* length */, int)
@@ -1195,23 +1235,22 @@ void ResourceHandleStreamingClient::didReceiveData(ResourceHandle*, const char* 
 
 void ResourceHandleStreamingClient::didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&& buffer, int /* encodedLength */)
 {
-    // This pattern is suggested by SharedBuffer.h.
-    const char* segment;
-    unsigned position = 0;
-    while (unsigned length = buffer->getSomeData(segment, position)) {
-        handleDataReceived(segment, length);
-        position += length;
-    }
+    if (!m_resource)
+        return;
+
+    for (const auto& segment : buffer.get())
+        handleDataReceived(segment->data(), segment->size());
 }
 
 void ResourceHandleStreamingClient::didFinishLoading(ResourceHandle*)
 {
-    handleNotifyFinished();
+    if (m_resource)
+        handleNotifyFinished();
 }
 
 void ResourceHandleStreamingClient::didFail(ResourceHandle*, const ResourceError& error)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
 
     GST_ERROR_OBJECT(src, "Have failure: %s", error.localizedDescription().utf8().data());
     GST_ELEMENT_ERROR(src, RESOURCE, FAILED, ("%s", error.localizedDescription().utf8().data()), (nullptr));
@@ -1220,7 +1259,7 @@ void ResourceHandleStreamingClient::didFail(ResourceHandle*, const ResourceError
 
 void ResourceHandleStreamingClient::wasBlocked(ResourceHandle*)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     GUniquePtr<gchar> uri;
 
     GST_ERROR_OBJECT(src, "Request was blocked");
@@ -1234,7 +1273,7 @@ void ResourceHandleStreamingClient::wasBlocked(ResourceHandle*)
 
 void ResourceHandleStreamingClient::cannotShowURL(ResourceHandle*)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src);
+    WebKitWebSrc* src = WEBKIT_WEB_SRC(m_src.get());
     GUniquePtr<gchar> uri;
 
     GST_ERROR_OBJECT(src, "Cannot show URL");

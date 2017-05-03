@@ -19,6 +19,7 @@ var expectedPropertyNamesSet = {
     "new String('a')": "['0', 'length']",
     "new String('abc')": "['0', '1', '2', 'length']",
     "(function(){var x=new String('');x.__proto__=[1,2,3];return x;})()": "['length']",
+    "(function(){var x=new String('abc');x.bar='baz';x[999]='d';return x;})()": "['0', '1', '2', '999', 'bar', 'length']",
 // Array objects
     "[]": "['length']",
     "[null]": "['0', 'length']",
@@ -66,7 +67,7 @@ var expectedPropertyNamesSet = {
     "Date.prototype": "['constructor', 'getDate', 'getDay', 'getFullYear', 'getHours', 'getMilliseconds', 'getMinutes', 'getMonth', 'getSeconds', 'getTime', 'getTimezoneOffset', 'getUTCDate', 'getUTCDay', 'getUTCFullYear', 'getUTCHours', 'getUTCMilliseconds', 'getUTCMinutes', 'getUTCMonth', 'getUTCSeconds', 'getYear', 'setDate', 'setFullYear', 'setHours', 'setMilliseconds', 'setMinutes', 'setMonth', 'setSeconds', 'setTime', 'setUTCDate', 'setUTCFullYear', 'setUTCHours', 'setUTCMilliseconds', 'setUTCMinutes', 'setUTCMonth', 'setUTCSeconds', 'setYear', 'toDateString', 'toGMTString', 'toISOString', 'toJSON', 'toLocaleDateString', 'toLocaleString', 'toLocaleTimeString', 'toString', 'toTimeString', 'toUTCString', 'valueOf']",
     "RegExp": "['$&', \"$'\", '$*', '$+', '$1', '$2', '$3', '$4', '$5', '$6', '$7', '$8', '$9', '$_', '$`', 'input', 'lastMatch', 'lastParen', 'leftContext', 'length', 'multiline', 'name', 'prototype', 'rightContext']",
     "RegExp.prototype": "['compile', 'constructor', 'exec', 'flags', 'global', 'ignoreCase', 'multiline', 'source', 'sticky', 'test', 'toString', 'unicode']",
-    "Error": "['length', 'name', 'prototype']",
+    "Error": "['length', 'name', 'prototype', 'stackTraceLimit']",
     "Error.prototype": "['constructor', 'message', 'name', 'toString']",
     "Math": "['E','LN10','LN2','LOG10E','LOG2E','PI','SQRT1_2','SQRT2','abs','acos','acosh','asin','asinh','atan','atan2','atanh','cbrt','ceil','clz32','cos','cosh','exp','expm1','floor','fround','hypot','imul','log','log10','log1p','log2','max','min','pow','random','round','sign','sin','sinh','sqrt','tan','tanh','trunc']",
     "JSON": "['parse', 'stringify']",

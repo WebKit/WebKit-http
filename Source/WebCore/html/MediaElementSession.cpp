@@ -58,7 +58,7 @@
 
 namespace WebCore {
 
-static const double elementMainContentCheckInterval = .250;
+static const Seconds elementMainContentCheckInterval { 250_ms };
 
 static bool isElementRectMostlyInMainFrame(const HTMLMediaElement&);
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&, MediaSessionMainContentPurpose);
@@ -152,10 +152,10 @@ void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restric
 SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(const HTMLMediaElement& element) const
 {
     if (element.document().isMediaDocument() && !element.document().ownerElement())
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
 
     if (pageExplicitlyAllowsElementToAutoplayInline(element))
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
 
     if (requiresFullscreenForVideoPlayback(element) && !fullscreenPermitted(element)) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of fullscreen restriction");
@@ -163,14 +163,23 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(cons
     }
 
     if (m_restrictions & OverrideUserGestureRequirementForMainContent && updateIsMainContent())
-        return SuccessOr<MediaPlaybackDenialReason>();
+        return { };
+
+#if ENABLE(MEDIA_STREAM)
+    if (element.hasMediaStreamSrcObject()) {
+        if (element.document().isCapturing())
+            return { };
+        if (element.document().mediaState() & MediaProducer::IsPlayingAudio)
+            return { };
+    }
+#endif
 
     if (m_restrictions & RequireUserGestureForVideoRateChange && element.isVideo() && !ScriptController::processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of video rate change restriction");
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    if (m_restrictions & RequireUserGestureForAudioRateChange && (!element.isVideo() || element.hasAudio()) && !element.muted() && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForAudioRateChange && (!element.isVideo() || element.hasAudio()) && !element.muted() && element.volume() && !ScriptController::processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of audio rate change restriction");
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
@@ -180,7 +189,7 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(cons
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    return SuccessOr<MediaPlaybackDenialReason>();
+    return { };
 }
 
 bool MediaElementSession::autoplayPermitted() const
@@ -194,6 +203,10 @@ bool MediaElementSession::autoplayPermitted() const
     if (!hasBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted))
         return true;
 
+    // If the media element is audible, allow autoplay even when not visible as pausing it would be observable by the user.
+    if ((!m_element.isVideo() || m_element.hasAudio()) && !m_element.muted() && m_element.volume())
+        return true;
+
     auto* renderer = m_element.renderer();
     if (!renderer)
         return false;
@@ -201,7 +214,7 @@ bool MediaElementSession::autoplayPermitted() const
         return false;
     if (renderer->view().frameView().isOffscreen())
         return false;
-    if (renderer->visibleInViewportState() != RenderElement::VisibleInViewport)
+    if (renderer->visibleInViewportState() != VisibleInViewportState::Yes)
         return false;
     return true;
 }
@@ -362,6 +375,8 @@ bool MediaElementSession::wantsToObserveViewportVisibilityForMediaControls() con
 
 bool MediaElementSession::wantsToObserveViewportVisibilityForAutoplay() const
 {
+    if (!m_element.isVideo())
+        return false;
     return hasBehaviorRestriction(InvisibleAutoplayNotPermitted) || hasBehaviorRestriction(OverrideUserGestureRequirementForMainContent);
 }
 
@@ -484,7 +499,7 @@ void MediaElementSession::externalOutputDeviceAvailableDidChange(bool hasTargets
     LOG(Media, "MediaElementSession::externalOutputDeviceAvailableDidChange(%p) - hasTargets %s", this, hasTargets ? "TRUE" : "FALSE");
 
     m_hasPlaybackTargets = hasTargets;
-    m_targetAvailabilityChangedTimer.startOneShot(0);
+    m_targetAvailabilityChangedTimer.startOneShot(0_s);
 }
 
 bool MediaElementSession::canPlayToWirelessPlaybackTarget() const
@@ -652,7 +667,7 @@ static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
     // they are scrolled off the page.
     if (renderer->style().visibility() != VISIBLE)
         return false;
-    if (renderer->visibleInViewportState() != RenderElement::VisibleInViewport && !element.isPlaying())
+    if (renderer->visibleInViewportState() != VisibleInViewportState::Yes && !element.isPlaying())
         return false;
 
     // Main content elements must be in the main frame.

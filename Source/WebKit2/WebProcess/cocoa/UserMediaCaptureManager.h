@@ -42,7 +42,7 @@ namespace WebKit {
 class CrossProcessRealtimeAudioSource;
 class WebProcess;
 
-class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver, public WebCore::RealtimeMediaSource::CaptureFactory {
+class UserMediaCaptureManager : public WebProcessSupplement, public IPC::MessageReceiver, public WebCore::RealtimeMediaSource::AudioCaptureFactory, public WebCore::RealtimeMediaSource::VideoCaptureFactory {
 public:
     explicit UserMediaCaptureManager(WebProcess*);
     ~UserMediaCaptureManager();
@@ -53,8 +53,10 @@ private:
     // WebProcessSupplement
     void initialize(const WebProcessCreationParameters&) final;
 
-    // WebCore::RealtimeMediaSource::Factory:
-    RefPtr<WebCore::RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const WebCore::CaptureDevice&, const WebCore::MediaConstraints*, String&) final;
+    // WebCore::RealtimeMediaSource factories
+    WebCore::CaptureSourceOrError createAudioCaptureSource(const String& deviceID, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(deviceID, WebCore::RealtimeMediaSource::Type::Audio, constraints); }
+    WebCore::CaptureSourceOrError createVideoCaptureSource(const String& deviceID, const WebCore::MediaConstraints* constraints) final { return createCaptureSource(deviceID, WebCore::RealtimeMediaSource::Type::Video, constraints); }
+    WebCore::CaptureSourceOrError createCaptureSource(const String& deviceID, WebCore::RealtimeMediaSource::Type, const WebCore::MediaConstraints*);
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
@@ -70,6 +72,9 @@ private:
 
     void startProducingData(uint64_t);
     void stopProducingData(uint64_t);
+    WebCore::RealtimeMediaSourceCapabilities&& capabilities(uint64_t);
+    void setMuted(uint64_t, bool);
+    void setEnabled(uint64_t, bool);
 
     class Source;
     friend class Source;

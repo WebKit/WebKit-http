@@ -434,6 +434,19 @@
 
 /* Operating environments */
 
+/* Export macro support. Detects the attributes available for shared library symbol export
+   decorations. */
+#if OS(WINDOWS) || (COMPILER_HAS_CLANG_DECLSPEC(dllimport) && COMPILER_HAS_CLANG_DECLSPEC(dllexport))
+#define USE_DECLSPEC_ATTRIBUTE 1
+#define USE_VISIBILITY_ATTRIBUTE 0
+#elif defined(__GNUC__)
+#define USE_DECLSPEC_ATTRIBUTE 0
+#define USE_VISIBILITY_ATTRIBUTE 1
+#else
+#define USE_DECLSPEC_ATTRIBUTE 0
+#define USE_VISIBILITY_ATTRIBUTE 0
+#endif
+
 /* Standard libraries */
 #if defined(HAVE_FEATURES_H) && HAVE_FEATURES_H
 /* If the included features.h is glibc's one, __GLIBC__ is defined. */
@@ -662,6 +675,24 @@
 #define HAVE_CFNETWORK_STORAGE_PARTITIONING 1
 #endif
 
+#if OS(DARWIN) || ((OS(FREEBSD) || defined(__GLIBC__)) && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)))
+#define HAVE_MACHINE_CONTEXT 1
+#endif
+
+#if OS(DARWIN) || (OS(LINUX) && defined(__GLIBC__) && !defined(__UCLIBC__))
+#define HAVE_BACKTRACE 1
+#endif
+
+#if OS(DARWIN) || OS(LINUX)
+#if PLATFORM(GTK)
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
+#define HAVE_BACKTRACE_SYMBOLS 1
+#endif
+#endif /* PLATFORM(GTK) */
+#define HAVE_DLADDR 1
+#endif /* OS(DARWIN) || OS(LINUX) */
+
+
 /* ENABLE macro defaults */
 
 /* FIXME: move out all ENABLE() defines from here to FeatureDefines.h */
@@ -678,7 +709,7 @@
 #endif
 
 #if !defined(USE_JSVALUE64) && !defined(USE_JSVALUE32_64)
-#if (CPU(X86_64) && (OS(UNIX) || OS(WINDOWS))) \
+#if (CPU(X86_64) && !defined(__ILP32__) && (OS(UNIX) || OS(WINDOWS))) \
     || (CPU(IA64) && !CPU(IA64_32)) \
     || CPU(ALPHA) \
     || CPU(ARM64) \
@@ -762,11 +793,6 @@
 #define ENABLE_CONCURRENT_JS 1
 #endif
 
-/* FIXME: Enable it on Linux once https://bugs.webkit.org/show_bug.cgi?id=169510 is fixed. */
-#if CPU(ARM64) && OS(DARWIN)
-#define HAVE_LL_SC 1
-#endif // CPU(ARM64) && OS(DARWIN)
-
 #if __has_include(<System/pthread_machdep.h>)
 #define HAVE_FAST_TLS 1
 #endif
@@ -795,11 +821,15 @@
  * In configurations other than Windows and Darwin, because layout of mcontext_t depends on standard libraries (like glibc),
  * sampling profiler is enabled if WebKit uses pthreads and glibc. */
 #if !defined(ENABLE_SAMPLING_PROFILER)
-#if (OS(DARWIN) || OS(WINDOWS) || PLATFORM(GTK)) && ENABLE(JIT)
+#if ENABLE(JIT) && (OS(WINDOWS) || HAVE(MACHINE_CONTEXT))
 #define ENABLE_SAMPLING_PROFILER 1
 #else
 #define ENABLE_SAMPLING_PROFILER 0
 #endif
+#endif
+
+#if ENABLE(WEBASSEMBLY) && HAVE(MACHINE_CONTEXT)
+#define ENABLE_WEBASSEMBLY_FAST_MEMORY 1
 #endif
 
 /* Counts uses of write barriers using sampling counters. Be sure to also
@@ -927,7 +957,7 @@
 #endif
 #endif
 
-#if (OS(DARWIN) || OS(LINUX) || OS(FREEBSD)) && ENABLE(JIT)
+#if ENABLE(JIT) && HAVE(MACHINE_CONTEXT)
 #define ENABLE_SIGNAL_BASED_VM_TRAPS 1
 #endif
 
@@ -1058,7 +1088,7 @@
 #define USE_REQUEST_ANIMATION_FRAME_TIMER 1
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
 #define USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR 1
 #endif
 

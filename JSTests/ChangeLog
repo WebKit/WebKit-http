@@ -1,3 +1,3168 @@
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change makes shouldBe(), shouldNotBe(), shouldNotThrow()
+        and shouldThrow() in sync with other copies of these methods.
+
+        * stress/resources/standalone-pre.js:
+        (shouldBe): Fix whitespace.  Prefix 'exception' and 'quiet'
+        variables with underscore.
+        (shouldThrow): Fix whitespace.
+
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        We initialize functions too early in an eval
+        https://bugs.webkit.org/show_bug.cgi?id=161099
+
+        Reviewed by Saam Barati.
+
+        * stress/eval-func-decl-with-let-const-class.js: Added.
+
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        * stress/eval-func-decl-block-scoping-reassign.js: Added.
+        (assert):
+        (throw.new.Error.f):
+        (throw.new.Error):
+        * stress/eval-func-decl-block-with-remove.js: Added.
+        (assert):
+        (foo.boo):
+        (foo):
+        * stress/eval-func-decl-block-with-var-and-remove.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-block-with-var-sinthesize.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (hoo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-in-block-scope-and-bind-to-top-eval-scope.js: Added.
+        * stress/eval-func-decl-in-eval-within-block-with-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/eval-func-decl-in-eval-within-with-scope.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (boo.let.val2):
+        (boo.let.val3):
+        * stress/eval-func-decl-in-frozen-global.js: Added.
+        (assert):
+        (assertThrow):
+        (throw.new.Error):
+        (Object.freeze):
+        * stress/eval-func-decl-in-global-of-eval.js: Added.
+        (assert):
+        (assertThrow):
+        (bar):
+        (baz):
+        (foobar):
+        * stress/eval-func-decl-in-global.js: Added.
+        (assert):
+        (assertThrow):
+        * stress/eval-func-decl-in-if.js: Added.
+        (assert):
+        * stress/eval-func-decl-within-eval-with-reassign-to-var.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (foobar):
+        (hoo):
+        (joo):
+        (koo):
+        (loo):
+        * stress/eval-func-decl-within-eval-without-reassign-to-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/variable-under-tdz-eval-tricky.js:
+        (assert):
+        * test262.yaml:
+
+2017-04-27  Mark Lam  <mark.lam@apple.com>
+
+        Fix some RELEASE_ASSERT failures caused by OutOfMemoryErrors.
+        https://bugs.webkit.org/show_bug.cgi?id=171404
+        <rdar://problem/31876178>
+
+        Reviewed by Saam Barati.
+
+        * stress/js-fixed-array-out-of-memory.js: Added.
+
+2017-04-27  David Kilzer  <ddkilzer@apple.com>
+
+        Enhance shouldBe()/shouldNotBe() to accept anonymous function arguments
+        <https://webkit.org/b/171362>
+        <rdar://problem/31867686>
+
+        Reviewed by Joseph Pecoraro.
+
+        * stress/resources/standalone-pre.js:
+        (shouldBe):
+        (shouldNotThrow):
+        (shouldThrow):
+        - Update shouldBe() to accept anonymous function arguments.
+          (The shouldNotBe() function was never copied over.)
+        - Also fix shouldThrow()/shouldNotThrow() to accept anonymous
+          function arguments (which were missed in r202609 for Bug
+          159232).
+
+2017-04-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Handle PhantomSpread in LoadVarargs as the same to the others
+        https://bugs.webkit.org/show_bug.cgi?id=171262
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-outer-create-rest.js: Added.
+        (assert):
+        (foo):
+        (bar):
+        (baz):
+
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        Print Wasm function index in stack trace
+        https://bugs.webkit.org/show_bug.cgi?id=171349
+
+        Reviewed by JF Bastien.
+
+        * wasm/function-tests/stack-trace.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (let.imp):
+        * wasm/function-tests/trap-after-cross-instance-call.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load-2.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load.js:
+        (wasmFrameCountFromError):
+
+2017-04-26  Saam Barati  <sbarati@apple.com>
+
+        ASSERTION FAILED: inIndex != notFound in JSC::invalidParameterInSourceAppender()
+        https://bugs.webkit.org/show_bug.cgi?id=170924
+        <rdar://problem/31721052>
+
+        Reviewed by Mark Lam.
+
+        * stress/error-message-for-function-base-not-found.js: Added.
+        (assert):
+        (throw.new.Error):
+        * stress/error-messages-for-in-operator-should-not-crash.js: Added.
+        (catch):
+
+2017-04-26  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Implement tier up
+        https://bugs.webkit.org/show_bug.cgi?id=170134
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/trap-after-cross-instance-call.js:
+        * wasm/tier-up/js-to-wasm.js: Added.
+        (async.test):
+        * wasm/tier-up/wasm-to-wasm.js: Added.
+        (async.test):
+
+2017-04-26  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Object.keys() must discard property names with no PropertyDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=171291
+
+        Reviewed by Yusuke Suzuki.
+
+        * es6/Proxy_ownKeys_duplicates.js:
+        * stress/proxy-own-keys.js:
+        (let.handler.getOwnPropertyDescriptor):
+        (let.handler.ownKeys):
+
+2017-04-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215476.
+        https://bugs.webkit.org/show_bug.cgi?id=171304
+
+        "It broke JSBench" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[ES6]. Implement Annex B.3.3 function hoisting rules for
+        eval"
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+        http://trac.webkit.org/changeset/215476
+
+2017-04-25  Saam Barati  <sbarati@apple.com>
+
+        JSArray::isArrayPrototypeIteratorProtocolFastAndNonObservable is wrong because it does not do the necessary checks on the base object
+        https://bugs.webkit.org/show_bug.cgi?id=171150
+        <rdar://problem/31771880>
+
+        Reviewed by Sam Weinig.
+
+        * stress/spread-optimized-properly.js: Added.
+        (assert):
+        (test):
+        (shallowEq):
+        (makeArrayIterator):
+        (test.bar):
+        (test.callback):
+        (test.arr.__proto__.Symbol.iterator):
+        (test.arr.Symbol.iterator):
+        (test.get bar):
+        (test.hackedNext):
+        (test.test):
+        (test.):
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        [Follow up] Array.prototype.slice() should ensure that end >= begin.
+        https://bugs.webkit.org/show_bug.cgi?id=170989
+        <rdar://problem/31705652>
+
+        Not reviewed.
+
+        Follow up to rename a test file that was accidentally named wrongly.
+
+        * stress/regress-170989.js: Copied from JSTests/stress/regress-170989.patch.
+        * stress/regress-170989.patch: Removed.
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.slice() should ensure that end >= begin.
+        https://bugs.webkit.org/show_bug.cgi?id=170989
+        <rdar://problem/31705652>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170989.patch: Added.
+
+2017-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Local CSE wrongly CSEs array accesses with different result types.
+        https://bugs.webkit.org/show_bug.cgi?id=170990
+        <rdar://problem/31705945>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170990.js: Added.
+
+2017-04-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WebAssembly: exporting a property with a name that's a number doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=168857
+
+        Reviewed by JF Bastien.
+
+        r213453 allows Wasm instances to expose indexed properties. We activate the tests.
+
+        * wasm/js-api/test_Instance.js:
+        (ExportedNumber):
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js
+        https://bugs.webkit.org/show_bug.cgi?id=171190
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-syntax.js:
+        * test262.yaml:
+
+2017-04-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use JSFixedArray directly when using call_varargs
+        https://bugs.webkit.org/show_bug.cgi?id=171057
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-capture-rest.js: Added.
+        (shouldBe):
+        (capture):
+        (a):
+        (b):
+        * stress/spread-multi-layers.js: Added.
+        (shouldBe):
+        (a):
+        (b):
+        (c):
+        (d):
+        * stress/spread-non-varargs.js: Added.
+        (shouldBe):
+        (a):
+        (b):
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/computed-property-names/class/static/getter-prototype.js
+        https://bugs.webkit.org/show_bug.cgi?id=170897
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Address some FIXMEs in JavaScript tests for bugs that have been fixed
+        https://bugs.webkit.org/show_bug.cgi?id=171191
+
+        Reviewed by JF Bastien.
+
+        * stress/proxy-is-extensible.js:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/statements/for-of/dstr-array-elem-init-fn-name-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=171160
+
+        Reviewed by JF Bastien.
+
+        * stress/inferred-names.js:
+        * test262.yaml:
+
+2017-04-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-module-reserved-word.js:
+        * stress/async-await-reserved-word.js:
+        Converge on "Cannot" instead of "Can't".
+
+        * catch-parameter-syntax.js:
+        * yield-named-variable-generator.js:
+        * yield-named-variable.js:
+        * stress/yield-label-generator.js:
+        * stress/yield-label.js:
+        * stress/yield-reserved-word.js: Added.
+        More complete list of when 'yield' is allowed.
+
+        * ChakraCore/test/strict/23.reservedWords_sm.baseline-jsc:
+        * test262.yaml:
+
+2017-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r215674.
+        https://bugs.webkit.org/show_bug.cgi?id=171212
+
+        Possible unintended commit. This patch was on the wrong bug.
+        (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "test262: test262/test/language/expressions/generators/yield-
+        as-label.js"
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+        http://trac.webkit.org/changeset/215674
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Number/prototype/toPrecision/nan.js
+        https://bugs.webkit.org/show_bug.cgi?id=171197
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/generators/yield-as-label.js
+        https://bugs.webkit.org/show_bug.cgi?id=170979
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-module-reserved-word.js:
+        * stress/async-await-reserved-word.js:
+        Converge on "Cannot" instead of "Can't".
+
+        * catch-parameter-syntax.js:
+        * yield-named-variable-generator.js:
+        * yield-named-variable.js:
+        * stress/yield-label-generator.js:
+        * stress/yield-label.js:
+        * stress/yield-reserved-word.js: Added.
+        More complete list of when 'yield' is allowed.
+
+        * ChakraCore/test/strict/23.reservedWords_sm.baseline-jsc:
+        * test262.yaml:
+
+2017-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Number/parseFloat.js
+        https://bugs.webkit.org/show_bug.cgi?id=171193
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2017-04-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: Module.exports, Module.imports, Module.customSections are wrong
+        https://bugs.webkit.org/show_bug.cgi?id=171078
+
+        Reviewed by Saam Barati.
+
+        They're static properties of Module, not instance properties of a module.
+        https://github.com/WebAssembly/design/blob/master/JS.md#webassemblymoduleexports
+
+        * wasm/js-api/Module.customSection.js:
+        (assert.throws.WebAssembly.Module.customSections):
+        (assert.eq):
+        (assert.throws.WebAssembly.Module.prototype.customSections): Deleted.
+        * wasm/js-api/Module.exports.js:
+        (assert.throws.WebAssembly.Module.exports):
+        (assert.truthy):
+        (assert.throws.WebAssembly.Module.prototype.exports): Deleted.
+        * wasm/js-api/Module.imports.js:
+        (assert.throws.WebAssembly.Module.imports):
+        (assert.truthy):
+        (assert.throws.WebAssembly.Module.prototype.imports): Deleted.
+
+2017-04-21  JF Bastien  <jfbastien@apple.com>
+
+        Silence noisy test
+
+        Unreviewed, Fil / Michael and I talked about it in the corridor. I
+        just forgot to set verbose to false before commit.
+
+        * wasm/stress/oom.js:
+
+2017-04-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][FTL] FTL should support Arrayify
+        https://bugs.webkit.org/show_bug.cgi?id=169596
+
+        Reviewed by Saam Barati.
+
+        * stress/arrayify.js: Added.
+        (arrayifyInt32):
+        (arrayifyDouble):
+        (arrayifyContiguous):
+
+2017-04-20  Mark Lam  <mark.lam@apple.com>
+
+        virtualThunkFor() needs to materialize its of tagMaskRegister for tail calls.
+        https://bugs.webkit.org/show_bug.cgi?id=171079
+        <rdar://problem/31684756>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-171079.js: Added.
+
+2017-04-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Optimize SharedArrayBuffer in the DFG+FTL
+        https://bugs.webkit.org/show_bug.cgi?id=164108
+
+        Reviewed by Saam Barati.
+        
+        Added a fairly comprehensive test of the intrinsics. This creates a function for each possible
+        combination of type and operation, and then first uses it nicely and then tries a bunch of
+        erroneous conditions like OOB.
+
+        * stress/SharedArrayBuffer-opt.js: Added.
+        (string_appeared_here.switch):
+        (string_appeared_here.str):
+        (runAtomic):
+        (shouldFail):
+        (Symbol):
+        (string_appeared_here.a.of.arrays.m.of.atomics):
+        * stress/SharedArrayBuffer.js:
+
+2017-04-19  Mark Lam  <mark.lam@apple.com>
+
+        B3StackmapSpecial should handle when stackmap values are not recoverable from a Def'ed arg.
+        https://bugs.webkit.org/show_bug.cgi?id=170973
+        <rdar://problem/30318657>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-170973.js: Added.
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: limit slow memories
+        https://bugs.webkit.org/show_bug.cgi?id=170825
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+        * wasm/stress/oom.js: Added.
+        (try.true.WebAssemblyMemoryMode):
+        (catch):
+
+2017-04-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: don't expose any WebAssembly JS object if JIT is off
+        https://bugs.webkit.org/show_bug.cgi?id=170782
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+        * wasm/noJIT/noJIT.js: Added.
+
+2017-04-18  Mark Lam  <mark.lam@apple.com>
+
+        r211670 broke double to int conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=170961
+        <rdar://problem/31687696>
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/double-to-int32.js: Added.
+        * stress/to-int32-sensible2.js: Added.
+
+2017-04-18  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        * stress/eval-func-decl-block-scoping-reassign.js: Added.
+        (assert):
+        (throw.new.Error.f):
+        (throw.new.Error):
+        * stress/eval-func-decl-block-with-remove.js: Added.
+        (assert):
+        (foo.boo):
+        (foo):
+        * stress/eval-func-decl-block-with-var-and-remove.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-block-with-var-sinthesize.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (hoo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-in-block-scope-and-bind-to-top-eval-scope.js: Added.
+        * stress/eval-func-decl-in-eval-within-block-with-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/eval-func-decl-in-eval-within-with-scope.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (boo.let.val2):
+        (boo.let.val3):
+        * stress/eval-func-decl-in-frozen-global.js: Added.
+        (assert):
+        (assertThrow):
+        (throw.new.Error):
+        (Object.freeze):
+        * stress/eval-func-decl-in-global-of-eval.js: Added.
+        (assert):
+        (assertThrow):
+        (bar):
+        (baz):
+        (foobar):
+        * stress/eval-func-decl-in-global.js: Added.
+        (assert):
+        (assertThrow):
+        * stress/eval-func-decl-in-if.js: Added.
+        (assert):
+        * stress/eval-func-decl-within-eval-with-reassign-to-var.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (foobar):
+        (hoo):
+        (joo):
+        (koo):
+        (loo):
+        * stress/eval-func-decl-within-eval-without-reassign-to-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/variable-under-tdz-eval-tricky.js:
+        (assert):
+        * test262.yaml:
+
+2017-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        wasm/function-tests/memory-multiagent times out sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=170958
+
+        Reviewed by Keith Miller.
+        
+        Add the ability to skip tests easily. Skip the test.
+
+        * wasm.yaml:
+        * wasm/function-tests/memory-multiagent.js:
+
+2017-04-18  Saam Barati  <sbarati@apple.com>
+
+        Follow up to debug build stack overflow in test after r215453
+
+        Rubber stamped by Mark Lam.
+
+        * stress/call-apply-exponential-bytecode-size.js: Decrease the call
+        size to prevent stack overflow errors on debug builds.
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Convert ValueAdd(Int32, String) => MakeRope(ToString(Int32), String)
+        https://bugs.webkit.org/show_bug.cgi?id=170943
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/number-to-string-with-add-empty.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add-in-loop.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * stress/number-to-string-with-add.js: Added.
+        (shouldBe):
+        (toStringRight):
+        (toStringLeftEmpty):
+        (toStringRightEmpty):
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Drop unknown use of CheckCell's child2 to work ObjectAllocationSinking for Array iterator object
+        https://bugs.webkit.org/show_bug.cgi?id=170940
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/for-of-array.js: Added.
+        (fn):
+
+2017-04-17  Saam Barati  <sbarati@apple.com>
+
+        BytecodeGenerator ".call" and ".apply" is exponential in nesting depth
+        https://bugs.webkit.org/show_bug.cgi?id=139847
+        <rdar://problem/19321122>
+
+        Reviewed by Oliver Hunt.
+
+        * stress/call-apply-exponential-bytecode-size.js: Added.
+        (assert):
+        (const.inc):
+        (const.inc2):
+        (bar):
+        (randomApplyOrCall):
+        (baz):
+        (jaz):
+        (haz):
+        (foo):
+
+2017-04-17  Mark Lam  <mark.lam@apple.com>
+
+        JSArray::appendMemcpy() needs to handle copying from Undecided indexing type too.
+        https://bugs.webkit.org/show_bug.cgi?id=170896
+        <rdar://problem/31651319>
+
+        Reviewed by JF Bastien and Keith Miller.
+
+        * stress/regress-170896.js: Added.
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/prototype/toLocaleString/primitive_this_value.js
+        https://bugs.webkit.org/show_bug.cgi?id=170882
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/isNaN/toprimitive-not-callable-throws.js
+        https://bugs.webkit.org/show_bug.cgi?id=170888
+
+        Reviewed by Saam Barati.
+
+        * stress/computed-accessor.js:
+        * stress/eval-in-arrow-function.js:
+        * stress/rest-elements.js:
+        * stress/string-object-define-own-property.js:
+        Remove unused shouldThrow.
+
+        * stress/symbol-toprimitive-errors.js: Added.
+        Check for ToPrimitive TypeErrors.
+
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/tagged-template/template-object.js
+        https://bugs.webkit.org/show_bug.cgi?id=170878
+
+        Reviewed by Saam Barati.
+
+        * stress/array-length-not-writable.js: Added.
+        (assert):
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js
+        https://bugs.webkit.org/show_bug.cgi?id=170879
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/es5/enumerable.baseline-jsc:
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Date/prototype/Symbol.toPrimitive/name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170884
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2017-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/global-code/new.target-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=170872
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-new.target-binding.js:
+        (shouldThrowAsync): Deleted.
+        (shouldThrowAsync.async): Deleted.
+        This code should have thrown a SyntaxError. Instead it was throwing
+        a ReferenceError for the internal @newTargetLocal variable.
+
+        * stress/new-target-syntax-errors.js:
+        Cover the arrow function in global code cases.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.baseline-jsc:
+        We now pass with an expected SyntaxError. Our error message is different.
+
+        * test262.yaml:
+
+2017-04-14  Saam Barati  <sbarati@apple.com>
+
+        ParseInt intrinsic in DFG backend doesn't properly flush its operands
+        https://bugs.webkit.org/show_bug.cgi?id=170865
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+
+        * stress/parse-int-intrinsic-dfg-backend-flush.js: Added.
+        (assert):
+        (foo):
+
+2017-04-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] use ExpressionErrorClassifier for AwaitExpression operand
+        https://bugs.webkit.org/show_bug.cgi?id=170844
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170732.js: Added.
+
+2017-04-14  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Safari 10.1 JSON.parse returns incorrect object for numeric keys with decimal values
+        https://bugs.webkit.org/show_bug.cgi?id=170442
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/object-number-properties.js:
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Date.parse should accept wider range of representation
+        https://bugs.webkit.org/show_bug.cgi?id=170720
+
+        Reviewed by Darin Adler.
+
+        * stress/date-relaxed.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+
+2017-04-13  Mark Lam  <mark.lam@apple.com>
+
+        Should use flushDirect() when flushing the scopeRegister due to needsScopeRegister().
+        https://bugs.webkit.org/show_bug.cgi?id=170661
+        <rdar://problem/31579046>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-170661.js: Added.
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        * wasm/Builder.js: move a helper out so tests can use it
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        * wasm/WASM.js: add utilities to classify opcodes
+        (export.opcodes):
+        (export.const.memoryAccessInfo.op.const.sign):
+        * wasm/function-tests/memory-access-past-4gib.js: Added. This test
+        fails before this patch.
+        (const.op.of.WASM.opcodes):
+        * wasm/function-tests/memory-many.js: Added. This simple tests
+        just shouldn't crash. In verbose mode it's useful at determining
+        if the GC falls behind or not.
+        * wasm/function-tests/memory-multiagent.js: Added. Emulate postMessage.
+        (const.startAgents.numAgentsToStart.a.agent.receiveBroadcast):
+        (const.startAgents.numAgentsToStart.a.write.const.idx.Math.random):
+        (const.broadcastToAgents):
+        * wasm/js-api/extension-MemoryMode.js: verbose logging.
+        (testMemoryNoMax):
+        (testMemory):
+        (testInstanceNoMemory):
+        (testInstanceNoMax):
+        (testInstance):
+        * wasm/utilities.js: move a utility here.
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/NativeErrors/EvalError/proto.js
+        https://bugs.webkit.org/show_bug.cgi?id=170668
+
+        Reviewed by Keith Miller.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/Lib/error.baseline-jsc: Added.
+        This test does not match the spec.
+
+        * test262.yaml:
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/literals/regexp/u-dec-esc.js
+        https://bugs.webkit.org/show_bug.cgi?id=170687
+
+        Reviewed by Michael Saboff.
+
+        * test262.yaml:
+
+2017-04-11  Michael Saboff  <msaboff@apple.com>
+
+        Implement Object.isFrozen() and Object.isSealed() per ECMA spec
+        https://bugs.webkit.org/show_bug.cgi?id=170753
+
+        Reviewed by Mark Lam.
+
+        Added JSC baseline and enabled defineIndexProperty test.
+
+        Note that JSC differs from Chakra in that a JSC doesn't use indexed
+        properties placed on the Array prototype when sorting the indexed 
+        properties of an Object.  This is behavior is considered undefined
+        in the standard.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es5/defineIndexProperty.baseline-jsc: Added.
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/comments/multi-line-html-close.js
+        https://bugs.webkit.org/show_bug.cgi?id=170648
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Array/S15.4.3_A2.2.js
+        https://bugs.webkit.org/show_bug.cgi?id=170652
+
+        Reviewed by Michael Saboff.
+
+        * stress/native-constructors-length.js: Added.
+        (assertLengthDescriptorAttributes):
+        Add a quick test for the length properties of all native constructors.
+
+        * ChakraCore/test/es5/enumerable.baseline-jsc:
+        Rebaseline expectations for this test.
+
+        * test262.yaml:
+
+2017-04-10  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Update spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=170683
+
+        Rubber-stamped by JF Bastien.
+
+        * wasm.yaml:
+        * wasm/spec-tests/br_table.wast.js:
+        * wasm/spec-tests/conversions.wast.js: Removed.
+        * wasm/spec-tests/f32_bitwise.wast.js: Added.
+        * wasm/spec-tests/f32_cmp.wast.js:
+        * wasm/spec-tests/f64_bitwise.wast.js: Added.
+        * wasm/spec-tests/f64_cmp.wast.js:
+        * wasm/spec-tests/i32.wast.js:
+        * wasm/spec-tests/i64.wast.js:
+        * wasm/spec-tests/int_exprs.wast.js:
+        * wasm/spec-tests/memory.wast.js:
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/expressions/object/__proto__-fn-name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170650
+
+        Reviewed by Saam Barati.
+
+        * stress/inferred-names.js:
+        * test262.yaml:
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/literals/regexp/identity-escape.js
+        https://bugs.webkit.org/show_bug.cgi?id=170651
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-07  Michael Saboff  <msaboff@apple.com>
+
+        Fix and enable ChakraCore/test/es6/ES6Function_bugs.js after r215072
+        https://bugs.webkit.org/show_bug.cgi?id=170580
+
+        Reviewed by JF Bastien.
+
+        Commented out subtest that expects defineProperty("length") to a getter on a
+        sealed function shouldn't throw.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es6/ES6Function_bugs.js:
+
+2017-04-06  Michael Saboff  <msaboff@apple.com>
+
+        Cannot Object.seal() or Object.freeze() global "this"
+        https://bugs.webkit.org/show_bug.cgi?id=170549
+
+        Reviewed by Mark Lam.
+
+        Enabled failing tests fixed by the corresponding code change:
+            ChakraCore/test/LetConst/delete.js
+            ChakraCore/test/LetConst/dop.js
+            ChakraCore/test/LetConst/dop1.js
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/LetConst/dop.baseline-jsc: Added JSC specific expected output.
+        * ChakraCore/test/LetConst/dop1.baseline-jsc: Added JSC specific expected output.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: ES2017 test progressions need updated expectations (arguments.caller removed)
+        https://bugs.webkit.org/show_bug.cgi?id=170536
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+        After r208867 the tests are out of date and are now expected to fail.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Final rebaseline of existing tests, a few tests have started failing
+        https://bugs.webkit.org/show_bug.cgi?id=170538
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+        These tests started failing a while ago. Mark them as legitmate failures.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Rebaseline expectations for now passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=170532
+
+        Reviewed by Ryosuke Niwa.
+
+        * test262.yaml:
+        Update expectations for tests we are now passing.
+
+2017-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: module test progressions need updated expectations (@@iterator changes)
+        https://bugs.webkit.org/show_bug.cgi?id=170535
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+        After r212430 the tests are out of date and are now expected to fail.
+
+2017-04-05  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed rollout of r214642 as the test still intermittently fails.
+
+        Disabled ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.1.js.
+
+        * ChakraCore.yaml:
+
+2017-04-05  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (Safari 10.1): Inserting elements into arrays fails when array contains very large numbers
+        https://bugs.webkit.org/show_bug.cgi?id=170264
+        <rdar://problem/31375593>
+
+        Rubber-stamped by Saam Barati.
+
+        The original bug was fixed in: https://trac.webkit.org/changeset/214714
+        I'm just adding another test for good measure.
+
+        * stress/double-array-to-array-storage.js: Added.
+        (assert):
+
+2017-04-05  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: We shouldn't need to pin size registers if we have a fast memory.
+        https://bugs.webkit.org/show_bug.cgi?id=170504
+
+        Reviewed by Mark Lam.
+
+        * wasm/function-tests/trap-after-cross-instance-call.js: Added.
+        (b.new.WebAssembly.Memory):
+        (importObject.foo.bar):
+        (wasmFrameCountFromError):
+
+2017-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Generate TemplateObjects at linking time
+        https://bugs.webkit.org/show_bug.cgi?id=169743
+
+        Reviewed by Keith Miller.
+
+        * stress/template-string-tags-eval.js: Added.
+        (shouldBe):
+        (tag):
+
+2017-04-04  Mark Lam  <mark.lam@apple.com>
+
+        On ARM64, DFG::SpeculativeJIT::compileArithMod() failed to ensure result is of DataFormatInt32.
+        https://bugs.webkit.org/show_bug.cgi?id=170473
+        <rdar://problem/29912391>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170473.js: Added.
+
+2017-04-03  Mark Lam  <mark.lam@apple.com>
+
+        Fix incorrect capacity delta calculation reported in SparseArrayValueMap::add().
+        https://bugs.webkit.org/show_bug.cgi?id=170412
+        <rdar://problem/29697336>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-170412.js: Added.
+
+2017-04-03  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Update spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=170361
+
+        Rubber-stamped by Saam Barati.
+
+        Update the spec tests to run tests generated by the newer spec
+        test builder wasm-spec/test/builder.py. This patch also adds the
+        necessary harness code in spec-harness.js so we can run the tests.
+
+        * wasm.yaml:
+        * wasm/import-spec-tests.rb:
+        * wasm/spec-harness.js: Added.
+        (import.string_appeared_here.then):
+        (test):
+        (promise_test):
+        (let.assert_unreached):
+        * wasm/spec-harness/index.js: Added.
+        (let.testNum):
+        (assertThrows):
+        (_assert):
+        (ValueResult):
+        (ErrorResult):
+        (Result.prototype.isError):
+        (binary):
+        (module):
+        (uniqueTest):
+        (assert_invalid):
+        (assert_soft_invalid):
+        (register):
+        (call):
+        (get instance):
+        (exports):
+        (run):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (try.f):
+        (catch):
+        (assert_exhaustion):
+        (assert_return):
+        (assert_return_nan):
+        * wasm/spec-harness/testharness.css: Added.
+        (html):
+        (#log .warning,):
+        (#log .error,):
+        (section#summary):
+        (table#results):
+        (table#results th:first-child,):
+        (table#results th:last-child,):
+        (table#results.assertions th:last-child,):
+        (table#results th):
+        (table#results td):
+        (tr.pass > td:first-child):
+        (tr.fail > td:first-child):
+        (tr.timeout > td:first-child):
+        (tr.notrun > td:first-child):
+        (.pass > td:first-child, .fail > td:first-child, .timeout > td:first-child, .notrun > td:first-child):
+        (table#results span):
+        (table#results span.expected):
+        (table#results span.actual):
+        (span.ok):
+        (tr.error):
+        (span.timeout):
+        (span.ok, span.timeout, span.error):
+        * wasm/spec-harness/testharness.js: Added.
+        (WindowTestEnvironment):
+        (WindowTestEnvironment.prototype._dispatch):
+        (WindowTestEnvironment.prototype._forEach_windows):
+        (WindowTestEnvironment.prototype.on_tests_ready):
+        (WindowTestEnvironment.prototype.setup_messages):
+        (WindowTestEnvironment.prototype.next_default_test_name):
+        (WindowTestEnvironment.prototype.on_new_harness_properties):
+        (WindowTestEnvironment.prototype.add_on_loaded_callback):
+        (WindowTestEnvironment.prototype.test_timeout):
+        (WindowTestEnvironment.prototype.global_scope):
+        (WorkerTestEnvironment):
+        (WorkerTestEnvironment.prototype._dispatch):
+        (WorkerTestEnvironment.prototype._add_message_port):
+        (WorkerTestEnvironment.prototype.next_default_test_name):
+        (WorkerTestEnvironment.prototype.on_new_harness_properties):
+        (WorkerTestEnvironment.prototype.on_tests_ready):
+        (WorkerTestEnvironment.prototype.add_on_loaded_callback):
+        (WorkerTestEnvironment.prototype.test_timeout):
+        (WorkerTestEnvironment.prototype.global_scope):
+        (DedicatedWorkerTestEnvironment):
+        (DedicatedWorkerTestEnvironment.prototype.on_tests_ready):
+        (SharedWorkerTestEnvironment):
+        (SharedWorkerTestEnvironment.prototype.on_tests_ready):
+        (ServiceWorkerTestEnvironment):
+        (ServiceWorkerTestEnvironment.prototype.add_on_loaded_callback):
+        (create_test_environment):
+        (is_shared_worker):
+        (is_service_worker):
+        (test):
+        (async_test):
+        (promise_test):
+        (this.wait_for):
+        (EventWatcher):
+        (setup):
+        (done):
+        (generate_tests):
+        (step_timeout):
+        (truncate):
+        (is_node):
+        (format_value):
+        * wasm/spec-harness/testharnessreport.js: Added.
+        * wasm/spec-harness/wasm-constants.js: Added.
+        (bytes):
+        (bytesWithHeader):
+        (makeSig):
+        (makeSig_v_x):
+        (makeSig_v_xx):
+        (makeSig_r_v):
+        (makeSig_r_x):
+        (makeSig_r_xx):
+        (assertTraps):
+        (assertWasmThrows):
+        * wasm/spec-harness/wasm-module-builder.js: Added.
+        (Binary.prototype.emit_u8):
+        (Binary.prototype.emit_u16):
+        (Binary.prototype.emit_u32):
+        (Binary.prototype.emit_u32v):
+        (Binary.prototype.emit_bytes):
+        (Binary.prototype.emit_string):
+        (Binary.prototype.emit_header):
+        (Binary.prototype.emit_section):
+        (Binary):
+        (WasmFunctionBuilder):
+        (WasmFunctionBuilder.prototype.exportAs):
+        (WasmFunctionBuilder.prototype.exportFunc):
+        (WasmFunctionBuilder.prototype.addBody):
+        (WasmFunctionBuilder.prototype.addLocals):
+        (WasmFunctionBuilder.prototype.end):
+        (WasmGlobalBuilder):
+        (WasmGlobalBuilder.prototype.exportAs):
+        (WasmModuleBuilder):
+        (WasmModuleBuilder.prototype.addStart):
+        (WasmModuleBuilder.prototype.addMemory):
+        (WasmModuleBuilder.prototype.addExplicitSection):
+        (WasmModuleBuilder.prototype.addType):
+        (WasmModuleBuilder.prototype.addGlobal):
+        (WasmModuleBuilder.prototype.addFunction):
+        (WasmModuleBuilder.prototype.addImport):
+        (WasmModuleBuilder.prototype.addImportedGlobal):
+        (WasmModuleBuilder.prototype.addImportedMemory):
+        (WasmModuleBuilder.prototype.addImportedTable):
+        (WasmModuleBuilder.prototype.addExport):
+        (WasmModuleBuilder.prototype.addExportOfKind):
+        (WasmModuleBuilder.prototype.addDataSegment):
+        (WasmModuleBuilder.prototype.exportMemoryAs):
+        (WasmModuleBuilder.prototype.addFunctionTableInit):
+        (WasmModuleBuilder.prototype.appendToTable):
+        (WasmModuleBuilder.prototype.setFunctionTableLength):
+        (WasmModuleBuilder.prototype.toArray):
+        (WasmModuleBuilder.prototype.toBuffer):
+        (WasmModuleBuilder.prototype.instantiate):
+        * wasm/spec-harness/wast.js: Added.
+        (normalize):
+        (require.else._registry.name):
+        (require):
+        (add_hex_char):
+        (add_char):
+        (string_with):
+        (list_of_opt):
+        (break_bytes.f):
+        (break_bytes):
+        (f):
+        (decls):
+        (func_type):
+        (limits):
+        (global_type):
+        (testop):
+        (relop):
+        (unop):
+        (binop):
+        (cvtop):
+        (oper):
+        (mem_size):
+        (extension):
+        (memop):
+        (storeop):
+        (var):
+        (constop):
+        (instr.else.switch.case.0.f):
+        (instr.else.switch.case.1.f.1):
+        (instr.else.switch.case.2.f.2):
+        (instr):
+        (func_with_name):
+        (func):
+        (start):
+        (table):
+        (memory):
+        (segment):
+        (elems):
+        (data):
+        (typedef):
+        (import_kind):
+        (import):
+        (export_kind):
+        (export):
+        (var_opt):
+        (is_func_import):
+        (is_table_import):
+        (is_memory_import):
+        (is_global_import):
+        (f.1):
+        (f.2):
+        (f.3):
+        (module_with_var_opt):
+        (module_):
+        (literal):
+        (definition):
+        (access):
+        (action):
+        (script):
+        (_registry.string_appeared_here):
+        (init):
+        (make_matrix):
+        (copy):
+        (append):
+        (sub):
+        (fill):
+        (blit):
+        (iter):
+        (map):
+        (iteri):
+        (mapi):
+        (to_list):
+        (list_length):
+        (of_list):
+        (fold_left):
+        (fold_right):
+        (maxson):
+        (trickle):
+        (bubble):
+        (trickleup):
+        (sort):
+        (merge):
+        (isortto):
+        (sortto):
+        (stable_sort):
+        (import_type):
+        (export_type):
+        (dims.n):
+        (dims.d.i):
+        (dims):
+        (map_file):
+        (create):
+        (of_array):
+        (slice_left):
+        (slice_right):
+        (slice_left_1):
+        (slice_right_1):
+        (slice_left_2):
+        (slice_right_2):
+        (array1_of_genarray):
+        (array2_of_genarray):
+        (array3_of_genarray):
+        (reshape_1):
+        (reshape_2):
+        (reshape_3):
+        (reshape):
+        (__):
+        (contents):
+        (to_bytes):
+        (nth):
+        (length):
+        (clear):
+        (reset):
+        (resize):
+        (add_substring):
+        (add_subbytes):
+        (add_string):
+        (add_bytes):
+        (add_buffer):
+        (add_channel):
+        (output_buffer):
+        (closing):
+        (advance_to_closing):
+        (advance_to_non_alpha):
+        (find_ident):
+        (add_substitute):
+        (make):
+        (to_string):
+        (of_string):
+        (sub_string):
+        (extend):
+        (blit_string):
+        (concat):
+        (cat):
+        (is_space):
+        (trim):
+        (escaped):
+        (uppercase):
+        (lowercase):
+        (apply1):
+        (capitalize):
+        (uncapitalize):
+        (index_rec):
+        (index):
+        (index_from):
+        (rindex_rec):
+        (rindex):
+        (rindex_from):
+        (contains_from):
+        (contains):
+        (rcontains_from):
+        (caml_array_sub):
+        (len):
+        (caml_array_concat):
+        (caml_make_vect):
+        (caml_array_blit):
+        (get if):
+        (caml_set_oo_id):
+        (get_id):
+        (caml_int32_float_of_bits):
+        (caml_int32_bits_of_float):
+        (caml_classify_float):
+        (caml_modf_float):
+        (caml_ldexp_float):
+        (caml_frexp_float):
+        (caml_copysign_float):
+        (caml_expm1_float):
+        (caml_hypot_float):
+        (caml_log10_float):
+        (caml_failwith):
+        (parse_digit):
+        (int_of_string_base):
+        (parse_sign_and_base):
+        (caml_int_of_string.aux):
+        (caml_int_of_string):
+        (caml_int64_of_string.aux):
+        (caml_int64_of_string):
+        (int_of_base):
+        (parse_format):
+        (finish_formatting):
+        (caml_format_int):
+        (caml_int64_format):
+        (caml_format_float):
+        (float_of_string):
+        (div):
+        (mod_):
+        (caml_bswap16):
+        (caml_int32_bswap):
+        (imul):
+        (neg_signed):
+        (not):
+        (eq):
+        (neg):
+        (lsl_):
+        (lsr_):
+        (asr_):
+        (is_zero):
+        (mul):
+        (swap):
+        (xor):
+        (or_):
+        (and_):
+        (ge):
+        (lt):
+        (gt):
+        (le):
+        (to_float):
+        (of_float):
+        (div_mod):
+        (compare):
+        (of_int32):
+        (to_int32):
+        (to_hex.aux):
+        (to_hex):
+        (discard_sign):
+        (float_of_bits):
+        (bits_of_float.to_nat):
+        (bits_of_float):
+        (get64):
+        (erase_rel):
+        (concat_fmtty):
+        (concat_fmt):
+        (create_char_set):
+        (add_in_char_set):
+        (rev_char_set):
+        (is_in_char_set):
+        (prec_of_prec_opt):
+        (param_format_of_ignored_format):
+        (buffer_check_size):
+        (buffer_add_char):
+        (buffer_add_string):
+        (buffer_contents):
+        (char_of_iconv):
+        (char_of_fconv):
+        (char_of_counter):
+        (print_char):
+        (set while.set var):
+        (set while.set else):
+        (set var):
+        (set else):
+        (set print_char):
+        (set if):
+        (bprint_padty):
+        (bprint_ignored_flag):
+        (bprint_pad_opt):
+        (bprint_padding):
+        (bprint_precision):
+        (bprint_iconv_flag):
+        (bprint_int_fmt):
+        (bprint_altint_fmt):
+        (bprint_fconv_flag):
+        (bprint_float_fmt):
+        (string_of_formatting_lit):
+        (string_of_formatting_gen):
+        (bprint_char_literal):
+        (bprint_string_literal):
+        (bprint_fmtty):
+        (int_of_custom_arity):
+        (bprint_fmt):
+        (string_of_fmt):
+        (symm):
+        (fmtty_rel_det):
+        (trans):
+        (fmtty_of_formatting_gen):
+        (fmtty_of_fmt):
+        (fmtty_of_custom):
+        (fmtty_of_padding_fmtty):
+        (fmtty_of_precision_fmtty):
+        (type_padding):
+        (type_padprec):
+        (type_ignored_param_one):
+        (type_format_gen):
+        (type_ignored_format_substitution):
+        (type_format):
+        (recast):
+        (fix_padding):
+        (fix_int_precision):
+        (string_to_caml_string):
+        (format_of_iconv):
+        (format_of_aconv):
+        (format_of_fconv):
+        (convert_int):
+        (convert_int32):
+        (convert_nativeint):
+        (convert_int64):
+        (else.is_valid):
+        (convert_float):
+        (format_caml_char):
+        (string_of_fmtty):
+        (else.switch.):
+        (else.switch.k.prime):
+        (else.switch.else.):
+        (else.switch.else.k.prime.1):
+        (make_printf):
+        (make_from_fmtty):
+        (make_invalid_arg):
+        (make_string_padding):
+        (make_int_padding_precision):
+        (make_custom):
+        (output_acc):
+        (bufput_acc):
+        (strput_acc):
+        (failwith_message.k):
+        (failwith_message):
+        (open_box_of_string.else.invalid_box):
+        (open_box_of_string.else.parse_spaces):
+        (open_box_of_string.else.parse_lword):
+        (open_box_of_string.else.parse_int):
+        (open_box_of_string):
+        (make_padding_fmt_ebb):
+        (make_precision_fmt_ebb):
+        (make_padprec_fmt_ebb):
+        (invalid_format_message):
+        (invalid_format_without):
+        (expected_character):
+        (compute_int_conv):
+        (incompatible_flag):
+        (parse_positive):
+        (parse_conv):
+        (parse_after_precision):
+        (else.parse_literal):
+        (parse_after_padding):
+        (parse_literal):
+        (parse_after_at):
+        (add_literal):
+        (parse_spaces):
+        (parse_integer):
+        (compute_float_conv):
+        (search_subformat_end):
+        (check_no_0):
+        (opt_of_pad):
+        (get_prec_opt):
+        (else.switch.case.99.char_format):
+        (else.switch.scan_format):
+        (parse_conversion):
+        (set_flag):
+        (parse_flags):
+        (is_int_base):
+        (counter_of_char):
+        (add_range):
+        (fail_single_percent):
+        (parse_char_set_after_char):
+        (parse_char_set_content):
+        (parse_char_set_start):
+        (parse_char_set):
+        (check_open_box):
+        (parse_tag):
+        (fmt_ebb_of_string):
+        (format_of_string_fmtty):
+        (format_of_string_format):
+        (caret):
+        (caml_ml_open_descriptor_in):
+        (caml_ml_open_descriptor_out):
+        (caml_ml_flush):
+        (node_std_output):
+        (caml_ml_output_char):
+        (caml_ml_input):
+        (caml_ml_input_char):
+        (caml_ml_out_channels_list):
+        (fail):
+        (caml_lex_array):
+        (caml_lex_engine):
+        (caml_lex_run_mem):
+        (caml_lex_run_tag):
+        (caml_new_lex_engine):
+        (caml_obj_dup):
+        (caml_obj_truncate):
+        (caml_lazy_make_forward):
+        (caml_update_dummy):
+        (caml_int_compare):
+        (caml_compare):
+        (caml_equal):
+        (caml_notequal):
+        (caml_greaterequal):
+        (caml_lessequal):
+        (else.aux):
+        (caml_get_public_method):
+        (caml_parse_engine):
+        (caml_set_parser_trace):
+        (js_string_of_char):
+        (caml_string_get):
+        (caml_create_string):
+        (caml_string_compare):
+        (caml_fill_string):
+        (caml_blit_string):
+        (caml_blit_bytes):
+        (bytes_of_string):
+        (bytes_to_string):
+        (caml_string_of_char_array):
+        (caml_is_printable):
+        (caml_string_get16):
+        (caml_string_get32):
+        (repeat):
+        (chr):
+        (app):
+        (js):
+        (curry_1):
+        (_1):
+        (js1):
+        (__1):
+        (curry_2):
+        (_2):
+        (js2):
+        (__2):
+        (curry_3):
+        (_3):
+        (js3):
+        (__3):
+        (curry_4):
+        (_4):
+        (js4):
+        (__4):
+        (curry_5):
+        (_5):
+        (js5):
+        (__5):
+        (curry_6):
+        (_6):
+        (js6):
+        (__6):
+        (curry_7):
+        (_7):
+        (js7):
+        (__7):
+        (curry_8):
+        (_8):
+        (js8):
+        (__8):
+        (stream):
+        (eos):
+        (skip):
+        (read):
+        (peek):
+        (string_of_byte):
+        (position):
+        (region):
+        (error):
+        (guard):
+        (get 1):
+        (get expect):
+        (get illegal):
+        (at):
+        (u32):
+        (u64):
+        (get require):
+        (vuN):
+        (get var):
+        (vsN):
+        (vu32):
+        (vs32):
+        (vs64):
+        (f32):
+        (f64):
+        (len32):
+        (string):
+        (opt):
+        (vec):
+        (sized):
+        (value_type):
+        (elem_type):
+        (stack_type):
+        (table_type):
+        (memory_type):
+        (mutability.get if):
+        (mutability):
+        (instr.get if):
+        (instr_block):
+        (const):
+        (id):
+        (section):
+        (type_section):
+        (import_kind.get if):
+        (import_section):
+        (func_section):
+        (table_section):
+        (memory_section):
+        (global):
+        (global_section):
+        (export_kind.get if):
+        (export_section):
+        (start_section):
+        (local):
+        (code):
+        (code_section):
+        (table_segment):
+        (elem_section):
+        (memory_segment):
+        (data_section):
+        (partial_arg.1):
+        (custom):
+        (custom_section):
+        (iterate):
+        (decode):
+        (patch):
+        (encode.u8):
+        (encode.u16):
+        (encode.u32):
+        (encode.vu64):
+        (encode.vs64):
+        (encode.vu32):
+        (encode.len):
+        (encode.bool):
+        (encode.string):
+        (encode.vec):
+        (encode.gap32):
+        (encode.patch_gap32):
+        (encode.value_type):
+        (encode.stack_type):
+        (encode.func_type):
+        (encode.limits):
+        (encode.table_type):
+        (encode.memory_type):
+        (encode.global_type):
+        (encode.memop):
+        (encode):
+        (encode.instr):
+        (encode.const):
+        (encode.section):
+        (encode.type_section):
+        (encode.import):
+        (encode.import_section):
+        (encode.func):
+        (encode.func_section):
+        (encode.table):
+        (encode.table_section):
+        (encode.memory):
+        (encode.memory_section):
+        (encode.global):
+        (encode.global_section):
+        (encode.export_kind):
+        (encode.export):
+        (encode.export_section):
+        (encode.start_section):
+        (encode.combine):
+        (encode.compress):
+        (encode.local):
+        (encode.code):
+        (encode.code_section):
+        (encode.segment):
+        (encode.table_segment):
+        (encode.elem_section):
+        (encode.memory_segment):
+        (encode.module_):
+        (Make.warn):
+        (Make.error):
+        (Make):
+        (print_nan_significand_digits):
+        (Make.of_bits):
+        (Make.to_bits):
+        (Make.is_nan):
+        (Make.canonicalize_nan):
+        (Make.determine_binary_nan):
+        (Make.determine_unary_nan):
+        (Make.binary):
+        (Make.unary):
+        (Make.add):
+        (Make.sub):
+        (Make.mul):
+        (Make.div):
+        (Make.sqrt):
+        (Make.ceil):
+        (Make.floor):
+        (Make.trunc):
+        (Make.nearest):
+        (Make.min):
+        (Make.max):
+        (Make.abs):
+        (Make.neg):
+        (Make.copysign):
+        (Make.eq):
+        (Make.ne):
+        (Make.lt):
+        (Make.gt):
+        (Make.le):
+        (Make.ge):
+        (Make.of_signless_string):
+        (Make.of_string):
+        (Make.to_string):
+        (add_queue):
+        (peek_queue):
+        (take_queue):
+        (pp_enqueue):
+        (pp_clear_queue):
+        (pp_output_string):
+        (break_new_line):
+        (break_same_line):
+        (pp_force_break_line):
+        (switch.add_tab):
+        (else.switch.find):
+        (format_pp_token):
+        (advance_left):
+        (enqueue_advance):
+        (enqueue_string_as):
+        (set_size):
+        (scan_push):
+        (pp_open_box_gen):
+        (pp_close_box):
+        (pp_open_tag):
+        (pp_close_tag):
+        (pp_set_print_tags):
+        (pp_set_mark_tags):
+        (pp_get_print_tags):
+        (pp_get_mark_tags):
+        (pp_set_tags):
+        (pp_get_formatter_tag_functions):
+        (pp_set_formatter_tag_functions):
+        (pp_rinit):
+        (pp_flush_queue):
+        (pp_print_as_size):
+        (pp_print_string):
+        (pp_print_int):
+        (pp_print_float):
+        (pp_print_bool):
+        (pp_open_hbox):
+        (pp_open_vbox):
+        (pp_open_hvbox):
+        (pp_open_hovbox):
+        (pp_open_box):
+        (pp_print_newline):
+        (pp_print_flush):
+        (pp_force_newline):
+        (pp_print_if_newline):
+        (pp_print_break):
+        (pp_print_space):
+        (pp_print_cut):
+        (pp_open_tbox):
+        (pp_close_tbox):
+        (pp_print_tbreak):
+        (pp_print_tab):
+        (pp_set_tab):
+        (pp_print_list):
+        (flush):
+        (pp_print_text):
+        (pp_set_max_boxes):
+        (pp_get_max_boxes):
+        (pp_over_max_boxes):
+        (pp_get_ellipsis_text):
+        (pp_limit):
+        (pp_set_max_indent):
+        (pp_get_max_indent):
+        (pp_set_margin):
+        (pp_get_margin):
+        (pp_set_formatter_out_functions):
+        (pp_get_formatter_out_functions):
+        (pp_set_formatter_output_functions):
+        (pp_get_formatter_output_functions):
+        (pp_set_all_formatter_output_functions):
+        (pp_get_all_formatter_output_functions):
+        (display_newline):
+        (display_blanks):
+        (state.16):
+        (state.17):
+        (state.18):
+        (state.19):
+        (pp_set_formatter_out_channel):
+        (default_pp_mark_open_tag):
+        (default_pp_mark_close_tag):
+        (default_pp_print_open_tag):
+        (default_pp_print_close_tag):
+        (pp_make_formatter):
+        (ppf.18):
+        (ppf.19):
+        (make_formatter):
+        (formatter_of_out_channel):
+        (formatter_of_buffer):
+        (flush_str_formatter):
+        (flush_buf_formatter):
+        (open_hbox):
+        (open_vbox):
+        (open_hvbox):
+        (open_hovbox):
+        (open_box):
+        (close_box):
+        (open_tag):
+        (close_tag):
+        (print_as):
+        (print_string):
+        (print_int):
+        (print_float):
+        (print_bool):
+        (print_cut):
+        (print_space):
+        (force_newline):
+        (print_flush):
+        (print_newline):
+        (print_if_newline):
+        (open_tbox):
+        (close_tbox):
+        (print_tbreak):
+        (set_tab):
+        (print_tab):
+        (set_margin):
+        (get_margin):
+        (set_max_indent):
+        (get_max_indent):
+        (set_max_boxes):
+        (get_max_boxes):
+        (over_max_boxes):
+        (set_ellipsis_text):
+        (get_ellipsis_text):
+        (set_formatter_out_channel):
+        (set_formatter_out_functions):
+        (get_formatter_out_functions):
+        (set_formatter_output_functions):
+        (get_formatter_output_functions):
+        (set_all_formatter_output_functions):
+        (get_all_formatter_output_functions):
+        (set_formatter_tag_functions):
+        (get_formatter_tag_functions):
+        (set_print_tags):
+        (get_print_tags):
+        (set_mark_tags):
+        (get_mark_tags):
+        (set_tags):
+        (compute_tag):
+        (output_formatting_lit):
+        (kfprintf):
+        (ikfprintf):
+        (fprintf):
+        (ifprintf):
+        (printf):
+        (eprintf):
+        (k.prime):
+        (ksprintf):
+        (sprintf):
+        (asprintf.k.prime):
+        (asprintf):
+        (k):
+        (bprintf):
+        (succ):
+        (pred):
+        (abs):
+        (lognot):
+        (Make.cmp_u):
+        (Make.divrem_u):
+        (Make.div_s):
+        (Make.div_u):
+        (Make.rem_s):
+        (Make.rem_u):
+        (Make.shift):
+        (Make.shl):
+        (Make.shr_s):
+        (Make.shr_u):
+        (Make.clamp_rotate_count):
+        (Make.rotl):
+        (Make.rotr):
+        (Make.loop):
+        (Make.clz):
+        (Make.ctz):
+        (Make.popcnt):
+        (Make.eqz):
+        (Make.lt_u):
+        (Make.le_u):
+        (Make.gt_u):
+        (Make.ge_u):
+        (Make.of_int_u):
+        (Make.to_string_u):
+        (Make.require):
+        (Make.dec_digit):
+        (Make.hex_digit):
+        (Make.parse_int):
+        (Make.of_string_s):
+        (Make.of_string_u):
+        (convert_pos):
+        (error_nest):
+        (text):
+        (intop):
+        (floatop):
+        (numop):
+        (memsz):
+        (ext):
+        (token.else.switch):
+        (token.else.switch.):
+        (token):
+        (__ocaml_lex_comment_rec):
+        (engine):
+        (new_engine):
+        (from_function):
+        (from_channel):
+        (from_string):
+        (lexeme):
+        (sub_lexeme):
+        (sub_lexeme_opt):
+        (sub_lexeme_char):
+        (sub_lexeme_char_opt):
+        (lexeme_char):
+        (lexeme_start):
+        (lexeme_end):
+        (lexeme_start_p):
+        (lexeme_end_p):
+        (new_line):
+        (flush_input):
+        (take):
+        (drop):
+        (last):
+        (split_last):
+        (index_of):
+        (index_of_int32):
+        (dim):
+        (set 1):
+        (get 2):
+        (log2):
+        (is_power_of_two):
+        (loop):
+        (breakup):
+        (hd):
+        (tl):
+        (rev_append):
+        (rev):
+        (flatten):
+        (rev_map):
+        (map2):
+        (rev_map2):
+        (iter2):
+        (fold_left2):
+        (fold_right2):
+        (for_all):
+        (exists):
+        (for_all2):
+        (exists2):
+        (mem):
+        (memq):
+        (assoc):
+        (assq):
+        (mem_assoc):
+        (mem_assq):
+        (remove_assoc):
+        (remove_assq):
+        (find):
+        (find_all):
+        (partition):
+        (split):
+        (combine):
+        (chop):
+        (rev_sort):
+        (sort_uniq):
+        (Make.height):
+        (Make.create):
+        (Make.singleton):
+        (Make.bal):
+        (Make.is_empty):
+        (Make.find):
+        (Make.mem):
+        (Make.min_binding):
+        (Make.max_binding):
+        (Make.remove_min_binding):
+        (Make.remove):
+        (Make.iter):
+        (Make.map):
+        (Make.mapi):
+        (Make.fold):
+        (Make.for_all):
+        (Make.exists):
+        (Make.add_min_binding):
+        (Make.add_max_binding):
+        (Make.join):
+        (Make.concat):
+        (Make.concat_or_join):
+        (Make.split):
+        (Make.merge):
+        (Make.filter):
+        (Make.partition):
+        (Make.cons_enum):
+        (Make.compare):
+        (Make.equal):
+        (Make.cardinal):
+        (Make.bindings_aux):
+        (Make.bindings):
+        (double_field):
+        (set_double_field):
+        (marshal):
+        (unmarshal):
+        (extension_slot):
+        (extension_name):
+        (extension_id):
+        (i32_const):
+        (i64_const):
+        (f32_const):
+        (f64_const):
+        (block):
+        (br):
+        (br_if):
+        (br_table):
+        (if_):
+        (call):
+        (call_indirect):
+        (get_local):
+        (set_local):
+        (tee_local):
+        (get_global):
+        (set_global):
+        (i32_load):
+        (i64_load):
+        (f32_load):
+        (f64_load):
+        (i32_load8_s):
+        (i32_load8_u):
+        (i32_load16_s):
+        (i32_load16_u):
+        (i64_load8_s):
+        (i64_load8_u):
+        (i64_load16_s):
+        (i64_load16_u):
+        (i64_load32_s):
+        (i64_load32_u):
+        (i32_store):
+        (i64_store):
+        (f32_store):
+        (f64_store):
+        (i32_store8):
+        (i32_store16):
+        (i64_store8):
+        (i64_store16):
+        (i64_store32):
+        (parse):
+        (string_to):
+        (string_to_script):
+        (string_to_module):
+        (parse_error):
+        (position_to_pos):
+        (positions_to_region):
+        (ati):
+        (nat):
+        (nat32):
+        (empty_context):
+        (enter_func):
+        (type_):
+        (lookup):
+        (label):
+        (anon_type):
+        (bind):
+        (bind_func):
+        (bind_local):
+        (bind_global):
+        (bind_table):
+        (bind_memory):
+        (anon):
+        (anon_func):
+        (anon_locals):
+        (anon_global):
+        (anon_table):
+        (anon_memory):
+        (anon_label):
+        (explicit_sig):
+        (inline_type):
+        (yyact):
+        (script1):
+        (module1):
+        (grow_stacks):
+        (clear_parser):
+        (current_lookahead_fun):
+        (catch.else.current_lookahead_fun.0):
+        (yyparse):
+        (peek_val):
+        (symbol_start_pos):
+        (symbol_end_pos):
+        (rhs_start_pos):
+        (rhs_end_pos):
+        (symbol_start):
+        (symbol_end):
+        (rhs_start):
+        (rhs_end):
+        (is_current_lookahead):
+        (failwith):
+        (invalid_arg):
+        (min):
+        (max):
+        (lnot):
+        (char_of_int):
+        (string_of_bool):
+        (bool_of_string):
+        (string_of_int):
+        (valid_float_lexem):
+        (string_of_float):
+        (open_out_gen):
+        (open_out):
+        (open_out_bin):
+        (flush_all):
+        (output_bytes):
+        (output_string):
+        (output):
+        (output_substring):
+        (output_value):
+        (close_out):
+        (close_out_noerr):
+        (open_in_gen):
+        (open_in):
+        (open_in_bin):
+        (input):
+        (else.r):
+        (unsafe_really_input):
+        (really_input):
+        (really_input_string):
+        (input_line.build_result):
+        (input_line.n):
+        (input_line.scan):
+        (input_line):
+        (close_in_noerr):
+        (print_bytes):
+        (print_endline):
+        (prerr_char):
+        (prerr_string):
+        (prerr_bytes):
+        (prerr_int):
+        (prerr_float):
+        (prerr_endline):
+        (prerr_newline):
+        (read_line):
+        (read_int):
+        (read_float):
+        (string_of_format):
+        (at_exit.exit_function.0):
+        (at_exit):
+        (do_at_exit):
+        (exit):
+        (output_binary_int):
+        (seek_out):
+        (pos_out):
+        (out_channel_length):
+        (set_binary_mode_out):
+        (input_binary_int):
+        (input_value):
+        (seek_in):
+        (pos_in):
+        (in_channel_length):
+        (close_in):
+        (set_binary_mode_in):
+        (LargeFile_000):
+        (LargeFile_001):
+        (LargeFile_002):
+        (LargeFile_003):
+        (LargeFile_004):
+        (LargeFile_005):
+        (kbprintf):
+        (plus):
+        (pp):
+        (print):
+        (string_of_pos):
+        (string_of_region):
+        (escaped.needs_escape):
+        (set_signal):
+        (catch_break):
+        (size):
+        (string_of_value_type):
+        (string_of_value_types):
+        (string_of_elem_type):
+        (string_of_limits):
+        (string_of_table_type):
+        (string_of_global_type):
+        (string_of_stack_type):
+        (string_of_func_type):
+        (type_of):
+        (default_value):
+        (value_of_bool):
+        (string_of_values):
+        (to_value):
+        (of_value):
+        (g):
+        (binary):
+        (bytes):
+        * wasm/spec-tests/address.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/binary.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/block.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/br.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/br_if.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/br_table.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/break-drop.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/call.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/call_indirect.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/comments.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/conversions.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/custom_section.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/endianness.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/exports.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/f32.wast.js: Removed.
+        * wasm/spec-tests/f32_cmp.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/f64.wast.js: Removed.
+        * wasm/spec-tests/f64_cmp.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/fac.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/float_exprs.wast.js: Removed.
+        * wasm/spec-tests/float_literals.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/float_memory.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/float_misc.wast.js: Removed.
+        * wasm/spec-tests/forward.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/func.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/func_ptrs.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/get_local.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/globals.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/i32.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/i64.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/if.wast.js: Added.
+        * wasm/spec-tests/imports.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/int_exprs.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/int_literals.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/jsapi.js: Added.
+        (testJSAPI.get test):
+        (testJSAPI.test):
+        (testJSAPI.set test):
+        (testJSAPI.assertCompileError):
+        (testJSAPI.assertCompileSuccess):
+        (testJSAPI):
+        * wasm/spec-tests/labels.wast.js: Added.
+        * wasm/spec-tests/left-to-right.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/linking.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/loop.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/memory.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/memory_redundancy.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/memory_trap.wast.js: Removed.
+        * wasm/spec-tests/names.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/nop.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/resizing.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/return.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/select.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/set_local.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/skip-stack-guard-page.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/stack.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/start.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/store_retval.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/switch.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/tee_local.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/traps.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/typecheck.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/unreachable.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-tests/unreached-invalid.wast.js: Added.
+        * wasm/spec-tests/unwind.wast.js:
+        (register): Deleted.
+        (module): Deleted.
+        (instance): Deleted.
+        (assert_malformed): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+
+2017-04-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Object with numerical keys with gaps gets filled by NaN values
+        https://bugs.webkit.org/show_bug.cgi?id=164412
+
+        Reviewed by Merk Lam.
+
+        * stress/object-number-properties.js: Added.
+        (assert):
+        (boo):
+
+2017-03-30  Michael Saboff  <msaboff@apple.com>
+
+        Turning ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.1.js back as it appears to always work
+        https://bugs.webkit.org/show_bug.cgi?id=170313
+
+        Reviewed by Saam Barati.
+
+        Enable ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.1.js as it seems solid.
+
+        * ChakraCore.yaml:
+
+2017-03-30  Michael Saboff  <msaboff@apple.com>
+
+        Enable ChakraCore/Function/FuncBody.js test as it now works
+        https://bugs.webkit.org/show_bug.cgi?id=170301
+
+        Reviewed by Mark Lam.
+
+        This test no longer crashes, so enable it and create a JSC specific
+        expected file.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/Function/FuncBodyES5.baseline-jsc: Added.
+
+2017-03-30  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: fix misc JS API implementation inconsistencies
+        https://bugs.webkit.org/show_bug.cgi?id=170187
+
+        Reviewed by Keith Miller.
+
+        Verify that WebAssembly function are on the object's __proto__.
+
+        * wasm/js-api/Module-compile.js:
+        * wasm/js-api/validate.js:
+        * wasm/js-api/web-assembly-instantiate.js:
+
+2017-03-29  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: add shell-only Memory mode helper
+        https://bugs.webkit.org/show_bug.cgi?id=170227
+
+        Reviewed by Mark Lam.
+
+        * wasm/assert.js: fix a prior debug thing I forgot to remove
+        * wasm/function-tests/memory-section-and-import.js: the assert
+        issue was hiding a failure in error message here
+        * wasm/js-api/element.js: the assert issue was hiding a failure in
+        error message here
+        (badInstantiation.test):
+        (badInstantiation):
+        * wasm/js-api/extension-MemoryMode.js: Added.
+        (const.validateMode.what.switch):
+        (testMemoryNoMax):
+        (testMemory):
+        (testInstanceNoMemory):
+        (testInstanceNoMax):
+        (testInstance):
+        * wasm/js-api/test_memory.js: the assert issue was hiding a
+        failure in error message here
+        (test):
+
+2017-03-28  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Make WebAssembly.instantiate/compile truly asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=169187
+
+        Reviewed by Saam Barati.
+
+        * wasm/assert.js:
+        * wasm/js-api/Module-compile.js:
+        (async.testPromiseAPI):
+        * wasm/js-api/web-assembly-compile-parallel.js: Added.
+        (async.throwExn):
+        (async.test):
+        * wasm/js-api/web-assembly-instantiate-parallel.js: Added.
+        (async.test):
+        * wasm/js-api/web-assembly-instantiate.js:
+        (assert.eq.async.test):
+        (assert.eq):
+        (assert.asyncTest.async.test):
+        (assert.asyncTest):
+        (assert.truthy.async.test): Deleted.
+        (assert.truthy): Deleted.
+
+2017-03-28  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: implement Module imports/exports
+        https://bugs.webkit.org/show_bug.cgi?id=166982
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/Module.exports.js: Added.
+        (assert.throws.WebAssembly.Module.prototype.exports):
+        (assert.eq):
+        * wasm/js-api/Module.imports.js: Added.
+        (assert.throws.WebAssembly.Module.prototype.imports):
+        (assert.eq):
+
+2017-03-27  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: misc memory testing
+        https://bugs.webkit.org/show_bug.cgi?id=170137
+
+        Reviewed by Keith Miller.
+
+        * wasm/assert.js: handle newlines in code we print out, avoid regex
+        * wasm/function-tests/memory-import-and-grow.js: Added.
+        (const.instantiate):
+        (const.test):
+        * wasm/function-tests/memory-section-and-import.js: Added.
+        (const.instantiate):
+
+2017-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use jsNontrivialString agressively for ToString(Int52)
+        https://bugs.webkit.org/show_bug.cgi?id=170002
+
+        Reviewed by Sam Weinig.
+
+        * stress/to-string-int52.js: Added.
+        (shouldBe):
+        (toString10):
+        (expected):
+
+2017-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG] Make addShouldSpeculateAnyInt more conservative to avoid regression caused by Double <-> Int52 conversions
+        https://bugs.webkit.org/show_bug.cgi?id=169998
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/int52-back-and-forth.js: Added.
+        (shouldBe):
+        (num):
+
+2017-03-23  Mark Lam  <mark.lam@apple.com>
+
+        Clients of JSArray::tryCreateForInitializationPrivate() should do their own null checks.
+        https://bugs.webkit.org/show_bug.cgi?id=169783
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-169783.js: Added.
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG] Propagate AnyIntAsDouble information carefully to utilize it in fixup
+        https://bugs.webkit.org/show_bug.cgi?id=169914
+
+        Reviewed by Saam Barati.
+
+        * stress/any-int-as-double-add.js: Added.
+        (shouldBe):
+        (test):
+        * stress/to-this-numbers.js: Added.
+        (shouldBe):
+        (Number.prototype.toThis):
+
+2017-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Add support for Error.stackTraceLimit.
+        https://bugs.webkit.org/show_bug.cgi?id=169904
+
+        Reviewed by Saam Barati.
+
+        * stress/error-stack-trace-limit.js: Added.
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use jsNontrivialString for Number toString operations
+        https://bugs.webkit.org/show_bug.cgi?id=169965
+
+        Reviewed by Mark Lam.
+
+        * stress/to-string-int32.js: Added.
+        (shouldBe):
+        (toString10):
+        (expected):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: test module namespace object for WebAssembly.Instance
+        https://bugs.webkit.org/show_bug.cgi?id=169951
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: constructors without new don't throw
+        https://bugs.webkit.org/show_bug.cgi?id=165995
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-03-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number.prototype.toString on Int32 / Int52 / Double
+        https://bugs.webkit.org/show_bug.cgi?id=167454
+
+        Reviewed by Saam Barati.
+
+        * stress/number-to-string-abstract-operation.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+        * stress/number-to-string-radix.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+        * stress/number-to-string.js: Added.
+        (shouldBe):
+        (int32ToString):
+        (shouldBe.int32ToString.new.Number.int52ToString):
+        (shouldBe.int32ToString.new.Number):
+        (shouldBe.doubleToString):
+
 2017-03-19  Chris Dumez  <cdumez@apple.com>
 
         `const location = "foo"` throws in a worker

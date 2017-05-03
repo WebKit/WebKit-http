@@ -33,25 +33,26 @@
 #include "VM.h"
 #include "WasmExceptionType.h"
 #include "WasmMemory.h"
+#include "WasmThunks.h"
 
-#include <signal.h>
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/threads/Signals.h>
 
 namespace JSC { namespace Wasm {
-
 
 namespace {
 static const bool verbose = false;
 }
 
-static struct sigaction oldSigBusHandler;
-static struct sigaction oldSigSegvHandler;
-static bool fastHandlerInstalled { false };
 static StaticLock codeLocationsLock;
-static LazyNeverDestroyed<HashSet<std::tuple<VM*, void*, void*>>> codeLocations; // (vm, start, end)
+static LazyNeverDestroyed<HashSet<std::tuple<void*, void*>>> codeLocations; // (start, end)
 
-static void trapHandler(int signal, siginfo_t* sigInfo, void* ucontext)
+#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
+
+static bool fastHandlerInstalled { false };
+
+static SignalAction trapHandler(int, siginfo_t* sigInfo, void* ucontext)
 {
     mcontext_t& context = static_cast<ucontext_t*>(ucontext)->uc_mcontext;
     void* faultingInstruction = MachineContext::instructionPointer(context);
@@ -60,68 +61,54 @@ static void trapHandler(int signal, siginfo_t* sigInfo, void* ucontext)
     dataLogLnIf(verbose, "JIT memory start: ", RawPointer(reinterpret_cast<void*>(startOfFixedExecutableMemoryPool)), " end: ", RawPointer(reinterpret_cast<void*>(endOfFixedExecutableMemoryPool)));
     // First we need to make sure we are in JIT code before we can aquire any locks. Otherwise,
     // we might have crashed in code that is already holding one of the locks we want to aquire.
-    if (reinterpret_cast<void*>(startOfFixedExecutableMemoryPool) <= faultingInstruction
-        && faultingInstruction < reinterpret_cast<void*>(endOfFixedExecutableMemoryPool)) {
-
+    if (isJITPC(faultingInstruction)) {
         bool faultedInActiveFastMemory = false;
         {
             void* faultingAddress = sigInfo->si_addr;
             dataLogLnIf(verbose, "checking faulting address: ", RawPointer(faultingAddress), " is in an active fast memory");
-            LockHolder locker(memoryLock);
-            auto& activeFastMemories = viewActiveFastMemories(locker);
-            for (void* activeMemory : activeFastMemories) {
-                dataLogLnIf(verbose, "checking fast memory at: ", RawPointer(activeMemory));
-                if (activeMemory <= faultingAddress && faultingAddress < static_cast<char*>(activeMemory) + fastMemoryMappedBytes) {
-                    faultedInActiveFastMemory = true;
-                    break;
-                }
-            }
+            faultedInActiveFastMemory = Wasm::Memory::addressIsInActiveFastMemory(faultingAddress);
         }
         if (faultedInActiveFastMemory) {
             dataLogLnIf(verbose, "found active fast memory for faulting address");
             LockHolder locker(codeLocationsLock);
             for (auto range : codeLocations.get()) {
-                VM* vm;
                 void* start;
                 void* end;
-                std::tie(vm, start, end) = range;
+                std::tie(start, end) = range;
                 dataLogLnIf(verbose, "function start: ", RawPointer(start), " end: ", RawPointer(end));
                 if (start <= faultingInstruction && faultingInstruction < end) {
                     dataLogLnIf(verbose, "found match");
-                    MacroAssemblerCodeRef exceptionStub = vm->jitStubs->existingCTIStub(throwExceptionFromWasmThunkGenerator);
+                    MacroAssemblerCodeRef exceptionStub = Thunks::singleton().existingStub(throwExceptionFromWasmThunkGenerator);
                     // If for whatever reason we don't have a stub then we should just treat this like a regular crash.
                     if (!exceptionStub)
                         break;
                     dataLogLnIf(verbose, "found stub: ", RawPointer(exceptionStub.code().executableAddress()));
                     MachineContext::argumentPointer<1>(context) = reinterpret_cast<void*>(ExceptionType::OutOfBoundsMemoryAccess);
                     MachineContext::instructionPointer(context) = exceptionStub.code().executableAddress();
-                    return;
+                    return SignalAction::Handled;
                 }
             }
         }
     }
-
-    // Since we only use fast memory in processes we control, if we restore we will just fall back to the default handler.
-    if (signal == SIGBUS)
-        sigaction(signal, &oldSigBusHandler, nullptr);
-    else
-        sigaction(signal, &oldSigSegvHandler, nullptr);
+    return SignalAction::NotHandled;
 }
 
-void registerCode(VM& vm, void* start, void* end)
+#endif // ENABLE(WEBASSEMBLY_FAST_MEMORY)
+
+void registerCode(void* start, void* end)
 {
     if (!fastMemoryEnabled())
         return;
     LockHolder locker(codeLocationsLock);
-    codeLocations->add(std::make_tuple(&vm, start, end));
+    codeLocations->add(std::make_tuple(start, end));
 }
 
-void unregisterCode(VM& vm, void* start, void* end)
+void unregisterCode(void* start, void* end)
 {
     if (!fastMemoryEnabled())
         return;
     LockHolder locker(codeLocationsLock);
-    codeLocations->remove(std::make_tuple(&vm, start, end));
+    codeLocations->remove(std::make_tuple(start, end));
 }
 
 bool fastMemoryEnabled()
@@ -136,25 +123,18 @@ void enableFastMemory()
         if (!Options::useWebAssemblyFastMemory())
             return;
 
-        struct sigaction action;
+#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
+        installSignalHandler(Signal::Bus, [] (int signal, siginfo_t* sigInfo, void* ucontext) {
+            return trapHandler(signal, sigInfo, ucontext);
+        });
 
-        action.sa_sigaction = trapHandler;
-        sigfillset(&action.sa_mask);
-        action.sa_flags = SA_SIGINFO;
-        
-        // Installing signal handlers fails when
-        // 1. specificied sig is incorrect (invalid values or signal numbers which cannot be handled), or
-        // 2. second or third parameter points incorrect pointers.
-        // Thus, we must not fail in the following attempts.
-        int ret = 0;
-        ret = sigaction(SIGBUS, &action, &oldSigBusHandler);
-        RELEASE_ASSERT(!ret);
-
-        ret = sigaction(SIGSEGV, &action, &oldSigSegvHandler);
-        RELEASE_ASSERT(!ret);
+        installSignalHandler(Signal::SegV, [] (int signal, siginfo_t* sigInfo, void* ucontext) {
+            return trapHandler(signal, sigInfo, ucontext);
+        });
 
         codeLocations.construct();
         fastHandlerInstalled = true;
+#endif // ENABLE(WEBASSEMBLY_FAST_MEMORY)
     });
 }
     

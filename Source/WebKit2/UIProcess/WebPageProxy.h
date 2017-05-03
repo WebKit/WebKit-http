@@ -170,8 +170,12 @@ struct TextCheckingResult;
 struct ViewportAttributes;
 struct WindowFeatures;
 
+enum class AutoplayEvent;
 enum class HasInsecureContent;
 enum class ShouldSample;
+
+template <typename> class BoxExtent;
+using FloatBoxExtent = BoxExtent<float>;
 }
 
 #if PLATFORM(GTK)
@@ -299,6 +303,8 @@ public:
     const API::PageConfiguration& configuration() const;
 
     uint64_t pageID() const { return m_pageID; }
+
+    // FIXME: Don't keep a separate sessionID - Rely on the WebsiteDataStore
     WebCore::SessionID sessionID() const { return m_sessionID; }
 
     WebFrameProxy* mainFrame() const { return m_mainFrame.get(); }
@@ -564,7 +570,7 @@ public:
     void requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity, uint32_t offset, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
     void requestRectsAtSelectionOffsetWithText(int32_t offset, const String&, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
 #if ENABLE(DATA_INTERACTION)
-    void didPerformDataInteractionControllerOperation();
+    void didPerformDataInteractionControllerOperation(bool handled);
     void didHandleStartDataInteractionRequest(bool started);
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>);
@@ -686,8 +692,7 @@ public:
 
     double estimatedProgress() const;
 
-    enum class TerminationReason { ResourceExhaustionWhileInBackground, Other };
-    void terminateProcess(TerminationReason = TerminationReason::Other);
+    void terminateProcess();
 
     SessionState sessionState(const std::function<bool (WebBackForwardListItem&)>& = nullptr) const;
     RefPtr<API::Navigation> restoreFromSessionState(SessionState, bool navigate);
@@ -795,7 +800,7 @@ public:
     void setTextIndicator(const WebCore::TextIndicatorData&, uint64_t /* WebCore::TextIndicatorWindowLifetime */ lifetime = 0 /* Permanent */);
     void setTextIndicatorAnimationProgress(float);
     void clearTextIndicator();
-    void didFindString(const String&, const Vector<WebCore::IntRect>&, uint32_t matchCount, int32_t matchIndex);
+    void didFindString(const String&, const Vector<WebCore::IntRect>&, uint32_t matchCount, int32_t matchIndex, bool didWrapAround);
     void didFailToFindString(const String&);
     void didFindStringMatches(const String&, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection);
 
@@ -839,9 +844,10 @@ public:
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 
-    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
+    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect, bool isHandlingNonDefaultDrag);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
     void dragCancelled();
+    void setDragCaretRect(const WebCore::IntRect&);
 #if PLATFORM(COCOA)
     void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, std::optional<WebCore::TextIndicatorData>, const WebCore::FloatPoint& dragImageAnchor, uint64_t action);
     void setPromisedDataForImage(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
@@ -896,7 +902,9 @@ public:
     bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
     unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
     WebCore::IntRect currentDragCaretRect() const { return m_currentDragCaretRect; }
+    bool documentIsHandlingNonDefaultDrag() const { return m_documentIsHandlingNonDefaultDrag; }
     void resetCurrentDragInformation();
+    void didEndDragging();
 #endif
 
     void preferencesDidChange();
@@ -1072,7 +1080,7 @@ public:
     bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
     bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
-    void handleAutoplayEvent(uint32_t);
+    void handleAutoplayEvent(WebCore::AutoplayEvent, OptionSet<WebCore::AutoplayEventFlags>);
 
 #if PLATFORM(MAC)
     void videoControlsManagerDidChange();
@@ -1094,8 +1102,6 @@ public:
 #endif
 
 #if PLATFORM(MAC)
-    void removeNavigationGestureSnapshot();
-
     API::HitTestResult* lastMouseMoveHitTestResult() const { return m_lastMouseMoveHitTestResult.get(); }
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);
 
@@ -1201,6 +1207,13 @@ public:
     void setURLSchemeHandlerForScheme(Ref<WebURLSchemeHandler>&&, const String& scheme);
     WebURLSchemeHandler* urlSchemeHandlerForScheme(const String& scheme);
 
+#if PLATFORM(COCOA)
+    void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle& fileReadHandle, SandboxExtension::HandleArray& fileUploadHandles);
+#endif
+
+    void setAvoidsUnsafeArea(bool);
+    bool avoidsUnsafeArea() const { return m_avoidsUnsafeArea; }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
@@ -1270,10 +1283,10 @@ private:
 
     void didDestroyNavigation(uint64_t navigationID);
 
-    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData&, uint64_t originatingFrameID, const WebCore::SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, uint64_t listenerID, const UserData&, bool& receivedPolicyAction, uint64_t& newNavigationID, uint64_t& policyAction, DownloadID&, WebsitePolicies&);
+    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData&, uint64_t originatingFrameID, const WebCore::SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, uint64_t listenerID, const UserData&, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&&);
     void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const NavigationActionData&, const WebCore::ResourceRequest&, const String& frameName, uint64_t listenerID, const UserData&);
     void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
-    void decidePolicyForResponseSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&, bool& receivedPolicyAction, uint64_t& policyAction, DownloadID&);
+    void decidePolicyForResponseSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&, Ref<Messages::WebPageProxy::DecidePolicyForResponseSync::DelayedReply>&&);
     void unableToImplementPolicy(uint64_t frameID, const WebCore::ResourceError&, const UserData&);
 
     void willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, const Vector<std::pair<String, String>>& textFieldValues, uint64_t listenerID, const UserData&);
@@ -1285,7 +1298,7 @@ private:
     void didUpdateHistoryTitle(const String& title, const String& url, uint64_t frameID);
 
     // UI client
-    void createNewPage(uint64_t frameID, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, uint64_t& newPageID, WebPageCreationParameters&);
+    void createNewPage(uint64_t frameID, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, RefPtr<Messages::WebPageProxy::CreateNewPage::DelayedReply>);
     void showPage();
     void runJavaScriptAlert(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>&&);
     void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>&&);
@@ -1524,7 +1537,7 @@ private:
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition, uint64_t dynamicViewportSizeUpdateID);
     void couldNotRestorePageState();
-    void restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale);
+    void restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale);
     void restorePageCenterAndScale(std::optional<WebCore::FloatPoint>, double scale);
 
     void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& geometries, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius);
@@ -1604,8 +1617,8 @@ private:
 #endif
 #endif
 
-    void startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
-    void stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier);
+    void startURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
+    void stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier);
 
     void willAddDetailedMessageToConsole(const String& src, const String& level, uint64_t line, uint64_t col, const String& message, const String& url);
 
@@ -1786,17 +1799,11 @@ private:
     bool m_isInPrintingMode;
     bool m_isPerformingDOMPrintOperation;
 
-    bool m_inDecidePolicyForResponseSync;
-    const WebCore::ResourceRequest* m_decidePolicyForResponseRequest;
-    bool m_syncMimeTypePolicyActionIsValid;
-    WebCore::PolicyAction m_syncMimeTypePolicyAction;
-    DownloadID m_syncMimeTypePolicyDownloadID;
+    RefPtr<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply> m_navigationActionPolicyReply;
+    uint64_t m_newNavigationID { 0 };
+    RefPtr<Messages::WebPageProxy::DecidePolicyForResponseSync::DelayedReply> m_responsePolicyReply;
+    WebCore::ResourceRequest m_decidePolicyForResponseRequest;
 
-    bool m_inDecidePolicyForNavigationAction;
-    bool m_syncNavigationActionPolicyActionIsValid;
-    WebCore::PolicyAction m_syncNavigationActionPolicyAction;
-    DownloadID m_syncNavigationActionPolicyDownloadID;
-    WebsitePolicies m_syncNavigationActionPolicyWebsitePolicies;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
@@ -1847,6 +1854,9 @@ private:
 #endif
 
     const uint64_t m_pageID;
+
+
+    // FIXME: Don't keep a separate sessionID - Rely on the WebsiteDataStore
     const WebCore::SessionID m_sessionID;
 
     bool m_isPageSuspended;
@@ -1881,6 +1891,7 @@ private:
     bool m_currentDragIsOverFileInput;
     unsigned m_currentDragNumberOfFilesToBeAccepted;
     WebCore::IntRect m_currentDragCaretRect;
+    bool m_documentIsHandlingNonDefaultDrag;
 #endif
 
     PageLoadState m_pageLoadState;
@@ -1996,8 +2007,9 @@ private:
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };
-    bool m_wasTerminatedDueToResourceExhaustionWhileInBackground { false };
-        
+
+    bool m_avoidsUnsafeArea { true };
+
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 
     HashMap<String, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;

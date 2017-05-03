@@ -38,6 +38,7 @@ class Slider extends LayoutItem
         this._input = new LayoutNode(`<input type="range" min="0" max="1" step="0.001" />`);
         this._input.element.addEventListener("mousedown", this);
         this._input.element.addEventListener("input", this);
+        this._input.element.addEventListener("change", this);
 
         this.isActive = false;
         this.value = 0;
@@ -64,17 +65,6 @@ class Slider extends LayoutItem
         this.needsLayout = true;
     }
 
-    get width()
-    {
-        return super.width;
-    }
-
-    set width(width)
-    {
-        super.width = width;
-        this.needsLayout = true;
-    }
-
     // Protected
 
     handleEvent(event)
@@ -86,8 +76,9 @@ class Slider extends LayoutItem
         case "mouseup":
             this._handleMouseupEvent();
             break;
+        case "change":
         case "input":
-            this._handleInputEvent();
+            this._valueDidChange();
             break;
         }
     }
@@ -109,9 +100,9 @@ class Slider extends LayoutItem
         }
     }
 
-    layout()
+    commit()
     {
-        super.layout();
+        super.commit();
         this.draw(this._canvas.element.getContext("2d"));
     }
 
@@ -134,7 +125,7 @@ class Slider extends LayoutItem
         this.needsLayout = true;
     }
 
-    _handleInputEvent()
+    _valueDidChange()
     {
         if (this.uiDelegate && typeof this.uiDelegate.controlValueDidChange === "function")
             this.uiDelegate.controlValueDidChange(this);

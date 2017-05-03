@@ -29,55 +29,59 @@
 
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
-#include "JSWebAssemblyCodeBlock.h"
 #include "UnconditionalFinalizer.h"
-#include "WasmFormat.h"
+#include "WasmModule.h"
 #include <wtf/Bag.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
 namespace Wasm {
+class Module;
 class Plan;
 }
 
 class SymbolTable;
+class JSWebAssemblyCodeBlock;
 class JSWebAssemblyMemory;
+class WebAssemblyToJSCallee;
 
 class JSWebAssemblyModule : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static JSWebAssemblyModule* create(VM&, ExecState*, Structure*, uint8_t* source, size_t byteSize);
+    DECLARE_EXPORT_INFO;
+
+    JS_EXPORT_PRIVATE static JSWebAssemblyModule* createStub(VM&, ExecState*, Structure*, Wasm::Module::ValidationResult&&);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    DECLARE_INFO;
-
-    const Wasm::ModuleInformation& moduleInformation() const { return *m_moduleInformation.get(); }
-    RefPtr<Wasm::Memory> takeReservedMemory() { return m_moduleInformation->memory.takeReservedMemory(); }
+    const Wasm::ModuleInformation& moduleInformation() const { return m_module->moduleInformation(); }
     SymbolTable* exportSymbolTable() const { return m_exportSymbolTable.get(); }
     Wasm::SignatureIndex signatureIndexFromFunctionIndexSpace(unsigned functionIndexSpace) const
     {
-        return m_moduleInformation->signatureIndexFromFunctionIndexSpace(functionIndexSpace);
+        return m_module->signatureIndexFromFunctionIndexSpace(functionIndexSpace);
     }
+    WebAssemblyToJSCallee* callee() const { return m_callee.get(); }
 
-    // Returns the code block that this module was originally compiled expecting to use. This won't need to recompile.
-    JSWebAssemblyCodeBlock* codeBlock() { return m_codeBlocks[m_moduleInformation->memory.mode()].get(); }
-    // Returns the appropriate code block for the given memory, possibly triggering a recompile.
-    JSWebAssemblyCodeBlock* codeBlock(VM&, ExecState*, JSWebAssemblyMemory*);
+    JSWebAssemblyCodeBlock* codeBlock(Wasm::MemoryMode mode) { return m_codeBlocks[static_cast<size_t>(mode)].get(); }
+
+    const Vector<uint8_t>& source() const;
+
+    Wasm::Module& module() { return m_module.get(); }
+    void setCodeBlock(VM&, Wasm::MemoryMode, JSWebAssemblyCodeBlock*);
 
 private:
-    JSWebAssemblyCodeBlock* buildCodeBlock(VM&, ExecState*, Wasm::Plan&, std::optional<Wasm::Memory::Mode> mode = std::nullopt);
+    friend class JSWebAssemblyCodeBlock;
 
-    JSWebAssemblyModule(VM&, Structure*);
-    void finishCreation(VM&, ExecState*, uint8_t* source, size_t byteSize);
+    JSWebAssemblyModule(VM&, Structure*, Ref<Wasm::Module>&&);
+    void finishCreation(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    RefPtr<ArrayBuffer> m_sourceBuffer;
-    std::unique_ptr<Wasm::ModuleInformation> m_moduleInformation;
+    Ref<Wasm::Module> m_module;
     WriteBarrier<SymbolTable> m_exportSymbolTable;
-    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlocks[Wasm::Memory::NumberOfModes];
+    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlocks[Wasm::NumberOfMemoryModes];
+    WriteBarrier<WebAssemblyToJSCallee> m_callee;
 };
 
 } // namespace JSC

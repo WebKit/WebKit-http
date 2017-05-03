@@ -372,17 +372,20 @@ private:
     [[_webSelectionAssistant selectionView] setHidden:YES];
 }
 
-- (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)visibleContentRect unobscuredContentRect:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds scale:(CGFloat)scale
+- (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds
 {
-    if (inputViewBounds.size.height)
-        unobscuredContentRect.size.height = std::min<float>(unobscuredContentRect.size.height, visibleContentRect.origin.y + (inputViewBounds.origin.y / scale) - unobscuredContentRect.origin.y);
+    // The input view bounds are in window coordinates, but the unobscured rect is in content coordinates. Account for this by converting input view bounds to content coordinates.
+    CGRect inputViewBoundsInContentCoordinates = [self.window convertRect:inputViewBounds toView:self];
+    if (CGRectGetHeight(inputViewBoundsInContentCoordinates))
+        unobscuredContentRect.size.height = std::min<float>(CGRectGetHeight(unobscuredContentRect), CGRectGetMinY(inputViewBoundsInContentCoordinates) - CGRectGetMinY(unobscuredContentRect));
     return unobscuredContentRect;
 }
 
 - (void)didUpdateVisibleRect:(CGRect)visibleContentRect
     unobscuredRect:(CGRect)unobscuredContentRect
     unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
-    obscuredInset:(CGSize)obscuredInset
+    obscuredInsets:(UIEdgeInsets)obscuredInsets
+    unobscuredSafeAreaInsets:(UIEdgeInsets)unobscuredSafeAreaInsets
     inputViewBounds:(CGRect)inputViewBounds
     scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale
     inStableState:(BOOL)isStableState
@@ -402,7 +405,7 @@ private:
 
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
 
-    CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:visibleContentRect unobscuredContentRect:unobscuredContentRect inputViewBounds:inputViewBounds scale:zoomScale];
+    CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:unobscuredContentRect inputViewBounds:inputViewBounds];
     FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
 
     VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
@@ -411,7 +414,8 @@ private:
         unobscuredRectInScrollViewCoordinates,
         unobscuredContentRectRespectingInputViewBounds,
         fixedPositionRectForLayout,
-        WebCore::FloatSize(obscuredInset),
+        WebCore::FloatBoxExtent(obscuredInsets.top, obscuredInsets.right, obscuredInsets.bottom, obscuredInsets.left),
+        WebCore::FloatBoxExtent(unobscuredSafeAreaInsets.top, unobscuredSafeAreaInsets.right, unobscuredSafeAreaInsets.bottom, unobscuredSafeAreaInsets.left),
         zoomScale,
         isStableState,
         _sizeChangedSinceLastVisibleContentRectUpdate,

@@ -44,5 +44,5 @@ WKGeolocationPositionRef WKGeolocationPositionCreate(double timestamp, double la
 WKGeolocationPositionRef WKGeolocationPositionCreate_b(double timestamp, double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
     auto position = WebGeolocationPosition::create(timestamp, latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
-    return toAPI(position.leakRef());
+    return toAPI(&position.leakRef());
 }

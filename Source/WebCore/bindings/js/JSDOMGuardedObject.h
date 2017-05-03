@@ -28,12 +28,13 @@
 #include "ActiveDOMCallback.h"
 #include "JSDOMGlobalObject.h"
 #include <heap/HeapInlines.h>
+#include <heap/SlotVisitorInlines.h>
 #include <heap/StrongInlines.h>
 #include <runtime/JSCell.h>
 
 namespace WebCore {
 
-class DOMGuardedObject : public RefCounted<DOMGuardedObject>, public ActiveDOMCallback {
+class WEBCORE_EXPORT DOMGuardedObject : public RefCounted<DOMGuardedObject>, public ActiveDOMCallback {
 public:
     ~DOMGuardedObject();
 

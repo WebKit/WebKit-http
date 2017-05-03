@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CompositingManager_h
-#define CompositingManager_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 
@@ -46,5 +45,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // CompositingManager

@@ -34,7 +34,6 @@
 namespace WebCore {
 
 struct ApplePayShippingContactUpdate {
-    unsigned short status;
     Vector<RefPtr<ApplePayError>> errors;
 
     Vector<ApplePayShippingMethod> newShippingMethods;

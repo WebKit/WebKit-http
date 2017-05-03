@@ -40,6 +40,7 @@ use File::Basename;
 use File::Find;
 use File::Path qw(make_path mkpath rmtree);
 use File::Spec;
+use File::Temp qw(tempdir);
 use File::stat;
 use List::Util;
 use POSIX;
@@ -67,6 +68,7 @@ BEGIN {
        &currentSVNRevision
        &debugSafari
        &executableProductDir
+       &extractNonHostConfiguration
        &findOrCreateSimulatorForIOSDevice
        &iosSimulatorDeviceByName
        &nmPath
@@ -99,8 +101,9 @@ BEGIN {
 use constant {
     AppleWin => "AppleWin",
     GTK      => "GTK",
-    Efl      => "Efl",
     iOS      => "iOS",
+    tvOS     => "tvOS",
+    watchOS  => "watchOS",
     Mac      => "Mac",
     JSCOnly  => "JSCOnly",
     WinCairo => "WinCairo",
@@ -344,12 +347,16 @@ sub determineArchitecture
             }
         }
     } elsif (isCMakeBuild()) {
-        if (open my $cmake_sysinfo, "cmake --system-information |") {
+        if (isCrossCompilation()) {
+            my $compiler = "gcc";
+            $compiler = $ENV{'CC'} if (defined($ENV{'CC'}));
+            my @compiler_machine = split('-', `$compiler -dumpmachine`);
+            $architecture = $compiler_machine[0];
+        } elsif (open my $cmake_sysinfo, "cmake --system-information |") {
             while (<$cmake_sysinfo>) {
                 next unless index($_, 'CMAKE_SYSTEM_PROCESSOR') == 0;
                 if (/^CMAKE_SYSTEM_PROCESSOR \"([^"]+)\"/) {
                     $architecture = $1;
-                    $architecture = 'x86_64' if $architecture eq 'amd64';
                     last;
                 }
             }
@@ -359,19 +366,14 @@ sub determineArchitecture
 
     if (!isAnyWindows()) {
         if (!$architecture) {
-            # Fall back to output of `arch', if it is present.
-            $architecture = `arch`;
-            chomp $architecture;
-        }
-
-        if (!$architecture) {
             # Fall back to output of `uname -m', if it is present.
             $architecture = `uname -m`;
             chomp $architecture;
         }
     }
 
-    $architecture = 'x86_64' if ($architecture =~ /amd64/ && isBSD());
+    $architecture = 'x86_64' if $architecture =~ /amd64/i;
+    $architecture = 'arm64' if $architecture =~ /aarch64/i;
 }
 
 sub determineASanIsEnabled
@@ -444,11 +446,30 @@ sub argumentsForConfiguration()
     push(@args, '--32-bit') if ($architecture ne "x86_64" and !isWin64());
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
-    push(@args, '--efl') if isEfl();
     push(@args, '--wpe') if isWPE();
     push(@args, '--jsc-only') if isJSCOnly();
     push(@args, '--wincairo') if isWinCairo();
     push(@args, '--inspector-frontend') if isInspectorFrontend();
+    return @args;
+}
+
+sub extractNonMacOSHostConfiguration
+{
+    my @args = ();
+    my @extract = ('--device', '--gtk', '--ios', '--platform', '--sdk', '--simulator', '--wincairo', 'SDKROOT', 'ARCHS');
+    foreach (@{$_[0]}) {
+        my $line = $_;
+        my $flag = 0;
+        foreach (@extract) {
+            if (length($line) >= length($_) && substr($line, 0, length($_)) eq $_
+                && index($line, 'i386') == -1 && index($line, 'x86_64') == -1) {
+                $flag = 1;
+            }
+        }
+        if (!$flag) {
+            push @args, $_;
+        }
+    }
     return @args;
 }
 
@@ -465,6 +486,20 @@ sub determineXcodeSDK
     }
     if (checkForArgumentAndRemoveFromARGV("--simulator") || checkForArgumentAndRemoveFromARGV("--ios-simulator")) {
         $xcodeSDK ||= 'iphonesimulator';
+    }
+    if (checkForArgumentAndRemoveFromARGV("--tvos-device")) {
+        my $hasInternalSDK = exitStatus(system("xcrun --sdk appletvos.internal --show-sdk-version > /dev/null 2>&1")) == 0;
+        $xcodeSDK ||=  $hasInternalSDK ? "appletvos.internal" : "appletvos";
+    }
+    if (checkForArgumentAndRemoveFromARGV("--tvos-simulator")) {
+        $xcodeSDK ||= "appletvsimulator";
+    }
+    if (checkForArgumentAndRemoveFromARGV("--watchos-device")) {
+        my $hasInternalSDK = exitStatus(system("xcrun --sdk watchos.internal --show-sdk-version > /dev/null 2>&1")) == 0;
+        $xcodeSDK ||=  $hasInternalSDK ? "watchos.internal" : "watchos";
+    }
+    if (checkForArgumentAndRemoveFromARGV("--watchos-simulator")) {
+        $xcodeSDK ||= "watchsimulator";
     }
 }
 
@@ -484,9 +519,13 @@ sub xcodeSDKPlatformName()
 {
     determineXcodeSDK();
     return "" if !defined $xcodeSDK;
+    return "appletvos" if $xcodeSDK =~ /appletvos/i;
+    return "appletvsimulator" if $xcodeSDK =~ /appletvsimulator/i;
     return "iphoneos" if $xcodeSDK =~ /iphoneos/i;
     return "iphonesimulator" if $xcodeSDK =~ /iphonesimulator/i;
     return "macosx" if $xcodeSDK =~ /macosx/i;
+    return "watchos" if $xcodeSDK =~ /watchos/i;
+    return "watchsimulator" if $xcodeSDK =~ /watchsimulator/i;
     die "Couldn't determine platform name from Xcode SDK";
 }
 
@@ -643,7 +682,7 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isEfl() || isGtk() || isJSCOnly() || isWPE()) {
+    if (isGtk() || isJSCOnly() || isWPE()) {
         $binaryDirectory = "bin";
     } elsif (isAnyWindows()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
@@ -888,9 +927,6 @@ sub builtDylibPathForName
         my $extension = isDarwin() ? ".dylib" : ".so";
         return "$configurationProductDir/lib/libwebkit2gtk-4.0" . $extension;
     }
-    if (isEfl()) {
-        return "$configurationProductDir/lib/libewebkit2.so";
-    }
     if (isIOSWebKit()) {
         return "$configurationProductDir/$libraryName.framework/$libraryName";
     }
@@ -1019,7 +1055,6 @@ sub determinePortName()
     return if defined $portName;
 
     my %argToPortName = (
-        efl => Efl,
         gtk => GTK,
         'jsc-only' => JSCOnly,
         wincairo => WinCairo,
@@ -1045,13 +1080,16 @@ sub determinePortName()
         determineXcodeSDK();
         if (willUseIOSDeviceSDK() || willUseIOSSimulatorSDK()) {
             $portName = iOS;
+        } elsif (willUseAppleTVDeviceSDK() || willUseAppleTVSimulatorSDK()) {
+            $portName = tvOS;
+        } elsif (willUseWatchDeviceSDK() || willUseWatchSimulatorSDK()) {
+            $portName = watchOS;
         } else {
             $portName = Mac;
         }
     } else {
         if ($unknownPortProhibited) {
             my $portsChoice = join "\n\t", qw(
-                --efl
                 --gtk
                 --jsc-only
                 --wpe
@@ -1070,11 +1108,6 @@ sub portName()
 {
     determinePortName();
     return $portName;
-}
-
-sub isEfl()
-{
-    return portName() eq Efl;
 }
 
 sub isGtk()
@@ -1197,11 +1230,6 @@ sub isBSD()
     return ($^O eq "freebsd") || ($^O eq "openbsd") || ($^O eq "netbsd") || 0;
 }
 
-sub isARM()
-{
-    return ($Config{archname} =~ /^arm[v\-]/) || ($Config{archname} =~ /^aarch64[v\-]/);
-}
-
 sub isX86_64()
 {
     return (architecture() eq "x86_64") || 0;
@@ -1209,16 +1237,28 @@ sub isX86_64()
 
 sub isCrossCompilation()
 {
-  my $compiler = "";
-  $compiler = $ENV{'CC'} if (defined($ENV{'CC'}));
-  if ($compiler =~ /gcc/) {
-      my $compiler_options = `$compiler -v 2>&1`;
-      my @host = $compiler_options =~ m/--host=(.*?)\s/;
-      my @target = $compiler_options =~ m/--target=(.*?)\s/;
-
-      return ($host[0] ne "" && $target[0] ne "" && $host[0] ne $target[0]);
-  }
-  return 0;
+    my $compiler = "";
+    $compiler = $ENV{'CC'} if (defined($ENV{'CC'}));
+    if ($compiler =~ /gcc/) {
+        my $compilerOptions = `$compiler -v 2>&1`;
+        my @host = $compilerOptions =~ m/--host=(.*?)\s/;
+        my @target = $compilerOptions =~ m/--target=(.*?)\s/;
+        if ($target[0] ne "" && $host[0] ne "") {
+                return ($host[0] ne $target[0]);
+        } else {
+                # $tempDir gets automatically deleted when goes out of scope
+                my $tempDir = File::Temp->newdir();
+                my $testProgramSourcePath = File::Spec->catfile($tempDir, "testcross.c");
+                my $testProgramBinaryPath = File::Spec->catfile($tempDir, "testcross");
+                open(my $testProgramSourceHandler, ">", $testProgramSourcePath);
+                print $testProgramSourceHandler "int main() { return 0; }\n";
+                system("$compiler $testProgramSourcePath -o $testProgramBinaryPath > /dev/null 2>&1") == 0 or return 0;
+                # Crosscompiling if the program fails to run (because it was built for other arch)
+                system("$testProgramBinaryPath > /dev/null 2>&1") == 0 or return 1;
+                return 0;
+        }
+    }
+    return 0;
 }
 
 sub isAppleWebKit()
@@ -1228,7 +1268,7 @@ sub isAppleWebKit()
 
 sub isAppleCocoaWebKit()
 {
-    return (portName() eq Mac) || isIOSWebKit();
+    return (portName() eq Mac) || isIOSWebKit() || isTVOSWebKit() || isWatchOSWebKit();
 }
 
 sub isAppleWinWebKit()
@@ -1294,9 +1334,44 @@ sub willUseIOSSimulatorSDK()
     return xcodeSDKPlatformName() eq "iphonesimulator";
 }
 
+sub willUseAppleTVDeviceSDK()
+{
+    return xcodeSDKPlatformName() eq "appletvos";
+}
+
+sub willUseAppleTVSimulatorSDK()
+{
+    return xcodeSDKPlatformName() eq "appletvsimulator";
+}
+
+sub willUseWatchDeviceSDK()
+{
+    return xcodeSDKPlatformName() eq "watchos";
+}
+
+sub willUseWatchSimulatorSDK()
+{
+    return xcodeSDKPlatformName() eq "watchsimulator";
+}
+
 sub isIOSWebKit()
 {
     return portName() eq iOS;
+}
+
+sub isTVOSWebKit()
+{
+    return portName() eq tvOS;
+}
+
+sub isWatchOSWebKit()
+{
+    return portName() eq watchOS;
+}
+
+sub isEmbeddedWebKit()
+{
+    return isIOSWebKit() || isTVOSWebKit() || isWatchOSWebKit();
 }
 
 sub determineNmPath()
@@ -1449,7 +1524,7 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk() || isEfl()) {
+    if (isGtk()) {
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
@@ -1460,7 +1535,7 @@ sub launcherPath()
 
 sub launcherName()
 {
-    if (isGtk() || isEfl()) {
+    if (isGtk()) {
         return "MiniBrowser";
     } elsif (isAppleCocoaWebKit()) {
         return "Safari";
@@ -1765,14 +1840,12 @@ sub getJhbuildPath()
     if (isGit() && isGitBranchBuild() && gitBranch()) {
         pop(@jhbuildPath);
     }
-    if (isEfl()) {
-        push(@jhbuildPath, "DependenciesEFL");
-    } elsif (isGtk()) {
+    if (isGtk()) {
         push(@jhbuildPath, "DependenciesGTK");
     } elsif (isWPE()) {
         push(@jhbuildPath, "DependenciesWPE");
     } else {
-        die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
+        die "Cannot get JHBuild path for platform that isn't GTK+.\n";
     }
     return File::Spec->catdir(@jhbuildPath);
 }
@@ -1809,9 +1882,7 @@ sub wrapperPrefixIfNeeded()
     }
     if (-e getJhbuildPath()) {
         my @prefix = (File::Spec->catfile(sourceDir(), "Tools", "jhbuild", "jhbuild-wrapper"));
-        if (isEfl()) {
-            push(@prefix, "--efl");
-        } elsif (isGtk()) {
+        if (isGtk()) {
             push(@prefix, "--gtk");
         } elsif (isWPE()) {
             push(@prefix, "--wpe");
@@ -1973,7 +2044,7 @@ sub generateBuildSystemFromCMakeProject
     push @args, '-DSHOW_BINDINGS_GENERATION_PROGRESS=1' unless ($willUseNinja && -t STDOUT);
 
     # Some ports have production mode, but build-webkit should always use developer mode.
-    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isJSCOnly() || isWPE();
+    push @args, "-DDEVELOPER_MODE=ON" if isGtk() || isJSCOnly() || isWPE();
 
     # Don't warn variables which aren't used by cmake ports.
     push @args, "--no-warn-unused-cli";
@@ -2045,10 +2116,6 @@ sub buildCMakeProjectOrExit($$$@)
     my $returnCode;
 
     exit(exitStatus(cleanCMakeGeneratedProject())) if $clean;
-
-    if (isEfl() && checkForArgumentAndRemoveFromARGV("--update-efl")) {
-        system("perl", "$sourceDir/Tools/Scripts/update-webkitefl-libs") == 0 or die $!;
-    }
 
     if (isGtk() && checkForArgumentAndRemoveFromARGV("--update-gtk")) {
         system("perl", "$sourceDir/Tools/Scripts/update-webkitgtk-libs") == 0 or die $!;
@@ -2134,7 +2201,12 @@ sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded
 Usage: @{[basename($0)]} [options] [args ...]
   --help                            Show this help message
   --no-saved-state                  Launch the application without state restoration
-  -g|--guard-malloc                 Enable Guard Malloc (OS X only)
+
+Options specific to macOS:
+  -g|--guard-malloc                 Enable Guard Malloc
+  --lang=LANGUAGE                   Use a specific language instead of system language.
+                                    This accepts a language name (German) or a language code (de, ar, pt_BR, etc).
+  --locale=LOCALE                   Use a specific locale instead of the system region.
 EOF
 
     exit(1);
@@ -2148,6 +2220,17 @@ sub argumentsForRunAndDebugMacWebKitApp()
         # FIXME: Don't set ApplePersistenceIgnoreState once all supported OS versions respect ApplePersistenceIgnoreStateQuietly (rdar://15032886).
         push @args, ("-ApplePersistenceIgnoreState", "YES");
     }
+
+    my $lang;
+    if (checkForArgumentAndRemoveFromARGVGettingValue("--lang", \$lang)) {
+        push @args, ("-AppleLanguages", "(" . $lang . ")");
+    }
+
+    my $locale;
+    if (checkForArgumentAndRemoveFromARGVGettingValue("--locale", \$locale)) {
+        push @args, ("-AppleLocale", $locale);
+    }
+
     unshift @args, @ARGV;
 
     return @args;

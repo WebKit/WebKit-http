@@ -229,7 +229,7 @@ RefPtr<ArrayBuffer> XMLHttpRequest::createResponseArrayBuffer()
     ASSERT(m_responseType == ResponseType::Arraybuffer);
     ASSERT(doneWithoutErrors());
 
-    auto result = m_binaryResponseBuilder ? m_binaryResponseBuilder->createArrayBuffer() : ArrayBuffer::create(nullptr, 0);
+    auto result = m_binaryResponseBuilder ? m_binaryResponseBuilder->tryCreateArrayBuffer() : ArrayBuffer::create(nullptr, 0);
     m_binaryResponseBuilder = nullptr;
     return result;
 }
@@ -245,8 +245,8 @@ ExceptionOr<void> XMLHttpRequest::setTimeout(unsigned timeout)
         return { };
 
     // If timeout is zero, we should use the default network timeout. But we disabled it so let's mimic it with a 60 seconds timeout value.
-    std::chrono::duration<double> interval = std::chrono::milliseconds { m_timeoutMilliseconds ? m_timeoutMilliseconds : 60000 } - (std::chrono::steady_clock::now() - m_sendingTime);
-    m_timeoutTimer.startOneShot(std::max(0.0, interval.count()));
+    Seconds interval = Seconds { m_timeoutMilliseconds ? m_timeoutMilliseconds / 1000. : 60. } - (MonotonicTime::now() - m_sendingTime);
+    m_timeoutTimer.startOneShot(std::max(interval, 0_s));
     return { };
 }
 
@@ -491,7 +491,7 @@ std::optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
             return ExceptionOr<void> { Exception { NETWORK_ERR } };
         setPendingActivity(this);
         m_timeoutTimer.stop();
-        m_networkErrorTimer.startOneShot(0);
+        m_networkErrorTimer.startOneShot(0_s);
         return ExceptionOr<void> { };
     }
 
@@ -740,8 +740,8 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
             request.setTimeoutInterval(m_timeoutMilliseconds / 1000.0);
         else {
             request.setTimeoutInterval(std::numeric_limits<double>::infinity());
-            m_sendingTime = std::chrono::steady_clock::now();
-            m_timeoutTimer.startOneShot(std::chrono::milliseconds { m_timeoutMilliseconds });
+            m_sendingTime = MonotonicTime::now();
+            m_timeoutTimer.startOneShot(1_ms * m_timeoutMilliseconds);
         }
     }
 
@@ -945,18 +945,27 @@ String XMLHttpRequest::getAllResponseHeaders() const
     if (m_state < HEADERS_RECEIVED || m_error)
         return emptyString();
 
-    StringBuilder stringBuilder;
+    if (!m_allResponseHeaders) {
+        Vector<String> headers;
+        headers.reserveInitialCapacity(m_response.httpHeaderFields().size());
 
-    for (const auto& header : m_response.httpHeaderFields()) {
-        stringBuilder.append(header.key);
-        stringBuilder.append(':');
-        stringBuilder.append(' ');
-        stringBuilder.append(header.value);
-        stringBuilder.append('\r');
-        stringBuilder.append('\n');
+        for (auto& header : m_response.httpHeaderFields()) {
+            StringBuilder stringBuilder;
+            stringBuilder.append(header.key.convertToASCIILowercase());
+            stringBuilder.append(": ");
+            stringBuilder.append(header.value);
+            stringBuilder.append("\r\n");
+            headers.uncheckedAppend(stringBuilder.toString());
+        }
+        std::sort(headers.begin(), headers.end(), WTF::codePointCompareLessThan);
+
+        StringBuilder stringBuilder;
+        for (auto& header : headers)
+            stringBuilder.append(header);
+        m_allResponseHeaders = stringBuilder.toString();
     }
 
-    return stringBuilder.toString();
+    return m_allResponseHeaders;
 }
 
 String XMLHttpRequest::getResponseHeader(const String& name) const
@@ -1034,7 +1043,7 @@ void XMLHttpRequest::didFail(const ResourceError& error)
         m_sendFlag = false;
         setPendingActivity(this);
         m_timeoutTimer.stop();
-        m_networkErrorTimer.startOneShot(0);
+        m_networkErrorTimer.startOneShot(0_s);
         return;
     }
     m_exceptionCode = NETWORK_ERR;
@@ -1257,7 +1266,7 @@ void XMLHttpRequest::resume()
     // We are not allowed to execute arbitrary JS in resume() so dispatch
     // the error event in a timer.
     if (m_dispatchErrorOnResuming && !m_resumeTimer.isActive())
-        m_resumeTimer.startOneShot(0);
+        m_resumeTimer.startOneShot(0_s);
 }
 
 void XMLHttpRequest::resumeTimerFired()

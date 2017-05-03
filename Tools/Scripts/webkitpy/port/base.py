@@ -57,8 +57,7 @@ from webkitpy.port import driver
 from webkitpy.port import image_diff
 from webkitpy.port import server_process
 from webkitpy.port.factory import PortFactory
-from webkitpy.layout_tests.servers import apache_http_server
-from webkitpy.layout_tests.servers import http_server
+from webkitpy.layout_tests.servers import apache_http_server, http_server
 from webkitpy.layout_tests.servers import web_platform_test_server
 from webkitpy.layout_tests.servers import websocket_server
 
@@ -143,6 +142,9 @@ class Port(object):
         self._layout_tests_dir = hasattr(options, 'layout_tests_dir') and options.layout_tests_dir and self._filesystem.abspath(options.layout_tests_dir)
         self._w3c_resource_files = None
 
+    def target_host(self, worker_number=None):
+        return self.host
+
     def architecture(self):
         return self.get_option('architecture')
 
@@ -225,13 +227,15 @@ class Port(object):
         # If we're using a pre-built copy of WebKit (--root), we assume it also includes a build of DRT.
         if not self._root_was_set and self.get_option('build') and not self._build_driver():
             return False
-        if not self._check_driver():
+        if self.get_option('install') and not self._check_driver():
             return False
-        if self.get_option('pixel_tests'):
-            if not self.check_image_diff():
+        if self.get_option('install') and not self._check_port_build():
+            return False
+        if not self.check_image_diff():
+            if self.get_option('build'):
+                return self._build_image_diff()
+            else:
                 return False
-        if not self._check_port_build():
-            return False
         return True
 
     def _check_driver(self):
@@ -259,7 +263,8 @@ class Port(object):
         """This routine is used to check whether image_diff binary exists."""
         image_diff_path = self._path_to_image_diff()
         if not self._filesystem.exists(image_diff_path):
-            _log.error("ImageDiff was not found at %s" % image_diff_path)
+            if logging:
+                _log.error("ImageDiff was not found at %s" % image_diff_path)
             return False
         return True
 
@@ -803,15 +808,19 @@ class Port(object):
             return self.host.filesystem.abspath(filename)
 
     @memoized
-    def abspath_for_test(self, test_name):
+    def abspath_for_test(self, test_name, target_host=None):
         """Returns the full path to the file for a given test name. This is the
-        inverse of relative_test_filename()."""
-        return self._filesystem.join(self.layout_tests_dir(), test_name)
+        inverse of relative_test_filename() if no target_host is specified."""
+        host = target_host or self.host
+        return host.filesystem.join(host.filesystem.map_base_host_path(self.layout_tests_dir()), test_name)
 
     def jsc_results_directory(self):
         return self._build_path()
 
     def bindings_results_directory(self):
+        return self._build_path()
+
+    def api_results_directory(self):
         return self._build_path()
 
     def results_directory(self):
@@ -935,6 +944,18 @@ class Port(object):
         storage, it should override this method."""
         pass
 
+    def ports_to_forward(self):
+        ports = []
+        if self._http_server:
+            ports.extend(self._http_server.ports_to_forward())
+        if self._websocket_server:
+            ports.extend(self._websocket_server.ports_to_forward())
+        if self._websocket_server:
+            ports.extend(self._websocket_secure_server.ports_to_forward())
+        if self._web_platform_test_server:
+            ports.extend(self._web_platform_test_server.ports_to_forward())
+        return ports
+
     def start_http_server(self, additional_dirs=None):
         """Start a web server. Raise an error if it can't start or is already running.
 
@@ -972,7 +993,7 @@ class Port(object):
         self._websocket_server_temporary_directory = websocket_server_temporary_directory
         if self._extract_certificate_from_pem(pem_file, certificate_file) and self._extract_private_key_from_pem(pem_file, private_key_file):
             secure_server = self._websocket_secure_server = websocket_server.PyWebSocket(self, self.results_directory(),
-                                use_tls=True, port=9323, private_key=private_key_file, certificate=certificate_file)
+                                use_tls=True, port=websocket_server.PyWebSocket.DEFAULT_WSS_PORT, private_key=private_key_file, certificate=certificate_file)
             secure_server.start()
             self._websocket_secure_server = secure_server
 
@@ -1268,8 +1289,9 @@ class Port(object):
             local_driver_path = base + ".exe"
         return local_driver_path
 
-    def _driver_tempdir(self):
-        return self._filesystem.mkdtemp(prefix='%s-' % self.driver_name())
+    def _driver_tempdir(self, target_host=None):
+        host = target_host or self.host
+        return host.filesystem.mkdtemp(prefix='{}s-'.format(self.driver_name()))
 
     def _path_to_user_cache_directory(self, suffix=None):
         return None
@@ -1340,7 +1362,7 @@ class Port(object):
     def look_for_new_samples(self, unresponsive_processes, start_time):
         pass
 
-    def sample_process(self, name, pid):
+    def sample_process(self, name, pid, target_host=None):
         pass
 
     def find_system_pid(self, name, pid):
@@ -1363,7 +1385,7 @@ class Port(object):
         suffix = ""
         if self.port_name:
             suffix = self.port_name.upper()
-        return os.path.exists(self.path_from_webkit_base('WebKitBuild', 'Dependencies%s' % suffix))
+        return self._filesystem.exists(self.path_from_webkit_base('WebKitBuild', 'Dependencies%s' % suffix))
 
     # FIXME: Eventually we should standarize port naming, and make this method smart enough
     # to use for all port configurations (including architectures, graphics types, etc).
@@ -1402,6 +1424,17 @@ class Port(object):
             self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
             if self.get_option('webkit_test_runner'):
                 self._run_script("build-webkittestrunner", args=self._build_driver_flags(), env=env)
+        except ScriptError, e:
+            _log.error(e.message_with_output(output_limit=None))
+            return False
+        return True
+
+    def _build_image_diff(self):
+        environment = self.host.copy_current_environment()
+        environment.disable_gcc_smartquotes()
+        env = environment.to_dictionary()
+        try:
+            self._run_script("build-imagediff", env=env)
         except ScriptError, e:
             _log.error(e.message_with_output(output_limit=None))
             return False

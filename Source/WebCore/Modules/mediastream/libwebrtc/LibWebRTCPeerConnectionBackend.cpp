@@ -28,6 +28,7 @@
 #if USE(LIBWEBRTC)
 
 #include "Document.h"
+#include "ExceptionCode.h"
 #include "IceCandidate.h"
 #include "JSRTCStatsReport.h"
 #include "LibWebRTCDataChannelHandler.h"
@@ -92,6 +93,8 @@ static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaE
         rtcConfiguration.servers.push_back(WTFMove(iceServer));
     }
 
+    rtcConfiguration.ice_candidate_pool_size = configuration.iceCandidatePoolSize;
+
     return rtcConfiguration;
 }
 
@@ -148,9 +151,9 @@ void LibWebRTCPeerConnectionBackend::doSetRemoteDescription(RTCSessionDescriptio
     }
 }
 
-void LibWebRTCPeerConnectionBackend::doCreateOffer(RTCOfferOptions&&)
+void LibWebRTCPeerConnectionBackend::doCreateOffer(RTCOfferOptions&& options)
 {
-    m_endpoint->doCreateOffer();
+    m_endpoint->doCreateOffer(options);
 }
 
 void LibWebRTCPeerConnectionBackend::doCreateAnswer(RTCAnswerOptions&&)
@@ -210,7 +213,8 @@ void LibWebRTCPeerConnectionBackend::addVideoSource(Ref<RealtimeOutgoingVideoSou
 
 static inline Ref<RTCRtpReceiver> createReceiverForSource(ScriptExecutionContext& context, Ref<RealtimeMediaSource>&& source)
 {
-    auto remoteTrackPrivate = MediaStreamTrackPrivate::create(WTFMove(source));
+    String id = source->id();
+    auto remoteTrackPrivate = MediaStreamTrackPrivate::create(WTFMove(source), WTFMove(id));
     auto remoteTrack = MediaStreamTrack::create(context, WTFMove(remoteTrackPrivate));
 
     return RTCRtpReceiver::create(WTFMove(remoteTrack));
@@ -304,7 +308,12 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::remoteDescription(
 void LibWebRTCPeerConnectionBackend::notifyAddedTrack(RTCRtpSender& sender)
 {
     ASSERT(sender.track());
-    m_endpoint->addTrack(*sender.track(), sender.mediaStreamIds());
+    m_endpoint->addTrack(sender, *sender.track(), sender.mediaStreamIds());
+}
+
+void LibWebRTCPeerConnectionBackend::notifyRemovedTrack(RTCRtpSender& sender)
+{
+    m_endpoint->removeTrack(sender);
 }
 
 void LibWebRTCPeerConnectionBackend::removeRemoteStream(MediaStream* mediaStream)
@@ -317,6 +326,53 @@ void LibWebRTCPeerConnectionBackend::removeRemoteStream(MediaStream* mediaStream
 void LibWebRTCPeerConnectionBackend::addRemoteStream(Ref<MediaStream>&& mediaStream)
 {
     m_remoteStreams.append(WTFMove(mediaStream));
+}
+
+void LibWebRTCPeerConnectionBackend::replaceTrack(RTCRtpSender& sender, Ref<MediaStreamTrack>&& track, DOMPromise<void>&& promise)
+{
+    ASSERT(sender.track());
+    auto* currentTrack = sender.track();
+
+    ASSERT(currentTrack->source().type() == track->source().type());
+    switch (currentTrack->source().type()) {
+    case RealtimeMediaSource::Type::None:
+        ASSERT_NOT_REACHED();
+        promise.reject(INVALID_MODIFICATION_ERR);
+        break;
+    case RealtimeMediaSource::Type::Audio: {
+        for (auto& audioSource : m_audioSources) {
+            if (&audioSource->source() == &currentTrack->source()) {
+                if (!audioSource->setSource(track->source())) {
+                    promise.reject(INVALID_MODIFICATION_ERR);
+                    return;
+                }
+                connection().enqueueReplaceTrackTask(sender, WTFMove(track), WTFMove(promise));
+                return;
+            }
+        }
+        promise.reject(INVALID_MODIFICATION_ERR);
+        break;
+    }
+    case RealtimeMediaSource::Type::Video: {
+        for (auto& videoSource : m_videoSources) {
+            if (&videoSource->source() == &currentTrack->source()) {
+                if (!videoSource->setSource(track->source())) {
+                    promise.reject(INVALID_MODIFICATION_ERR);
+                    return;
+                }
+                connection().enqueueReplaceTrackTask(sender, WTFMove(track), WTFMove(promise));
+                return;
+            }
+        }
+        promise.reject(INVALID_MODIFICATION_ERR);
+        break;
+    }
+    }
+}
+
+RTCRtpParameters LibWebRTCPeerConnectionBackend::getParameters(RTCRtpSender& sender) const
+{
+    return m_endpoint->getRTCRtpSenderParameters(sender);
 }
 
 } // namespace WebCore

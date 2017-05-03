@@ -74,36 +74,38 @@ set(ANGLE_SOURCES
     src/compiler/translator/EmulatePrecision.cpp
     src/compiler/translator/ExpandIntegerPowExpressions.cpp
     src/compiler/translator/ExtensionGLSL.cpp
+    src/compiler/translator/FindSymbolNode.cpp
     src/compiler/translator/FlagStd140Structs.cpp
-    src/compiler/translator/ForLoopUnroll.cpp
     src/compiler/translator/glslang_lex.cpp
     src/compiler/translator/glslang_tab.cpp
     src/compiler/translator/InfoSink.cpp
     src/compiler/translator/Initialize.cpp
     src/compiler/translator/InitializeDll.cpp
-    src/compiler/translator/InitializeParseContext.cpp
     src/compiler/translator/InitializeVariables.cpp
     src/compiler/translator/Intermediate.cpp
     src/compiler/translator/IntermNode.cpp
     src/compiler/translator/IntermNodePatternMatcher.cpp
     src/compiler/translator/intermOut.cpp
     src/compiler/translator/IntermTraverse.cpp
-    src/compiler/translator/LoopInfo.cpp
     src/compiler/translator/Operator.cpp
     src/compiler/translator/OutputESSL.cpp
     src/compiler/translator/OutputGLSL.cpp
     src/compiler/translator/OutputGLSLBase.cpp
+    src/compiler/translator/OutputVulkanGLSL.cpp
     src/compiler/translator/ParseContext.cpp
     src/compiler/translator/PoolAlloc.cpp
     src/compiler/translator/PruneEmptyDeclarations.cpp
+    src/compiler/translator/PrunePureLiteralStatements.cpp
     src/compiler/translator/QualifierTypes.cpp
     src/compiler/translator/RecordConstantPrecision.cpp
     src/compiler/translator/RegenerateStructNames.cpp
     src/compiler/translator/RemoveDynamicIndexing.cpp
+    src/compiler/translator/RemoveInvariantDeclaration.cpp
     src/compiler/translator/RemovePow.cpp
     src/compiler/translator/RemoveSwitchFallThrough.cpp
     src/compiler/translator/RewriteDoWhile.cpp
     src/compiler/translator/RewriteElseBlocks.cpp
+    src/compiler/translator/RewriteUnaryMinusOperatorFloat.cpp
     src/compiler/translator/RewriteTexelFetchOffset.cpp
     src/compiler/translator/RewriteUnaryMinusOperatorInt.cpp
     src/compiler/translator/ScalarizeVecAndMatConstructorArgs.cpp
@@ -119,6 +121,7 @@ set(ANGLE_SOURCES
     src/compiler/translator/SymbolTable.cpp
     src/compiler/translator/TranslatorESSL.cpp
     src/compiler/translator/TranslatorGLSL.cpp
+    src/compiler/translator/TranslatorVulkan.cpp
     src/compiler/translator/Types.cpp
     src/compiler/translator/UnfoldShortCircuitAST.cpp
     src/compiler/translator/UnfoldShortCircuitToIf.cpp
@@ -127,6 +130,7 @@ set(ANGLE_SOURCES
     src/compiler/translator/ValidateGlobalInitializer.cpp
     src/compiler/translator/ValidateLimitations.cpp
     src/compiler/translator/ValidateMaxParameters.cpp
+    src/compiler/translator/ValidateMultiviewWebGL.cpp
     src/compiler/translator/ValidateOutputs.cpp
     src/compiler/translator/ValidateSwitch.cpp
     src/compiler/translator/VariableInfo.cpp
@@ -149,6 +153,7 @@ set(ANGLE_SOURCES
     src/libANGLE/Device.cpp
     src/libANGLE/Display.cpp
     src/libANGLE/Error.cpp
+    src/libANGLE/es3_copy_conversion_table_autogen.cpp
     src/libANGLE/Fence.cpp
     src/libANGLE/format_map_autogen.cpp
     src/libANGLE/formatutils.cpp
@@ -159,6 +164,7 @@ set(ANGLE_SOURCES
     src/libANGLE/Image.cpp
     src/libANGLE/ImageIndex.cpp
     src/libANGLE/IndexRangeCache.cpp
+    src/libANGLE/LoggingAnnotator.cpp
     src/libANGLE/Path.cpp
     src/libANGLE/Platform.cpp
     src/libANGLE/Program.cpp
@@ -169,31 +175,33 @@ set(ANGLE_SOURCES
     src/libANGLE/renderer/ContextImpl.cpp
     src/libANGLE/renderer/DeviceImpl.cpp
     src/libANGLE/renderer/DisplayImpl.cpp
-    src/libANGLE/renderer/Format_autogen.cpp
-    src/libANGLE/renderer/Format.cpp
-    src/libANGLE/renderer/load_functions_table_autogen.cpp
-    src/libANGLE/renderer/renderer_utils.cpp
+    src/libANGLE/renderer/Format_table_autogen.cpp
     src/libANGLE/renderer/SurfaceImpl.cpp
     src/libANGLE/renderer/TextureImpl.cpp
+    src/libANGLE/renderer/load_functions_table_autogen.cpp
+    src/libANGLE/renderer/renderer_utils.cpp
+    src/libANGLE/renderer/driver_utils.cpp
     src/libANGLE/ResourceManager.cpp
     src/libANGLE/Sampler.cpp
     src/libANGLE/Shader.cpp
-    src/libANGLE/signal_utils.cpp
     src/libANGLE/State.cpp
     src/libANGLE/Stream.cpp
     src/libANGLE/Surface.cpp
     src/libANGLE/Texture.cpp
+    src/libANGLE/Thread.cpp
     src/libANGLE/TransformFeedback.cpp
     src/libANGLE/Uniform.cpp
+    src/libANGLE/UniformLinker.cpp
     src/libANGLE/validationEGL.cpp
     src/libANGLE/validationES.cpp
     src/libANGLE/validationES2.cpp
     src/libANGLE/validationES3.cpp
     src/libANGLE/validationES31.cpp
+    src/libANGLE/VaryingPacking.cpp
     src/libANGLE/VertexArray.cpp
     src/libANGLE/VertexAttribute.cpp
+    src/libANGLE/WorkerThread.cpp
     src/third_party/compiler/ArrayBoundsClamper.cpp
-    src/third_party/murmurhash/MurmurHash3.cpp
 )
 
 set(ANGLE_COMPILE_DEFINITIONS
@@ -251,10 +259,10 @@ target_link_libraries(libEGL
 
 target_link_libraries(libGLESv2 ${ANGLEGLESv2_LIBRARIES})
 
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/egl)
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/GLES2)
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/GLSLANG)
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/khr)
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/ANGLE/include/egl)
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/ANGLE/include/GLES2)
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/ANGLE/include/GLSLANG)
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/ANGLE/include/khr)
 file(GLOB _files_ANGLE "${THIRDPARTY_DIR}/ANGLE/ANGLE/*.h")
 file(GLOB _files_egl "${THIRDPARTY_DIR}/ANGLE/include/egl/*.h")
 file(GLOB _files_GLES2 "${THIRDPARTY_DIR}/ANGLE/include/GLES2/*.h")
@@ -262,22 +270,22 @@ file(GLOB _files_GLES3 "${THIRDPARTY_DIR}/ANGLE/include/GLES3/*.h")
 file(GLOB _files_GLSLANG "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG/*.h")
 file(GLOB _files_khr "${THIRDPARTY_DIR}/ANGLE/include/khr/*.h")
 foreach (_file ${_files_ANGLE})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/)
 endforeach ()
 foreach (_file ${_files_egl})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/egl)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/include/egl)
 endforeach ()
 foreach (_file ${_files_GLES2})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/GLES2)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/include/GLES2)
 endforeach ()
 foreach (_file ${_files_GLES3})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/GLES3)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/include/GLES3)
 endforeach ()
 foreach (_file ${_files_GLSLANG})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/GLSLANG)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/include/GLSLANG)
 endforeach ()
 foreach (_file ${_files_khr})
-    file(COPY ${_file} DESTINATION ${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/khr)
+    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/ANGLE/include/khr)
 endforeach ()
 
 set_property(DIRECTORY . PROPERTY FOLDER "ANGLE")

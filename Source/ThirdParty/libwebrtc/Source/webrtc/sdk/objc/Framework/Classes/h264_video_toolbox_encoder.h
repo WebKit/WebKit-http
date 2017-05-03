@@ -30,7 +30,7 @@
 
 namespace webrtc {
 
-class H264VideoToolboxEncoder : public H264Encoder {
+class WEBRTC_DYLIB_EXPORT H264VideoToolboxEncoder : public H264Encoder {
  public:
   explicit H264VideoToolboxEncoder(const cricket::VideoCodec& codec);
 
@@ -67,6 +67,9 @@ class H264VideoToolboxEncoder : public H264Encoder {
                       VideoRotation rotation);
 
   ScalingSettings GetScalingSettings() const override;
+
+ protected:
+  virtual int CreateCompressionSession(VTCompressionSessionRef&, VTCompressionOutputCallback, int32_t width, int32_t height);
 
  private:
   int ResetCompressionSession();

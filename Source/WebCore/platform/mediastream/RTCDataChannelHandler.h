@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,17 +27,18 @@
 
 #if ENABLE(WEB_RTC)
 
+#include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 struct RTCDataChannelInit {
-    bool ordered { true };
-    int maxRetransmitTime { -1 };
-    int maxRetransmits { -1 };
+    std::optional<bool> ordered;
+    std::optional<unsigned short> maxPacketLifeTime;
+    std::optional<unsigned short> maxRetransmits;
     String protocol;
-    bool negotiated { false };
-    int id { -1 };
+    std::optional<bool> negotiated;
+    std::optional<unsigned short> id;
 };
 
 class RTCDataChannelHandlerClient;
@@ -45,7 +47,7 @@ class RTCDataChannelHandler {
 public:
     virtual ~RTCDataChannelHandler() { }
 
-    virtual void setClient(RTCDataChannelHandlerClient*) = 0;
+    virtual void setClient(RTCDataChannelHandlerClient&) = 0;
 
     virtual bool sendStringData(const String&) = 0;
     virtual bool sendRawData(const char*, size_t) = 0;

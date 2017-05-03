@@ -53,18 +53,6 @@
 namespace WebCore {
 namespace SimpleLineLayout {
 
-static void paintDebugBorders(GraphicsContext& context, LayoutRect borderRect, const LayoutPoint& paintOffset)
-{
-    borderRect.moveBy(paintOffset);
-    IntRect snappedRect = snappedIntRect(borderRect);
-    if (snappedRect.isEmpty())
-        return;
-    GraphicsContextStateSaver stateSaver(context);
-    context.setStrokeColor(Color(0, 255, 0));
-    context.setFillColor(Color::transparent);
-    context.drawRect(snappedRect);
-}
-
 FloatRect computeOverflow(const RenderBlockFlow& flow, const FloatRect& layoutRect)
 {
     auto overflowRect = layoutRect;
@@ -89,11 +77,15 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
     if (style.visibility() != VISIBLE)
         return;
 
-    bool debugBordersEnabled = flow.settings().simpleLineLayoutDebugBordersEnabled();
-
     TextPainter textPainter(paintInfo.context());
     textPainter.setFont(style.fontCascade());
     textPainter.setTextPaintStyle(computeTextPaintStyle(flow.frame(), style, paintInfo));
+
+    std::unique_ptr<ShadowData> debugShadow = nullptr;
+    if (flow.settings().simpleLineLayoutDebugBordersEnabled()) {
+        debugShadow = std::make_unique<ShadowData>(IntPoint(0, 0), 10, 20, ShadowStyle::Normal, true, Color(0, 255, 0, 200));
+        textPainter.addTextShadow(debugShadow.get(), nullptr);
+    }
 
     std::optional<TextDecorationPainter> textDecorationPainter;
     if (style.textDecorationsInEffect() != TextDecorationNone) {
@@ -131,8 +123,6 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
             textDecorationPainter->setWidth(rect.width());
             textDecorationPainter->paintTextDecoration(textRun, textOrigin, rect.location() + paintOffset);
         }
-        if (debugBordersEnabled)
-            paintDebugBorders(paintInfo.context(), LayoutRect(run.rect()), paintOffset);
     }
 }
 
@@ -148,20 +138,20 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
     if (style.visibility() != VISIBLE || style.pointerEvents() == PE_NONE)
         return false;
 
-    RenderObject& renderer = *flow.firstChild();
     LayoutRect rangeRect = locationInContainer.boundingBox();
     rangeRect.moveBy(-accumulatedOffset);
-
     auto resolver = lineResolver(flow, layout);
-    for (FloatRect lineRect : resolver.rangeForRect(rangeRect)) {
+    auto range = resolver.rangeForRect(rangeRect);
+    for (auto it = range.begin(), end = range.end(); it != end; ++it) {
+        auto lineRect = *it;
         lineRect.moveBy(accumulatedOffset);
+        auto& renderer = const_cast<RenderObject&>(it.renderer());
         if (!locationInContainer.intersects(lineRect))
             continue;
         renderer.updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
         if (!result.addNodeToRectBasedTestResult(renderer.node(), request, locationInContainer, lineRect))
             return true;
     }
-
     return false;
 }
 

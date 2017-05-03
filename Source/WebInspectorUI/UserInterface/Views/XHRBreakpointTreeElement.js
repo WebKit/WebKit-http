@@ -34,8 +34,11 @@ WebInspector.XHRBreakpointTreeElement = class XHRBreakpointTreeElement extends W
 
         let subtitle;
         if (!title) {
-            title = WebInspector.UIString("URL contains:");
-            subtitle = breakpoint.url;
+            title = WebInspector.UIString("URL");
+            if (breakpoint.type === WebInspector.XHRBreakpoint.Type.Text)
+                subtitle = doubleQuotedString(breakpoint.url);
+            else
+                subtitle = "/" + breakpoint.url + "/";
         }
 
         super(["breakpoint", className], title, subtitle, breakpoint);
@@ -66,6 +69,8 @@ WebInspector.XHRBreakpointTreeElement = class XHRBreakpointTreeElement extends W
 
     ondetach()
     {
+        super.ondetach();
+
         this._statusImageElement.removeEventListener("click", this._boundStatusImageElementClicked);
         this._statusImageElement.removeEventListener("focus", this._boundStatusImageElementFocused);
         this._statusImageElement.removeEventListener("mousedown", this._boundStatusImageElementMouseDown);

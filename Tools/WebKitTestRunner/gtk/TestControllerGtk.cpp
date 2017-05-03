@@ -133,9 +133,14 @@ void TestController::runModal(PlatformWebView*)
     // FIXME: Need to implement this to test showModalDialog.
 }
 
+WKContextRef TestController::platformContext()
+{
+    return m_context.get();
+}
+
 const char* TestController::platformLibraryPathForTesting()
 {
-    return 0;
+    return nullptr;
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation&)
@@ -150,8 +155,9 @@ void TestController::platformResetPreferencesToConsistentValues()
     m_mainWebView->dismissAllPopupMenus();
 }
 
-void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string&) const
+void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& options, const std::string&) const
 {
+    options.enableModernMediaControls = false;
 }
 
 } // namespace WTR

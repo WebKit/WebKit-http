@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIUIClient_h
-#define APIUIClient_h
+#pragma once
 
 #include "WKPage.h"
 #include "WebEvent.h"
@@ -32,7 +31,6 @@
 #include "WebPageProxy.h"
 #include <WebCore/FloatRect.h>
 #include <functional>
-#include <wtf/PassRefPtr.h>
 
 #if PLATFORM(IOS)
 OBJC_CLASS NSArray;
@@ -75,7 +73,8 @@ class UIClient {
 public:
     virtual ~UIClient() { }
 
-    virtual PassRefPtr<WebKit::WebPageProxy> createNewPage(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&) { return nullptr; }
+    virtual RefPtr<WebKit::WebPageProxy> createNewPage(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&) { return nullptr; }
+    virtual bool createNewPageAsync(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&, std::function<void (RefPtr<WebKit::WebPageProxy>)> completionHandler) { return false; }
     virtual void showPage(WebKit::WebPageProxy*) { }
     virtual void fullscreenMayReturnToInline(WebKit::WebPageProxy*) { }
     virtual void didEnterFullscreen(WebKit::WebPageProxy*) { }
@@ -151,7 +150,7 @@ public:
 
     virtual void isPlayingAudioDidChange(WebKit::WebPageProxy&) { }
     virtual void mediaCaptureStateDidChange(WebCore::MediaProducer::MediaStateFlags) { }
-    virtual void handleAutoplayEvent(WebKit::WebPageProxy&, WebCore::AutoplayEvent) { }
+    virtual void handleAutoplayEvent(WebKit::WebPageProxy&, WebCore::AutoplayEvent, OptionSet<WebCore::AutoplayEventFlags>) { }
 
 #if ENABLE(MEDIA_SESSION)
     virtual void mediaSessionMetadataDidChange(WebKit::WebPageProxy&, WebKit::WebMediaSessionMetadata*) { }
@@ -183,5 +182,3 @@ public:
 };
 
 } // namespace API
-
-#endif // APIUIClient_h

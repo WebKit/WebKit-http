@@ -304,10 +304,8 @@ void AudioNode::processIfNecessary(size_t framesToProcess)
 
         if (silentInputs && propagatesSilence())
             silenceOutputs();
-        else {
+        else
             process(framesToProcess);
-            unsilenceOutputs();
-        }
     }
 }
 
@@ -352,12 +350,6 @@ void AudioNode::silenceOutputs()
 {
     for (auto& output : m_outputs)
         output->bus()->zero();
-}
-
-void AudioNode::unsilenceOutputs()
-{
-    for (auto& output : m_outputs)
-        output->bus()->clearSilentFlag();
 }
 
 void AudioNode::enableOutputsIfNecessary()

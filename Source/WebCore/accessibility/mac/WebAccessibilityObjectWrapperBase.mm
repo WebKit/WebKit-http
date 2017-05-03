@@ -72,6 +72,10 @@ using namespace HTMLNames;
 #define NSAccessibilityAnyTypeSearchKey @"AXAnyTypeSearchKey"
 #endif
 
+#ifndef NSAccessibilityArticleSearchKey
+#define NSAccessibilityArticleSearchKey @"AXArticleSearchKey"
+#endif
+
 #ifndef NSAccessibilityBlockquoteSameLevelSearchKey
 #define NSAccessibilityBlockquoteSameLevelSearchKey @"AXBlockquoteSameLevelSearchKey"
 #endif
@@ -505,6 +509,7 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
         return AXARIAContentGroupText(@"ARIALandmarkMain");
     case LandmarkNavigationRole:
         return AXARIAContentGroupText(@"ARIALandmarkNavigation");
+    case LandmarkDocRegionRole:
     case LandmarkRegionRole:
         return AXARIAContentGroupText(@"ARIALandmarkRegion");
     case LandmarkSearchRole:
@@ -649,6 +654,7 @@ static AccessibilitySearchKeyMap* createAccessibilitySearchKeyMap()
 {
     const SearchKeyEntry searchKeys[] = {
         { NSAccessibilityAnyTypeSearchKey, AnyTypeSearchKey },
+        { NSAccessibilityArticleSearchKey, ArticleSearchKey },
         { NSAccessibilityBlockquoteSameLevelSearchKey, BlockquoteSameLevelSearchKey },
         { NSAccessibilityBlockquoteSearchKey, BlockquoteSearchKey },
         { NSAccessibilityBoldFontSearchKey, BoldFontSearchKey },

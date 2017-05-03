@@ -146,6 +146,8 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override { return WebCore::UserInterfaceLayoutDirection::LTR; }
 
+    void didChangeAvoidsUnsafeArea(bool) override { }
+
     // Members of PageClientImpl class
     GtkWidget* m_viewWidget;
     DefaultUndoController m_undoController;

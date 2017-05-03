@@ -57,11 +57,11 @@
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import "_WKActivatedElementInfoInternal.h"
+#import "_WKDraggableElementInfoInternal.h"
 #import "_WKElementAction.h"
 #import "_WKFocusedElementInfo.h"
 #import "_WKFormInputSession.h"
 #import "_WKInputDelegate.h"
-#import "_WKTestingDelegate.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
@@ -107,6 +107,19 @@
 }
 
 @end
+
+#if ENABLE(DATA_INTERACTION)
+
+@interface WKDataInteractionCaretView : UIView
+
+- (instancetype)initWithTextInputView:(UIView<UITextInput> *)textInputView;
+- (void)insertAtPosition:(UITextPosition *)position;
+- (void)updateToPosition:(UITextPosition *)position;
+- (void)remove;
+
+@end
+
+#endif
 
 using namespace WebCore;
 using namespace WebKit;
@@ -640,7 +653,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 #if ENABLE(DATA_INTERACTION)
     [self teardownDataInteractionDelegates];
-    _isPerformingDataInteractionOperation = NO;
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -866,6 +878,9 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
+    if (!_page->isValid())
+        return;
+
     const _UIWebTouchEvent* lastTouchEvent = gestureRecognizer.lastTouchEvent;
 
     _lastInteractionLocation = lastTouchEvent->locationInDocumentCoordinates;
@@ -1143,7 +1158,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     BOOL shouldZoomToFocusRect = YES;
 #if ENABLE(DATA_INTERACTION)
     // FIXME: We need to teach WKWebView to properly zoom and scroll during a data interaction operation.
-    shouldZoomToFocusRect = ![WebItemProviderPasteboard sharedInstance].hasPendingOperation;
+    shouldZoomToFocusRect = !_dataInteractionState.isPerformingOperation;
 #endif
     if (shouldZoomToFocusRect) {
         // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
@@ -1266,33 +1281,56 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [_actionSheetAssistant showDataDetectorsSheet];
 }
 
-- (SEL)_actionForLongPress
+- (SEL)_actionForLongPressFromPositionInformation:(const InteractionInformationAtPosition&)positionInformation
 {
-    if (!_positionInformation.touchCalloutEnabled)
+    if (!positionInformation.touchCalloutEnabled)
         return nil;
 
-    if (_positionInformation.isImage)
+    if (positionInformation.isImage)
         return @selector(_showImageSheet);
 
-    if (_positionInformation.isLink) {
-        NSURL *targetURL = [NSURL URLWithString:_positionInformation.url];
-        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
+    if (positionInformation.isLink) {
+        NSURL *targetURL = [NSURL URLWithString:positionInformation.url];
+        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:targetURL.scheme.lowercaseString])
             return @selector(_showDataDetectorsSheet);
         return @selector(_showLinkSheet);
     }
-    
-    if (_positionInformation.isAttachment)
+    if (positionInformation.isAttachment)
         return @selector(_showAttachmentSheet);
 
     return nil;
 }
 
+- (SEL)_actionForLongPress
+{
+    return [self _actionForLongPressFromPositionInformation:_positionInformation];
+}
+
+- (InteractionInformationAtPosition)currentPositionInformation
+{
+    return _positionInformation;
+}
+
+- (void)doAfterPositionInformationUpdate:(void (^)(InteractionInformationAtPosition))action forRequest:(InteractionInformationRequest)request
+{
+    if ([self _currentPositionInformationIsValidForRequest:request]) {
+        // If the most recent position information is already valid, invoke the given action block immediately.
+        action(_positionInformation);
+        return;
+    }
+
+    _pendingPositionInformationHandlers.append(InteractionInformationRequestAndCallback(request, action));
+
+    if (![self _hasValidOutstandingPositionInformationRequest:request])
+        [self requestAsynchronousPositionInformationUpdate:request];
+}
+
 - (void)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request
 {
-    if (_hasValidPositionInformation && _positionInformation.request.isValidForRequest(request))
+    if ([self _currentPositionInformationIsValidForRequest:request])
         return;
 
-    if (_outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request)) {
+    if ([self _hasValidOutstandingPositionInformationRequest:request]) {
         if (auto* connection = _page->process().connection()) {
             connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), Seconds::infinity());
             return;
@@ -1301,16 +1339,57 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     _page->getPositionInformation(request, _positionInformation);
     _hasValidPositionInformation = YES;
+    [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
 }
 
 - (void)requestAsynchronousPositionInformationUpdate:(WebKit::InteractionInformationRequest)request
 {
-    if (_hasValidPositionInformation && _positionInformation.request.isValidForRequest(request))
+    if ([self _currentPositionInformationIsValidForRequest:request])
         return;
 
     _outstandingPositionInformationRequest = request;
 
     _page->requestPositionInformation(request);
+}
+
+- (BOOL)_currentPositionInformationIsValidForRequest:(const InteractionInformationRequest&)request
+{
+    return _hasValidPositionInformation && _positionInformation.request.isValidForRequest(request);
+}
+
+- (BOOL)_hasValidOutstandingPositionInformationRequest:(const InteractionInformationRequest&)request
+{
+    return _outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request);
+}
+
+- (void)_invokeAndRemovePendingHandlersValidForCurrentPositionInformation
+{
+    ASSERT(_hasValidPositionInformation);
+
+    ++_positionInformationCallbackDepth;
+    auto updatedPositionInformation = _positionInformation;
+
+    for (size_t index = 0; index < _pendingPositionInformationHandlers.size(); ++index) {
+        auto requestAndHandler = _pendingPositionInformationHandlers[index];
+        if (!requestAndHandler)
+            continue;
+
+        if (![self _currentPositionInformationIsValidForRequest:requestAndHandler->first])
+            continue;
+
+        _pendingPositionInformationHandlers[index] = std::nullopt;
+
+        if (requestAndHandler->second)
+            requestAndHandler->second(updatedPositionInformation);
+    }
+
+    if (--_positionInformationCallbackDepth)
+        return;
+
+    for (int index = _pendingPositionInformationHandlers.size() - 1; index >= 0; --index) {
+        if (!_pendingPositionInformationHandlers[index])
+            _pendingPositionInformationHandlers.remove(index);
+    }
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -1348,9 +1427,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         if (_textSelectionAssistant) {
             // Request information about the position with sync message.
             // If the assisted node is the same, prevent the gesture.
-            InteractionInformationRequest request(roundedIntPoint(point));
-            _page->getPositionInformation(request, _positionInformation);
-            _hasValidPositionInformation = YES;
+            [self ensurePositionInformationIsUpToDate:InteractionInformationRequest(roundedIntPoint(point))];
             if (_positionInformation.nodeAtPositionIsAssistedNode)
                 return NO;
         }
@@ -1442,21 +1519,6 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return _positionInformation.isSelectable;
 }
 
-#if ENABLE(DATA_INTERACTION)
-
-- (BOOL)pointIsInDataInteractionContent:(CGPoint)point
-{
-    InteractionInformationRequest request(roundedIntPoint(point));
-    [self ensurePositionInformationIsUpToDate:request];
-
-    if (_positionInformation.isImage || _positionInformation.isLink || _positionInformation.isAttachment)
-        return YES;
-
-    return _positionInformation.hasSelectionAtPosition;
-}
-
-#endif
-
 - (BOOL)pointIsNearMarkedText:(CGPoint)point
 {
     InteractionInformationRequest request(roundedIntPoint(point));
@@ -1466,18 +1528,29 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (BOOL)pointIsInAssistedNode:(CGPoint)point
 {
+    // This method is still implemented for backwards compatibility with older UIKit versions.
+    return [self textInteractionGesture:UIWKGestureLoupe shouldBeginAtPoint:point];
+}
+
+- (BOOL)textInteractionGesture:(UIWKGestureType)gesture shouldBeginAtPoint:(CGPoint)point
+{
     InteractionInformationRequest request(roundedIntPoint(point));
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasSelectionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe) {
         // If the position might initiate data interaction, we don't want to change the selection.
-        // FIXME: This should be renamed to something more precise, such as textInteractionShouldRecognizeGestureAtPoint:
         return NO;
     }
 #endif
 
-    return _positionInformation.nodeAtPositionIsAssistedNode;
+    // If we're currently editing an assisted node, only allow the selection to move within that assisted node.
+    if (self.isAssistingNode)
+        return _positionInformation.nodeAtPositionIsAssistedNode;
+
+    // Otherwise, if we're using a text interaction assistant outside of editing purposes (e.g. the selection mode
+    // is character granularity) then allow text selection.
+    return YES;
 }
 
 - (NSArray *)webSelectionRectsForSelectionRects:(const Vector<WebCore::SelectionRect>&)selectionRects
@@ -1751,6 +1824,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _hasValidPositionInformation = YES;
     if (_actionSheetAssistant)
         [_actionSheetAssistant updateSheetPosition];
+    [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
 }
 
 - (void)_willStartScrollingOrZooming
@@ -1962,6 +2036,11 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
 
     return result;
+}
+
+- (UIColor *)insertionPointColor
+{
+    return [UIColor insertionPointColor];
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
@@ -2952,6 +3031,8 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)setSelectedTextRange:(UITextRange *)range
 {
+    if (_textSelectionAssistant && !range)
+        [self clearSelection];
 }
 
 - (BOOL)hasMarkedText
@@ -3773,7 +3854,7 @@ static bool isAssistableInputType(InputType type)
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
         shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
 #if ENABLE(DATA_INTERACTION)
-        shouldShowKeyboard |= _isPerformingDataInteractionOperation;
+        shouldShowKeyboard |= _dataInteractionState.isPerformingOperation;
 #endif
     }
     if (!shouldShowKeyboard)
@@ -4025,8 +4106,15 @@ static bool isAssistableInputType(InputType type)
     
     if ([uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)]) {
         if ([uiDelegate _webView:_webView showCustomSheetForElement:element]) {
-            // Prevent tap-and-hold and drag.
-            [UIApp _cancelAllTouches];
+#if ENABLE(DATA_INTERACTION)
+            BOOL shouldCancelAllTouches = !_dataInteractionState.sourceAction;
+#else
+            BOOL shouldCancelAllTouches = YES;
+#endif
+            // Prevent tap-and-hold and panning.
+            if (shouldCancelAllTouches)
+                [UIApp _cancelAllTouches];
+
             return YES;
         }
     }
@@ -4149,7 +4237,7 @@ static bool isAssistableInputType(InputType type)
             return NO;
         if (WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
             return YES;
-        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:[targetURL scheme]])
+        if ([[getDDDetectionControllerClass() tapAndHoldSchemes] containsObject:targetURL.scheme.lowercaseString])
             return YES;
         return NO;
     }
@@ -4336,8 +4424,11 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
             [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];
 
         auto defaultActions = [_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
-        if (imageInfo && [uiDelegate respondsToSelector:@selector(_webView:actionsForElement:defaultActions:)])
-            defaultActions = [uiDelegate _webView:_webView actionsForElement:elementInfo.get() defaultActions:defaultActions.get()];
+        if (imageInfo && [uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForImage:alternateURL:defaultActions:elementInfo:)]) {
+            UIViewController *previewViewController = [uiDelegate _webView:_webView previewViewControllerForImage:uiImage.get() alternateURL:alternateURL.get() defaultActions:defaultActions.get() elementInfo:elementInfo.get()];
+            if (previewViewController)
+                return previewViewController;
+        }
 
         return [[[WKImagePreviewViewController alloc] initWithCGImage:cgImage defaultActions:defaultActions elementInfo:elementInfo] autorelease];
     }

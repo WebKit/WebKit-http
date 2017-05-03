@@ -33,6 +33,8 @@
 #include "CSSFontFaceSource.h"
 #include "CSSFontFamily.h"
 #include "CSSFontFeatureValue.h"
+#include "CSSFontStyleRangeValue.h"
+#include "CSSFontStyleValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyNames.h"
@@ -162,15 +164,6 @@ void CSSFontSelector::addFontFaceRule(StyleRuleFontFace& fontFaceRule, bool isIn
     if (!familyList.length())
         return;
 
-    if (!fontStyle)
-        fontStyle = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal).ptr();
-
-    if (!fontWeight)
-        fontWeight = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-
-    if (!fontStretch)
-        fontStretch = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-
     CSSValueList* rangeList = downcast<CSSValueList>(unicodeRange.get());
 
     CSSValueList& srcList = downcast<CSSValueList>(*src);
@@ -182,9 +175,12 @@ void CSSFontSelector::addFontFaceRule(StyleRuleFontFace& fontFaceRule, bool isIn
 
     if (!fontFace->setFamilies(*fontFamily))
         return;
-    fontFace->setStyle(*fontStyle);
-    fontFace->setWeight(*fontWeight);
-    fontFace->setStretch(*fontStretch);
+    if (fontStyle)
+        fontFace->setStyle(*fontStyle);
+    if (fontWeight)
+        fontFace->setWeight(*fontWeight);
+    if (fontStretch)
+        fontFace->setStretch(*fontStretch);
     if (rangeList && !fontFace->setUnicodeRange(*rangeList))
         return;
     if (variantLigatures && !fontFace->setVariantLigatures(*variantLigatures))
@@ -341,7 +337,7 @@ void CSSFontSelector::beginLoadingFontSoon(CachedFont& font)
     // after this font has been requested but before it began loading. Balanced by
     // decrementRequestCount() in beginLoadTimerFired() and in clearDocument().
     m_document->cachedResourceLoader().incrementRequestCount(font);
-    m_beginLoadingTimer.startOneShot(0);
+    m_beginLoadingTimer.startOneShot(0_s);
 }
 
 void CSSFontSelector::beginLoadTimerFired()

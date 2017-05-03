@@ -34,6 +34,8 @@
 #if USE(APPLE_INTERNAL_SDK)
 #include <CommonCrypto/CommonCryptorSPI.h>
 #include <CommonCrypto/CommonECCryptor.h>
+// FIXME: <rdar://problem/31508959>
+// #include <CommonCrypto/CommonKeyDerivationSPI.h>
 #include <CommonCrypto/CommonRSACryptor.h>
 #include <CommonCrypto/CommonRandomSPI.h>
 #endif
@@ -77,7 +79,6 @@ extern "C" CCCryptorStatus CCRSACryptorEncrypt(CCRSACryptorRef publicKey, CCAsym
 extern "C" CCCryptorStatus CCRSACryptorDecrypt(CCRSACryptorRef privateKey, CCAsymmetricPadding padding, const void *cipherText, size_t cipherTextLen, void *plainText, size_t *plainTextLen, const void *tagData, size_t tagDataLen, CCDigestAlgorithm digestType);
 extern "C" CCCryptorStatus CCRSACryptorSign(CCRSACryptorRef privateKey, CCAsymmetricPadding padding, const void *hashToSign, size_t hashSignLen, CCDigestAlgorithm digestType, size_t saltLen, void *signedData, size_t *signedDataLen);
 extern "C" CCCryptorStatus CCRSACryptorVerify(CCRSACryptorRef publicKey, CCAsymmetricPadding padding, const void *hash, size_t hashLen, CCDigestAlgorithm digestType, size_t saltLen, const void *signedData, size_t signedDataLen);
-extern "C" CCCryptorStatus CCRSACryptorCreateFromData(CCRSAKeyType keyType, uint8_t *modulus, size_t modulusLength, uint8_t *exponent, size_t exponentLength, uint8_t *p, size_t pLength, uint8_t *q, size_t qLength, CCRSACryptorRef *ref);
 extern "C" CCCryptorStatus CCRSACryptorGeneratePair(size_t keysize, uint32_t e, CCRSACryptorRef *publicKey, CCRSACryptorRef *privateKey);
 extern "C" CCRSACryptorRef CCRSACryptorGetPublicKeyFromPrivateKey(CCRSACryptorRef privkey);
 extern "C" void CCRSACryptorRelease(CCRSACryptorRef key);
@@ -108,9 +109,23 @@ extern "C" int CCECGetKeySize(CCECCryptorRef key);
 extern "C" CCCryptorStatus CCECCryptorCreateFromData(size_t keySize, uint8_t *qX, size_t qXLength, uint8_t *qY, size_t qYLength, CCECCryptorRef *ref);
 extern "C" CCCryptorStatus CCECCryptorGetKeyComponents(CCECCryptorRef ecKey, size_t *keySize, uint8_t *qX, size_t *qXLength, uint8_t *qY, size_t *qYLength, uint8_t *d, size_t *dLength);
 extern "C" CCCryptorStatus CCECCryptorComputeSharedSecret(CCECCryptorRef privateKey, CCECCryptorRef publicKey, void *out, size_t *outLen);
+extern "C" CCCryptorStatus CCECCryptorSignHash(CCECCryptorRef privateKey, const void *hashToSign, size_t hashSignLen, void *signedData, size_t *signedDataLen);
+extern "C" CCCryptorStatus CCECCryptorVerifyHash(CCECCryptorRef publicKey, const void *hash, size_t hashLen, const void *signedData, size_t signedDataLen, uint32_t *valid);
+
+
+
+#ifndef CommonCrypto_CommonNistKeyDerivation_h
+enum {
+    kCCKDFAlgorithmHKDF = 6
+};
+typedef uint32_t CCKDFAlgorithm;
+#endif
+
+extern "C" CCStatus CCKeyDerivationHMac(CCKDFAlgorithm algorithm, CCDigestAlgorithm digest, unsigned rounds, const void *keyDerivationKey, size_t keyDerivationKeyLen, const void *label, size_t labelLen, const void *context, size_t contextLen, const void *iv, size_t ivLen, const void *salt, size_t saltLen, void *derivedKey, size_t derivedKeyLen);
 
 #if !USE(APPLE_INTERNAL_SDK)
 extern "C" CCCryptorStatus CCCryptorGCM(CCOperation op, CCAlgorithm alg, const void* key, size_t keyLength, const void* iv, size_t ivLen, const void* aData, size_t aDataLen, const void* dataIn, size_t dataInLength, void* dataOut, void* tag, size_t* tagLength);
+extern "C" CCCryptorStatus CCRSACryptorCreateFromData(CCRSAKeyType keyType, const uint8_t *modulus, size_t modulusLength, const uint8_t *exponent, size_t exponentLength, const uint8_t *p, size_t pLength, const uint8_t *q, size_t qLength, CCRSACryptorRef *ref);
 #endif
 
 namespace WebCore {

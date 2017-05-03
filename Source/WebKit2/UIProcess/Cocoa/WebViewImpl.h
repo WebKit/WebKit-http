@@ -29,9 +29,11 @@
 #if PLATFORM(MAC)
 
 #include "PluginComplexTextInputState.h"
+#include "WKDragDestinationAction.h"
 #include "WKLayoutMode.h"
 #include "WebPageProxy.h"
 #include "_WKOverlayScrollbarStyle.h"
+#include <WebCore/AVKitSPI.h>
 #include <WebCore/TextIndicatorWindow.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <functional>
@@ -54,8 +56,6 @@ OBJC_CLASS WKWindowVisibilityObserver;
 OBJC_CLASS _WKThumbnailView;
 
 #if HAVE(TOUCH_BAR)
-OBJC_CLASS AVFunctionBarPlaybackControlsProvider;
-OBJC_CLASS AVFunctionBarScrubber;
 OBJC_CLASS NSCandidateListTouchBarItem;
 OBJC_CLASS NSCustomTouchBarItem;
 OBJC_CLASS NSTouchBar;
@@ -90,6 +90,10 @@ OBJC_CLASS WebPlaybackControlsManager;
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
 
 - (void)_web_didChangeContentSize:(NSSize)newSize;
+
+#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+- (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo;
+#endif
 
 @optional
 - (void)_web_didAddMediaControlsManager:(id)controlsManager;
@@ -136,6 +140,7 @@ public:
     bool drawsBackground() const;
     bool isOpaque() const;
 
+    void setShouldSuppressFirstResponderChanges(bool);
     bool acceptsFirstMouse(NSEvent *);
     bool acceptsFirstResponder();
     bool becomeFirstResponder();
@@ -511,7 +516,9 @@ public:
     void updateTouchBar();
     NSTouchBar *currentTouchBar() const { return m_currentTouchBar.get(); }
     NSCandidateListTouchBarItem *candidateListTouchBarItem() const;
-    AVFunctionBarScrubber *mediaPlaybackControlsView() const;
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    AVTouchBarScrubber *mediaPlaybackControlsView() const;
+#endif
     NSTouchBar *textTouchBar() const;
     void dismissTextTouchBarPopoverItemWithIdentifier(NSString *);
 
@@ -549,8 +556,8 @@ private:
     RetainPtr<NSCustomTouchBarItem> m_exitFullScreenButton;
 
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-    RetainPtr<AVFunctionBarPlaybackControlsProvider> m_mediaTouchBarProvider;
-    RetainPtr<AVFunctionBarScrubber> m_mediaPlaybackControlsView;
+    RetainPtr<AVTouchBarPlaybackControlsProvider> m_mediaTouchBarProvider;
+    RetainPtr<AVTouchBarScrubber> m_mediaPlaybackControlsView;
 #endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 #endif // HAVE(TOUCH_BAR)
 
@@ -582,7 +589,6 @@ private:
 
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
-    void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle&, SandboxExtension::HandleArray& handles);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
@@ -708,6 +714,11 @@ private:
     bool m_requiresUserActionForEditingControlsManager { false };
     bool m_editableElementIsFocused { false };
     bool m_isTextInsertionReplacingSoftSpace { false };
+    
+#if ENABLE(DRAG_SUPPORT)
+    NSInteger m_initialNumberOfValidItemsForDrop { 0 };
+#endif
+
 };
     
 } // namespace WebKit

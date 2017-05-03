@@ -4,7 +4,7 @@
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2007 David Smith (catfish.man@gmail.com)
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *           (C) 2007 Eric Seidel (eric@webkit.org)
  *
  * This library is free software; you can redistribute it and/or
@@ -33,12 +33,11 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClassChangeInvalidation.h"
-#include "ClientRect.h"
-#include "ClientRectList.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ContainerNodeAlgorithms.h"
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
+#include "DOMRect.h"
 #include "DOMTokenList.h"
 #include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
@@ -611,7 +610,7 @@ void Element::setFocus(bool flag)
     document().userActionElements().setFocused(this, flag);
     invalidateStyleForSubtree();
 
-    for (Element* element = this; element; element = element->parentOrShadowHostElement())
+    for (Element* element = this; element; element = element->parentElementInComposedTree())
         element->setHasFocusWithin(flag);
 }
 
@@ -1145,13 +1144,13 @@ LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElemen
     return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
 
-Ref<ClientRectList> Element::getClientRects()
+Vector<Ref<DOMRect>> Element::getClientRects()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
     RenderBoxModelObject* renderBoxModelObject = this->renderBoxModelObject();
     if (!renderBoxModelObject)
-        return ClientRectList::create();
+        return { };
 
     // FIXME: Handle SVG elements.
     // FIXME: Handle table/inline-table with a caption.
@@ -1159,10 +1158,10 @@ Ref<ClientRectList> Element::getClientRects()
     Vector<FloatQuad> quads;
     renderBoxModelObject->absoluteQuads(quads);
     document().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(quads, renderBoxModelObject->style());
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
 }
 
-Ref<ClientRect> Element::getBoundingClientRect()
+Ref<DOMRect> Element::getBoundingClientRect()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -1180,14 +1179,14 @@ Ref<ClientRect> Element::getBoundingClientRect()
     }
 
     if (quads.isEmpty())
-        return ClientRect::create();
+        return DOMRect::create();
 
     FloatRect result = quads[0].boundingBox();
     for (size_t i = 1; i < quads.size(); ++i)
         result.unite(quads[i].boundingBox());
 
     document().adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(result, renderer()->style());
-    return ClientRect::create(result);
+    return DOMRect::create(result);
 }
 
 IntRect Element::clientRect() const
@@ -2055,7 +2054,7 @@ void Element::childrenChanged(const ChildChange& change)
 
 void Element::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
 {
-    setAttributeEventListener(eventType, JSLazyEventListener::create(*this, attributeName, attributeValue));
+    setAttributeEventListener(eventType, JSLazyEventListener::create(*this, attributeName, attributeValue), mainThreadNormalWorld());
 }
 
 void Element::setIsNamedFlowContentElement()
@@ -2121,6 +2120,19 @@ const Vector<RefPtr<Attr>>& Element::attrNodeList()
     return *attrNodeListForElement(*this);
 }
 
+void Element::attachAttributeNodeIfNeeded(Attr& attrNode)
+{
+    ASSERT(!attrNode.ownerElement() || attrNode.ownerElement() == this);
+    if (attrNode.ownerElement() == this)
+        return;
+
+    NoEventDispatchAssertion assertNoEventDispatch;
+
+    attrNode.attachToElement(*this);
+    treeScope().adoptIfNeeded(attrNode);
+    ensureAttrNodeListForElement(*this).append(&attrNode);
+}
+
 ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
 {
     RefPtr<Attr> oldAttrNode = attrIfExists(attrNode.localName(), shouldIgnoreAttributeCase(*this));
@@ -2132,31 +2144,39 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
     if (attrNode.ownerElement() && attrNode.ownerElement() != this)
         return Exception { INUSE_ATTRIBUTE_ERR };
 
+    {
+    NoEventDispatchAssertion assertNoEventDispatch;
     synchronizeAllAttributes();
+    }
+
     auto& elementData = ensureUniqueElementData();
 
     auto existingAttributeIndex = elementData.findAttributeIndexByName(attrNode.localName(), shouldIgnoreAttributeCase(*this));
-    if (existingAttributeIndex == ElementData::attributeNotFound)
-        setAttributeInternal(elementData.findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
-    else {
+
+    // Attr::value() will return its 'm_standaloneValue' member any time its Element is set to nullptr. We need to cache this value
+    // before making changes to attrNode's Element connections.
+    auto attrNodeValue = attrNode.value();
+
+    if (existingAttributeIndex == ElementData::attributeNotFound) {
+        attachAttributeNodeIfNeeded(attrNode);
+        setAttributeInternal(elementData.findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNodeValue, NotInSynchronizationOfLazyAttribute);
+    } else {
         const Attribute& attribute = attributeAt(existingAttributeIndex);
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), attribute.value());
         else
             oldAttrNode = Attr::create(document(), attrNode.qualifiedName(), attribute.value());
 
+        attachAttributeNodeIfNeeded(attrNode);
+
         if (attribute.name().matches(attrNode.qualifiedName()))
-            setAttributeInternal(existingAttributeIndex, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
+            setAttributeInternal(existingAttributeIndex, attrNode.qualifiedName(), attrNodeValue, NotInSynchronizationOfLazyAttribute);
         else {
             removeAttributeInternal(existingAttributeIndex, NotInSynchronizationOfLazyAttribute);
-            setAttributeInternal(ensureUniqueElementData().findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
+            setAttributeInternal(ensureUniqueElementData().findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNodeValue, NotInSynchronizationOfLazyAttribute);
         }
     }
-    if (attrNode.ownerElement() != this) {
-        attrNode.attachToElement(*this);
-        treeScope().adoptIfNeeded(attrNode);
-        ensureAttrNodeListForElement(*this).append(&attrNode);
-    }
+
     return WTFMove(oldAttrNode);
 }
 
@@ -2171,22 +2191,29 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
     if (attrNode.ownerElement() && attrNode.ownerElement() != this)
         return Exception { INUSE_ATTRIBUTE_ERR };
 
+    unsigned index = 0;
+    
+    // Attr::value() will return its 'm_standaloneValue' member any time its Element is set to nullptr. We need to cache this value
+    // before making changes to attrNode's Element connections.
+    auto attrNodeValue = attrNode.value();
+
+    {
+    NoEventDispatchAssertion assertNoEventDispatch;
     synchronizeAllAttributes();
     auto& elementData = ensureUniqueElementData();
 
-    auto index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
+    index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
+
     if (index != ElementData::attributeNotFound) {
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData.attributeAt(index).value());
         else
             oldAttrNode = Attr::create(document(), attrNode.qualifiedName(), elementData.attributeAt(index).value());
     }
+    }
 
-    setAttributeInternal(index, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
-
-    attrNode.attachToElement(*this);
-    treeScope().adoptIfNeeded(attrNode);
-    ensureAttrNodeListForElement(*this).append(&attrNode);
+    attachAttributeNodeIfNeeded(attrNode);
+    setAttributeInternal(index, attrNode.qualifiedName(), attrNodeValue, NotInSynchronizationOfLazyAttribute);
 
     return WTFMove(oldAttrNode);
 }
@@ -3010,7 +3037,7 @@ URL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 
 int Element::getIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLInteger(getAttribute(attributeName)).value_or(0);
+    return parseHTMLInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setIntegralAttribute(const QualifiedName& attributeName, int value)
@@ -3020,7 +3047,7 @@ void Element::setIntegralAttribute(const QualifiedName& attributeName, int value
 
 unsigned Element::getUnsignedIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).value_or(0);
+    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value)
@@ -3436,17 +3463,19 @@ void Element::resetComputedStyle()
         reset(child);
 }
 
+void Element::resetStyleRelations()
+{
+    if (!hasRareData())
+        return;
+    elementRareData()->resetStyleRelations();
+}
+
 void Element::clearStyleDerivedDataBeforeDetachingRenderer()
 {
     unregisterNamedFlowContentElement();
     cancelFocusAppearanceUpdate();
     clearBeforePseudoElement();
     clearAfterPseudoElement();
-    if (!hasRareData())
-        return;
-    ElementRareData* data = elementRareData();
-    data->resetComputedStyle();
-    data->resetDynamicRestyleObservations();
 }
 
 void Element::clearHoverAndActiveStatusBeforeDetachingRenderer()

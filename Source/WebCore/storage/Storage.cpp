@@ -33,6 +33,7 @@
 #include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "StorageArea.h"
+#include "StorageType.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -62,9 +63,6 @@ ExceptionOr<unsigned> Storage::length() const
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
-    if (isDisabledByPrivateBrowsing())
-        return 0;
-
     return m_storageArea->length();
 }
 
@@ -72,9 +70,6 @@ ExceptionOr<String> Storage::key(unsigned index) const
 {
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
-
-    if (isDisabledByPrivateBrowsing())
-        return String();
 
     return m_storageArea->key(index);
 }
@@ -84,9 +79,6 @@ ExceptionOr<String> Storage::getItem(const String& key) const
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
-    if (isDisabledByPrivateBrowsing())
-        return String();
-
     return m_storageArea->item(key);
 }
 
@@ -94,9 +86,6 @@ ExceptionOr<void> Storage::setItem(const String& key, const String& value)
 {
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
-
-    if (isDisabledByPrivateBrowsing())
-        return Exception { QUOTA_EXCEEDED_ERR };
 
     bool quotaException = false;
     m_storageArea->setItem(m_frame, key, value, quotaException);
@@ -110,9 +99,6 @@ ExceptionOr<void> Storage::removeItem(const String& key)
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
-    if (isDisabledByPrivateBrowsing())
-        return { };
-
     m_storageArea->removeItem(m_frame, key);
     return { };
 }
@@ -121,9 +107,6 @@ ExceptionOr<void> Storage::clear()
 {
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
-
-    if (isDisabledByPrivateBrowsing())
-        return { };
 
     m_storageArea->clear(m_frame);
     return { };
@@ -134,23 +117,7 @@ ExceptionOr<bool> Storage::contains(const String& key) const
     if (!m_storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
-    if (isDisabledByPrivateBrowsing())
-        return false;
-
     return m_storageArea->contains(key);
-}
-
-bool Storage::isDisabledByPrivateBrowsing() const
-{
-    if (!m_frame->page()->usesEphemeralSession())
-        return false;
-
-    if (m_storageArea->storageType() == LocalStorage) {
-        if (SchemeRegistry::allowsLocalStorageAccessInPrivateBrowsing(m_frame->document()->securityOrigin().protocol()))
-            return false;
-    }
-
-    return true;
 }
 
 } // namespace WebCore

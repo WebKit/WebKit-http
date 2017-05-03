@@ -72,6 +72,7 @@ TextPaintStyle computeTextPaintStyle(const Frame& frame, const RenderStyle& line
     paintStyle.paintOrder = lineStyle.paintOrder();
     paintStyle.lineJoin = lineStyle.joinStyle();
     paintStyle.lineCap = lineStyle.capStyle();
+    paintStyle.miterLimit = lineStyle.strokeMiterLimit();
     
     if (paintInfo.forceTextColor()) {
         paintStyle.fillColor = paintInfo.forcedTextColor();
@@ -102,7 +103,7 @@ TextPaintStyle computeTextPaintStyle(const Frame& frame, const RenderStyle& line
     if (forceBackgroundToWhite)
         paintStyle.fillColor = adjustColorForVisibilityOnBackground(paintStyle.fillColor, Color::white);
 
-    paintStyle.strokeColor = lineStyle.visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
+    paintStyle.strokeColor = lineStyle.visitedDependentColor(lineStyle.hasExplicitlySetStrokeColor() ? CSSPropertyStrokeColor : CSSPropertyWebkitTextStrokeColor);
 
     // Make the text stroke color legible against a white background
     if (forceBackgroundToWhite)
@@ -157,7 +158,7 @@ TextPaintStyle computeTextSelectionPaintStyle(const TextPaintStyle& textPaintSty
             selectionPaintStyle.strokeWidth = strokeWidth;
         }
 
-        Color stroke = paintInfo.forceTextColor() ? paintInfo.forcedTextColor() : pseudoStyle->visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
+        Color stroke = paintInfo.forceTextColor() ? paintInfo.forcedTextColor() : pseudoStyle->visitedDependentColor(pseudoStyle->hasExplicitlySetStrokeColor() ? CSSPropertyStrokeColor : CSSPropertyWebkitTextStrokeColor);
         if (stroke != selectionPaintStyle.strokeColor) {
             if (!paintSelectedTextOnly)
                 paintSelectedTextSeparately = true;
@@ -200,6 +201,8 @@ void updateGraphicsContext(GraphicsContext& context, const TextPaintStyle& paint
             context.setStrokeThickness(paintStyle.strokeWidth);
         context.setLineJoin(paintStyle.lineJoin);
         context.setLineCap(paintStyle.lineCap);
+        if (paintStyle.lineJoin == MiterJoin)
+            context.setMiterLimit(paintStyle.miterLimit);
     }
 }
 

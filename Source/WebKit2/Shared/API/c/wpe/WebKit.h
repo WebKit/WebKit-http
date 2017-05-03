@@ -33,7 +33,6 @@
 
 // From Source/WebKit2/Shared/API/c/
 #include <WebKit/WKArray.h>
-#include <WebKit/WKBase.h>
 #include <WebKit/WKData.h>
 #include <WebKit/WKDeclarationSpecifiers.h>
 #include <WebKit/WKDictionary.h>
@@ -44,7 +43,6 @@
 #include <WebKit/WKNumber.h>
 #include <WebKit/WKSecurityOriginRef.h>
 #include <WebKit/WKString.h>
-#include <WebKit/WKType.h>
 #include <WebKit/WKURL.h>
 #include <WebKit/WKURLRequest.h>
 #include <WebKit/WKURLResponse.h>
@@ -80,8 +78,8 @@
 // From Source/WebKit2/UIProcess/API/C
 #include <WebKit/WKBackForwardListItemRef.h>
 #include <WebKit/WKBackForwardListRef.h>
-#include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
+#include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKCredential.h>
 #include <WebKit/WKCredentialTypes.h>
 #include <WebKit/WKCookie.h>
@@ -94,9 +92,9 @@
 #include <WebKit/WKNavigationDataRef.h>
 #include <WebKit/WKNavigationRef.h>
 #include <WebKit/WKNavigationResponseRef.h>
+#include <WebKit/WKPage.h>
 #include <WebKit/WKPageConfigurationRef.h>
 #include <WebKit/WKPageGroup.h>
-#include <WebKit/WKPage.h>
 #include <WebKit/WKPreferencesRef.h>
 #include <WebKit/WKProxy.h>
 #include <WebKit/WKSessionStateRef.h>

@@ -76,7 +76,7 @@ PlatformCALayerRemote::PlatformCALayerRemote(LayerType layerType, PlatformCALaye
     : PlatformCALayer(layerType, owner)
     , m_context(&context)
 {
-    if (owner) {
+    if (owner && layerType != LayerTypeContentsProvidedLayer) {
         m_properties.contentsScale = owner->platformCALayerDeviceScaleFactor();
         m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::ContentsScaleChanged);
     }
@@ -452,9 +452,9 @@ FloatPoint3D PlatformCALayerRemote::position() const
 
 void PlatformCALayerRemote::setPosition(const FloatPoint3D& value)
 {
-    if (value == m_properties.position)
-        return;
-
+    // We can't early return here if the position has not changed, since GraphicsLayerCA::syncPosition() may have changed
+    // the GraphicsLayer position (which doesn't force a geometry update) but we want a subsequent GraphicsLayerCA::setPosition()
+    // to push a new position to the UI process, even though our m_properties.position hasn't changed.
     m_properties.position = value;
     m_properties.notePropertiesChanged(RemoteLayerTreeTransaction::PositionChanged);
 }

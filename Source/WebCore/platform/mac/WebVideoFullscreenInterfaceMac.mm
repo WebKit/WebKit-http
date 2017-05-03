@@ -34,6 +34,7 @@
 #import "MediaTimeAVFoundation.h"
 #import "PIPSPI.h"
 #import "TimeRanges.h"
+#import "WebPlaybackControlsManager.h"
 #import "WebPlaybackSessionInterfaceMac.h"
 #import "WebVideoFullscreenChangeObserver.h"
 #import "WebVideoFullscreenModel.h"
@@ -186,7 +187,7 @@ enum class PIPState {
     ASSERT(!_videoViewContainerController);
     ASSERT(!_videoViewContainer);
 
-    _pipViewController = adoptNS([[getPIPViewControllerClass() alloc] init]);
+    _pipViewController = adoptNS([allocPIPViewControllerInstance() init]);
     [_pipViewController setDelegate:self];
     [_pipViewController setUserCanResize:YES];
     [_pipViewController setPlaying:_playing];
@@ -440,6 +441,10 @@ void WebVideoFullscreenInterfaceMac::enterFullscreen()
     if (mode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture) {
         [m_webVideoFullscreenInterfaceObjC enterPIP];
 
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+        [m_playbackSessionInterface->playBackControlsManager() setPictureInPictureActive:YES];
+#endif
+
         if (m_fullscreenChangeObserver)
             m_fullscreenChangeObserver->didEnterFullscreen();
     }
@@ -448,6 +453,10 @@ void WebVideoFullscreenInterfaceMac::enterFullscreen()
 void WebVideoFullscreenInterfaceMac::exitFullscreen(const IntRect& finalRect, NSWindow *parentWindow)
 {
     LOG(Fullscreen, "WebVideoFullscreenInterfaceMac::exitFullscreen(%p), finalRect:{%d, %d, %d, %d}, parentWindow:%p", this, finalRect.x(), finalRect.y(), finalRect.width(), finalRect.height(), parentWindow);
+
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    [m_playbackSessionInterface->playBackControlsManager() setPictureInPictureActive:NO];
+#endif
 
     if ([m_webVideoFullscreenInterfaceObjC didRequestExitingPIP])
         return;
@@ -461,6 +470,10 @@ void WebVideoFullscreenInterfaceMac::exitFullscreen(const IntRect& finalRect, NS
 void WebVideoFullscreenInterfaceMac::exitFullscreenWithoutAnimationToMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     LOG(Fullscreen, "WebVideoFullscreenInterfaceMac::exitFullscreenWithoutAnimationToMode(%p), mode:%d", this, mode);
+
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    [m_playbackSessionInterface->playBackControlsManager() setPictureInPictureActive:NO];
+#endif
 
     if ([m_webVideoFullscreenInterfaceObjC didRequestExitingPIP])
         return;

@@ -50,16 +50,16 @@ def platform_options(use_globs=False):
         optparse.make_option('--simulator', action='store_const', dest='platform',
             const=('ios-simulator'),
             help=('DEPRECATED alias for --platform=ios-simulator')),
-        optparse.make_option('--efl', action='store_const', dest='platform',
-            const=('efl*' if use_globs else 'efl'),
-            help=('Alias for --platform=efl*' if use_globs else 'Alias for --platform=efl')),
         optparse.make_option('--gtk', action='store_const', dest='platform',
             const=('gtk*' if use_globs else 'gtk'),
             help=('Alias for --platform=gtk*' if use_globs else 'Alias for --platform=gtk')),
         optparse.make_option('--wpe', action='store_const', dest='platform',
             const=('wpe*' if use_globs else 'wpe'),
-            help=('Alias for --platform=wpe*' if use_globs else 'Alias for --platform=wpe')),
-        ]
+            help=('Alias for --platform=wpe')),
+        optparse.make_option('--no-install', action='store_const',
+            const=False, default=True, dest='install',
+            help='Skip install step for device and simulator testing'),
+        ] + (config.apple_additions().platform_options() if config.apple_additions() else [])
 
 
 def configuration_options():
@@ -88,7 +88,6 @@ class PortFactory(object):
     # common prefix, the more specific port class should be listed
     # first.
     PORT_CLASSES = (
-        'efl.EflPort',
         'gtk.GtkPort',
         'ios_simulator.IOSSimulatorPort',
         'ios_device.IOSDevicePort',

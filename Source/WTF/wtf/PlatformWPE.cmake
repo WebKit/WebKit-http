@@ -4,8 +4,8 @@ list(APPEND WTF_SOURCES
 
     generic/WorkQueueGeneric.cpp
 
-    glib/GRefPtr.cpp
     glib/GLibUtilities.cpp
+    glib/GRefPtr.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
 
@@ -13,6 +13,8 @@ list(APPEND WTF_SOURCES
     linux/MemoryPressureHandlerLinux.cpp
 
     text/unix/TextBreakIteratorInternalICUUnix.cpp
+
+    unix/CPUTimeUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES

@@ -17,8 +17,8 @@ class BuildbotBuildEntry {
 
         for (let propertyTuple of (rawData['properties'] || [])) {
             // e.g. ['build_request_id', '16733', 'Force Build Form']
-            let name = propertyTuple[0];
-            let value = propertyTuple[1];
+            const name = propertyTuple[0];
+            const value = propertyTuple[1];
             if (name == syncer._slavePropertyName)
                 this._slaveName = value;
             else if (name == syncer._buildRequestPropertyName)
@@ -57,14 +57,15 @@ class BuildbotBuildEntry {
 
 class BuildbotSyncer {
 
-    constructor(remote, object)
+    constructor(remote, object, commonConfigurations)
     {
         this._remote = remote;
         this._testConfigurations = [];
+        this._repositoryGroups = commonConfigurations.repositoryGroups;
+        this._slavePropertyName = commonConfigurations.slaveArgument;
+        this._buildRequestPropertyName = commonConfigurations.buildRequestArgument;
         this._builderName = object.builder;
-        this._slavePropertyName = object.slaveArgument;
         this._slaveList = object.slaveList;
-        this._buildRequestPropertyName = object.buildRequestArgument;
         this._entryList = null;
         this._slavesWithNewRequests = new Set;
     }
@@ -75,17 +76,14 @@ class BuildbotSyncer {
     {
         assert(test instanceof Test);
         assert(platform instanceof Platform);
-        this._testConfigurations.push({test: test, platform: platform, propertiesTemplate: propertiesTemplate});
+        this._testConfigurations.push({test, platform, propertiesTemplate});
     }
     testConfigurations() { return this._testConfigurations; }
+    repositoryGroups() { return this._repositoryGroups; }
 
     matchesConfiguration(request)
     {
-        for (let config of this._testConfigurations) {
-            if (config.platform == request.platform() && config.test == request.test())
-                return true;
-        }
-        return false;
+        return this._testConfigurations.some((config) => config.platform == request.platform() && config.test == request.test());
     }
 
     scheduleRequest(newRequest, slaveName)
@@ -140,10 +138,9 @@ class BuildbotSyncer {
 
     pullBuildbot(count)
     {
-        let self = this;
-        return this._remote.getJSON(this.pathForPendingBuildsJSON()).then(function (content) {
-            let pendingEntries = content.map(function (entry) { return new BuildbotBuildEntry(self, entry); });
-            return self._pullRecentBuilds(count).then(function (entries) {
+        return this._remote.getJSON(this.pathForPendingBuildsJSON()).then((content) => {
+            let pendingEntries = content.map((entry) => new BuildbotBuildEntry(this, entry));
+            return this._pullRecentBuilds(count).then((entries) => {
                 let entryByRequest = {};
 
                 for (let entry of pendingEntries)
@@ -156,8 +153,8 @@ class BuildbotSyncer {
                 for (let id in entryByRequest)
                     entryList.push(entryByRequest[id]);
 
-                self._entryList = entryList;
-                self._slavesWithNewRequests.clear();
+                this._entryList = entryList;
+                this._slavesWithNewRequests.clear();
 
                 return entryList;
             });
@@ -173,13 +170,12 @@ class BuildbotSyncer {
         for (let i = 0; i < count; i++)
             selectedBuilds[i] = -i - 1;
 
-        let self = this;
-        return this._remote.getJSON(this.pathForBuildJSON(selectedBuilds)).then(function (content) {
-            var entries = [];
+        return this._remote.getJSON(this.pathForBuildJSON(selectedBuilds)).then((content) => {
+            const entries = [];
             for (let index of selectedBuilds) {
-                let entry = content[index];
+                const entry = content[index];
                 if (entry && !entry['error'])
-                    entries.push(new BuildbotBuildEntry(self, entry));
+                    entries.push(new BuildbotBuildEntry(this, entry));
             }
             return entries;
         });
@@ -188,8 +184,7 @@ class BuildbotSyncer {
     pathForPendingBuildsJSON() { return `/json/builders/${escape(this._builderName)}/pendingBuilds`; }
     pathForBuildJSON(selectedBuilds)
     {
-        return `/json/builders/${escape(this._builderName)}/builds/?`
-            + selectedBuilds.map(function (number) { return 'select=' + number; }).join('&');
+        return `/json/builders/${escape(this._builderName)}/builds/?` + selectedBuilds.map((number) => 'select=' + number).join('&');
     }
     pathForForceBuild() { return `/builders/${escape(this._builderName)}/force`; }
 
@@ -207,34 +202,25 @@ class BuildbotSyncer {
         for (let repository of commitSet.repositories())
             repositoryByName[repository.name()] = repository;
 
-        let propertiesTemplate = null;
-        for (let config of this._testConfigurations) {
-            if (config.platform == buildRequest.platform() && config.test == buildRequest.test())
-                propertiesTemplate = config.propertiesTemplate;
-        }
-        assert(propertiesTemplate);
+        const matchingConfiguration = this._testConfigurations.find((config) => config.platform == buildRequest.platform() && config.test == buildRequest.test());
+        assert(matchingConfiguration, `Build request ${buildRequest.id()} does not match a configuration in the builder "${this._builderName}"`);
+        const propertiesTemplate = matchingConfiguration.propertiesTemplate;
 
-        let properties = {};
-        for (let key in propertiesTemplate) {
-            let value = propertiesTemplate[key];
-            if (typeof(value) != 'object')
-                properties[key] = value;
-            else if ('root' in value) {
-                let repositoryName = value['root'];
-                let repository = repositoryByName[repositoryName];
-                assert(repository, `"${repositoryName}" must be specified`);
-                properties[key] = commitSet.revisionForRepository(repository);
-            } else if ('rootOptions' in value) {
-                const filteredOptions = value['rootOptions'].filter((option) => option in repositoryByName);
-                assert.equal(filteredOptions.length, 1, `There should be exactly one valid root among "${value['rootOptions']}".`);
-                properties[key] = commitSet.revisionForRepository(repositoryByName[filteredOptions[0]]);
-            }
-            else if ('rootsExcluding' in value) {
-                let revisionSet = this._revisionSetFromCommitSetWithExclusionList(commitSet, value['rootsExcluding']);
-                properties[key] = JSON.stringify(revisionSet);
-            }
-        }
+        const repositoryGroup = buildRequest.repositoryGroup();
+        assert(repositoryGroup.accepts(commitSet), `Build request ${buildRequest.id()} does not specify a commit set accepted by the repository group ${repositoryGroup.id()}`);
 
+        const repositoryGroupConfiguration = this._repositoryGroups[repositoryGroup.name()];
+        assert(repositoryGroupConfiguration, `Build request ${buildRequest.id()} uses an unsupported repository group "${repositoryGroup.name()}"`);
+
+        const properties = {};
+        for (let propertyName in propertiesTemplate)
+            properties[propertyName] = propertiesTemplate[propertyName];
+
+        const repositoryGroupTemplate = repositoryGroupConfiguration.propertiesTemplate;
+        for (let propertyName in repositoryGroupTemplate) {
+            const value = repositoryGroupTemplate[propertyName];
+            properties[propertyName] = value instanceof Repository ? commitSet.revisionForRepository(value) : value;
+        }
         properties[this._buildRequestPropertyName] = buildRequest.id();
 
         return properties;
@@ -259,45 +245,110 @@ class BuildbotSyncer {
 
     static _loadConfig(remote, config)
     {
-        let shared = config['shared'] || {};
-        let types = config['types'] || {};
-        let builders = config['builders'] || {};
+        const types = config['types'] || {};
+        const builders = config['builders'] || {};
+
+        assert(config.buildRequestArgument, 'buildRequestArgument must specify the name of the property used to store the build request ID');
+
+        assert.equal(typeof(config.repositoryGroups), 'object', 'repositoryGroups must specify a dictionary from the name to its definition');
+
+        const repositoryGroups = {};
+        for (const name in config.repositoryGroups)
+            repositoryGroups[name] = this._parseRepositoryGroup(name, config.repositoryGroups[name]);
+
+        const commonConfigurations = {
+            repositoryGroups,
+            slaveArgument: config.slaveArgument,
+            buildRequestArgument: config.buildRequestArgument,
+        };
 
         let syncerByBuilder = new Map;
+        const expandedConfigurations = [];
         for (let entry of config['configurations']) {
-            let newConfig = {};
-            this._validateAndMergeConfig(newConfig, shared);
-            this._validateAndMergeConfig(newConfig, entry);
+            for (const expandedConfig of this._expandTypesAndPlatforms(entry))
+                expandedConfigurations.push(expandedConfig);
+        }
 
-            let expandedConfigurations = this._expandTypesAndPlatforms(newConfig);
-            for (let config of expandedConfigurations) {
-                if ('type' in config) {
-                    let type = config['type'];
-                    assert(type, `${type} is not a valid type in the configuration`);
-                    this._validateAndMergeConfig(config, types[type]);
-                }
+        for (let entry of expandedConfigurations) {
+            const mergedConfig = {};
+            this._validateAndMergeConfig(mergedConfig, entry);
 
-                let builder = entry['builder'];
-                if (builders[builder])
-                    this._validateAndMergeConfig(config, builders[builder]);
-
-                this._createTestConfiguration(remote, syncerByBuilder, config);
+            if ('type' in mergedConfig) {
+                const type = mergedConfig['type'];
+                assert(type, `${type} is not a valid type in the configuration`);
+                this._validateAndMergeConfig(mergedConfig, types[type]);
             }
+
+            const builder = entry['builder'];
+            if (builders[builder])
+                this._validateAndMergeConfig(mergedConfig, builders[builder]);
+
+            this._createTestConfiguration(remote, syncerByBuilder, mergedConfig, commonConfigurations);
         }
 
         return Array.from(syncerByBuilder.values());
     }
 
+    static _parseRepositoryGroup(name, group)
+    {
+        assert.equal(typeof(group.repositories), 'object',
+            `Repository group "${name}" does not specify a dictionary of repositories`);
+        assert(!('description' in group) || typeof(group['description']) == 'string',
+            `Repository group "${name}" have an invalid description`);
+        assert.equal(typeof(group.properties), 'object', `Repository group "${name}" specifies an invalid dictionary of properties`);
+        assert([undefined, true, false].includes(group.acceptsRoots),
+            `Repository group "${name}" contains invalid acceptsRoots value: ${group.acceptsRoots}`);
+
+        const repositoryByName = {};
+        const parsedRepositoryList = [];
+        for (const repositoryName in group.repositories) {
+            const options = group.repositories[repositoryName];
+            const repository = Repository.findTopLevelByName(repositoryName);
+            assert(repository, `"${repositoryName}" is not a valid repository name`);
+            repositoryByName[repositoryName] = repository;
+            assert.equal(typeof(options), 'object', `"${repositoryName}" does not specify a valid option`);
+            assert([undefined, true, false].includes(options.acceptsPatch),
+                `"${repositoryName}" contains invalid acceptsPatch value: ${options.acceptsPatch}`);
+            repositoryByName[repositoryName] = repository;
+            parsedRepositoryList.push({repository: repository.id(), acceptsPatch: options.acceptsPatch});
+        }
+
+        const propertiesTemplate = {};
+        const usedRepositories = [];
+        for (const propertyName in group.properties) {
+            let value = group.properties[propertyName];
+            const match = value.match(/^<(.+)>$/);
+            if (match) {
+                const repositoryName = match[1];
+                value = repositoryByName[repositoryName];
+                assert(value, `Repository group "${name}" uses "${repositoryName}" in its property but does not list in the list of repositories`);
+                usedRepositories.push(value);
+            }
+            propertiesTemplate[propertyName] = value;
+        }
+        assert(parsedRepositoryList.length, `Repository group "${name}" does not specify any repository`);
+        assert.equal(parsedRepositoryList.length, usedRepositories.length,
+            `Repository group "${name}" does not use some of the repositories listed`);
+        return {
+            name: group.name,
+            description: group.description,
+            acceptsRoots: group.acceptsRoots,
+            propertiesTemplate,
+            arguments: group.arguments,
+            repositoryList: parsedRepositoryList,
+        };
+    }
+
     static _expandTypesAndPlatforms(unresolvedConfig)
     {
-        let typeExpanded = [];
+        const typeExpanded = [];
         if ('types' in unresolvedConfig) {
             for (let type of unresolvedConfig['types'])
                 typeExpanded.push(this._validateAndMergeConfig({'type': type}, unresolvedConfig, 'types'));
         } else
             typeExpanded.push(unresolvedConfig);
 
-        let configurations = [];
+        const configurations = [];
         for (let config of typeExpanded) {
             if ('platforms' in config) {
                 for (let platform of config['platforms'])
@@ -309,32 +360,30 @@ class BuildbotSyncer {
         return configurations;
     }
 
-    static _createTestConfiguration(remote, syncerByBuilder, newConfig)
+    static _createTestConfiguration(remote, syncerByBuilder, newConfig, commonConfigurations)
     {
         assert('platform' in newConfig, 'configuration must specify a platform');
         assert('test' in newConfig, 'configuration must specify a test');
         assert('builder' in newConfig, 'configuration must specify a builder');
-        assert('properties' in newConfig, 'configuration must specify arguments to post on a builder');
-        assert('buildRequestArgument' in newConfig, 'configuration must specify buildRequestArgument');
 
-        let test = Test.findByPath(newConfig.test);
+        const test = Test.findByPath(newConfig.test);
         assert(test, `${newConfig.test} is not a valid test path`);
 
-        let platform = Platform.findByName(newConfig.platform);
+        const platform = Platform.findByName(newConfig.platform);
         assert(platform, `${newConfig.platform} is not a valid platform name`);
 
         let syncer = syncerByBuilder.get(newConfig.builder);
         if (!syncer) {
-            syncer = new BuildbotSyncer(remote, newConfig);
+            syncer = new BuildbotSyncer(remote, newConfig, commonConfigurations);
             syncerByBuilder.set(newConfig.builder, syncer);
         }
-        syncer.addTestConfiguration(test, platform, newConfig.properties);
+        syncer.addTestConfiguration(test, platform, newConfig.properties || {});
     }
 
     static _validateAndMergeConfig(config, valuesToMerge, excludedProperty)
     {
-        for (let name in valuesToMerge) {
-            let value = valuesToMerge[name];
+        for (const name in valuesToMerge) {
+            const value = valuesToMerge[name];
             if (name == excludedProperty)
                 continue;
 
@@ -348,7 +397,7 @@ class BuildbotSyncer {
                 break;
             case 'test': // Fallthrough
             case 'slaveList': // Fallthrough
-            case 'platforms':
+            case 'platforms': // Fallthrough
             case 'types':
                 assert(value instanceof Array, `${name} should be an array`);
                 assert(value.every(function (part) { return typeof part == 'string'; }), `${name} should be an array of strings`);
@@ -357,8 +406,6 @@ class BuildbotSyncer {
             case 'type': // Fallthrough
             case 'builder': // Fallthrough
             case 'platform': // Fallthrough
-            case 'slaveArgument': // Fallthrough
-            case 'buildRequestArgument':
                 assert.equal(typeof(value), 'string', `${name} should be of string type`);
                 config[name] = value;
                 break;
@@ -372,14 +419,14 @@ class BuildbotSyncer {
     static _validateAndMergeProperties(properties, configArguments)
     {
         for (let name in configArguments) {
-            let value = configArguments[name];
+            const value = configArguments[name];
             if (typeof(value) == 'string') {
                 properties[name] = value;
                 continue;
             }
             assert.equal(typeof(value), 'object', 'A argument value must be either a string or a dictionary');
 
-            let keys = Object.keys(value);
+            const keys = Object.keys(value);
             assert.equal(keys.length, 1, 'arguments value cannot contain more than one key');
             let namedValue = value[keys[0]];
             switch (keys[0]) {

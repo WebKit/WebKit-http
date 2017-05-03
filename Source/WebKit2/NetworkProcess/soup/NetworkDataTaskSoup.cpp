@@ -41,6 +41,7 @@
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/SoupNetworkSession.h>
 #include <wtf/MainThread.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 using namespace WebCore;
 
@@ -75,7 +76,7 @@ NetworkDataTaskSoup::NetworkDataTaskSoup(NetworkSession& session, NetworkDataTas
         }
         applyAuthenticationToRequest(request);
     }
-    createRequest(request);
+    createRequest(WTFMove(request));
 }
 
 NetworkDataTaskSoup::~NetworkDataTaskSoup()
@@ -102,9 +103,11 @@ void NetworkDataTaskSoup::setPendingDownloadLocation(const String& filename, con
     m_allowOverwriteDownload = allowOverwrite;
 }
 
-void NetworkDataTaskSoup::createRequest(const ResourceRequest& request)
+void NetworkDataTaskSoup::createRequest(ResourceRequest&& request)
 {
-    GUniquePtr<SoupURI> soupURI = request.createSoupURI();
+    m_currentRequest = WTFMove(request);
+
+    GUniquePtr<SoupURI> soupURI = m_currentRequest.createSoupURI();
     if (!soupURI) {
         scheduleFailure(InvalidURLFailure);
         return;
@@ -116,9 +119,9 @@ void NetworkDataTaskSoup::createRequest(const ResourceRequest& request)
         return;
     }
 
-    request.updateSoupRequest(soupRequest.get());
+    m_currentRequest.updateSoupRequest(soupRequest.get());
 
-    if (!request.url().protocolIsInHTTPFamily()) {
+    if (!m_currentRequest.url().protocolIsInHTTPFamily()) {
         m_soupRequest = WTFMove(soupRequest);
         return;
     }
@@ -132,7 +135,7 @@ void NetworkDataTaskSoup::createRequest(const ResourceRequest& request)
 
     unsigned messageFlags = SOUP_MESSAGE_NO_REDIRECT;
 
-    request.updateSoupMessage(soupMessage.get());
+    m_currentRequest.updateSoupMessage(soupMessage.get());
     if (m_shouldContentSniff == DoNotSniffContent)
         soup_message_disable_feature(soupMessage.get(), SOUP_TYPE_CONTENT_SNIFFER);
     if (m_user.isEmpty() && m_password.isEmpty() && m_storedCredentials == DoNotAllowStoredCredentials) {
@@ -158,7 +161,7 @@ void NetworkDataTaskSoup::createRequest(const ResourceRequest& request)
     soup_message_set_flags(soupMessage.get(), static_cast<SoupMessageFlags>(soup_message_get_flags(soupMessage.get()) | messageFlags));
 
 #if SOUP_CHECK_VERSION(2, 43, 1)
-    soup_message_set_priority(soupMessage.get(), toSoupMessagePriority(request.priority()));
+    soup_message_set_priority(soupMessage.get(), toSoupMessagePriority(m_currentRequest.priority()));
 #endif
 
     m_soupRequest = WTFMove(soupRequest);
@@ -289,7 +292,7 @@ void NetworkDataTaskSoup::timeoutFired()
 void NetworkDataTaskSoup::startTimeout()
 {
     if (m_firstRequest.timeoutInterval() > 0)
-        m_timeoutSource.startOneShot(m_firstRequest.timeoutInterval());
+        m_timeoutSource.startOneShot(1_s * m_firstRequest.timeoutInterval());
 }
 
 void NetworkDataTaskSoup::stopTimeout()
@@ -575,7 +578,7 @@ void NetworkDataTaskSoup::skipInputStreamForRedirection()
 {
     ASSERT(m_inputStream);
     RefPtr<NetworkDataTaskSoup> protectedThis(this);
-    g_input_stream_skip_async(m_inputStream.get(), gDefaultReadBufferSize, G_PRIORITY_DEFAULT, m_cancellable.get(),
+    g_input_stream_skip_async(m_inputStream.get(), gDefaultReadBufferSize, RunLoopSourcePriority::AsyncIONetwork, m_cancellable.get(),
         reinterpret_cast<GAsyncReadyCallback>(skipInputStreamForRedirectionCallback), protectedThis.leakRef());
 }
 
@@ -636,15 +639,17 @@ void NetworkDataTaskSoup::continueHTTPRedirection()
         return;
     }
 
-    ResourceRequest request = m_firstRequest;
-    request.setURL(URL(m_response.url(), m_response.httpHeaderField(HTTPHeaderName::Location)));
-    request.setFirstPartyForCookies(request.url());
+    ResourceRequest request = m_currentRequest;
+    URL redirectedURL = URL(m_response.url(), m_response.httpHeaderField(HTTPHeaderName::Location));
+    if (!redirectedURL.hasFragmentIdentifier() && request.url().hasFragmentIdentifier())
+        redirectedURL.setFragmentIdentifier(request.url().fragmentIdentifier());
+    request.setURL(redirectedURL);
 
     // Should not set Referer after a redirect from a secure resource to non-secure one.
     if (m_shouldClearReferrerOnHTTPSToHTTPRedirect && !request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https"))
         request.clearHTTPReferrer();
 
-    bool isCrossOrigin = !protocolHostAndPortAreEqual(m_firstRequest.url(), request.url());
+    bool isCrossOrigin = !protocolHostAndPortAreEqual(m_currentRequest.url(), request.url());
     if (!equalLettersIgnoringASCIICase(request.httpMethod(), "get")) {
         // Change newRequest method to GET if change was made during a previous redirection or if current redirection says so.
         if (m_soupMessage->method == SOUP_METHOD_GET || !request.url().protocolIsInHTTPFamily() || shouldRedirectAsGET(m_soupMessage.get(), isCrossOrigin)) {
@@ -690,7 +695,7 @@ void NetworkDataTaskSoup::continueHTTPRedirection()
 #endif
             applyAuthenticationToRequest(request);
         }
-        createRequest(request);
+        createRequest(WTFMove(request));
         if (m_soupRequest && m_state != State::Suspended) {
             m_state = State::Suspended;
             resume();
@@ -728,7 +733,7 @@ void NetworkDataTaskSoup::read()
     RefPtr<NetworkDataTaskSoup> protectedThis(this);
     ASSERT(m_inputStream);
     m_readBuffer.grow(gDefaultReadBufferSize);
-    g_input_stream_read_async(m_inputStream.get(), m_readBuffer.data(), m_readBuffer.size(), G_PRIORITY_DEFAULT, m_cancellable.get(),
+    g_input_stream_read_async(m_inputStream.get(), m_readBuffer.data(), m_readBuffer.size(), RunLoopSourcePriority::AsyncIONetwork, m_cancellable.get(),
         reinterpret_cast<GAsyncReadyCallback>(readCallback), protectedThis.leakRef());
 }
 
@@ -740,7 +745,7 @@ void NetworkDataTaskSoup::didRead(gssize bytesRead)
         writeDownload();
     } else {
         ASSERT(m_client);
-        m_client->didReceiveData(SharedBuffer::adoptVector(m_readBuffer));
+        m_client->didReceiveData(SharedBuffer::create(WTFMove(m_readBuffer)));
         read();
     }
 }
@@ -795,7 +800,7 @@ void NetworkDataTaskSoup::requestNextPart()
     RefPtr<NetworkDataTaskSoup> protectedThis(this);
     ASSERT(m_multipartInputStream);
     ASSERT(!m_inputStream);
-    soup_multipart_input_stream_next_part_async(m_multipartInputStream.get(), G_PRIORITY_DEFAULT, m_cancellable.get(),
+    soup_multipart_input_stream_next_part_async(m_multipartInputStream.get(), RunLoopSourcePriority::AsyncIONetwork, m_cancellable.get(),
         reinterpret_cast<GAsyncReadyCallback>(requestNextPartCallback), protectedThis.leakRef());
 }
 
@@ -839,6 +844,22 @@ void NetworkDataTaskSoup::didGetHeaders()
         m_protectionSpaceForPersistentStorage = ProtectionSpace();
         m_credentialForPersistentStorage = Credential();
     }
+
+    // Soup adds more headers to the request after starting signal is emitted, and got-headers
+    // is the first one we receive after starting, so we use it also to get information about the
+    // request headers.
+#if ENABLE(WEB_TIMING)
+    if (shouldCaptureExtraNetworkLoadMetrics()) {
+        HTTPHeaderMap requestHeaders;
+        SoupMessageHeadersIter headersIter;
+        soup_message_headers_iter_init(&headersIter, m_soupMessage->request_headers);
+        const char* headerName;
+        const char* headerValue;
+        while (soup_message_headers_iter_next(&headersIter, &headerName, &headerValue))
+            requestHeaders.set(String(headerName), String(headerValue));
+        m_networkLoadMetrics.requestHeaders = WTFMove(requestHeaders);
+    }
+#endif
 }
 
 void NetworkDataTaskSoup::wroteBodyDataCallback(SoupMessage* soupMessage, SoupBuffer* buffer, NetworkDataTaskSoup* task)
@@ -865,7 +886,7 @@ void NetworkDataTaskSoup::download()
     ASSERT(!m_response.isNull());
 
     if (m_response.httpStatusCode() >= 400) {
-        didFailDownload(platformDownloadNetworkError(m_response.httpStatusCode(), m_response.url(), m_response.httpStatusText()));
+        didFailDownload(downloadNetworkError(m_response.url(), m_response.httpStatusText()));
         return;
     }
 
@@ -880,7 +901,7 @@ void NetworkDataTaskSoup::download()
     else
         outputStream = adoptGRef(g_file_create(m_downloadDestinationFile.get(), G_FILE_CREATE_NONE, nullptr, &error.outPtr()));
     if (!outputStream) {
-        didFailDownload(platformDownloadDestinationError(m_response, error->message));
+        didFailDownload(downloadDestinationError(m_response, error->message));
         return;
     }
 
@@ -889,7 +910,7 @@ void NetworkDataTaskSoup::download()
     m_downloadIntermediateFile = adoptGRef(g_file_new_for_uri(intermediateURI.get()));
     outputStream = adoptGRef(g_file_replace(m_downloadIntermediateFile.get(), 0, TRUE, G_FILE_CREATE_NONE, 0, &error.outPtr()));
     if (!outputStream) {
-        didFailDownload(platformDownloadDestinationError(m_response, error->message));
+        didFailDownload(downloadDestinationError(m_response, error->message));
         return;
     }
     m_downloadOutputStream = adoptGRef(G_OUTPUT_STREAM(outputStream.leakRef()));
@@ -923,7 +944,7 @@ void NetworkDataTaskSoup::writeDownloadCallback(GOutputStream* outputStream, GAs
         bytesWritten = writeTaskResult;
 #endif
     if (error)
-        task->didFailDownload(platformDownloadDestinationError(task->m_response, error->message));
+        task->didFailDownload(downloadDestinationError(task->m_response, error->message));
     else
         task->didWriteDownload(bytesWritten);
 }
@@ -932,7 +953,7 @@ void NetworkDataTaskSoup::writeDownload()
 {
     RefPtr<NetworkDataTaskSoup> protectedThis(this);
 #if GLIB_CHECK_VERSION(2, 44, 0)
-    g_output_stream_write_all_async(m_downloadOutputStream.get(), m_readBuffer.data(), m_readBuffer.size(), G_PRIORITY_DEFAULT, m_cancellable.get(),
+    g_output_stream_write_all_async(m_downloadOutputStream.get(), m_readBuffer.data(), m_readBuffer.size(), RunLoopSourcePriority::AsyncIONetwork, m_cancellable.get(),
         reinterpret_cast<GAsyncReadyCallback>(writeDownloadCallback), protectedThis.leakRef());
 #else
     GRefPtr<GTask> writeTask = adoptGRef(g_task_new(m_downloadOutputStream.get(), m_cancellable.get(),
@@ -978,7 +999,7 @@ void NetworkDataTaskSoup::didFinishDownload()
     ASSERT(m_downloadIntermediateFile);
     GUniqueOutPtr<GError> error;
     if (!g_file_move(m_downloadIntermediateFile.get(), m_downloadDestinationFile.get(), G_FILE_COPY_OVERWRITE, m_cancellable.get(), nullptr, nullptr, &error.outPtr())) {
-        didFailDownload(platformDownloadDestinationError(m_response, error->message));
+        didFailDownload(downloadDestinationError(m_response, error->message));
         return;
     }
 
@@ -986,7 +1007,7 @@ void NetworkDataTaskSoup::didFinishDownload()
     CString uri = m_response.url().string().utf8();
     g_file_info_set_attribute_string(info.get(), "metadata::download-uri", uri.data());
     g_file_info_set_attribute_string(info.get(), "xattr::xdg.origin.url", uri.data());
-    g_file_set_attributes_async(m_downloadDestinationFile.get(), info.get(), G_FILE_QUERY_INFO_NONE, G_PRIORITY_DEFAULT, nullptr, nullptr, nullptr);
+    g_file_set_attributes_async(m_downloadDestinationFile.get(), info.get(), G_FILE_QUERY_INFO_NONE, RunLoopSourcePriority::AsyncIONetwork, nullptr, nullptr, nullptr);
 
     clearRequest();
     auto* download = NetworkProcess::singleton().downloadManager().download(m_pendingDownloadID);
@@ -1022,7 +1043,7 @@ void NetworkDataTaskSoup::cleanDownloadFiles()
 void NetworkDataTaskSoup::didFail(const ResourceError& error)
 {
     if (isDownload()) {
-        didFailDownload(platformDownloadNetworkError(error.errorCode(), error.failingURL(), error.localizedDescription()));
+        didFailDownload(downloadNetworkError(error.failingURL(), error.localizedDescription()));
         return;
     }
 

@@ -60,7 +60,7 @@ void expectLinkCount(WKWebView *webView, NSString *HTMLString, unsigned linkCoun
     [webView loadHTMLString:HTMLString baseURL:nil];
     [webView _test_waitForDidFinishNavigation];
 
-    [webView evaluateJavaScript:@"document.getElementsByTagName('a').length" completionHandler:^(id value, NSError *error) {
+    [webView evaluateJavaScript:@"document.querySelectorAll('a[x-apple-data-detectors=true]').length" completionHandler:^(id value, NSError *error) {
         EXPECT_EQ(linkCount, [value unsignedIntValue]);
         ranScript = true;
     }];
@@ -69,6 +69,7 @@ void expectLinkCount(WKWebView *webView, NSString *HTMLString, unsigned linkCoun
     ranScript = false;
 }
 
+// FIXME: Re-enable this test once webkit.org/b/161967 is fixed.
 TEST(WebKit2, DISABLED_DataDetectionReferenceDate)
 {
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
@@ -81,6 +82,9 @@ TEST(WebKit2, DISABLED_DataDetectionReferenceDate)
 
     expectLinkCount(webView.get(), @"tomorrow at 6PM", 1);
     expectLinkCount(webView.get(), @"yesterday at 6PM", 0);
+    expectLinkCount(webView.get(), @"<a href='about:blank'>tomorrow at 6PM</a>", 0);
+    expectLinkCount(webView.get(), @"<a href='about:blank'>tomorrow</a> at <a href='about:blank'>6PM</a>", 0);
+
 
     NSTimeInterval week = 60 * 60 * 24 * 7;
 

@@ -150,8 +150,8 @@
 
 #if USE(QUICK_LOOK)
 #import <WebCore/NSFileManagerSPI.h>
+#import <WebCore/PreviewLoaderClient.h>
 #import <WebCore/QuickLook.h>
-#import <WebCore/QuickLookHandleClient.h>
 #endif
 
 #if HAVE(APP_LINKS)
@@ -681,13 +681,17 @@ void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
         CallFrameLoadDelegate(implementations->didStartProvisionalLoadForFrameFunc, webView, @selector(webView:didStartProvisionalLoadForFrame:), m_webFrame.get());
 }
 
+static constexpr unsigned maxTitleLength = 1000; // Closest power of 10 above the W3C recommendation for Title length.
+
 void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& title)
 {
+    auto truncatedTitle = truncateFromEnd(title, maxTitleLength);
+
     WebView *webView = getWebView(m_webFrame.get());   
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didReceiveTitleForFrameFunc) {
         // FIXME: Use direction of title.
-        CallFrameLoadDelegate(implementations->didReceiveTitleForFrameFunc, webView, @selector(webView:didReceiveTitle:forFrame:), (NSString *)title.string, m_webFrame.get());
+        CallFrameLoadDelegate(implementations->didReceiveTitleForFrameFunc, webView, @selector(webView:didReceiveTitle:forFrame:), (NSString *)truncatedTitle.string, m_webFrame.get());
     }
 }
 
@@ -2222,9 +2226,9 @@ bool WebFrameLoaderClient::shouldLoadMediaElementURL(const URL& url) const
 #endif
 
 #if USE(QUICK_LOOK)
-RefPtr<QuickLookHandleClient> WebFrameLoaderClient::createQuickLookHandleClient(const String& fileName, const String& uti)
+RefPtr<PreviewLoaderClient> WebFrameLoaderClient::createPreviewLoaderClient(const String& fileName, const String& uti)
 {
-    class QuickLookDocumentWriter : public WebCore::QuickLookHandleClient {
+    class QuickLookDocumentWriter : public WebCore::PreviewLoaderClient {
     public:
         explicit QuickLookDocumentWriter(NSString *filePath)
             : m_filePath { filePath }

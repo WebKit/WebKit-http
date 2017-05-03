@@ -57,14 +57,13 @@ namespace JSC { namespace B3 { namespace Air {
 // Definition of Patch instruction. Patch is used to delegate the behavior of the instruction to the
 // Special object, which will be the first argument to the instruction.
 struct PatchCustom {
-    template<typename Functor>
-    static void forEachArg(Inst& inst, const Functor& functor)
+    static void forEachArg(Inst& inst, ScopedLambda<Inst::EachArgCallback> lambda)
     {
         // This is basically bogus, but it works for analyses that model Special as an
         // immediate.
-        functor(inst.args[0], Arg::Use, GP, pointerWidth());
+        lambda(inst.args[0], Arg::Use, GP, pointerWidth());
         
-        inst.args[0].special()->forEachArg(inst, scopedLambda<Inst::EachArgCallback>(functor));
+        inst.args[0].special()->forEachArg(inst, lambda);
     }
 
     template<typename... Arguments>
@@ -315,7 +314,15 @@ struct WasmBoundsCheckCustom : public CommonCustomBase<WasmBoundsCheckCustom> {
         context.latePaths.append(createSharedTask<GenerationContext::LatePathFunction>(
             [outOfBounds, value] (CCallHelpers& jit, Air::GenerationContext& context) {
                 outOfBounds.link(&jit);
-                context.code->wasmBoundsCheckGenerator()->run(jit, value->pinnedGPR(), value->offset());
+                switch (value->boundsType()) {
+                case WasmBoundsCheckValue::Type::Pinned:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, value->bounds().pinned);
+                    break;
+
+                case WasmBoundsCheckValue::Type::Maximum:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, InvalidGPRReg);
+                    break;
+                }
             }));
 
         // We said we were not a terminal.

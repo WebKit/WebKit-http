@@ -42,17 +42,19 @@ namespace WebCore {
 
 namespace {
 
-unsigned copyFromSharedBuffer(char* buffer, unsigned bufferLength, const SharedBuffer& sharedBuffer, unsigned offset)
+static unsigned copyFromSharedBuffer(char* buffer, unsigned bufferLength, const SharedBuffer& sharedBuffer)
 {
     unsigned bytesExtracted = 0;
-    const char* moreData;
-    while (unsigned moreDataLength = sharedBuffer.getSomeData(moreData, offset)) {
-        unsigned bytesToCopy = min(bufferLength - bytesExtracted, moreDataLength);
-        memcpy(buffer + bytesExtracted, moreData, bytesToCopy);
-        bytesExtracted += bytesToCopy;
-        if (bytesExtracted == bufferLength)
+    for (const auto& segment : sharedBuffer) {
+        if (bytesExtracted + segment->size() <= bufferLength) {
+            memcpy(buffer + bytesExtracted, segment->data(), segment->size());
+            bytesExtracted += segment->size();
+        } else {
+            ASSERT(bufferLength - bytesExtracted < segment->size());
+            memcpy(buffer + bytesExtracted, segment->data(), bufferLength - bytesExtracted);
+            bytesExtracted = bufferLength;
             break;
-        offset += bytesToCopy;
+        }
     }
     return bytesExtracted;
 }
@@ -96,33 +98,33 @@ bool matchesCURSignature(char* contents)
 
 }
 
-RefPtr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+RefPtr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, const URL&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
 {
     static const unsigned lengthOfLongestSignature = 14; // To wit: "RIFF????WEBPVP"
     char contents[lengthOfLongestSignature];
-    unsigned length = copyFromSharedBuffer(contents, lengthOfLongestSignature, data, 0);
+    unsigned length = copyFromSharedBuffer(contents, lengthOfLongestSignature, data);
     if (length < lengthOfLongestSignature)
         return nullptr;
 
     if (matchesGIFSignature(contents))
-        return adoptRef(*new GIFImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return GIFImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 
     if (matchesPNGSignature(contents))
-        return adoptRef(*new PNGImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return PNGImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 
     if (matchesICOSignature(contents) || matchesCURSignature(contents))
-        return adoptRef(*new ICOImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return ICOImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 
     if (matchesJPEGSignature(contents))
-        return adoptRef(*new JPEGImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return JPEGImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 
 #if USE(WEBP)
     if (matchesWebPSignature(contents))
-        return adoptRef(*new WEBPImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return WEBPImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 #endif
 
     if (matchesBMPSignature(contents))
-        return adoptRef(*new BMPImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return BMPImageDecoder::create(alphaOption, gammaAndColorProfileOption);
 
     return nullptr;
 }
@@ -207,7 +209,7 @@ float ImageDecoder::frameDurationAtIndex(size_t index)
     return duration;
 }
 
-NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel, const std::optional<IntSize>&)
+NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel, const DecodingOptions&)
 {
     // Zero-height images can cause problems for some ports. If we have an empty image dimension, just bail.
     if (size().isEmpty())

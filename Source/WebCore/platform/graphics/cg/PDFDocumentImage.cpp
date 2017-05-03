@@ -87,7 +87,7 @@ void PDFDocumentImage::computeIntrinsicDimensions(Length& intrinsicWidth, Length
     intrinsicRatio = FloatSize();
 }
 
-bool PDFDocumentImage::dataChanged(bool allDataReceived)
+EncodedDataStatus PDFDocumentImage::dataChanged(bool allDataReceived)
 {
     ASSERT(!m_document);
     if (allDataReceived && !m_document) {
@@ -98,7 +98,7 @@ bool PDFDocumentImage::dataChanged(bool allDataReceived)
             computeBoundsForCurrentPage();
         }
     }
-    return m_document; // Return true if size is available.
+    return m_document ? EncodedDataStatus::Complete : EncodedDataStatus::Unknown;
 }
 
 void PDFDocumentImage::setPdfImageCachingPolicy(PDFImageCachingPolicy pdfImageCachingPolicy)
@@ -263,7 +263,7 @@ void PDFDocumentImage::updateCachedImageIfNeeded(GraphicsContext& context, const
     decodedSizeChanged(internalSize.unclampedArea() * 4);
 }
 
-void PDFDocumentImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator op, BlendMode, ImageOrientationDescription)
+void PDFDocumentImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator op, BlendMode, DecodingMode, ImageOrientationDescription)
 {
     if (!m_document || !m_hasPage)
         return;

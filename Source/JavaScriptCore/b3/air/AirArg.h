@@ -31,6 +31,7 @@
 #include "B3Bank.h"
 #include "B3Common.h"
 #include "B3Type.h"
+#include "B3Value.h"
 #include "B3Width.h"
 #include <wtf/Optional.h>
 
@@ -91,6 +92,17 @@ public:
     enum Temperature : int8_t {
         Cold,
         Warm
+    };
+    
+    enum Phase : int8_t {
+        Early,
+        Late
+    };
+    
+    enum Timing : int8_t {
+        OnlyEarly,
+        OnlyLate,
+        EarlyAndLate
     };
 
     enum Role : int8_t {
@@ -253,7 +265,82 @@ public:
     {
         return isColdUse(role) ? Cold : Warm;
     }
-
+    
+    static bool activeAt(Role role, Phase phase)
+    {
+        switch (role) {
+        case Use:
+        case ColdUse:
+        case EarlyDef:
+        case EarlyZDef:
+        case UseAddr:
+            return phase == Early;
+        case LateUse:
+        case LateColdUse:
+        case Def:
+        case ZDef:
+            return phase == Late;
+        case UseDef:
+        case UseZDef:
+        case Scratch:
+            return true;
+        }
+        ASSERT_NOT_REACHED();
+    }
+    
+    static bool activeAt(Timing timing, Phase phase)
+    {
+        switch (timing) {
+        case OnlyEarly:
+            return phase == Early;
+        case OnlyLate:
+            return phase == Late;
+        case EarlyAndLate:
+            return true;
+        }
+        ASSERT_NOT_REACHED();
+    }
+    
+    static Timing timing(Role role)
+    {
+        switch (role) {
+        case Use:
+        case ColdUse:
+        case EarlyDef:
+        case EarlyZDef:
+        case UseAddr:
+            return OnlyEarly;
+        case LateUse:
+        case LateColdUse:
+        case Def:
+        case ZDef:
+            return OnlyLate;
+        case UseDef:
+        case UseZDef:
+        case Scratch:
+            return EarlyAndLate;
+        }
+        ASSERT_NOT_REACHED();
+    }
+    
+    template<typename Func>
+    static void forEachPhase(Timing timing, const Func& func)
+    {
+        if (activeAt(timing, Early))
+            func(Early);
+        if (activeAt(timing, Late))
+            func(Late);
+    }
+    
+    template<typename Func>
+    static void forEachPhase(Role role, const Func& func)
+    {
+        if (activeAt(role, Early))
+            func(Early);
+        if (activeAt(role, Late))
+            func(Late);
+    }
+    
     // Returns true if the Role implies that the Inst will Use the Arg before doing anything else.
     static bool isEarlyUse(Role role)
     {
@@ -448,7 +535,8 @@ public:
         return result;
     }
 
-    static Arg addr(Air::Tmp base, int32_t offset = 0)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static Arg addr(Air::Tmp base, Int offset)
     {
         ASSERT(base.isGP());
         Arg result;
@@ -458,7 +546,13 @@ public:
         return result;
     }
 
-    static Arg stack(StackSlot* value, int32_t offset = 0)
+    static Arg addr(Air::Tmp base)
+    {
+        return addr(base, 0);
+    }
+
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static Arg stack(StackSlot* value, Int offset)
     {
         Arg result;
         result.m_kind = Stack;
@@ -467,7 +561,13 @@ public:
         return result;
     }
 
-    static Arg callArg(int32_t offset)
+    static Arg stack(StackSlot* value)
+    {
+        return stack(value, 0);
+    }
+
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static Arg callArg(Int offset)
     {
         Arg result;
         result.m_kind = CallArg;
@@ -475,15 +575,10 @@ public:
         return result;
     }
 
-    static Arg stackAddr(int32_t offsetFromFP, unsigned frameSize, Width width)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static Arg stackAddr(Int offsetFromFP, unsigned frameSize, Width width)
     {
-        Arg result = Arg::addr(Air::Tmp(GPRInfo::callFrameRegister), offsetFromFP);
-        if (!result.isValidForm(width)) {
-            result = Arg::addr(
-                Air::Tmp(MacroAssembler::stackPointerRegister),
-                offsetFromFP + frameSize);
-        }
-        return result;
+        return stackAddrImpl(offsetFromFP, frameSize, width);
     }
 
     // If you don't pass a Width, this optimistically assumes that you're using the right width.
@@ -527,7 +622,8 @@ public:
         }
     }
 
-    static Arg index(Air::Tmp base, Air::Tmp index, unsigned scale = 1, int32_t offset = 0)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static Arg index(Air::Tmp base, Air::Tmp index, unsigned scale, Int offset)
     {
         ASSERT(base.isGP());
         ASSERT(index.isGP());
@@ -539,6 +635,11 @@ public:
         result.m_scale = static_cast<int32_t>(scale);
         result.m_offset = offset;
         return result;
+    }
+
+    static Arg index(Air::Tmp base, Air::Tmp index, unsigned scale = 1)
+    {
+        return Arg::index(base, index, scale, 0);
     }
 
     static Arg relCond(MacroAssembler::RelationalCondition condition)
@@ -848,12 +949,12 @@ public:
 
     bool hasOffset() const { return isMemory(); }
     
-    int32_t offset() const
+    Value::OffsetType offset() const
     {
         if (kind() == Stack)
-            return static_cast<int32_t>(m_scale);
+            return static_cast<Value::OffsetType>(m_scale);
         ASSERT(kind() == Addr || kind() == CallArg || kind() == Index);
-        return static_cast<int32_t>(m_offset);
+        return static_cast<Value::OffsetType>(m_offset);
     }
 
     StackSlot* stackSlot() const
@@ -1064,7 +1165,8 @@ public:
         return false;
     }
 
-    static bool isValidAddrForm(int32_t offset, std::optional<Width> width = std::nullopt)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static bool isValidAddrForm(Int offset, std::optional<Width> width = std::nullopt)
     {
         if (isX86())
             return true;
@@ -1089,7 +1191,8 @@ public:
         return false;
     }
 
-    static bool isValidIndexForm(unsigned scale, int32_t offset, std::optional<Width> width = std::nullopt)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    static bool isValidIndexForm(unsigned scale, Int offset, std::optional<Width> width = std::nullopt)
     {
         if (!isValidScale(scale, width))
             return false;
@@ -1199,7 +1302,7 @@ public:
     MacroAssembler::TrustedImm32 asTrustedImm32() const
     {
         ASSERT(isImm() || isBitImm());
-        return MacroAssembler::TrustedImm32(static_cast<int32_t>(m_offset));
+        return MacroAssembler::TrustedImm32(static_cast<Value::OffsetType>(m_offset));
     }
 
 #if USE(JSVALUE64)
@@ -1224,7 +1327,7 @@ public:
         if (isSimpleAddr())
             return MacroAssembler::Address(m_base.gpr());
         ASSERT(isAddr());
-        return MacroAssembler::Address(m_base.gpr(), static_cast<int32_t>(m_offset));
+        return MacroAssembler::Address(m_base.gpr(), static_cast<Value::OffsetType>(m_offset));
     }
 
     MacroAssembler::BaseIndex asBaseIndex() const
@@ -1232,7 +1335,7 @@ public:
         ASSERT(isIndex());
         return MacroAssembler::BaseIndex(
             m_base.gpr(), m_index.gpr(), static_cast<MacroAssembler::Scale>(logScale()),
-            static_cast<int32_t>(m_offset));
+            static_cast<Value::OffsetType>(m_offset));
     }
 
     MacroAssembler::RelationalCondition asRelationalCondition() const
@@ -1335,6 +1438,8 @@ public:
     }
 
 private:
+    static Arg stackAddrImpl(int32_t, unsigned, Width);
+
     int64_t m_offset { 0 };
     Kind m_kind { Invalid };
     int32_t m_scale { 1 };
@@ -1354,6 +1459,8 @@ namespace WTF {
 
 JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Kind);
 JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Temperature);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Phase);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Timing);
 JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Role);
 JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Signedness);
 

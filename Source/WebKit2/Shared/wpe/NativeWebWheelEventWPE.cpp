@@ -32,8 +32,8 @@
 
 namespace WebKit {
 
-NativeWebWheelEvent::NativeWebWheelEvent(struct wpe_input_axis_event* event)
-    : WebWheelEvent(WebEventFactory::createWebWheelEvent(event))
+NativeWebWheelEvent::NativeWebWheelEvent(struct wpe_input_axis_event* event, float deviceScaleFactor)
+    : WebWheelEvent(WebEventFactory::createWebWheelEvent(event, deviceScaleFactor))
 {
 }
 

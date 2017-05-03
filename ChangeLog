@@ -1,3 +1,261 @@
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.17.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-05-01  Aakash Jain  <aakash_jain@apple.com>
+
+        fix check-webkit-style errors in webkitpy about two blank lines before class definitions
+        https://bugs.webkit.org/show_bug.cgi?id=171509
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/committers.py: Added two blank lines before class definition.
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py: Ditto.
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py: Ditto.
+        * Scripts/webkitpy/port/base_unittest.py: Ditto.
+        * Scripts/webkitpy/port/device.py: Ditto.
+        * Scripts/webkitpy/port/linux_get_crash_log.py: Ditto.
+        * Scripts/webkitpy/style/checkers/featuredefines.py: Ditto.
+        * Scripts/webkitpy/style/checkers/jsonchecker.py: Ditto.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py: Ditto.
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py: Ditto.
+        (ManagerTest.test_uses_custom_device.MockCustomDevicePort): Added blank line before method.
+        (ManagerTest.test_uses_custom_device): Removed extra blank line at end of file.
+
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Enable X-Content-Type-Options: nosniff on Mac, iOS and Windows platforms.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r215681.
+
+        * Source/cmake/OptionsGTK.cmake: Don't re-define the ENABLE_SUBTLE_CRYPTO
+        macro, that's already done by the option macro.
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        Add private option for ENABLE_REMOTE_INSPECTOR and enabled it by default.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Make the ENABLE_SUBTLE_CRYPTO option depend on libgcrypt 1.7.0
+        https://bugs.webkit.org/show_bug.cgi?id=171112
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake: When ENABLE_SUBTLE_CRYPTO feature is enabled,
+        the detected libgcrypt library version should be at least 1.7.0 since we'll be
+        relying on API that was introduced in that version.
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] WTF target should not have wtf and subdirectries in public interface
+        https://bugs.webkit.org/show_bug.cgi?id=171115
+
+        Reviewed by Michael Catanzaro.
+
+        In r209665 WEBCORE_FRAMEWORK macro started to export INCLUDE_DIRECTORIES of
+        targets as their public interface, so that linked targets can use them
+        implicitly without copying directory lists around. This matches existing
+        practice for all targets except WTF, headers from which are always included
+        with full path starting from "<wtf/...".
+
+        Since r209665 it became possible to include headers from wtf or its
+        subdirectories in CMake builds without using "<wtf/..." path. It should
+        not be allowed.
+
+        * Source/cmake/WebKitMacros.cmake: Support xxx_PRIVATE_HEADERS
+        CMake variables.
+
+2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=171071
+
+        Reviewed by Michael Catanzaro.
+
+        "${DERIVED_SOURCES_DIR}/ForwardingHeaders" path occurs very often in the
+        build system files. GTK-specifc FORWARDING_HEADERS_DIR variable should
+        be available for all ports.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-04-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly] Fix build failures in macOS
+        https://bugs.webkit.org/show_bug.cgi?id=170887
+
+        Reviewed by Alex Christensen.
+
+        Align ICU header configuration to MacCMake port.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+
+2017-04-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Switch IDLAttributes.txt over to a more structured format so that more information can be added for each attribute
+        https://bugs.webkit.org/show_bug.cgi?id=170843
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/WebKitMacros.cmake:
+        Update extension of IDLAttributes to .json
+
+2017-04-13  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Assign WEBKIT_LIBRARIES_DIR to CMAKE_PREFIX_PATH
+        https://bugs.webkit.org/show_bug.cgi?id=170797
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/FindCairo.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2017-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] OpenWebRTC libraries path isn't properly deduced
+        https://bugs.webkit.org/show_bug.cgi?id=170670
+
+        Reviewed by Carlos Garcia Campos.
+
+        When using OpenWebRTC installation that's outside of the usual Jhbuild
+        installation directories, the library paths are ignored because the
+        dependency libraries are simply gathered from the pkg-config file.
+
+        Instead, the pkg-config data should be used to search for the correct
+        paths to the header and library locations. Both libopenwebrtc and
+        libopenwebrtc_gst libraries are needed, so the two library paths are
+        concatenated into the OPENWEBRTC_LIBRARIES variable.
+
+        * Source/cmake/FindOpenWebRTC.cmake:
+
+2017-04-08  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Elftoolchain ar doesn't support response files
+        https://bugs.webkit.org/show_bug.cgi?id=170105
+
+        Reviewed by Michael Catanzaro.
+
+        WebKit enables the use of response files when cmake and ninja is used.
+        However, the default implementation of ar command used in FreeBSD, which
+        is part of elftoolchain project, doesn't support reading arguments from
+        response files. To avoid causing undefined reference error on FreeBSD,
+        we disable the use of response files when elftoolchain ar is detected.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-04-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r215150.
+
+        Broke buildbot
+
+        Reverted changeset:
+
+        "[CMake] Don't force-enable response files when using Ninja
+        generator"
+        https://bugs.webkit.org/show_bug.cgi?id=170105
+        http://trac.webkit.org/changeset/215150
+
+2017-04-08  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [CMake] Don't force-enable response files when using Ninja generator
+        https://bugs.webkit.org/show_bug.cgi?id=170105
+
+        Reviewed by Michael Catanzaro.
+
+        Not all platforms support response files, and unconditionally enabling
+        response files is known to cause build failure for some platforms.
+        Since WebKit builds fine on many platforms without force-enabling
+        response files and bug 129771 didn't mention which platform required
+        it, we remove it instead of adding more platform checks.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-04-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Various build errors when plugin support is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=170015
+
+        Reviewed by Carlos Garcia Campos.
+
+        Allow building with ENABLE_NETSCAPE_PLUGIN_API=ON and ENABLE_X11_TARGET=OFF. This should be
+        possible as Carlos worked to ensure windowless plugins work properly outside X11. The GTK2
+        plugin process still depends on ENABLE_X11_TARGET because a plugin that uses GTK+ surely
+        wants to display a window, and is not going to work outside X11. (If the plugin links to
+        GTK+ but does not display a window, it's dumb and deserves to be broken.)
+
+        Also, make ENABLE_PLUGIN_PROCESS conditional on ENABLE_NETSCAPE_PLUGIN_API, not
+        ENABLE_X11_TARGET.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-04-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][Windows] WebKitGUID.lib should be built with the release CRT
+        https://bugs.webkit.org/show_bug.cgi?id=170593
+
+        Reviewed by Brent Fulgham.
+
+        Source/cmake/OptionsWin.cmake has a trick to force using the
+        release CRT even for debug build configuration. But, this works
+        only for C++, but for C. As the result, WebKitGUID.lib is built
+        with the debug CRT in debug build configuration because it has C
+        source files.
+
+        * Source/cmake/OptionsWin.cmake: Process CMAKE_C_FLAGS_* as well as CMAKE_CXX_FLAGS_*.
+
+2017-04-06  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [GTK] Build fails when using icecream, ccache and cmake 3.6
+        https://bugs.webkit.org/show_bug.cgi?id=170498
+
+        Reviewed by Michael Catanzaro.
+
+        Disable ninja response file when using icecream, ccache and cmake > 3.5.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-04-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [CMake] Enforce Python 2
+        https://bugs.webkit.org/show_bug.cgi?id=170439
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/WebKitCommon.cmake: Fail build immediately if Python 3 is detected.
+
+2017-03-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add MIMETypeRegistry implementation using xdgmime and remove the GTK+ one
+        https://bugs.webkit.org/show_bug.cgi?id=170001
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/CMakeLists.txt: Compile xdgmime if USE_XDGMIME is ON.
+        * Source/cmake/OptionsGTK.cmake: Set USE_XDGMIME to ON.
+
 2017-03-10  Per Arne Vollan  <pvollan@apple.com>
 
         Unreviewed Win64 build fix. FTL is not ready to be turned on yet.

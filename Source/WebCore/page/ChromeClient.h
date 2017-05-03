@@ -31,6 +31,7 @@
 #include "GraphicsContext.h"
 #include "HTMLMediaElementEnums.h"
 #include "HostWindow.h"
+#include "Icon.h"
 #include "LayerFlushThrottleState.h"
 #include "MediaProducer.h"
 #include "PopupMenu.h"
@@ -421,7 +422,7 @@ public:
     virtual bool shouldUseTiledBackingForFrameView(const FrameView&) const { return false; }
 
     virtual void isPlayingMediaDidChange(MediaProducer::MediaStateFlags, uint64_t) { }
-    virtual void handleAutoplayEvent(AutoplayEvent) { }
+    virtual void handleAutoplayEvent(AutoplayEvent, OptionSet<AutoplayEventFlags>) { }
 
 #if ENABLE(MEDIA_SESSION)
     virtual void hasMediaSessionWithActiveMediaElementsDidChange(bool) { }
@@ -464,7 +465,8 @@ public:
 
     virtual void didInvalidateDocumentMarkerRects() { }
 
-    virtual void reportProcessCPUTime(int64_t, ActivityStateForCPUSampling) { }
+    virtual void reportProcessCPUTime(Seconds, ActivityStateForCPUSampling) { }
+    virtual RefPtr<Icon> createIconForFiles(const Vector<String>& /* filenames */) = 0;
 
 protected:
     virtual ~ChromeClient() { }

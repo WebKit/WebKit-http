@@ -58,6 +58,7 @@
 #endif
 #include <wtf/CurrentTime.h>
 #include <wtf/glib/GRefPtr.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -322,7 +323,6 @@ static void doRedirect(ResourceHandle* handle)
     URL newURL = URL(URL(soup_message_get_uri(message)), location);
     bool crossOrigin = !protocolHostAndPortAreEqual(handle->firstRequest().url(), newURL);
     newRequest.setURL(newURL);
-    newRequest.setFirstPartyForCookies(newURL);
 
     if (newRequest.httpMethod() != "GET") {
         // Change newRequest method to GET if change was made during a previous redirection
@@ -383,7 +383,7 @@ static void redirectSkipCallback(GObject*, GAsyncResult* asyncResult, gpointer d
     }
 
     if (bytesSkipped > 0) {
-        g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, G_PRIORITY_DEFAULT,
+        g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, RunLoopSourcePriority::AsyncIONetwork,
             d->m_cancellable.get(), redirectSkipCallback, handle.get());
         return;
     }
@@ -514,7 +514,7 @@ static void sendRequestCallback(GObject*, GAsyncResult* result, gpointer data)
 
         if (SOUP_STATUS_IS_REDIRECTION(soupMessage->status_code) && shouldRedirect(handle.get())) {
             d->m_inputStream = inputStream;
-            g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, G_PRIORITY_DEFAULT,
+            g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, RunLoopSourcePriority::AsyncIONetwork,
                 d->m_cancellable.get(), redirectSkipCallback, handle.get());
             return;
         }
@@ -552,7 +552,7 @@ static void continueAfterDidReceiveResponse(ResourceHandle* handle)
 
     ResourceHandleInternal* d = handle->getInternal();
     if (d->m_soupMessage && d->m_multipartInputStream && !d->m_inputStream) {
-        soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), G_PRIORITY_DEFAULT,
+        soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), RunLoopSourcePriority::AsyncIONetwork,
             d->m_cancellable.get(), nextMultipartResponsePartCallback, handle);
         return;
     }
@@ -560,7 +560,7 @@ static void continueAfterDidReceiveResponse(ResourceHandle* handle)
     ASSERT(d->m_inputStream);
     handle->ensureReadBuffer();
     g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length,
-        G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle);
+        RunLoopSourcePriority::AsyncIONetwork, d->m_cancellable.get(), readCallback, handle);
 }
 
 #if ENABLE(WEB_TIMING)
@@ -772,7 +772,7 @@ void ResourceHandle::sendPendingRequest()
 #endif
 
     if (d->m_firstRequest.timeoutInterval() > 0)
-        d->m_timeoutSource.startOneShot(d->m_firstRequest.timeoutInterval());
+        d->m_timeoutSource.startOneShot(1_s * d->m_firstRequest.timeoutInterval());
 
     // Balanced by a deref() in cleanupSoupRequestOperation, which should always run.
     ref();
@@ -1005,7 +1005,7 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
         // If this is a multipart message, we'll look for another part.
         if (d->m_soupMessage && d->m_multipartInputStream) {
             d->m_inputStream.clear();
-            soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), G_PRIORITY_DEFAULT,
+            soup_multipart_input_stream_next_part_async(d->m_multipartInputStream.get(), RunLoopSourcePriority::AsyncIONetwork,
                 d->m_cancellable.get(), nextMultipartResponsePartCallback, handle.get());
             return;
         }
@@ -1036,7 +1036,7 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
     }
 
     handle->ensureReadBuffer();
-    g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length, G_PRIORITY_DEFAULT,
+    g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length, RunLoopSourcePriority::AsyncIONetwork,
         d->m_cancellable.get(), readCallback, handle.get());
 }
 

@@ -15,9 +15,8 @@ function sampleTestGroup() {
             "createdAt": 1458688514000,
             "hidden": false,
             "buildRequests": ["16985", "16986", "16987", "16988", "16989", "16990", "16991", "16992"],
-            "commitSets": ["4255", "4256", "4255", "4256", "4255", "4256", "4255", "4256"]
-        }
-        ],
+            "commitSets": ["4255", "4256"],
+        }],
         "buildRequests": [{
             "id": "16985",
             "triggerable": "3",
@@ -67,16 +66,16 @@ function sampleTestGroup() {
             "url": null,
             "build": null,
             "createdAt": 1458688514000
-        }
-        ],
+        }],
         "commitSets": [{
             "id": "4255",
-            "commits": ["87832", "93116"]
+            "revisionItems": [{"commit": "87832"}, {"commit": "93116"}],
+            "customRoots": [],
         }, {
             "id": "4256",
-            "commits": ["87832", "96336"]
-        }
-        ],
+            "revisionItems": [{"commit": "87832"}, {"commit": "96336"}],
+            "customRoots": [],
+        }],
         "commits": [{
             "id": "87832",
             "repository": "9",
@@ -97,8 +96,8 @@ function sampleTestGroup() {
             "repository": "11",
             "revision": "192736",
             "time": 1448225325650
-        }
-        ],
+        }],
+        "uploadedFiles": [],
         "status": "OK"
     };
 }
@@ -142,7 +141,6 @@ describe('TestGroup', function () {
             assert.ok(buildRequests[0].isPending());
             assert.equal(buildRequests[0].statusLabel(), 'Waiting');
             assert.equal(buildRequests[0].buildId(), null);
-            assert.equal(buildRequests[0].result(), null);
 
             assert.equal(buildRequests[1].id(), 16986);
             assert.equal(buildRequests[1].order(), 1);
@@ -151,7 +149,6 @@ describe('TestGroup', function () {
             assert.ok(buildRequests[1].isPending());
             assert.equal(buildRequests[1].statusLabel(), 'Waiting');
             assert.equal(buildRequests[1].buildId(), null);
-            assert.equal(buildRequests[1].result(), null);
         });
 
         it('should create root sets for each group', function () {

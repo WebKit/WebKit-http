@@ -68,7 +68,7 @@ private:
     bool canRunModal() final;
     void runModal() final;
 
-    void reportProcessCPUTime(int64_t, WebCore::ActivityStateForCPUSampling) final;
+    void reportProcessCPUTime(Seconds, WebCore::ActivityStateForCPUSampling) final;
     
     void setToolbarsVisible(bool) final;
     bool toolbarsVisible() final;
@@ -297,7 +297,7 @@ private:
     bool shouldUseTiledBackingForFrameView(const WebCore::FrameView&) const final;
 
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t) final;
-    void handleAutoplayEvent(WebCore::AutoplayEvent) final;
+    void handleAutoplayEvent(WebCore::AutoplayEvent, OptionSet<WebCore::AutoplayEventFlags>) final;
 
 #if ENABLE(MEDIA_SESSION)
     void hasMediaSessionWithActiveMediaElementsDidChange(bool) final;
@@ -333,6 +333,8 @@ private:
 #endif
 
     void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&) final;
+
+    RefPtr<WebCore::Icon> createIconForFiles(const Vector<String>& filenames) final;
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     void requestInstallMissingMediaPlugins(const String& /*details*/, const String& /*description*/, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&) final;

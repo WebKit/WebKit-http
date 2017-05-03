@@ -126,11 +126,12 @@ inline void JSCell::visitOutputConstraints(JSCell*, SlotVisitor&)
 
 ALWAYS_INLINE VM& ExecState::vm() const
 {
-    ASSERT(callee());
-    ASSERT(callee()->vm());
-    ASSERT(!callee()->isLargeAllocation());
+    JSCell* callee = this->callee().asCell();
+    ASSERT(callee);
+    ASSERT(callee->vm());
+    ASSERT(!callee->isLargeAllocation());
     // This is an important optimization since we access this so often.
-    return *callee()->markedBlock().vm();
+    return *callee->markedBlock().vm();
 }
 
 template<typename CellType>
@@ -141,17 +142,30 @@ Subspace* JSCell::subspaceFor(VM& vm)
     return &vm.cellSpace;
 }
 
-template<typename T>
-void* allocateCell(Heap& heap, size_t size)
+template<typename T, AllocationFailureMode mode, GCDeferralContextArgPresense deferralContextArgPresence>
+ALWAYS_INLINE void* tryAllocateCellHelper(Heap& heap, GCDeferralContext* deferralContext, size_t size)
 {
-    ASSERT(!DisallowGC::isGCDisallowedOnCurrentThread());
+    ASSERT(deferralContext || !DisallowGC::isInEffectOnCurrentThread());
     ASSERT(size >= sizeof(T));
-    JSCell* result = static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->allocate(size));
+
+    JSCell* result;
+    if (mode == AllocationFailureMode::ShouldAssertOnFailure) {
+        result = (deferralContextArgPresence == GCDeferralContextArgPresense::HasArg)
+            ? static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->allocate(deferralContext, size))
+            : static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->allocate(size));
+    } else {
+        result = (deferralContextArgPresence == GCDeferralContextArgPresense::HasArg)
+            ? static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->tryAllocate(deferralContext, size))
+            : static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->tryAllocate(size));
+        if (UNLIKELY(!result))
+            return nullptr;
+    }
 #if ENABLE(JS_MEMORY_TRACKING) && 0
     // FIXME: HeapStatistics was removed
     if (Options::showAllocationBacktraces())
         HeapStatistics::showAllocBacktrace(&heap, size, result);
 #endif
+
 #if ENABLE(GC_VALIDATION)
     ASSERT(!heap.vm()->isInitializingObject());
     heap.vm()->setInitializingObjectClass(T::info());
@@ -159,32 +173,31 @@ void* allocateCell(Heap& heap, size_t size)
     result->clearStructure();
     return result;
 }
-    
+
 template<typename T>
-void* allocateCell(Heap& heap)
+void* allocateCell(Heap& heap, size_t size)
 {
-    return allocateCell<T>(heap, sizeof(T));
+    return tryAllocateCellHelper<T, AllocationFailureMode::ShouldAssertOnFailure, GCDeferralContextArgPresense::DoesNotHaveArg>(heap, nullptr, size);
 }
-    
+
+template<typename T>
+void* tryAllocateCell(Heap& heap, size_t size)
+{
+    return tryAllocateCellHelper<T, AllocationFailureMode::ShouldNotAssertOnFailure, GCDeferralContextArgPresense::DoesNotHaveArg>(heap, nullptr, size);
+}
+
 template<typename T>
 void* allocateCell(Heap& heap, GCDeferralContext* deferralContext, size_t size)
 {
-    ASSERT(size >= sizeof(T));
-    JSCell* result = static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->allocate(deferralContext, size));
-#if ENABLE(GC_VALIDATION)
-    ASSERT(!heap.vm()->isInitializingObject());
-    heap.vm()->setInitializingObjectClass(T::info());
-#endif
-    result->clearStructure();
-    return result;
+    return tryAllocateCellHelper<T, AllocationFailureMode::ShouldAssertOnFailure, GCDeferralContextArgPresense::HasArg>(heap, deferralContext, size);
 }
-    
+
 template<typename T>
-void* allocateCell(Heap& heap, GCDeferralContext* deferralContext)
+void* tryAllocateCell(Heap& heap, GCDeferralContext* deferralContext, size_t size)
 {
-    return allocateCell<T>(heap, deferralContext, sizeof(T));
+    return tryAllocateCellHelper<T, AllocationFailureMode::ShouldNotAssertOnFailure, GCDeferralContextArgPresense::HasArg>(heap, deferralContext, size);
 }
-    
+
 inline bool JSCell::isObject() const
 {
     return TypeInfo::isObject(m_type);
@@ -349,6 +362,11 @@ inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject)
     if (isObject())
         return jsCast<JSObject*>(const_cast<JSCell*>(this));
     return toObjectSlow(exec, globalObject);
+}
+
+inline bool isWebAssemblyToJSCallee(const JSCell* cell)
+{
+    return cell->type() == WebAssemblyToJSCalleeType;
 }
 
 } // namespace JSC

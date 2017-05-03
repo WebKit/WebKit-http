@@ -49,7 +49,10 @@ for (const c in constructorProperties) {
     assert.eq(WebAssembly[c].length, constructorProperties[c].length);
     checkOwnPropertyDescriptor(WebAssembly, c, constructorProperties[c]);
     checkOwnPropertyDescriptor(WebAssembly[c], "prototype", { typeofvalue: "object", writable: false, configurable: false, enumerable: false });
-    assert.throws(() => WebAssembly[c](), TypeError, `calling WebAssembly.${c} constructor without new is invalid`);
+    if (["CompileError", "LinkError", "RuntimeError"].indexOf(c) >= 0)
+        WebAssembly[c](); // Per spec, the WebAssembly.*Error types match ye olden JavaScript NativeError behavior: they can be constructed without `new`.
+    else
+        assert.throws(() => WebAssembly[c](), TypeError, `calling WebAssembly.${c} constructor without new is invalid`);
     switch (c) {
     case "Module":
         for (const invalid of invalidConstructorInputs)
@@ -69,11 +72,13 @@ for (const c in constructorProperties) {
             assert.throws(() => new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid), TypeError, `second argument to WebAssembly.Instance must be undefined or an Object (evaluating 'new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid)')`);
         assert.isNotUndef(instance.exports);
         checkOwnPropertyDescriptor(instance, "exports", { typeofvalue: "object", writable: true, configurable: true, enumerable: true });
-        // FIXME these should pass, requires a module namespace object. https://bugs.webkit.org/show_bug.cgi?id=165121
-        // assert.isUndef(instance.exports.__proto__);
-        // assert.eq(Reflect.isExtensible(instance.exports), false);
-        // assert.eq(Symbol.iterator in instance.exports, true);
-        // assert.eq(Symbol.toStringTag in instance.exports, true);
+        assert.isUndef(instance.exports.__proto__);
+        assert.eq(Reflect.isExtensible(instance.exports), false);
+        assert.eq(Symbol.iterator in instance.exports, false);
+        assert.eq(Symbol.toStringTag in instance.exports, true);
+        assert.eq(Object.getOwnPropertySymbols(instance.exports).length, 1);
+        assert.eq(Object.getOwnPropertySymbols(instance.exports)[0], Symbol.toStringTag);
+        assert.throws(() => instance.exports[Symbol.toStringTag] = 42, TypeError, `Attempted to assign to readonly property.`);
         break;
     case "Memory":
         new WebAssembly.Memory({initial: 20});
@@ -86,15 +91,28 @@ for (const c in constructorProperties) {
     case "CompileError":
     case "LinkError":
     case "RuntimeError": {
-        const e = new WebAssembly[c];
-        assert.eq(e instanceof WebAssembly[c], true);
-        assert.eq(e instanceof Error, true);
-        assert.eq(e instanceof TypeError, false);
-        assert.eq(e.message, "");
-        assert.eq(typeof e.stack, "string");
-        const sillyString = "uh-oh!";
-        const e2 = new WebAssembly[c](sillyString);
-        // FIXME fix Compile / Runtime errors for this: assert.eq(e2.message, sillyString + " (evaluating 'new WebAssembly[c](sillyString)')");
+        {
+            const e = new WebAssembly[c];
+            assert.eq(e instanceof WebAssembly[c], true);
+            assert.eq(e instanceof Error, true);
+            assert.eq(e instanceof TypeError, false);
+            assert.eq(e.message, "");
+            assert.eq(typeof e.stack, "string");
+            const sillyString = "uh-oh!";
+            const e2 = new WebAssembly[c](sillyString);
+            assert.eq(e2.message, sillyString + " (evaluating 'new WebAssembly[c](sillyString)')");
+        }
+        {
+            const e = WebAssembly[c]();
+            assert.eq(e instanceof WebAssembly[c], true);
+            assert.eq(e instanceof Error, true);
+            assert.eq(e instanceof TypeError, false);
+            assert.eq(e.message, "");
+            assert.eq(typeof e.stack, "string");
+            const sillyString = "uh-oh!";
+            const e2 = WebAssembly[c](sillyString);
+            assert.eq(e2.message, sillyString);
+        }
     } break;
     default: throw new Error(`Implementation error: unexpected constructor property "${c}"`);
     }

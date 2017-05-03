@@ -45,6 +45,7 @@
 #import "WebPage.h"
 #import "WebProcessCreationParameters.h"
 #import "WebProcessProxyMessages.h"
+#import "WebsiteDataStoreParameters.h"
 #import <JavaScriptCore/Options.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CFNetworkSPI.h>
@@ -91,7 +92,7 @@ using namespace WebCore;
 namespace WebKit {
 
 #if PLATFORM(MAC)
-static const Seconds backgroundCPUMonitoringInterval { 15_min };
+static const Seconds backgroundCPUMonitoringInterval { 8_min };
 #endif
 
 void WebProcess::platformSetCacheModel(CacheModel)
@@ -282,7 +283,7 @@ void WebProcess::registerWithStateDumper()
                 memset(os_state, 0, neededSize);
                 os_state->osd_type = OS_STATE_DATA_SERIALIZED_NSCF_OBJECT;
                 os_state->osd_data_size = data.length;
-                strcpy(os_state->osd_title, "WebContent state"); // NB: Only 64 bytes of buffer here.
+                strlcpy(os_state->osd_title, "WebContent state", sizeof(os_state->osd_title));
                 memcpy(os_state->osd_data, data.bytes, data.length);
             }
 
@@ -430,8 +431,8 @@ void WebProcess::updateBackgroundCPUMonitorState()
     }
 
     if (!m_backgroundCPUMonitor) {
-        m_backgroundCPUMonitor = std::make_unique<CPUMonitor>(backgroundCPUMonitoringInterval, [this] {
-            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded background CPU limit of %.1f%%", this, m_backgroundCPULimit.value() * 100);
+        m_backgroundCPUMonitor = std::make_unique<CPUMonitor>(backgroundCPUMonitoringInterval, [this](double cpuUsage) {
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded background CPU limit of %.1f%% (was using %.1f%%)", this, m_backgroundCPULimit.value() * 100, cpuUsage * 100);
             parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedBackgroundCPULimit(), 0);
         });
     }

@@ -81,10 +81,12 @@ BuildbotIteration.TestSteps = {
     "layout-test": "layout test",
     "perf-test": "performance test",
     "run-api-tests": "api test",
+    "dashboard-tests": "dashboard test",
     "webkit-32bit-jsc-test": "javascript test",
     "webkit-jsc-cloop-test": "javascript cloop test",
     "webkitperl-test": "webkitperl test",
     "webkitpy-test": "webkitpy test",
+    "test262-test": "test262 test",
 };
 
 BuildbotIteration.Event = {
@@ -200,21 +202,21 @@ BuildbotIteration.prototype = {
             return property[0] === "got_revision";
         });
         var branches = this.queue.branches;
+
         for (var i = 0; i < branches.length; ++i) {
             var repository = branches[i].repository;
             var repositoryName = repository.name;
             var key;
             var fallbackKey;
+
             if (repository === Dashboard.Repository.OpenSource) {
                 key = "WebKit";
                 fallbackKey = "opensource";
-            } else if (repository === Dashboard.Repository.Internal) {
-                key = "Internal";
-                fallbackKey = "internal";
             } else {
                 key = repositoryName;
                 fallbackKey = null;
             }
+
             var revision = parseRevisionProperty(revisionProperty, key, fallbackKey);
             this.revision[repositoryName] = revision;
         }

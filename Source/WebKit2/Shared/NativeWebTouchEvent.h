@@ -49,7 +49,7 @@ public:
     NativeWebTouchEvent(const NativeWebTouchEvent&);
     const GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WPE)
-    NativeWebTouchEvent(struct wpe_input_touch_event*);
+    NativeWebTouchEvent(struct wpe_input_touch_event*, float deviceScaleFactor);
     const struct wpe_input_touch_event_raw* nativeFallbackTouchPoint() const { return &m_fallbackTouchPoint; }
 #endif
 

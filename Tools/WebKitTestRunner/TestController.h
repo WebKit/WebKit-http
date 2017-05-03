@@ -133,6 +133,7 @@ public:
     void setHandlesAuthenticationChallenges(bool value) { m_handlesAuthenticationChallenges = value; }
     void setAuthenticationUsername(String username) { m_authenticationUsername = username; }
     void setAuthenticationPassword(String password) { m_authenticationPassword = password; }
+    void setAllowsAnySSLCertificate(bool);
 
     void setBlockAllPlugins(bool shouldBlock) { m_shouldBlockAllPlugins = shouldBlock; }
 
@@ -156,8 +157,10 @@ public:
     void setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
+    void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
     void statisticsFireDataModificationHandler();
-    void statisticsFireShouldPartitionCookiesHandler(WKStringRef hostName, bool value);
+    void statisticsFireShouldPartitionCookiesHandler();
+    void statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value);
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
@@ -167,6 +170,8 @@ public:
     WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }
     void setOpenPanelFileURLs(WKArrayRef fileURLs) { m_openPanelFileURLs = fileURLs; }
 
+    void terminateNetworkProcess();
+    
 private:
     WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(WKContextConfigurationRef);
     WKRetainPtr<WKContextConfigurationRef> generateContextConfiguration() const;
@@ -192,6 +197,7 @@ private:
     void platformWillRunTest(const TestInvocation&);
     void platformRunUntil(bool& done, double timeout);
     void platformDidCommitLoadForFrame(WKPageRef, WKFrameRef);
+    WKContextRef platformContext();
     WKPreferencesRef platformPreferences();
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();

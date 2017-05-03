@@ -50,6 +50,7 @@
 #include "WebProcessProxyMessages.h"
 #include "WebUserContentControllerProxy.h"
 #include "WebsiteData.h"
+#include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/SuddenTermination.h>
 #include <WebCore/URL.h>
 #include <stdio.h>
@@ -89,19 +90,19 @@ static WebProcessProxy::WebPageProxyMap& globalPageMap()
     return pageMap;
 }
 
-Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore)
+Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, WebsiteDataStore& websiteDataStore)
 {
     return adoptRef(*new WebProcessProxy(processPool, websiteDataStore));
 }
 
-WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore)
+WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore& websiteDataStore)
     : ChildProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_responsivenessTimer(*this)
     , m_backgroundResponsivenessTimer(*this)
     , m_processPool(processPool)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
-    , m_throttler(*this)
+    , m_throttler(*this, processPool.shouldTakeUIBackgroundAssertion())
     , m_isResponsive(NoOrMaybe::Maybe)
     , m_visiblePageCounter([this](RefCounterEvent) { updateBackgroundResponsivenessTimer(); })
     , m_websiteDataStore(websiteDataStore)
@@ -110,8 +111,6 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* 
 #endif
 {
     WebPasteboardProxy::singleton().addWebProcessProxy(*this);
-
-
 
     connect();
 }
@@ -210,7 +209,7 @@ WebPageProxy* WebProcessProxy::webPage(uint64_t pageID)
     return globalPageMap().get(pageID);
 }
 
-void WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>& topPrivatelyOwnedDomains, bool shouldNotifyPage, std::function<void(Vector<String>)> completionHandler)
+void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, std::function<void(Vector<String>)> completionHandler)
 {
     struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(std::function<void(Vector<String>)> completionHandler)
@@ -255,7 +254,7 @@ void WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersisten
             continue;
         visitedSessionIDs.add(dataStore.sessionID());
         callbackAggregator->addPendingCallback();
-        dataStore.removeDataForTopPrivatelyOwnedDomains(dataTypes, { }, topPrivatelyOwnedDomains, [callbackAggregator, shouldNotifyPage, page](auto domainsWithDeletedWebsiteData) {
+        dataStore.removeDataForTopPrivatelyControlledDomains(dataTypes, { }, WTFMove(topPrivatelyControlledDomains), [callbackAggregator, shouldNotifyPage, page](auto domainsWithDeletedWebsiteData) {
             if (shouldNotifyPage)
                 page.value->postMessageToInjectedBundle("WebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished", nullptr);
             WTF::RunLoop::main().dispatch([callbackAggregator, domainsWithDeletedWebsiteData] {
@@ -271,29 +270,32 @@ Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API
     uint64_t pageID = generatePageID();
     Ref<WebPageProxy> webPage = WebPageProxy::create(pageClient, *this, pageID, WTFMove(pageConfiguration));
 
-    m_pageMap.set(pageID, webPage.ptr());
-    globalPageMap().set(pageID, webPage.ptr());
-
-    updateBackgroundResponsivenessTimer();
+    addExistingWebPage(webPage.get(), pageID);
 
     return webPage;
 }
 
-void WebProcessProxy::addExistingWebPage(WebPageProxy* webPage, uint64_t pageID)
+void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, uint64_t pageID)
 {
     ASSERT(!m_pageMap.contains(pageID));
     ASSERT(!globalPageMap().contains(pageID));
 
-    m_pageMap.set(pageID, webPage);
-    globalPageMap().set(pageID, webPage);
+    m_processPool->pageAddedToProcess(webPage);
+
+    m_pageMap.set(pageID, &webPage);
+    globalPageMap().set(pageID, &webPage);
 
     updateBackgroundResponsivenessTimer();
 }
 
-void WebProcessProxy::removeWebPage(uint64_t pageID)
+void WebProcessProxy::removeWebPage(WebPageProxy& webPage, uint64_t pageID)
 {
-    m_pageMap.remove(pageID);
-    globalPageMap().remove(pageID);
+    auto* removedPage = m_pageMap.take(pageID);
+    ASSERT_UNUSED(removedPage, removedPage == &webPage);
+    removedPage = globalPageMap().take(pageID);
+    ASSERT_UNUSED(removedPage, removedPage == &webPage);
+
+    m_processPool->pageRemovedFromProcess(webPage);
 
     updateBackgroundResponsivenessTimer();
     
@@ -319,10 +321,10 @@ void WebProcessProxy::addVisitedLinkStore(VisitedLinkStore& store)
     store.addProcess(*this);
 }
 
-void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
+void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy, WebPageCreationParameters& parameters)
 {
     m_webUserContentControllerProxies.add(&proxy);
-    proxy.addProcess(*this);
+    proxy.addProcess(*this, parameters);
 }
 
 void WebProcessProxy::didDestroyVisitedLinkStore(VisitedLinkStore& store)
@@ -1127,6 +1129,41 @@ static Vector<RefPtr<WebPageProxy>> pagesCopy(WTF::IteratorRange<WebProcessProxy
     return vector;
 }
 
+static String diagnosticLoggingKeyForSimulatedCrashReason(SimulatedCrashReason reason)
+{
+    switch (reason) {
+    case SimulatedCrashReason::ExceededActiveMemoryLimit:
+        return DiagnosticLoggingKeys::exceededActiveMemoryLimitKey();
+    case SimulatedCrashReason::ExceededInactiveMemoryLimit:
+        return DiagnosticLoggingKeys::exceededInactiveMemoryLimitKey();
+    case SimulatedCrashReason::ExceededBackgroundCPULimit:
+        return DiagnosticLoggingKeys::exceededBackgroundCPULimitKey();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+}
+
+void WebProcessProxy::simulateProcessCrash(SimulatedCrashReason reason)
+{
+    for (auto& page : pagesCopy(pages())) {
+        page->logDiagnosticMessage(DiagnosticLoggingKeys::simulatedPageCrashKey(), diagnosticLoggingKeyForSimulatedCrashReason(reason), ShouldSample::No);
+        page->terminateProcess();
+        page->processDidCrash();
+    }
+}
+
+void WebProcessProxy::didExceedActiveMemoryLimit()
+{
+    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedActiveMemoryLimit() Terminating WebProcess that has exceeded the active memory limit", this);
+    simulateProcessCrash(SimulatedCrashReason::ExceededActiveMemoryLimit);
+}
+
+void WebProcessProxy::didExceedInactiveMemoryLimit()
+{
+    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedInactiveMemoryLimit() Terminating WebProcess that has exceeded the inactive memory limit", this);
+    simulateProcessCrash(SimulatedCrashReason::ExceededInactiveMemoryLimit);
+}
+
 void WebProcessProxy::didExceedBackgroundCPULimit()
 {
     for (auto& page : pages()) {
@@ -1137,13 +1174,15 @@ void WebProcessProxy::didExceedBackgroundCPULimit()
             RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because there is audio playing", this);
             return;
         }
+
+        if (page->hasActiveAudioStream() || page->hasActiveVideoStream()) {
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because it is capturing audio / video", this);
+            return;
+        }
     }
 
-    RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() Terminating background WebProcess that has exceeded the background CPU limit", this);
-
-    // We only terminate the process here. We will call processDidCrash() once one of the pages becomes visible again (see WebPageProxy::dispatchActivityStateChange()).
-    for (auto& page : pagesCopy(pages()))
-        page->terminateProcess(WebPageProxy::TerminationReason::ResourceExhaustionWhileInBackground);
+    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() Terminating background WebProcess that has exceeded the background CPU limit", this);
+    simulateProcessCrash(SimulatedCrashReason::ExceededBackgroundCPULimit);
 }
 
 void WebProcessProxy::updateBackgroundResponsivenessTimer()

@@ -35,8 +35,6 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "ChromeClient.h"
-#include "ClientRect.h"
-#include "ClientRectList.h"
 #include "CommonVM.h"
 #include "ContentSecurityPolicy.h"
 #include "ContentType.h"
@@ -165,14 +163,16 @@
 #include "NotImplemented.h"
 #endif
 
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(document().page() && document().page()->isAlwaysOnLoggingAllowed(), Media, "%p - HTMLMediaElement::" fmt, this, ##__VA_ARGS__)
+
 namespace WebCore {
 
-static const double SeekRepeatDelay = 0.1;
+static const Seconds SeekRepeatDelay { 100_ms };
 static const double SeekTime = 0.2;
-static const double ScanRepeatDelay = 1.5;
+static const Seconds ScanRepeatDelay { 1.5_s };
 static const double ScanMaximumRate = 8;
 
-static const double HideMediaControlsAfterEndedDelay = 6;
+static const Seconds hideMediaControlsAfterEndedDelay { 6_s };
 
 static void setFlags(unsigned& value, unsigned flags)
 {
@@ -533,6 +533,10 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #endif
 
     registerWithDocument(document);
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    AudioSession::sharedSession().addMutedStateObserver(this);
+#endif
 }
 
 HTMLMediaElement::~HTMLMediaElement()
@@ -546,6 +550,10 @@ HTMLMediaElement::~HTMLMediaElement()
 
     setShouldDelayLoadEvent(false);
     unregisterWithDocument(document());
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    AudioSession::sharedSession().removeMutedStateObserver(this);
+#endif
 
 #if ENABLE(VIDEO_TRACK)
     if (m_audioTracks)
@@ -993,7 +1001,7 @@ void HTMLMediaElement::scheduleDelayedAction(DelayedActionType actionType)
     if (actionType & UpdatePlayState)
         setFlags(m_pendingActionFlags, UpdatePlayState);
 
-    m_pendingActionTimer.startOneShot(0);
+    m_pendingActionTimer.startOneShot(0_s);
 }
 
 void HTMLMediaElement::scheduleNextSourceChild()
@@ -2070,7 +2078,7 @@ void HTMLMediaElement::startProgressEventTimer()
 
     m_previousProgressTime = monotonicallyIncreasingTime();
     // 350ms is not magic, it is in the spec!
-    m_progressEventTimer.startRepeating(0.350);
+    m_progressEventTimer.startRepeating(350_ms);
 }
 
 void HTMLMediaElement::waitForSourceChange()
@@ -2350,7 +2358,8 @@ SuccessOr<MediaPlaybackDenialReason> HTMLMediaElement::canTransitionFromAutoplay
 
 void HTMLMediaElement::dispatchPlayPauseEventsIfNeedsQuirks()
 {
-    if (!needsAutoplayPlayPauseEventsQuirk(document().topDocument()))
+    auto& document = this->document();
+    if (!needsAutoplayPlayPauseEventsQuirk(document) && !needsAutoplayPlayPauseEventsQuirk(document.topDocument()))
         return;
 
     scheduleEvent(eventNames().playingEvent);
@@ -2476,15 +2485,17 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             m_playbackStartedTime = currentMediaTime().toDouble();
             scheduleEvent(eventNames().playEvent);
             scheduleNotifyAboutPlaying();
-        } else if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
+        } else if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
-            dispatchPlayPauseEventsIfNeedsQuirks();
-
-            if (Page* page = document().page())
-                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
-        }
 
         shouldUpdateDisplayState = true;
+    }
+
+    // If we transition to the Future Data state and we're about to begin playing, ensure playback is actually permitted first,
+    // honoring any playback denial reasons such as the requirement of a user gesture.
+    if (m_readyState == HAVE_FUTURE_DATA && oldState < HAVE_FUTURE_DATA && potentiallyPlaying() && !m_mediaSession->playbackPermitted(*this)) {
+        pauseInternal();
+        setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
     }
 
     if (shouldUpdateDisplayState) {
@@ -2932,6 +2943,8 @@ void HTMLMediaElement::seekTask()
     MediaTime positiveTolerance = m_pendingSeek->positiveTolerance;
     m_pendingSeek = nullptr;
 
+    ASSERT(negativeTolerance >= MediaTime::zeroTime());
+    
     // 6 - If the new playback position is later than the end of the media resource, then let it be the end 
     // of the media resource instead.
     time = std::min(time, durationMediaTime());
@@ -3364,13 +3377,8 @@ void HTMLMediaElement::play(DOMPromise<void>&& promise)
 
     auto success = m_mediaSession->playbackPermitted(*this);
     if (!success) {
-        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
+        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
-            dispatchPlayPauseEventsIfNeedsQuirks();
-
-            if (Page* page = document().page())
-                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
-        }
         promise.reject(NotAllowedError);
         return;
     }
@@ -3397,13 +3405,8 @@ void HTMLMediaElement::play()
 
     auto success = m_mediaSession->playbackPermitted(*this);
     if (!success) {
-        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
+        if (success.value() == MediaPlaybackDenialReason::UserGestureRequired)
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
-            dispatchPlayPauseEventsIfNeedsQuirks();
-
-            if (Page* page = document().page())
-                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
-        }
         return;
     }
     if (ScriptController::processingUserGestureForMedia())
@@ -3472,8 +3475,7 @@ bool HTMLMediaElement::playInternal()
 
     if (ScriptController::processingUserGestureForMedia()) {
         if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Prevented) {
-            if (Page* page = document().page())
-                page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPlayMediaPreventedFromPlaying);
+            handleAutoplayEvent(AutoplayEvent::DidPlayMediaPreventedFromPlaying);
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
         }
     } else
@@ -3528,8 +3530,9 @@ void HTMLMediaElement::pauseInternal()
         m_paused = true;
         scheduleTimeupdateEvent(false);
         scheduleEvent(eventNames().pauseEvent);
-        rejectPendingPlayPromises(DOMError::create("AbortError", "The operation was aborted."));
-
+        m_promiseTaskQueue.enqueueTask([this]() {
+            rejectPendingPlayPromises(DOMError::create("AbortError", "The operation was aborted."));
+        });
         if (MemoryPressureHandler::singleton().isUnderMemoryPressure())
             purgeBufferedDataIfPossible();
     }
@@ -3695,15 +3698,15 @@ void HTMLMediaElement::setMuted(bool muted)
 
     bool mutedStateChanged = m_muted != muted;
     if (mutedStateChanged || !m_explicitlyMuted) {
-        m_muted = muted;
-        m_explicitlyMuted = true;
-
         if (ScriptController::processingUserGestureForMedia()) {
             removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 
-            if (hasAudio() && m_muted)
+            if (hasAudio() && muted)
                 userDidInterfereWithAutoplay();
         }
+
+        m_muted = muted;
+        m_explicitlyMuted = true;
 
         // Avoid recursion when the player reports volume changes.
         if (!processingMediaPlayerCallback()) {
@@ -3733,6 +3736,22 @@ void HTMLMediaElement::setMuted(bool muted)
 
     scheduleUpdatePlaybackControlsManager();
 }
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+void HTMLMediaElement::hardwareMutedStateDidChange(AudioSession* session)
+{
+    if (!session->isMuted())
+        return;
+
+    if (!hasAudio())
+        return;
+
+    if (effectiveMuted() || !volume())
+        return;
+
+    userDidInterfereWithAutoplay();
+}
+#endif
 
 void HTMLMediaElement::togglePlayState()
 {
@@ -3792,7 +3811,7 @@ void HTMLMediaElement::beginScanning(ScanDirection direction)
         setPlaybackRate(nextScanRate());
     }
 
-    m_scanTimer.start(0, m_scanType == Seek ? SeekRepeatDelay : ScanRepeatDelay);
+    m_scanTimer.start(0_s, m_scanType == Seek ? SeekRepeatDelay : ScanRepeatDelay);
 }
 
 void HTMLMediaElement::endScanning()
@@ -3831,7 +3850,7 @@ void HTMLMediaElement::scanTimerFired()
 
 // The spec says to fire periodic timeupdate events (those sent while playing) every
 // "15 to 250ms", we choose the slowest frequency
-static const double maxTimeupdateEventFrequency = 0.25;
+static const Seconds maxTimeupdateEventFrequency { 250_ms };
 
 void HTMLMediaElement::startPlaybackProgressTimer()
 {
@@ -3874,8 +3893,8 @@ void HTMLMediaElement::playbackProgressTimerFired()
 
 void HTMLMediaElement::scheduleTimeupdateEvent(bool periodicEvent)
 {
-    double now = monotonicallyIncreasingTime();
-    double timedelta = now - m_clockTimeAtLastUpdateEvent;
+    MonotonicTime now = MonotonicTime::now();
+    Seconds timedelta = now - m_clockTimeAtLastUpdateEvent;
 
     // throttle the periodic events
     if (periodicEvent && timedelta < maxTimeupdateEventFrequency)
@@ -3920,8 +3939,10 @@ double HTMLMediaElement::percentLoaded() const
 
 void HTMLMediaElement::mediaPlayerDidAddAudioTrack(AudioTrackPrivate& track)
 {
-    if (isPlaying() && !m_mediaSession->playbackPermitted(*this))
+    if (isPlaying() && !m_mediaSession->playbackPermitted(*this)) {
         pauseInternal();
+        setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
+    }
 
     addAudioTrack(AudioTrack::create(*this, track));
 }
@@ -4366,11 +4387,13 @@ void HTMLMediaElement::updateCaptionContainer()
 void HTMLMediaElement::layoutSizeChanged()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    auto task = [this, protectedThis = makeRef(*this)] {
-        if (ShadowRoot* root = userAgentShadowRoot())
-            root->dispatchEvent(Event::create("resize", false, false));
-    };
-    m_resizeTaskQueue.enqueueTask(WTFMove(task));
+    if (auto* frameView = document().view()) {
+        auto task = [this, protectedThis = makeRef(*this)] {
+            if (ShadowRoot* root = userAgentShadowRoot())
+                root->dispatchEvent(Event::create("resize", false, false));
+        };
+        frameView->queuePostLayoutCallback(WTFMove(task));
+    }
 #endif
 
     if (!m_receivedLayoutSizeChanged) {
@@ -4395,10 +4418,19 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
     if (!trackList.length())
         return;
 
-    if (trackToSelect != TextTrack::captionMenuOffItem() && trackToSelect != TextTrack::captionMenuAutomaticItem()) {
+    if (trackToSelect == TextTrack::captionMenuAutomaticItem()) {
+        if (m_captionDisplayMode != CaptionUserPreferences::Automatic)
+            m_textTracks->scheduleChangeEvent();
+    } else if (trackToSelect == TextTrack::captionMenuOffItem()) {
+        for (int i = 0, length = trackList.length(); i < length; ++i)
+            trackList.item(i)->setMode(TextTrack::Mode::Disabled);
+
+        if (m_captionDisplayMode != CaptionUserPreferences::ForcedOnly && !trackList.isChangeEventScheduled())
+            m_textTracks->scheduleChangeEvent();
+    } else {
         if (!trackToSelect || !trackList.contains(*trackToSelect))
             return;
-        
+
         for (int i = 0, length = trackList.length(); i < length; ++i) {
             auto& track = *trackList.item(i);
             if (&track != trackToSelect)
@@ -4406,9 +4438,6 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
             else
                 track.setMode(TextTrack::Mode::Showing);
         }
-    } else if (trackToSelect == TextTrack::captionMenuOffItem()) {
-        for (int i = 0, length = trackList.length(); i < length; ++i)
-            trackList.item(i)->setMode(TextTrack::Mode::Disabled);
     }
 
     if (!document().page())
@@ -4767,10 +4796,9 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
                 if (!wasSeeking)
                     addBehaviorRestrictionsOnEndIfNecessary();
 
-                if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Started) {
-                    if (Page* page = document().page())
-                        page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
-                }
+                if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Started)
+                    handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
+
                 setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
             }
             // If the media element has a current media controller, then report the controller state
@@ -4813,7 +4841,7 @@ void HTMLMediaElement::addBehaviorRestrictionsOnEndIfNecessary()
 
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
     m_playbackControlsManagerBehaviorRestrictionsTimer.stop();
-    m_playbackControlsManagerBehaviorRestrictionsTimer.startOneShot(HideMediaControlsAfterEndedDelay);
+    m_playbackControlsManagerBehaviorRestrictionsTimer.startOneShot(hideMediaControlsAfterEndedDelay);
 }
 
 void HTMLMediaElement::handleSeekToPlaybackPosition(double position)
@@ -4823,7 +4851,7 @@ void HTMLMediaElement::handleSeekToPlaybackPosition(double position)
     // Please see <rdar://problem/28457219> for more details.
     seek(MediaTime::createWithDouble(position));
     m_seekToPlaybackPositionEndedTimer.stop();
-    m_seekToPlaybackPositionEndedTimer.startOneShot(0.5);
+    m_seekToPlaybackPositionEndedTimer.startOneShot(500_ms);
 
     if (!m_isScrubbingRemotely) {
         m_isScrubbingRemotely = true;
@@ -5082,8 +5110,10 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
         mediaControls()->reset();
     updateRenderer();
 
-    if (!paused() && !m_mediaSession->playbackPermitted(*this))
+    if (!paused() && !m_mediaSession->playbackPermitted(*this)) {
         pauseInternal();
+        setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
+    }
 
 #if ENABLE(MEDIA_SESSION)
     document().updateIsPlayingMedia(m_elementID);
@@ -5537,18 +5567,17 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     setPausedInternal(true);
     m_mediaSession->clientWillPausePlayback();
 
-    if (Page* page = document().page()) {
-        switch (m_playbackWithoutUserGesture) {
-        case PlaybackWithoutUserGesture::Started:
-            page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
-            break;
-        case PlaybackWithoutUserGesture::Prevented:
-            page->chrome().client().handleAutoplayEvent(AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying);
-            break;
-        case PlaybackWithoutUserGesture::None:
-            break;
-        }
+    switch (m_playbackWithoutUserGesture) {
+    case PlaybackWithoutUserGesture::Started:
+        handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
+        break;
+    case PlaybackWithoutUserGesture::Prevented:
+        handleAutoplayEvent(AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying);
+        break;
+    case PlaybackWithoutUserGesture::None:
+        break;
     }
+
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
 
     userCancelledLoad();
@@ -5563,7 +5592,6 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
 void HTMLMediaElement::contextDestroyed()
 {
     m_seekTaskQueue.close();
-    m_resizeTaskQueue.close();
     m_shadowDOMTaskQueue.close();
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
@@ -5664,6 +5692,17 @@ void HTMLMediaElement::visibilityStateChanged()
     LOG(Media, "HTMLMediaElement::visibilityStateChanged(%p) - visible = %s", this, boolString(!m_elementIsHidden));
     updateSleepDisabling();
     m_mediaSession->visibilityChanged();
+
+    bool isPlayingAudio = isPlaying() && hasAudio() && !muted() && volume();
+    if (!isPlayingAudio) {
+        if (m_elementIsHidden) {
+            RELEASE_LOG_IF_ALLOWED("visibilityStateChanged() Suspending playback after going to the background");
+            m_mediaSession->beginInterruption(PlatformMediaSession::EnteringBackground);
+        } else {
+            RELEASE_LOG_IF_ALLOWED("visibilityStateChanged() Resuming playback after entering foreground");
+            m_mediaSession->endInterruption(PlatformMediaSession::MayResumePlaying);
+        }
+    }
 }
 
 #if ENABLE(VIDEO_TRACK)
@@ -6839,7 +6878,16 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
 
 RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader()
 {
-    return adoptRef(*new MediaResourceLoader(document(), *this, crossOrigin()));
+    auto mediaResourceLoader = adoptRef(*new MediaResourceLoader(document(), *this, crossOrigin()));
+
+    m_lastMediaResourceLoaderForTesting = mediaResourceLoader->createWeakPtr();
+
+    return WTFMove(mediaResourceLoader);
+}
+
+const MediaResourceLoader* HTMLMediaElement::lastMediaResourceLoaderForTesting() const
+{
+    return m_lastMediaResourceLoaderForTesting.get();
 }
 
 bool HTMLMediaElement::mediaPlayerShouldUsePersistentCache() const
@@ -7475,6 +7523,14 @@ MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
     return state;
 }
 
+void HTMLMediaElement::handleAutoplayEvent(AutoplayEvent event)
+{
+    if (Page* page = document().page()) {
+        bool hasAudio = this->hasAudio() && !muted() && volume();
+        page->chrome().client().handleAutoplayEvent(event, hasAudio ? AutoplayEventFlags::HasAudio : OptionSet<AutoplayEventFlags>());
+    }
+}
+
 void HTMLMediaElement::userDidInterfereWithAutoplay()
 {
     if (m_playbackWithoutUserGesture != PlaybackWithoutUserGesture::Started)
@@ -7484,9 +7540,7 @@ void HTMLMediaElement::userDidInterfereWithAutoplay()
     if (currentTime() - m_playbackWithoutUserGestureStartedTime->toDouble() > 10)
         return;
 
-    if (Page* page = document().page())
-        page->chrome().client().handleAutoplayEvent(AutoplayEvent::UserDidInterfereWithPlayback);
-
+    handleAutoplayEvent(AutoplayEvent::UserDidInterfereWithPlayback);
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
 }
 
@@ -7499,8 +7553,14 @@ void HTMLMediaElement::setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture 
         m_playbackWithoutUserGestureStartedTime = currentMediaTime();
         break;
     case PlaybackWithoutUserGesture::None:
+        m_playbackWithoutUserGestureStartedTime = std::nullopt;
+        break;
     case PlaybackWithoutUserGesture::Prevented:
         m_playbackWithoutUserGestureStartedTime = std::nullopt;
+
+        dispatchPlayPauseEventsIfNeedsQuirks();
+        handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
+
         break;
     }
 }
@@ -7676,9 +7736,10 @@ void HTMLMediaElement::updateShouldAutoplay()
 
 void HTMLMediaElement::updateShouldPlay()
 {
-    if (!paused() && !m_mediaSession->playbackPermitted(*this))
+    if (!paused() && !m_mediaSession->playbackPermitted(*this)) {
         pauseInternal();
-    else if (canTransitionFromAutoplayToPlay())
+        setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
+    } else if (canTransitionFromAutoplayToPlay())
         play();
 }
 
@@ -7691,7 +7752,7 @@ void HTMLMediaElement::resetPlaybackSessionState()
 bool HTMLMediaElement::isVisibleInViewport() const
 {
     auto renderer = this->renderer();
-    return renderer && renderer->visibleInViewportState() == RenderElement::VisibleInViewport;
+    return renderer && renderer->visibleInViewportState() == VisibleInViewportState::Yes;
 }
 
 void HTMLMediaElement::updatePlaybackControlsManager()

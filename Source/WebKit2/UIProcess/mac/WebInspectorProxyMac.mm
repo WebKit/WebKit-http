@@ -52,7 +52,7 @@ static const NSUInteger windowStyleMask = NSWindowStyleMaskTitled | NSWindowStyl
 
 // The time we keep our WebView alive before closing it and its process.
 // Reusing the WebView improves start up time for people that jump in and out of the Inspector.
-static const unsigned webViewCloseTimeout = 60;
+static const Seconds webViewCloseTimeout { 1_min };
 
 // WKWebInspectorProxyObjCAdapter is a helper ObjC object used as a delegate or notification observer
 // for the sole purpose of getting back into the C++ code from an ObjC caller.
@@ -460,7 +460,12 @@ void WebInspectorProxy::platformSave(const String& suggestedURL, const String& c
 
     NSSavePanel *panel = [NSSavePanel savePanel];
     panel.nameFieldStringValue = platformURL.lastPathComponent;
-    panel.directoryURL = [platformURL URLByDeletingLastPathComponent];
+
+    // If we have a file URL we've already saved this file to a path and
+    // can provide a good directory to show. Otherwise, use the system's
+    // default behavior for the initial directory to show in the dialog.
+    if (platformURL.isFileURL)
+        panel.directoryURL = [platformURL URLByDeletingLastPathComponent];
 
     auto completionHandler = ^(NSInteger result) {
         if (result == NSModalResponseCancel)

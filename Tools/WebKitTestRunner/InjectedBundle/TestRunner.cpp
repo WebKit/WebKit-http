@@ -346,20 +346,6 @@ void TestRunner::setXSSAuditorEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setShadowDOMEnabled(bool enabled)
-{
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitShadowDOMEnabled"));
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
-}
-
-void TestRunner::setCustomElementsEnabled(bool enabled)
-{
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitCustomElementsEnabled"));
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
-}
-
 void TestRunner::setSubtleCryptoEnabled(bool enabled)
 {
     WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitSubtleCryptoEnabled"));
@@ -367,16 +353,9 @@ void TestRunner::setSubtleCryptoEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setMediaStreamEnabled(bool enabled)
+void TestRunner::setMediaDevicesEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitMediaStreamEnabled"));
-    auto& injectedBundle = InjectedBundle::singleton();
-    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
-}
-
-void TestRunner::setPeerConnectionEnabled(bool enabled)
-{
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitPeerConnectionEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitMediaDevicesEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -409,16 +388,16 @@ void TestRunner::setWebGPUEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setFetchAPIEnabled(bool enabled)
+void TestRunner::setWritableStreamAPIEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitFetchAPIEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWritableStreamAPIEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setDownloadAttributeEnabled(bool enabled)
+void TestRunner::setReadableByteStreamAPIEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitDownloadAttributeEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitReadableByteStreamAPIEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -432,7 +411,12 @@ void TestRunner::setEncryptedMediaAPIEnabled(bool enabled)
 
 void TestRunner::setAllowsAnySSLCertificate(bool enabled)
 {
-    InjectedBundle::singleton().setAllowsAnySSLCertificate(enabled);
+    auto& injectedBundle = InjectedBundle::singleton();
+    injectedBundle.setAllowsAnySSLCertificate(enabled);
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetAllowsAnySSLCertificate"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(enabled));
+    WKBundlePagePostSynchronousMessageForTesting(injectedBundle.page()->page(), messageName.get(), messageBody.get(), nullptr);
 }
 
 void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
@@ -1101,6 +1085,12 @@ void TestRunner::setShouldDownloadUndisplayableMIMETypes(bool value)
     WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
 }
 
+void TestRunner::terminateNetworkProcess()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("TerminateNetworkProcess"));
+    WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr);
+}
+
 static unsigned nextUIScriptCallbackID()
 {
     static unsigned callbackID = FirstUIScriptCallbackID;
@@ -1328,6 +1318,13 @@ void TestRunner::setStatisticsTimeToLiveUserInteraction(double seconds)
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
 }
 
+void TestRunner::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetStatisticsTimeToLiveCookiePartitionFree"));
+    WKRetainPtr<WKDoubleRef> messageBody(AdoptWK, WKDoubleCreate(seconds));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+}
+
 void TestRunner::installStatisticsDidModifyDataRecordsCallback(JSValueRef callback)
 {
     cacheTestRunnerCallback(StatisticsDidModifyDataRecordsCallbackID, callback);
@@ -1344,7 +1341,13 @@ void TestRunner::statisticsFireDataModificationHandler()
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), 0, nullptr);
 }
 
-void TestRunner::statisticsFireShouldPartitionCookiesHandler(JSStringRef hostName, bool value)
+void TestRunner::statisticsFireShouldPartitionCookiesHandler()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsFireShouldPartitionCookiesHandler"));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), 0, nullptr);
+}
+
+void TestRunner::statisticsFireShouldPartitionCookiesHandlerForOneDomain(JSStringRef hostName, bool value)
 {
     Vector<WKRetainPtr<WKStringRef>> keys;
     Vector<WKRetainPtr<WKTypeRef>> values;
@@ -1363,7 +1366,7 @@ void TestRunner::statisticsFireShouldPartitionCookiesHandler(JSStringRef hostNam
         rawValues[i] = values[i].get();
     }
     
-    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsFireShouldPartitionCookiesHandler"));
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsFireShouldPartitionCookiesHandlerForOneDomain"));
     WKRetainPtr<WKDictionaryRef> messageBody(AdoptWK, WKDictionaryCreate(rawKeys.data(), rawValues.data(), rawKeys.size()));
     
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);

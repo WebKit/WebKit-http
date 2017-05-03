@@ -43,6 +43,7 @@
 #include "Comment.h"
 #include "CommonVM.h"
 #include "CompositionEvent.h"
+#include "ConstantPropertyMap.h"
 #include "ContentSecurityPolicy.h"
 #include "CookieJar.h"
 #include "CustomElementReactionQueue.h"
@@ -142,7 +143,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RequestAnimationFrameCallback.h"
-#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -433,6 +433,17 @@ HashSet<Document*>& Document::allDocuments()
     return documents;
 }
 
+static inline int currentOrientation(Frame* frame)
+{
+#if ENABLE(ORIENTATION_EVENTS)
+    if (frame)
+        return frame->orientation();
+#else
+    UNUSED_PARAM(frame);
+#endif
+    return 0;
+}
+
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
@@ -446,23 +457,21 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_styleScope(std::make_unique<Style::Scope>(*this))
     , m_extensionStyleSheets(std::make_unique<ExtensionStyleSheets>(*this))
     , m_visitedLinkState(std::make_unique<VisitedLinkState>(*this))
-    , m_styleRecalcTimer(*this, &Document::updateStyleIfNeeded)
     , m_markers(std::make_unique<DocumentMarkerController>(*this))
+    , m_styleRecalcTimer(*this, &Document::updateStyleIfNeeded)
     , m_updateFocusAppearanceTimer(*this, &Document::updateFocusAppearanceTimerFired)
     , m_documentCreationTime(MonotonicTime::now())
     , m_scriptRunner(std::make_unique<ScriptRunner>(*this))
     , m_moduleLoader(std::make_unique<ScriptModuleLoader>(*this))
     , m_xmlVersion(ASCIILiteral("1.0"))
+    , m_constantPropertyMap(std::make_unique<ConstantPropertyMap>(*this))
     , m_documentClasses(documentClasses)
-    , m_isSynthesized(constructionFlags & Synthesized)
-    , m_isNonRenderedPlaceholder(constructionFlags & NonRenderedPlaceholder)
     , m_eventQueue(*this)
     , m_weakFactory(this)
 #if ENABLE(FULLSCREEN_API)
     , m_fullScreenChangeDelayTimer(*this, &Document::fullScreenChangeDelayTimerFired)
 #endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
-    , m_referrerPolicy(ReferrerPolicy::Default)
 #if PLATFORM(IOS)
 #if ENABLE(DEVICE_ORIENTATION)
     , m_deviceMotionClient(std::make_unique<DeviceMotionClientIOS>())
@@ -483,6 +492,9 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #if ENABLE(WEB_SOCKETS)
     , m_socketProvider(page() ? &page()->socketProvider() : nullptr)
 #endif
+    , m_isSynthesized(constructionFlags & Synthesized)
+    , m_isNonRenderedPlaceholder(constructionFlags & NonRenderedPlaceholder)
+    , m_orientationNotifier(currentOrientation(frame))
 {
     allDocuments().add(this);
 
@@ -627,6 +639,7 @@ void Document::removedLastRef()
         m_fullScreenElement = nullptr;
         m_fullScreenElementStack.clear();
 #endif
+        m_associatedFormControls.clear();
 
         detachParser();
 
@@ -1201,7 +1214,7 @@ void Document::setVisualUpdatesAllowed(bool visualUpdatesAllowed)
     if (visualUpdatesAllowed)
         m_visualUpdatesSuppressionTimer.stop();
     else
-        m_visualUpdatesSuppressionTimer.startOneShot(settings().incrementalRenderingSuppressionTimeoutInSeconds());
+        m_visualUpdatesSuppressionTimer.startOneShot(1_s * settings().incrementalRenderingSuppressionTimeoutInSeconds());
 
     if (!visualUpdatesAllowed)
         return;
@@ -1531,21 +1544,21 @@ void Document::titleElementTextChanged(Element& titleElement)
     updateTitleFromTitleElement();
 }
 
-void Document::registerForVisibilityStateChangedCallbacks(Element* element)
+void Document::registerForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.add(element);
+    m_visibilityStateCallbackClients.add(client);
 }
 
-void Document::unregisterForVisibilityStateChangedCallbacks(Element* element)
+void Document::unregisterForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.remove(element);
+    m_visibilityStateCallbackClients.remove(client);
 }
 
 void Document::visibilityStateChanged()
 {
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
-    for (auto* element : m_visibilityStateCallbackElements)
-        element->visibilityStateChanged();
+    for (auto* client : m_visibilityStateCallbackClients)
+        client->visibilityStateChanged();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -1658,7 +1671,7 @@ void Document::scheduleStyleRecalc()
     // FIXME: Why on earth is this here? This is clearly misplaced.
     invalidateAccessKeyMap();
     
-    m_styleRecalcTimer.startOneShot(0);
+    m_styleRecalcTimer.startOneShot(0_s);
 
     InspectorInstrumentation::didScheduleStyleRecalculation(*this);
 }
@@ -1727,6 +1740,7 @@ void Document::resolveStyle(ResolveStyleType type)
         if (type == ResolveStyleType::Rebuild) {
             // This may get set again during style resolve.
             m_hasNodesWithNonFinalStyle = false;
+            m_hasNodesWithMissingStyle = false;
 
             auto documentStyle = Style::resolveForDocument(*this);
 
@@ -1864,9 +1878,9 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
 
     if (!haveStylesheetsLoaded()) {
         m_ignorePendingStylesheets = true;
-        // FIXME: This should just invalidate elements with non-final styles.
-        if (m_hasNodesWithNonFinalStyle)
-            resolveStyle(ResolveStyleType::Rebuild);
+        // FIXME: This should just invalidate elements with missing styles.
+        if (m_hasNodesWithMissingStyle)
+            scheduleForcedStyleRecalc();
     }
 
     updateLayout();
@@ -2050,6 +2064,11 @@ StyleResolver& Document::userAgentShadowTreeStyleResolver()
 
 void Document::fontsNeedUpdate(FontSelector&)
 {
+    invalidateMatchedPropertiesCacheAndForceStyleRecalc();
+}
+
+void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
+{
     if (auto* resolver = styleScope().resolverIfExists())
         resolver->invalidateMatchedPropertiesCache();
     if (pageCacheState() != NotInPageCache || !renderView())
@@ -2209,8 +2228,12 @@ void Document::prepareForDestruction()
             cache->clearTextMarkerNodesInUse(this);
     }
 #endif
-    
-    disconnectDescendantFrames();
+
+    {
+        NavigationDisabler navigationDisabler;
+        disconnectDescendantFrames();
+    }
+
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
 
@@ -2261,9 +2284,21 @@ void Document::prepareForDestruction()
     }
 #endif
 
+    m_cachedResourceLoader->stopUnusedPreloadsTimer();
+
+    if (page() && m_mediaState != MediaProducer::IsNotPlaying) {
+        m_mediaState = MediaProducer::IsNotPlaying;
+        page()->updateIsPlayingMedia(HTMLMediaElementInvalidID);
+    }
+
     detachFromFrame();
 
     m_hasPreparedForDestruction = true;
+
+    // Note that m_pageCacheState can be Document::AboutToEnterPageCache if our frame
+    // was removed in an onpagehide event handler fired when the top-level frame is
+    // about to enter the page cache.
+    ASSERT_WITH_SECURITY_IMPLICATION(m_pageCacheState != Document::InPageCache);
 }
 
 void Document::removeAllEventListeners()
@@ -2272,6 +2307,7 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventHandlersAndListeners();
 #endif
@@ -2611,18 +2647,18 @@ void Document::implicitClose()
         ImageLoader::dispatchPendingErrorEvents();
         HTMLLinkElement::dispatchPendingLoadEvents();
         HTMLStyleElement::dispatchPendingLoadEvents();
+
+        // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
+        // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
+        // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
+        if (svgExtensions())
+            accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
     }
 
-    // To align the HTML load event and the SVGLoad event for the outermost <svg> element, fire it from
-    // here, instead of doing it from SVGElement::finishedParsingChildren (if externalResourcesRequired="false",
-    // which is the default, for ='true' its fired at a later time, once all external resources finished loading).
-    if (svgExtensions())
-        accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
-
     dispatchWindowLoadEvent();
-    enqueuePageshowEvent(PageshowEventNotPersisted);
+    dispatchPageshowEvent(PageshowEventNotPersisted);
     if (m_pendingStateObject)
-        enqueuePopstateEvent(WTFMove(m_pendingStateObject));
+        dispatchPopstateEvent(WTFMove(m_pendingStateObject));
 
     if (f)
         f->loader().dispatchOnloadEvents();
@@ -2795,6 +2831,9 @@ Seconds Document::domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) cons
 
     if (Page* page = this->page())
         alignmentInterval = std::max(alignmentInterval, page->domTimerAlignmentInterval());
+
+    if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
+        alignmentInterval = std::max(alignmentInterval, DOMTimer::nonInteractedCrossOriginFrameAlignmentInterval());
 
     return alignmentInterval;
 }
@@ -3148,7 +3187,7 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
 
     m_viewportArguments = ViewportArguments(origin);
 
-    processFeaturesString(features, [this](StringView key, StringView value) {
+    processFeaturesString(features, FeatureMode::Viewport, [this](StringView key, StringView value) {
         setViewportFeature(m_viewportArguments, *this, key, value);
     });
 
@@ -3171,7 +3210,7 @@ void Document::updateViewportArguments()
 void Document::processFormatDetection(const String& features)
 {
     // FIXME: Find a better place for this function.
-    processFeaturesString(features, [this](StringView key, StringView value) {
+    processFeaturesString(features, FeatureMode::Viewport, [this](StringView key, StringView value) {
         if (equalLettersIgnoringASCIICase(key, "telephone") && equalLettersIgnoringASCIICase(value, "no"))
             setIsTelephoneNumberParsingAllowed(false);
     });
@@ -3485,6 +3524,9 @@ void Document::removeFocusedNodeOfSubtree(Node& node, bool amongChildrenOnly)
         return;
     
     if (isNodeInSubtree(*focusedElement, node, amongChildrenOnly)) {
+        // FIXME: We should avoid synchronously updating the style inside setFocusedElement.
+        // FIXME: Object elements should avoid loading a frame synchronously in a post style recalc callback.
+        SubframeLoadingDisabler disabler(is<ContainerNode>(node) ? &downcast<ContainerNode>(node) : nullptr);
         setFocusedElement(nullptr, FocusDirectionNone, FocusRemovalEventsMode::DoNotDispatch);
         // Set the focus navigation starting node to the previous focused element so that
         // we can fallback to the siblings or parent node for the next search.
@@ -3970,30 +4012,30 @@ Document& Document::contextDocument() const
     return const_cast<Document&>(*this);
 }
 
-void Document::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
+void Document::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue, DOMWrapperWorld& isolatedWorld)
 {
-    setAttributeEventListener(eventType, JSLazyEventListener::create(*this, attributeName, attributeValue));
+    setAttributeEventListener(eventType, JSLazyEventListener::create(*this, attributeName, attributeValue), isolatedWorld);
 }
 
-void Document::setWindowAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener)
-{
-    if (!m_domWindow)
-        return;
-    m_domWindow->setAttributeEventListener(eventType, WTFMove(listener));
-}
-
-void Document::setWindowAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
+void Document::setWindowAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, DOMWrapperWorld& isolatedWorld)
 {
     if (!m_domWindow)
         return;
-    setWindowAttributeEventListener(eventType, JSLazyEventListener::create(*m_domWindow, attributeName, attributeValue));
+    m_domWindow->setAttributeEventListener(eventType, WTFMove(listener), isolatedWorld);
 }
 
-EventListener* Document::getWindowAttributeEventListener(const AtomicString& eventType)
+void Document::setWindowAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue, DOMWrapperWorld& isolatedWorld)
+{
+    if (!m_domWindow)
+        return;
+    setWindowAttributeEventListener(eventType, JSLazyEventListener::create(*m_domWindow, attributeName, attributeValue), isolatedWorld);
+}
+
+EventListener* Document::getWindowAttributeEventListener(const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     if (!m_domWindow)
         return nullptr;
-    return m_domWindow->attributeEventListener(eventType);
+    return m_domWindow->attributeEventListener(eventType, isolatedWorld);
 }
 
 void Document::dispatchWindowEvent(Event& event, EventTarget* target)
@@ -4395,7 +4437,7 @@ ExceptionOr<std::pair<AtomicString, AtomicString>> Document::parseQualifiedName(
         U16_NEXT(qualifiedName, i, length, c)
         if (c == ':') {
             if (sawColon)
-                return Exception { NAMESPACE_ERR };
+                return Exception { INVALID_CHARACTER_ERR };
             nameStart = true;
             sawColon = true;
             colonPosition = i - 1;
@@ -4413,7 +4455,7 @@ ExceptionOr<std::pair<AtomicString, AtomicString>> Document::parseQualifiedName(
         return std::pair<AtomicString, AtomicString> { { }, { qualifiedName } };
 
     if (!colonPosition || length - colonPosition <= 1)
-        return Exception { NAMESPACE_ERR };
+        return Exception { INVALID_CHARACTER_ERR };
 
     return std::pair<AtomicString, AtomicString> { StringView { qualifiedName }.substring(0, colonPosition).toAtomicString(), StringView { qualifiedName }.substring(colonPosition + 1).toAtomicString() };
 }
@@ -4874,7 +4916,7 @@ const SVGDocumentExtensions* Document::svgExtensions()
 SVGDocumentExtensions& Document::accessSVGExtensions()
 {
     if (!m_svgExtensions)
-        m_svgExtensions = std::make_unique<SVGDocumentExtensions>(this);
+        m_svgExtensions = std::make_unique<SVGDocumentExtensions>(*this);
     return *m_svgExtensions;
 }
 
@@ -4982,8 +5024,8 @@ void Document::finishedParsing()
     // so that dynamically inserted content can also benefit from sharing optimizations.
     // Note that we don't refresh the timer on pool access since that could lead to huge caches being kept
     // alive indefinitely by something innocuous like JS setting .innerHTML repeatedly on a timer.
-    static const int timeToKeepSharedObjectPoolAliveAfterParsingFinishedInSeconds = 10;
-    m_sharedObjectPoolClearTimer.startOneShot(timeToKeepSharedObjectPoolAliveAfterParsingFinishedInSeconds);
+    static const Seconds timeToKeepSharedObjectPoolAliveAfterParsingFinished { 10_s };
+    m_sharedObjectPoolClearTimer.startOneShot(timeToKeepSharedObjectPoolAliveAfterParsingFinished);
 
     // Parser should have picked up all speculative preloads by now
     m_cachedResourceLoader->clearPreloads(CachedResourceLoader::ClearPreloadsMode::ClearSpeculativePreloads);
@@ -5204,7 +5246,7 @@ void Document::statePopped(Ref<SerializedScriptValue>&& stateObject)
     // Per step 11 of section 6.5.9 (history traversal) of the HTML5 spec, we 
     // defer firing of popstate until we're in the complete state.
     if (m_readyState == Complete)
-        enqueuePopstateEvent(WTFMove(stateObject));
+        dispatchPopstateEvent(WTFMove(stateObject));
     else
         m_pendingStateObject = WTFMove(stateObject);
 }
@@ -5213,7 +5255,7 @@ void Document::updateFocusAppearanceSoon(SelectionRestorationMode mode)
 {
     m_updateFocusAppearanceRestoresSelection = mode;
     if (!m_updateFocusAppearanceTimer.isActive())
-        m_updateFocusAppearanceTimer.startOneShot(0);
+        m_updateFocusAppearanceTimer.startOneShot(0_s);
 }
 
 void Document::cancelFocusAppearanceUpdate()
@@ -5391,7 +5433,7 @@ void Document::resumeScheduledTasks(ActiveDOMObject::ReasonForSuspension reason)
     if (reason == ActiveDOMObject::WillDeferLoading && m_parser)
         m_parser->resumeScheduledTasks();
     if (!m_pendingTasks.isEmpty())
-        m_pendingTasksTimer.startOneShot(0);
+        m_pendingTasksTimer.startOneShot(0_s);
     scriptRunner()->resume();
     resumeActiveDOMObjects(reason);
     resumeScriptedAnimationControllerCallbacks();
@@ -5429,7 +5471,7 @@ String Document::displayStringModifiedByEncoding(const String& string) const
     return String { string }.replace('\\', m_decoder->encoding().backslashAsCurrencySymbol());
 }
 
-void Document::enqueuePageshowEvent(PageshowEventPersistence persisted)
+void Document::dispatchPageshowEvent(PageshowEventPersistence persisted)
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36334 Pageshow event needs to fire asynchronously.
     dispatchWindowEvent(PageTransitionEvent::create(eventNames().pageshowEvent, persisted), this);
@@ -5440,7 +5482,7 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
     enqueueWindowEvent(HashChangeEvent::create(oldURL, newURL));
 }
 
-void Document::enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
+void Document::dispatchPopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
 {
     dispatchWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
 }
@@ -5596,7 +5638,7 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
     } while (0);
 
     m_fullScreenErrorEventTargetQueue.append(element ? element : documentElement());
-    m_fullScreenChangeDelayTimer.startOneShot(0);
+    m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::webkitCancelFullScreen()
@@ -5763,7 +5805,7 @@ void Document::webkitDidEnterFullScreenForElement(Element*)
 
     m_fullScreenElement->didBecomeFullscreenElement();
 
-    m_fullScreenChangeDelayTimer.startOneShot(0);
+    m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::webkitWillExitFullScreenForElement(Element*)
@@ -5800,7 +5842,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     bool eventTargetQueuesEmpty = m_fullScreenChangeEventTargetQueue.isEmpty() && m_fullScreenErrorEventTargetQueue.isEmpty();
     Document& exitingDocument = eventTargetQueuesEmpty ? topDocument() : *this;
 
-    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0);
+    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
 void Document::setFullScreenRenderer(RenderFullScreen* renderer)
@@ -5955,7 +5997,7 @@ void Document::decrementLoadEventDelayCount()
     --m_loadEventDelayCount;
 
     if (frame() && !m_loadEventDelayCount && !m_loadEventDelayTimer.isActive())
-        m_loadEventDelayTimer.startOneShot(0);
+        m_loadEventDelayTimer.startOneShot(0_s);
 }
 
 void Document::loadEventDelayTimerFired()
@@ -5991,6 +6033,19 @@ int Document::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callbac
         // controller on a background tab, for example.
         if (!page() || page()->scriptedAnimationsSuspended())
             m_scriptedAnimationController->suspend();
+
+        if (page() && page()->isLowPowerModeEnabled())
+            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::LowPowerMode);
+
+        if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
+            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+
+        if (settings().shouldDispatchRequestAnimationFrameEvents()) {
+            if (!page())
+                dispatchEvent(Event::create("raf-no-page", false, false));
+            else if (page()->scriptedAnimationsSuspended())
+                dispatchEvent(Event::create("raf-scripted-animations-suspended-on-page", false, false));
+        }
     }
 
     return m_scriptedAnimationController->registerCallback(WTFMove(callback));
@@ -6286,10 +6341,20 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
     return RegionFixedPair(targetRegion, insideFixedPosition);
 }
 
-void Document::updateLastHandledUserGestureTimestamp()
+void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
 {
-    m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
-    ResourceLoadObserver::sharedObserver().logUserInteractionWithReducedTimeResolution(*this);
+    m_lastHandledUserGestureTimestamp = time;
+
+    if (static_cast<bool>(time) && m_scriptedAnimationController) {
+        // It's OK to always remove NonInteractedCrossOriginFrame even if this frame isn't cross-origin.
+        m_scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+    }
+
+    // DOM Timer alignment may depend on the user having interacted with the document.
+    didChangeTimerAlignmentInterval();
+    
+    if (HTMLFrameOwnerElement* element = ownerElement())
+        element->document().updateLastHandledUserGestureTimestamp(time);
 }
 
 void Document::startTrackingStyleRecalcs()
@@ -6581,7 +6646,7 @@ void Document::didAssociateFormControl(Element* element)
         return;
     m_associatedFormControls.add(element);
     if (!m_didAssociateFormControlsTimer.isActive())
-        m_didAssociateFormControlsTimer.startOneShot(0);
+        m_didAssociateFormControlsTimer.startOneShot(0_s);
 }
 
 void Document::didAssociateFormControlsTimerFired()
@@ -6601,7 +6666,7 @@ void Document::setCachedDOMCookies(const String& cookies)
     ASSERT(!isDOMCookieCacheValid());
     m_cachedDOMCookies = cookies;
     // The cookie cache is valid at most until we go back to the event loop.
-    m_cookieCacheExpiryTimer.startOneShot(0);
+    m_cookieCacheExpiryTimer.startOneShot(0_s);
 }
 
 void Document::invalidateDOMCookieCache()
@@ -6818,7 +6883,14 @@ bool Document::shouldEnforceQuickLookSandbox() const
 
 void Document::applyQuickLookSandbox()
 {
-    static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol(), ": 'unsafe-inline'; base-uri 'none'; sandbox allow-scripts");
+    const URL& responseURL = m_frame->loader().activeDocumentLoader()->responseURL();
+    ASSERT(responseURL.protocolIs(QLPreviewProtocol()));
+
+    auto securityOrigin = SecurityOrigin::create(responseURL);
+    securityOrigin->setStorageBlockingPolicy(SecurityOrigin::BlockAllStorage);
+    setSecurityOriginPolicy(SecurityOriginPolicy::create(WTFMove(securityOrigin)));
+
+    static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol(), ": 'unsafe-inline'; base-uri 'none'; sandbox allow-same-origin allow-scripts");
     ASSERT_WITH_SECURITY_IMPLICATION(contentSecurityPolicy());
     // The sandbox directive is only allowed if the policy is from an HTTP header.
     contentSecurityPolicy()->didReceiveHeader(quickLookCSP, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPHeader);
@@ -6892,6 +6964,12 @@ void Document::didRemoveInDocumentShadowRoot(ShadowRoot& shadowRoot)
 {
     ASSERT(m_inDocumentShadowRoots.contains(&shadowRoot));
     m_inDocumentShadowRoots.remove(&shadowRoot);
+}
+
+void Document::orientationChanged(int orientation)
+{
+    dispatchWindowEvent(Event::create(eventNames().orientationchangeEvent, false, false));
+    m_orientationNotifier.orientationChanged(orientation);
 }
 
 } // namespace WebCore

@@ -154,7 +154,8 @@ private:
     void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) override;
 
     void makeFirstResponder() override;
-    
+    void setShouldSuppressFirstResponderChanges(bool shouldSuppress) override { m_shouldSuppressFirstResponderChanges = shouldSuppress; }
+
     void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&) override;
     void dismissContentRelativeChildWindows(bool withAnimation = true) override;
 
@@ -208,7 +209,6 @@ private:
     void didFinishLoadForMainFrame() override;
     void didFailLoadForMainFrame() override;
     void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
-    void removeNavigationGestureSnapshot() override;
     void handleControlledElementIDResponse(const String&) override;
     void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
 
@@ -243,6 +243,8 @@ private:
     std::unique_ptr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
 #endif
 
+    bool m_shouldSuppressFirstResponderChanges { false };
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     WebCore::WebMediaSessionManager& mediaSessionManager() override;
 #endif
@@ -252,6 +254,8 @@ private:
 
     void didRestoreScrollPosition() override;
     bool windowIsFrontWindowUnderMouse(const NativeWebMouseEvent&) override;
+
+    void didChangeAvoidsUnsafeArea(bool avoidsUnsafeArea) override { }
 };
 
 } // namespace WebKit

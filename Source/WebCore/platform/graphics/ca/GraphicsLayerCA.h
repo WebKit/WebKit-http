@@ -75,9 +75,12 @@ public:
     WEBCORE_EXPORT void setReplicatedLayer(GraphicsLayer*) override;
 
     WEBCORE_EXPORT void setPosition(const FloatPoint&) override;
+    WEBCORE_EXPORT void syncPosition(const FloatPoint&) override;
+    WEBCORE_EXPORT void setApproximatePosition(const FloatPoint&) override;
     WEBCORE_EXPORT void setAnchorPoint(const FloatPoint3D&) override;
     WEBCORE_EXPORT void setSize(const FloatSize&) override;
     WEBCORE_EXPORT void setBoundsOrigin(const FloatPoint&) override;
+    WEBCORE_EXPORT void syncBoundsOrigin(const FloatPoint&) override;
 
     WEBCORE_EXPORT void setTransform(const TransformationMatrix&) override;
 
@@ -152,9 +155,11 @@ public:
 
     struct CommitState {
         int treeDepth { 0 };
+        bool ancestorHadChanges { false };
         bool ancestorHasTransformAnimation { false };
         bool ancestorIsViewportConstrained { false };
     };
+    bool needsCommit(const CommitState&);
     void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
     WEBCORE_EXPORT void flushCompositingState(const FloatRect&) override;
@@ -494,12 +499,19 @@ private:
         ShapeChanged                            = 1LLU << 36,
         WindRuleChanged                         = 1LLU << 37,
         UserInteractionEnabledChanged           = 1LLU << 38,
+        NeedsComputeVisibleAndCoverageRect      = 1LLU << 39,
     };
     typedef uint64_t LayerChangeFlags;
+    void addUncommittedChanges(LayerChangeFlags);
+    bool hasDescendantsWithUncommittedChanges() const { return m_hasDescendantsWithUncommittedChanges; }
+    void setHasDescendantsWithUncommittedChanges(bool);
     enum ScheduleFlushOrNot { ScheduleFlush, DontScheduleFlush };
     void noteLayerPropertyChanged(LayerChangeFlags, ScheduleFlushOrNot = ScheduleFlush);
     void noteSublayersChanged(ScheduleFlushOrNot = ScheduleFlush);
     void noteChangesForScaleSensitiveProperties();
+
+    bool hasDescendantsWithRunningTransformAnimations() const { return m_hasDescendantsWithRunningTransformAnimations; }
+    void setHasDescendantsWithRunningTransformAnimations(bool b) { m_hasDescendantsWithRunningTransformAnimations = b; }
 
     void propagateLayerChangeToReplicas(ScheduleFlushOrNot = ScheduleFlush);
 
@@ -533,11 +545,12 @@ private:
     FloatRect m_coverageRect; // Area for which we should maintain backing store, in the coordinate space of this layer.
     
     ContentsLayerPurpose m_contentsLayerPurpose { NoContentsLayer };
-    bool m_needsFullRepaint : 1;
-    bool m_usingBackdropLayerType : 1;
-    bool m_isViewportConstrained : 1;
-    bool m_intersectsCoverageRect : 1;
-    bool m_hasEverPainted : 1;
+    bool m_needsFullRepaint { false };
+    bool m_usingBackdropLayerType { false };
+    bool m_isViewportConstrained { false };
+    bool m_intersectsCoverageRect { false };
+    bool m_hasEverPainted { false };
+    bool m_hasDescendantsWithRunningTransformAnimations { false };
 
     Color m_contentsSolidColor;
 
@@ -585,7 +598,7 @@ private:
     AnimationsMap m_runningAnimations;
 
     Vector<FloatRect> m_dirtyRects;
-    
+
     std::unique_ptr<DisplayList::DisplayList> m_displayList;
 
     FloatSize m_pixelAlignmentOffset;
@@ -596,8 +609,10 @@ private:
 #else
     LayerChangeFlags m_uncommittedChanges { CoverageRectChanged };
 #endif
+    bool m_hasDescendantsWithUncommittedChanges { false };
 
     bool m_isCommittingChanges { false };
+    FloatRect m_previousCommittedVisibleRect;
 };
 
 } // namespace WebCore

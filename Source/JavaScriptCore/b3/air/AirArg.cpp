@@ -41,6 +41,19 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
+Arg Arg::stackAddrImpl(int32_t offsetFromFP, unsigned frameSize, Width width)
+{
+    Arg result = Arg::addr(Air::Tmp(GPRInfo::callFrameRegister), offsetFromFP);
+    if (!result.isValidForm(width)) {
+        result = Arg::addr(
+            Air::Tmp(MacroAssembler::stackPointerRegister),
+            offsetFromFP + frameSize);
+        if (!result.isValidForm(width))
+            result = Arg();
+    }
+    return result;
+}
+
 bool Arg::isStackMemory() const
 {
     switch (kind()) {
@@ -276,6 +289,37 @@ void printInternal(PrintStream& out, Arg::Temperature temperature)
         return;
     case Arg::Warm:
         out.print("Warm");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Phase phase)
+{
+    switch (phase) {
+    case Arg::Early:
+        out.print("Early");
+        return;
+    case Arg::Late:
+        out.print("Late");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Timing timing)
+{
+    switch (timing) {
+    case Arg::OnlyEarly:
+        out.print("OnlyEarly");
+        return;
+    case Arg::OnlyLate:
+        out.print("OnlyLate");
+        return;
+    case Arg::EarlyAndLate:
+        out.print("EarlyAndLate");
         return;
     }
 

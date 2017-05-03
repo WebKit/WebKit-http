@@ -534,9 +534,9 @@ void PageClientImpl::couldNotRestorePageState()
     [m_webView _couldNotRestorePageState];
 }
 
-void PageClientImpl::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
+void PageClientImpl::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale)
 {
-    [m_webView _restorePageScrollPosition:scrollPosition scrollOrigin:scrollOrigin previousObscuredInset:obscuredInsetOnSave scale:scale];
+    [m_webView _restorePageScrollPosition:scrollPosition scrollOrigin:scrollOrigin previousObscuredInset:obscuredInsetsOnSave scale:scale];
 }
 
 void PageClientImpl::restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale)
@@ -771,9 +771,9 @@ Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& messa
 }
 
 #if ENABLE(DATA_INTERACTION)
-void PageClientImpl::didPerformDataInteractionControllerOperation()
+void PageClientImpl::didPerformDataInteractionControllerOperation(bool handled)
 {
-    [m_contentView _didPerformDataInteractionControllerOperation];
+    [m_contentView _didPerformDataInteractionControllerOperation:handled];
 }
 
 void PageClientImpl::didHandleStartDataInteractionRequest(bool started)
@@ -789,6 +789,11 @@ void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPositio
 void PageClientImpl::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
 {
     [m_contentView _didConcludeEditDataInteraction:data];
+}
+
+void PageClientImpl::didChangeDataInteractionCaretRect(const IntRect& previousCaretRect, const IntRect& caretRect)
+{
+    [m_contentView _didChangeDataInteractionCaretRect:previousCaretRect currentRect:caretRect];
 }
 #endif
 
@@ -815,6 +820,11 @@ void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName,
     NavigationState::fromWebPage(*m_webView->_page).didRequestPasswordForQuickLookDocument();
 }
 #endif
+
+void PageClientImpl::didChangeAvoidsUnsafeArea(bool avoidsUnsafeArea)
+{
+    [m_webView _didChangeAvoidsUnsafeArea:avoidsUnsafeArea];
+}
 
 } // namespace WebKit
 

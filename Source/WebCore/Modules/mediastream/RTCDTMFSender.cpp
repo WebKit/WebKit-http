@@ -26,7 +26,7 @@
 #include "config.h"
 #include "RTCDTMFSender.h"
 
-#if ENABLE(WEB_RTC)
+#if ENABLE(WEB_RTC_DTMF)
 
 #include "MediaStreamTrack.h"
 #include "RTCDTMFSenderHandler.h"
@@ -113,7 +113,7 @@ void RTCDTMFSender::scheduleDispatchEvent(Ref<Event>&& event)
     m_scheduledEvents.append(WTFMove(event));
 
     if (!m_scheduledEventTimer.isActive())
-        m_scheduledEventTimer.startOneShot(0);
+        m_scheduledEventTimer.startOneShot(0_s);
 }
 
 void RTCDTMFSender::scheduledEventTimerFired()

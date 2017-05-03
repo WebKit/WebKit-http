@@ -344,7 +344,7 @@ RegisterID* TaggedTemplateNode::emitBytecode(BytecodeGenerator& generator, Regis
             tag = generator.emitGetById(generator.newTemporary(), base.get(), dot->identifier());
     }
 
-    RefPtr<RegisterID> templateObject = generator.emitGetTemplateObject(generator.newTemporary(), this);
+    RefPtr<RegisterID> templateObject = generator.emitGetTemplateObject(nullptr, this);
 
     unsigned expressionsCount = 0;
     for (TemplateExpressionListNode* templateExpression = m_templateLiteral->templateExpressions(); templateExpression; templateExpression = templateExpression->next())
@@ -415,7 +415,7 @@ RegisterID* ArrayNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
     
 handleSpread:
     RefPtr<RegisterID> index = generator.emitLoad(generator.newTemporary(), jsNumber(length));
-    auto spreader = [this, array, index](BytecodeGenerator& generator, RegisterID* value)
+    auto spreader = [array, index](BytecodeGenerator& generator, RegisterID* value)
     {
         generator.emitDirectPutByVal(array.get(), index.get(), value);
         generator.emitInc(index.get());
@@ -1187,23 +1187,40 @@ RegisterID* FunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, Regi
     return ret;
 }
 
+static constexpr size_t maxDistanceToInnermostCallOrApply = 4;
+
 RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    Ref<Label> realCall = generator.newLabel();
-    Ref<Label> end = generator.newLabel();
     RefPtr<RegisterID> base = generator.emitNode(m_base);
     generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
     RefPtr<RegisterID> function;
-    bool emitCallCheck = !generator.isBuiltinFunction();
-    if (emitCallCheck) {
+    RefPtr<RegisterID> returnValue = generator.finalDestination(dst);
+
+    auto makeFunction = [&] {
         if (m_base->isSuperNode()) {
             RefPtr<RegisterID> thisValue = generator.ensureThis();
             function = generator.emitGetById(generator.tempDestination(dst), base.get(), thisValue.get(), generator.propertyNames().builtinNames().callPublicName());
         } else
             function = generator.emitGetById(generator.tempDestination(dst), base.get(), generator.propertyNames().builtinNames().callPublicName());
+    };
+
+    bool emitCallCheck = !generator.isBuiltinFunction();
+    if (m_distanceToInnermostCallOrApply > maxDistanceToInnermostCallOrApply && emitCallCheck) {
+        makeFunction();
+        CallArguments callArguments(generator, m_args);
+        generator.emitMove(callArguments.thisRegister(), base.get());
+        generator.emitCallInTailPosition(returnValue.get(), function.get(), NoExpectedFunction, callArguments, divot(), divotStart(), divotEnd(), DebuggableCall::Yes);
+        generator.moveToDestinationIfNeeded(dst, returnValue.get());
+        return returnValue.get();
+    }
+
+    Ref<Label> realCall = generator.newLabel();
+    Ref<Label> end = generator.newLabel();
+
+    if (emitCallCheck) {
+        makeFunction();
         generator.emitJumpIfNotFunctionCall(function.get(), realCall.get());
     }
-    RefPtr<RegisterID> returnValue = generator.finalDestination(dst);
     {
         if (m_args->m_listNode && m_args->m_listNode->m_expr && m_args->m_listNode->m_expr->isSpreadExpression()) {
             SpreadExpressionNode* spread = static_cast<SpreadExpressionNode*>(m_args->m_listNode->m_expr);
@@ -1256,19 +1273,32 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
     // function.apply(thisArg, [arg0, arg1, ...]) -> can be trivially coerced into function.call(thisArg, arg0, arg1, ...) and saves object allocation
     bool mayBeCall = areTrivialApplyArguments(m_args);
 
-    Ref<Label> realCall = generator.newLabel();
-    Ref<Label> end = generator.newLabel();
-    RefPtr<RegisterID> base = generator.emitNode(m_base);
-    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
     RefPtr<RegisterID> function;
-    RefPtr<RegisterID> returnValue = generator.finalDestination(dst, function.get());
-    bool emitCallCheck = !generator.isBuiltinFunction();
-    if (emitCallCheck) {
+    RefPtr<RegisterID> base = generator.emitNode(m_base);
+    RefPtr<RegisterID> returnValue = generator.finalDestination(dst);
+    auto makeFunction = [&] {
         if (m_base->isSuperNode()) {
             RefPtr<RegisterID> thisValue = generator.ensureThis();
             function = generator.emitGetById(generator.tempDestination(dst), base.get(), thisValue.get(), generator.propertyNames().builtinNames().applyPublicName());
         } else
             function = generator.emitGetById(generator.tempDestination(dst), base.get(), generator.propertyNames().builtinNames().applyPublicName());
+    };
+
+    bool emitCallCheck = !generator.isBuiltinFunction();
+    if (m_distanceToInnermostCallOrApply > maxDistanceToInnermostCallOrApply && emitCallCheck) {
+        makeFunction();
+        CallArguments callArguments(generator, m_args);
+        generator.emitMove(callArguments.thisRegister(), base.get());
+        generator.emitCallInTailPosition(returnValue.get(), function.get(), NoExpectedFunction, callArguments, divot(), divotStart(), divotEnd(), DebuggableCall::Yes);
+        generator.moveToDestinationIfNeeded(dst, returnValue.get());
+        return returnValue.get();
+    }
+
+    Ref<Label> realCall = generator.newLabel();
+    Ref<Label> end = generator.newLabel();
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
+    if (emitCallCheck) {
+        makeFunction();
         generator.emitJumpIfNotFunctionApply(function.get(), realCall.get());
     }
     if (mayBeCall) {
@@ -2604,7 +2634,7 @@ void IfElseNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void DoWhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+    Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
 
     Ref<Label> topOfLoop = generator.newLabel();
     generator.emitLabel(topOfLoop.get());
@@ -2622,7 +2652,7 @@ void DoWhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void WhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+    Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
     Ref<Label> topOfLoop = generator.newLabel();
 
     generator.emitNodeInConditionContext(m_expr, topOfLoop.get(), scope->breakTarget(), FallThroughMeansTrue);
@@ -2646,7 +2676,7 @@ void WhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void ForNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+    Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
 
     RegisterID* forLoopSymbolTable = nullptr;
     generator.pushLexicalScope(this, BytecodeGenerator::TDZCheckOptimization::Optimize, BytecodeGenerator::NestedScopeType::IsNested, &forLoopSymbolTable);
@@ -2821,7 +2851,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     // Indexed property loop.
     {
-        LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+        Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
         Ref<Label> loopStart = generator.newLabel();
         Ref<Label> loopEnd = generator.newLabel();
 
@@ -2861,7 +2891,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     // Structure property loop.
     {
-        LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+        Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
         Ref<Label> loopStart = generator.newLabel();
         Ref<Label> loopEnd = generator.newLabel();
 
@@ -2901,7 +2931,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     // Generic property loop.
     {
-        LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
+        Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Loop);
         Ref<Label> loopStart = generator.newLabel();
         Ref<Label> loopEnd = generator.newLabel();
 
@@ -3014,7 +3044,7 @@ Label* ContinueNode::trivialTarget(BytecodeGenerator& generator)
     if (generator.shouldEmitDebugHooks())
         return nullptr;
 
-    LabelScopePtr scope = generator.continueTarget(m_ident);
+    RefPtr<LabelScope> scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
     if (generator.labelScopeDepth() != scope->scopeDepth())
@@ -3025,7 +3055,7 @@ Label* ContinueNode::trivialTarget(BytecodeGenerator& generator)
 
 void ContinueNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    LabelScopePtr scope = generator.continueTarget(m_ident);
+    RefPtr<LabelScope> scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
     bool hasFinally = generator.emitJumpViaFinallyIfNeeded(scope->scopeDepth(), *scope->continueTarget());
@@ -3045,7 +3075,7 @@ Label* BreakNode::trivialTarget(BytecodeGenerator& generator)
     if (generator.shouldEmitDebugHooks())
         return nullptr;
 
-    LabelScopePtr scope = generator.breakTarget(m_ident);
+    RefPtr<LabelScope> scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
     if (generator.labelScopeDepth() != scope->scopeDepth())
@@ -3056,7 +3086,7 @@ Label* BreakNode::trivialTarget(BytecodeGenerator& generator)
 
 void BreakNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    LabelScopePtr scope = generator.breakTarget(m_ident);
+    RefPtr<LabelScope> scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
     bool hasFinally = generator.emitJumpViaFinallyIfNeeded(scope->scopeDepth(), scope->breakTarget());
@@ -3270,7 +3300,7 @@ void CaseBlockNode::emitBytecodeForBlock(BytecodeGenerator& generator, RegisterI
 
 void SwitchNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::Switch);
+    Ref<LabelScope> scope = generator.newLabelScope(LabelScope::Switch);
 
     RefPtr<RegisterID> r0 = generator.emitNode(m_expr);
 
@@ -3288,7 +3318,7 @@ void LabelNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     ASSERT(!generator.breakTarget(m_name));
 
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::NamedLabel, &m_name);
+    Ref<LabelScope> scope = generator.newLabelScope(LabelScope::NamedLabel, &m_name);
     generator.emitNodeInTailPosition(dst, m_statement);
 
     generator.emitLabel(scope->breakTarget());
@@ -3482,7 +3512,8 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     generator.emitDebugHook(DidEnterCallFrame, startLine(), startStartOffset(), startLineStartOffset());
 
     switch (generator.parseMode()) {
-    case SourceParseMode::GeneratorWrapperFunctionMode: {
+    case SourceParseMode::GeneratorWrapperFunctionMode:
+    case SourceParseMode::GeneratorWrapperMethodMode: {
         StatementNode* singleStatement = this->singleStatement();
         ASSERT(singleStatement->isExprStatement());
         ExprStatementNode* exprStatement = static_cast<ExprStatementNode*>(singleStatement);

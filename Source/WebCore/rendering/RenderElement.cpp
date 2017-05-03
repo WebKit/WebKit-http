@@ -114,6 +114,8 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyl
     , m_renderBlockShouldForceRelayoutChildren(false)
     , m_renderBlockFlowHasMarkupTruncation(false)
     , m_renderBlockFlowLineLayoutPath(RenderBlockFlow::UndeterminedPath)
+    , m_isRegisteredForVisibleInViewportCallback(false)
+    , m_visibleInViewportState(static_cast<unsigned>(VisibleInViewportState::Unknown))
     , m_firstChild(nullptr)
     , m_lastChild(nullptr)
     , m_style(WTFMove(style))
@@ -132,28 +134,7 @@ RenderElement::RenderElement(Document& document, RenderStyle&& style, BaseTypeFl
 
 RenderElement::~RenderElement()
 {
-    if (hasInitializedStyle()) {
-        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
-            if (auto* backgroundImage = bgLayer->image())
-                backgroundImage->removeClient(this);
-        }
-        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
-            if (auto* maskImage = maskLayer->image())
-                maskImage->removeClient(this);
-        }
-        if (auto* borderImage = m_style.borderImage().image())
-            borderImage->removeClient(this);
-        if (auto* maskBoxImage = m_style.maskBoxImage().image())
-            maskBoxImage->removeClient(this);
-        if (auto shapeValue = m_style.shapeOutside()) {
-            if (auto shapeImage = shapeValue->image())
-                shapeImage->removeClient(this);
-        }
-    }
-    if (m_hasPausedImageAnimations)
-        view().removeRendererWithPausedImageAnimations(*this);
-    if (isRegisteredForVisibleInViewportCallback())
-        view().unregisterForVisibleInViewportCallback(*this);
+    // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
 RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&& style, RendererCreationType creationType)
@@ -857,7 +838,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
 #endif
 #if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
         if (visibilityChanged)
-            document().dirtyTouchEventRects();
+            document().setTouchEventRegionsNeedUpdate();
 #endif
         if (visibilityChanged) {
             if (AXObjectCache* cache = document().existingAXObjectCache())
@@ -1127,8 +1108,7 @@ void RenderElement::willBeDestroyed()
 
     destroyLeftoverChildren();
 
-    if (isRegisteredForVisibleInViewportCallback())
-        unregisterForVisibleInViewportCallback();
+    unregisterForVisibleInViewportCallback();
 
     if (hasCounterNodeMap())
         RenderCounter::destroyCounterNodes(*this);
@@ -1145,6 +1125,27 @@ void RenderElement::willBeDestroyed()
 #endif
 
     clearLayoutRootIfNeeded();
+
+    if (hasInitializedStyle()) {
+        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
+            if (auto* backgroundImage = bgLayer->image())
+                backgroundImage->removeClient(this);
+        }
+        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
+            if (auto* maskImage = maskLayer->image())
+                maskImage->removeClient(this);
+        }
+        if (auto* borderImage = m_style.borderImage().image())
+            borderImage->removeClient(this);
+        if (auto* maskBoxImage = m_style.maskBoxImage().image())
+            maskBoxImage->removeClient(this);
+        if (auto shapeValue = m_style.shapeOutside()) {
+            if (auto shapeImage = shapeValue->image())
+                shapeImage->removeClient(this);
+        }
+    }
+    if (m_hasPausedImageAnimations)
+        view().removeRendererWithPausedImageAnimations(*this);
 }
 
 void RenderElement::setNeedsPositionedMovementLayout(const RenderStyle* oldStyle)
@@ -1432,30 +1433,30 @@ bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewpor
     return visibleRect.intersects(enclosingIntRect(absoluteClippedOverflowRect()));
 }
 
-static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)
+bool RenderElement::shouldRepaintInVisibleRect(const IntRect& visibleRect) const
 {
-    const Document& document = renderer.document();
-    if (document.activeDOMObjectsAreSuspended())
+    if (document().activeDOMObjectsAreSuspended())
         return false;
-    if (renderer.style().visibility() != VISIBLE)
+    if (style().visibility() != VISIBLE)
         return false;
-    if (renderer.view().frameView().isOffscreen())
+    if (view().frameView().isOffscreen())
         return false;
 
     // Use background rect if we are the root or if we are the body and the background is propagated to the root.
     // FIXME: This is overly conservative as the image may not be a background-image, in which case it will not
     // be propagated to the root. At this point, we unfortunately don't have access to the image anymore so we
     // can no longer check if it is a background image.
-    bool backgroundIsPaintedByRoot = renderer.isDocumentElementRenderer();
-    if (renderer.isBody()) {
-        auto& rootRenderer = *renderer.parent(); // If <body> has a renderer then <html> does too.
+    bool backgroundIsPaintedByRoot = isDocumentElementRenderer();
+    if (isBody()) {
+        auto& rootRenderer = *parent(); // If <body> has a renderer then <html> does too.
         ASSERT(rootRenderer.isDocumentElementRenderer());
         ASSERT(is<HTMLHtmlElement>(rootRenderer.element()));
         // FIXME: Should share body background propagation code.
         backgroundIsPaintedByRoot = !rootRenderer.hasBackground();
 
     }
-    LayoutRect backgroundPaintingRect = backgroundIsPaintedByRoot ? renderer.view().backgroundRect() : renderer.absoluteClippedOverflowRect();
+
+    LayoutRect backgroundPaintingRect = backgroundIsPaintedByRoot ? view().backgroundRect() : absoluteClippedOverflowRect();
     if (!visibleRect.intersects(enclosingIntRect(backgroundPaintingRect)))
         return false;
 
@@ -1464,53 +1465,68 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
 
 void RenderElement::registerForVisibleInViewportCallback()
 {
-    if (isRegisteredForVisibleInViewportCallback())
+    if (m_isRegisteredForVisibleInViewportCallback)
         return;
-    setIsRegisteredForVisibleInViewportCallback(true);
+    m_isRegisteredForVisibleInViewportCallback = true;
 
     view().registerForVisibleInViewportCallback(*this);
 }
 
 void RenderElement::unregisterForVisibleInViewportCallback()
 {
-    if (!isRegisteredForVisibleInViewportCallback())
+    if (!m_isRegisteredForVisibleInViewportCallback)
         return;
-    setIsRegisteredForVisibleInViewportCallback(false);
+    m_isRegisteredForVisibleInViewportCallback = false;
 
     view().unregisterForVisibleInViewportCallback(*this);
 }
 
-void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
+void RenderElement::setVisibleInViewportState(VisibleInViewportState state)
 {
     if (state == visibleInViewportState())
         return;
-    setVisibleInViewportState(state);
-
-    if (element())
-        element()->isVisibleInViewportChanged();
+    m_visibleInViewportState = static_cast<unsigned>(state);
+    visibleInViewportStateChanged();
 }
 
-void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
+void RenderElement::visibleInViewportStateChanged()
+{
+    ASSERT_NOT_REACHED();
+}
+
+VisibleInViewportState RenderElement::imageFrameAvailable(CachedImage& image, ImageAnimatingState animatingState, const IntRect* changeRect)
 {
     auto& frameView = view().frameView();
     auto visibleRect = frameView.windowToContents(frameView.windowClipRect());
-    if (!shouldRepaintForImageAnimation(*this, visibleRect)) {
-        // FIXME: It would be better to pass the image along with the renderer
-        // so that we can be smarter about detecting if the image is inside the
-        // viewport in repaintForPausedImageAnimationsIfNeeded().
-        view().addRendererWithPausedImageAnimations(*this);
-        return;
-    }
-    imageChanged(&image);
+    bool shouldRepaint = shouldRepaintInVisibleRect(visibleRect);
+
+    if (!shouldRepaint && animatingState == ImageAnimatingState::Yes)
+        view().addRendererWithPausedImageAnimations(*this, image);
+
+    // Static images should repaint even if they are outside the viewport rectangle
+    // because they should be inside the TileCoverageRect.
+    if (shouldRepaint || animatingState == ImageAnimatingState::No)
+        imageChanged(&image, changeRect);
+
+    return shouldRepaint ? VisibleInViewportState::Yes : VisibleInViewportState::No;
 }
 
-bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect)
+void RenderElement::didRemoveCachedImageClient(CachedImage& cachedImage)
+{
+    if (hasPausedImageAnimations())
+        view().removeRendererWithPausedImageAnimations(*this, cachedImage);
+}
+
+bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage& cachedImage)
 {
     ASSERT(m_hasPausedImageAnimations);
-    if (!shouldRepaintForImageAnimation(*this, visibleRect))
+    if (!shouldRepaintInVisibleRect(visibleRect))
         return false;
 
     repaint();
+
+    if (auto* image = cachedImage.image())
+        image->startAnimation();
 
     // For directly-composited animated GIFs it does not suffice to call repaint() to resume animation. We need to mark the image as changed.
     if (is<RenderBoxModelObject>(*this))

@@ -303,6 +303,12 @@ sub AddToIncludesForIDLType
         return;
     }
 
+    if ($codeGenerator->IsPromiseType($type)) {
+        AddToIncludes("JSDOMPromise.h", $includesRef, $conditional);
+        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
+        return;
+    }
+
     if ($codeGenerator->IsWrapperType($type) || $codeGenerator->IsExternalDictionaryType($type) || $codeGenerator->IsExternalEnumType($type) || $type->name eq "EventListener") {
         AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
         return;
@@ -1418,7 +1424,7 @@ sub GenerateDefaultValue
     my ($typeScope, $context, $type, $defaultValue) = @_;
 
     if ($codeGenerator->IsStringType($type)) {
-        my $useAtomicString = $context->extendedAttributes->{AtomicString};
+        my $useAtomicString = $type->extendedAttributes->{AtomicString};
         if ($defaultValue eq "null") {
             return $useAtomicString ? "nullAtom" : "String()";
         } elsif ($defaultValue eq "\"\"") {
@@ -1923,7 +1929,6 @@ sub GenerateHeader
 
     # Custom getPrototype / setPrototype functions.
     push (@headerContent, "    static JSC::JSValue getPrototype(JSC::JSObject*, JSC::ExecState*);\n") if $interface->extendedAttributes->{CustomGetPrototype};
-    push (@headerContent, "    static bool setPrototype(JSC::JSObject*, JSC::ExecState*, JSC::JSValue, bool shouldThrowIfCantSet);\n") if $interface->extendedAttributes->{CustomSetPrototype};
 
     # Custom toStringName function.
     push (@headerContent, "    static String toStringName(const JSC::JSObject*, JSC::ExecState*);\n") if $interface->extendedAttributes->{CustomToStringName};
@@ -2910,25 +2915,32 @@ sub ToMethodName
 }
 
 # Returns the RuntimeEnabledFeatures function name that is hooked up to check if a method/attribute is enabled.
-# NOTE: Parameter passed in must have both an 'extendedAttributes' property.
+# NOTE: Parameter passed in must have an 'extendedAttributes' property.
 #  (e.g. DOMInterface, DOMAttribute, DOMOperation, DOMIterable, etc.)
 sub GetRuntimeEnableFunctionName
 {
     my $context = shift;
 
     AddToImplIncludes("RuntimeEnabledFeatures.h");
-    
+
     if ($context->extendedAttributes->{EnabledForWorld}) {
-        return "worldForDOMObject(this)." . ToMethodName($context->extendedAttributes->{EnabledForWorld});
+        return "worldForDOMObject(this)." . ToMethodName($context->extendedAttributes->{EnabledForWorld}) . "()";
     }
 
     # If a parameter is given (e.g. "EnabledAtRuntime=FeatureName") return the RuntimeEnabledFeatures::sharedFeatures().{FeatureName}Enabled() method.
     if ($context->extendedAttributes->{EnabledAtRuntime} && $context->extendedAttributes->{EnabledAtRuntime} ne "VALUE_IS_MISSING") {
-        return "RuntimeEnabledFeatures::sharedFeatures()." . ToMethodName($context->extendedAttributes->{EnabledAtRuntime}) . "Enabled";
+        my @flags = split /&/, $context->extendedAttributes->{EnabledAtRuntime};
+        my $result = "";
+        foreach my $flag (@flags) {
+            $result .= " && " unless length $result eq 0;
+            $result .= "RuntimeEnabledFeatures::sharedFeatures()." . ToMethodName($flag) . "Enabled()"
+        }
+        $result = "(" . $result . ")" unless scalar @flags eq 1;
+        return $result;
     }
 
     # Otherwise return a function named RuntimeEnabledFeatures::sharedFeatures().{methodName}Enabled().
-    return "RuntimeEnabledFeatures::sharedFeatures()." . ToMethodName($context->name) . "Enabled";
+    return "RuntimeEnabledFeatures::sharedFeatures()." . ToMethodName($context->name) . "Enabled()";
 }
 
 sub GetCastingHelperForThisObject
@@ -3347,9 +3359,9 @@ sub GenerateImplementation
             my $conditionalString = $codeGenerator->GenerateConditionalString($functionOrAttribute);
             push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
             AddToImplIncludes("RuntimeEnabledFeatures.h");
-            my $enable_function = GetRuntimeEnableFunctionName($functionOrAttribute);
+            my $enable_function_result = GetRuntimeEnableFunctionName($functionOrAttribute);
             my $name = $functionOrAttribute->name;
-            push(@implContent, "    if (!${enable_function}()) {\n");
+            push(@implContent, "    if (!${enable_function_result}) {\n");
             push(@implContent, "        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(\"$name\"), strlen(\"$name\"));\n");
             push(@implContent, "        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);\n");
             push(@implContent, "        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);\n");
@@ -3456,9 +3468,9 @@ sub GenerateImplementation
 
         my $conditionalString = $codeGenerator->GenerateConditionalString($attribute);
         push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
-        my $enable_function = GetRuntimeEnableFunctionName($attribute);
+        my $enable_function_result = GetRuntimeEnableFunctionName($attribute);
         my $attributeName = $attribute->name;
-        push(@implContent, "    if (${enable_function}()) {\n");
+        push(@implContent, "    if (${enable_function_result}) {\n");
         my $getter = GetAttributeGetterName($interface, $className, $attribute);
         my $setter = IsReadonly($attribute) ? "nullptr" : GetAttributeSetterName($interface, $className, $attribute);
         push(@implContent, "        auto* customGetterSetter = CustomGetterSetter::create(vm, $getter, $setter);\n");
@@ -3491,12 +3503,12 @@ sub GenerateImplementation
 
         my $conditionalString = $codeGenerator->GenerateConditionalString($function);
         push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
-        my $enable_function = GetRuntimeEnableFunctionName($function);
+        my $enable_function_result = GetRuntimeEnableFunctionName($function);
         my $functionName = $function->name;
         my $implementationFunction = GetFunctionName($interface, $className, $function);
         my $functionLength = GetFunctionLength($function);
         my $jsAttributes = ComputeFunctionSpecial($interface, $function);
-        push(@implContent, "    if (${enable_function}())\n");
+        push(@implContent, "    if (${enable_function_result})\n");
 
         my $propertyName = "vm.propertyNames->$functionName";
         $propertyName = "static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $functionName . "PrivateName()" if $function->extendedAttributes->{PrivateIdentifier};
@@ -3680,7 +3692,7 @@ sub GenerateImplementation
                     : $attribute->extendedAttributes->{DocumentEventHandler} ? "documentEventHandlerAttribute"
                     : "eventHandlerAttribute";
                 my $eventName = EventHandlerAttributeEventName($attribute);
-                push(@implContent, "    return $getter(thisObject.wrapped(), $eventName);\n");
+                push(@implContent, "    return $getter(thisObject.wrapped(), $eventName, worldForDOMObject(&thisObject));\n");
             } elsif ($codeGenerator->IsConstructorType($attribute->type)) {
                 my $constructorType = $attribute->type->name;
                 $constructorType =~ s/Constructor$//;
@@ -3857,7 +3869,7 @@ sub GenerateImplementation
                 # FIXME: Find a way to do this special case without hardcoding the class and attribute names here.
                 if ((($interfaceName eq "DOMWindow") or ($interfaceName eq "WorkerGlobalScope")) and $name eq "onerror") {
                     $implIncludes{"JSErrorHandler.h"} = 1;
-                    push(@implContent, "    thisObject.wrapped().setAttributeEventListener($eventName, createJSErrorHandler(&state, value, &thisObject));\n");
+                    push(@implContent, "    thisObject.wrapped().setAttributeEventListener($eventName, createJSErrorHandler(&state, value, &thisObject), worldForDOMObject(&thisObject));\n");
                 } else {
                     $implIncludes{"JSEventListener.h"} = 1;
                     my $setter = $attribute->extendedAttributes->{WindowEventHandler} ? "setWindowEventHandlerAttribute"
@@ -4556,10 +4568,10 @@ sub GenerateCallWith
         push(@$outputArray, "    auto& document = downcast<Document>(*context);\n");
         push(@callWithArgs, "document");
     }
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallerDocument")) {
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentDocument")) {
         $implIncludes{"Document.h"} = 1;
         $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@$outputArray, "    auto* document = callerDOMWindow($statePointer).document();\n");
+        push(@$outputArray, "    auto* document = incumbentDOMWindow($statePointer).document();\n");
         push(@$outputArray, "    if (!document)\n");
         push(@$outputArray, "        return" . ($returnValue ? " " . $returnValue : "") . ";\n");
         push(@callWithArgs, "*document");
@@ -4578,9 +4590,9 @@ sub GenerateCallWith
         $implIncludes{"JSDOMWindowBase.h"} = 1;
         push(@callWithArgs, "firstDOMWindow($statePointer)");
     }
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallerWindow")) {
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentWindow")) {
         $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@callWithArgs, "callerDOMWindow($statePointer)");
+        push(@callWithArgs, "incumbentDOMWindow($statePointer)");
     }
 
     return @callWithArgs;
@@ -5353,18 +5365,40 @@ sub GetIDLUnionMemberTypes
     push(@idlUnionMemberTypes, "IDLNull") if $numberOfNullableMembers == 1;
 
     foreach my $memberType (GetFlattenedMemberTypes($idlUnionType)) {
-        push(@idlUnionMemberTypes, GetBaseIDLType($interface, $memberType));
+        push(@idlUnionMemberTypes, GetIDLTypeExcludingNullability($interface, $memberType));
     }
 
     return @idlUnionMemberTypes;
 }
 
+sub IsAnnotatedType
+{
+    my ($type) = @_;
+
+    return 1 if $type->extendedAttributes->{Clamp};
+    return 1 if $type->extendedAttributes->{EnforceRange};
+    return 1 if $type->extendedAttributes->{TreatNullAs} && $type->extendedAttributes->{TreatNullAs} eq "EmptyString";
+    return 1 if $type->extendedAttributes->{AtomicString};
+    return 1 if $type->extendedAttributes->{RequiresExistingAtomicString};
+}
+
+sub GetAnnotatedIDLType
+{
+    my ($type) = @_;
+
+    return "IDLClampAdaptor" if $type->extendedAttributes->{Clamp};
+    return "IDLEnforceRangeAdaptor" if $type->extendedAttributes->{EnforceRange};
+    return "IDLTreatNullAsEmptyAdaptor" if $type->extendedAttributes->{TreatNullAs} && $type->extendedAttributes->{TreatNullAs} eq "EmptyString";
+    return "IDLAtomicStringAdaptor" if $type->extendedAttributes->{AtomicString};
+    return "IDLRequiresExistingAtomicStringAdaptor" if $type->extendedAttributes->{RequiresExistingAtomicString};
+}
+
 sub GetBaseIDLType
 {
-    my ($interface, $type, $context) = @_;
+    my ($interface, $type) = @_;
 
-    if ($context && $context->extendedAttributes->{OverrideIDLType}) {
-        return $context->extendedAttributes->{OverrideIDLType};
+    if ($type->extendedAttributes->{OverrideIDLType}) {
+        return $type->extendedAttributes->{OverrideIDLType};
     }
 
     my %IDLTypes = (
@@ -5404,6 +5438,7 @@ sub GetBaseIDLType
     return "IDLSequence<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsSequenceType($type);
     return "IDLFrozenArray<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsFrozenArrayType($type);
     return "IDLRecord<" . GetIDLType($interface, @{$type->subtypes}[0]) . ", " . GetIDLType($interface, @{$type->subtypes}[1]) . ">" if $codeGenerator->IsRecordType($type);
+    return "IDLPromise<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsPromiseType($type);
     return "IDLUnion<" . join(", ", GetIDLUnionMemberTypes($interface, $type)) . ">" if $type->isUnion;
     return "IDLCallbackFunction<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackFunction($type);
     return "IDLCallbackInterface<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackInterface($type);
@@ -5412,12 +5447,21 @@ sub GetBaseIDLType
     return "IDLInterface<" . $type->name . ">";
 }
 
+sub GetIDLTypeExcludingNullability
+{
+    my ($interface, $type) = @_;
+
+    my $baseIDLType = GetBaseIDLType($interface, $type);
+    $baseIDLType = GetAnnotatedIDLType($type) . "<" . $baseIDLType . ">" if IsAnnotatedType($type);
+    return $baseIDLType;
+}
+
 sub GetIDLType
 {
-    my ($interface, $type, $context) = @_;
+    my ($interface, $type) = @_;
 
-    my $baseIDLType = GetBaseIDLType($interface, $type, $context);
-    return "IDLNullable<" . $baseIDLType . ">" if $type->isNullable;
+    my $baseIDLType = GetIDLTypeExcludingNullability($interface, $type);
+    $baseIDLType = "IDLNullable<" . $baseIDLType . ">" if $type->isNullable;
     return $baseIDLType;
 }
 
@@ -5478,23 +5522,6 @@ sub ShouldPassArgumentByReference
     return 1;
 }
 
-sub GetIntegerConversionConfiguration
-{
-    my $context = shift;
-
-    return "IntegerConversionConfiguration::EnforceRange" if $context->extendedAttributes->{EnforceRange};
-    return "IntegerConversionConfiguration::Clamp" if $context->extendedAttributes->{Clamp};
-    return "IntegerConversionConfiguration::Normal";
-}
-
-sub GetStringConversionConfiguration
-{
-    my $context = shift;
-
-    return "StringConversionConfiguration::TreatNullAsEmptyString" if $context->extendedAttributes->{TreatNullAs} && $context->extendedAttributes->{TreatNullAs} eq "EmptyString";
-    return "StringConversionConfiguration::Normal";
-}
-
 sub JSValueToNativeDOMConvertNeedsThisObject
 {
     my $type = shift;
@@ -5535,11 +5562,6 @@ sub JSValueToNative
 
     AddToImplIncludesForIDLType($type, $conditional);
 
-    if ($type->name eq "DOMString") {
-        return ("AtomicString($value.toString($statePointer)->toExistingAtomicString($statePointer))", 1) if $context->extendedAttributes->{RequiresExistingAtomicString};
-        return ("$value.toString($statePointer)->toAtomicString($statePointer)", 1) if $context->extendedAttributes->{AtomicString};
-    }
-
     # parseEnumeration<> returns a std::optional. For dictionary members we need convert<IDLEnumeration>() which guarantee
     # the enum, or throws a TypeError. Bypass this check for IDLDictionaryMembers.
     if ($codeGenerator->IsEnumType($type) && ref($context) ne "IDLDictionaryMember") {
@@ -5555,8 +5577,6 @@ sub JSValueToNative
     push(@conversionArguments, $value);
     push(@conversionArguments, $thisObjectReference) if JSValueToNativeDOMConvertNeedsThisObject($type);
     push(@conversionArguments, $globalObjectReference) if JSValueToNativeDOMConvertNeedsGlobalObject($type);
-    push(@conversionArguments, GetIntegerConversionConfiguration($context)) if $codeGenerator->IsIntegerType($type);
-    push(@conversionArguments, GetStringConversionConfiguration($context)) if $codeGenerator->IsStringType($type);
     push(@conversionArguments, $exceptionThrower) if $exceptionThrower;
 
     return ("convert<$IDLType>(" . join(", ", @conversionArguments) . ")", 1);
@@ -5579,11 +5599,6 @@ sub UnsafeToNative
 
     # FIXME: Support more types.
 
-    if ($type->name eq "DOMString") {
-        return ("AtomicString($value->toExistingAtomicString($statePointer))", 1) if $context->extendedAttributes->{RequiresExistingAtomicString};
-        return ("$value->toAtomicString($statePointer)", 1) if $context->extendedAttributes->{AtomicString};
-    }
-
     AddToImplIncludes("DOMJITIDLConvert.h");
 
     my $IDLType = GetIDLType($interface, $type);
@@ -5592,25 +5607,18 @@ sub UnsafeToNative
     push(@conversionArguments, "$stateReference");
     push(@conversionArguments, "$value");
 
-    my @conversionStaticArguments = ();
-    push(@conversionStaticArguments, GetIntegerConversionConfiguration($context)) if $codeGenerator->IsIntegerType($type);
-    push(@conversionStaticArguments, GetStringConversionConfiguration($context)) if $codeGenerator->IsStringType($type);
-
-    if (scalar(@conversionStaticArguments) > 0) {
-        return ("DOMJIT::DirectConverter<$IDLType>::directConvert<" . join(", ", @conversionStaticArguments) . ">(" . join(", ", @conversionArguments) . ")", 1);
-    }
     return ("DOMJIT::DirectConverter<$IDLType>::directConvert(" . join(", ", @conversionArguments) . ")", 1);
 }
 
 sub NativeToJSValueDOMConvertNeedsState
 {
-    my ($type, $context) = @_;
+    my ($type) = @_;
 
     # FIXME: We need a more robust way to specify this requirement so as not
     # to require specializing each type. Perhaps just requiring all override
     # types to take both state and the global object would work?
-    if ($context->extendedAttributes->{OverrideIDLType}) {
-        my $overrideTypeName = $context->extendedAttributes->{OverrideIDLType};
+    if ($type->extendedAttributes->{OverrideIDLType}) {
+        my $overrideTypeName = $type->extendedAttributes->{OverrideIDLType};
         return 1 if $overrideTypeName eq "IDLIDBKey";
         return 1 if $overrideTypeName eq "IDLWebGLAny";
 
@@ -5636,13 +5644,13 @@ sub NativeToJSValueDOMConvertNeedsState
 
 sub NativeToJSValueDOMConvertNeedsGlobalObject
 {
-    my ($type, $context) = @_;
+    my ($type) = @_;
     
     # FIXME: We need a more robust way to specify this requirement so as not
     # to require specializing each type. Perhaps just requiring all override
     # types to take both state and the global object would work?
-    if ($context->extendedAttributes->{OverrideIDLType}) {
-        my $overrideTypeName = $context->extendedAttributes->{OverrideIDLType};
+    if ($type->extendedAttributes->{OverrideIDLType}) {
+        my $overrideTypeName = $type->extendedAttributes->{OverrideIDLType};
         return 1 if $overrideTypeName eq "IDLIDBKey";
         return 1 if $overrideTypeName eq "IDLWebGLAny";
 
@@ -5715,11 +5723,11 @@ sub NativeToJSValue
         $value = "BindingSecurity::checkSecurityForNode($stateReference, $value)";
     }
 
-    my $IDLType = GetIDLType($interface, $type, $context);
+    my $IDLType = GetIDLType($interface, $type);
 
     my @conversionArguments = ();
-    push(@conversionArguments, $stateReference) if NativeToJSValueDOMConvertNeedsState($type, $context) || $mayThrowException;
-    push(@conversionArguments, $globalObjectReference) if NativeToJSValueDOMConvertNeedsGlobalObject($type, $context);
+    push(@conversionArguments, $stateReference) if NativeToJSValueDOMConvertNeedsState($type) || $mayThrowException;
+    push(@conversionArguments, $globalObjectReference) if NativeToJSValueDOMConvertNeedsGlobalObject($type);
     push(@conversionArguments, "throwScope") if $mayThrowException;
     push(@conversionArguments, $value);
 

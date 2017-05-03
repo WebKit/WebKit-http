@@ -39,7 +39,6 @@
 #import "RealtimeMediaSourceSettings.h"
 #import "RealtimeMediaSourceSupportedConstraints.h"
 #import "SoftLinking.h"
-#import "UUID.h"
 #import <AVFoundation/AVCaptureDevice.h>
 #import <AVFoundation/AVCaptureSession.h>
 #import <objc/runtime.h>
@@ -120,30 +119,32 @@ inline static bool deviceIsAvailable(AVCaptureDeviceTypedef *device)
     return true;
 }
 
-void AVCaptureDeviceManager::refreshCaptureDevices()
+void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType type)
 {
+    ASSERT(type == CaptureDevice::DeviceType::Video || type == CaptureDevice::DeviceType::Audio);
+
+    NSString *platformType = (type == CaptureDevice::DeviceType::Video) ? AVMediaTypeVideo : AVMediaTypeAudio;
+
     for (AVCaptureDeviceTypedef *platformDevice in [getAVCaptureDeviceClass() devices]) {
 
-        CaptureDevice captureDevice;
-        if (!captureDeviceFromDeviceID(platformDevice.uniqueID, captureDevice)) {
-            bool hasAudio = [platformDevice hasMediaType:AVMediaTypeAudio] || [platformDevice hasMediaType:AVMediaTypeMuxed];
-            bool hasVideo = [platformDevice hasMediaType:AVMediaTypeVideo] || [platformDevice hasMediaType:AVMediaTypeMuxed];
-            if (!hasAudio && !hasVideo)
-                continue;
+        bool hasMatchingType = [platformDevice hasMediaType:platformType] || [platformDevice hasMediaType:AVMediaTypeMuxed];
+        if (!hasMatchingType)
+            continue;
 
-            CaptureDevice::DeviceType type = hasVideo ? CaptureDevice::DeviceType::Video : CaptureDevice::DeviceType::Audio;
-            CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);
-            captureDevice.setEnabled(deviceIsAvailable(platformDevice));
-            m_devices.append(captureDevice);
+        std::optional<CaptureDevice> existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
+        if (existingCaptureDevice && existingCaptureDevice->type() == type)
+            continue;
 
-            if (hasVideo && hasAudio) {
-                // Add the audio component as a separate device.
-                CaptureDevice audioCaptureDevice(platformDevice.uniqueID, CaptureDevice::DeviceType::Audio, platformDevice.localizedName);
-                captureDevice.setEnabled(deviceIsAvailable(platformDevice));
-                m_devices.append(audioCaptureDevice);
-            }
-        }
+        CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);
+        captureDevice.setEnabled(deviceIsAvailable(platformDevice));
+        m_devices.append(captureDevice);
     }
+}
+
+void AVCaptureDeviceManager::refreshCaptureDevices()
+{
+    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Video);
+    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Audio);
 }
 
 bool AVCaptureDeviceManager::isAvailable()
@@ -168,12 +169,20 @@ AVCaptureDeviceManager::~AVCaptureDeviceManager()
     [m_objcObserver disconnect];
 }
 
-Vector<CaptureDevice> AVCaptureDeviceManager::getSourcesInfo()
+Vector<CaptureDevice> AVCaptureDeviceManager::getAudioSourcesInfo()
 {
     if (!isAvailable())
         return Vector<CaptureDevice>();
 
-    return CaptureDeviceManager::getSourcesInfo();
+    return CaptureDeviceManager::getAudioSourcesInfo();
+}
+
+Vector<CaptureDevice> AVCaptureDeviceManager::getVideoSourcesInfo()
+{
+    if (!isAvailable())
+        return Vector<CaptureDevice>();
+
+    return CaptureDeviceManager::getVideoSourcesInfo();
 }
 
 void AVCaptureDeviceManager::registerForDeviceNotifications()
@@ -185,6 +194,9 @@ void AVCaptureDeviceManager::registerForDeviceNotifications()
 void AVCaptureDeviceManager::deviceConnected()
 {
     refreshCaptureDevices();
+
+    for (auto& observer : m_observers.values())
+        observer();
 }
 
 void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
@@ -202,6 +214,9 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
             devices[i].setEnabled(false);
         }
     }
+
+    for (auto& observer : m_observers.values())
+        observer();
 }
 
 } // namespace WebCore

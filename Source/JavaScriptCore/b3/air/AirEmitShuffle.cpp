@@ -65,6 +65,35 @@ struct Rotate {
 
 } // anonymous namespace
 
+Bank ShufflePair::bank() const
+{
+    if (src().isMemory() && dst().isMemory() && width() > pointerWidth()) {
+        // 8-byte memory-to-memory moves on a 32-bit platform are best handled as float moves.
+        return FP;
+    }
+    
+    if (src().isGP() && dst().isGP()) {
+        // This means that gpPairs gets memory-to-memory shuffles. The assumption is that we
+        // can do that more efficiently using GPRs, except in the special case above.
+        return GP;
+    }
+    
+    return FP;
+}
+
+Inst ShufflePair::inst(Code* code, Value* origin) const
+{
+    if (UNLIKELY(src().isMemory() && dst().isMemory())) {
+        RELEASE_ASSERT(code);
+        return Inst(moveFor(bank(), width()), origin, src(), dst(), code->newTmp(bank()));
+    }
+
+    if (src().isSomeImm())
+        return Inst(Move, origin, Arg::bigImm(src().value()), dst());
+
+    return Inst(moveFor(bank(), width()), origin, src(), dst());
+}
+
 void ShufflePair::dump(PrintStream& out) const
 {
     out.print(width(), ":", src(), "=>", dst());
@@ -261,14 +290,7 @@ Vector<Inst> emitShuffle(
     // ends with a register. We search for such a register right now.
 
     auto moveForWidth = [&] (Width width) -> Opcode {
-        switch (width) {
-        case Width32:
-            return bank == GP ? Move32 : MoveFloat;
-        case Width64:
-            return bank == GP ? Move : MoveDouble;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-        }
+        return moveFor(bank, width);
     };
 
     Opcode conservativeMove = moveForWidth(conservativeWidth(bank));
@@ -520,15 +542,14 @@ Vector<Inst> emitShuffle(
     Vector<ShufflePair> gpPairs;
     Vector<ShufflePair> fpPairs;
     for (const ShufflePair& pair : pairs) {
-        if (pair.src().isMemory() && pair.dst().isMemory() && pair.width() > pointerWidth()) {
-            // 8-byte memory-to-memory moves on a 32-bit platform are best handled as float moves.
-            fpPairs.append(pair);
-        } else if (pair.src().isGP() && pair.dst().isGP()) {
-            // This means that gpPairs gets memory-to-memory shuffles. The assumption is that we
-            // can do that more efficiently using GPRs, except in the special case above.
+        switch (pair.bank()) {
+        case GP:
             gpPairs.append(pair);
-        } else
+            break;
+        case FP:
             fpPairs.append(pair);
+            break;
+        }
     }
 
     Vector<Inst> result;

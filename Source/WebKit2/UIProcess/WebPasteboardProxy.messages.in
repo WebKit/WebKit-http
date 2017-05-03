@@ -22,17 +22,22 @@
 
 messages -> WebPasteboardProxy {
 #if PLATFORM(IOS)
+    WriteURLToPasteboard(struct WebCore::PasteboardURL url, String pasteboardName)
     WriteWebContentToPasteboard(struct WebCore::PasteboardWebContent content, String pasteboardName)
     WriteImageToPasteboard(struct WebCore::PasteboardImage pasteboardImage, String pasteboardName)
     WriteStringToPasteboard(String pasteboardType, String text, String pasteboardName)
     ReadStringFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (String string)
-    ReadURLFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (String string)
+    ReadURLFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (String url, String title)
     ReadBufferFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (WebKit::SharedMemory::Handle handle, uint64_t size)
     GetPasteboardItemsCount(String pasteboardName) -> (uint64_t itemsCount)
+    GetFilenamesForDataInteraction(String pasteboardName) -> (Vector<String> filenames)
+    UpdatePreferredTypeIdentifiers(Vector<String> identifiers, String pasteboardName)
+    GetPasteboardTypesByFidelityForItemAtIndex(uint64_t index, String pasteboardName) -> (Vector<String> types)
 #endif
 
 #if PLATFORM(COCOA)
     # Pasteboard messages.
+    GetNumberOfFiles(String pasteboardName) -> (uint64_t numberOfFiles)
     GetPasteboardTypes(String pasteboardName) -> (Vector<String> types)
     GetPasteboardPathnamesForType(String pasteboardName, String pasteboardType) -> (Vector<String> pathnames)
     GetPasteboardStringForType(String pasteboardName, String pasteboardType) -> (String string)

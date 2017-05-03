@@ -634,8 +634,7 @@
   # Difference in Object.getOwnPropertyDescriptor(functiong.__proto__, 'caller').
   cmd: runChakra :skip, "NoException", "typeErrorAccessor.baseline", []
 - path: ChakraCore/test/Function/FuncBody.js
-  # This crashes in JSC.
-  cmd: runChakra :skip, "NoException", "FuncBodyES5.baseline", []
+  cmd: runChakra :baseline, "NoException", "FuncBodyES5.baseline-jsc", []
 - path: ChakraCore/test/Function/FuncBody.bug227901.js
   cmd: runChakra :baseline, "NoException", "FuncBody.bug227901.baseline-jsc", []
 - path: ChakraCore/test/Function/FuncBody.bug232281.js
@@ -810,14 +809,11 @@
 - path: ChakraCore/test/LetConst/defer5.js
   cmd: runChakra :baseline, "ReferenceError", "defer5.baseline-jsc", []
 - path: ChakraCore/test/LetConst/delete.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "delete.baseline", []
+  cmd: runChakra :baseline, "NoException", "delete.baseline", []
 - path: ChakraCore/test/LetConst/dop.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "dop.baseline", []
+  cmd: runChakra :baseline, "NoException", "dop.baseline-jsc", []
 - path: ChakraCore/test/LetConst/dop1.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "dop1.baseline", []
+  cmd: runChakra :baseline, "NoException", "dop1.baseline-jsc", []
 - path: ChakraCore/test/LetConst/eval_fncdecl.js
   # Seems like a bug.  We try to define a function in a false "then" block.
   cmd: runChakra :skip, "NoException", "eval_fncdecl.baseline", []
@@ -880,7 +876,7 @@
 - path: ChakraCore/test/Lib/uri.js
   cmd: runChakra :baseline, "NoException", "uri.baseline-jsc", []
 - path: ChakraCore/test/Lib/error.js
-  cmd: runChakra :baseline, "NoException", "error.baseline", []
+  cmd: runChakra :baseline, "NoException", "error.baseline-jsc", []
 - path: ChakraCore/test/Lib/workingset.js
   # WScript.GetWorkingSet is not implemented in jsc-lib.js polyfill.
   cmd: runChakra :skip, "NoException", "", []
@@ -1446,8 +1442,7 @@
 - path: ChakraCore/test/es5/defineProperty.js
   cmd: runChakra :baseline, "NoException", "defineProperty.baseline", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es5/defineIndexProperty.js
-  # Differences in Obj.seal, Obj.frozen and sort.
-  cmd: runChakra :skip, "NoException", "defineIndexProperty.baseline", []
+  cmd: runChakra :baseline, "NoException", "defineIndexProperty.baseline-jsc", []
 - path: ChakraCore/test/es5/enumerable.js
   cmd: runChakra :baseline, "NoException", "enumerable.baseline-jsc", []
 - path: ChakraCore/test/es5/hasItem.js
@@ -1838,8 +1833,7 @@
   # Different behavior.
   cmd: runChakra :skip, "NoException", "proxytest9.baseline", []
 - path: ChakraCore/test/es6/ES6Function_bugs.js
-  # Different behavior with Object.seal().
-  cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
+  cmd: runChakra :pass, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/OS_2700778.js
   cmd: runChakra :pass, "NoException", "", []
 - path: ChakraCore/test/es6/bug_OS_2184795.js
@@ -1862,7 +1856,7 @@
   # On line 254, JSC throws error during parsing while Chakra throws at runtime.
   cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.js
-  cmd: runChakra :baseline, "ReferenceError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
+  cmd: runChakra :baseline, "SyntaxError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalNewTargetSyntaxError.js
   cmd: runChakra :baseline, "SyntaxError", "globalNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalCatchNewTargetSyntaxError.js

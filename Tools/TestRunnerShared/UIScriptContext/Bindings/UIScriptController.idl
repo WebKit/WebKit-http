@@ -162,6 +162,11 @@ interface UIScriptController {
     //  }
     void sendEventStream(DOMString eventsJSON, object callback);
 
+    void beginBackSwipe(object callback);
+    void completeBackSwipe(object callback);
+
+    void playBackEventStream(DOMString eventStream, object callback);
+
     // Equivalent of pressing the Done button in the form accessory bar.
     void dismissFormAccessoryView();
 
@@ -227,4 +232,6 @@ interface UIScriptController {
     void addViewToWindow(object callback);
 
     void overridePreference(DOMString preference, DOMString value);
+
+    void setSafeAreaInsets(double top, double right, double bottom, double left);
 };

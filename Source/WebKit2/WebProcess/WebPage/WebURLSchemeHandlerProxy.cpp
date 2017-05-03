@@ -27,6 +27,8 @@
 #include "WebURLSchemeHandlerProxy.h"
 
 #include "WebErrors.h"
+#include "WebLoaderStrategy.h"
+#include "WebProcess.h"
 #include <WebCore/ResourceLoader.h>
 
 using namespace WebCore;
@@ -46,9 +48,10 @@ WebURLSchemeHandlerProxy::~WebURLSchemeHandlerProxy()
 
 void WebURLSchemeHandlerProxy::startNewTask(ResourceLoader& loader)
 {
-    auto result = m_tasks.add(loader.identifier(), std::make_unique<WebURLSchemeHandlerTaskProxy>(*this, loader));
+    auto result = m_tasks.add(loader.identifier(), std::make_unique<WebURLSchemeTaskProxy>(*this, loader));
     ASSERT(result.isNewEntry);
 
+    WebProcess::singleton().webLoaderStrategy().addURLSchemeTaskProxy(*result.iterator->value);
     result.iterator->value->startLoading();
 }
 
@@ -77,7 +80,14 @@ void WebURLSchemeHandlerProxy::taskDidComplete(uint64_t taskIdentifier, const Re
     if (!task)
         return;
 
+    WebProcess::singleton().webLoaderStrategy().removeURLSchemeTaskProxy(*task);
     task->didComplete(error);
+}
+
+void WebURLSchemeHandlerProxy::taskDidStopLoading(WebURLSchemeTaskProxy& task)
+{
+    ASSERT(m_tasks.get(task.identifier()) == &task);
+    m_tasks.remove(task.identifier());
 }
 
 } // namespace WebKit

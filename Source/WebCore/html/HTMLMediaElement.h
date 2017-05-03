@@ -28,6 +28,7 @@
 #if ENABLE(VIDEO)
 
 #include "ActiveDOMObject.h"
+#include "AutoplayEvent.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
 #include "HTMLElement.h"
@@ -37,6 +38,8 @@
 #include "MediaElementSession.h"
 #include "MediaProducer.h"
 #include "UserInterfaceLayoutDirection.h"
+#include "VisibilityChangeClient.h"
+#include <wtf/WeakPtr.h>
 
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrack.h"
@@ -46,6 +49,10 @@
 #include "TextTrackCue.h"
 #include "VTTCue.h"
 #include "VideoTrack.h"
+#endif
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+#include "AudioSession.h"
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -76,6 +83,7 @@ class MediaElementAudioSourceNode;
 class MediaError;
 class MediaKeys;
 class MediaPlayer;
+class MediaResourceLoader;
 class MediaSession;
 class MediaSource;
 class MediaStream;
@@ -115,10 +123,14 @@ class HTMLMediaElement
     , private MediaCanStartListener
     , private MediaPlayerClient
     , private MediaProducer
+    , private VisibilityChangeClient
 #if ENABLE(VIDEO_TRACK)
     , private AudioTrackClient
     , private TextTrackClient
     , private VideoTrackClient
+#endif
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    , private AudioSession::MutedStateObserver
 #endif
 #if ENABLE(ENCRYPTED_MEDIA)
     , private CDMClient
@@ -510,6 +522,14 @@ public:
 
     bool isTemporarilyAllowingInlinePlaybackAfterFullscreen() const {return m_temporarilyAllowingInlinePlaybackAfterFullscreen; }
 
+    void isVisibleInViewportChanged();
+
+    WEBCORE_EXPORT const MediaResourceLoader* lastMediaResourceLoaderForTesting() const;
+
+#if ENABLE(MEDIA_STREAM)
+    bool hasMediaStreamSrcObject() const { return !!m_mediaStreamSrcObject; }
+#endif
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLMediaElement();
@@ -766,6 +786,7 @@ private:
     enum class PlaybackWithoutUserGesture { None, Started, Prevented };
     void setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture);
     void userDidInterfereWithAutoplay();
+    void handleAutoplayEvent(AutoplayEvent);
 
     MediaTime minTimeSeekable() const;
     MediaTime maxTimeSeekable() const;
@@ -826,6 +847,10 @@ private:
 
     void pageMutedStateDidChange() override;
 
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    void hardwareMutedStateDidChange(AudioSession*) final;
+#endif
+
     bool effectiveMuted() const;
 
     void registerWithDocument(Document&);
@@ -843,7 +868,6 @@ private:
 #endif
 
     bool isVideoTooSmallForInlinePlayback();
-    void isVisibleInViewportChanged() final;
     void updateShouldAutoplay();
 
     void pauseAfterDetachedTask();
@@ -868,7 +892,6 @@ private:
     Timer m_playbackControlsManagerBehaviorRestrictionsTimer;
     Timer m_seekToPlaybackPositionEndedTimer;
     GenericTaskQueue<Timer> m_seekTaskQueue;
-    GenericTaskQueue<Timer> m_resizeTaskQueue;
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
@@ -915,7 +938,7 @@ private:
     double m_playbackStartedTime { 0 };
 
     // The last time a timeupdate event was sent (based on monotonic clock).
-    double m_clockTimeAtLastUpdateEvent { 0 };
+    MonotonicTime m_clockTimeAtLastUpdateEvent;
 
     // The last time a timeupdate event was sent in movie time.
     MediaTime m_lastTimeUpdateEventMovieTime;
@@ -1060,6 +1083,8 @@ private:
     RefPtr<MediaController> m_mediaController;
 
     std::unique_ptr<DisplaySleepDisabler> m_sleepDisabler;
+
+    WeakPtr<const MediaResourceLoader> m_lastMediaResourceLoaderForTesting;
 
     friend class TrackDisplayUpdateScope;
 

@@ -35,7 +35,6 @@
 #import "MediaPlayer.h"
 #import "SoftLinking.h"
 #import "SourceBufferPrivateAVFObjC.h"
-#import "UUID.h"
 #import "WebCoreNSErrorExtras.h"
 #import <AVFoundation/AVError.h>
 #import <CoreMedia/CMBase.h>
@@ -359,7 +358,7 @@ AVContentKeySession* CDMSessionAVContentKeySession::contentKeySession()
                 return nil;
         }
 
-        m_contentKeySession = adoptNS([[getAVContentKeySessionClass() alloc] initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
+        m_contentKeySession = adoptNS([allocAVContentKeySessionInstance() initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
         m_contentKeySession.get().delegate = m_contentKeySessionDelegate.get();
     }
 

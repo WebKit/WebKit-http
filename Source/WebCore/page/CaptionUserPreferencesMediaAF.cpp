@@ -32,6 +32,9 @@
 #include "CaptionUserPreferencesMediaAF.h"
 
 #include "AudioTrackList.h"
+#if PLATFORM(WIN)
+#include "CoreTextSPIWin.h"
+#endif
 #include "FloatConversion.h"
 #include "HTMLMediaElement.h"
 #include "URL.h"
@@ -43,6 +46,7 @@
 #include "TextTrackList.h"
 #include "UserStyleSheetTypes.h"
 #include "VTTCue.h"
+#include <algorithm>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/PlatformUserPreferredLanguages.h>
 #include <wtf/RetainPtr.h>
@@ -76,14 +80,6 @@
 #define SOFT_LINK_AVF_POINTER(Lib, Name, Type) SOFT_LINK_VARIABLE_DLL_IMPORT_OPTIONAL(Lib, Name, Type)
 #define SOFT_LINK_AVF_FRAMEWORK_IMPORT(Lib, Fun, ReturnType, Arguments, Signature) SOFT_LINK_DLL_IMPORT(Lib, Fun, ReturnType, __cdecl, Arguments, Signature)
 #define SOFT_LINK_AVF_FRAMEWORK_IMPORT_OPTIONAL(Lib, Fun, ReturnType, Arguments) SOFT_LINK_DLL_IMPORT_OPTIONAL(Lib, Fun, ReturnType, __cdecl, Arguments)
-
-// CoreText only needs to be soft-linked on Windows.
-SOFT_LINK_AVF_FRAMEWORK(CoreText)
-SOFT_LINK_AVF_FRAMEWORK_IMPORT(CoreText, CTFontDescriptorCopyAttribute,  CFTypeRef, (CTFontDescriptorRef descriptor, CFStringRef attribute), (descriptor, attribute));
-SOFT_LINK_AVF_POINTER(CoreText, kCTFontNameAttribute, CFStringRef)
-#define kCTFontNameAttribute getkCTFontNameAttribute()
-
-#define CTFontDescriptorCopyAttribute softLink_CTFontDescriptorCopyAttribute
 
 SOFT_LINK_AVF_FRAMEWORK(CoreMedia)
 SOFT_LINK_AVF_FRAMEWORK_IMPORT_OPTIONAL(CoreMedia, MTEnableCaption2015Behavior, Boolean, ())
@@ -246,7 +242,7 @@ void CaptionUserPreferencesMediaAF::setInterestedInCaptionPreferenceChanges()
 
     // Generating and registering the caption stylesheet can be expensive and this method is called indirectly when the parser creates an audio or
     // video element, so do it after a brief pause.
-    m_updateStyleSheetTimer.startOneShot(0);
+    m_updateStyleSheetTimer.startOneShot(0_s);
 }
 
 void CaptionUserPreferencesMediaAF::captionPreferencesChanged()
@@ -357,28 +353,28 @@ String CaptionUserPreferencesMediaAF::colorPropertyCSS(CSSPropertyID id, const C
     return builder.toString();
 }
 
-String CaptionUserPreferencesMediaAF::strokeWidth() const
+bool CaptionUserPreferencesMediaAF::captionStrokeWidthForFont(float fontSize, const String& language, float& strokeWidth, bool& important) const
 {
-    static NeverDestroyed<const String> strokeWidthDefault(ASCIILiteral(" .03em "));
-    
-    if (!MACaptionFontAttributeStrokeWidth && !canLoad_MediaAccessibility_MACaptionFontAttributeStrokeWidth())
-        return strokeWidthDefault;
+    if (!canLoad_MediaAccessibility_MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle())
+        return false;
     
     MACaptionAppearanceBehavior behavior;
-
-    auto font = adoptCF(MACaptionAppearanceCopyFontDescriptorForStyle(kMACaptionAppearanceDomainUser, &behavior, kMACaptionAppearanceFontStyleDefault));
-    if (!font)
-        return strokeWidthDefault;
+    auto trackLanguage = language.createCFString();
+    CGFloat strokeWidthPt;
     
-    auto strokeWidthAttribute = adoptCF(CTFontDescriptorCopyAttribute(font.get(), MACaptionFontAttributeStrokeWidth));
-    if (!strokeWidthAttribute)
-        return strokeWidthDefault;
-    
-    int strokeWidth = 0;
-    if (!CFNumberGetValue(static_cast<CFNumberRef>(strokeWidthAttribute.get()), kCFNumberIntType, &strokeWidth))
-        return strokeWidthDefault;
+    auto fontDescriptor = adoptCF(MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle(kMACaptionAppearanceDomainUser, &behavior, kMACaptionAppearanceFontStyleDefault, trackLanguage.get(), fontSize, &strokeWidthPt));
 
-    return String::format(" %dpx ", strokeWidth);
+    if (!fontDescriptor)
+        return false;
+
+    strokeWidth = strokeWidthPt;
+    important = behavior == kMACaptionAppearanceBehaviorUseValue;
+    
+    // Currently, MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle is returning very large stroke widths, see <rdar://problem/31126629>.
+    // To avoid stroke widths that are too large, we set a maximum value of 10% of the font size.
+    strokeWidth = std::min(strokeWidth, fontSize / 10.0f);
+    
+    return true;
 }
 
 String CaptionUserPreferencesMediaAF::captionsTextEdgeCSS() const
@@ -403,11 +399,7 @@ String CaptionUserPreferencesMediaAF::captionsTextEdgeCSS() const
         appendCSS(builder, CSSPropertyTextShadow, makeString(edgeStyleDropShadow.get(), " black"), important);
 
     if (textEdgeStyle == kMACaptionAppearanceTextEdgeStyleDropShadow || textEdgeStyle == kMACaptionAppearanceTextEdgeStyleUniform) {
-        if (textEdgeStyle == kMACaptionAppearanceTextEdgeStyleDropShadow)
-            appendCSS(builder, CSSPropertyWebkitTextStroke, ".03em black", important);
-        else
-            appendCSS(builder, CSSPropertyWebkitTextStroke, makeString(strokeWidth(), " black"), important);
-
+        appendCSS(builder, CSSPropertyWebkitTextStrokeColor, "black", important);
         appendCSS(builder, CSSPropertyPaintOrder, getValueName(CSSValueStroke), important);
         appendCSS(builder, CSSPropertyStrokeLinejoin, getValueName(CSSValueRound), important);
         appendCSS(builder, CSSPropertyStrokeLinecap, getValueName(CSSValueRound), important);
@@ -427,13 +419,30 @@ String CaptionUserPreferencesMediaAF::captionsDefaultFontCSS() const
     RetainPtr<CFTypeRef> name = adoptCF(CTFontDescriptorCopyAttribute(font.get(), kCTFontNameAttribute));
     if (!name)
         return emptyString();
-    
+
     StringBuilder builder;
     
     builder.append(getPropertyNameString(CSSPropertyFontFamily));
     builder.appendLiteral(": \"");
     builder.append(static_cast<CFStringRef>(name.get()));
     builder.append('"');
+
+    auto cascadeList = adoptCF(static_cast<CFArrayRef>(CTFontDescriptorCopyAttribute(font.get(), kCTFontCascadeListAttribute)));
+
+    if (cascadeList) {
+        for (CFIndex i = 0; i < CFArrayGetCount(cascadeList.get()); i++) {
+            auto fontCascade = static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(cascadeList.get(), i));
+            if (!fontCascade)
+                continue;
+            auto fontCascadeName = adoptCF(CTFontDescriptorCopyAttribute(fontCascade, kCTFontNameAttribute));
+            if (!fontCascadeName)
+                continue;
+            builder.append(", \"");
+            builder.append(static_cast<CFStringRef>(fontCascadeName.get()));
+            builder.append('"');
+        }
+    }
+    
     if (behavior == kMACaptionAppearanceBehaviorUseValue)
         builder.appendLiteral(" !important");
     builder.append(';');

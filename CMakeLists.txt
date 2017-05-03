@@ -27,8 +27,8 @@ set(ALL_PORTS
     GTK
     JSCOnly
     Mac
-    WinCairo
     WPE
+    WinCairo
 )
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 

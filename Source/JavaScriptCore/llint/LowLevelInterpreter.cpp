@@ -519,7 +519,6 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 #else
 #define OFFLINE_ASM_GLOBAL_LABEL(label)         \
     ".text\n"                                   \
-    ".align 4\n"                                \
     ".globl " SYMBOL_STRING(label) "\n"         \
     HIDE_SYMBOL(label) "\n"                     \
     SYMBOL_STRING(label) ":\n"

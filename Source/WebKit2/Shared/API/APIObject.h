@@ -148,7 +148,7 @@ public:
         RunJavaScriptConfirmResultListener,
         RunJavaScriptPromptResultListener,
         TextChecker,
-        URLSchemeHandlerTask,
+        URLSchemeTask,
         UserContentController,
         UserContentWorld,
         UserInitiatedAction,

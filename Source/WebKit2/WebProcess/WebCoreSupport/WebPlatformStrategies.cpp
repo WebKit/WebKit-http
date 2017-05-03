@@ -175,7 +175,7 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::bufferForType(const String&
     // First check the overrides.
     Vector<char> overrideBuffer;
     if (WebPasteboardOverrides::sharedPasteboardOverrides().getDataForOverride(pasteboardName, pasteboardType, overrideBuffer))
-        return SharedBuffer::adoptVector(overrideBuffer);
+        return SharedBuffer::create(WTFMove(overrideBuffer));
 
     // Fallback to messaging the UI process for native pasteboard content.
     SharedMemory::Handle handle;
@@ -279,7 +279,24 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
     return newChangeCount;
 }
 
+int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
+{
+    uint64_t numberOfFiles;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetNumberOfFiles(pasteboardName), Messages::WebPasteboardProxy::GetNumberOfFiles::Reply(numberOfFiles), 0);
+    return numberOfFiles;
+}
+
 #if PLATFORM(IOS)
+void WebPlatformStrategies::getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypesByFidelityForItemAtIndex(index, pasteboardName), Messages::WebPasteboardProxy::GetPasteboardTypesByFidelityForItemAtIndex::Reply(types), 0);
+}
+
+void WebPlatformStrategies::writeToPasteboard(const PasteboardURL& url, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteURLToPasteboard(url, pasteboardName), 0);
+}
+
 void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content, pasteboardName), 0);
@@ -302,6 +319,16 @@ int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)
     return itemsCount;
 }
 
+void WebPlatformStrategies::getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetFilenamesForDataInteraction(pasteboardName), Messages::WebPasteboardProxy::GetFilenamesForDataInteraction::Reply(filenames), 0);
+}
+
+void WebPlatformStrategies::updatePreferredTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::UpdatePreferredTypeIdentifiers(identifiers, pasteboardName), 0);
+}
+
 RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName)
 {
     SharedMemory::Handle handle;
@@ -313,10 +340,10 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(in
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }
 
-WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName)
+WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName, String& title)
 {
     String urlString;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadURLFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadURLFromPasteboard::Reply(urlString), 0);
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadURLFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadURLFromPasteboard::Reply(urlString, title), 0);
     return URL(ParsedURLString, urlString);
 }
 

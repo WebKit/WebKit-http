@@ -162,7 +162,8 @@ struct PaymentError {
         PhoneNumber,
         EmailAddress,
         Name,
-        Address,
+        PostalAddress,
+        AddressLines,
         Locality,
         PostalCode,
         AdministrativeArea,
@@ -180,12 +181,10 @@ struct PaymentAuthorizationResult {
 };
 
 struct PaymentMethodUpdate {
-    PaymentAuthorizationStatus status;
     PaymentRequest::TotalAndLineItems newTotalAndLineItems;
 };
 
 struct ShippingContactUpdate {
-    PaymentAuthorizationStatus status;
     Vector<PaymentError> errors;
 
     Vector<PaymentRequest::ShippingMethod> newShippingMethods;
@@ -193,9 +192,10 @@ struct ShippingContactUpdate {
 };
 
 struct ShippingMethodUpdate {
-    PaymentAuthorizationStatus status;
     PaymentRequest::TotalAndLineItems newTotalAndLineItems;
 };
+
+WEBCORE_EXPORT bool isFinalStateResult(const std::optional<PaymentAuthorizationResult>&);
 
 }
 
@@ -217,7 +217,8 @@ template<> struct EnumTraits<WebCore::PaymentError::ContactField> {
         WebCore::PaymentError::ContactField::PhoneNumber,
         WebCore::PaymentError::ContactField::EmailAddress,
         WebCore::PaymentError::ContactField::Name,
-        WebCore::PaymentError::ContactField::Address,
+        WebCore::PaymentError::ContactField::PostalAddress,
+        WebCore::PaymentError::ContactField::AddressLines,
         WebCore::PaymentError::ContactField::Locality,
         WebCore::PaymentError::ContactField::PostalCode,
         WebCore::PaymentError::ContactField::AdministrativeArea,

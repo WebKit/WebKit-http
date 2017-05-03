@@ -161,6 +161,7 @@ public:
 
     // Sends the message to WebProcess or NetworkProcess as approporiate for current process model.
     template<typename T> void sendToNetworkingProcess(T&& message);
+    template<typename T, typename U> void sendSyncToNetworkingProcess(T&& message, U&& reply);
     template<typename T> void sendToNetworkingProcessRelaunchingIfNecessary(T&& message);
 
     // Sends the message to WebProcess or DatabaseProcess as approporiate for current process model.
@@ -171,9 +172,12 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    API::WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
+    API::WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
 
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
+
+    void pageAddedToProcess(WebPageProxy&);
+    void pageRemovedFromProcess(WebPageProxy&);
 
     const String& injectedBundlePath() const { return m_configuration->injectedBundlePath(); }
 
@@ -254,14 +258,19 @@ public:
     void useTestingNetworkSession();
     bool isUsingTestingNetworkSession() const { return m_shouldUseTestingNetworkSession; }
 
+    void setAllowsAnySSLCertificateForWebSocket(bool);
+
     void clearCachedCredentials();
     void terminateDatabaseProcess();
+    void terminateNetworkProcess();
 
-    void reportWebContentCPUTime(int64_t cpuTime, uint64_t activityState);
+    void syncNetworkProcessCookies();
+
+    void reportWebContentCPUTime(Seconds cpuTime, uint64_t activityState);
 
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
-    WebProcessProxy& createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore*); // Will return an existing one if limit is met.
+    WebProcessProxy& createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore&); // Will return an existing one if limit is met.
     void warmInitialProcess();
 
     bool shouldTerminate(WebProcessProxy*);
@@ -387,7 +396,8 @@ public:
     bool resourceLoadStatisticsEnabled() { return m_resourceLoadStatisticsEnabled; }
     void setResourceLoadStatisticsEnabled(bool enabled) { m_resourceLoadStatisticsEnabled = enabled; }
 
-    bool alwaysRunsAtBackgroundPriority() { return m_alwaysRunsAtBackgroundPriority; }
+    bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
+    bool shouldTakeUIBackgroundAssertion() const { return m_shouldTakeUIBackgroundAssertion; }
 
 #if ENABLE(GAMEPAD)
     void gamepadConnected(const UIGamepad&);
@@ -410,7 +420,7 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    WebProcessProxy& createNewWebProcess(WebsiteDataStore*);
+    WebProcessProxy& createNewWebProcess(WebsiteDataStore&);
 
     void requestWebContentStatistics(StatisticsRequest*);
     void requestNetworkingStatistics(StatisticsRequest*);
@@ -519,7 +529,7 @@ private:
 
     RefPtr<WebIconDatabase> m_iconDatabase;
 
-    const RefPtr<API::WebsiteDataStore> m_websiteDataStore;
+    const Ref<API::WebsiteDataStore> m_websiteDataStore;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;
@@ -567,6 +577,7 @@ private:
     bool m_resourceLoadStatisticsEnabled { false };
     bool m_javaScriptConfigurationFileEnabled { false };
     bool m_alwaysRunsAtBackgroundPriority;
+    bool m_shouldTakeUIBackgroundAssertion;
 
     UserObservablePageCounter m_userObservablePageCounter;
     ProcessSuppressionDisabledCounter m_processSuppressionDisabledForPageCounter;
@@ -601,14 +612,19 @@ private:
         String mediaCacheDirectory;
         String mediaKeyStorageDirectory;
         String uiProcessBundleResourcePath;
+        String indexedDatabaseDirectory;
 
 #if PLATFORM(IOS)
         String cookieStorageDirectory;
         String containerCachesDirectory;
         String containerTemporaryDirectory;
 #endif
+
+        Vector<String> additionalWebProcessSandboxExtensionPaths;
     };
     Paths m_resolvedPaths;
+
+    HashMap<WebCore::SessionID, HashSet<WebPageProxy*>> m_sessionToPagesMap;
 };
 
 template<typename T>

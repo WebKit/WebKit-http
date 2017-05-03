@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <wtf/IndexKeyType.h>
 #include <wtf/Vector.h>
 
 namespace WTF {
@@ -70,18 +71,25 @@ public:
         return m_vector[index];
     }
     
-    Value& operator[](Key* key)
+    Value& operator[](const Key& key)
     {
-        return m_vector[key->index()];
+        return m_vector[IndexKeyType<Key>::index(key)];
     }
     
-    const Value& operator[](Key* key) const
+    const Value& operator[](const Key& key) const
     {
-        return m_vector[key->index()];
+        return m_vector[IndexKeyType<Key>::index(key)];
+    }
+    
+    template<typename PassedValue>
+    void append(const Key& key, PassedValue&& value)
+    {
+        RELEASE_ASSERT(IndexKeyType<Key>::index(key) == m_vector.size());
+        m_vector.append(std::forward<PassedValue>(value));
     }
 
 private:
-    Vector<Value> m_vector;
+    Vector<Value, 0, UnsafeVectorOverflow> m_vector;
 };
 
 } // namespace WTF

@@ -184,7 +184,7 @@ private:
     // Helper for min and max.
     template<typename ChecksFunctor>
     bool handleMinMax(int resultOperand, NodeType op, int registerOffset, int argumentCountIncludingThis, const ChecksFunctor& insertChecks);
-
+    
     void refineStatically(CallLinkStatus&, Node* callTarget);
     // Handle calls. This resolves issues surrounding inlining and intrinsics.
     enum Terminality { Terminal, NonTerminal };
@@ -625,7 +625,7 @@ private:
         if (!inlineStackEntry->m_inlineCallFrame && m_graph.needsFlushedThis())
             flushDirect(virtualRegisterForArgument(0));
         if (m_graph.needsScopeRegister())
-            flush(m_codeBlock->scopeRegister());
+            flushDirect(m_codeBlock->scopeRegister());
     }
 
     void flushForTerminal()
@@ -1370,7 +1370,7 @@ void ByteCodeParser::emitFunctionChecks(CallVariant callee, Node* callTarget, Vi
     if (thisArgumentReg.isValid())
         thisArgument = get(thisArgumentReg);
     else
-        thisArgument = 0;
+        thisArgument = nullptr;
 
     JSCell* calleeCell;
     Node* callTargetForCheck;
@@ -1383,7 +1383,9 @@ void ByteCodeParser::emitFunctionChecks(CallVariant callee, Node* callTarget, Vi
     }
     
     ASSERT(calleeCell);
-    addToGraph(CheckCell, OpInfo(m_graph.freeze(calleeCell)), callTargetForCheck, thisArgument);
+    addToGraph(CheckCell, OpInfo(m_graph.freeze(calleeCell)), callTargetForCheck);
+    if (thisArgument)
+        addToGraph(Phantom, thisArgument);
 }
 
 Node* ByteCodeParser::getArgumentCount()
@@ -2252,7 +2254,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
 
     case ArraySliceIntrinsic: {
 #if USE(JSVALUE32_64)
-        if (isX86()) {
+        if (isX86() || isMIPS()) {
             // There aren't enough registers for this to be done easily.
             return false;
         }
@@ -2359,6 +2361,94 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         default:
             return false;
         }
+    }
+        
+    case AtomicsAddIntrinsic:
+    case AtomicsAndIntrinsic:
+    case AtomicsCompareExchangeIntrinsic:
+    case AtomicsExchangeIntrinsic:
+    case AtomicsIsLockFreeIntrinsic:
+    case AtomicsLoadIntrinsic:
+    case AtomicsOrIntrinsic:
+    case AtomicsStoreIntrinsic:
+    case AtomicsSubIntrinsic:
+    case AtomicsXorIntrinsic: {
+        if (!is64Bit())
+            return false;
+        
+        NodeType op = LastNodeType;
+        unsigned numArgs = 0; // Number of actual args; we add one for the backing store pointer.
+        switch (intrinsic) {
+        case AtomicsAddIntrinsic:
+            op = AtomicsAdd;
+            numArgs = 3;
+            break;
+        case AtomicsAndIntrinsic:
+            op = AtomicsAnd;
+            numArgs = 3;
+            break;
+        case AtomicsCompareExchangeIntrinsic:
+            op = AtomicsCompareExchange;
+            numArgs = 4;
+            break;
+        case AtomicsExchangeIntrinsic:
+            op = AtomicsExchange;
+            numArgs = 3;
+            break;
+        case AtomicsIsLockFreeIntrinsic:
+            // This gets no backing store, but we need no special logic for this since this also does
+            // not need varargs.
+            op = AtomicsIsLockFree;
+            numArgs = 1;
+            break;
+        case AtomicsLoadIntrinsic:
+            op = AtomicsLoad;
+            numArgs = 2;
+            break;
+        case AtomicsOrIntrinsic:
+            op = AtomicsOr;
+            numArgs = 3;
+            break;
+        case AtomicsStoreIntrinsic:
+            op = AtomicsStore;
+            numArgs = 3;
+            break;
+        case AtomicsSubIntrinsic:
+            op = AtomicsSub;
+            numArgs = 3;
+            break;
+        case AtomicsXorIntrinsic:
+            op = AtomicsXor;
+            numArgs = 3;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+        
+        if (static_cast<unsigned>(argumentCountIncludingThis) < 1 + numArgs)
+            return false;
+        
+        insertChecks();
+        
+        Vector<Node*, 3> args;
+        for (unsigned i = 0; i < numArgs; ++i)
+            args.append(get(virtualRegisterForArgument(1 + i, registerOffset)));
+        
+        Node* result;
+        if (numArgs + 1 <= 3) {
+            while (args.size() < 3)
+                args.append(nullptr);
+            result = addToGraph(op, OpInfo(ArrayMode(Array::SelectUsingPredictions).asWord()), OpInfo(prediction), args[0], args[1], args[2]);
+        } else {
+            for (Node* node : args)
+                addVarArgChild(node);
+            addVarArgChild(nullptr);
+            result = addToGraph(Node::VarArg, op, OpInfo(ArrayMode(Array::SelectUsingPredictions).asWord()), OpInfo(prediction));
+        }
+        
+        set(VirtualRegister(resultOperand), result);
+        return true;
     }
 
     case ParseIntIntrinsic: {
@@ -2711,7 +2801,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
 
-    case ToLowerCaseIntrinsic: {
+    case StringPrototypeToLowerCaseIntrinsic: {
         if (argumentCountIncludingThis != 1)
             return false;
 
@@ -2722,6 +2812,26 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         Node* thisString = get(virtualRegisterForArgument(0, registerOffset));
         Node* result = addToGraph(ToLowerCase, thisString);
         set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
+    case NumberPrototypeToStringIntrinsic: {
+        if (argumentCountIncludingThis != 1 && argumentCountIncludingThis != 2)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* thisNumber = get(virtualRegisterForArgument(0, registerOffset));
+        if (argumentCountIncludingThis == 1) {
+            Node* result = addToGraph(ToString, thisNumber);
+            set(VirtualRegister(resultOperand), result);
+        } else {
+            Node* radix = get(virtualRegisterForArgument(1, registerOffset));
+            Node* result = addToGraph(NumberToStringWithRadix, thisNumber, radix);
+            set(VirtualRegister(resultOperand), result);
+        }
         return true;
     }
 
@@ -3592,9 +3702,9 @@ void ByteCodeParser::handleGetById(
 
     if (handleIntrinsicGetter(destinationOperand, variant, base,
             [&] () {
-                addToGraph(CheckCell, OpInfo(m_graph.freeze(variant.intrinsicFunction())), getter, base);
+                addToGraph(CheckCell, OpInfo(m_graph.freeze(variant.intrinsicFunction())), getter);
             })) {
-        addToGraph(Phantom, getter);
+        addToGraph(Phantom, base);
         return;
     }
 
@@ -5095,6 +5205,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 break;
             }
             NEXT_OPCODE(op_resolve_scope);
+        }
+        case op_resolve_scope_for_hoisting_func_decl_in_eval: {
+            int dst = currentInstruction[1].u.operand;
+            int scope = currentInstruction[2].u.operand;
+            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+
+            set(VirtualRegister(dst), addToGraph(ResolveScopeForHoistingFuncDeclInEval, OpInfo(identifierNumber), get(VirtualRegister(scope))));
+
+            NEXT_OPCODE(op_resolve_scope_for_hoisting_func_decl_in_eval);
         }
 
         case op_get_from_scope: {

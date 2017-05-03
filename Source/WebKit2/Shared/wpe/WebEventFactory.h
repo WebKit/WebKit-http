@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebEventFactory_h
-#define WebEventFactory_h
+#pragma once
 
 #include "WebEvent.h"
 
@@ -40,13 +39,11 @@ namespace WebKit {
 class WebEventFactory {
 public:
     static WebKeyboardEvent createWebKeyboardEvent(struct wpe_input_keyboard_event*);
-    static WebMouseEvent createWebMouseEvent(struct wpe_input_pointer_event*);
-    static WebWheelEvent createWebWheelEvent(struct wpe_input_axis_event*);
+    static WebMouseEvent createWebMouseEvent(struct wpe_input_pointer_event*, float deviceScaleFactor);
+    static WebWheelEvent createWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
 #if ENABLE(TOUCH_EVENTS)
-    static WebTouchEvent createWebTouchEvent(struct wpe_input_touch_event*);
+    static WebTouchEvent createWebTouchEvent(struct wpe_input_touch_event*, float deviceScaleFactor);
 #endif
 };
 
 } // namespace WebKit
-
-#endif // WebEventFactory_h

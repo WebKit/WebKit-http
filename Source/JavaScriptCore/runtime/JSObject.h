@@ -36,6 +36,7 @@
 #include "Heap.h"
 #include "IndexingHeaderInlines.h"
 #include "JSCell.h"
+#include "ObjectInitializationScope.h"
 #include "PropertySlot.h"
 #include "PropertyStorage.h"
 #include "PutDirectIndexMode.h"
@@ -420,15 +421,16 @@ public:
         }
     }
 
-    void initializeIndex(VM& vm, unsigned i, JSValue v)
+    void initializeIndex(ObjectInitializationScope& scope, unsigned i, JSValue v)
     {
-        initializeIndex(vm, i, v, indexingType());
+        initializeIndex(scope, i, v, indexingType());
     }
 
     // NOTE: Clients of this method may call it more than once for any index, and this is supposed
     // to work.
-    ALWAYS_INLINE void initializeIndex(VM& vm, unsigned i, JSValue v, IndexingType indexingType)
+    ALWAYS_INLINE void initializeIndex(ObjectInitializationScope& scope, unsigned i, JSValue v, IndexingType indexingType)
     {
+        VM& vm = scope.vm();
         Butterfly* butterfly = m_butterfly.get();
         switch (indexingType) {
         case ALL_UNDECIDED_INDEXING_TYPES: {
@@ -477,14 +479,14 @@ public:
         }
     }
         
-    void initializeIndexWithoutBarrier(unsigned i, JSValue v)
+    void initializeIndexWithoutBarrier(ObjectInitializationScope& scope, unsigned i, JSValue v)
     {
-        initializeIndexWithoutBarrier(i, v, indexingType());
+        initializeIndexWithoutBarrier(scope, i, v, indexingType());
     }
 
     // This version of initializeIndex is for cases where you know that you will not need any
     // barriers. This implies not having any data format conversions.
-    ALWAYS_INLINE void initializeIndexWithoutBarrier(unsigned i, JSValue v, IndexingType indexingType)
+    ALWAYS_INLINE void initializeIndexWithoutBarrier(ObjectInitializationScope&, unsigned i, JSValue v, IndexingType indexingType)
     {
         Butterfly* butterfly = m_butterfly.get();
         switch (indexingType) {
@@ -705,9 +707,10 @@ public:
     JS_EXPORT_PRIVATE bool putDirectNativeIntrinsicGetter(VM&, JSGlobalObject*, Identifier, NativeFunction, Intrinsic, unsigned attributes);
     JS_EXPORT_PRIVATE bool putDirectNativeFunction(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
     JS_EXPORT_PRIVATE bool putDirectNativeFunction(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, const DOMJIT::Signature*, unsigned attributes);
+    JS_EXPORT_PRIVATE void putDirectNativeFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
+
     JS_EXPORT_PRIVATE JSFunction* putDirectBuiltinFunction(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
     JSFunction* putDirectBuiltinFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
-    JS_EXPORT_PRIVATE void putDirectNativeFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
 
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
@@ -1080,9 +1083,9 @@ public:
     typedef JSObject Base;
     static const unsigned StructureFlags = Base::StructureFlags;
 
-    static size_t allocationSize(size_t inlineCapacity)
+    static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
-        return sizeof(JSObject) + inlineCapacity * sizeof(WriteBarrierBase<Unknown>);
+        return (sizeof(JSObject) + inlineCapacity * sizeof(WriteBarrierBase<Unknown>)).unsafeGet();
     }
 
     static inline const TypeInfo typeInfo() { return TypeInfo(FinalObjectType, StructureFlags); }
@@ -1580,6 +1583,5 @@ JS_EXPORT_PRIVATE NEVER_INLINE bool ordinarySetSlow(ExecState*, JSObject*, Prope
 
 #define JSC_NATIVE_GETTER(jsName, cppName, attributes) \
     JSC_NATIVE_INTRINSIC_GETTER((jsName), (cppName), (attributes), NoIntrinsic)
-
 
 } // namespace JSC

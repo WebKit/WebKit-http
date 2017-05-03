@@ -54,9 +54,6 @@ webkit.org/b/71298 accessibility/mac/iframe-with-title-correct-hierarchy.html
 # This test has been skipped for a long time. Temporarily marking as flaky to see what bots think.
 webkit.org/b/48354 compositing/iframes/iframe-src-change.html [ Pass Failure ]
 
-# Perhaps this test just needs new expectations?
-webkit.org/b/48354 compositing/iframes/iframe-size-from-zero.html [ Failure ]
-
 # This test has been skipped for a long time. Temporarily marking as flaky to see what bots think.
 webkit.org/b/58183 editing/execCommand/convert-style-elements-to-spans.html [ Pass Failure ]
 
@@ -207,9 +204,7 @@ webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeou
 
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-cancel.html [ Pass Failure ]
 
-webkit.org/b/148890 http/tests/contentfiltering/load-substitute-data-from-appcache.html [ Pass Crash ]
-# One the bug is fixed, the below test will need a Pass expectation, because it's skipped in root TestExpectations.
-webkit.org/b/148890 http/tests/appcache/decide-navigation-policy-after-delay.html [ Pass Crash ]
+http/tests/appcache/decide-navigation-policy-after-delay.html [ Pass ]
 
 # DatabaseProcess cannot open some of these database filenames (DRT can open the exact same database filenames)
 webkit.org/b/154681 storage/indexeddb/database-odd-names.html
@@ -356,9 +351,6 @@ editing/pasteboard/emacs-cntl-y-001.html
 http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Failure ]
 http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Failure ]
 http/tests/security/video-cross-origin-readback.html
-
-# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
-http/tests/security/contentTypeOptions
 
 # Unexpected redirection happens.
 http/tests/loading/redirect-methods.html
@@ -699,12 +691,11 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 
 # Resource Load Statistics are only supported in WebKit2.
-# Marking first five as timeout until <https://bugs.webkit.org/show_bug.cgi?id=168262> is fixed.
 http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Pass Timeout ]
-http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass Timeout ]
-http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Pass Timeout ]
-http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Pass Timeout ]
-http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Pass Timeout ]
+http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]

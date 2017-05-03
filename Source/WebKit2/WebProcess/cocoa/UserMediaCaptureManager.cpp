@@ -38,6 +38,7 @@
 #include <WebCore/MediaConstraintsImpl.h>
 #include <WebCore/RealtimeMediaSourceCenter.h>
 #include <WebCore/WebAudioBufferList.h>
+#include <WebCore/WebAudioSourceProviderAVFObjC.h>
 
 using namespace WebCore;
 
@@ -65,8 +66,11 @@ public:
     }
 
     SharedRingBufferStorage& storage() { return static_cast<SharedRingBufferStorage&>(m_ringBuffer.storage()); }
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final { return m_capabilities; }
-    void setCapabilities(RefPtr<RealtimeMediaSourceCapabilities> capabilities) { m_capabilities = capabilities; }
+    const RealtimeMediaSourceCapabilities& capabilities() const final {
+        if (!m_capabilities)
+            m_capabilities = m_manager.capabilities(m_id);
+        return m_capabilities.value();
+    }
 
     const RealtimeMediaSourceSettings& settings() const final { return m_settings; }
     void setSettings(const RealtimeMediaSourceSettings& settings)
@@ -79,6 +83,9 @@ public:
     void setStorage(const SharedMemory::Handle& handle, const WebCore::CAAudioStreamDescription& description, uint64_t numberOfFrames)
     {
         m_description = description;
+        if (m_audioSourceProvider)
+            m_audioSourceProvider->prepare(&m_description.streamDescription());
+
         if (handle.isNull()) {
             m_ringBuffer.deallocate();
             storage().setReadOnly(false);
@@ -107,10 +114,36 @@ public:
             observer->audioSamplesAvailable(time, audioData, m_description, numberOfFrames);
     }
 
+    virtual void setMuted(bool muted)
+    {
+        if (m_muted == muted)
+            return;
+
+        m_muted = muted;
+        m_manager.setMuted(m_id, m_muted);
+    }
+
+    virtual void setEnabled(bool enabled)
+    {
+        if (m_enabled == enabled)
+            return;
+
+        m_enabled = enabled;
+        m_manager.setEnabled(m_id, m_enabled);
+    }
+
     void startProducingData() final { m_manager.startProducingData(m_id); }
     void stopProducingData() final { m_manager.stopProducingData(m_id); }
+    bool isCaptureSource() const final { return true; }
 
-    AudioSourceProvider* audioSourceProvider() final { return nullptr; }
+    AudioSourceProvider* audioSourceProvider() final {
+        if (!m_audioSourceProvider) {
+            m_audioSourceProvider = WebAudioSourceProviderAVFObjC::create(*this);
+            if (m_description.format() != AudioStreamDescription::None)
+                m_audioSourceProvider->prepare(&m_description.streamDescription());
+        }
+        return m_audioSourceProvider.get();
+    }
 
 private:
     // RealtimeMediaSource
@@ -119,10 +152,11 @@ private:
 
     uint64_t m_id;
     UserMediaCaptureManager& m_manager;
-    RefPtr<RealtimeMediaSourceCapabilities> m_capabilities;
+    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
     RealtimeMediaSourceSettings m_settings;
     CAAudioStreamDescription m_description;
     CARingBuffer m_ringBuffer;
+    RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;
 };
 
 UserMediaCaptureManager::UserMediaCaptureManager(WebProcess* process)
@@ -148,10 +182,10 @@ void UserMediaCaptureManager::initialize(const WebProcessCreationParameters& par
         RealtimeMediaSourceCenter::singleton().setAudioFactory(*this);
 }
 
-RefPtr<RealtimeMediaSource> UserMediaCaptureManager::createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice& device, const MediaConstraints* constraints, String& invalidConstraints)
+WebCore::CaptureSourceOrError UserMediaCaptureManager::createCaptureSource(const String& deviceID, WebCore::RealtimeMediaSource::Type sourceType, const WebCore::MediaConstraints* constraints)
 {
     if (!constraints)
-        return nullptr;
+        return { };
 
     uint64_t id = nextSessionID();
     MediaConstraintsData constraintsData;
@@ -160,11 +194,13 @@ RefPtr<RealtimeMediaSource> UserMediaCaptureManager::createMediaSourceForCapture
     constraintsData.isValid = constraints->isValid();
     bool succeeded;
 
-    m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, device, constraintsData), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, invalidConstraints), 0);
+    String errorMessage;
+    if (!m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, deviceID, sourceType, constraintsData), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, errorMessage), 0))
+        return WTFMove(errorMessage);
 
-    auto source = adoptRef(new Source(String::number(id), RealtimeMediaSource::Type::Audio, device.label(), id, *this));
-    m_sources.set(id, source);
-    return source;
+    auto source = adoptRef(*new Source(String::number(id), sourceType, emptyString(), id, *this));
+    m_sources.set(id, source.copyRef());
+    return WebCore::CaptureSourceOrError(WTFMove(source));
 }
 
 void UserMediaCaptureManager::sourceStopped(uint64_t id)
@@ -219,6 +255,23 @@ void UserMediaCaptureManager::startProducingData(uint64_t id)
 void UserMediaCaptureManager::stopProducingData(uint64_t id)
 {
     m_process.send(Messages::UserMediaCaptureManagerProxy::StopProducingData(id), 0);
+}
+
+WebCore::RealtimeMediaSourceCapabilities&& UserMediaCaptureManager::capabilities(uint64_t id)
+{
+    WebCore::RealtimeMediaSourceCapabilities capabilities;
+    m_process.sendSync(Messages::UserMediaCaptureManagerProxy::Capabilities(id), Messages::UserMediaCaptureManagerProxy::Capabilities::Reply(capabilities), 0);
+    return WTFMove(capabilities);
+}
+
+void UserMediaCaptureManager::setMuted(uint64_t id, bool muted)
+{
+    m_process.send(Messages::UserMediaCaptureManagerProxy::SetMuted(id, muted), 0);
+}
+
+void UserMediaCaptureManager::setEnabled(uint64_t id, bool enabled)
+{
+    m_process.send(Messages::UserMediaCaptureManagerProxy::SetEnabled(id, enabled), 0);
 }
 
 }

@@ -27,17 +27,10 @@ namespace WebCore {
 
 std::unique_ptr<GLContextEGL> GLContextEGL::createWPEContext(PlatformDisplay& platformDisplay, EGLContext sharingContext)
 {
-    fprintf(stderr, "GLContextEGL::createWPEContext() platformDisplay %p sharingContext %p\n",
-        &platformDisplay, sharingContext);
-
     auto offscreenTarget = downcast<PlatformDisplayWPE>(platformDisplay).createEGLOffscreenTarget();
-
     auto context = createWindowContext(offscreenTarget->nativeWindow(), platformDisplay, sharingContext);
-    fprintf(stderr, "\tcontext %p\n", context.get());
-
     if (context)
         context->m_wpeTarget = WTFMove(offscreenTarget);
-
     return context;
 }
 

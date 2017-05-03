@@ -48,9 +48,11 @@ small-caption
 -apple-system-short-footnote
 -apple-system-short-caption1
 -apple-system-tall-body
+-apple-system-title0
 -apple-system-title1
 -apple-system-title2
 -apple-system-title3
+-apple-system-title4
 #endif
 
 // This has to go after the -apple-system versions.
@@ -419,27 +421,31 @@ inline-grid
 // The order here must match the order of the ECursor enum in RenderStyleConstants.h.
 //
 auto
-crosshair
 default
-pointer
-move
-vertical-text
-cell
+// none
 context-menu
+help
+pointer
+progress
+wait
+cell
+crosshair
+text
+vertical-text
 alias
 // copy
-progress
+move
 no-drop
 not-allowed
-zoom-in
-zoom-out
+grab
+grabbing
 e-resize
+n-resize
 ne-resize
 nw-resize
-n-resize
+s-resize
 se-resize
 sw-resize
-s-resize
 w-resize
 ew-resize
 ns-resize
@@ -447,15 +453,13 @@ nesw-resize
 nwse-resize
 col-resize
 row-resize
-text
-wait
-help
 all-scroll
+zoom-in
+zoom-out
 -webkit-grab
 -webkit-grabbing
 -webkit-zoom-in
 -webkit-zoom-out
-// none
 //
 // CSS_PROP_CURSOR_VISIBILITY:
 // auto
@@ -588,6 +592,7 @@ space-evenly
 // flex-end
 // center
 // baseline
+first-baseline
 last-baseline
 // stretch
 
@@ -606,7 +611,8 @@ last-baseline
 // auto
 // stretch
 // baseline
-// last-baseline
+// last baseline
+// first baseline
 // center
 // start
 // end
@@ -836,6 +842,11 @@ padding-box
 //
 var
 -internal-variable-value
+
+//
+// UA Constants
+//
+constant
 
 //
 // CSS_PROP_BREAK_BEFORE/AFTER/INSIDE

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #include "LibWebRTCProvider.h"
 #include "PeerConnectionBackend.h"
+#include "RTCRtpReceiver.h"
 #include "RealtimeOutgoingAudioSource.h"
 #include "RealtimeOutgoingVideoSource.h"
 
@@ -63,7 +64,7 @@ public:
     webrtc::PeerConnectionInterface& backend() const { ASSERT(m_backend); return *m_backend.get(); }
     void doSetLocalDescription(RTCSessionDescription&);
     void doSetRemoteDescription(RTCSessionDescription&);
-    void doCreateOffer();
+    void doCreateOffer(const RTCOfferOptions&);
     void doCreateAnswer();
     void getStats(MediaStreamTrack*, const DeferredPromise&);
     std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const RTCDataChannelInit&);
@@ -79,7 +80,9 @@ public:
     RefPtr<RTCSessionDescription> pendingLocalDescription() const;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
 
-    void addTrack(MediaStreamTrack&, const Vector<String>&);
+    void addTrack(RTCRtpSender&, MediaStreamTrack&, const Vector<String>&);
+    void removeTrack(RTCRtpSender&);
+    RTCRtpParameters getRTCRtpSenderParameters(RTCRtpSender&);
 
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);
@@ -103,11 +106,11 @@ private:
     void setRemoteSessionDescriptionSucceeded();
     void setRemoteSessionDescriptionFailed(const std::string&);
     void addRemoteStream(webrtc::MediaStreamInterface&);
-    void addRemoteTrack(const webrtc::RtpReceiverInterface&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&);
+    void addRemoteTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&);
     void removeRemoteStream(webrtc::MediaStreamInterface&);
     void addDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>&&);
 
-    MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface*);
+    MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface&);
 
     int AddRef() const { ref(); return static_cast<int>(refCount()); }
     int Release() const { deref(); return static_cast<int>(refCount()); }
@@ -169,12 +172,14 @@ private:
     };
 
     LibWebRTCPeerConnectionBackend& m_peerConnectionBackend;
+    webrtc::PeerConnectionFactoryInterface& m_peerConnectionFactory;
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> m_backend;
 
     CreateSessionDescriptionObserver m_createSessionDescriptionObserver;
     SetLocalSessionDescriptionObserver m_setLocalSessionDescriptionObserver;
     SetRemoteSessionDescriptionObserver m_setRemoteSessionDescriptionObserver;
     HashMap<webrtc::MediaStreamInterface*, MediaStream*> m_streams;
+    HashMap<RTCRtpSender*, rtc::scoped_refptr<webrtc::RtpSenderInterface>> m_senders;
 
     bool m_isInitiator { false };
 };

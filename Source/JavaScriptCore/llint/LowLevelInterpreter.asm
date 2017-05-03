@@ -345,24 +345,24 @@ const SlowPutArrayStorageShape = 0x0C
 # Type constants.
 const StringType = 6
 const SymbolType = 7
-const ObjectType = 23
-const FinalObjectType = 24
-const JSFunctionType = 26
-const ArrayType = 34
-const DerivedArrayType = 35
-const ProxyObjectType = 53
+const ObjectType = 24
+const FinalObjectType = 25
+const JSFunctionType = 27
+const ArrayType = 35
+const DerivedArrayType = 36
+const ProxyObjectType = 54
 
 # The typed array types need to be numbered in a particular order because of the manually written
 # switch statement in get_by_val and put_by_val.
-const Int8ArrayType = 36
-const Int16ArrayType = 37
-const Int32ArrayType = 38
-const Uint8ArrayType = 39
-const Uint8ClampedArrayType = 40
-const Uint16ArrayType = 41
-const Uint32ArrayType = 42
-const Float32ArrayType = 43
-const Float64ArrayType = 44
+const Int8ArrayType = 37
+const Int16ArrayType = 38
+const Int32ArrayType = 39
+const Uint8ArrayType = 40
+const Uint8ClampedArrayType = 41
+const Uint16ArrayType = 42
+const Uint32ArrayType = 43
+const Float32ArrayType = 44
+const Float64ArrayType = 45
 
 const FirstArrayType = Int8ArrayType
 const LastArrayType = Float64ArrayType
@@ -1166,15 +1166,8 @@ macro setEntryAddress(index, label)
         pcrtoaddr label, t1
         move index, t4
         storep t1, [a0, t4, 8]
-    elsif ARMv7 or ARMv7_TRADITIONAL
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
         mvlbl (label - _relativePCBase), t4
-        addp t4, t1, t4
-        move index, t3
-        storep t4, [a0, t3, 4]
-    elsif ARM
-        ldlbl _relativePCBase, t3
-        ldlbl label, t4
-        subp t3, t4
         addp t4, t1, t4
         move index, t3
         storep t4, [a0, t3, 4]
@@ -1837,6 +1830,11 @@ _llint_op_put_by_val_with_this:
     traceExecution()
     callOpcodeSlowPath(_slow_path_put_by_val_with_this)
     dispatch(5)
+
+_llint_op_resolve_scope_for_hoisting_func_decl_in_eval:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_resolve_scope_for_hoisting_func_decl_in_eval)
+    dispatch(4)
 
 # Lastly, make sure that we can link even though we don't support all opcodes.
 # These opcodes should never arise when using LLInt or either JIT. We assert

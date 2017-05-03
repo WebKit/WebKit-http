@@ -31,6 +31,10 @@
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/SecurityOriginData.h>
 
+#if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
+#include <WebCore/RealtimeMediaSourceCenterMac.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -242,34 +246,34 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
         auto topLevelOrigin = API::SecurityOrigin::create(SecurityOriginData::fromDatabaseIdentifier(topLevelDocumentOriginIdentifier)->securityOrigin());
         auto request = createRequest(userMediaID, frameID, userMediaDocumentOriginIdentifier, topLevelDocumentOriginIdentifier, audioDeviceUIDs, videoDeviceUIDs);
 
-        String authorizedAudioDevice;
-        String authorizedVideoDevice;
+        bool authorizedForAudio = false;
+        bool authorizedForVideo = false;
         auto& fameState = stateForRequest(request);
         for (auto deviceUID : audioDeviceUIDs) {
             if (fameState.hasPermissionToUseCaptureDevice(deviceUID)) {
-                authorizedAudioDevice = deviceUID;
+                authorizedForAudio = true;
                 break;
             }
         }
         for (auto deviceUID : videoDeviceUIDs) {
             if (fameState.hasPermissionToUseCaptureDevice(deviceUID)) {
-                authorizedVideoDevice = deviceUID;
+                authorizedForVideo = true;
                 break;
             }
         }
 
-        if (audioDeviceUIDs.isEmpty() == authorizedAudioDevice.isEmpty() && videoDeviceUIDs.isEmpty() == authorizedVideoDevice.isEmpty()) {
-            userMediaAccessWasGranted(userMediaID, authorizedAudioDevice, authorizedVideoDevice);
+        if (authorizedForAudio == !audioDeviceUIDs.isEmpty() && authorizedForVideo == !videoDeviceUIDs.isEmpty()) {
+            userMediaAccessWasGranted(userMediaID, authorizedForAudio ? audioDeviceUIDs[0] : emptyString(), authorizedForVideo ? videoDeviceUIDs[0] : emptyString());
             return;
         }
 
         if (!m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *m_page.process().webFrame(frameID), *userMediaOrigin.get(), *topLevelOrigin.get(), request.get()))
             userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);
-        
+
     };
 
-    auto audioConstraints = MediaConstraintsImpl::create(audioConstraintsData);
-    auto videoConstraints = MediaConstraintsImpl::create(videoConstraintsData);
+    auto audioConstraints = MediaConstraintsImpl::create(MediaConstraintsData(audioConstraintsData));
+    auto videoConstraints = MediaConstraintsImpl::create(MediaConstraintsData(videoConstraintsData));
 
     syncWithWebCorePrefs();
     RealtimeMediaSourceCenter::singleton().validateRequestConstraints(validHandler, invalidHandler, audioConstraints, videoConstraints);
@@ -329,16 +333,11 @@ void UserMediaPermissionRequestManagerProxy::syncWithWebCorePrefs() const
     // this is a noop if the preference hasn't changed since the last time this was called.
     bool mockDevicesEnabled = m_page.preferences().mockCaptureDevicesEnabled();
     WebCore::MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(mockDevicesEnabled);
+
+#if USE(AVFOUNDATION)
+    bool useAVFoundationAudioCapture = m_page.preferences().useAVFoundationAudioCapture();
+    WebCore::RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture(useAVFoundationAudioCapture);
 #endif
-}
-
-void UserMediaPermissionRequestManagerProxy::stopCapture()
-{
-    if (!m_page.isValid())
-        return;
-
-#if ENABLE(MEDIA_STREAM)
-    m_page.setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
 #endif
 }
 

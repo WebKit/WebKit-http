@@ -110,9 +110,9 @@ namespace WebCore {
 using namespace HTMLNames;
 
 // Post value change notifications for password fields or elements contained in password fields at a 40hz interval to thwart analysis of typing cadence
-static double AccessibilityPasswordValueChangeNotificationInterval = 0.025;
-static double AccessibilityLiveRegionChangedNotificationInterval = 0.020;
-static double AccessibilityFocusAriaModalNodeNotificationInterval = 0.050;
+static const Seconds accessibilityPasswordValueChangeNotificationInterval { 25_ms };
+static const Seconds accessibilityLiveRegionChangedNotificationInterval { 20_ms };
+static const Seconds accessibilityFocusAriaModalNodeNotificationInterval { 50_ms };
 
 AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID id) const
 {
@@ -711,8 +711,7 @@ void AXObjectCache::remove(RenderObject* renderer)
     AXID axID = m_renderObjectMapping.get(renderer);
     remove(axID);
     m_renderObjectMapping.remove(renderer);
-    if (is<RenderBlock>(*renderer))
-        m_deferredIsIgnoredChangeList.remove(downcast<RenderBlock>(renderer));
+    m_deferredCacheUpdateList.remove(renderer);
 }
 
 void AXObjectCache::remove(Node* node)
@@ -998,7 +997,7 @@ void AXObjectCache::postNotification(AccessibilityObject* object, Document* docu
     if (postType == PostAsynchronously) {
         m_notificationsToPost.append(std::make_pair(object, notification));
         if (!m_notificationPostTimer.isActive())
-            m_notificationPostTimer.startOneShot(0);
+            m_notificationPostTimer.startOneShot(0_s);
     } else
         postPlatformNotification(object, notification);
 }
@@ -1311,7 +1310,7 @@ bool AXObjectCache::enqueuePasswordValueChangeNotification(AccessibilityObject* 
 
     m_passwordNotificationsToPost.add(observableObject);
     if (!m_passwordNotificationPostTimer.isActive())
-        m_passwordNotificationPostTimer.startOneShot(AccessibilityPasswordValueChangeNotificationInterval);
+        m_passwordNotificationPostTimer.startOneShot(accessibilityPasswordValueChangeNotificationInterval);
 
     return true;
 }
@@ -1338,7 +1337,7 @@ void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject* object
     if (!m_liveRegionObjectsSet.contains(object))
         m_liveRegionObjectsSet.add(object);
 
-    m_liveRegionChangedPostTimer.startOneShot(AccessibilityLiveRegionChangedNotificationInterval);
+    m_liveRegionChangedPostTimer.startOneShot(accessibilityLiveRegionChangedNotificationInterval);
 }
 
 void AXObjectCache::liveRegionChangedNotificationPostTimerFired()
@@ -1372,7 +1371,7 @@ void AXObjectCache::focusAriaModalNode()
     if (m_focusAriaModalNodeTimer.isActive())
         m_focusAriaModalNodeTimer.stop();
     
-    m_focusAriaModalNodeTimer.startOneShot(AccessibilityFocusAriaModalNodeNotificationInterval);
+    m_focusAriaModalNodeTimer.startOneShot(accessibilityFocusAriaModalNodeNotificationInterval);
 }
 
 void AXObjectCache::focusAriaModalNodeTimerFired()
@@ -1457,6 +1456,8 @@ void AXObjectCache::handleAttributeChanged(const QualifiedName& attrName, Elemen
         postNotification(element, AXObjectCache::AXInvalidStatusChanged);
     else if (attrName == aria_modalAttr)
         handleAriaModalChange(element);
+    else if (attrName == aria_currentAttr)
+        postNotification(element, AXObjectCache::AXCurrentChanged);
     else
         postNotification(element, AXObjectCache::AXAriaAttributeChanged);
 }
@@ -1621,8 +1622,8 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
                     } else if (Element *shadowHost = currentNode->shadowHost()) {
                         // Since we are entering text controls, we should set the currentNode
                         // to be the shadow host when there's no content.
-                        if (nodeIsTextControl(shadowHost)) {
-                            currentNode = currentNode->shadowHost();
+                        if (nodeIsTextControl(shadowHost) && currentNode->isShadowRoot()) {
+                            currentNode = shadowHost;
                             continue;
                         }
                     } else if (currentNode != previousNode) {
@@ -2621,11 +2622,28 @@ CharacterOffset AXObjectCache::characterOffsetForIndex(int index, const Accessib
     if (!obj)
         return CharacterOffset();
     
+    VisiblePosition vp = obj->visiblePositionForIndex(index);
+    CharacterOffset validate = characterOffsetFromVisiblePosition(vp);
+    // In text control, VisiblePosition always gives the before position of a
+    // BR node, while CharacterOffset will do the opposite.
+    if (obj->isTextControl() && characterOffsetNodeIsBR(validate))
+        validate.offset = 1;
+    
     RefPtr<Range> range = obj->elementRange();
     CharacterOffset start = startOrEndCharacterOffsetForRange(range, true, true);
     CharacterOffset end = startOrEndCharacterOffsetForRange(range, false, true);
     CharacterOffset result = start;
     for (int i = 0; i < index; i++) {
+        if (result.isEqual(validate)) {
+            // Do not include the new line character, always move the offset to the start of next node.
+            if ((validate.node->isTextNode() || characterOffsetNodeIsBR(validate))) {
+                CharacterOffset next = nextCharacterOffset(validate, false);
+                if (!next.isNull() && !next.offset && rootAXEditableElement(next.node) == rootAXEditableElement(validate.node))
+                    result = next;
+            }
+            break;
+        }
+        
         result = nextCharacterOffset(result, false);
         if (result.isEqual(end))
             break;
@@ -2681,16 +2699,27 @@ bool AXObjectCache::nodeIsTextControl(const Node* node)
     return axObject && axObject->isTextControl();
 }
     
-void AXObjectCache::performDeferredIsIgnoredChange()
+void AXObjectCache::performDeferredCacheUpdate()
 {
-    for (auto* renderer : m_deferredIsIgnoredChangeList)
-        recomputeIsIgnored(renderer);
-    m_deferredIsIgnoredChangeList.clear();
+    for (auto* renderer : m_deferredCacheUpdateList) {
+        if (is<RenderBlock>(*renderer))
+            recomputeIsIgnored(renderer);
+        else if (is<RenderText>(*renderer))
+            textChanged(renderer);
+        else
+            ASSERT_NOT_REACHED();
+    }
+    m_deferredCacheUpdateList.clear();
 }
 
 void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock& renderer)
 {
-    m_deferredIsIgnoredChangeList.add(&renderer);
+    m_deferredCacheUpdateList.add(&renderer);
+}
+
+void AXObjectCache::deferTextChanged(RenderText& renderer)
+{
+    m_deferredCacheUpdateList.add(&renderer);
 }
 
 bool isNodeAriaVisible(Node* node)

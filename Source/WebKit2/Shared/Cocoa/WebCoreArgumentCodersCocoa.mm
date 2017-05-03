@@ -222,14 +222,11 @@ bool ArgumentCoder<WebCore::PaymentMethod>::decode(Decoder& decoder, WebCore::Pa
 
 void ArgumentCoder<WebCore::PaymentMethodUpdate>::encode(Encoder& encoder, const WebCore::PaymentMethodUpdate& update)
 {
-    encoder << update.status;
     encoder << update.newTotalAndLineItems;
 }
 
 bool ArgumentCoder<WebCore::PaymentMethodUpdate>::decode(Decoder& decoder, WebCore::PaymentMethodUpdate& update)
 {
-    if (!decoder.decode(update.status))
-        return false;
     if (!decoder.decode(update.newTotalAndLineItems))
         return false;
 
@@ -424,7 +421,6 @@ bool ArgumentCoder<PaymentRequest::TotalAndLineItems>::decode(Decoder& decoder, 
 
 void ArgumentCoder<WebCore::ShippingContactUpdate>::encode(Encoder& encoder, const WebCore::ShippingContactUpdate& update)
 {
-    encoder << update.status;
     encoder << update.errors;
     encoder << update.newShippingMethods;
     encoder << update.newTotalAndLineItems;
@@ -432,8 +428,6 @@ void ArgumentCoder<WebCore::ShippingContactUpdate>::encode(Encoder& encoder, con
 
 bool ArgumentCoder<WebCore::ShippingContactUpdate>::decode(Decoder& decoder, WebCore::ShippingContactUpdate& update)
 {
-    if (!decoder.decode(update.status))
-        return false;
     if (!decoder.decode(update.errors))
         return false;
     if (!decoder.decode(update.newShippingMethods))
@@ -446,14 +440,11 @@ bool ArgumentCoder<WebCore::ShippingContactUpdate>::decode(Decoder& decoder, Web
 
 void ArgumentCoder<WebCore::ShippingMethodUpdate>::encode(Encoder& encoder, const WebCore::ShippingMethodUpdate& update)
 {
-    encoder << update.status;
     encoder << update.newTotalAndLineItems;
 }
 
 bool ArgumentCoder<WebCore::ShippingMethodUpdate>::decode(Decoder& decoder, WebCore::ShippingMethodUpdate& update)
 {
-    if (!decoder.decode(update.status))
-        return false;
     if (!decoder.decode(update.newTotalAndLineItems))
         return false;
 
@@ -461,5 +452,4 @@ bool ArgumentCoder<WebCore::ShippingMethodUpdate>::decode(Decoder& decoder, WebC
 }
 
 }
-
 #endif

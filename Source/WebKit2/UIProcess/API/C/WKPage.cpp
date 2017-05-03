@@ -98,6 +98,10 @@
 #include <WebCore/MediaSessionEvents.h>
 #endif
 
+#if PLATFORM(COCOA)
+#include "VersionChecks.h"
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -252,7 +256,13 @@ bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType)
 
 void WKPageReload(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload({ });
+    OptionSet<WebCore::ReloadOption> reloadOptions;
+#if PLATFORM(COCOA)
+    if (linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
+        reloadOptions |= WebCore::ReloadOption::ExpiredOnly;
+#endif
+
+    toImpl(pageRef)->reload(reloadOptions);
 }
 
 void WKPageReloadWithoutContentBlockers(WKPageRef pageRef)
@@ -961,7 +971,7 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
         }
 
     private:
-        void didFindString(WebPageProxy* page, const String& string, const Vector<WebCore::IntRect>&, uint32_t matchCount, int32_t) override
+        void didFindString(WebPageProxy* page, const String& string, const Vector<WebCore::IntRect>&, uint32_t matchCount, int32_t, bool didWrapAround) override
         {
             if (!m_client.didFindString)
                 return;
@@ -1582,9 +1592,9 @@ namespace WebKit {
 
 class RunBeforeUnloadConfirmPanelResultListener : public API::ObjectImpl<API::Object::Type::RunBeforeUnloadConfirmPanelResultListener> {
 public:
-    static PassRefPtr<RunBeforeUnloadConfirmPanelResultListener> create(Function<void (bool)>&& completionHandler)
+    static Ref<RunBeforeUnloadConfirmPanelResultListener> create(Function<void(bool)>&& completionHandler)
     {
-        return adoptRef(new RunBeforeUnloadConfirmPanelResultListener(WTFMove(completionHandler)));
+        return adoptRef(*new RunBeforeUnloadConfirmPanelResultListener(WTFMove(completionHandler)));
     }
 
     virtual ~RunBeforeUnloadConfirmPanelResultListener()
@@ -1607,9 +1617,9 @@ private:
 
 class RunJavaScriptAlertResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptAlertResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptAlertResultListener> create(Function<void ()>&& completionHandler)
+    static Ref<RunJavaScriptAlertResultListener> create(Function<void()>&& completionHandler)
     {
-        return adoptRef(new RunJavaScriptAlertResultListener(WTFMove(completionHandler)));
+        return adoptRef(*new RunJavaScriptAlertResultListener(WTFMove(completionHandler)));
     }
 
     virtual ~RunJavaScriptAlertResultListener()
@@ -1632,9 +1642,9 @@ private:
 
 class RunJavaScriptConfirmResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptConfirmResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptConfirmResultListener> create(Function<void (bool)>&& completionHandler)
+    static Ref<RunJavaScriptConfirmResultListener> create(Function<void(bool)>&& completionHandler)
     {
-        return adoptRef(new RunJavaScriptConfirmResultListener(WTFMove(completionHandler)));
+        return adoptRef(*new RunJavaScriptConfirmResultListener(WTFMove(completionHandler)));
     }
 
     virtual ~RunJavaScriptConfirmResultListener()
@@ -1647,7 +1657,7 @@ public:
     }
 
 private:
-    explicit RunJavaScriptConfirmResultListener(Function<void (bool)>&& completionHandler)
+    explicit RunJavaScriptConfirmResultListener(Function<void(bool)>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
@@ -1657,9 +1667,9 @@ private:
 
 class RunJavaScriptPromptResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptPromptResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptPromptResultListener> create(Function<void (const String&)>&& completionHandler)
+    static Ref<RunJavaScriptPromptResultListener> create(Function<void(const String&)>&& completionHandler)
     {
-        return adoptRef(new RunJavaScriptPromptResultListener(WTFMove(completionHandler)));
+        return adoptRef(*new RunJavaScriptPromptResultListener(WTFMove(completionHandler)));
     }
 
     virtual ~RunJavaScriptPromptResultListener()
@@ -1672,7 +1682,7 @@ public:
     }
 
 private:
-    explicit RunJavaScriptPromptResultListener(Function<void (const String&)>&& completionHandler)
+    explicit RunJavaScriptPromptResultListener(Function<void(const String&)>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
@@ -1744,7 +1754,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         }
 
     private:
-        PassRefPtr<WebPageProxy> createNewPage(WebPageProxy* page, WebFrameProxy* initiatingFrame, const SecurityOriginData& securityOriginData, const ResourceRequest& resourceRequest, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData) override
+        RefPtr<WebPageProxy> createNewPage(WebPageProxy* page, WebFrameProxy* initiatingFrame, const SecurityOriginData& securityOriginData, const ResourceRequest& resourceRequest, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData) override
         {
             if (m_client.createNewPage) {
                 auto configuration = page->configuration().copy();
@@ -2288,12 +2298,37 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         }
 #endif
 
-        void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event) override
+        static WKAutoplayEventFlags toWKAutoplayEventFlags(OptionSet<WebCore::AutoplayEventFlags> flags)
+        {
+            WKAutoplayEventFlags wkFlags = kWKAutoplayEventFlagsNone;
+            if (flags.contains(WebCore::AutoplayEventFlags::HasAudio))
+                wkFlags |= kWKAutoplayEventFlagsHasAudio;
+
+            return wkFlags;
+        }
+
+        static WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
+        {
+            switch (event) {
+            case WebCore::AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference:
+                return kWKAutoplayEventDidEndMediaPlaybackWithoutUserInterference;
+            case WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying:
+                return kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+            case WebCore::AutoplayEvent::DidPreventMediaFromPlaying:
+                return kWKAutoplayEventDidPreventFromAutoplaying;
+            case WebCore::AutoplayEvent::UserDidInterfereWithPlayback:
+                return kWKAutoplayEventUserDidInterfereWithPlayback;
+            case WebCore::AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying:
+                return kWKAutoplayEventUserNeverPlayedMediaPreventedFromPlaying;
+            }
+        }
+
+        void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags) override
         {
             if (!m_client.handleAutoplayEvent)
                 return;
 
-            m_client.handleAutoplayEvent(toAPI(&page), static_cast<WKAutoplayEvent>(event), m_client.base.clientInfo);
+            m_client.handleAutoplayEvent(toAPI(&page), toWKAutoplayEvent(event), toWKAutoplayEventFlags(flags), m_client.base.clientInfo);
         }
     };
 
@@ -2312,15 +2347,19 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
     private:
         void decidePolicyForNavigationAction(WebPageProxy& page, API::NavigationAction& navigationAction, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
         {
-            if (!m_client.decidePolicyForNavigationAction)
+            if (!m_client.decidePolicyForNavigationAction) {
+                listener->use({ });
                 return;
+            }
             m_client.decidePolicyForNavigationAction(toAPI(&page), toAPI(&navigationAction), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
         void decidePolicyForNavigationResponse(WebPageProxy& page, API::NavigationResponse& navigationResponse, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
         {
-            if (!m_client.decidePolicyForNavigationResponse)
+            if (!m_client.decidePolicyForNavigationResponse) {
+                listener->use({ });
                 return;
+            }
             m_client.decidePolicyForNavigationResponse(toAPI(&page), toAPI(&navigationResponse), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
@@ -2861,6 +2900,10 @@ WKMediaState WKPageGetMediaState(WKPageRef page)
         state |= kWKMediaHasActiveAudioCaptureDevice;
     if (coreState & WebCore::MediaProducer::HasActiveVideoCaptureDevice)
         state |= kWKMediaHasActiveVideoCaptureDevice;
+    if (coreState & WebCore::MediaProducer::HasMutedAudioCaptureDevice)
+        state |= kWKMediaHasMutedAudioCaptureDevice;
+    if (coreState & WebCore::MediaProducer::HasMutedVideoCaptureDevice)
+        state |= kWKMediaHasMutedVideoCaptureDevice;
 
     return state;
 }

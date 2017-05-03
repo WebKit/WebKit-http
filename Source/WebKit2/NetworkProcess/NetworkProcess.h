@@ -62,6 +62,7 @@ class NetworkResourceLoader;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
 struct NetworkProcessCreationParameters;
+struct WebsiteDataStoreParameters;
 
 class NetworkProcess : public ChildProcess, private DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
@@ -118,10 +119,10 @@ public:
     void grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd);
+    void shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
 #endif
 
-    std::chrono::milliseconds loadThrottleLatency() const { return m_loadThrottleLatency; }
+    Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
 
 private:
     NetworkProcess();
@@ -160,7 +161,8 @@ private:
     void didReceiveSyncNetworkProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     void initializeNetworkProcess(NetworkProcessCreationParameters&&);
     void createNetworkConnectionToWebProcess();
-    void destroyPrivateBrowsingSession(WebCore::SessionID);
+    void addWebsiteDataStore(WebsiteDataStoreParameters&&);
+    void destroySession(WebCore::SessionID);
 
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
     void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
@@ -190,6 +192,8 @@ private:
     void setCanHandleHTTPSServerTrustEvaluation(bool);
     void getNetworkProcessStatistics(uint64_t callbackID);
     void clearCacheForAllOrigins(uint32_t cachesToClear);
+    void setAllowsAnySSLCertificateForWebSocket(bool);
+    void syncAllCookies();
 
     void didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID);
 
@@ -213,7 +217,7 @@ private:
     bool m_suppressMemoryPressureHandler { false };
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
-    std::chrono::milliseconds m_loadThrottleLatency;
+    Seconds m_loadThrottleLatency;
 
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;

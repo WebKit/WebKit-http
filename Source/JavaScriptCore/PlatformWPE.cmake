@@ -7,13 +7,13 @@ list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
 )
 
 set(WPE_INSTALLED_JAVASCRIPTCORE_HEADERS
-    API/JavaScript.h
     API/JSBase.h
     API/JSContextRef.h
     API/JSObjectRef.h
     API/JSStringRef.h
     API/JSTypedArray.h
     API/JSValueRef.h
+    API/JavaScript.h
     API/WebKitAvailability.h
 )
 

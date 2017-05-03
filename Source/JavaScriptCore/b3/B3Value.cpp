@@ -43,6 +43,7 @@
 #include "B3ValueInlines.h"
 #include "B3ValueKeyInlines.h"
 #include "B3VariableValue.h"
+#include "B3WasmBoundsCheckValue.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/ListDump.h>
 #include <wtf/StringPrintStream.h>
@@ -222,9 +223,6 @@ void Value::deepDump(const Procedure* proc, PrintStream& out) const
     CommaPrinter comma;
     dumpChildren(comma, out);
 
-    if (m_origin)
-        out.print(comma, OriginDump(proc, m_origin));
-
     dumpMeta(comma, out);
 
     {
@@ -232,6 +230,9 @@ void Value::deepDump(const Procedure* proc, PrintStream& out) const
         if (string.length())
             out.print(comma, string);
     }
+
+    if (m_origin)
+        out.print(comma, OriginDump(proc, m_origin));
 
     out.print(")");
 }
@@ -664,7 +665,13 @@ Effects Value::effects() const
         result = Effects::forCheck();
         break;
     case WasmBoundsCheck:
-        result.readsPinned = true;
+        switch (as<WasmBoundsCheckValue>()->boundsType()) {
+        case WasmBoundsCheckValue::Type::Pinned:
+            result.readsPinned = true;
+            break;
+        case WasmBoundsCheckValue::Type::Maximum:
+            break;
+        }
         result.exitsSideways = true;
         break;
     case Upsilon:

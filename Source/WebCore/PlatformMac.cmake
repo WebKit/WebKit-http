@@ -69,7 +69,7 @@ if (NOT LOOKUP_FRAMEWORK-NOTFOUND)
 endif ()
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
+    "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
     "${THIRDPARTY_DIR}/ANGLE"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/accessibility/mac"
@@ -118,6 +118,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mediastream/mac"
     "${WEBCORE_DIR}/platform/network/cocoa"
     "${WEBCORE_DIR}/platform/network/cf"
+    "${WEBCORE_DIR}/platform/network/ios"
     "${WEBCORE_DIR}/platform/network/mac"
     "${WEBCORE_DIR}/platform/text/cf"
     "${WEBCORE_DIR}/platform/text/mac"
@@ -183,9 +184,12 @@ list(APPEND WebCore_SOURCES
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
     crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+    crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
     crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
     crypto/algorithms/CryptoAlgorithmAES_KW.cpp
     crypto/algorithms/CryptoAlgorithmECDH.cpp
+    crypto/algorithms/CryptoAlgorithmECDSA.cpp
+    crypto/algorithms/CryptoAlgorithmHKDF.cpp
     crypto/algorithms/CryptoAlgorithmHMAC.cpp
     crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
@@ -206,11 +210,15 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyRaw.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
 
+    crypto/mac/CommonCryptoDERUtilities.cpp
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
     crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
+    crypto/mac/CryptoAlgorithmAES_CTRMac.cpp
     crypto/mac/CryptoAlgorithmAES_GCMMac.cpp
     crypto/mac/CryptoAlgorithmAES_KWMac.cpp
     crypto/mac/CryptoAlgorithmECDHMac.cpp
+    crypto/mac/CryptoAlgorithmECDSAMac.cpp
+    crypto/mac/CryptoAlgorithmHKDFMac.cpp
     crypto/mac/CryptoAlgorithmHMACMac.cpp
     crypto/mac/CryptoAlgorithmPBKDF2Mac.cpp
     crypto/mac/CryptoAlgorithmRSAES_PKCS1_v1_5Mac.cpp
@@ -260,7 +268,6 @@ list(APPEND WebCore_SOURCES
     loader/cocoa/SubresourceLoaderCocoa.mm
 
     loader/cf/ResourceLoaderCFNet.cpp
-    loader/cf/SubresourceLoaderCF.cpp
 
     loader/mac/DocumentLoaderMac.cpp
     loader/mac/LoaderNSURLExtras.mm
@@ -330,7 +337,6 @@ list(APPEND WebCore_SOURCES
     platform/cf/SharedBufferCF.cpp
     platform/cf/URLCF.cpp
 
-    platform/cocoa/CPUTimeCocoa.mm
     platform/cocoa/ContentFilterUnblockHandlerCocoa.mm
     platform/cocoa/CoreVideoSoftLink.cpp
     platform/cocoa/DisplaySleepDisablerCocoa.cpp
@@ -423,10 +429,13 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/PatternCG.cpp
     platform/graphics/cg/SubimageCacheWithTimer.cpp
     platform/graphics/cg/TransformationMatrixCG.cpp
+    platform/graphics/cg/UTIRegistry.cpp
 
     platform/graphics/cocoa/GPUBufferMetal.mm
     platform/graphics/cocoa/GPUCommandBufferMetal.mm
     platform/graphics/cocoa/GPUCommandQueueMetal.mm
+    platform/graphics/cocoa/GPUComputeCommandEncoderMetal.mm
+    platform/graphics/cocoa/GPUComputePipelineStateMetal.mm
     platform/graphics/cocoa/GPUDepthStencilDescriptorMetal.mm
     platform/graphics/cocoa/GPUDepthStencilStateMetal.mm
     platform/graphics/cocoa/GPUDeviceMetal.mm
@@ -791,7 +800,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/Internals.mm
     testing/MockContentFilter.cpp
     testing/MockContentFilterSettings.cpp
-    testing/MockQuickLookHandleClient.cpp
+    testing/MockPreviewLoaderClient.cpp
 
     testing/cocoa/WebArchiveDumpSupport.mm
 )

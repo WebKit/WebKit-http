@@ -74,7 +74,6 @@ public:
 #endif
     void continueWillSendRequest(WebCore::ResourceRequest&& newRequest);
 
-    WebCore::SharedBuffer* bufferedData() { return m_bufferedData.get(); }
     const WebCore::ResourceResponse& response() const { return m_response; }
 
     NetworkConnectionToWebProcess& connectionToWebProcess() { return m_connection; }
@@ -96,6 +95,7 @@ public:
     void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
     void didFinishLoading(const WebCore::NetworkLoadMetrics&) override;
     void didFailLoading(const WebCore::ResourceError&) override;
+    bool shouldCaptureExtraNetworkLoadMetrics() const override;
 
     void convertToDownload(DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
@@ -153,7 +153,7 @@ private:
 
     bool m_didConsumeSandboxExtensions { false };
     bool m_defersLoading { false };
-    bool m_hasReceivedData { false };
+    size_t m_numBytesReceived { 0 };
 
     unsigned m_retrievedDerivedDataCount { 0 };
 

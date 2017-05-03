@@ -314,7 +314,7 @@ public:
 
     // approximatePosition, if set, overrides position() and is used during coverage rect computation.
     FloatPoint approximatePosition() const { return m_approximatePosition ? m_approximatePosition.value() : m_position; }
-    void setApproximatePosition(std::optional<FloatPoint> p) { m_approximatePosition = p; }
+    virtual void setApproximatePosition(const FloatPoint& p) { m_approximatePosition = p; }
 
     // For platforms that move underlying platform layers on a different thread for scrolling; just update the GraphicsLayer state.
     virtual void syncPosition(const FloatPoint& p) { m_position = p; }

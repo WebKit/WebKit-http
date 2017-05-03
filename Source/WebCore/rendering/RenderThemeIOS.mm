@@ -870,9 +870,9 @@ bool RenderThemeIOS::paintSliderThumbDecorations(const RenderObject& box, const 
     return false;
 }
 
-double RenderThemeIOS::animationRepeatIntervalForProgressBar(RenderProgress&) const
+Seconds RenderThemeIOS::animationRepeatIntervalForProgressBar(RenderProgress&) const
 {
-    return 0;
+    return 0_s;
 }
 
 double RenderThemeIOS::animationDurationForProgressBar(RenderProgress&) const
@@ -1135,9 +1135,15 @@ FontCascadeDescription& RenderThemeIOS::cachedSystemFontDescription(CSSValueID v
     static NeverDestroyed<FontCascadeDescription> shortFootnoteFont;
     static NeverDestroyed<FontCascadeDescription> shortCaption1Font;
     static NeverDestroyed<FontCascadeDescription> tallBodyFont;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    static NeverDestroyed<FontCascadeDescription> title0Font;
+#endif
     static NeverDestroyed<FontCascadeDescription> title1Font;
     static NeverDestroyed<FontCascadeDescription> title2Font;
     static NeverDestroyed<FontCascadeDescription> title3Font;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    static NeverDestroyed<FontCascadeDescription> title4Font;
+#endif
 
     static CFStringRef userTextSize = contentSizeCategory();
 
@@ -1163,12 +1169,20 @@ FontCascadeDescription& RenderThemeIOS::cachedSystemFontDescription(CSSValueID v
         return headlineFont;
     case CSSValueAppleSystemBody:
         return bodyFont;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    case CSSValueAppleSystemTitle0:
+        return title0Font;
+#endif
     case CSSValueAppleSystemTitle1:
         return title1Font;
     case CSSValueAppleSystemTitle2:
         return title2Font;
     case CSSValueAppleSystemTitle3:
         return title3Font;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    case CSSValueAppleSystemTitle4:
+        return title4Font;
+#endif
     case CSSValueAppleSystemSubheadline:
         return subheadlineFont;
     case CSSValueAppleSystemFootnote:
@@ -1209,6 +1223,12 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
         textStyle = kCTUIFontTextStyleBody;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
         break;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    case CSSValueAppleSystemTitle0:
+        textStyle = kCTUIFontTextStyleTitle0;
+        fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
+        break;
+#endif
     case CSSValueAppleSystemTitle1:
         textStyle = kCTUIFontTextStyleTitle1;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
@@ -1221,6 +1241,12 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
         textStyle = kCTUIFontTextStyleTitle3;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
         break;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    case CSSValueAppleSystemTitle4:
+        textStyle = kCTUIFontTextStyleTitle4;
+        fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
+        break;
+#endif
     case CSSValueAppleSystemSubheadline:
         textStyle = kCTUIFontTextStyleSubhead;
         fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, contentSizeCategory(), 0));
@@ -1346,15 +1372,15 @@ String RenderThemeIOS::mediaControlsScript()
 #endif
 }
 
-String RenderThemeIOS::mediaControlsBase64StringForIconAndPlatform(const String& iconName, const String& platform)
+String RenderThemeIOS::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
         return emptyString();
 
-    String directory = "modern-media-controls/images/" + platform;
+    String directory = "modern-media-controls/images";
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
-    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:@"png" inDirectory:directory]] base64EncodedStringWithOptions:0];
+    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 #else
     return emptyString();
 #endif
@@ -1569,7 +1595,7 @@ static BOOL getAttachmentProgress(const RenderAttachment& attachment, float& pro
 
 static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, FloatSize& size)
 {
-    auto documentInteractionController = adoptNS([[getUIDocumentInteractionControllerClass() alloc] init]);
+    auto documentInteractionController = adoptNS([allocUIDocumentInteractionControllerInstance() init]);
 
     String fileName;
     if (File* file = attachment.attachmentElement().file())

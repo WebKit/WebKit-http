@@ -34,8 +34,8 @@
 #include <WebCore/GLContext.h>
 #include <WebCore/PlatformDisplayWayland.h>
 #include <WebCore/Region.h>
-#include <WebCore/UUID.h>
 #include <wayland-server-protocol.h>
+#include <wtf/UUID.h>
 
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
@@ -417,7 +417,6 @@ static GRefPtr<GSource> createWaylandLoopSource(struct wl_display* display)
 {
     GRefPtr<GSource> source = adoptGRef(g_source_new(&waylandLoopSourceFunctions, sizeof(WaylandLoopSource)));
     g_source_set_name(source.get(), "Nested Wayland compositor display event source");
-    g_source_set_priority(source.get(), G_PRIORITY_DEFAULT + 1);
 
     auto* wlLoopSource = reinterpret_cast<WaylandLoopSource*>(source.get());
     wlLoopSource->display = display;

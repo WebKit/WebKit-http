@@ -119,6 +119,7 @@ set(WebKit2_SOURCES
     NetworkProcess/NetworkResourceLoadParameters.cpp
     NetworkProcess/NetworkResourceLoader.cpp
     NetworkProcess/NetworkSession.cpp
+    NetworkProcess/NetworkSocketStream.cpp
 
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
@@ -188,6 +189,7 @@ set(WebKit2_SOURCES
     Shared/WebContextMenuItem.cpp
     Shared/WebContextMenuItemData.cpp
     Shared/WebCoreArgumentCoders.cpp
+    Shared/WebErrors.cpp
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp
@@ -210,6 +212,7 @@ set(WebKit2_SOURCES
     Shared/WebTouchEvent.cpp
     Shared/WebUserContentControllerDataTypes.cpp
     Shared/WebWheelEvent.cpp
+    Shared/WebsiteDataStoreParameters.cpp
 
     Shared/API/APIArray.cpp
     Shared/API/APIData.cpp
@@ -324,7 +327,7 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessPool.cpp
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebURLSchemeHandler.cpp
-    UIProcess/WebURLSchemeHandlerTask.cpp
+    UIProcess/WebURLSchemeTask.cpp
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
@@ -342,7 +345,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APIOpenPanelParameters.cpp
     UIProcess/API/APISessionState.cpp
-    UIProcess/API/APIURLSchemeHandlerTask.cpp
+    UIProcess/API/APIURLSchemeTask.cpp
     UIProcess/API/APIUserContentWorld.cpp
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
@@ -517,6 +520,7 @@ set(WebKit2_SOURCES
     WebProcess/Network/WebLoaderStrategy.cpp
     WebProcess/Network/WebResourceLoader.cpp
     WebProcess/Network/WebSocketProvider.cpp
+    WebProcess/Network/WebSocketStream.cpp
 
     WebProcess/Notifications/NotificationPermissionRequestManager.cpp
     WebProcess/Notifications/WebNotificationManager.cpp
@@ -585,7 +589,7 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPageGroupProxy.cpp
     WebProcess/WebPage/WebPageOverlay.cpp
     WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
-    WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp
+    WebProcess/WebPage/WebURLSchemeTaskProxy.cpp
     WebProcess/WebPage/WebUndoStep.cpp
 )
 
@@ -600,6 +604,7 @@ set(WebKit2_MESSAGES_IN_FILES
     NetworkProcess/NetworkConnectionToWebProcess.messages.in
     NetworkProcess/NetworkProcess.messages.in
     NetworkProcess/NetworkResourceLoader.messages.in
+    NetworkProcess/NetworkSocketStream.messages.in
 
     NetworkProcess/webrtc/NetworkRTCMonitor.messages.in
     NetworkProcess/webrtc/NetworkRTCProvider.messages.in
@@ -667,6 +672,7 @@ set(WebKit2_MESSAGES_IN_FILES
 
     WebProcess/Network/NetworkProcessConnection.messages.in
     WebProcess/Network/WebResourceLoader.messages.in
+    WebProcess/Network/WebSocketStream.messages.in
 
     WebProcess/Notifications/WebNotificationManager.messages.in
 
@@ -710,13 +716,13 @@ else ()
         set(JSC_WHOLE_ARCHIVE -Wl,--whole-archive JavaScriptCore -Wl,--no-whole-archive)
 
         set(WebKit2_LIBRARIES
-            ${JSC_WHOLE_ARCHIVE}
             WebCore
+            ${JSC_WHOLE_ARCHIVE}
         )
     else ()
         set(WebKit2_LIBRARIES
-            JavaScriptCore
             WebCore
+            JavaScriptCore
         )
     endif ()
 endif ()
@@ -728,7 +734,7 @@ set(PluginProcess_LIBRARIES
 if (WIN32 AND INTERNAL_BUILD)
     set(JavaScriptCore_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore/Scripts")
 else ()
-    set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
+    set(JavaScriptCore_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/JavaScriptCore/Scripts")
 endif ()
 
 # librt is needed for shm_open on Linux.

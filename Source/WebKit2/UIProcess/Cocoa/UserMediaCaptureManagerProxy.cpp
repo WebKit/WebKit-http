@@ -125,14 +125,27 @@ UserMediaCaptureManagerProxy::~UserMediaCaptureManagerProxy()
     m_process.removeMessageReceiver(Messages::UserMediaCaptureManagerProxy::messageReceiverName());
 }
 
-void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const CaptureDevice& device, const MediaConstraintsData& constraintsData, bool& succeeded, String& invalidConstraints)
+void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const String& deviceID, WebCore::RealtimeMediaSource::Type type, const MediaConstraintsData& constraintsData, bool& succeeded, String& invalidConstraints)
 {
-    auto constraints = MediaConstraintsImpl::create(constraintsData);
-    RefPtr<RealtimeMediaSource> source = RealtimeMediaSourceCenter::singleton().defaultAudioFactory()->createMediaSourceForCaptureDeviceWithConstraints(device, constraints.ptr(), invalidConstraints);
-    succeeded = !!source;
-    
-    if (source)
-        m_proxies.set(id, std::make_unique<SourceProxy>(id, *this, source.releaseNonNull()));
+    CaptureSourceOrError sourceOrError;
+    auto constraints = MediaConstraintsImpl::create(MediaConstraintsData(constraintsData));
+    switch (type) {
+    case WebCore::RealtimeMediaSource::Type::Audio:
+        sourceOrError = RealtimeMediaSourceCenter::singleton().audioFactory()->createAudioCaptureSource(deviceID, constraints.ptr());
+        break;
+    case WebCore::RealtimeMediaSource::Type::Video:
+        sourceOrError = RealtimeMediaSourceCenter::singleton().videoFactory()->createVideoCaptureSource(deviceID, constraints.ptr());
+        break;
+    case WebCore::RealtimeMediaSource::Type::None:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    succeeded = !!sourceOrError;
+    if (sourceOrError)
+        m_proxies.set(id, std::make_unique<SourceProxy>(id, *this, sourceOrError.source()));
+    else
+        invalidConstraints = WTFMove(sourceOrError.errorMessage);
 }
 
 void UserMediaCaptureManagerProxy::startProducingData(uint64_t id)
@@ -147,6 +160,27 @@ void UserMediaCaptureManagerProxy::stopProducingData(uint64_t id)
     auto iter = m_proxies.find(id);
     if (iter != m_proxies.end())
         iter->value->source().stopProducingData();
+}
+
+void UserMediaCaptureManagerProxy::capabilities(uint64_t id, WebCore::RealtimeMediaSourceCapabilities& capabilities)
+{
+    auto iter = m_proxies.find(id);
+    if (iter != m_proxies.end())
+        capabilities = iter->value->source().capabilities();
+}
+
+void UserMediaCaptureManagerProxy::setMuted(uint64_t id, bool muted)
+{
+    auto iter = m_proxies.find(id);
+    if (iter != m_proxies.end())
+        iter->value->source().setMuted(muted);
+}
+
+void UserMediaCaptureManagerProxy::setEnabled(uint64_t id, bool enabled)
+{
+    auto iter = m_proxies.find(id);
+    if (iter != m_proxies.end())
+        iter->value->source().setEnabled(enabled);
 }
 
 }

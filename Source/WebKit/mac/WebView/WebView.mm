@@ -336,8 +336,13 @@ SOFT_LINK(UIKit, UIGraphicsEndImageContext, void, (void), ())
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 SOFT_LINK_FRAMEWORK(AVKit)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+SOFT_LINK_CLASS(AVKit, AVTouchBarPlaybackControlsProvider)
+SOFT_LINK_CLASS(AVKit, AVTouchBarScrubber)
+#else
 SOFT_LINK_CLASS(AVKit, AVFunctionBarPlaybackControlsProvider)
 SOFT_LINK_CLASS(AVKit, AVFunctionBarScrubber)
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 #endif // HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 #if PLATFORM(MAC)
@@ -638,6 +643,7 @@ private:
 @synthesize contentImageWithoutSelection=_contentImageWithoutSelection;
 @synthesize contentImageWithoutSelectionRectInRootViewCoordinates=_contentImageWithoutSelectionRectInRootViewCoordinates;
 @synthesize contentImage=_contentImage;
+@synthesize estimatedBackgroundColor=_estimatedBackgroundColor;
 
 @end
 
@@ -648,7 +654,7 @@ private:
     if (!(self = [super init]))
         return nil;
     
-    _dataInteractionImage = [[[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    _dataInteractionImage = [allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
     _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
     
@@ -658,17 +664,20 @@ private:
     _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
     _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
     if (indicatorData.contentImageWithHighlight)
-        _contentImageWithHighlight = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored] retain];
+        _contentImageWithHighlight = [allocUIImageInstance() initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored];
     if (indicatorData.contentImage)
-        _contentImage = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp] retain];
+        _contentImage = [allocUIImageInstance() initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp];
 
     if (indicatorData.contentImageWithoutSelection) {
         auto nativeImage = indicatorData.contentImageWithoutSelection.get()->nativeImage();
         if (nativeImage) {
-            _contentImageWithoutSelection = [[[getUIImageClass() alloc] initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp] retain];
+            _contentImageWithoutSelection = [allocUIImageInstance() initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp];
             _contentImageWithoutSelectionRectInRootViewCoordinates = indicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
         }
     }
+
+    if (indicatorData.options & TextIndicatorOptionComputeEstimatedBackgroundColor)
+        _estimatedBackgroundColor = [allocUIColorInstance() initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)];
 
     return self;
 }
@@ -678,7 +687,7 @@ private:
     if (!(self = [super init]))
         return nil;
     
-    _dataInteractionImage = [[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
+    _dataInteractionImage = [allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     
     return self;
 }
@@ -690,6 +699,7 @@ private:
     [_contentImageWithHighlight release];
     [_contentImageWithoutSelection release];
     [_contentImage release];
+    [_estimatedBackgroundColor release];
     
     [super dealloc];
 }
@@ -1725,12 +1735,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setMinimumLogicalFontSize(9);
     _private->page->settings().setDefaultFontSize([_private->preferences defaultFontSize]);
     _private->page->settings().setDefaultFixedFontSize(13);
-    _private->page->settings().setDownloadableBinaryFontsEnabled(false);
     _private->page->settings().setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     _private->page->settings().setDisplayListDrawingEnabled([preferences displayListDrawingEnabled]);
     
     _private->page->settings().setFontFallbackPrefersPictographs(true);
     _private->page->settings().setPictographFontFamily("AppleColorEmoji");
+    
+    _private->page->settings().setScriptMarkupEnabled(false);
+    _private->page->settings().setScriptEnabled(true);
     
     // FIXME: this is a workaround for <rdar://problem/11518688> REGRESSION: Quoted text font changes when replying to certain email
     _private->page->settings().setStandardFontFamily([_private->preferences standardFontFamily]);
@@ -1813,6 +1825,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()] retain];
     else
         _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()] retain];
+}
+
+- (CGRect)_dataInteractionCaretRect
+{
+    if (auto* page = _private->page)
+        return page->dragCaretController().caretPosition().absoluteCaretBounds();
+
+    return { };
 }
 
 - (WebUITextIndicatorData *)_dataOperationTextIndicator
@@ -1902,6 +1922,12 @@ static Vector<FloatRect> floatRectsForCGRectArray(NSArray<NSValue *> *rectValues
 - (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
 }
+
+- (BOOL)_tryToPerformDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return NO;
+}
+
 - (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
 {
 }
@@ -1915,6 +1941,11 @@ static Vector<FloatRect> floatRectsForCGRectArray(NSArray<NSValue *> *rectValues
 - (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
 {
     return nil;
+}
+
+- (CGRect)_dataInteractionCaretRect
+{
+    return CGRectNull;
 }
 #endif
 
@@ -2947,6 +2978,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
     settings.setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
     RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled([preferences mediaStreamEnabled]);
+    settings.setUseAVFoundationAudioCapture([preferences useAVFoundationAudioCapture]);
+    RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled([preferences mediaDevicesEnabled]);
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -2982,6 +3015,11 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(FETCH_API)
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled([preferences fetchAPIEnabled]);
+#endif
+
+#if ENABLE(STREAMS_API)
+    RuntimeEnabledFeatures::sharedFeatures().setWritableStreamAPIEnabled([preferences writableStreamAPIEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setReadableByteStreamAPIEnabled([preferences readableByteStreamAPIEnabled]);
 #endif
 
 #if ENABLE(WEBGL2)
@@ -3047,7 +3085,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertInvalidURLsToBlank(shouldConvertInvalidURLsToBlank());
 
-    settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
+    // FIXME: enable async image decoding after the flickering bug wk170640 is fixed.
+    // settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
+    settings.setLargeImageAsyncDecodingEnabled(false);
     settings.setAnimatedImageAsyncDecodingEnabled([preferences animatedImageAsyncDecodingEnabled]);
 }
 
@@ -6602,11 +6642,17 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     return static_cast<DragApplicationFlags>(flags);
 }
 
+- (DragDestinationAction)actionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    return (DragDestinationAction)[[self _UIDelegateForwarder] webView:self dragDestinationActionMaskForDraggingInfo:draggingInfo];
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)draggingInfo
 {
     IntPoint client([draggingInfo draggingLocation]);
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
-    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+
+    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
     return core(self)->dragController().dragEntered(dragData);
 }
 
@@ -6618,7 +6664,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
     IntPoint client([draggingInfo draggingLocation]);
     IntPoint global(globalPoint([draggingInfo draggingLocation], [self window]));
-    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
+
+    DragData dragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo], [self actionMaskForDraggingInfo:draggingInfo]);
     return page->dragController().dragUpdated(dragData);
 }
 
@@ -6772,9 +6819,10 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
     Frame* coreFrame = core(frame);
+    CanWrap canWrap = options & WebFindOptionsWrapAround ? CanWrap::Yes : CanWrap::No;
     return kit((options & WebFindOptionsBackwards)
-        ? coreFrame->tree().traversePreviousWithWrap(options & WebFindOptionsWrapAround)
-        : coreFrame->tree().traverseNextWithWrap(options & WebFindOptionsWrapAround));
+        ? coreFrame->tree().traversePrevious(canWrap)
+        : coreFrame->tree().traverseNext(canWrap));
 }
 
 - (BOOL)searchFor:(NSString *)string direction:(BOOL)forward caseSensitive:(BOOL)caseFlag wrap:(BOOL)wrapFlag
@@ -8498,7 +8546,7 @@ static WebFrameView *containingFrameView(NSView *view)
     unsigned cacheTotalCapacity = 0;
     unsigned cacheMinDeadCapacity = 0;
     unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
+    Seconds deadDecodedDataDeletionInterval;
 
     unsigned pageCacheSize = 0;
 
@@ -8625,7 +8673,7 @@ static WebFrameView *containingFrameView(NSView *view)
         // can prove that the overall system gain would justify the regression.
         cacheMaxDeadCapacity = std::max<unsigned>(24, cacheMaxDeadCapacity);
 
-        deadDecodedDataDeletionInterval = std::chrono::seconds { 60 };
+        deadDecodedDataDeletionInterval = 60_s;
 
 #if PLATFORM(IOS)
         if (memSize >= 1024)
@@ -9765,14 +9813,19 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 - (void)updateMediaTouchBar
 {
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER) && ENABLE(VIDEO_PRESENTATION_MODE)
-    if (!_private->mediaTouchBarProvider)
+    if (!_private->mediaTouchBarProvider) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+        _private->mediaTouchBarProvider = adoptNS([allocAVTouchBarPlaybackControlsProviderInstance() init]);
+#else
         _private->mediaTouchBarProvider = adoptNS([allocAVFunctionBarPlaybackControlsProviderInstance() init]);
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    }
 
     if (![_private->mediaTouchBarProvider playbackControlsController]) {
         ASSERT(_private->playbackSessionInterface);
         WebPlaybackControlsManager *manager = _private->playbackSessionInterface->playBackControlsManager();
-        [_private->mediaTouchBarProvider setPlaybackControlsController:(id <AVFunctionBarPlaybackControlsControlling>)manager];
-        [_private->mediaPlaybackControlsView setPlaybackControlsController:(id <AVFunctionBarPlaybackControlsControlling>)manager];
+        [_private->mediaTouchBarProvider setPlaybackControlsController:(id <AVTouchBarPlaybackControlsControlling>)manager];
+        [_private->mediaPlaybackControlsView setPlaybackControlsController:(id <AVTouchBarPlaybackControlsControlling>)manager];
     }
 #endif
 }

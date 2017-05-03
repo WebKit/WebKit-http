@@ -1756,7 +1756,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     if (!range)
         return nil;
     
-    auto markers = core(self)->document()->markers().markersInRange(core(range), DocumentMarker::DictationResult);
+    auto markers = core(self)->document()->markers().markersInRange(*core(range), DocumentMarker::DictationResult);
     
     // UIKit should only ever give us a DOMRange for a phrase with alternatives, which should not be part of more than one result.
     ASSERT(markers.size() <= 1);
@@ -1929,7 +1929,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 {
     if (_private->coreFrame->selection().isNone() || !fragment)
         return;
-    _private->coreFrame->editor().replaceSelectionWithFragment(core(fragment), selectReplacement, smartReplace, matchStyle);
+    _private->coreFrame->editor().replaceSelectionWithFragment(*core(fragment), selectReplacement, smartReplace, matchStyle);
 }
 
 #if PLATFORM(IOS)
@@ -2216,6 +2216,13 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
         coreFrame->loader().setOpener(0);
 }
 
+- (BOOL)hasRichlyEditableDragCaret
+{
+    if (auto* page = core(self)->page())
+        return page->dragCaretController().isContentRichlyEditable();
+    return NO;
+}
+
 // Used by pagination code called from AppKit when a standalone web page is printed.
 - (NSArray *)_computePageRectsWithPrintScaleFactor:(float)printScaleFactor pageSize:(NSSize)pageSize
 {
@@ -2493,7 +2500,7 @@ static NSURL *createUniqueWebDataURL()
     ResourceRequest request(baseURL);
 
     ResourceResponse response(responseURL, MIMEType, [data length], encodingName);
-    SubstituteData substituteData(WebCore::SharedBuffer::wrapNSData(data), [unreachableURL absoluteURL], response, SubstituteData::SessionHistoryVisibility::Hidden);
+    SubstituteData substituteData(WebCore::SharedBuffer::create(data), [unreachableURL absoluteURL], response, SubstituteData::SessionHistoryVisibility::Hidden);
 
     _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }

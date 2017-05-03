@@ -39,8 +39,8 @@
 #include "RenderTheme.h"
 #include "TextTrack.h"
 #include "TextTrackList.h"
-#include "UUID.h"
 #include <runtime/JSCJSValueInlines.h>
+#include <wtf/UUID.h>
 
 namespace WebCore {
 
@@ -286,12 +286,12 @@ String MediaControlsHost::shadowRootCSSText() const
     return RenderTheme::themeForPage(page)->modernMediaControlsStyleSheet();
 }
 
-String MediaControlsHost::base64StringForIconAndPlatform(const String& iconName, const String& platform) const
+String MediaControlsHost::base64StringForIconNameAndType(const String& iconName, const String& iconType) const
 {
     Page* page = m_mediaElement->document().page();
     if (!page)
         return emptyString();
-    return RenderTheme::themeForPage(page)->mediaControlsBase64StringForIconAndPlatform(iconName, platform);
+    return RenderTheme::themeForPage(page)->mediaControlsBase64StringForIconNameAndType(iconName, iconType);
 }
 
 }

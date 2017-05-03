@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,12 +57,14 @@ Ref<RTCDataChannel> RTCDataChannel::create(ScriptExecutionContext& context, std:
 {
     ASSERT(handler);
     auto channel = adoptRef(*new RTCDataChannel(context, WTFMove(handler), WTFMove(label), WTFMove(options)));
-    channel->m_handler->setClient(&channel.get());
+    channel->suspendIfNeeded();
+    channel->m_handler->setClient(channel.get());
+    channel->setPendingActivity(channel.ptr());
     return channel;
 }
 
 RTCDataChannel::RTCDataChannel(ScriptExecutionContext& context, std::unique_ptr<RTCDataChannelHandler>&& handler, String&& label, RTCDataChannelInit&& options)
-    : m_scriptExecutionContext(&context)
+    : ActiveDOMObject(&context)
     , m_handler(WTFMove(handler))
     , m_scheduledEventTimer(*this, &RTCDataChannel::scheduledEventTimerFired)
     , m_label(WTFMove(label))
@@ -69,30 +72,11 @@ RTCDataChannel::RTCDataChannel(ScriptExecutionContext& context, std::unique_ptr<
 {
 }
 
-const AtomicString& RTCDataChannel::readyState() const
-{
-    static NeverDestroyed<AtomicString> connectingState("connecting", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> openState("open", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> closingState("closing", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> closedState("closed", AtomicString::ConstructFromLiteral);
-
-    switch (m_readyState) {
-    case ReadyStateConnecting:
-        return connectingState;
-    case ReadyStateOpen:
-        return openState;
-    case ReadyStateClosing:
-        return closingState;
-    case ReadyStateClosed:
-        return closedState;
-    }
-
-    ASSERT_NOT_REACHED();
-    return emptyAtom;
-}
-
 size_t RTCDataChannel::bufferedAmount() const
 {
+    // FIXME: We should compute our own bufferedAmount and not count on m_handler which is made null at closing time.
+    if (m_stopped)
+        return 0;
     return m_handler->bufferedAmount();
 }
 
@@ -122,7 +106,8 @@ ExceptionOr<void> RTCDataChannel::setBinaryType(const AtomicString& binaryType)
 
 ExceptionOr<void> RTCDataChannel::send(const String& data)
 {
-    if (m_readyState != ReadyStateOpen)
+    // FIXME: We should only throw in Connected state.
+    if (m_readyState != RTCDataChannelState::Open)
         return Exception { INVALID_STATE_ERR };
 
     if (!m_handler->sendStringData(data)) {
@@ -135,7 +120,8 @@ ExceptionOr<void> RTCDataChannel::send(const String& data)
 
 ExceptionOr<void> RTCDataChannel::send(ArrayBuffer& data)
 {
-    if (m_readyState != ReadyStateOpen)
+    // FIXME: We should only throw in Connected state.
+    if (m_readyState != RTCDataChannelState::Open)
         return Exception { INVALID_STATE_ERR };
 
     size_t dataLength = data.byteLength();
@@ -154,6 +140,7 @@ ExceptionOr<void> RTCDataChannel::send(ArrayBuffer& data)
 
 ExceptionOr<void> RTCDataChannel::send(ArrayBufferView& data)
 {
+    // FIXME: We should only throw in Connected state.
     return send(*data.unsharedBuffer());
 }
 
@@ -168,21 +155,26 @@ void RTCDataChannel::close()
     if (m_stopped)
         return;
 
+    m_stopped = true;
+    m_readyState = RTCDataChannelState::Closed;
+
     m_handler->close();
+    m_handler = nullptr;
+    unsetPendingActivity(this);
 }
 
-void RTCDataChannel::didChangeReadyState(ReadyState newState)
+void RTCDataChannel::didChangeReadyState(RTCDataChannelState newState)
 {
-    if (m_stopped || m_readyState == ReadyStateClosed || m_readyState == newState)
+    if (m_stopped || m_readyState == RTCDataChannelState::Closed || m_readyState == newState)
         return;
 
     m_readyState = newState;
 
     switch (m_readyState) {
-    case ReadyStateOpen:
+    case RTCDataChannelState::Open:
         scheduleDispatchEvent(Event::create(eventNames().openEvent, false, false));
         break;
-    case ReadyStateClosed:
+    case RTCDataChannelState::Closed:
         scheduleDispatchEvent(Event::create(eventNames().closeEvent, false, false));
         break;
     default:
@@ -223,21 +215,18 @@ void RTCDataChannel::didDetectError()
     scheduleDispatchEvent(Event::create(eventNames().errorEvent, false, false));
 }
 
-void RTCDataChannel::bufferedAmountIsDecreasing()
+void RTCDataChannel::bufferedAmountIsDecreasing(size_t amount)
 {
     if (m_stopped)
         return;
 
-    if (bufferedAmount() <= m_bufferedAmountLowThreshold)
-        scheduleDispatchEvent(Event::create(eventNames().bufferedAmountLowThresholdEvent, false, false));
+    if (amount <= m_bufferedAmountLowThreshold)
+        scheduleDispatchEvent(Event::create(eventNames().bufferedamountlowEvent, false, false));
 }
 
 void RTCDataChannel::stop()
 {
-    m_stopped = true;
-    m_readyState = ReadyStateClosed;
-    m_handler->setClient(nullptr);
-    m_scriptExecutionContext = nullptr;
+    close();
 }
 
 void RTCDataChannel::scheduleDispatchEvent(Ref<Event>&& event)
@@ -245,7 +234,7 @@ void RTCDataChannel::scheduleDispatchEvent(Ref<Event>&& event)
     m_scheduledEvents.append(WTFMove(event));
 
     if (!m_scheduledEventTimer.isActive())
-        m_scheduledEventTimer.startOneShot(0);
+        m_scheduledEventTimer.startOneShot(0_s);
 }
 
 void RTCDataChannel::scheduledEventTimerFired()

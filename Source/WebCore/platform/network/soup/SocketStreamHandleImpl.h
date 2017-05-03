@@ -48,16 +48,16 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl final : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL&, SocketStreamHandleClient&, SessionID, const String&);
+    static Ref<SocketStreamHandleImpl> create(const URL&, SocketStreamHandleClient&, SessionID, const String&, SourceApplicationAuditToken&&);
     static Ref<SocketStreamHandle> create(GSocketConnection*, SocketStreamHandleClient&);
 
     virtual ~SocketStreamHandleImpl();
 
+    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
+    void platformClose() final;
 private:
     SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
 
-    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
-    void platformClose() final;
     size_t bufferedAmount() final;
     std::optional<size_t> platformSendInternal(const char*, size_t);
     bool sendPendingData();

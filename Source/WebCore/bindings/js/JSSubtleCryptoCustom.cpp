@@ -31,6 +31,7 @@
 #include "CryptoAlgorithm.h"
 #include "CryptoAlgorithmRegistry.h"
 #include "JSAesCbcCfbParams.h"
+#include "JSAesCtrParams.h"
 #include "JSAesGcmParams.h"
 #include "JSAesKeyParams.h"
 #include "JSCryptoAlgorithmParameters.h"
@@ -40,6 +41,8 @@
 #include "JSDOMWrapper.h"
 #include "JSEcKeyParams.h"
 #include "JSEcdhKeyDeriveParams.h"
+#include "JSEcdsaParams.h"
+#include "JSHkdfParams.h"
 #include "JSHmacKeyParams.h"
 #include "JSJsonWebKey.h"
 #include "JSPbkdf2Params.h"
@@ -124,6 +127,12 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 result = std::make_unique<CryptoAlgorithmAesCbcCfbParams>(params);
                 break;
             }
+            case CryptoAlgorithmIdentifier::AES_CTR: {
+                auto params = convertDictionary<CryptoAlgorithmAesCtrParams>(state, value);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                result = std::make_unique<CryptoAlgorithmAesCtrParams>(params);
+                break;
+            }
             case CryptoAlgorithmIdentifier::AES_GCM: {
                 auto params = convertDictionary<CryptoAlgorithmAesGcmParams>(state, value);
                 RETURN_IF_EXCEPTION(scope, nullptr);
@@ -142,6 +151,15 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
             case CryptoAlgorithmIdentifier::HMAC:
                 result = std::make_unique<CryptoAlgorithmParameters>(params);
                 break;
+            case CryptoAlgorithmIdentifier::ECDSA: {
+                auto params = convertDictionary<CryptoAlgorithmEcdsaParams>(state, value);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                params.hashIdentifier = toHashIdentifier(state, params.hash);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                result = std::make_unique<CryptoAlgorithmEcdsaParams>(params);
+                break;
+
+            }
             default:
                 throwNotSupportedError(state, scope);
                 return nullptr;
@@ -225,6 +243,14 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 result = std::make_unique<CryptoAlgorithmEcdhKeyDeriveParams>(params);
                 break;
             }
+            case CryptoAlgorithmIdentifier::HKDF: {
+                auto params = convertDictionary<CryptoAlgorithmHkdfParams>(state, value);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                params.hashIdentifier = toHashIdentifier(state, params.hash);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                result = std::make_unique<CryptoAlgorithmHkdfParams>(params);
+                break;
+            }
             case CryptoAlgorithmIdentifier::PBKDF2: {
                 auto params = convertDictionary<CryptoAlgorithmPbkdf2Params>(state, value);
                 RETURN_IF_EXCEPTION(scope, nullptr);
@@ -241,7 +267,6 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
         case Operations::ImportKey:
             switch (*identifier) {
             case CryptoAlgorithmIdentifier::RSAES_PKCS1_v1_5:
-            case CryptoAlgorithmIdentifier::PBKDF2:
                 result = std::make_unique<CryptoAlgorithmParameters>(params);
                 break;
             case CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5:
@@ -277,6 +302,10 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 result = std::make_unique<CryptoAlgorithmEcKeyParams>(params);
                 break;
             }
+            case CryptoAlgorithmIdentifier::HKDF:
+            case CryptoAlgorithmIdentifier::PBKDF2:
+                result = std::make_unique<CryptoAlgorithmParameters>(params);
+                break;
             default:
                 throwNotSupportedError(state, scope);
                 return nullptr;
@@ -314,6 +343,7 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 result = std::make_unique<CryptoAlgorithmHmacKeyParams>(params);
                 break;
             }
+            case CryptoAlgorithmIdentifier::HKDF:
             case CryptoAlgorithmIdentifier::PBKDF2:
                 result = std::make_unique<CryptoAlgorithmParameters>(params);
                 break;
@@ -624,7 +654,7 @@ static void jsSubtleCryptoFunctionSignPromise(ExecState& state, Ref<DeferredProm
 
     JSSubtleCrypto* subtle = jsDynamicDowncast<JSSubtleCrypto*>(vm, state.thisValue());
     ASSERT(subtle);
-    algorithm->sign(key.releaseNonNull(), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContextFromExecState(&state), subtle->wrapped().workQueue());
+    algorithm->sign(WTFMove(params), key.releaseNonNull(), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContextFromExecState(&state), subtle->wrapped().workQueue());
 }
 
 static void jsSubtleCryptoFunctionVerifyPromise(ExecState& state, Ref<DeferredPromise>&& promise)
@@ -674,7 +704,7 @@ static void jsSubtleCryptoFunctionVerifyPromise(ExecState& state, Ref<DeferredPr
 
     auto subtle = jsDynamicDowncast<JSSubtleCrypto*>(vm, state.thisValue());
     ASSERT(subtle);
-    algorithm->verify(key.releaseNonNull(), WTFMove(signature), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContextFromExecState(&state), subtle->wrapped().workQueue());
+    algorithm->verify(WTFMove(params), key.releaseNonNull(), WTFMove(signature), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContextFromExecState(&state), subtle->wrapped().workQueue());
 }
 
 static void jsSubtleCryptoFunctionDigestPromise(ExecState& state, Ref<DeferredPromise>&& promise)
@@ -867,7 +897,7 @@ static void jsSubtleCryptoFunctionDeriveBitsPromise(ExecState& state, Ref<Deferr
     auto baseKey = toCryptoKey(state, state.uncheckedArgument(1));
     RETURN_IF_EXCEPTION(scope, void());
 
-    auto length = convert<IDLUnsignedLong>(state, state.uncheckedArgument(2), IntegerConversionConfiguration::Normal);
+    auto length = convert<IDLUnsignedLong>(state, state.uncheckedArgument(2));
     RETURN_IF_EXCEPTION(scope, void());
 
     if (params->identifier != baseKey->algorithmIdentifier()) {

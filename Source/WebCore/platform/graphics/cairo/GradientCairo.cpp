@@ -61,12 +61,15 @@ cairo_pattern_t* Gradient::platformGradient(float globalAlpha)
     else
         m_gradient = cairo_pattern_create_linear(m_p0.x(), m_p0.y(), m_p1.x(), m_p1.y());
 
-    Vector<ColorStop>::iterator stopIterator = m_stops.begin();
-    while (stopIterator != m_stops.end()) {
-        cairo_pattern_add_color_stop_rgba(m_gradient, stopIterator->stop,
-                                          stopIterator->red, stopIterator->green, stopIterator->blue,
-                                          stopIterator->alpha * globalAlpha);
-        ++stopIterator;
+    for (const auto& stop : m_stops) {
+        if (stop.color.isExtended()) {
+            cairo_pattern_add_color_stop_rgba(m_gradient, stop.offset, stop.color.asExtended().red(), stop.color.asExtended().green(), stop.color.asExtended().blue(),
+                stop.color.asExtended().alpha() * globalAlpha);
+        } else {
+            float r, g, b, a;
+            stop.color.getRGBA(r, g, b, a);
+            cairo_pattern_add_color_stop_rgba(m_gradient, stop.offset, r, g, b, a * globalAlpha);
+        }
     }
 
     switch (m_spreadMethod) {

@@ -75,12 +75,12 @@ static float scrollWheelMultiplier()
     }
     return multiplier;
 }
+#endif
 
 static ScrollEventAxis otherScrollEventAxis(ScrollEventAxis axis)
 {
     return axis == ScrollEventAxis::Horizontal ? ScrollEventAxis::Vertical : ScrollEventAxis::Horizontal;
 }
-#endif
 
 ScrollController::ScrollController(ScrollControllerClient& client)
     : m_client(client)
@@ -386,7 +386,7 @@ bool ScrollController::isScrollSnapInProgress() const
 void ScrollController::startSnapRubberbandTimer()
 {
     m_client.startSnapRubberbandTimer();
-    m_snapRubberbandTimer.startRepeating(1.0 / 60.0);
+    m_snapRubberbandTimer.startRepeating(1_s / 60.);
 
     m_client.deferTestsForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::RubberbandInProgress);
 }
@@ -490,7 +490,7 @@ void ScrollController::scheduleStatelessScrollSnap()
         return;
 
     static const Seconds statelessScrollSnapDelay = 750_ms;
-    m_statelessSnapTransitionTimer.startOneShot(statelessScrollSnapDelay.value());
+    m_statelessSnapTransitionTimer.startOneShot(statelessScrollSnapDelay);
     startDeferringTestsDueToScrollSnapping();
 }
 
@@ -555,6 +555,44 @@ bool ScrollController::processWheelEventForScrollSnap(const PlatformWheelEvent& 
     return !(isInertialScrolling && shouldOverrideInertialScrolling());
 }
 
+void ScrollController::startScrollSnapTimer()
+{
+    if (m_scrollSnapTimer.isActive())
+        return;
+
+    startDeferringTestsDueToScrollSnapping();
+    m_client.startScrollSnapTimer();
+    m_scrollSnapTimer.startRepeating(1_s / 60.);
+}
+
+void ScrollController::stopScrollSnapTimer()
+{
+    if (!m_scrollSnapTimer.isActive())
+        return;
+
+    stopDeferringTestsDueToScrollSnapping();
+    m_client.stopScrollSnapTimer();
+    m_scrollSnapTimer.stop();
+}
+
+void ScrollController::scrollSnapTimerFired()
+{
+    if (!m_scrollSnapState) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    bool isAnimationComplete;
+    auto animationOffset = m_scrollSnapState->currentAnimatedScrollOffset(isAnimationComplete);
+    auto currentOffset = m_client.scrollOffset();
+    m_client.immediateScrollByWithoutContentEdgeConstraints(FloatSize(animationOffset.x() - currentOffset.x(), animationOffset.y() - currentOffset.y()));
+    if (isAnimationComplete) {
+        m_scrollSnapState->transitionToDestinationReachedState();
+        stopScrollSnapTimer();
+    }
+}
+#endif // PLATFORM(MAC)
+
 void ScrollController::updateScrollSnapState(const ScrollableArea& scrollableArea)
 {
     if (auto* snapOffsets = scrollableArea.horizontalSnapOffsets()) {
@@ -588,48 +626,6 @@ void ScrollController::updateScrollSnapPoints(ScrollEventAxis axis, const Vector
     else
         m_scrollSnapState->setSnapOffsetsAndPositionRangesForAxis(axis, snapPoints, snapRanges);
 }
-
-void ScrollController::startScrollSnapTimer()
-{
-    if (m_scrollSnapTimer.isActive())
-        return;
-
-    startDeferringTestsDueToScrollSnapping();
-    m_client.startScrollSnapTimer();
-    m_scrollSnapTimer.startRepeating(1.0 / 60.0);
-}
-
-void ScrollController::stopScrollSnapTimer()
-{
-    if (!m_scrollSnapTimer.isActive())
-        return;
-
-    stopDeferringTestsDueToScrollSnapping();
-    m_client.stopScrollSnapTimer();
-    m_scrollSnapTimer.stop();
-}
-
-void ScrollController::scrollSnapTimerFired()
-{
-    if (!m_scrollSnapState) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    bool isAnimationComplete;
-    auto animationOffset = m_scrollSnapState->currentAnimatedScrollOffset(isAnimationComplete);
-    auto currentOffset = m_client.scrollOffset();
-    m_client.immediateScrollByWithoutContentEdgeConstraints(FloatSize(animationOffset.x() - currentOffset.x(), animationOffset.y() - currentOffset.y()));
-    if (isAnimationComplete) {
-        m_scrollSnapState->transitionToDestinationReachedState();
-        stopScrollSnapTimer();
-    }
-}
-#else
-void ScrollController::updateScrollSnapState(const ScrollableArea&)
-{
-}
-#endif // PLATFORM(MAC)
 
 unsigned ScrollController::activeScrollSnapIndexForAxis(ScrollEventAxis axis) const
 {

@@ -62,8 +62,8 @@ enum TestConfidence { "high", "kinda-low" };
     attribute byte byteAttr;
     attribute octet octetAttr;
     [Unscopable] attribute short shortAttr;
-    [Clamp] attribute short clampedShortAttr;
-    [EnforceRange] attribute short enforceRangeShortAttr;
+    attribute [Clamp] short clampedShortAttr;
+    attribute [EnforceRange] short enforceRangeShortAttr;
     attribute unsigned short unsignedShortAttr;
     attribute long longAttr;
     attribute long long longLongAttr;
@@ -74,9 +74,9 @@ enum TestConfidence { "high", "kinda-low" };
     attribute TestObj? testNullableObjAttr;
     [LenientThis] attribute TestObj lenientTestObjAttr;
     [Unforgeable] readonly attribute DOMString unforgeableAttr;
-    [TreatNullAs=EmptyString] attribute DOMString stringAttrTreatingNullAsEmptyString;
-    [TreatNullAs=EmptyString] attribute USVString usvstringAttrTreatingNullAsEmptyString;
-    [TreatNullAs=EmptyString] attribute ByteString byteStringAttrTreatingNullAsEmptyString;
+    attribute [TreatNullAs=EmptyString] DOMString stringAttrTreatingNullAsEmptyString;
+    attribute [TreatNullAs=EmptyString] USVString usvstringAttrTreatingNullAsEmptyString;
+    attribute [TreatNullAs=EmptyString] ByteString byteStringAttrTreatingNullAsEmptyString;
     attribute record<DOMString, long> stringLongRecordAttr;
     attribute record<USVString, long> usvstringLongRecordAttr;
     attribute record<ByteString, long> usvstringLongRecordAttr;
@@ -84,6 +84,8 @@ enum TestConfidence { "high", "kinda-low" };
     attribute record<DOMString, TestObj?> stringNullableObjRecordAttr;
     attribute TestDictionary dictionaryAttr;
     attribute TestDictionary? nullableDictionaryAttr;
+    attribute (DOMString or [Clamp] long) annotatedTypeInUnionAttr;
+    attribute sequence<[Clamp] long> annotatedTypeInSequenceAttr;
 
     attribute TestEnumTypeWithAlternateImplementationName implementationEnumAttr;
 
@@ -105,7 +107,7 @@ enum TestConfidence { "high", "kinda-low" };
     [Reflect=customContentURLAttr, URL] attribute DOMString reflectedCustomURLAttr;
 
     // [EnabledAtRuntime] attributes and operations.
-    [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] attribute DOMString enabledAtRuntimeAttribute;
+    [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature&TestFeature1] attribute DOMString enabledAtRuntimeAttribute;
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(DOMString testParam);
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(long testParam);
 
@@ -194,8 +196,8 @@ enum TestConfidence { "high", "kinda-low" };
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
     [CallWith=ScriptArguments&CallStack] void withScriptArgumentsAndCallStack();
     [CallWith=Document] void withDocumentArgument();
-    [CallWith=CallerDocument] void withCallerDocumentArgument();
-    [CallWith=CallerWindow] void withCallerWindowArgument();
+    [CallWith=IncumbentDocument] void withCallerDocumentArgument();
+    [CallWith=IncumbentWindow] void withCallerWindowArgument();
 
     [CallWith=ScriptState] attribute long withScriptStateAttribute;
     [CallWith=ScriptState, SetterCallWith=ActiveWindow&FirstWindow] attribute long withCallWithAndSetterCallWithAttribute;
@@ -214,15 +216,15 @@ enum TestConfidence { "high", "kinda-low" };
     void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
     void    methodWithOptionalString(optional DOMString str);
     void    methodWithOptionalUSVString(optional USVString str);
-    void    methodWithOptionalAtomicString([AtomicString] optional DOMString str);
+    void    methodWithOptionalAtomicString(optional [AtomicString] DOMString str);
     void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
-    void    methodWithOptionalAtomicStringAndDefaultValue([AtomicString] optional DOMString str = "foo");
+    void    methodWithOptionalAtomicStringAndDefaultValue(optional [AtomicString] DOMString str = "foo");
     void    methodWithOptionalStringIsNull(optional DOMString str = null);
     void    methodWithOptionalStringIsUndefined(optional DOMString str = "undefined");
-    void    methodWithOptionalAtomicStringIsNull([AtomicString] optional DOMString str = null);
+    void    methodWithOptionalAtomicStringIsNull(optional [AtomicString] DOMString str = null);
     void    methodWithOptionalStringIsEmptyString(optional DOMString str = "");
     void    methodWithOptionalUSVStringIsEmptyString(optional USVString str = "");
-    void    methodWithOptionalAtomicStringIsEmptyString([AtomicString] optional DOMString str = "");
+    void    methodWithOptionalAtomicStringIsEmptyString(optional [AtomicString] DOMString str = "");
     void    methodWithOptionalDoubleIsNaN(optional unrestricted double number = NaN);
     void    methodWithOptionalFloatIsNaN(optional unrestricted float number = NaN);
     void    methodWithOptionalLongLong(optional long long number);
@@ -324,7 +326,9 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=Condition1] static void overloadedMethod1(DOMString type);
 
     void classMethodWithClamp([Clamp] unsigned short objArgsShort, [Clamp] unsigned long objArgsLong);
+    void classMethodWithClampOnOptional(optional [Clamp] long objArgsLong = 0);
     void classMethodWithEnforceRange([EnforceRange] unsigned short objArgsShort, [EnforceRange] unsigned long objArgsLong);
+    void classMethodWithEnforceRangeOnOptional(optional [EnforceRange] long objArgsLong = 0);
 
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
     [MayThrowException] sequence<DOMString> stringArrayFunction(sequence<DOMString> values);
@@ -343,9 +347,7 @@ enum TestConfidence { "high", "kinda-low" };
     void convert4(DOMString? value);
 
     attribute SVGPoint mutablePoint;
-    [Immutable] attribute SVGPoint immutablePoint;
     SVGPoint mutablePointFunction();
-    [Immutable] SVGPoint immutablePointFunction();
 
     [ImplementedAs=banana] void orange();
     [ImplementedAs=blueberry] attribute long strawberry;
@@ -478,6 +480,8 @@ typedef any AnyTypedef;
     (long or Node) unionMember;
     (long or Node)? nullableUnionMember = null;
     BufferSource bufferSourceValue;
+    (DOMString or [Clamp] long) annotatedTypeInUnionMember;
+    sequence<[Clamp] long> annotatedTypeInSequenceMember;
 };
 
 dictionary TestDictionaryThatShouldNotTolerateNull {

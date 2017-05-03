@@ -404,7 +404,7 @@ WKCookieManagerRef WKContextGetCookieManager(WKContextRef contextRef)
 
 WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef context)
 {
-    return toAPI(toImpl(context)->websiteDataStore());
+    return toAPI(&toImpl(context)->websiteDataStore());
 }
 
 WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef context)
@@ -527,6 +527,11 @@ void WKContextUseTestingNetworkSession(WKContextRef context)
     toImpl(context)->useTestingNetworkSession();
 }
 
+void WKContextSetAllowsAnySSLCertificateForWebSocketTesting(WKContextRef context, bool allows)
+{
+    toImpl(context)->setAllowsAnySSLCertificateForWebSocket(allows);
+}
+
 void WKContextClearCachedCredentials(WKContextRef context)
 {
     toImpl(context)->clearCachedCredentials();
@@ -571,6 +576,11 @@ void WKContextSetMemoryCacheDisabled(WKContextRef contextRef, bool disabled)
 void WKContextSetFontWhitelist(WKContextRef contextRef, WKArrayRef arrayRef)
 {
     toImpl(contextRef)->setFontWhitelist(toImpl(arrayRef));
+}
+
+void WKContextTerminateNetworkProcess(WKContextRef context)
+{
+    toImpl(context)->terminateNetworkProcess();
 }
 
 pid_t WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)

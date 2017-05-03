@@ -110,7 +110,7 @@ public:
     bool shouldDeferImageLoad(const URL&) const;
     bool shouldPerformImageLoad(const URL&) const;
     
-    CachePolicy cachePolicy(CachedResource::Type) const;
+    CachePolicy cachePolicy(CachedResource::Type, const URL&) const;
     
     Frame* frame() const; // Can be null
     Document* document() const { return m_document; } // Can be null
@@ -133,6 +133,8 @@ public:
     void clearPreloads(ClearPreloadsMode);
     CachedResourceHandle<CachedResource> preload(CachedResource::Type, CachedResourceRequest&&);
     void printPreloadStats();
+    void warnUnusedPreloads();
+    void stopUnusedPreloadsTimer();
 
     bool updateRequestAfterRedirection(CachedResource::Type, ResourceRequest&, const ResourceLoaderOptions&);
 
@@ -188,6 +190,7 @@ private:
     int m_requestCount;
     
     std::unique_ptr<ListHashSet<CachedResource*>> m_preloads;
+    Timer m_unusedPreloadsTimer;
 
     Timer m_garbageCollectDocumentResourcesTimer;
 

@@ -316,6 +316,10 @@ void UIScriptController::addViewToWindow(JSValueRef)
 {
 }
 
+void UIScriptController::setSafeAreaInsets(double, double, double, double)
+{
+}
+
 }
 
 #endif // PLATFORM(IOS)

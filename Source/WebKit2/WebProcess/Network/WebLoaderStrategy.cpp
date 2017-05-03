@@ -43,7 +43,7 @@
 #include "WebProcess.h"
 #include "WebResourceLoader.h"
 #include "WebURLSchemeHandlerProxy.h"
-#include "WebURLSchemeHandlerTaskProxy.h"
+#include "WebURLSchemeTaskProxy.h"
 #include <WebCore/ApplicationCacheHost.h>
 #include <WebCore/CachedResource.h>
 #include <WebCore/DiagnosticLoggingClient.h>
@@ -99,10 +99,10 @@ RefPtr<NetscapePlugInStreamLoader> WebLoaderStrategy::schedulePluginStreamLoad(F
     return loader;
 }
 
-static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
+static Seconds maximumBufferingTime(CachedResource* resource)
 {
     if (!resource)
-        return 0ms;
+        return 0_s;
 
     switch (resource->type()) {
     case CachedResource::CSSStyleSheet:
@@ -111,9 +111,9 @@ static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
     case CachedResource::SVGFontResource:
 #endif
     case CachedResource::FontResource:
-        return std::chrono::milliseconds::max();
+        return Seconds::infinity();
     case CachedResource::ImageResource:
-        return 500ms;
+        return 500_ms;
     case CachedResource::MediaResource:
     case CachedResource::MainResource:
     case CachedResource::RawResource:
@@ -128,11 +128,11 @@ static std::chrono::milliseconds maximumBufferingTime(CachedResource* resource)
 #if ENABLE(XSLT)
     case CachedResource::XSLStyleSheet:
 #endif
-        return 0ms;
+        return 0_s;
     }
 
     ASSERT_NOT_REACHED();
-    return 0ms;
+    return 0_s;
 }
 
 void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResource* resource, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
@@ -157,7 +157,7 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
     // then we should remember the ResourceLoader in our records but not schedule it in the NetworkProcess.
     if (resourceLoader.documentLoader()->scheduleArchiveLoad(resourceLoader, resourceLoader.request())) {
         LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be handled as an archive resource.", resourceLoader.url().string().utf8().data());
-        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as an archive resource (frame = %p, resourceID = %" PRIu64 ")", resourceLoader.frame(), identifier);
+        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as an archive resource (frame = %p, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), trackingParameters.pageID, trackingParameters.frameID, identifier);
         m_webResourceLoaders.set(identifier, WebResourceLoader::create(resourceLoader, trackingParameters));
         return;
     }
@@ -165,14 +165,14 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
 
     if (resourceLoader.documentLoader()->applicationCacheHost().maybeLoadResource(resourceLoader, resourceLoader.request(), resourceLoader.request().url())) {
         LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be loaded from application cache.", resourceLoader.url().string().utf8().data());
-        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be loaded from application cache (frame = %p, resourceID = %" PRIu64 ")", resourceLoader.frame(), identifier);
+        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be loaded from application cache (frame = %p, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), trackingParameters.pageID, trackingParameters.frameID, identifier);
         m_webResourceLoaders.set(identifier, WebResourceLoader::create(resourceLoader, trackingParameters));
         return;
     }
 
     if (resourceLoader.request().url().protocolIsData()) {
         LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be loaded as data.", resourceLoader.url().string().utf8().data());
-        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be loaded as data (frame = %p, resourceID = %" PRIu64 ")", resourceLoader.frame(), identifier);
+        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be loaded as data (frame = %p, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), trackingParameters.pageID, trackingParameters.frameID, identifier);
         startLocalLoad(resourceLoader);
         return;
     }
@@ -180,7 +180,7 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
 #if USE(QUICK_LOOK)
     if (isQuickLookPreviewURL(resourceLoader.request().url())) {
         LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be handled as a QuickLook resource.", resourceLoader.url().string().utf8().data());
-        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as a QuickLook resource (frame = %p, resourceID = %" PRIu64 ")", resourceLoader.frame(), identifier);
+        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as a QuickLook resource (frame = %p, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), trackingParameters.pageID, trackingParameters.frameID, identifier);
         startLocalLoad(resourceLoader);
         return;
     }
@@ -191,7 +191,7 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
     // https://blogs.gnome.org/alexl/2012/01/26/resources-in-glib/
     if (resourceLoader.request().url().protocolIs("resource")) {
         LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::scheduleLoad, url '%s' will be handled as a GResource.", resourceLoader.url().string().utf8().data());
-        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as a GResource (frame = %p, resourceID = %" PRIu64 ")", resourceLoader.frame(), identifier);
+        RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: URL will be handled as a GResource (frame = %p, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), trackingParameters.pageID, trackingParameters.frameID, identifier);
         startLocalLoad(resourceLoader);
         return;
     }
@@ -230,6 +230,7 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials);
 
+    RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: Resource is being scheduled with the NetworkProcess (frame = %p, priority = %d, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), static_cast<int>(resourceLoader.request().priority()), loadParameters.webPageID, loadParameters.webFrameID, loadParameters.identifier);
     if (!WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::ScheduleResourceLoad(loadParameters), 0)) {
         RELEASE_LOG_ERROR_IF_ALLOWED(resourceLoader, "scheduleLoad: Unable to schedule resource with the NetworkProcess (frame = %p, priority = %d, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", resourceLoader.frame(), static_cast<int>(resourceLoader.request().priority()), loadParameters.webPageID, loadParameters.webFrameID, loadParameters.identifier);
         // We probably failed to schedule this load with the NetworkProcess because it had crashed.
@@ -238,15 +239,13 @@ void WebLoaderStrategy::scheduleLoad(ResourceLoader& resourceLoader, CachedResou
         return;
     }
 
-    auto webResourceLoader = WebResourceLoader::create(resourceLoader, trackingParameters);
-    RELEASE_LOG_IF_ALLOWED(resourceLoader, "scheduleLoad: Resource has been queued for scheduling with the NetworkProcess (frame = %p, priority = %d, pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", WebResourceLoader = %p)", resourceLoader.frame(), static_cast<int>(resourceLoader.request().priority()), loadParameters.webPageID, loadParameters.webFrameID, loadParameters.identifier, webResourceLoader.ptr());
-    m_webResourceLoaders.set(identifier, WTFMove(webResourceLoader));
+    m_webResourceLoaders.set(identifier, WebResourceLoader::create(resourceLoader, trackingParameters));
 }
 
 void WebLoaderStrategy::scheduleInternallyFailedLoad(WebCore::ResourceLoader& resourceLoader)
 {
     m_internallyFailedResourceLoaders.add(&resourceLoader);
-    m_internallyFailedLoadTimer.startOneShot(0);
+    m_internallyFailedLoadTimer.startOneShot(0_s);
 }
 
 void WebLoaderStrategy::internallyFailedLoadTimerFired()
@@ -264,18 +263,30 @@ void WebLoaderStrategy::startLocalLoad(WebCore::ResourceLoader& resourceLoader)
     m_webResourceLoaders.set(resourceLoader.identifier(), WebResourceLoader::create(resourceLoader, { }));
 }
 
+void WebLoaderStrategy::addURLSchemeTaskProxy(WebURLSchemeTaskProxy& task)
+{
+    auto result = m_urlSchemeTasks.add(task.identifier(), &task);
+    ASSERT_UNUSED(result, result.isNewEntry);
+}
+
+void WebLoaderStrategy::removeURLSchemeTaskProxy(WebURLSchemeTaskProxy& task)
+{
+    m_urlSchemeTasks.remove(task.identifier());
+}
+
 void WebLoaderStrategy::remove(ResourceLoader* resourceLoader)
 {
     ASSERT(resourceLoader);
     LOG(NetworkScheduling, "(WebProcess) WebLoaderStrategy::remove, url '%s'", resourceLoader->url().string().utf8().data());
 
-    if (m_internallyFailedResourceLoaders.contains(resourceLoader)) {
-        m_internallyFailedResourceLoaders.remove(resourceLoader);
+    if (auto task = m_urlSchemeTasks.take(resourceLoader->identifier())) {
+        ASSERT(!m_internallyFailedResourceLoaders.contains(resourceLoader));
+        task->stopLoading();
         return;
     }
 
-    if (auto task = m_urlSchemeHandlerTasks.take(resourceLoader->identifier())) {
-        task->stopLoading();
+    if (m_internallyFailedResourceLoaders.contains(resourceLoader)) {
+        m_internallyFailedResourceLoaders.remove(resourceLoader);
         return;
     }
     
@@ -398,6 +409,11 @@ void WebLoaderStrategy::storeDerivedDataToCache(const SHA1::Digest& bodyHash, co
     IPC::SharedBufferDataReference dataReference { &data };
     WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::StoreDerivedDataToCache(key, dataReference), 0);
 #endif
+}
+
+void WebLoaderStrategy::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
+{
+    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::SetCaptureExtraNetworkLoadMetricsEnabled(enabled), 0);
 }
 
 } // namespace WebKit

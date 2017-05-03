@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,15 +28,7 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "ArrayBuffer.h"
-#include "FunctionPrototype.h"
-#include "JSArrayBuffer.h"
 #include "JSCInlines.h"
-#include "JSWebAssemblyModule.h"
-
-namespace JSC {
-static EncodedJSValue JSC_HOST_CALL webAssemblyModuleProtoCustomSections(ExecState*);
-}
 
 #include "WebAssemblyModulePrototype.lut.h"
 
@@ -46,44 +38,8 @@ const ClassInfo WebAssemblyModulePrototype::s_info = { "WebAssembly.Module.proto
 
 /* Source for WebAssemblyModulePrototype.lut.h
  @begin prototypeTableWebAssemblyModule
- customSections webAssemblyModuleProtoCustomSections DontEnum|Function 1
  @end
  */
-
-EncodedJSValue JSC_HOST_CALL webAssemblyModuleProtoCustomSections(ExecState* exec)
-{
-    VM& vm = exec->vm();
-    auto* globalObject = exec->lexicalGlobalObject();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-
-    JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->thisValue());
-    if (!module)
-        throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Module.prototype.customSections called with non WebAssembly.Module |this| value")));
-    RETURN_IF_EXCEPTION(throwScope, { });
-
-    const String sectionNameString = exec->argument(0).getString(exec);
-    RETURN_IF_EXCEPTION(throwScope, { });
-
-    JSArray* result = constructEmptyArray(exec, nullptr, globalObject);
-    RETURN_IF_EXCEPTION(throwScope, { });
-
-    const auto& customSections = module->moduleInformation().customSections;
-    for (const Wasm::CustomSection& section : customSections) {
-        if (section.name == sectionNameString) {
-            auto buffer = ArrayBuffer::tryCreate(section.payload.data(), section.payload.size());
-            if (!buffer)
-                throwException(exec, throwScope, createOutOfMemoryError(exec));
-
-            Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, JSValue(), globalObject->arrayBufferStructure(ArrayBufferSharingMode::Default));
-            RETURN_IF_EXCEPTION(throwScope, { });
-
-            result->push(exec, JSArrayBuffer::create(vm, arrayBufferStructure, WTFMove(buffer)));
-            RETURN_IF_EXCEPTION(throwScope, { });
-        }
-    }
-
-    return JSValue::encode(result);
-}
 
 WebAssemblyModulePrototype* WebAssemblyModulePrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {

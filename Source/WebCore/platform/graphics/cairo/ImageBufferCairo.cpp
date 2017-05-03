@@ -319,7 +319,7 @@ void ImageBuffer::draw(GraphicsContext& destinationContext, const FloatRect& des
 {
     BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
     RefPtr<Image> image = copyImage(copyMode);
-    destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
+    destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
 }
 
 void ImageBuffer::drawPattern(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
@@ -469,17 +469,21 @@ inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem co
     return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
     IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = backingStoreRect.size();
     return getImageData<Unmultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
     IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = backingStoreRect.size();
     return getImageData<Premultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
 }
 

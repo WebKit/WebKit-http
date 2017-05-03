@@ -37,12 +37,12 @@ public:
 
     bool paint(Scrollbar&, GraphicsContext&, const IntRect& damageRect) override;
 
-    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) override;
+    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) override;
     
     bool supportsControlTints() const override { return true; }
 
-    double initialAutoscrollTimerDelay() override;
-    double autoscrollTimerDelay() override;
+    Seconds initialAutoscrollTimerDelay() override;
+    Seconds autoscrollTimerDelay() override;
 
     ScrollbarButtonsPlacement buttonsPlacement() const override;
 

@@ -41,58 +41,58 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
 
         let columns = {domain: {}, type: {}, method: {}, scheme: {}, statusCode: {}, cached: {}, protocol: {}, priority: {}, remoteAddress: {}, connectionIdentifier: {}, size: {}, transferSize: {}, requestSent: {}, latency: {}, duration: {}, graph: {}};
 
-        columns.domain.title = WebInspector.UIString("Domain");
+        columns.domain.title = columns.domain.tooltip = WebInspector.UIString("Domain");
         columns.domain.width = "10%";
 
-        columns.type.title = WebInspector.UIString("Type");
+        columns.type.title = columns.type.tooltip = WebInspector.UIString("Type");
         columns.type.width = "6%";
 
-        columns.method.title = WebInspector.UIString("Method");
+        columns.method.title = columns.method.tooltip = WebInspector.UIString("Method");
         columns.method.width = "5%";
 
-        columns.scheme.title = WebInspector.UIString("Scheme");
+        columns.scheme.title = columns.scheme.tooltip = WebInspector.UIString("Scheme");
         columns.scheme.width = "5%";
 
-        columns.statusCode.title = WebInspector.UIString("Status");
+        columns.statusCode.title = columns.statusCode.tooltip = WebInspector.UIString("Status");
         columns.statusCode.width = "5%";
 
-        columns.cached.title = WebInspector.UIString("Cached");
+        columns.cached.title = columns.cached.tooltip = WebInspector.UIString("Cached");
         columns.cached.width = "8%";
 
-        columns.protocol.title = WebInspector.UIString("Protocol");
+        columns.protocol.title = columns.protocol.tooltip = WebInspector.UIString("Protocol");
         columns.protocol.width = "5%";
         columns.protocol.hidden = true;
 
-        columns.priority.title = WebInspector.UIString("Priority");
+        columns.priority.title = columns.priority.tooltip = WebInspector.UIString("Priority");
         columns.priority.width = "5%";
         columns.priority.hidden = true;
 
-        columns.remoteAddress.title = WebInspector.UIString("Remote Address");
+        columns.remoteAddress.title = columns.remoteAddress.tooltip = WebInspector.UIString("IP Address");
         columns.remoteAddress.width = "8%";
         columns.remoteAddress.hidden = true;
 
-        columns.connectionIdentifier.title = WebInspector.UIString("Connection");
+        columns.connectionIdentifier.title = columns.connectionIdentifier.tooltip = WebInspector.UIString("Connection ID");
         columns.connectionIdentifier.width = "5%";
         columns.connectionIdentifier.hidden = true;
         columns.connectionIdentifier.aligned = "right";
 
-        columns.size.title = WebInspector.UIString("Size");
+        columns.size.title = columns.size.tooltip = WebInspector.UIString("Size");
         columns.size.width = "6%";
         columns.size.aligned = "right";
 
-        columns.transferSize.title = WebInspector.UIString("Transferred");
+        columns.transferSize.title = columns.transferSize.tooltip = WebInspector.UIString("Transferred");
         columns.transferSize.width = "8%";
         columns.transferSize.aligned = "right";
 
-        columns.requestSent.title = WebInspector.UIString("Start Time");
+        columns.requestSent.title = columns.requestSent.tooltip = WebInspector.UIString("Start Time");
         columns.requestSent.width = "9%";
         columns.requestSent.aligned = "right";
 
-        columns.latency.title = WebInspector.UIString("Latency");
+        columns.latency.title = columns.latency.tooltip = WebInspector.UIString("Latency");
         columns.latency.width = "9%";
         columns.latency.aligned = "right";
 
-        columns.duration.title = WebInspector.UIString("Duration");
+        columns.duration.title = columns.duration.tooltip = WebInspector.UIString("Duration");
         columns.duration.width = "9%";
         columns.duration.aligned = "right";
 
@@ -117,6 +117,7 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
 
         this._dataGrid = new WebInspector.TimelineDataGrid(columns, this._contentTreeOutline);
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
+        this._dataGrid.sortDelegate = this;
         this._dataGrid.sortColumnIdentifier = "requestSent";
         this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
         this._dataGrid.createSettings("network-grid-content-view");
@@ -127,6 +128,17 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         let networkTimeline = WebInspector.timelineManager.persistentNetworkTimeline;
         networkTimeline.addEventListener(WebInspector.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
         networkTimeline.addEventListener(WebInspector.Timeline.Event.Reset, this._networkTimelineReset, this);
+
+        // COMPATIBILITY (iOS 10.3): Network.setDisableResourceCaching did not exist.
+        if (window.NetworkAgent && NetworkAgent.setResourceCachingDisabled) {
+            let toolTipForDisableResourceCache = WebInspector.UIString("Ignore the resource cache when loading resources");
+            let activatedToolTipForDisableResourceCache = WebInspector.UIString("Use the resource cache when loading resources");
+            this._disableResourceCacheNavigationItem = new WebInspector.ActivateButtonNavigationItem("disable-resource-cache", toolTipForDisableResourceCache, activatedToolTipForDisableResourceCache, "Images/IgnoreCaches.svg", 16, 16);
+            this._disableResourceCacheNavigationItem.activated = WebInspector.resourceCachingDisabledSetting.value;
+
+            this._disableResourceCacheNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleDisableResourceCache, this);
+            WebInspector.resourceCachingDisabledSetting.addEventListener(WebInspector.Setting.Event.Changed, this._resourceCachingDisabledSettingChanged, this);
+        }
 
         let clearImageDimensions = WebInspector.Platform.name === "mac" ? 16 : 15;
         this._clearNetworkItemsNavigationItem = new WebInspector.ButtonNavigationItem("clear-network-items", WebInspector.UIString("Clear Network Items (%s)").format(WebInspector.clearKeyboardShortcut.displayName), "Images/NavigationItemClear.svg", clearImageDimensions, clearImageDimensions);
@@ -161,7 +173,13 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
 
     get navigationItems()
     {
-        return [this._clearNetworkItemsNavigationItem];
+        let items = [];
+
+        if (this._disableResourceCacheNavigationItem)
+            items.push(this._disableResourceCacheNavigationItem);
+        items.push(this._clearNetworkItemsNavigationItem);
+
+        return items;
     }
 
     shown()
@@ -250,16 +268,27 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         this.reset();
     }
 
-    hasRepresentedObject(representedObject)
+    // TimelineDataGrid sort delegate
+
+    dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2)
     {
-        const comparator = (dataGridNode) => dataGridNode.resource === representedObject;
-        const skipHidden = true;
-        const stayWithin = false;
-        const dontPopulate = true;
-        return this._dataGrid.findNode(comparator, skipHidden, stayWithin, dontPopulate);
+        if (sortColumnIdentifier === "priority")
+            return WebInspector.Resource.comparePriority(node1.data.priority, node2.data.priority) * sortDirection;
+
+        return null;
     }
 
     // Private
+
+    _resourceCachingDisabledSettingChanged()
+    {
+        this._disableResourceCacheNavigationItem.activated = WebInspector.resourceCachingDisabledSetting.value;
+    }
+
+    _toggleDisableResourceCache()
+    {
+        WebInspector.resourceCachingDisabledSetting.value = !WebInspector.resourceCachingDisabledSetting.value;
+    }
 
     _processPendingRecords()
     {

@@ -619,6 +619,7 @@ public:
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaCaptureRequiresSecureConnectionPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitUseAVFoundationAudioCapturePreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
@@ -631,6 +632,10 @@ public:
 #endif
 #if ENABLE(FETCH_API)
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
+#endif
+#if ENABLE(STREAMS_API)
+        [NSNumber numberWithBool:NO], WebKitReadableByteStreamAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitWritableStreamAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
@@ -651,11 +656,12 @@ public:
         [NSNumber numberWithBool:YES], WebKitSubtleCryptoEnabledPreferenceKey,
 #endif
 #if ENABLE(MEDIA_STREAM)
-        [NSNumber numberWithBool:NO], WebKitMediaStreamEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
 #endif
 #if ENABLE(WEB_RTC)
-        [NSNumber numberWithBool:NO], WebKitPeerConnectionEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
@@ -2756,6 +2762,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitSubtleCryptoEnabledPreferenceKey];
 }
 
+- (BOOL)mediaDevicesEnabled
+{
+    return [self _boolValueForKey:WebKitMediaDevicesEnabledPreferenceKey];
+}
+
+- (void)setMediaDevicesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaDevicesEnabledPreferenceKey];
+}
+
 - (BOOL)mediaStreamEnabled
 {
     return [self _boolValueForKey:WebKitMediaStreamEnabledPreferenceKey];
@@ -2866,6 +2882,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
 }
 
+- (BOOL)useAVFoundationAudioCapture
+{
+    return [self _boolValueForKey:WebKitUseAVFoundationAudioCapturePreferenceKey];
+}
+
+- (void)setUseAVFoundationAudioCapture:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitUseAVFoundationAudioCapturePreferenceKey];
+}
+
 - (BOOL)enumeratingAllNetworkInterfacesEnabled
 {
     return [self _boolValueForKey:WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey];
@@ -2924,6 +2950,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setFetchAPIEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitFetchAPIEnabledPreferenceKey];
+}
+
+- (BOOL)readableByteStreamAPIEnabled
+{
+    return [self _boolValueForKey:WebKitReadableByteStreamAPIEnabledPreferenceKey];
+}
+
+- (void)setReadableByteStreamAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitReadableByteStreamAPIEnabledPreferenceKey];
+}
+
+- (BOOL)writableStreamAPIEnabled
+{
+    return [self _boolValueForKey:WebKitWritableStreamAPIEnabledPreferenceKey];
+}
+
+- (void)setWritableStreamAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWritableStreamAPIEnabledPreferenceKey];
 }
 
 - (BOOL)downloadAttributeEnabled

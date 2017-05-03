@@ -50,6 +50,7 @@ font-style: normal;
 font-synthesis: style weight small-caps;
 font-variant: normal;
 font-weight: normal;
+font-optical-sizing: auto;
 hanging-punctuation: none;
 height: 576px;
 image-rendering: auto;

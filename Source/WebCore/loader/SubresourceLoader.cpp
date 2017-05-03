@@ -60,7 +60,7 @@
 #endif
 
 #if USE(QUICK_LOOK)
-#include "QuickLook.h"
+#include "PreviewLoader.h"
 #endif
 
 namespace WebCore {
@@ -153,9 +153,6 @@ bool SubresourceLoader::init(const ResourceRequest& request)
     m_state = Initialized;
     m_documentLoader->addSubresourceLoader(this);
 
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=155633.
-    // SubresourceLoader could use the document origin as a default and set PotentiallyCrossOriginEnabled requests accordingly.
-    // This would simplify resource loader users as they would only need to set fetch mode to Cors.
     m_origin = m_resource->origin();
 
     return true;
@@ -261,15 +258,15 @@ void SubresourceLoader::didSendData(unsigned long long bytesSent, unsigned long 
 
 #if USE(QUICK_LOOK)
 
-bool SubresourceLoader::shouldCreateQuickLookHandleForResponse(const ResourceResponse& response) const
+bool SubresourceLoader::shouldCreatePreviewLoaderForResponse(const ResourceResponse& response) const
 {
     if (m_resource->type() != CachedResource::MainResource)
         return false;
 
-    if (m_quickLookHandle)
+    if (m_previewLoader)
         return false;
 
-    return QuickLookHandle::shouldCreateForMIMEType(response.mimeType());
+    return PreviewLoader::shouldCreateForMIMEType(response.mimeType());
 }
 
 #endif
@@ -280,8 +277,8 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
     ASSERT(m_state == Initialized);
 
 #if USE(QUICK_LOOK)
-    if (shouldCreateQuickLookHandleForResponse(response)) {
-        m_quickLookHandle = QuickLookHandle::create(*this, response);
+    if (shouldCreatePreviewLoaderForResponse(response)) {
+        m_previewLoader = PreviewLoader::create(*this, response);
         return;
     }
 #endif
@@ -367,8 +364,8 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 void SubresourceLoader::didReceiveData(const char* data, unsigned length, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_quickLookHandle.get()) {
-        if (quickLookHandle->didReceiveData(data, length))
+    if (auto previewLoader = m_previewLoader.get()) {
+        if (previewLoader->didReceiveData(data, length))
             return;
     }
 #endif
@@ -379,8 +376,8 @@ void SubresourceLoader::didReceiveData(const char* data, unsigned length, long l
 void SubresourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_quickLookHandle.get()) {
-        if (quickLookHandle->didReceiveBuffer(buffer.get()))
+    if (auto previewLoader = m_previewLoader.get()) {
+        if (previewLoader->didReceiveBuffer(buffer.get()))
             return;
     }
 #endif
@@ -390,6 +387,8 @@ void SubresourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long e
 
 void SubresourceLoader::didReceiveDataOrBuffer(const char* data, int length, RefPtr<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
+    ASSERT(m_resource);
+
     if (m_resource->response().httpStatusCode() >= 400 && !m_resource->shouldIgnoreHTTPStatusCodeErrors())
         return;
     ASSERT(!m_resource->resourceToRevalidate());
@@ -524,8 +523,8 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
 void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMetrics)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_quickLookHandle.get()) {
-        if (quickLookHandle->didFinishLoading())
+    if (auto previewLoader = m_previewLoader.get()) {
+        if (previewLoader->didFinishLoading())
             return;
     }
 #endif
@@ -578,8 +577,8 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
 void SubresourceLoader::didFail(const ResourceError& error)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_quickLookHandle.get())
-        quickLookHandle->didFail();
+    if (auto previewLoader = m_previewLoader.get())
+        previewLoader->didFail();
 #endif
 
     if (m_state != Initialized)
@@ -696,7 +695,7 @@ void SubresourceLoader::reportResourceTiming(const NetworkLoadMetrics& networkLo
         return;
 
     SecurityOrigin& origin = m_origin ? *m_origin : document->securityOrigin();
-    ResourceTiming resourceTiming = ResourceTiming::fromLoad(*m_resource, m_resource->initiatorName(), m_loadTiming, networkLoadMetrics, origin);
+    auto resourceTiming = ResourceTiming::fromLoad(*m_resource, m_resource->initiatorName(), m_loadTiming, networkLoadMetrics, origin);
 
     // Worker resources loaded here are all CachedRawResources loaded through WorkerThreadableLoader.
     // Pass the ResourceTiming information on so that WorkerThreadableLoader may add them to the

@@ -547,6 +547,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setLoadsImagesAutomatically(loadsImagesAutomatically);
 }
 
+- (BOOL)_mediaDevicesEnabled
+{
+    return _preferences->mediaDevicesEnabled();
+}
+
+- (void)_setMediaDevicesEnabled:(BOOL)enabled
+{
+    _preferences->setMediaDevicesEnabled(enabled);
+}
+
 - (BOOL)_mockCaptureDevicesEnabled
 {
     return _preferences->mockCaptureDevicesEnabled();
@@ -585,6 +595,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setICECandidateFilteringEnabled:(BOOL)enabled
 {
     _preferences->setICECandidateFilteringEnabled(enabled);
+}
+
+- (BOOL)_webRTCLegacyAPIEnabled
+{
+    return _preferences->webRTCLegacyAPIEnabled();
+}
+
+- (void)_setWebRTCLegacyAPIEnabled:(BOOL)enabled
+{
+    _preferences->setWebRTCLegacyAPIEnabled(enabled);
 }
 
 @end

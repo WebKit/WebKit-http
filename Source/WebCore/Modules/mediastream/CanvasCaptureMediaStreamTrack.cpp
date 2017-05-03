@@ -26,6 +26,7 @@
 #include "CanvasCaptureMediaStreamTrack.h"
 
 #include "GraphicsContext.h"
+#include "WebGLRenderingContextBase.h"
 
 #if ENABLE(MEDIA_STREAM)
 
@@ -67,6 +68,10 @@ CanvasCaptureMediaStreamTrack::Source::Source(HTMLCanvasElement& canvas, std::op
 {
     m_settings.setWidth(canvas.width());
     m_settings.setHeight(canvas.height());
+    RealtimeMediaSourceSupportedConstraints constraints;
+    constraints.setSupportsWidth(true);
+    constraints.setSupportsHeight(true);
+    m_settings.setSupportedConstraints(constraints);
 }
 
 void CanvasCaptureMediaStreamTrack::Source::startProducingData()
@@ -83,7 +88,7 @@ void CanvasCaptureMediaStreamTrack::Source::startProducingData()
         return;
 
     if (m_frameRequestRate.value())
-        m_requestFrameTimer.startRepeating(1. / m_frameRequestRate.value());
+        m_requestFrameTimer.startRepeating(1_s / m_frameRequestRate.value());
 }
 
 void CanvasCaptureMediaStreamTrack::Source::stopProducingData()
@@ -124,10 +129,21 @@ void CanvasCaptureMediaStreamTrack::Source::canvasChanged(HTMLCanvasElement& can
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
 
+    // FIXME: We need to preserve drawing buffer as we are currently grabbing frames asynchronously.
+    // We should instead add an anchor point for both 2d and 3d contexts where canvas will actually paint.
+    // And call canvas observers from that point.
+    if (canvas.renderingContext() && canvas.renderingContext()->isWebGL()) {
+        auto& context = static_cast<WebGLRenderingContextBase&>(*canvas.renderingContext());
+        if (!context.isPreservingDrawingBuffer()) {
+            canvas.document().addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Turning drawing buffer preservation for the WebGL canvas being captured"));
+            context.setPreserveDrawingBuffer(true);
+        }
+    }
+
     // FIXME: We should try to generate the frame at the time the screen is being updated.
     if (m_canvasChangedTimer.isActive())
         return;
-    m_canvasChangedTimer.startOneShot(0);
+    m_canvasChangedTimer.startOneShot(0_s);
 }
 
 void CanvasCaptureMediaStreamTrack::Source::captureCanvas()

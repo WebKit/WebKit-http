@@ -184,24 +184,15 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(enabled);
 #endif
 
-#if ENABLE(FETCH_API)
-    if (preference == "WebKitFetchAPIEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled(enabled);
+#if ENABLE(STREAMS_API)
+    if (preference == "WebKitReadableByteStreamAPIEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setReadableByteStreamAPIEnabled(enabled);
+    if (preference == "WebKitWritableStreamAPIEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setWritableStreamAPIEnabled(enabled);
 #endif
-
-#if ENABLE(DOWNLOAD_ATTRIBUTE)
-    if (preference == "WebKitDownloadAttributeEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled(enabled);
-#endif
-
-    if (preference == "WebKitShadowDOMEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
 
     if (preference == "WebKitCSSGridLayoutEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
-
-    if (preference == "WebKitCustomElementsEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(enabled);
 
     if (preference == "WebKitInteractiveFormValidationEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled(enabled);
@@ -230,13 +221,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    if (preference == "WebKitMediaStreamEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled(enabled);
+    if (preference == "WebKitMediaDevicesEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled(enabled);
 #endif
 
 #if ENABLE(WEB_RTC)
-    if (preference == "WebKitPeerConnectionEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setPeerConnectionEnabled(enabled);
     if (preference == "WebKitWebRTCLegacyAPIEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled(enabled);
 #endif

@@ -134,7 +134,22 @@ void WebPasteboardProxy::setPasteboardBufferForType(const String& pasteboardName
     newChangeCount = PlatformPasteboard(pasteboardName).setBufferForType(buffer.get(), pasteboardType);
 }
 
+void WebPasteboardProxy::getNumberOfFiles(const String& pasteboardName, uint64_t& numberOfFiles)
+{
+    numberOfFiles = PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
 #if PLATFORM(IOS)
+void WebPasteboardProxy::getPasteboardTypesByFidelityForItemAtIndex(uint64_t index, const String& pasteboardName, Vector<String>& types)
+{
+    PlatformPasteboard(pasteboardName).getTypesByFidelityForItemAtIndex(types, index);
+}
+
+void WebPasteboardProxy::writeURLToPasteboard(const PasteboardURL& url, const String& pasteboardName)
+{
+    PlatformPasteboard(pasteboardName).write(url);
+}
+
 void WebPasteboardProxy::writeWebContentToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
     PlatformPasteboard(pasteboardName).write(content);
@@ -155,9 +170,9 @@ void WebPasteboardProxy::readStringFromPasteboard(uint64_t index, const String& 
     value = PlatformPasteboard(pasteboardName).readString(index, pasteboardType);
 }
 
-void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url)
+void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url, String& title)
 {
-    url = PlatformPasteboard(pasteboardName).readURL(index, pasteboardType);
+    url = PlatformPasteboard(pasteboardName).readURL(index, pasteboardType, title);
 }
 
 void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, SharedMemory::Handle& handle, uint64_t& size)
@@ -176,6 +191,16 @@ void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& 
 void WebPasteboardProxy::getPasteboardItemsCount(const String& pasteboardName, uint64_t& itemsCount)
 {
     itemsCount = PlatformPasteboard(pasteboardName).count();
+}
+
+void WebPasteboardProxy::getFilenamesForDataInteraction(const String& pasteboardName, Vector<String>& filenames)
+{
+    filenames = PlatformPasteboard(pasteboardName).filenamesForDataInteraction();
+}
+
+void WebPasteboardProxy::updatePreferredTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName)
+{
+    PlatformPasteboard(pasteboardName).updatePreferredTypeIdentifiers(identifiers);
 }
 
 #endif

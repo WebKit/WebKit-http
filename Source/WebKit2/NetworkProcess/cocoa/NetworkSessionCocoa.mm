@@ -52,12 +52,6 @@
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
-@interface NSURLSessionTaskTransactionMetrics (WKDetails)
-@property (copy, readonly) NSUUID* _connectionIdentifier;
-@end
-#endif
-
 using namespace WebKit;
 
 static NSURLSessionResponseDisposition toNSURLSessionResponseDisposition(WebCore::PolicyAction disposition)
@@ -305,14 +299,42 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
         networkLoadMetrics.responseStart = Seconds(responseStartInterval);
         networkLoadMetrics.responseEnd = Seconds(responseEndInterval);
         networkLoadMetrics.markComplete();
-
         networkLoadMetrics.protocol = String(m.networkProtocolName);
-        networkLoadMetrics.priority = toNetworkLoadPriority(task.priority);
+
+        if (networkDataTask->shouldCaptureExtraNetworkLoadMetrics()) {
+            networkLoadMetrics.priority = toNetworkLoadPriority(task.priority);
+
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
-        networkLoadMetrics.remoteAddress = String(m._remoteAddressAndPort);
-        if ([m respondsToSelector:@selector(_connectionIdentifier)])
+            networkLoadMetrics.remoteAddress = String(m._remoteAddressAndPort);
             networkLoadMetrics.connectionIdentifier = String([m._connectionIdentifier UUIDString]);
 #endif
+
+            __block WebCore::HTTPHeaderMap requestHeaders;
+            [m.request.allHTTPHeaderFields enumerateKeysAndObjectsUsingBlock:^(NSString *name, NSString *value, BOOL *) {
+                requestHeaders.set(String(name), String(value));
+            }];
+            networkLoadMetrics.requestHeaders = WTFMove(requestHeaders);
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+            uint64_t requestHeaderBytesSent = 0;
+            uint64_t responseHeaderBytesReceived = 0;
+            uint64_t responseBodyBytesReceived = 0;
+            uint64_t responseBodyDecodedSize = 0;
+
+            for (NSURLSessionTaskTransactionMetrics *transactionMetrics in metrics.transactionMetrics) {
+                requestHeaderBytesSent += transactionMetrics._requestHeaderBytesSent;
+                responseHeaderBytesReceived += transactionMetrics._responseHeaderBytesReceived;
+                responseBodyBytesReceived += transactionMetrics._responseBodyBytesReceived;
+                responseBodyDecodedSize += transactionMetrics._responseBodyBytesDecoded ? transactionMetrics._responseBodyBytesDecoded : transactionMetrics._responseBodyBytesReceived;
+            }
+
+            networkLoadMetrics.requestHeaderBytesSent = requestHeaderBytesSent;
+            networkLoadMetrics.requestBodyBytesSent = task.countOfBytesSent;
+            networkLoadMetrics.responseHeaderBytesReceived = responseHeaderBytesReceived;
+            networkLoadMetrics.responseBodyBytesReceived = responseBodyBytesReceived;
+            networkLoadMetrics.responseBodyDecodedSize = responseBodyDecodedSize;
+#endif
+        }
     }
 }
 
@@ -364,7 +386,7 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
 
     auto storedCredentials = _withCredentials ? WebCore::StoredCredentials::AllowStoredCredentials : WebCore::StoredCredentials::DoNotAllowStoredCredentials;
     if (auto* networkDataTask = _session->dataTaskForIdentifier(dataTask.taskIdentifier, storedCredentials))
-        networkDataTask->didReceiveData(WebCore::SharedBuffer::wrapNSData(data));
+        networkDataTask->didReceiveData(WebCore::SharedBuffer::create(data));
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location
@@ -424,8 +446,11 @@ namespace WebKit {
     
 static NSURLSessionConfiguration *configurationForSessionID(const WebCore::SessionID& session)
 {
-    if (session.isEphemeral())
-        return [NSURLSessionConfiguration ephemeralSessionConfiguration];
+    if (session.isEphemeral()) {
+        NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        configuration._shouldSkipPreferredClientCertificateLookup = YES;
+        return configuration;
+    }
     return [NSURLSessionConfiguration defaultSessionConfiguration];
 }
 
@@ -565,20 +590,16 @@ NetworkSessionCocoa::NetworkSessionCocoa(WebCore::SessionID sessionID, LegacyCus
     setCollectsTimingData();
 #endif
 
-    if (sessionID == WebCore::SessionID::defaultSessionID()) {
-        if (CFHTTPCookieStorageRef storage = WebCore::NetworkStorageSession::defaultStorageSession().cookieStorage().get())
-            configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
-    } else {
-        auto* storageSession = WebCore::NetworkStorageSession::storageSession(sessionID);
-        RELEASE_ASSERT(storageSession);
-        if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
-            configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
-    }
+    auto* storageSession = WebCore::NetworkStorageSession::storageSession(sessionID);
+    RELEASE_ASSERT(storageSession);
+    if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
+        configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
 
     m_sessionWithCredentialStorageDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:true]);
     m_sessionWithCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionWithCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
 
     configuration.URLCredentialStorage = nil;
+    configuration._shouldSkipPreferredClientCertificateLookup = YES;
     m_sessionWithoutCredentialStorageDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:false]);
     m_sessionWithoutCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionWithoutCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
     LOG(NetworkSession, "Created NetworkSession with cookieAcceptPolicy %lu", configuration.HTTPCookieStorage.cookieAcceptPolicy);

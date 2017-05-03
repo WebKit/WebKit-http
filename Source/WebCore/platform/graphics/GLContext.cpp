@@ -25,6 +25,12 @@
 #if USE(EGL)
 #include "GLContextEGL.h"
 #endif
+
+#if USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
+#include <GLES2/gl2.h>
+#endif
+
 #if USE(GLX)
 #include "GLContextGLX.h"
 #endif

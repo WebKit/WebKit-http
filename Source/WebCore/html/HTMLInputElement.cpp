@@ -1358,12 +1358,10 @@ Icon* HTMLInputElement::icon() const
     return m_inputType->icon();
 }
 
-#if PLATFORM(IOS)
 String HTMLInputElement::displayString() const
 {
     return m_inputType->displayString();
 }
-#endif
 
 bool HTMLInputElement::canReceiveDroppedFiles() const
 {
@@ -1773,7 +1771,7 @@ bool HTMLInputElement::isEmptyValue() const
 void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 {
     unsigned oldEffectiveMaxLength = effectiveMaxLength();
-    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
+    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
     if (oldEffectiveMaxLength != effectiveMaxLength())
         updateValueIfNeeded();
 
@@ -1785,7 +1783,7 @@ void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 void HTMLInputElement::minLengthAttributeChanged(const AtomicString& newValue)
 {
     int oldMinLength = minLength();
-    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
+    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
     if (oldMinLength != minLength())
         updateValueIfNeeded();
 

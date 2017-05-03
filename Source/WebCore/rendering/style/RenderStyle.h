@@ -353,6 +353,9 @@ public:
 #if ENABLE(VARIATION_FONTS)
     FontVariationSettings fontVariationSettings() const { return fontDescription().variationSettings(); }
 #endif
+    FontSelectionValue fontWeight() const { return fontDescription().weight(); }
+    FontSelectionValue fontStretch() const { return fontDescription().stretch(); }
+    FontSelectionValue fontItalic() const { return fontDescription().italic(); }
 
     const Length& textIndent() const { return m_rareInheritedData->indent; }
     ETextAlign textAlign() const { return static_cast<ETextAlign>(m_inheritedFlags.textAlign); }
@@ -900,6 +903,9 @@ public:
 #if ENABLE(VARIATION_FONTS)
     void setFontVariationSettings(FontVariationSettings);
 #endif
+    void setFontWeight(FontSelectionValue);
+    void setFontStretch(FontSelectionValue);
+    void setFontItalic(FontSelectionValue);
 
     void setColor(const Color&);
     void setTextIndent(Length&& length) { SET_VAR(m_rareInheritedData, indent, WTFMove(length)); }
@@ -1239,7 +1245,7 @@ public:
     void setApplePayButtonType(ApplePayButtonType type) { SET_VAR(m_rareNonInheritedData, applePayButtonType, static_cast<unsigned>(type)); }
 #endif
 
-    // Support for paint-order, stroke-linecap, and stroke-linejoin from https://drafts.fxtf.org/paint/.
+    // Support for paint-order, stroke-linecap, stroke-linejoin, and stroke-miterlimit from https://drafts.fxtf.org/paint/.
     void setPaintOrder(PaintOrder order) { SET_VAR(m_rareInheritedData, paintOrder, static_cast<unsigned>(order)); }
     PaintOrder paintOrder() const { return static_cast<PaintOrder>(m_rareInheritedData->paintOrder); }
     static PaintOrder initialPaintOrder() { return PaintOrder::Normal; }
@@ -1262,7 +1268,18 @@ public:
     bool hasExplicitlySetStrokeWidth() const { return m_rareInheritedData->hasSetStrokeWidth; };
     bool hasPositiveStrokeWidth() const;
     
+    Color strokeColor() const { return m_rareInheritedData->strokeColor; }
+    void setStrokeColor(const Color& v)  { SET_VAR(m_rareInheritedData, strokeColor, v); }
+    void setVisitedLinkStrokeColor(const Color& v) { SET_VAR(m_rareInheritedData, visitedLinkStrokeColor, v); }
+    const Color& visitedLinkStrokeColor() const { return m_rareInheritedData->visitedLinkStrokeColor; }
+    void setHasExplicitlySetStrokeColor(bool v) { SET_VAR(m_rareInheritedData, hasSetStrokeColor, static_cast<unsigned>(v)); }
+    bool hasExplicitlySetStrokeColor() const { return m_rareInheritedData->hasSetStrokeColor; };
     
+    float strokeMiterLimit() const { return m_rareInheritedData->miterLimit; }
+    void setStrokeMiterLimit(float f) { SET_VAR(m_rareInheritedData, miterLimit, f); }
+    static float initialStrokeMiterLimit() { return defaultMiterLimit; }
+
+
     const SVGRenderStyle& svgStyle() const { return m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return m_svgStyle.access(); }
 
@@ -1281,8 +1298,6 @@ public:
     void setStrokeDashArray(Vector<SVGLengthValue> array) { accessSVGStyle().setStrokeDashArray(array); }
     const Length& strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
     void setStrokeDashOffset(Length&& d) { accessSVGStyle().setStrokeDashOffset(WTFMove(d)); }
-    float strokeMiterLimit() const { return svgStyle().strokeMiterLimit(); }
-    void setStrokeMiterLimit(float f) { accessSVGStyle().setStrokeMiterLimit(f); }
 
     const Length& cx() const { return svgStyle().cx(); }
     void setCx(Length&& cx) { accessSVGStyle().setCx(WTFMove(cx)); }
@@ -1377,6 +1392,9 @@ public:
 
     bool hasExplicitlySetWritingMode() const { return m_nonInheritedFlags.hasExplicitlySetWritingMode(); }
     void setHasExplicitlySetWritingMode(bool v) { m_nonInheritedFlags.setHasExplicitlySetWritingMode(v); }
+
+    bool hasExplicitlySetTextAlign() const { return m_nonInheritedFlags.hasExplicitlySetTextAlign(); }
+    void setHasExplicitlySetTextAlign(bool value) { m_nonInheritedFlags.setHasExplicitlySetTextAlign(value); }
 
     // A unique style is one that has matches something that makes it impossible to share.
     bool unique() const { return m_nonInheritedFlags.isUnique(); }
@@ -1791,6 +1809,9 @@ private:
         bool hasExplicitlySetWritingMode() const { return getBoolean(hasExplicitlySetWritingModeOffset); }
         void setHasExplicitlySetWritingMode(bool value) { updateBoolean(value, hasExplicitlySetWritingModeOffset); }
 
+        bool hasExplicitlySetTextAlign() const { return getBoolean(hasExplicitlySetTextAlignOffset); }
+        void setHasExplicitlySetTextAlign(bool value) { updateBoolean(value, hasExplicitlySetTextAlignOffset); }
+
         static ptrdiff_t flagsMemoryOffset() { return OBJECT_OFFSETOF(NonInheritedFlags, m_flags); }
         static uint64_t flagIsaffectedByActive() { return oneBitMask << affectedByActiveOffset; }
         static uint64_t flagIsaffectedByHover() { return oneBitMask << affectedByHoverOffset; }
@@ -1865,11 +1886,13 @@ private:
         static const unsigned hasViewportUnitsOffset = pseudoBitsOffset + pseudoBitsBitCount;
 
         // Byte 7.
+        static const unsigned hasExplicitlySetTextAlignBitCount = 1;
+        static const unsigned hasExplicitlySetTextAlignOffset = hasViewportUnitsOffset + hasViewportUnitsBitCount;
         static const unsigned styleTypeBitCount = 6;
-        static const unsigned styleTypePadding = 2;
+        static const unsigned styleTypePadding = 1;
         static const unsigned styleTypeAndPaddingBitCount = styleTypeBitCount + styleTypePadding;
         static const uint64_t styleTypeMask = (oneBitMask << styleTypeAndPaddingBitCount) - 1;
-        static const unsigned styleTypeOffset = hasViewportUnitsBitCount + hasViewportUnitsOffset;
+        static const unsigned styleTypeOffset = hasExplicitlySetTextAlignOffset + hasExplicitlySetTextAlignBitCount;
 
         // Byte 8.
         static const unsigned isUniqueOffset = styleTypeOffset + styleTypeAndPaddingBitCount;
@@ -1904,7 +1927,7 @@ private:
 #endif
         unsigned direction : 1; // TextDirection
         unsigned whiteSpace : 3; // EWhiteSpace
-        // 32 bits
+        // 35 bits
         unsigned borderCollapse : 1; // EBorderCollapse
         unsigned boxDirection : 1; // EBoxDirection (CSS3 box_direction property, flexible box layout module)
 
@@ -1914,11 +1937,11 @@ private:
         unsigned pointerEvents : 4; // EPointerEvents
         unsigned insideLink : 2; // EInsideLink
         unsigned insideDefaultButton : 1;
-        // 44 bits
+        // 46 bits
 
         // CSS Text Layout Module Level 3: Vertical writing support
         unsigned writingMode : 2; // WritingMode
-        // 46 bits
+        // 48 bits
     };
 
     // This constructor is used to implement the replace operation.

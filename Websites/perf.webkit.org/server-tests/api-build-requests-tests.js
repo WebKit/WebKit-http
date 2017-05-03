@@ -23,7 +23,7 @@ describe('/api/build-requests', function () {
             assert.deepEqual(content['buildRequests'], []);
             assert.deepEqual(content['commitSets'], []);
             assert.deepEqual(content['commits'], []);
-            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status']);
+            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status', 'uploadedFiles']);
         });
     });
 
@@ -31,13 +31,13 @@ describe('/api/build-requests', function () {
         return MockData.addMockData(TestServer.database()).then(() => {
             return TestServer.remoteAPI().getJSONWithStatus('/api/build-requests/build-webkit');
         }).then((content) => {
-            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status']);
+            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status', 'uploadedFiles']);
 
             assert.equal(content['commitSets'].length, 2);
             assert.equal(content['commitSets'][0].id, 401);
-            assert.deepEqual(content['commitSets'][0].commits, ['87832', '93116']);
+            assert.deepEqual(content['commitSets'][0].revisionItems, [{commit: '87832', patch: null}, {commit: '93116', patch: null}]);
             assert.equal(content['commitSets'][1].id, 402);
-            assert.deepEqual(content['commitSets'][1].commits, ['87832', '96336']);
+            assert.deepEqual(content['commitSets'][1].revisionItems, [{commit: '87832', patch: null}, {commit: '96336', patch: null}]);
 
             assert.equal(content['commits'].length, 3);
             assert.equal(content['commits'][0].id, 87832);
@@ -85,17 +85,19 @@ describe('/api/build-requests', function () {
         return MockData.addMockData(TestServer.database()).then(() => {
             return TestServer.remoteAPI().getJSONWithStatus('/api/build-requests/build-webkit?useLegacyIdResolution=true');
         }).then((content) => {
-            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status']);
+            assert.deepEqual(Object.keys(content).sort(), ['buildRequests', 'commitSets', 'commits', 'status', 'uploadedFiles']);
 
             assert.equal(content['commitSets'].length, 2);
             assert.equal(content['commitSets'][0].id, 401);
-            assert.deepEqual(content['commitSets'][0].commits, ['87832', '93116']);
+            assert.deepEqual(content['commitSets'][0].revisionItems,
+                [{commit: '87832', patch: null}, {commit: '93116', patch: null}]);
             assert.equal(content['commitSets'][1].id, 402);
-            assert.deepEqual(content['commitSets'][1].commits, ['87832', '96336']);
+            assert.deepEqual(content['commitSets'][1].revisionItems,
+                [{commit: '87832', patch: null}, {commit: '96336', patch: null}]);
 
             assert.equal(content['commits'].length, 3);
             assert.equal(content['commits'][0].id, 87832);
-            assert.equal(content['commits'][0].repository, 'OS X');
+            assert.equal(content['commits'][0].repository, 'macOS');
             assert.equal(content['commits'][0].revision, '10.11 15A284');
             assert.equal(content['commits'][1].id, 93116);
             assert.equal(content['commits'][1].repository, 'WebKit');
@@ -194,7 +196,7 @@ describe('/api/build-requests', function () {
             assert.equal(buildRequests[3].statusLabel(), 'Waiting');
 
             let osx = Repository.findById(9);
-            assert.equal(osx.name(), 'OS X');
+            assert.equal(osx.name(), 'macOS');
 
             let webkit = Repository.findById(11);
             assert.equal(webkit.name(), 'WebKit');
@@ -322,6 +324,42 @@ describe('/api/build-requests', function () {
             assert.equal(buildRequests[7].id(), 713);
             assert.equal(buildRequests[7].testGroupId(), 601);
             assert.strictEqual(buildRequests[7].order(), 3);
+        });
+    });
+
+    it('should specify the repository group for build requests if set', () => {
+        const db = TestServer.database();
+        let groups;
+        return MockData.addMockData(db).then(() => {
+            return MockData.addMockTestGroupWithGitWebKit(db);
+        }).then(() => {
+            return Manifest.fetch();
+        }).then(() => {
+            const triggerable = Triggerable.all().find((triggerable) => triggerable.name() == 'build-webkit');
+            assert.equal(triggerable.repositoryGroups().length, 2);
+            groups = TriggerableRepositoryGroup.sortByName(triggerable.repositoryGroups());
+            assert.equal(groups[0].name(), 'webkit-git');
+            assert.equal(groups[1].name(), 'webkit-svn');
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then((buildRequests) => {
+            assert.equal(buildRequests.length, 8);
+            assert.equal(buildRequests[0].id(), 700);
+            assert.equal(buildRequests[0].repositoryGroup(), groups[1]);
+            assert.equal(buildRequests[1].id(), 701);
+            assert.equal(buildRequests[1].repositoryGroup(), groups[1]);
+            assert.equal(buildRequests[2].id(), 702);
+            assert.equal(buildRequests[2].repositoryGroup(), groups[1]);
+            assert.equal(buildRequests[3].id(), 703);
+            assert.equal(buildRequests[3].repositoryGroup(), groups[1]);
+
+            assert.equal(buildRequests[4].id(), 1700);
+            assert.equal(buildRequests[4].repositoryGroup(), groups[0]);
+            assert.equal(buildRequests[5].id(), 1701);
+            assert.equal(buildRequests[5].repositoryGroup(), groups[0]);
+            assert.equal(buildRequests[6].id(), 1702);
+            assert.equal(buildRequests[6].repositoryGroup(), groups[0]);
+            assert.equal(buildRequests[7].id(), 1703);
+            assert.equal(buildRequests[7].repositoryGroup(), groups[0]);
         });
     });
 

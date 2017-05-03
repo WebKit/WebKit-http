@@ -66,10 +66,11 @@ public:
     void stopProducingData() { m_source->stopProducingData(); }
     bool isProducingData() { return m_source->isProducingData(); }
 
+    bool isIsolated() const { return m_source->isIsolated(); }
+
     bool muted() const;
     void setMuted(bool muted) { m_source->setMuted(muted); }
 
-    bool readonly() const;
     bool isCaptureTrack() const;
 
     bool enabled() const { return m_isEnabled; }
@@ -86,7 +87,7 @@ public:
     void removeObserver(Observer&);
 
     const RealtimeMediaSourceSettings& settings() const;
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const;
+    const RealtimeMediaSourceCapabilities& capabilities() const;
 
     void applyConstraints(const MediaConstraints&, RealtimeMediaSource::SuccessHandler, RealtimeMediaSource::FailureHandler);
 

@@ -33,7 +33,6 @@
 #import "Logging.h"
 #import "MediaConstraints.h"
 #import "RealtimeMediaSourceSettings.h"
-#import "UUID.h"
 #import <AVFoundation/AVCaptureDevice.h>
 #import <AVFoundation/AVCaptureInput.h>
 #import <AVFoundation/AVCaptureOutput.h>
@@ -187,6 +186,10 @@ void AVMediaCaptureSource::stopProducingData()
 
     [m_objcObserver removeNotificationObservers];
     [m_session stopRunning];
+#if PLATFORM(IOS)
+    m_session = nullptr;
+#endif
+
 }
 
 void AVMediaCaptureSource::beginConfiguration()
@@ -204,7 +207,7 @@ void AVMediaCaptureSource::commitConfiguration()
 void AVMediaCaptureSource::initializeSettings()
 {
     if (m_currentSettings.deviceId().isEmpty())
-        m_currentSettings.setSupportedConstraits(supportedConstraints());
+        m_currentSettings.setSupportedConstraints(supportedConstraints());
 
     m_currentSettings.setDeviceId(id());
     updateSettings(m_currentSettings);
@@ -229,17 +232,17 @@ RealtimeMediaSourceSupportedConstraints& AVMediaCaptureSource::supportedConstrai
 
 void AVMediaCaptureSource::initializeCapabilities()
 {
-    m_capabilities = RealtimeMediaSourceCapabilities::create(supportedConstraints());
+    m_capabilities = std::make_unique<RealtimeMediaSourceCapabilities>(supportedConstraints());
     m_capabilities->setDeviceId(id());
 
     initializeCapabilities(*m_capabilities.get());
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> AVMediaCaptureSource::capabilities() const
+const RealtimeMediaSourceCapabilities& AVMediaCaptureSource::capabilities() const
 {
     if (!m_capabilities)
         const_cast<AVMediaCaptureSource&>(*this).initializeCapabilities();
-    return m_capabilities;
+    return *m_capabilities;
 }
 
 void AVMediaCaptureSource::setupSession()
@@ -274,8 +277,17 @@ void AVMediaCaptureSource::captureSessionIsRunningDidChange(bool state)
             return;
 
         m_isRunning = state;
-        setMuted(!m_isRunning);
+        if (m_muted == !m_isRunning)
+            return;
+
+        m_muted = !m_isRunning;
+        notifyMutedObservers();
     });
+}
+
+bool AVMediaCaptureSource::isProducingData() const
+{
+    return m_isRunning;
 }
 
 #if PLATFORM(IOS)

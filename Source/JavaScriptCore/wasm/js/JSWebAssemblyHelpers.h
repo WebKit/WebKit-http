@@ -73,6 +73,25 @@ ALWAYS_INLINE uint8_t* getWasmBufferFromValue(ExecState* exec, JSValue value, si
     return arrayBufferView ? static_cast<uint8_t*>(arrayBufferView->vector()) : static_cast<uint8_t*>(arrayBuffer->impl()->data());
 }
 
+ALWAYS_INLINE Vector<uint8_t> createSourceBufferFromValue(VM& vm, ExecState* exec, JSValue value)
+{
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    size_t byteOffset;
+    size_t byteSize;
+    uint8_t* data = getWasmBufferFromValue(exec, value, byteOffset, byteSize);
+    RETURN_IF_EXCEPTION(throwScope, Vector<uint8_t>());
+
+    Vector<uint8_t> result;
+    if (!result.tryReserveCapacity(byteSize)) {
+        throwException(exec, throwScope, createOutOfMemoryError(exec));
+        return result;
+    }
+
+    result.grow(byteSize);
+    memcpy(result.data(), data + byteOffset, byteSize);
+    return result;
+}
+
 ALWAYS_INLINE bool isWebAssemblyHostFunction(VM& vm, JSObject* object, WebAssemblyFunction*& wasmFunction, WebAssemblyWrapperFunction*& wasmWrapperFunction)
 {
     if (object->inherits(vm, WebAssemblyFunction::info())) {

@@ -133,22 +133,22 @@ protected:
     //
     // sugary-sweet convenience functions to help create and apply edit commands in composite commands
     //
-    void appendNode(PassRefPtr<Node>, PassRefPtr<ContainerNode> parent);
-    void applyCommandToComposite(PassRefPtr<EditCommand>);
-    void applyCommandToComposite(PassRefPtr<CompositeEditCommand>, const VisibleSelection&);
+    void appendNode(Ref<Node>&&, Ref<ContainerNode>&& parent);
+    void applyCommandToComposite(Ref<EditCommand>&&);
+    void applyCommandToComposite(Ref<CompositeEditCommand>&&, const VisibleSelection&);
     void applyStyle(const EditingStyle*, EditAction = EditActionChangeAttributes);
     void applyStyle(const EditingStyle*, const Position& start, const Position& end, EditAction = EditActionChangeAttributes);
-    void applyStyledElement(PassRefPtr<Element>);
-    void removeStyledElement(PassRefPtr<Element>);
+    void applyStyledElement(Ref<Element>&&);
+    void removeStyledElement(Ref<Element>&&);
     void deleteSelection(bool smartDelete = false, bool mergeBlocksAfterDelete = true, bool replace = false, bool expandForSpecialElements = true, bool sanitizeMarkup = true);
     void deleteSelection(const VisibleSelection&, bool smartDelete = false, bool mergeBlocksAfterDelete = true, bool replace = false, bool expandForSpecialElements = true, bool sanitizeMarkup = true);
     virtual void deleteTextFromNode(PassRefPtr<Text>, unsigned offset, unsigned count);
     void inputText(const String&, bool selectInsertedText = false);
     bool isRemovableBlock(const Node*);
-    void insertNodeAfter(PassRefPtr<Node>, PassRefPtr<Node> refChild);
-    void insertNodeAt(PassRefPtr<Node>, const Position&);
-    void insertNodeAtTabSpanPosition(PassRefPtr<Node>, const Position&);
-    void insertNodeBefore(PassRefPtr<Node>, PassRefPtr<Node> refChild, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
+    void insertNodeAfter(Ref<Node>&&, Node& refChild);
+    void insertNodeAt(Ref<Node>&&, const Position&);
+    void insertNodeAtTabSpanPosition(Ref<Node>&&, const Position&);
+    void insertNodeBefore(Ref<Node>&&, Node& refChild, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
     void insertParagraphSeparator(bool useDefaultParagraphElement = false, bool pasteBlockqutoeIntoUnquotedArea = false);
     void insertLineBreak();
     void insertTextIntoNode(PassRefPtr<Text>, unsigned offset, const String& text);
@@ -183,7 +183,7 @@ protected:
     void deleteInsignificantText(const Position& start, const Position& end);
     void deleteInsignificantTextDownstream(const Position&);
 
-    RefPtr<Node> appendBlockPlaceholder(PassRefPtr<Element>);
+    Ref<Element> appendBlockPlaceholder(Ref<Element>&&);
     RefPtr<Node> insertBlockPlaceholder(const Position&);
     RefPtr<Node> addBlockPlaceholderIfNeeded(Element*);
     void removePlaceholderAt(const Position&);

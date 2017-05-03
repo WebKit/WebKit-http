@@ -515,6 +515,9 @@ void DOMWindow::willDetachDocumentFromFrame()
     copyToVector(m_properties, properties);
     for (auto& property : properties)
         property->willDetachGlobalObjectFromFrame();
+
+    if (m_performance)
+        m_performance->clearResourceTimings();
 }
 
 #if ENABLE(GAMEPAD)
@@ -978,7 +981,7 @@ ExceptionOr<void> DOMWindow::postMessage(JSC::ExecState& state, DOMWindow& calle
 
     // Schedule the message.
     auto* timer = new PostMessageTimer(*this, message.releaseReturnValue(), sourceOrigin, callerWindow, channels.releaseReturnValue(), WTFMove(target), WTFMove(stackTrace));
-    timer->startOneShot(0);
+    timer->startOneShot(0_s);
 
     return { };
 }
@@ -1816,11 +1819,11 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
 #endif
 #if ENABLE(IOS_TOUCH_EVENTS)
     else if (eventNames().isTouchEventType(eventType))
-        ++m_touchEventListenerCount;
+        ++m_touchAndGestureEventListenerCount;
 #endif
 #if ENABLE(IOS_GESTURE_EVENTS)
     else if (eventNames().isGestureEventType(eventType))
-        ++m_touchEventListenerCount;
+        ++m_touchAndGestureEventListenerCount;
 #endif
 #if ENABLE(GAMEPAD)
     else if (eventNames().isGamepadEventType(eventType))
@@ -1907,14 +1910,14 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
 #endif
 #if ENABLE(IOS_TOUCH_EVENTS)
     else if (eventNames().isTouchEventType(eventType)) {
-        ASSERT(m_touchEventListenerCount > 0);
-        --m_touchEventListenerCount;
+        ASSERT(m_touchAndGestureEventListenerCount > 0);
+        --m_touchAndGestureEventListenerCount;
     }
 #endif
 #if ENABLE(IOS_GESTURE_EVENTS)
     else if (eventNames().isGestureEventType(eventType)) {
-        ASSERT(m_touchEventListenerCount > 0);
-        --m_touchEventListenerCount;
+        ASSERT(m_touchAndGestureEventListenerCount > 0);
+        --m_touchAndGestureEventListenerCount;
     }
 #endif
 #if ENABLE(GAMEPAD)
@@ -2020,7 +2023,7 @@ void DOMWindow::removeAllEventListeners()
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
-    m_touchEventListenerCount = 0;
+    m_touchAndGestureEventListenerCount = 0;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2198,11 +2201,12 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     if (!newFrame)
         return nullptr;
 
-    newFrame->loader().setOpener(&openerFrame);
+    if (!windowFeatures.noopener)
+        newFrame->loader().setOpener(&openerFrame);
     newFrame->page()->setOpenedByDOM();
 
     if (newFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))
-        return newFrame;
+        return windowFeatures.noopener ? nullptr : newFrame;
 
     if (prepareDialogFunction)
         prepareDialogFunction(*newFrame->document()->domWindow());
@@ -2220,7 +2224,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     if (!newFrame->page())
         return nullptr;
 
-    return newFrame;
+    return windowFeatures.noopener ? nullptr : newFrame;
 }
 
 RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow)
@@ -2259,9 +2263,9 @@ RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& f
     // Get the target frame for the special cases of _top and _parent.
     // In those cases, we schedule a location change right now and return early.
     Frame* targetFrame = nullptr;
-    if (frameName == "_top")
+    if (equalIgnoringASCIICase(frameName, "_top"))
         targetFrame = &m_frame->tree().top();
-    else if (frameName == "_parent") {
+    else if (equalIgnoringASCIICase(frameName, "_parent")) {
         if (Frame* parent = m_frame->tree().parent())
             targetFrame = parent;
         else

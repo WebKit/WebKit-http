@@ -25,9 +25,8 @@
 #include "config.h"
 #include "Range.h"
 
-#include "ClientRect.h"
-#include "ClientRectList.h"
 #include "Comment.h"
+#include "DOMRect.h"
 #include "DocumentFragment.h"
 #include "Editing.h"
 #include "Event.h"
@@ -1266,7 +1265,7 @@ static SelectionRect coalesceSelectionRects(const SelectionRect& original, const
 
 // This function is similar in spirit to addLineBoxRects, but annotates the returned rectangles
 // with additional state which helps iOS draw selections in its unique way.
-int Range::collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>& rects)
+int Range::collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>& rects) const
 {
     auto& startContainer = this->startContainer();
     auto& endContainer = this->endContainer();
@@ -1426,7 +1425,7 @@ int Range::collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&
     return maxLineNumber;
 }
 
-void Range::collectSelectionRects(Vector<SelectionRect>& rects)
+void Range::collectSelectionRects(Vector<SelectionRect>& rects) const
 {
     int maxLineNumber = collectSelectionRectsWithoutUnionInteriorLines(rects);
     const size_t numberOfRects = rects.size();
@@ -1763,14 +1762,14 @@ ExceptionOr<void> Range::expand(const String& unit)
     return setEnd(*endContainer, end.deepEquivalent().computeOffsetInContainerNode());
 }
 
-Ref<ClientRectList> Range::getClientRects() const
+Vector<Ref<DOMRect>> Range::getClientRects() const
 {
-    return ClientRectList::create(borderAndTextQuads(CoordinateSpace::Client));
+    return createDOMRectVector(borderAndTextQuads(CoordinateSpace::Client));
 }
 
-Ref<ClientRect> Range::getBoundingClientRect() const
+Ref<DOMRect> Range::getBoundingClientRect() const
 {
-    return ClientRect::create(boundingRect(CoordinateSpace::Client));
+    return DOMRect::create(boundingRect(CoordinateSpace::Client));
 }
 
 Vector<FloatQuad> Range::borderAndTextQuads(CoordinateSpace space) const

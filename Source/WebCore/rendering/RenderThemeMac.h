@@ -87,7 +87,7 @@ public:
 #endif
 
     // Returns the repeat interval of the animation for the progress bar.
-    double animationRepeatIntervalForProgressBar(RenderProgress&) const override;
+    Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const override;
     // Returns the duration of the animation for the progress bar.
     double animationDurationForProgressBar(RenderProgress&) const override;
     IntRect progressBarRectForBounds(const RenderObject&, const IntRect&) const override;
@@ -109,7 +109,7 @@ protected:
     String mediaControlsStyleSheet() override;
     String modernMediaControlsStyleSheet() override;
     String mediaControlsScript() override;
-    String mediaControlsBase64StringForIconAndPlatform(const String&, const String&) override;
+    String mediaControlsBase64StringForIconNameAndType(const String&, const String&) override;
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)

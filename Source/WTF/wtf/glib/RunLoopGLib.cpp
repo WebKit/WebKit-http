@@ -29,6 +29,7 @@
 
 #include <glib.h>
 #include <wtf/MainThread.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 namespace WTF {
 
@@ -60,15 +61,13 @@ RunLoop::RunLoop()
     m_mainLoops.append(innermostLoop);
 
     m_source = adoptGRef(g_source_new(&runLoopSourceFunctions, sizeof(GSource)));
+    g_source_set_priority(m_source.get(), RunLoopSourcePriority::RunLoopDispatcher);
     g_source_set_name(m_source.get(), "[WebKit] RunLoop work");
     g_source_set_can_recurse(m_source.get(), TRUE);
     g_source_set_callback(m_source.get(), [](gpointer userData) -> gboolean {
         static_cast<RunLoop*>(userData)->performWork();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
-#if PLATFORM(WPE)
-    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
-#endif
     g_source_attach(m_source.get(), m_mainContext.get());
 }
 
@@ -144,6 +143,7 @@ private:
 void RunLoop::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
     GRefPtr<GSource> source = adoptGRef(g_timeout_source_new(duration.millisecondsAs<guint>()));
+    g_source_set_priority(source.get(), RunLoopSourcePriority::RunLoopTimer);
     g_source_set_name(source.get(), "[WebKit] RunLoop dispatchAfter");
 
     std::unique_ptr<DispatchAfterContext> context = std::make_unique<DispatchAfterContext>(WTFMove(function));
@@ -159,6 +159,7 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
     , m_source(adoptGRef(g_source_new(&runLoopSourceFunctions, sizeof(GSource))))
 {
+    g_source_set_priority(m_source.get(), RunLoopSourcePriority::RunLoopTimer);
     g_source_set_name(m_source.get(), "[WebKit] RunLoop::Timer work");
     g_source_set_callback(m_source.get(), [](gpointer userData) -> gboolean {
         RunLoop::TimerBase* timer = static_cast<RunLoop::TimerBase*>(userData);
@@ -167,15 +168,17 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
             timer->updateReadyTime();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
-#if PLATFORM(WPE)
-    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
-#endif
-    g_source_attach(m_source.get(), m_runLoop.m_mainContext.get());
+    g_source_attach(m_source.get(), m_runLoop->m_mainContext.get());
 }
 
 RunLoop::TimerBase::~TimerBase()
 {
     g_source_destroy(m_source.get());
+}
+
+void RunLoop::TimerBase::setName(const char* name)
+{
+    g_source_set_name(m_source.get(), name);
 }
 
 void RunLoop::TimerBase::setPriority(int priority)
@@ -211,6 +214,14 @@ void RunLoop::TimerBase::stop()
 bool RunLoop::TimerBase::isActive() const
 {
     return g_source_get_ready_time(m_source.get()) != -1;
+}
+
+Seconds RunLoop::TimerBase::secondsUntilFire() const
+{
+    gint64 time = g_source_get_ready_time(m_source.get());
+    if (time != -1)
+        return std::max<Seconds>(Seconds::fromMicroseconds(time - g_get_monotonic_time()), 0_s);
+    return 0_s;
 }
 
 } // namespace WTF

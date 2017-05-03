@@ -61,6 +61,7 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
+#include <WebCore/Settings.h>
 #include <WebCore/URLParser.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RunLoop.h>
@@ -203,7 +204,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 {
     platformInitializeNetworkProcess(parameters);
 
-    WTF::setCurrentThreadIsUserInitiated();
+    WTF::Thread::setCurrentThreadIsUserInitiated();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     m_loadThrottleLatency = parameters.loadThrottleLatency;
@@ -290,7 +291,12 @@ void NetworkProcess::ensurePrivateBrowsingSession(SessionID sessionID)
     RemoteNetworkingContext::ensurePrivateBrowsingSession(sessionID);
 }
 
-void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
+void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters)
+{
+    RemoteNetworkingContext::ensureWebsiteDataStoreSession(WTFMove(parameters));
+}
+
+void NetworkProcess::destroySession(SessionID sessionID)
 {
     SessionTracker::destroySession(sessionID);
 }
@@ -311,9 +317,9 @@ void NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+void NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd,  bool clearFirst)
 {
-    NetworkStorageSession::defaultStorageSession().setShouldPartitionCookiesForHosts(domainsToRemove, domainsToAdd);
+    NetworkStorageSession::defaultStorageSession().setShouldPartitionCookiesForHosts(domainsToRemove, domainsToAdd, clearFirst);
 }
 #endif
 
@@ -518,7 +524,12 @@ void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTas
     downloadProxyConnection()->send(Messages::DownloadProxy::DidReceiveResponse(response), destinationID);
 
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, WTFMove(completionHandler));
-    String suggestedFilename = MIMETypeRegistry::appendFileExtensionIfNecessary(networkDataTask.suggestedFilename(), response.mimeType());
+
+    // As per https://html.spec.whatwg.org/#as-a-download (step 2), the filename from the Content-Disposition header
+    // should override the suggested filename from the download attribute.
+    String suggestedFilename = response.isAttachmentWithFilename() ? response.suggestedFilename() : networkDataTask.suggestedFilename();
+    suggestedFilename = MIMETypeRegistry::appendFileExtensionIfNecessary(suggestedFilename, response.mimeType());
+
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), suggestedFilename), destinationID);
 }
 #endif
@@ -579,6 +590,11 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
     data.statisticsNumbers.set("OutstandingAuthenticationChallengesCount", networkProcess.authenticationManager().outstandingAuthenticationChallengeCount());
 
     parentProcessConnection()->send(Messages::WebProcessPool::DidGetStatistics(data, callbackID), 0);
+}
+
+void NetworkProcess::setAllowsAnySSLCertificateForWebSocket(bool allows)
+{
+    Settings::setAllowsAnySSLCertificate(allows);
 }
 
 void NetworkProcess::logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, ShouldSample shouldSample)
@@ -659,6 +675,10 @@ void NetworkProcess::initializeProcessName(const ChildProcessInitializationParam
 }
 
 void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
+{
+}
+
+void NetworkProcess::syncAllCookies()
 {
 }
 #endif

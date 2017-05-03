@@ -112,13 +112,16 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
 #if ENABLE(NETWORK_CACHE)
         if (parameters.shouldEnableNetworkCache) {
-            NetworkCache::Cache::Parameters cacheParameters = {
-                parameters.shouldEnableNetworkCacheEfficacyLogging
+            OptionSet<NetworkCache::Cache::Option> cacheOptions;
+            if (parameters.shouldEnableNetworkCacheEfficacyLogging)
+                cacheOptions |= NetworkCache::Cache::Option::EfficacyLogging;
+            if (parameters.shouldUseTestingNetworkSession)
+                cacheOptions |= NetworkCache::Cache::Option::TestingMode;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-                , parameters.shouldEnableNetworkCacheSpeculativeRevalidation
+            if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
+                cacheOptions |= NetworkCache::Cache::Option::SpeculativeRevalidation;
 #endif
-            };
-            if (NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheParameters)) {
+            if (NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheOptions)) {
                 auto urlCache(adoptNS([[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil]));
                 [NSURLCache setSharedURLCache:urlCache.get()];
                 return;
@@ -203,6 +206,20 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
 void NetworkProcess::setCookieStoragePartitioningEnabled(bool enabled)
 {
     WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(enabled);
+}
+
+void NetworkProcess::syncAllCookies()
+{
+// FIXME: Figure out the non-prefixed version of this on newer SDKs
+
+#if !PLATFORM(IOS)
+#if (__MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    _CFHTTPCookieStorageFlushCookieStores();
+#pragma clang diagnostic pop
+#endif
+#endif
 }
 
 }

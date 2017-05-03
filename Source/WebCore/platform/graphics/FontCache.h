@@ -122,7 +122,8 @@ private:
     static std::array<unsigned, 2> makeFlagsKey(const FontDescription& description)
     {
         static_assert(USCRIPT_CODE_LIMIT < 0x1000, "Script code must fit in an unsigned along with the other flags");
-        unsigned first = static_cast<unsigned>(description.script()) << 11
+        unsigned first = static_cast<unsigned>(description.script()) << 12
+            | static_cast<unsigned>(description.opticalSizing()) << 11
             | static_cast<unsigned>(description.textRenderingMode()) << 9
             | static_cast<unsigned>(description.fontSynthesis()) << 6
             | static_cast<unsigned>(description.widthVariant()) << 4
@@ -199,7 +200,7 @@ public:
     // It comes into play when you create an @font-face which shares a family name as a preinstalled font.
     Vector<FontSelectionCapabilities> getFontSelectionCapabilitiesInFamily(const AtomicString&);
 
-    WEBCORE_EXPORT RefPtr<Font> fontForFamily(const FontDescription&, const AtomicString&, const FontFeatureSettings* fontFaceFeatures = nullptr, const FontVariantSettings* fontFaceVariantSettings = nullptr, bool checkingAlternateName = false);
+    WEBCORE_EXPORT RefPtr<Font> fontForFamily(const FontDescription&, const AtomicString&, const FontFeatureSettings* fontFaceFeatures = nullptr, const FontVariantSettings* fontFaceVariantSettings = nullptr, FontSelectionSpecifiedCapabilities fontFaceCapabilities = { }, bool checkingAlternateName = false);
     WEBCORE_EXPORT Ref<Font> lastResortFallbackFont(const FontDescription&);
     Ref<Font> lastResortFallbackFontForEveryCharacter(const FontDescription&);
     WEBCORE_EXPORT Ref<Font> fontForPlatformData(const FontPlatformData&);
@@ -233,13 +234,13 @@ private:
     WEBCORE_EXPORT void purgeInactiveFontDataIfNeeded();
 
     // FIXME: This method should eventually be removed.
-    FontPlatformData* getCachedFontPlatformData(const FontDescription&, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures = nullptr, const FontVariantSettings* fontFaceVariantSettings = nullptr, bool checkingAlternateName = false);
+    FontPlatformData* getCachedFontPlatformData(const FontDescription&, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures = nullptr, const FontVariantSettings* fontFaceVariantSettings = nullptr, FontSelectionSpecifiedCapabilities fontFaceCapabilities = { }, bool checkingAlternateName = false);
 
     // These methods are implemented by each platform.
 #if PLATFORM(COCOA)
     FontPlatformData* getCustomFallbackFont(const UInt32, const FontDescription&);
 #endif
-    WEBCORE_EXPORT std::unique_ptr<FontPlatformData> createFontPlatformData(const FontDescription&, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings);
+    WEBCORE_EXPORT std::unique_ptr<FontPlatformData> createFontPlatformData(const FontDescription&, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities);
     
     static const AtomicString& alternateFamilyName(const AtomicString&);
     static const AtomicString& platformAlternateFamilyName(const AtomicString&);
@@ -254,7 +255,7 @@ private:
 
 inline std::unique_ptr<FontPlatformData> FontCache::createFontPlatformDataForTesting(const FontDescription& fontDescription, const AtomicString& family)
 {
-    return createFontPlatformData(fontDescription, family, nullptr, nullptr);
+    return createFontPlatformData(fontDescription, family, nullptr, nullptr, { });
 }
 
 #if PLATFORM(COCOA)
@@ -275,7 +276,7 @@ struct SynthesisPair {
     bool needsSyntheticOblique;
 };
 
-RetainPtr<CTFontRef> preparePlatformFont(CTFontRef, TextRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const FontFeatureSettings& features, const FontVariantSettings&, FontSelectionRequest, const FontVariationSettings&);
+RetainPtr<CTFontRef> preparePlatformFont(CTFontRef, TextRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, const FontFeatureSettings& features, const FontVariantSettings&, FontSelectionRequest, const FontVariationSettings&, FontOpticalSizing, float size);
 SynthesisPair computeNecessarySynthesis(CTFontRef, const FontDescription&, bool isPlatformFont = false);
 RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest, float size);
 RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, FontSelectionRequest, TextRenderingMode, float size);

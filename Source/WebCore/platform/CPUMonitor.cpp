@@ -43,7 +43,7 @@ void CPUMonitor::setCPULimit(std::optional<double> cpuLimit)
     m_cpuLimit = cpuLimit;
     if (m_cpuLimit) {
         if (!m_timer.isActive()) {
-            m_lastCPUTime = getCPUTime();
+            m_lastCPUTime = CPUTime::get();
             m_timer.startRepeating(m_checkInterval);
         }
     } else
@@ -55,17 +55,17 @@ void CPUMonitor::timerFired()
     ASSERT(m_cpuLimit);
 
     if (!m_lastCPUTime) {
-        m_lastCPUTime = getCPUTime();
+        m_lastCPUTime = CPUTime::get();
         return;
     }
 
-    auto cpuTime = getCPUTime();
+    auto cpuTime = CPUTime::get();
     if (!cpuTime)
         return;
 
     auto cpuUsagePercent = cpuTime.value().percentageCPUUsageSince(m_lastCPUTime.value());
     if (cpuUsagePercent > m_cpuLimit.value() * 100)
-        m_exceededCPULimitHandler();
+        m_exceededCPULimitHandler(cpuUsagePercent / 100.);
 
     m_lastCPUTime = cpuTime;
 }

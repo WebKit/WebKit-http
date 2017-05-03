@@ -2,16 +2,16 @@
 var localConnection;
 var remoteConnection;
 
-function createConnections(setupLocalConnection, setupRemoteConnection, filterOutICECandidate) {
+function createConnections(setupLocalConnection, setupRemoteConnection, options = { }) {
     localConnection = new RTCPeerConnection();
-    localConnection.onicecandidate = (event) => { iceCallback1(event, filterOutICECandidate) };
+    localConnection.onicecandidate = (event) => { iceCallback1(event, options.filterOutICECandidate) };
     setupLocalConnection(localConnection);
 
     remoteConnection = new RTCPeerConnection();
-    remoteConnection.onicecandidate = (event) => { iceCallback2(event, filterOutICECandidate) };
+    remoteConnection.onicecandidate = (event) => { iceCallback2(event, options.filterOutICECandidate) };
     setupRemoteConnection(remoteConnection);
 
-    localConnection.createOffer().then(gotDescription1, onCreateSessionDescriptionError);
+    localConnection.createOffer().then((desc) => gotDescription1(desc, options), onCreateSessionDescriptionError);
 
     return [localConnection, remoteConnection]
 }
@@ -27,24 +27,27 @@ function onCreateSessionDescriptionError(error)
     assert_unreached();
 }
 
-function gotDescription1(desc)
+function gotDescription1(desc, options)
 {
+    if (options.observeOffer)
+        options.observeOffer(desc);
+
     localConnection.setLocalDescription(desc);
     remoteConnection.setRemoteDescription(desc);
-    remoteConnection.createAnswer().then(gotDescription2, onCreateSessionDescriptionError);
+    remoteConnection.createAnswer().then((desc) => gotDescription2(desc, options), onCreateSessionDescriptionError);
 }
 
-function gotDescription2(desc)
+function gotDescription2(desc, options)
 {
+    if (options.observeAnswer)
+        options.observeAnswer(desc);
+
     remoteConnection.setLocalDescription(desc);
     localConnection.setRemoteDescription(desc);
 }
 
 function iceCallback1(event, filterOutICECandidate)
 {
-    if (!event.candidate)
-        return;
-
     if (filterOutICECandidate && filterOutICECandidate(event.candidate))
         return;
 
@@ -53,14 +56,10 @@ function iceCallback1(event, filterOutICECandidate)
 
 function iceCallback2(event, filterOutICECandidate)
 {
-    if (!event.candidate)
-        return;
-
     if (filterOutICECandidate && filterOutICECandidate(event.candidate))
         return;
 
-    if (event.candidate)
-        localConnection.addIceCandidate(event.candidate).then(onAddIceCandidateSuccess, onAddIceCandidateError);
+    localConnection.addIceCandidate(event.candidate).then(onAddIceCandidateSuccess, onAddIceCandidateError);
 }
 
 function onAddIceCandidateSuccess()
@@ -69,6 +68,7 @@ function onAddIceCandidateSuccess()
 
 function onAddIceCandidateError(error)
 {
+    console.log("addIceCandidate error: " + error)
     assert_unreached();
 }
 

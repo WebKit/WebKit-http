@@ -69,14 +69,6 @@ void ICOImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
         setDataForPNGDecoderAtIndex(i);
 }
 
-bool ICOImageDecoder::isSizeAvailable()
-{
-    if (!ImageDecoder::isSizeAvailable())
-        decode(0, true);
-
-    return ImageDecoder::isSizeAvailable();
-}
-
 IntSize ICOImageDecoder::size()
 {
     return m_frameSize.isEmpty() ? ImageDecoder::size() : m_frameSize;
@@ -96,7 +88,7 @@ bool ICOImageDecoder::setSize(const IntSize& size)
 
 size_t ICOImageDecoder::frameCount() const
 {
-    const_cast<ICOImageDecoder*>(this)->decode(0, true);
+    const_cast<ICOImageDecoder*>(this)->decode(0, true, isAllDataReceived());
     return m_frameBufferCache.size();
 }
 
@@ -108,7 +100,7 @@ ImageFrame* ICOImageDecoder::frameBufferAtIndex(size_t index)
 
     ImageFrame* buffer = &m_frameBufferCache[index];
     if (!buffer->isComplete())
-        decode(index, false);
+        decode(index, false, isAllDataReceived());
     return buffer;
 }
 
@@ -158,14 +150,14 @@ void ICOImageDecoder::setDataForPNGDecoderAtIndex(size_t index)
     m_pngDecoders[index]->setData(*pngData, isAllDataReceived());
 }
 
-void ICOImageDecoder::decode(size_t index, bool onlySize)
+void ICOImageDecoder::decode(size_t index, bool onlySize, bool allDataReceived)
 {
     if (failed())
         return;
 
     // If we couldn't decode the image but we've received all the data, decoding
     // has failed.
-    if ((!decodeDirectory() || (!onlySize && !decodeAtIndex(index))) && isAllDataReceived())
+    if ((!decodeDirectory() || (!onlySize && !decodeAtIndex(index))) && allDataReceived)
         setFailed();
     // If we're done decoding this frame, we don't need the BMPImageReader or
     // PNGImageDecoder anymore.  (If we failed, these have already been
@@ -216,14 +208,12 @@ bool ICOImageDecoder::decodeAtIndex(size_t index)
     }
 
     if (!m_pngDecoders[index]) {
-        m_pngDecoders[index] = std::make_unique<
-            PNGImageDecoder>(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied,
-                m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
+        m_pngDecoders[index] = PNGImageDecoder::create(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied, m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
         setDataForPNGDecoderAtIndex(index);
     }
     // Fail if the size the PNGImageDecoder calculated does not match the size
     // in the directory.
-    if (m_pngDecoders[index]->isSizeAvailable() && (m_pngDecoders[index]->size() != dirEntry.m_size))
+    if (m_pngDecoders[index]->encodedDataStatus() >= EncodedDataStatus::SizeAvailable && (m_pngDecoders[index]->size() != dirEntry.m_size))
         return setFailed();
     m_frameBufferCache[index] = *m_pngDecoders[index]->frameBufferAtIndex(0);
     return !m_pngDecoders[index]->failed() || setFailed();

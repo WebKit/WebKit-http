@@ -531,7 +531,9 @@ bool AccessibilityRenderObject::isFileUploadButton() const
 
 bool AccessibilityRenderObject::isOffScreen() const
 {
-    ASSERT(m_renderer);
+    if (!m_renderer)
+        return true;
+
     IntRect contentRect = snappedIntRect(m_renderer->absoluteClippedOverflowRect());
     // FIXME: unclear if we need LegacyIOSDocumentVisibleRect.
     IntRect viewRect = m_renderer->view().frameView().visibleContentRect(ScrollableArea::LegacyIOSDocumentVisibleRect);
@@ -601,10 +603,8 @@ String AccessibilityRenderObject::helpText() const
         
         // Only take help text from an ancestor element if its a group or an unknown role. If help was 
         // added to those kinds of elements, it is likely it was meant for a child element.
-        AccessibilityObject* axObj = axObjectCache()->getOrCreate(ancestor);
-        if (axObj) {
-            AccessibilityRole role = axObj->roleValue();
-            if (role != GroupRole && role != UnknownRole)
+        if (AccessibilityObject* axObj = axObjectCache()->getOrCreate(ancestor)) {
+            if (!axObj->isGroup() && axObj->roleValue() != UnknownRole)
                 break;
         }
     }
@@ -1010,7 +1010,7 @@ bool AccessibilityRenderObject::hasTextAlternative() const
     
 bool AccessibilityRenderObject::ariaHasPopup() const
 {
-    return elementAttributeValue(aria_haspopupAttr);
+    return !equalLettersIgnoringASCIICase(ariaPopupValue(), "false");
 }
 
 bool AccessibilityRenderObject::supportsARIADropping() const 
@@ -1045,7 +1045,7 @@ void AccessibilityRenderObject::determineARIADropEffects(Vector<String>& effects
     
 bool AccessibilityRenderObject::exposesTitleUIElement() const
 {
-    if (!isControl() && !isFigure())
+    if (!isControl() && !isFigureElement())
         return false;
 
     // If this control is ignored (because it's invisible), 
@@ -1082,7 +1082,7 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     if (isFieldset())
         return axObjectCache()->getOrCreate(downcast<RenderBlock>(*m_renderer).findFieldsetLegend(RenderBlock::FieldsetIncludeFloatingOrOutOfFlow));
     
-    if (isFigure())
+    if (isFigureElement())
         return captionForFigure();
     
     Node* node = m_renderer->node();
@@ -1249,7 +1249,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (isControl())
         return false;
     
-    if (isFigure())
+    if (isFigureElement())
         return false;
 
     switch (roleValue()) {
@@ -1260,6 +1260,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     case DocumentArticleRole:
     case LandmarkRegionRole:
     case ListItemRole:
+    case TimeRole:
     case VideoRole:
         return false;
     default:
@@ -1569,12 +1570,18 @@ URL AccessibilityRenderObject::url() const
 
 bool AccessibilityRenderObject::isUnvisited() const
 {
+    if (!m_renderer)
+        return true;
+
     // FIXME: Is it a privacy violation to expose unvisited information to accessibility APIs?
     return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideUnvisitedLink;
 }
 
 bool AccessibilityRenderObject::isVisited() const
 {
+    if (!m_renderer)
+        return false;
+
     // FIXME: Is it a privacy violation to expose visited information to accessibility APIs?
     return m_renderer->style().isLink() && m_renderer->style().insideLink() == InsideVisitedLink;
 }
@@ -2379,7 +2386,7 @@ bool AccessibilityRenderObject::shouldNotifyActiveDescendant() const
 bool AccessibilityRenderObject::shouldFocusActiveDescendant() const
 {
     switch (ariaRoleAttribute()) {
-    case GroupRole:
+    case ApplicationGroupRole:
     case ListBoxRole:
     case MenuRole:
     case MenuBarRole:
@@ -2433,6 +2440,9 @@ AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
 
 void AccessibilityRenderObject::handleAriaExpandedChanged()
 {
+    // This object might be deleted under the call to the parentObject() method.
+    auto protectedThis = makeRef(*this);
+    
     // Find if a parent of this object should handle aria-expanded changes.
     AccessibilityObject* containerParent = this->parentObject();
     while (containerParent) {
@@ -2666,7 +2676,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return SVGRootRole;
     
     if (isStyleFormatGroup())
-        return is<RenderInline>(*m_renderer) ? InlineRole : GroupRole;
+        return is<RenderInline>(*m_renderer) ? InlineRole : TextGroupRole;
     
     if (node && node->hasTagName(ddTag))
         return DescriptionListDetailRole;
@@ -2676,6 +2686,12 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(dlTag))
         return DescriptionListRole;
+
+    if (node && node->hasTagName(fieldsetTag))
+        return GroupRole;
+
+    if (node && node->hasTagName(figureTag))
+        return FigureRole;
 
     // Check for Ruby elements
     if (m_renderer->isRubyText())
@@ -2691,14 +2707,8 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     
     // This return value is what will be used if AccessibilityTableCell determines
     // the cell should not be treated as a cell (e.g. because it is a layout table.
-    // In ATK, there is a distinction between generic text block elements and other
-    // generic containers; AX API does not make this distinction.
     if (is<RenderTableCell>(m_renderer))
-#if PLATFORM(GTK)
-        return DivRole;
-#else
-        return GroupRole;
-#endif
+        return TextGroupRole;
 
     // Table sections should be ignored.
     if (m_renderer->isTableSection())
@@ -2738,7 +2748,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     // The HTML AAM spec says it is "strongly recommended" that ATs only convey and provide navigation
     // for section elements which have names.
     if (node && node->hasTagName(sectionTag))
-        return hasAttribute(aria_labelAttr) || hasAttribute(aria_labelledbyAttr) ? LandmarkRegionRole : GroupRole;
+        return hasAttribute(aria_labelAttr) || hasAttribute(aria_labelledbyAttr) ? LandmarkRegionRole : TextGroupRole;
 
     if (node && node->hasTagName(addressTag))
         return LandmarkContentInfoRole;
@@ -2787,19 +2797,15 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(menuTag) && equalLettersIgnoringASCIICase(getAttribute(typeAttr), "toolbar"))
         return ToolbarRole;
     
+    if (node && node->hasTagName(timeTag))
+        return TimeRole;
+    
     // If the element does not have role, but it has ARIA attributes, or accepts tab focus, accessibility should fallback to exposing it as a group.
     if (supportsARIAAttributes() || canSetFocusAttribute())
         return GroupRole;
 
-    if (m_renderer->isRenderBlockFlow()) {
-#if PLATFORM(GTK)
-        // For ATK, GroupRole maps to ATK_ROLE_PANEL. Panels are most commonly found (and hence
-        // expected) in UI elements; not text blocks.
-        return m_renderer->isAnonymousBlock() ? DivRole : GroupRole;
-#else
-        return GroupRole;
-#endif
-    }
+    if (m_renderer->isRenderBlockFlow())
+        return m_renderer->isAnonymousBlock() ? TextGroupRole : GroupRole;
     
     // InlineRole is the final fallback before assigning UnknownRole to an object. It makes it
     // possible to distinguish truly unknown objects from non-focusable inline text elements
@@ -2823,12 +2829,16 @@ AccessibilityOrientation AccessibilityRenderObject::orientation() const
     if (equalLettersIgnoringASCIICase(ariaOrientation, "undefined"))
         return AccessibilityOrientationUndefined;
 
-    // ARIA 1.1 Implicit defaults are defined on some roles.
-    // http://www.w3.org/TR/wai-aria-1.1/#aria-orientation
-    if (isScrollbar() || isComboBox() || isListBox() || isMenu() || isTree())
+    // In ARIA 1.1, the implicit value of aria-orientation changed from horizontal
+    // to undefined on all roles that don't have their own role-specific values. In
+    // addition, the implicit value of combobox became undefined.
+    if (isComboBox() || isRadioGroup() || isTreeGrid())
+        return AccessibilityOrientationUndefined;
+
+    if (isScrollbar() || isListBox() || isMenu() || isTree())
         return AccessibilityOrientationVertical;
     
-    if (isMenuBar() || isSplitter() || isTabList() || isToolbar())
+    if (isMenuBar() || isSplitter() || isTabList() || isToolbar() || isSlider())
         return AccessibilityOrientationHorizontal;
     
     return AccessibilityObject::orientation();
@@ -2983,7 +2993,7 @@ void AccessibilityRenderObject::addImageMapChildren()
 void AccessibilityRenderObject::updateChildrenIfNecessary()
 {
     if (needsToUpdateChildren())
-        clearChildren();        
+        clearChildren();
     
     AccessibilityObject::updateChildrenIfNecessary();
 }
@@ -3208,6 +3218,8 @@ void AccessibilityRenderObject::addChildren()
     for (RefPtr<AccessibilityObject> obj = firstChild(); obj; obj = obj->nextSibling())
         addChild(obj.get());
     
+    m_subtreeDirty = false;
+    
     addHiddenChildren();
     addAttachmentChildren();
     addImageMapChildren();
@@ -3357,6 +3369,7 @@ void AccessibilityRenderObject::selectedChildren(AccessibilityChildrenVector& re
         return;
     case GridRole:
     case TreeRole:
+    case TreeGridRole:
         ariaSelectedRows(result);
         return;
     case TabListRole:

@@ -311,7 +311,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         RefPtr<API::NavigationAction> localNavigationAction = &navigationAction;
         RefPtr<WebFramePolicyListenerProxy> localListener = WTFMove(listener);
 
-        tryAppLink(WTFMove(localNavigationAction), mainFrameURLString, [localListener, localNavigationAction = RefPtr<API::NavigationAction>(&navigationAction)] (bool followedLinkToApp) {
+        tryAppLink(WTFMove(localNavigationAction), mainFrameURLString, [webPage = RefPtr<WebPageProxy>(&webPageProxy), localListener, localNavigationAction = RefPtr<API::NavigationAction>(&navigationAction)] (bool followedLinkToApp) {
             if (followedLinkToApp) {
                 localListener->ignore();
                 return;
@@ -323,7 +323,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
             }
 
             RetainPtr<NSURLRequest> nsURLRequest = adoptNS(wrapper(API::URLRequest::create(localNavigationAction->request()).leakRef()));
-            if ([NSURLConnection canHandleRequest:nsURLRequest.get()]) {
+            if ([NSURLConnection canHandleRequest:nsURLRequest.get()] || webPage->urlSchemeHandlerForScheme([nsURLRequest URL].scheme)) {
                 if (localNavigationAction->shouldPerformDownload())
                     localListener->download();
                 else
@@ -887,7 +887,7 @@ void NavigationState::didChangeIsLoading()
     } else {
         // Delay releasing the background activity for 3 seconds to give the application a chance to start another navigation
         // before suspending the WebContent process <rdar://problem/27910964>.
-        m_releaseActivityTimer.startOneShot(3s);
+        m_releaseActivityTimer.startOneShot(3_s);
     }
 #endif
 

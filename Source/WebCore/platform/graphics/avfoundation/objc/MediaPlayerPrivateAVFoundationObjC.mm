@@ -61,7 +61,6 @@
 #import "TextTrackRepresentation.h"
 #import "TextureCacheCV.h"
 #import "URL.h"
-#import "UUID.h"
 #import "VideoTextureCopierCV.h"
 #import "VideoTrackPrivateAVFObjC.h"
 #import "WebCoreAVFResourceLoader.h"
@@ -190,6 +189,7 @@ SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResize, NSString *)
 
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetClientBundleIdentifierKey, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetRequiresCustomURLLoadingKey, NSString *)
+SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetOutOfBandMIMETypeKey, NSString *)
 
 #define AVPlayer initAVPlayer()
 #define AVPlayerItem initAVPlayerItem()
@@ -212,6 +212,7 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetRequiresCustomURLLoadingKey, 
 #define AVURLAssetInheritURIQueryComponentFromReferencingURIKey getAVURLAssetInheritURIQueryComponentFromReferencingURIKey()
 #define AVURLAssetClientBundleIdentifierKey getAVURLAssetClientBundleIdentifierKey()
 #define AVURLAssetRequiresCustomURLLoadingKey getAVURLAssetRequiresCustomURLLoadingKey()
+#define AVURLAssetOutOfBandMIMETypeKey getAVURLAssetOutOfBandMIMETypeKey()
 #define AVAssetImageGeneratorApertureModeCleanAperture getAVAssetImageGeneratorApertureModeCleanAperture()
 #define AVURLAssetReferenceRestrictionsKey getAVURLAssetReferenceRestrictionsKey()
 #define AVLayerVideoGravityResizeAspect getAVLayerVideoGravityResizeAspect()
@@ -943,6 +944,16 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
         [options setObject:@YES forKey:AVURLAssetRequiresCustomURLLoadingKey];
 #endif
 
+    auto& type = player()->contentMIMEType();
+    if (AVURLAssetOutOfBandMIMETypeKey && !type.isEmpty() && !player()->contentMIMETypeWasInferredFromExtension()) {
+        auto& codecs = player()->contentTypeCodecs();
+        if (!codecs.isEmpty()) {
+            NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)type, (NSString *)codecs];
+            [options setObject:typeString forKey:AVURLAssetOutOfBandMIMETypeKey];
+        } else
+            [options setObject:(NSString *)type forKey:AVURLAssetOutOfBandMIMETypeKey];
+    }
+
 #if ENABLE(AVF_CAPTIONS)
     const Vector<RefPtr<PlatformTextTrack>>& outOfBandTrackSources = player()->outOfBandTrackSources();
     if (!outOfBandTrackSources.isEmpty()) {
@@ -1383,6 +1394,10 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
     CMTime cmBefore = toCMTime(negativeTolerance);
     CMTime cmAfter = toCMTime(positiveTolerance);
 
+    // [AVPlayerItem seekToTime] will throw an exception if toleranceBefore is negative.
+    if (CMTimeCompare(cmBefore, kCMTimeZero) < 0)
+        cmBefore = kCMTimeZero;
+    
     auto weakThis = createWeakPtr();
 
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::seekToTime(%p) - calling seekToTime", this);

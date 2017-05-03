@@ -43,6 +43,7 @@ namespace WebKit {
 
 class NetworkConnectionToWebProcess;
 class NetworkResourceLoader;
+class NetworkSocketStream;
 class SyncNetworkResourceLoader;
 typedef uint64_t ResourceLoadIdentifier;
 
@@ -58,6 +59,8 @@ public:
     IPC::Connection& connection() { return m_connection.get(); }
 
     void didCleanupResourceLoader(NetworkResourceLoader&);
+
+    bool captureExtraNetworkLoadMetricsEnabled() const { return m_captureExtraNetworkLoadMetricsEnabled; }
 
     RefPtr<WebCore::BlobDataFileReference> getBlobDataFileReferenceForPath(const String& path);
 
@@ -106,6 +109,11 @@ private:
     void storeDerivedDataToCache(const WebKit::NetworkCache::DataKey&, const IPC::DataReference&);
 #endif
 
+    void setCaptureExtraNetworkLoadMetricsEnabled(bool);
+
+    void createSocketStream(WebCore::URL&&, WebCore::SessionID, String cachePartition, uint64_t);
+    void destroySocketStream(uint64_t);
+    
     void ensureLegacyPrivateBrowsingSession();
 
 #if USE(LIBWEBRTC)
@@ -114,12 +122,15 @@ private:
     
     Ref<IPC::Connection> m_connection;
 
+    HashMap<uint64_t, RefPtr<NetworkSocketStream>> m_networkSocketStreams;
     HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>> m_networkResourceLoaders;
     HashMap<String, RefPtr<WebCore::BlobDataFileReference>> m_blobDataFileReferences;
 
 #if USE(LIBWEBRTC)
     RefPtr<NetworkRTCProvider> m_rtcProvider;
 #endif
+
+    bool m_captureExtraNetworkLoadMetricsEnabled { false };
 };
 
 } // namespace WebKit

@@ -123,11 +123,10 @@ NetworkDataTaskCocoa::NetworkDataTaskCocoa(NetworkSession& session, NetworkDataT
     LOG(NetworkSession, "%llu Creating NetworkDataTask with URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    if (session.networkStorageSession().shouldPartitionCookiesForHost(url.host())) {
+    String storagePartition = session.networkStorageSession().cookieStoragePartition(request);
+    if (!storagePartition.isEmpty()) {
         LOG(NetworkSession, "%llu Partitioning cookies for URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
-        String storagePartition = WebCore::cookieStoragePartition(request);
-        if (!storagePartition.isEmpty())
-            m_task.get()._storagePartitionIdentifier = storagePartition;
+        m_task.get()._storagePartitionIdentifier = storagePartition;
     }
 #endif
 
@@ -367,7 +366,7 @@ void NetworkDataTaskCocoa::cancel()
 void NetworkDataTaskCocoa::resume()
 {
     if (m_scheduledFailureType != NoFailure)
-        m_failureTimer.startOneShot(0);
+        m_failureTimer.startOneShot(0_s);
     [m_task resume];
 }
 

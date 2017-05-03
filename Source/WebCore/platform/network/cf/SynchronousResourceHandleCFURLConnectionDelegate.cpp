@@ -184,7 +184,7 @@ void SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData(CFDataRef 
     LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didReceiveData(handle=%p, bytes=%ld) (%s)", m_handle, CFDataGetLength(data), m_handle->firstRequest().url().string().utf8().data());
 
     if (ResourceHandleClient* client = m_handle->client())
-        client->didReceiveBuffer(m_handle, SharedBuffer::wrapCFData(data), originalLength);
+        client->didReceiveBuffer(m_handle, SharedBuffer::create(data), originalLength);
 }
 
 void SynchronousResourceHandleCFURLConnectionDelegate::didFinishLoading()
@@ -271,19 +271,6 @@ Boolean SynchronousResourceHandleCFURLConnectionDelegate::canRespondToProtection
 #endif
 }
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-void SynchronousResourceHandleCFURLConnectionDelegate::didReceiveDataArray(CFArrayRef dataArray)
-{
-    if (!m_handle->client())
-        return;
-
-    LOG(Network, "CFNet - SynchronousResourceHandleCFURLConnectionDelegate::didReceiveDataArray(handle=%p, arrayLength=%ld) (%s)", m_handle, CFArrayGetCount(dataArray), m_handle->firstRequest().url().string().utf8().data());
-
-    if (ResourceHandleClient* client = m_handle->client())
-        client->didReceiveBuffer(m_handle, SharedBuffer::wrapCFDataArray(dataArray), -1);
-}
-#endif // USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 
 void SynchronousResourceHandleCFURLConnectionDelegate::continueWillSendRequest(CFURLRequestRef)
 {

@@ -931,6 +931,8 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, { });
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, length, length);
     RETURN_IF_EXCEPTION(scope, { });
+    if (end < begin)
+        end = begin;
 
     std::pair<SpeciesConstructResult, JSObject*> speciesResult = speciesConstructArray(exec, thisObj, end - begin);
     // We can only get an exception if we call some user function.
@@ -1041,16 +1043,19 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
             }
         } else {
-            result = JSArray::tryCreateForInitializationPrivate(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
-            if (!result)
-                return JSValue::encode(throwOutOfMemoryError(exec, scope));
-            
+            result = JSArray::tryCreate(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
+            if (UNLIKELY(!result)) {
+                throwOutOfMemoryError(exec, scope);
+                return encodedJSValue();
+            }
+
             for (unsigned k = 0; k < actualDeleteCount; ++k) {
                 JSValue v = getProperty(exec, thisObj, k + actualStart);
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
                 if (UNLIKELY(!v))
                     continue;
-                result->initializeIndex(vm, k, v);
+                result->putDirectIndex(exec, k, v);
+                RETURN_IF_EXCEPTION(scope, encodedJSValue());
             }
         }
     }
@@ -1303,8 +1308,14 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState* exec)
         return JSValue::encode(result);
     }
 
-    Structure* resultStructure = exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(type);
-    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, resultStructure, resultSize);
+    JSGlobalObject* lexicalGlobalObject = exec->lexicalGlobalObject();
+    Structure* resultStructure = lexicalGlobalObject->arrayStructureForIndexingTypeDuringAllocation(type);
+    if (UNLIKELY(hasAnyArrayStorage(resultStructure->indexingType())))
+        return JSValue::encode(jsNull());
+
+    ASSERT(!lexicalGlobalObject->isHavingABadTime());
+    ObjectInitializationScope initializationScope(vm);
+    JSArray* result = JSArray::tryCreateUninitializedRestricted(initializationScope, resultStructure, resultSize);
     if (UNLIKELY(!result)) {
         throwOutOfMemoryError(exec, scope);
         return encodedJSValue();

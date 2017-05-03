@@ -28,9 +28,10 @@
 #include "CSSAnimationController.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "ClientRectList.h"
+#include "ConstantPropertyMap.h"
 #include "ContextMenuClient.h"
 #include "ContextMenuController.h"
+#include "DOMRect.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
@@ -76,6 +77,7 @@
 #include "PluginViewBase.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
+#include "PublicSuffix.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -404,7 +406,7 @@ String Page::synchronousScrollingReasonsAsText()
     return String();
 }
 
-Ref<ClientRectList> Page::nonFastScrollableRects()
+Vector<Ref<DOMRect>> Page::nonFastScrollableRects()
 {
     if (Document* document = m_mainFrame->document())
         document->updateLayout();
@@ -420,7 +422,50 @@ Ref<ClientRectList> Page::nonFastScrollableRects()
     for (size_t i = 0; i < rects.size(); ++i)
         quads[i] = FloatRect(rects[i]);
 
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
+}
+
+Vector<Ref<DOMRect>> Page::touchEventRectsForEvent(const String& eventName)
+{
+    if (Document* document = m_mainFrame->document()) {
+        document->updateLayout();
+#if ENABLE(IOS_TOUCH_EVENTS)
+        document->updateTouchEventRegions();
+#endif
+    }
+
+    Vector<IntRect> rects;
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
+        const EventTrackingRegions& eventTrackingRegions = scrollingCoordinator->absoluteEventTrackingRegions();
+        const auto& region = eventTrackingRegions.eventSpecificSynchronousDispatchRegions.get(eventName);
+        rects.appendVector(region.rects());
+    }
+
+    Vector<FloatQuad> quads(rects.size());
+    for (size_t i = 0; i < rects.size(); ++i)
+        quads[i] = FloatRect(rects[i]);
+
+    return createDOMRectVector(quads);
+}
+
+Vector<Ref<DOMRect>> Page::passiveTouchEventListenerRects()
+{
+    if (Document* document = m_mainFrame->document()) {
+        document->updateLayout();
+#if ENABLE(IOS_TOUCH_EVENTS)
+        document->updateTouchEventRegions();
+#endif  
+    }
+
+    Vector<IntRect> rects;
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
+        rects.appendVector(scrollingCoordinator->absoluteEventTrackingRegions().asynchronousDispatchRegion.rects());
+
+    Vector<FloatQuad> quads(rects.size());
+    for (size_t i = 0; i < rects.size(); ++i)
+        quads[i] = FloatRect(rects[i]);
+
+    return createDOMRectVector(quads);
 }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
@@ -604,19 +649,19 @@ void Page::setCanStartMedia(bool canStartMedia)
     }
 }
 
-static Frame* incrementFrame(Frame* curr, bool forward, bool wrapFlag)
+static Frame* incrementFrame(Frame* curr, bool forward, CanWrap canWrap, DidWrap* didWrap = nullptr)
 {
     return forward
-        ? curr->tree().traverseNextWithWrap(wrapFlag)
-        : curr->tree().traversePreviousWithWrap(wrapFlag);
+        ? curr->tree().traverseNext(canWrap, didWrap)
+        : curr->tree().traversePrevious(canWrap, didWrap);
 }
 
-bool Page::findString(const String& target, FindOptions options)
+bool Page::findString(const String& target, FindOptions options, DidWrap* didWrap)
 {
     if (target.isEmpty())
         return false;
 
-    bool shouldWrap = options & WrapAround;
+    CanWrap canWrap = options & WrapAround ? CanWrap::Yes : CanWrap::No;
     Frame* frame = &focusController().focusedOrMainFrame();
     Frame* startFrame = frame;
     do {
@@ -626,12 +671,14 @@ bool Page::findString(const String& target, FindOptions options)
             focusController().setFocusedFrame(frame);
             return true;
         }
-        frame = incrementFrame(frame, !(options & Backwards), shouldWrap);
+        frame = incrementFrame(frame, !(options & Backwards), canWrap, didWrap);
     } while (frame && frame != startFrame);
 
     // Search contents of startFrame, on the other side of the selection that we did earlier.
     // We cheat a bit and just research with wrap on
-    if (shouldWrap && !startFrame->selection().isNone()) {
+    if (canWrap == CanWrap::Yes && !startFrame->selection().isNone()) {
+        if (didWrap)
+            *didWrap = DidWrap::Yes;
         bool found = startFrame->editor().findString(target, options | WrapAround | StartInSelection);
         focusController().setFocusedFrame(frame);
         return found;
@@ -650,7 +697,7 @@ void Page::findStringMatchingRanges(const String& target, FindOptions options, i
         frame->editor().countMatchesForText(target, 0, options, limit ? (limit - matchRanges.size()) : 0, true, &matchRanges);
         if (frame->selection().isRange())
             frameWithSelection = frame;
-        frame = incrementFrame(frame, true, false);
+        frame = incrementFrame(frame, true, CanWrap::No);
     } while (frame);
 
     if (matchRanges.isEmpty())
@@ -692,19 +739,19 @@ RefPtr<Range> Page::rangeOfString(const String& target, Range* referenceRange, F
     if (referenceRange && referenceRange->ownerDocument().page() != this)
         return nullptr;
 
-    bool shouldWrap = options & WrapAround;
+    CanWrap canWrap = options & WrapAround ? CanWrap::Yes : CanWrap::No;
     Frame* frame = referenceRange ? referenceRange->ownerDocument().frame() : &mainFrame();
     Frame* startFrame = frame;
     do {
         if (RefPtr<Range> resultRange = frame->editor().rangeOfString(target, frame == startFrame ? referenceRange : 0, options & ~WrapAround))
             return resultRange;
 
-        frame = incrementFrame(frame, !(options & Backwards), shouldWrap);
+        frame = incrementFrame(frame, !(options & Backwards), canWrap);
     } while (frame && frame != startFrame);
 
     // Search contents of startFrame, on the other side of the reference range that we did earlier.
     // We cheat a bit and just search again with wrap on.
-    if (shouldWrap && referenceRange) {
+    if (canWrap == CanWrap::Yes && referenceRange) {
         if (RefPtr<Range> resultRange = startFrame->editor().rangeOfString(target, referenceRange, options | WrapAround | StartInSelection))
             return resultRange;
     }
@@ -724,7 +771,7 @@ unsigned Page::findMatchesForText(const String& target, FindOptions options, uns
         if (shouldMarkMatches == MarkMatches)
             frame->editor().setMarkedTextMatchesAreHighlighted(shouldHighlightMatches == HighlightMatches);
         matchCount += frame->editor().countMatchesForText(target, 0, options, maxMatchCount ? (maxMatchCount - matchCount) : 0, shouldMarkMatches == MarkMatches, 0);
-        frame = incrementFrame(frame, true, false);
+        frame = incrementFrame(frame, true, CanWrap::No);
     } while (frame);
 
     return matchCount;
@@ -745,7 +792,7 @@ void Page::unmarkAllTextMatches()
     Frame* frame = &mainFrame();
     do {
         frame->document()->markers().removeMarkers(DocumentMarker::TextMatch);
-        frame = incrementFrame(frame, true, false);
+        frame = incrementFrame(frame, true, CanWrap::No);
     } while (frame);
 }
 
@@ -1095,6 +1142,8 @@ void Page::removeActivityStateChangeObserver(ActivityStateChangeObserver& observ
 
 void Page::suspendScriptedAnimations()
 {
+    if (settings().shouldDispatchRequestAnimationFrameEvents())
+        WTFReportBacktrace();
     m_scriptedAnimationsSuspended = true;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())
@@ -1264,6 +1313,19 @@ void Page::setSessionStorage(RefPtr<StorageNamespace>&& newStorage)
     m_sessionStorage = WTFMove(newStorage);
 }
 
+StorageNamespace* Page::ephemeralLocalStorage(bool optionalCreate)
+{
+    if (!m_ephemeralLocalStorage && optionalCreate)
+        m_ephemeralLocalStorage = m_storageNamespaceProvider->createEphemeralLocalStorageNamespace(*this, m_settings->sessionStorageQuota());
+
+    return m_ephemeralLocalStorage.get();
+}
+
+void Page::setEphemeralLocalStorage(RefPtr<StorageNamespace>&& newStorage)
+{
+    m_ephemeralLocalStorage = WTFMove(newStorage);
+}
+
 bool Page::hasCustomHTMLTokenizerTimeDelay() const
 {
     return m_settings->maxParseDuration() != -1;
@@ -1306,7 +1368,7 @@ void Page::updateTimerThrottlingState()
     // If the page is visible (but idle), there is any activity (loading, media playing, etc), or per setting,
     // we allow timer throttling, but not increasing timer throttling.
     if (!m_settings->hiddenPageDOMTimerThrottlingAutoIncreases()
-        || m_activityState & (ActivityState::IsVisible | ActivityState::IsAudible | ActivityState::IsLoading)) {
+        || m_activityState & (ActivityState::IsVisible | ActivityState::IsAudible | ActivityState::IsLoading | ActivityState::IsCapturingMedia)) {
         setTimerThrottlingState(TimerThrottlingState::Enabled);
         return;
     }
@@ -1538,7 +1600,7 @@ void Page::setActivityState(ActivityState::Flags activityState)
             view->updateTiledBackingAdaptiveSizing();
     }
 
-    if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading))
+    if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading | ActivityState::IsCapturingMedia))
         updateTimerThrottlingState();
 
     for (auto* observer : m_activityStateChangeObservers)
@@ -1609,6 +1671,11 @@ void Page::setIsVisibleInternal(bool isVisible)
         setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
 
         resumeAnimatingImages();
+
+        if (m_navigationToLogWhenVisible) {
+            logNavigation(m_navigationToLogWhenVisible.value());
+            m_navigationToLogWhenVisible = std::nullopt;
+        }
     }
 
     Vector<Ref<Document>> documents;
@@ -1993,6 +2060,64 @@ bool Page::arePromptsAllowed()
     return !m_forbidPromptsDepth;
 }
 
+void Page::logNavigation(const Navigation& navigation)
+{
+    String navigationDescription;
+    switch (navigation.type) {
+    case FrameLoadType::Standard:
+        navigationDescription = ASCIILiteral("standard");
+        break;
+    case FrameLoadType::Back:
+        navigationDescription = ASCIILiteral("back");
+        break;
+    case FrameLoadType::Forward:
+        navigationDescription = ASCIILiteral("forward");
+        break;
+    case FrameLoadType::IndexedBackForward:
+        navigationDescription = ASCIILiteral("indexedBackForward");
+        break;
+    case FrameLoadType::Reload:
+        navigationDescription = ASCIILiteral("reload");
+        break;
+    case FrameLoadType::Same:
+        navigationDescription = ASCIILiteral("same");
+        break;
+    case FrameLoadType::ReloadFromOrigin:
+        navigationDescription = ASCIILiteral("reloadFromOrigin");
+        break;
+    case FrameLoadType::ReloadExpiredOnly:
+        navigationDescription = ASCIILiteral("reloadRevalidatingExpired");
+        break;
+    case FrameLoadType::Replace:
+    case FrameLoadType::RedirectWithLockedBackForwardList:
+        // Not logging those for now.
+        return;
+    }
+    diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
+
+    if (!navigation.domain.isEmpty())
+        diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), navigation.domain, ShouldSample::No);
+}
+
+void Page::mainFrameLoadStarted(const URL& destinationURL, FrameLoadType type)
+{
+    String domain;
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    domain = topPrivatelyControlledDomain(destinationURL.host());
+#endif
+
+    Navigation navigation = { domain, type };
+
+    // To avoid being too verbose, we only log navigations if the page is or becomes visible. This avoids logging non-user observable loads.
+    if (!isVisible()) {
+        m_navigationToLogWhenVisible = navigation;
+        return;
+    }
+
+    m_navigationToLogWhenVisible = std::nullopt;
+    logNavigation(navigation);
+}
+
 PluginInfoProvider& Page::pluginInfoProvider()
 {
     return m_pluginInfoProvider;
@@ -2227,6 +2352,20 @@ void Page::accessibilitySettingsDidChange()
 
     if (neededRecalc)
         LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
+}
+
+void Page::setUnobscuredSafeAreaInsets(const FloatBoxExtent& insets)
+{
+    if (m_unobscuredSafeAreaInsets == insets)
+        return;
+
+    m_unobscuredSafeAreaInsets = insets;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->constantProperties().didChangeSafeAreaInsets();
+    }
 }
 
 #if ENABLE(DATA_INTERACTION)

@@ -48,6 +48,8 @@
 #include <WebCore/Image.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/Length.h>
+#include <WebCore/LengthBox.h>
+#include <WebCore/MediaSelectionOption.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
@@ -391,6 +393,17 @@ bool ArgumentCoder<FloatRect>::decode(Decoder& decoder, FloatRect& floatRect)
     return SimpleArgumentCoder<FloatRect>::decode(decoder, floatRect);
 }
 
+
+void ArgumentCoder<FloatBoxExtent>::encode(Encoder& encoder, const FloatBoxExtent& floatBoxExtent)
+{
+    SimpleArgumentCoder<FloatBoxExtent>::encode(encoder, floatBoxExtent);
+}
+    
+bool ArgumentCoder<FloatBoxExtent>::decode(Decoder& decoder, FloatBoxExtent& floatBoxExtent)
+{
+    return SimpleArgumentCoder<FloatBoxExtent>::decode(decoder, floatBoxExtent);
+}
+    
 
 void ArgumentCoder<FloatSize>::encode(Encoder& encoder, const FloatSize& floatSize)
 {
@@ -1222,10 +1235,9 @@ void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
     encoder.encodeEnum(dragData.flags());
 #if PLATFORM(COCOA)
     encoder << dragData.pasteboardName();
-#endif
-#if PLATFORM(MAC)
     encoder << dragData.fileNames();
 #endif
+    encoder.encodeEnum(dragData.dragDestinationAction());
 }
 
 bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
@@ -1247,17 +1259,20 @@ bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
         return false;
 
     String pasteboardName;
+    Vector<String> fileNames;
 #if PLATFORM(COCOA)
     if (!decoder.decode(pasteboardName))
         return false;
-#endif
-    Vector<String> fileNames;
-#if PLATFORM(MAC)
+
     if (!decoder.decode(fileNames))
         return false;
 #endif
 
-    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags);
+    DragDestinationAction destinationAction;
+    if (!decoder.decodeEnum(destinationAction))
+        return false;
+
+    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags, destinationAction);
     dragData.setFileNames(fileNames);
 
     return true;
@@ -1394,6 +1409,23 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
     return true;
 }
 
+void ArgumentCoder<PasteboardURL>::encode(Encoder& encoder, const PasteboardURL& content)
+{
+    encoder << content.url;
+    encoder << content.title;
+}
+
+bool ArgumentCoder<PasteboardURL>::decode(Decoder& decoder, PasteboardURL& content)
+{
+    if (!decoder.decode(content.url))
+        return false;
+
+    if (!decoder.decode(content.title))
+        return false;
+
+    return true;
+}
+
 void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const PasteboardWebContent& content)
 {
     encoder << content.canSmartCopyOrDelete;
@@ -1402,6 +1434,7 @@ void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const Pastebo
     encodeSharedBuffer(encoder, content.dataInWebArchiveFormat.get());
     encodeSharedBuffer(encoder, content.dataInRTFDFormat.get());
     encodeSharedBuffer(encoder, content.dataInRTFFormat.get());
+    encodeSharedBuffer(encoder, content.dataInAttributedStringFormat.get());
 
     encoder << content.clientTypes;
     encoder << static_cast<uint64_t>(content.clientData.size());
@@ -1420,6 +1453,8 @@ bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWeb
     if (!decodeSharedBuffer(decoder, content.dataInRTFDFormat))
         return false;
     if (!decodeSharedBuffer(decoder, content.dataInRTFFormat))
+        return false;
+    if (!decodeSharedBuffer(decoder, content.dataInAttributedStringFormat))
         return false;
     if (!decoder.decode(content.clientTypes))
         return false;
@@ -2004,22 +2039,6 @@ bool ArgumentCoder<FilterOperations>::decode(Decoder& decoder, FilterOperations&
 }
 #endif // !USE(COORDINATED_GRAPHICS)
 
-void ArgumentCoder<SessionID>::encode(Encoder& encoder, const SessionID& sessionID)
-{
-    encoder << sessionID.sessionID();
-}
-
-bool ArgumentCoder<SessionID>::decode(Decoder& decoder, SessionID& sessionID)
-{
-    uint64_t session;
-    if (!decoder.decode(session))
-        return false;
-
-    sessionID = SessionID(session);
-
-    return true;
-}
-
 void ArgumentCoder<BlobPart>::encode(Encoder& encoder, const BlobPart& blobPart)
 {
     encoder << static_cast<uint32_t>(blobPart.type());
@@ -2068,6 +2087,7 @@ void ArgumentCoder<TextIndicatorData>::encode(Encoder& encoder, const TextIndica
     encoder << textIndicatorData.textRectsInBoundingRectCoordinates;
     encoder << textIndicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
     encoder << textIndicatorData.contentImageScaleFactor;
+    encoder << textIndicatorData.estimatedBackgroundColor;
     encoder.encodeEnum(textIndicatorData.presentationTransition);
     encoder << static_cast<uint64_t>(textIndicatorData.options);
 
@@ -2091,6 +2111,9 @@ bool ArgumentCoder<TextIndicatorData>::decode(Decoder& decoder, TextIndicatorDat
         return false;
 
     if (!decoder.decode(textIndicatorData.contentImageScaleFactor))
+        return false;
+
+    if (!decoder.decode(textIndicatorData.estimatedBackgroundColor))
         return false;
 
     if (!decoder.decodeEnum(textIndicatorData.presentationTransition))
@@ -2476,5 +2499,22 @@ bool ArgumentCoder<ScrollOffsetRange<float>>::decode(Decoder& decoder, ScrollOff
 }
 
 #endif
+
+void ArgumentCoder<MediaSelectionOption>::encode(Encoder& encoder, const MediaSelectionOption& option)
+{
+    encoder << option.displayName;
+    encoder << option.type;
+}
+
+bool ArgumentCoder<MediaSelectionOption>::decode(Decoder& decoder, MediaSelectionOption& option)
+{
+    if (!decoder.decode(option.displayName))
+        return false;
+
+    if (!decoder.decode(option.type))
+        return false;
+
+    return true;
+}
 
 } // namespace IPC

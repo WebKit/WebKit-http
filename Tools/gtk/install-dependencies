@@ -118,6 +118,7 @@ function installDependenciesWithApt {
         libgudev-1.0-dev \
         libhyphen-dev \
         libjpeg-dev \
+        libmount-dev \
         libmpg123-dev \
         libnotify-dev \
         libopus-dev \
@@ -128,9 +129,11 @@ function installDependenciesWithApt {
         libsecret-1-dev \
         libsoup2.4-dev \
         libsqlite3-dev \
+        libsrtp0-dev \
         libtheora-dev \
         libtool \
         libvorbis-dev \
+        libvpx-dev \
         libwebp-dev \
         libxcomposite-dev \
         libxt-dev \
@@ -273,10 +276,12 @@ function installDependenciesWithPacman {
         librsvg \
         libsecret \
         libsoup \
+        libsrtp \
         sqlite \
         libtheora \
         libtool \
         libvorbis \
+        libvpx \
         libwebp \
         libxcomposite \
         libxt \
@@ -284,6 +289,7 @@ function installDependenciesWithPacman {
         libxtst \
         ninja \
         ruby \
+        util-linux \
         xorg-font-utils \
         wayland"
 
@@ -391,17 +397,23 @@ function installDependenciesWithDnf {
         libgcrypt-devel \
         libgudev1-devel \
         libjpeg-turbo-devel \
+        libmount-devel \
         libnotify-devel \
         libpng-devel \
         libsecret-devel \
         libsoup-devel \
+        libsrtp-devel \
+        libtheora-devel \
         libv4l-devel \
+        libvorbis-devel \
+        libvpx-devel \
         libwebp-devel \
         libwayland-client-devel \
         libwayland-server-devel \
         mesa-libGL-devel \
         ninja-build \
         openssl-devel \
+        opus-devel \
         patch \
         pcre-devel \
         perl-Switch \

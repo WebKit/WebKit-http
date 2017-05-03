@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2007, 2009, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -100,8 +100,10 @@
     macro(ReferenceError) \
     macro(Reflect) \
     macro(RegExp) \
-    macro(Response) \
     macro(Request) \
+    macro(Response) \
+    macro(RTCDataChannel) \
+    macro(RTCDataChannelEvent) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCIceCandidate) \
     macro(RTCIceTransport) \
@@ -130,6 +132,8 @@
     macro(WebGPUBuffer) \
     macro(WebGPUCommandBuffer) \
     macro(WebGPUCommandQueue) \
+    macro(WebGPUComputeCommandEncoder) \
+    macro(WebGPUComputePipelineState) \
     macro(WebGPUDepthStencilDescriptor) \
     macro(WebGPUDepthStencilState) \
     macro(WebGPUDrawable) \
@@ -144,9 +148,11 @@
     macro(WebGPURenderPipelineDescriptor) \
     macro(WebGPURenderPipelineState) \
     macro(WebGPURenderingContext) \
+    macro(WebGPUSize) \
     macro(WebGPUTexture) \
     macro(WebGPUTextureDescriptor) \
     macro(WebSocket) \
+    macro(WritableStream) \
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
@@ -205,6 +211,7 @@
     macro(focus) \
     macro(forEach) \
     macro(formatMatcher) \
+    macro(formatToParts) \
     macro(forward) \
     macro(frames) \
     macro(from) \
@@ -262,6 +269,7 @@
     macro(parent) \
     macro(parse) \
     macro(parseInt) \
+    macro(parseFloat) \
     macro(postMessage) \
     macro(profiledBytecodes) \
     macro(propertyIsEnumerable) \
@@ -281,6 +289,7 @@
     macro(sourceCode) \
     macro(sourceURL) \
     macro(stack) \
+    macro(stackTraceLimit) \
     macro(sticky) \
     macro(subarray) \
     macro(summary) \

@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "HTTPHeaderMap.h"
 #include <wtf/Optional.h>
 #include <wtf/Seconds.h>
 #include <wtf/persistence/Decoder.h>
@@ -72,6 +73,14 @@ public:
             copy.connectionIdentifier = connectionIdentifier.value().isolatedCopy();
         if (priority)
             copy.priority = *priority;
+        if (requestHeaders)
+            copy.requestHeaders = requestHeaders.value().isolatedCopy();
+
+        copy.requestHeaderBytesSent = requestHeaderBytesSent;
+        copy.requestBodyBytesSent = requestBodyBytesSent;
+        copy.responseHeaderBytesReceived = responseHeaderBytesReceived;
+        copy.responseBodyBytesReceived = responseBodyBytesReceived;
+        copy.responseBodyDecodedSize = responseBodyDecodedSize;
 
         return copy;
     }
@@ -91,6 +100,25 @@ public:
         remoteAddress = std::nullopt;
         connectionIdentifier = std::nullopt;
         priority = std::nullopt;
+        requestHeaders = std::nullopt;
+        requestHeaderBytesSent = std::nullopt;
+        requestBodyBytesSent = std::nullopt;
+        responseHeaderBytesReceived = std::nullopt;
+        responseBodyBytesReceived = std::nullopt;
+        responseBodyDecodedSize = std::nullopt;
+    }
+
+    void clearNonTimingData()
+    {
+        remoteAddress = std::nullopt;
+        connectionIdentifier = std::nullopt;
+        priority = std::nullopt;
+        requestHeaders = std::nullopt;
+        requestHeaderBytesSent = std::nullopt;
+        requestBodyBytesSent = std::nullopt;
+        responseHeaderBytesReceived = std::nullopt;
+        responseBodyBytesReceived = std::nullopt;
+        responseBodyDecodedSize = std::nullopt;
     }
 
     bool operator==(const NetworkLoadMetrics& other) const
@@ -107,7 +135,13 @@ public:
             && protocol == other.protocol
             && remoteAddress == other.remoteAddress
             && connectionIdentifier == other.connectionIdentifier
-            && priority == other.priority;
+            && priority == other.priority
+            && requestHeaders == other.requestHeaders
+            && requestHeaderBytesSent == other.requestHeaderBytesSent
+            && requestBodyBytesSent == other.requestBodyBytesSent
+            && responseHeaderBytesReceived == other.responseHeaderBytesReceived
+            && responseBodyBytesReceived == other.responseBodyBytesReceived
+            && responseBodyDecodedSize == other.responseBodyDecodedSize;
     }
 
     bool operator!=(const NetworkLoadMetrics& other) const
@@ -141,6 +175,13 @@ public:
     std::optional<String> remoteAddress;
     std::optional<String> connectionIdentifier;
     std::optional<NetworkLoadPriority> priority;
+    std::optional<HTTPHeaderMap> requestHeaders;
+
+    std::optional<uint64_t> requestHeaderBytesSent;
+    std::optional<uint64_t> requestBodyBytesSent;
+    std::optional<uint64_t> responseHeaderBytesReceived;
+    std::optional<uint64_t> responseBodyBytesReceived;
+    std::optional<uint64_t> responseBodyDecodedSize;
 };
 
 #if PLATFORM(COCOA)
@@ -167,6 +208,12 @@ void NetworkLoadMetrics::encode(Encoder& encoder) const
     encoder << remoteAddress;
     encoder << connectionIdentifier;
     encoder << priority;
+    encoder << requestHeaders;
+    encoder << requestHeaderBytesSent;
+    encoder << requestBodyBytesSent;
+    encoder << responseHeaderBytesReceived;
+    encoder << responseBodyBytesReceived;
+    encoder << responseBodyDecodedSize;
 }
 
 template<class Decoder>
@@ -184,7 +231,13 @@ bool NetworkLoadMetrics::decode(Decoder& decoder, NetworkLoadMetrics& metrics)
         && decoder.decode(metrics.protocol)
         && decoder.decode(metrics.remoteAddress)
         && decoder.decode(metrics.connectionIdentifier)
-        && decoder.decode(metrics.priority);
+        && decoder.decode(metrics.priority)
+        && decoder.decode(metrics.requestHeaders)
+        && decoder.decode(metrics.requestHeaderBytesSent)
+        && decoder.decode(metrics.requestBodyBytesSent)
+        && decoder.decode(metrics.responseHeaderBytesReceived)
+        && decoder.decode(metrics.responseBodyBytesReceived)
+        && decoder.decode(metrics.responseBodyDecodedSize);
 }
 
 } // namespace WebCore

@@ -2194,7 +2194,7 @@ void RenderLayer::registerAsTouchEventListenerForScrolling()
     if (!renderer().element() || m_registeredAsTouchEventListenerForScrolling)
         return;
     
-    renderer().document().addTouchEventHandler(renderer().element());
+    renderer().document().addTouchEventHandler(*renderer().element());
     m_registeredAsTouchEventListenerForScrolling = true;
 }
 
@@ -2203,7 +2203,7 @@ void RenderLayer::unregisterAsTouchEventListenerForScrolling()
     if (!renderer().element() || !m_registeredAsTouchEventListenerForScrolling)
         return;
 
-    renderer().document().removeTouchEventHandler(renderer().element());
+    renderer().document().removeTouchEventHandler(*renderer().element());
     m_registeredAsTouchEventListenerForScrolling = false;
 }
 #endif // ENABLE(IOS_TOUCH_EVENTS)
@@ -2422,7 +2422,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
         }
 
 #if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
-        renderer().document().dirtyTouchEventRects();
+        renderer().document().setTouchEventRegionsNeedUpdate();
 #endif
         DebugPageOverlays::didLayout(renderer().frame());
     }
@@ -6862,7 +6862,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 
 #if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
     if (diff == StyleDifferenceRecompositeLayer || diff >= StyleDifferenceLayoutPositionedMovementOnly)
-        renderer().document().dirtyTouchEventRects();
+        renderer().document().setTouchEventRegionsNeedUpdate();
 #else
     UNUSED_PARAM(diff);
 #endif
@@ -7204,7 +7204,7 @@ void showLayerTree(const WebCore::RenderLayer* layer)
     if (!layer)
         return;
 
-    WTF::String output = externalRepresentation(&layer->renderer().frame(), WebCore::RenderAsTextShowAllLayers | WebCore::RenderAsTextShowLayerNesting | WebCore::RenderAsTextShowCompositedLayers | WebCore::RenderAsTextShowAddresses | WebCore::RenderAsTextShowIDAndClass | WebCore::RenderAsTextDontUpdateLayout | WebCore::RenderAsTextShowLayoutState | WebCore::RenderAsTextShowOverflow | WebCore::RenderAsTextShowSVGGeometry);
+    WTF::String output = externalRepresentation(&layer->renderer().frame(), WebCore::RenderAsTextShowAllLayers | WebCore::RenderAsTextShowLayerNesting | WebCore::RenderAsTextShowCompositedLayers | WebCore::RenderAsTextShowAddresses | WebCore::RenderAsTextShowIDAndClass | WebCore::RenderAsTextDontUpdateLayout | WebCore::RenderAsTextShowLayoutState | WebCore::RenderAsTextShowOverflow | WebCore::RenderAsTextShowSVGGeometry | WebCore::RenderAsTextShowLayerFragments);
     fprintf(stderr, "%s\n", output.utf8().data());
 }
 

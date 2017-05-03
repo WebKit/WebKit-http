@@ -28,10 +28,15 @@
 
 #if ENABLE(DATA_INTERACTION)
 
+#import "InstanceMethodSwizzler.h"
 #import "PlatformUtilities.h"
 #import <UIKit/UIItemProvider_Private.h>
+#import <WebCore/SoftLinking.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
+
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK(UIKit, UIApplicationInstantiateSingleton, void, (Class singletonClass), (singletonClass))
 
 using namespace TestWebKitAPI;
 
@@ -41,6 +46,7 @@ using namespace TestWebKitAPI;
 
 static double progressIncrementStep = 0.033;
 static double progressTimeStep = 0.016;
+static NSString *TestWebKitAPISimulateCancelAllTouchesNotificationName = @"TestWebKitAPISimulateCancelAllTouchesNotificationName";
 
 static NSArray *dataInteractionEventNames()
 {
@@ -52,13 +58,23 @@ static NSArray *dataInteractionEventNames()
     return eventNames;
 }
 
+@interface DataInteractionSimulatorApplication : UIApplication
+@end
+
+@implementation DataInteractionSimulatorApplication
+- (void)_cancelAllTouches
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:TestWebKitAPISimulateCancelAllTouchesNotificationName object:nil];
+}
+@end
+
 @implementation DataInteractionSimulator
 
 - (instancetype)initWithWebView:(TestWKWebView *)webView
 {
     if (self = [super init]) {
         _webView = webView;
-        [_webView _setTestingDelegate:self];
+        _shouldEnsureUIApplication = NO;
         [_webView setUIDelegate:self];
     }
     return self;
@@ -66,9 +82,6 @@ static NSArray *dataInteractionEventNames()
 
 - (void)dealloc
 {
-    if ([_webView _testingDelegate] == self)
-        [_webView _setTestingDelegate:nil];
-
     if ([_webView UIDelegate] == self)
         [_webView setUIDelegate:nil];
 
@@ -84,6 +97,7 @@ static NSArray *dataInteractionEventNames()
     _finalSelectionRects = @[ ];
     _dataInteractionSession = nil;
     _dataOperationSession = nil;
+    _shouldPerformOperation = NO;
 }
 
 - (NSArray *)observedEventNames
@@ -91,8 +105,24 @@ static NSArray *dataInteractionEventNames()
     return _observedEventNames.get();
 }
 
+- (void)simulateAllTouchesCanceled:(NSNotification *)notification
+{
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(_advanceProgress) object:nil];
+    _phase = DataInteractionCancelled;
+    _currentProgress = 1;
+    _isDoneWithCurrentRun = true;
+    if (_dataInteractionSession)
+        [_webView _simulateDataInteractionSessionDidEnd:_dataInteractionSession.get()];
+}
+
 - (void)runFrom:(CGPoint)startLocation to:(CGPoint)endLocation
 {
+    NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
+    [defaultCenter addObserver:self selector:@selector(simulateAllTouchesCanceled:) name:TestWebKitAPISimulateCancelAllTouchesNotificationName object:nil];
+
+    if (_shouldEnsureUIApplication)
+        UIApplicationInstantiateSingleton([DataInteractionSimulatorApplication class]);
+
     [self _resetSimulatedState];
 
     RetainPtr<DataInteractionSimulator> strongSelf = self;
@@ -106,8 +136,8 @@ static NSArray *dataInteractionEventNames()
     _startLocation = startLocation;
     _endLocation = endLocation;
 
-    if (self.externalItemProvider) {
-        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProvider:self.externalItemProvider location:_startLocation window:[_webView window]]);
+    if (self.externalItemProviders.count) {
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:self.externalItemProviders location:_startLocation window:[_webView window]]);
         _phase = DataInteractionBegan;
         [self _advanceProgress];
     } else {
@@ -115,6 +145,9 @@ static NSArray *dataInteractionEventNames()
         [_dataInteractionSession setMockLocationInWindow:_startLocation];
         [_webView _simulatePrepareForDataInteractionSession:_dataInteractionSession.get() completion:^() {
             DataInteractionSimulator *weakSelf = strongSelf.get();
+            if (weakSelf->_phase == DataInteractionCancelled)
+                return;
+
             weakSelf->_phase = DataInteractionBeginning;
             [weakSelf _advanceProgress];
         }];
@@ -123,11 +156,29 @@ static NSArray *dataInteractionEventNames()
     Util::run(&_isDoneWithCurrentRun);
     [_webView clearMessageHandlers:dataInteractionEventNames()];
     _finalSelectionRects = [_webView selectionRectsAfterPresentationUpdate];
+
+    [defaultCenter removeObserver:self];
 }
 
 - (NSArray *)finalSelectionRects
 {
     return _finalSelectionRects.get();
+}
+
+- (void)_concludeDataInteractionAndPerformOperationIfNecessary
+{
+    if (_shouldPerformOperation) {
+        [_webView _simulateDataInteractionPerformOperation:_dataOperationSession.get()];
+        _phase = DataInteractionPerforming;
+    } else {
+        _isDoneWithCurrentRun = YES;
+        _phase = DataInteractionCancelled;
+    }
+
+    [_webView _simulateDataInteractionEnded:_dataOperationSession.get()];
+
+    if (_dataInteractionSession)
+        [_webView _simulateDataInteractionSessionDidEnd:_dataInteractionSession.get()];
 }
 
 - (void)_advanceProgress
@@ -138,13 +189,8 @@ static NSArray *dataInteractionEventNames()
     [_dataOperationSession setMockLocationInWindow:locationInWindow];
 
     if (_currentProgress >= 1) {
-        [_webView _simulateDataInteractionPerformOperation:_dataOperationSession.get()];
-        [_webView _simulateDataInteractionEnded:_dataOperationSession.get()];
-        if (_dataInteractionSession)
-            [_webView _simulateDataInteractionSessionDidEnd:_dataInteractionSession.get()];
-
-        _phase = DataInteractionPerforming;
         _currentProgress = 1;
+        [self _concludeDataInteractionAndPerformOperationIfNecessary];
         return;
     }
 
@@ -159,15 +205,17 @@ static NSArray *dataInteractionEventNames()
             return;
         }
 
-#if HAS_DATA_INTERACTION_ITEMS
         for (WKDataInteractionItem *item in items)
             [itemProviders addObject:item.itemProvider];
-#endif
 
-        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProvider:itemProviders.firstObject location:self._currentLocation window:[_webView window]]);
-#if HAS_DATA_INTERACTION_ITEMS
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:itemProviders location:self._currentLocation window:[_webView window]]);
         [_dataInteractionSession setItems:items];
-#endif
+        _sourceItemProviders = itemProviders;
+        if (self.showCustomActionSheetBlock) {
+            // Defer progress until the custom action sheet is dismissed.
+            return;
+        }
+
         [_webView _simulateWillBeginDataInteractionWithSession:_dataInteractionSession.get()];
         _phase = DataInteractionBegan;
         break;
@@ -177,7 +225,7 @@ static NSArray *dataInteractionEventNames()
         _phase = DataInteractionEntered;
         break;
     case DataInteractionEntered:
-        [_webView _simulateDataInteractionUpdated:_dataOperationSession.get()];
+        _shouldPerformOperation = [_webView _simulateDataInteractionUpdated:_dataOperationSession.get()];
         break;
     default:
         break;
@@ -199,28 +247,60 @@ static NSArray *dataInteractionEventNames()
     [self performSelector:@selector(_advanceProgress) withObject:nil afterDelay:progressTimeStep];
 }
 
-- (UIItemProvider *)externalItemProvider
+- (NSArray *)sourceItemProviders
 {
-    return _externalItemProvider.get();
+    return _sourceItemProviders.get();
 }
 
-- (void)setExternalItemProvider:(UIItemProvider *)externalItemProvider
+- (NSArray *)externalItemProviders
 {
-    _externalItemProvider = externalItemProvider;
+    return _externalItemProviders.get();
 }
 
-#pragma mark - _WKTestingDelegate
-
-- (void)webViewDidPerformDataInteractionControllerOperation:(WKWebView *)webView
+- (void)setExternalItemProviders:(NSArray *)externalItemProviders
 {
-    _isDoneWithCurrentRun = true;
+    _externalItemProviders = adoptNS([externalItemProviders copy]);
+}
+
+- (DataInteractionPhase)phase
+{
+    return _phase;
 }
 
 #pragma mark - WKUIDelegatePrivate
 
+- (void)_webView:(WKWebView *)webView dataInteractionOperationWasHandled:(BOOL)handled forSession:(id)session itemProviders:(NSArray<UIItemProvider *> *)itemProviders
+{
+    _isDoneWithCurrentRun = true;
+
+    if (self.dataInteractionOperationCompletionBlock)
+        self.dataInteractionOperationCompletionBlock(handled, itemProviders);
+}
+
+- (NSUInteger)_webView:(WKWebView *)webView willUpdateDataInteractionOperationToOperation:(NSUInteger)operation forSession:(id)session
+{
+    return self.overrideDataInteractionOperationBlock ? self.overrideDataInteractionOperationBlock(operation, session) : operation;
+}
+
 - (NSArray<UIItemProvider *>*)_webView:(WKWebView *)webView adjustedDataInteractionItemProviders:(NSArray<UIItemProvider *>*)originalItemProviders
 {
     return self.convertItemProvidersBlock ? self.convertItemProvidersBlock(originalItemProviders) : originalItemProviders;
+}
+
+- (BOOL)_webView:(WKWebView *)webView showCustomSheetForElement:(_WKActivatedElementInfo *)element
+{
+    if (!self.showCustomActionSheetBlock)
+        return NO;
+
+    RetainPtr<DataInteractionSimulator> strongSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^() {
+        DataInteractionSimulator *weakSelf = strongSelf.get();
+        [weakSelf->_webView _simulateWillBeginDataInteractionWithSession:weakSelf->_dataInteractionSession.get()];
+        weakSelf->_phase = DataInteractionBegan;
+        [weakSelf _scheduleAdvanceProgress];
+    });
+
+    return self.showCustomActionSheetBlock(element);
 }
 
 @end

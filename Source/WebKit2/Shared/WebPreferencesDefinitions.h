@@ -37,13 +37,17 @@
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED false
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED true
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED true
-#define DEFAULT_PDFPLUGIN_ENABLED true
 #else
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED false
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
+#endif
+
+#if PLATFORM(COCOA)
+#define DEFAULT_PDFPLUGIN_ENABLED true
+#else
 #define DEFAULT_PDFPLUGIN_ENABLED false
 #endif
 
@@ -219,7 +223,8 @@
     macro(SimpleLineLayoutEnabled, simpleLineLayoutEnabled, Bool, bool, true, "", "") \
     macro(SubpixelCSSOMElementMetricsEnabled, subpixelCSSOMElementMetricsEnabled, Bool, bool, false, "", "") \
     macro(UseGiantTiles, useGiantTiles, Bool, bool, false, "", "") \
-    macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, false, "", "") \
+    macro(MediaDevicesEnabled, mediaDevicesEnabled, Bool, bool, false, "", "") \
+    macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, true, "", "") \
     macro(PeerConnectionEnabled, peerConnectionEnabled, Bool, bool, WebCore::LibWebRTCProvider::webRTCAvailable(), "", "") \
     macro(UseLegacyTextAlignPositionedElementBehavior, useLegacyTextAlignPositionedElementBehavior, Bool, bool, false, "", "") \
     macro(SpatialNavigationEnabled, spatialNavigationEnabled, Bool, bool, false, "", "") \
@@ -239,6 +244,7 @@
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true, "", "") \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false, "", "") \
     macro(MediaCaptureRequiresSecureConnection, mediaCaptureRequiresSecureConnection, Bool, bool, true, "", "") \
+    macro(UseAVFoundationAudioCapture, useAVFoundationAudioCapture, Bool, bool, false, "", "") \
     macro(EnumeratingAllNetworkInterfacesEnabled, enumeratingAllNetworkInterfacesEnabled, Bool, bool, false, "", "") \
     macro(WebRTCLegacyAPIEnabled, webRTCLegacyAPIEnabled, Bool, bool, true, "", "") \
     macro(ICECandidateFilteringEnabled, iceCandidateFilteringEnabled, Bool, bool, true, "", "") \
@@ -261,7 +267,6 @@
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, true, "Gamepads", "Web Gamepad API support") \
     macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, true, "Input Events", "Enable InputEvents support") \
     macro(CredentialManagementEnabled, credentialManagementEnabled, Bool, bool, false, "Credential Management", "Enable Credential Management support") \
-    macro(ShouldCaptureAudioInUIProcess, shouldCaptureAudioInUIProcess, Bool, bool, DEFAULT_SHOULD_CAPTURE_AUDIO_IN_UIPROCESS, "Capture", "Capture Audio in UIProcess") \
     macro(AllowScriptsToCloseWindows, allowScriptsToCloseWindows, Bool, bool, false, "", "") \
     \
 
@@ -319,6 +324,12 @@
 #define DEFAULT_EXPERIMENTAL_FEATURES_ENABLED false
 #endif
 
+#if PLATFORM(COCOA)
+#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED true
+#else
+#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED false
+#endif
+
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
 // <https://webkit.org/b/168415> El Capitan NetworkLoadTiming values are sometimes jumbled
 #define DEFAULT_RESOURCE_TIMING_ENABLED false
@@ -338,7 +349,7 @@
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
     macro(LinkPreloadEnabled, linkPreloadEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Link Preload", "Link preload support") \
-    macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Modern Media Controls", "Use modern media controls look") \
+    macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED, "Modern Media Controls", "Use modern media controls look") \
     macro(ResourceTimingEnabled, resourceTimingEnabled, Bool, bool, DEFAULT_RESOURCE_TIMING_ENABLED, "Resource Timing", "Enable ResourceTiming API") \
     macro(SubtleCryptoEnabled, subtleCryptoEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "SubtleCrypto", "Enable SubtleCrypto support") \
     macro(UserTimingEnabled, userTimingEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "User Timing", "Enable UserTiming API") \

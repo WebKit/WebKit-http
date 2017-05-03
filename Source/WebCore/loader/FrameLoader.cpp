@@ -86,7 +86,6 @@
 #include "MainFrame.h"
 #include "MemoryCache.h"
 #include "MemoryRelease.h"
-#include "NoEventDispatchAssertion.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageTransitionEvent.h"
@@ -96,7 +95,6 @@
 #include "PluginDocument.h"
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
-#include "PublicSuffix.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadInfo.h"
 #include "ResourceLoadObserver.h"
@@ -628,10 +626,7 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
     }
 
     m_frame.selection().prepareForDestruction();
-
-    // We may call this code during object destruction, so need to make sure eventHandler is present.
-    if (auto eventHandler = m_frame.eventHandlerPtr())
-        eventHandler->clear();
+    m_frame.eventHandler().clear();
 
     if (clearFrameView && m_frame.view())
         m_frame.view()->clear();
@@ -869,7 +864,7 @@ void FrameLoader::startCheckCompleteTimer()
         return;
     if (m_checkTimer.isActive())
         return;
-    m_checkTimer.startOneShot(0);
+    m_checkTimer.startOneShot(0_s);
 }
 
 void FrameLoader::scheduleCheckCompleted()
@@ -1210,6 +1205,11 @@ static ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToApply(Frame& s
     return propagatedPolicy;
 }
 
+bool FrameLoader::isNavigationAllowed() const
+{
+    return m_pageDismissalEventBeingDispatched == PageDismissalType::None && NavigationDisabler::isNavigationAllowed();
+}
+
 void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String& referrer, FrameLoadType newLoadType, Event* event, FormState* formState)
 {
     if (m_inStopAllLoaders)
@@ -1248,7 +1248,7 @@ void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String
         return;
     }
 
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     NavigationAction action(request, newLoadType, isFormSubmission, event, frameLoadRequest.shouldOpenExternalURLsPolicy(), frameLoadRequest.downloadAttribute());
@@ -1397,50 +1397,6 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
     loadWithDocumentLoader(newDocumentLoader, type, 0, AllowNavigationToInvalidURL::Yes);
 }
 
-static void logNavigation(MainFrame& frame, const URL& destinationURL, FrameLoadType type)
-{
-    if (!frame.page())
-        return;
-
-    String navigationDescription;
-    switch (type) {
-    case FrameLoadType::Standard:
-        navigationDescription = ASCIILiteral("standard");
-        break;
-    case FrameLoadType::Back:
-        navigationDescription = ASCIILiteral("back");
-        break;
-    case FrameLoadType::Forward:
-        navigationDescription = ASCIILiteral("forward");
-        break;
-    case FrameLoadType::IndexedBackForward:
-        navigationDescription = ASCIILiteral("indexedBackForward");
-        break;
-    case FrameLoadType::Reload:
-        navigationDescription = ASCIILiteral("reload");
-        break;
-    case FrameLoadType::Same:
-        navigationDescription = ASCIILiteral("same");
-        break;
-    case FrameLoadType::ReloadFromOrigin:
-        navigationDescription = ASCIILiteral("reloadFromOrigin");
-        break;
-    case FrameLoadType::ReloadExpiredOnly:
-        navigationDescription = ASCIILiteral("reloadRevalidatingExpired");
-        break;
-    case FrameLoadType::Replace:
-    case FrameLoadType::RedirectWithLockedBackForwardList:
-        // Not logging those for now.
-        return;
-    }
-    frame.page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-    String domain = topPrivatelyControlledDomain(destinationURL.host());
-    if (!domain.isEmpty())
-        frame.page()->diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), domain, ShouldSample::No);
-#endif
-}
-
 void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType type, FormState* formState, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
 {
     // Retain because dispatchBeforeLoadEvent may release the last reference to it.
@@ -1453,7 +1409,7 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     ASSERT(m_frame.view());
 
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     if (m_frame.document())
@@ -1463,7 +1419,8 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     // Log main frame navigation types.
     if (m_frame.isMainFrame()) {
-        logNavigation(static_cast<MainFrame&>(m_frame), newURL, type);
+        if (auto* page = m_frame.page())
+            page->mainFrameLoadStarted(newURL, type);
         static_cast<MainFrame&>(m_frame).performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadStarted);
     }
 
@@ -1648,7 +1605,7 @@ void FrameLoader::reload(OptionSet<ReloadOption> options)
 void FrameLoader::stopAllLoaders(ClearProvisionalItemPolicy clearProvisionalItemPolicy)
 {
     ASSERT(!m_frame.document() || m_frame.document()->pageCacheState() != Document::InPageCache);
-    if (m_pageDismissalEventBeingDispatched != PageDismissalType::None)
+    if (!isNavigationAllowed())
         return;
 
     // If this method is called from within this method, infinite recursion can occur (3442218). Avoid this.
@@ -1861,18 +1818,10 @@ void FrameLoader::commitProvisionalLoad()
 
         std::optional<HasInsecureContent> hasInsecureContent = cachedPage->cachedMainFrame()->hasInsecureContent();
 
-        {
-            // Do not dispatch DOM events as their JavaScript listeners could cause the page to be put
-            // into the page cache before we have finished restoring it from the page cache.
-            NoEventDispatchAssertion assertNoEventDispatch;
-
-            // FIXME: This API should be turned around so that we ground CachedPage into the Page.
-            cachedPage->restore(*m_frame.page());
-        }
+        // FIXME: This API should be turned around so that we ground CachedPage into the Page.
+        cachedPage->restore(*m_frame.page());
 
         dispatchDidCommitLoad(hasInsecureContent);
-
-        didRestoreFromCachedPage();
 
 #if PLATFORM(IOS)
         m_frame.page()->chrome().setDispatchViewportDataDidChangeSuppressed(false);
@@ -1955,20 +1904,20 @@ void FrameLoader::transitionToCommitted(CachedPage* cachedPage)
     if (pdl != m_provisionalDocumentLoader)
         return;
 
-    // Nothing else can interupt this commit - set the Provisional->Committed transition in stone
     if (m_documentLoader)
         m_documentLoader->stopLoadingSubresources();
     if (m_documentLoader)
         m_documentLoader->stopLoadingPlugIns();
 
+    // Setting our document loader invokes the unload event handler of our child frames.
+    // Script can do anything. If the script initiates a new load, we need to abandon the
+    // current load or the two will stomp each other.
     setDocumentLoader(m_provisionalDocumentLoader.get());
+    if (pdl != m_provisionalDocumentLoader)
+        return;
     setProvisionalDocumentLoader(nullptr);
 
-    if (pdl != m_documentLoader) {
-        ASSERT(m_state == FrameStateComplete);
-        return;
-    }
-
+    // Nothing else can interupt this commit - set the Provisional->Committed transition in stone
     setState(FrameStateCommittedPage);
 
     // Handle adding the URL to the back/forward list.
@@ -2107,31 +2056,6 @@ void FrameLoader::willRestoreFromCachedPage()
     }
 }
 
-void FrameLoader::didRestoreFromCachedPage()
-{
-    // Dispatching JavaScript events can cause frame destruction.
-    auto& mainFrame = m_frame.page()->mainFrame();
-    Vector<Ref<Frame>> childFrames;
-    for (auto* child = mainFrame.tree().traverseNextInPostOrderWithWrap(true); child; child = child->tree().traverseNextInPostOrderWithWrap(false))
-        childFrames.append(*child);
-
-    for (auto& child : childFrames) {
-        if (!child->tree().isDescendantOf(&mainFrame))
-            continue;
-        auto* document = child->document();
-        if (!document)
-            continue;
-
-        // FIXME: Update Page Visibility state here.
-        // https://bugs.webkit.org/show_bug.cgi?id=116770
-        document->enqueuePageshowEvent(PageshowEventPersisted);
-
-        auto* historyItem = child->loader().history().currentItem();
-        if (historyItem && historyItem->stateObject())
-            document->enqueuePopstateEvent(historyItem->stateObject());
-    }
-}
-
 void FrameLoader::open(CachedFrameBase& cachedFrame)
 {
     m_isComplete = false;
@@ -2224,7 +2148,7 @@ FrameLoadType FrameLoader::loadType() const
     return m_loadType;
 }
     
-CachePolicy FrameLoader::subresourceCachePolicy() const
+CachePolicy FrameLoader::subresourceCachePolicy(const URL& url) const
 {
     if (Page* page = m_frame.page()) {
         if (page->isResourceCachingDisabled())
@@ -2238,7 +2162,7 @@ CachePolicy FrameLoader::subresourceCachePolicy() const
         return CachePolicyReload;
 
     if (Frame* parentFrame = m_frame.tree().parent()) {
-        CachePolicy parentCachePolicy = parentFrame->loader().subresourceCachePolicy();
+        CachePolicy parentCachePolicy = parentFrame->loader().subresourceCachePolicy(url);
         if (parentCachePolicy != CachePolicyVerify)
             return parentCachePolicy;
     }
@@ -2257,7 +2181,11 @@ CachePolicy FrameLoader::subresourceCachePolicy() const
     case FrameLoadType::Replace:
     case FrameLoadType::Same:
     case FrameLoadType::Standard:
+        return CachePolicyVerify;
     case FrameLoadType::ReloadExpiredOnly:
+        // We know about expiration for HTTP and data. Do a normal reload otherwise.
+        if (!url.protocolIsInHTTPFamily() && !url.protocolIsData())
+            return CachePolicyReload;
         return CachePolicyVerify;
     }
 
@@ -2853,7 +2781,7 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
         if (!documentLoader()->applicationCacheHost().maybeLoadSynchronously(newRequest, error, response, data)) {
             Vector<char> buffer;
             platformStrategies()->loaderStrategy()->loadResourceSynchronously(networkingContext(), identifier, newRequest, storedCredentials, clientCredentialPolicy, error, response, buffer);
-            data = SharedBuffer::adoptVector(buffer);
+            data = SharedBuffer::create(WTFMove(buffer));
             documentLoader()->applicationCacheHost().maybeLoadFallbackSynchronously(newRequest, error, response, data);
             ResourceLoadObserver::sharedObserver().logSubresourceLoading(&m_frame, newRequest, response);
         }
@@ -2985,7 +2913,7 @@ bool FrameLoader::shouldClose()
 
     bool shouldClose = false;
     {
-        NavigationDisablerForBeforeUnload navigationDisabler;
+        NavigationDisabler navigationDisabler;
         size_t i;
 
         for (i = 0; i < targetFrames.size(); i++) {
@@ -3063,14 +2991,15 @@ void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->removeAllEventListeners();
 }
 
-static bool shouldAskForNavigationConfirmation(const BeforeUnloadEvent& event)
+static bool shouldAskForNavigationConfirmation(Document& document, const BeforeUnloadEvent& event)
 {
+    bool userDidInteractWithPage = document.topDocument().userDidInteractWithPage();
     // Web pages can request we ask for confirmation before navigating by:
     // - Cancelling the BeforeUnloadEvent (modern way)
     // - Setting the returnValue attribute on the BeforeUnloadEvent to a non-empty string.
     // - Returning a non-empty string from the event handler, which is then set as returnValue
     //   attribute on the BeforeUnloadEvent.
-    return event.defaultPrevented() || !event.returnValue().isEmpty();
+    return userDidInteractWithPage && (event.defaultPrevented() || !event.returnValue().isEmpty());
 }
 
 bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoaderBeingNavigated)
@@ -3097,7 +3026,7 @@ bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLo
     if (!beforeUnloadEvent->defaultPrevented())
         document->defaultEventHandler(beforeUnloadEvent.get());
 
-    if (!shouldAskForNavigationConfirmation(beforeUnloadEvent))
+    if (!shouldAskForNavigationConfirmation(*document, beforeUnloadEvent))
         return true;
 
     // If the navigating FrameLoader has already shown a beforeunload confirmation panel for the current navigation attempt,
@@ -3226,7 +3155,7 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
 
     mainFrame->loader().forceSandboxFlags(frame->loader().effectiveSandboxFlags());
 
-    if (frameName != "_blank")
+    if (!equalIgnoringASCIICase(frameName, "_blank"))
         mainFrame->tree().setName(frameName);
 
     mainFrame->page()->setOpenedByDOM();
@@ -3732,9 +3661,9 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
 
     created = false;
 
-    if (!request.frameName().isEmpty() && request.frameName() != "_blank") {
+    if (!request.frameName().isEmpty() && !equalIgnoringASCIICase(request.frameName(), "_blank")) {
         if (RefPtr<Frame> frame = lookupFrame.loader().findFrameForNavigation(request.frameName(), openerFrame.document())) {
-            if (request.frameName() != "_self") {
+            if (!equalIgnoringASCIICase(request.frameName(), "_self")) {
                 if (Page* page = frame->page())
                     page->chrome().focus();
             }
@@ -3770,7 +3699,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
 
     frame->loader().forceSandboxFlags(openerFrame.document()->sandboxFlags());
 
-    if (request.frameName() != "_blank")
+    if (!equalIgnoringASCIICase(request.frameName(), "_blank"))
         frame->tree().setName(request.frameName());
 
     page->chrome().setToolbarsVisible(features.toolBarVisible || features.locationBarVisible);

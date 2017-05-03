@@ -44,7 +44,7 @@
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "VideoFullscreenLayerManager.h"
 #endif
 
@@ -190,7 +190,7 @@ MediaPlayerPrivateMediaStreamAVFObjC::MediaPlayerPrivateMediaStreamAVFObjC(Media
     , m_weakPtrFactory(this)
     , m_statusChangeListener(adoptNS([[WebAVSampleBufferStatusChangeListener alloc] initWithParent:this]))
     , m_clock(Clock::create())
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     , m_videoFullscreenLayerManager(VideoFullscreenLayerManager::create())
 #endif
 {
@@ -302,9 +302,9 @@ MediaTime MediaPlayerPrivateMediaStreamAVFObjC::calculateTimelineOffset(const Me
     return timelineOffset;
 }
 
-CGAffineTransform MediaPlayerPrivateMediaStreamAVFObjC::videoTransformationMatrix(MediaSample& sample)
+CGAffineTransform MediaPlayerPrivateMediaStreamAVFObjC::videoTransformationMatrix(MediaSample& sample, bool forceUpdate)
 {
-    if (m_transformIsValid)
+    if (!forceUpdate && m_transformIsValid)
         return m_videoTransform;
 
     CMSampleBufferRef sampleBuffer = sample.platformSample().sample.cmSampleBuffer;
@@ -314,18 +314,10 @@ CGAffineTransform MediaPlayerPrivateMediaStreamAVFObjC::videoTransformationMatri
     if (!width || !height)
         return CGAffineTransformIdentity;
 
-    ASSERT(m_videoOrientation >= MediaSample::VideoOrientation::Unknown);
-    ASSERT(m_videoOrientation <= MediaSample::VideoOrientation::LandscapeLeft);
+    ASSERT(m_videoRotation >= MediaSample::VideoRotation::None);
+    ASSERT(m_videoRotation <= MediaSample::VideoRotation::Left);
 
-    // Unknown, Portrait, PortraitUpsideDown, LandscapeRight, LandscapeLeft,
-#if PLATFORM(MAC)
-    static float sensorAngle[] = { 0, 0, 180, 90, 270 };
-#else
-    static float sensorAngle[] = { 180, 180, 0, 90, 270 };
-#endif
-    float rotation = sensorAngle[static_cast<int>(m_videoOrientation)];
-    m_videoTransform = CGAffineTransformMakeRotation(rotation * M_PI / 180);
-
+    m_videoTransform = CGAffineTransformMakeRotation(static_cast<int>(m_videoRotation) * M_PI / 180);
     if (sample.videoMirrored())
         m_videoTransform = CGAffineTransformScale(m_videoTransform, -1, 1);
 
@@ -370,22 +362,12 @@ void MediaPlayerPrivateMediaStreamAVFObjC::enqueueVideoSample(MediaStreamTrackPr
     updateSampleTimes(sample, timelineOffset, "MediaPlayerPrivateMediaStreamAVFObjC::enqueueVideoSample");
 
     if (m_sampleBufferDisplayLayer) {
-        if (sample.videoOrientation() != m_videoOrientation || sample.videoMirrored() != m_videoMirrored) {
-            m_videoOrientation = sample.videoOrientation();
+        if (sample.videoRotation() != m_videoRotation || sample.videoMirrored() != m_videoMirrored) {
+            m_videoRotation = sample.videoRotation();
             m_videoMirrored = sample.videoMirrored();
-            m_transformIsValid = false;
-        }
-
-        if (m_videoSizeChanged || !m_transformIsValid) {
             runWithoutAnimations([this, &sample] {
-                auto backgroundBounds = m_backgroundLayer.get().bounds;
-                auto videoBounds = backgroundBounds;
-                if (m_videoOrientation == MediaSample::VideoOrientation::LandscapeRight || m_videoOrientation == MediaSample::VideoOrientation::LandscapeLeft)
-                    std::swap(videoBounds.size.width, videoBounds.size.height);
-                m_sampleBufferDisplayLayer.get().bounds = videoBounds;
-                m_sampleBufferDisplayLayer.get().position = { backgroundBounds.size.width / 2, backgroundBounds.size.height / 2};
-                m_sampleBufferDisplayLayer.get().affineTransform = videoTransformationMatrix(sample);
-                m_videoSizeChanged = false;
+                m_sampleBufferDisplayLayer.get().affineTransform = videoTransformationMatrix(sample, true);
+                updateDisplayLayer();
             });
         }
 
@@ -491,8 +473,9 @@ void MediaPlayerPrivateMediaStreamAVFObjC::ensureLayers()
 #endif
 
     updateRenderingMode();
-    
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    updateDisplayLayer();
+
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_videoFullscreenLayerManager->setVideoLayer(m_backgroundLayer.get(), snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
 #endif
 }
@@ -510,7 +493,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::destroyLayers()
 
     updateRenderingMode();
     
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_videoFullscreenLayerManager->didDestroyVideoLayer();
 #endif
 }
@@ -553,6 +536,14 @@ void MediaPlayerPrivateMediaStreamAVFObjC::load(MediaStreamPrivate& stream)
     });
 }
 
+bool MediaPlayerPrivateMediaStreamAVFObjC::didPassCORSAccessCheck() const
+{
+    // We are only doing a check on the active video track since the sole consumer of this API is canvas.
+    // FIXME: We should change the name of didPassCORSAccessCheck if it is expected to stay like this.
+    const auto* track = m_mediaStreamPrivate->activeVideoTrack();
+    return !track || !track->isIsolated();
+}
+
 void MediaPlayerPrivateMediaStreamAVFObjC::cancelLoad()
 {
     LOG(Media, "MediaPlayerPrivateMediaStreamAVFObjC::cancelLoad(%p)", this);
@@ -570,7 +561,7 @@ PlatformLayer* MediaPlayerPrivateMediaStreamAVFObjC::platformLayer() const
     if (!m_backgroundLayer || m_displayMode == None)
         return nullptr;
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     return m_videoFullscreenLayerManager->videoInlineLayer();
 #else
     return m_backgroundLayer.get();
@@ -861,9 +852,14 @@ void MediaPlayerPrivateMediaStreamAVFObjC::readyStateChanged(MediaStreamTrackPri
     });
 }
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-void MediaPlayerPrivateMediaStreamAVFObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, std::function<void()> completionHandler)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+void MediaPlayerPrivateMediaStreamAVFObjC::setVideoFullscreenLayer(PlatformLayer* videoFullscreenLayer, std::function<void()> completionHandler)
 {
+    if (m_videoFullscreenLayerManager->videoFullscreenLayer() == videoFullscreenLayer) {
+        completionHandler();
+        return;
+    }
+
     m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, completionHandler);
 }
 
@@ -946,7 +942,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::checkSelectedVideoTrack()
         if (oldVideoTrack != m_activeVideoTrack)
             m_imagePainter.reset();
         ensureLayers();
-        m_sampleBufferDisplayLayer.get().hidden = hideVideoLayer;
+        m_sampleBufferDisplayLayer.get().hidden = hideVideoLayer || m_displayMode < PausedImage;
         m_pendingSelectedTrackCheck = false;
         updateDisplayMode();
     });
@@ -1110,12 +1106,27 @@ void MediaPlayerPrivateMediaStreamAVFObjC::CurrentFramePainter::reset()
     pixelBufferConformer = nullptr;
 }
 
-void MediaPlayerPrivateMediaStreamAVFObjC::backgroundLayerBoundsChanged()
+void MediaPlayerPrivateMediaStreamAVFObjC::updateDisplayLayer()
 {
     if (!m_backgroundLayer || !m_sampleBufferDisplayLayer)
         return;
 
-    m_videoSizeChanged = true;
+    auto backgroundBounds = m_backgroundLayer.get().bounds;
+    auto videoBounds = backgroundBounds;
+    if (m_videoRotation == MediaSample::VideoRotation::Right || m_videoRotation == MediaSample::VideoRotation::Left)
+        std::swap(videoBounds.size.width, videoBounds.size.height);
+
+    m_sampleBufferDisplayLayer.get().bounds = videoBounds;
+    m_sampleBufferDisplayLayer.get().position = { backgroundBounds.size.width / 2, backgroundBounds.size.height / 2};
+}
+
+void MediaPlayerPrivateMediaStreamAVFObjC::backgroundLayerBoundsChanged()
+{
+    scheduleDeferredTask([this] {
+        runWithoutAnimations([this] {
+            updateDisplayLayer();
+        });
+    });
 }
 
 }

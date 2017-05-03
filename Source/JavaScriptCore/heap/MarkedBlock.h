@@ -259,7 +259,7 @@ public:
     bool isMarked(HeapVersion markingVersion, const void*);
     bool isMarkedConcurrently(HeapVersion markingVersion, const void*);
     bool isMarked(const void*, Dependency);
-    bool testAndSetMarked(const void*, Dependency, TransactionAbortLikelihood = TransactionAbortLikelihood::Likely);
+    bool testAndSetMarked(const void*, Dependency);
         
     bool isAtom(const void*);
     void clearMarked(const void*);
@@ -298,7 +298,7 @@ public:
     
     bool isMarkedRaw(const void* p);
     HeapVersion markingVersion() const { return m_markingVersion; }
-    
+
 private:
     static const size_t atomAlignmentMask = atomSize - 1;
 
@@ -535,10 +535,10 @@ inline bool MarkedBlock::isMarked(const void* p, Dependency dependency)
     return m_marks.get(atomNumber(p), dependency);
 }
 
-inline bool MarkedBlock::testAndSetMarked(const void* p, Dependency dependency, TransactionAbortLikelihood abortLikelihood)
+inline bool MarkedBlock::testAndSetMarked(const void* p, Dependency dependency)
 {
     assertMarksNotStale();
-    return m_marks.concurrentTestAndSet(atomNumber(p), dependency, abortLikelihood);
+    return m_marks.concurrentTestAndSet(atomNumber(p), dependency);
 }
 
 inline bool MarkedBlock::Handle::isNewlyAllocated(const void* p)

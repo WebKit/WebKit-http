@@ -32,6 +32,7 @@
 #import "APIIconLoadingClient.h"
 #import "APIPageConfiguration.h"
 #import "WKBrowsingContextGroupPrivate.h"
+#import "WKDragDestinationAction.h"
 #import "WKNSData.h"
 #import "WKProcessGroupPrivate.h"
 #import "WebBackForwardListItem.h"
@@ -41,6 +42,7 @@
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
 #import "_WKLinkIconParametersInternal.h"
+#import <WebCore/AVKitSPI.h>
 #import <wtf/BlockPtr.h>
 
 using namespace WebKit;
@@ -1008,6 +1010,15 @@ Some other editing-related methods still unimplemented:
     [self _didChangeContentSize:newSize];
 }
 
+#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+
+- (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    return WKDragDestinationActionAny;
+}
+
+#endif
+
 - (void)_web_dismissContentRelativeChildWindows
 {
     [self _dismissContentRelativeChildWindows];
@@ -1250,10 +1261,9 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 
 - (void)_prepareForMoveToWindow:(NSWindow *)targetWindow withCompletionHandler:(void(^)(void))completionHandler
 {
-    auto copiedCompletionHandler = Block_copy(completionHandler);
-    _data->_impl->prepareForMoveToWindow(targetWindow, [copiedCompletionHandler] {
-        copiedCompletionHandler();
-        Block_release(copiedCompletionHandler);
+    auto completionHandlerCopy = makeBlockPtr(completionHandler);
+    _data->_impl->prepareForMoveToWindow(targetWindow, [completionHandlerCopy] {
+        completionHandlerCopy();
     });
 }
 
@@ -1563,9 +1573,9 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 #endif
 }
 
-- (AVFunctionBarScrubber *)_mediaPlaybackControlsView
+- (id)_mediaPlaybackControlsView
 {
-#if HAVE(TOUCH_BAR)
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     return _data->_impl->clientWantsMediaPlaybackControlsView() ? _data->_impl->mediaPlaybackControlsView() : nil;
 #else
     return nil;
@@ -1573,7 +1583,7 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 }
 
 // This method is for subclasses to override.
-- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView
 {
 }
 

@@ -84,6 +84,8 @@ class URL;
 class WebKitNamedFlow;
 class WorkerInspectorProxy;
 
+enum class StorageType;
+
 struct ReplayPosition;
 struct WebSocketFrame;
 
@@ -177,7 +179,7 @@ public:
     static void loaderDetachedFromFrame(Frame&, DocumentLoader&);
     static void frameStartedLoading(Frame&);
     static void frameStoppedLoading(Frame&);
-    static void frameScheduledNavigation(Frame&, double delay);
+    static void frameScheduledNavigation(Frame&, Seconds delay);
     static void frameClearedScheduledNavigation(Frame&);
     static void willDestroyCachedResource(CachedResource&);
 
@@ -247,9 +249,13 @@ public:
     static void layerTreeDidChange(Page*);
     static void renderLayerDestroyed(Page*, const RenderLayer&);
 
-    static void frontendCreated() { s_frontendCounter += 1; }
-    static void frontendDeleted() { s_frontendCounter -= 1; }
+    static void frontendCreated();
+    static void frontendDeleted();
     static bool hasFrontends() { return s_frontendCounter; }
+
+    static void firstFrontendCreated();
+    static void lastFrontendDeleted();
+
     static bool consoleAgentEnabled(ScriptExecutionContext*);
     static bool timelineAgentEnabled(ScriptExecutionContext*);
     static bool replayAgentEnabled(ScriptExecutionContext*);
@@ -343,7 +349,7 @@ private:
     static void loaderDetachedFromFrameImpl(InstrumentingAgents&, DocumentLoader&);
     static void frameStartedLoadingImpl(InstrumentingAgents&, Frame&);
     static void frameStoppedLoadingImpl(InstrumentingAgents&, Frame&);
-    static void frameScheduledNavigationImpl(InstrumentingAgents&, Frame&, double delay);
+    static void frameScheduledNavigationImpl(InstrumentingAgents&, Frame&, Seconds delay);
     static void frameClearedScheduledNavigationImpl(InstrumentingAgents&, Frame&);
     static void willDestroyCachedResourceImpl(CachedResource&);
 
@@ -976,7 +982,7 @@ inline void InspectorInstrumentation::frameStoppedLoading(Frame& frame)
         frameStoppedLoadingImpl(*instrumentingAgents, frame);
 }
 
-inline void InspectorInstrumentation::frameScheduledNavigation(Frame& frame, double delay)
+inline void InspectorInstrumentation::frameScheduledNavigation(Frame& frame, Seconds delay)
 {
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
         frameScheduledNavigationImpl(*instrumentingAgents, frame, delay);
@@ -1342,6 +1348,22 @@ inline InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForWork
 inline InstrumentingAgents& InspectorInstrumentation::instrumentingAgentsForWorkerGlobalScope(WorkerGlobalScope& workerGlobalScope)
 {
     return workerGlobalScope.inspectorController().m_instrumentingAgents;
+}
+
+inline void InspectorInstrumentation::frontendCreated()
+{
+    s_frontendCounter++;
+
+    if (s_frontendCounter == 1)
+        InspectorInstrumentation::firstFrontendCreated();
+}
+
+inline void InspectorInstrumentation::frontendDeleted()
+{
+    s_frontendCounter--;
+
+    if (!s_frontendCounter)
+        InspectorInstrumentation::lastFrontendDeleted();
 }
 
 } // namespace WebCore

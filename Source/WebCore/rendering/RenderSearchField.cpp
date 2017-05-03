@@ -58,10 +58,17 @@ RenderSearchField::RenderSearchField(HTMLInputElement& element, RenderStyle&& st
 
 RenderSearchField::~RenderSearchField()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderSearchField::willBeDestroyed()
+{
     if (m_searchPopup) {
         m_searchPopup->popupMenu()->disconnectClient();
         m_searchPopup = nullptr;
     }
+
+    RenderTextControlSingleLine::willBeDestroyed();
 }
 
 inline HTMLElement* RenderSearchField::resultsButtonElement() const
@@ -127,7 +134,10 @@ void RenderSearchField::showPopup()
         m_searchPopup->saveRecentSearches(name, m_recentSearches);
     }
 
-    m_searchPopup->popupMenu()->show(snappedIntRect(absoluteBoundingBoxRect()), &view().frameView(), -1);
+    FloatPoint absTopLeft = localToAbsolute(FloatPoint(), UseTransforms);
+    IntRect absBounds = absoluteBoundingBoxRectIgnoringTransforms();
+    absBounds.setLocation(roundedIntPoint(absTopLeft));
+    m_searchPopup->popupMenu()->show(absBounds, &view().frameView(), -1);
 }
 
 void RenderSearchField::hidePopup()

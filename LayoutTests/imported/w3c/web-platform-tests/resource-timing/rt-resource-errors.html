@@ -8,7 +8,7 @@
 <link rel="help" href="https://w3c.github.io/resource-timing/#resources-included">
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
-<script src="resources/rt-utilities.js?pipe=sub"></script>
+<script src="resources/rt-utilities.sub.js"></script>
 </head>
 <body>
 <h1>Resource Timing: Error cases</h1>
@@ -33,7 +33,7 @@ promise_test(function(t) {
     let rejectedDataURL = crossOriginURL("cors-denied", "resource-timing/resources/data.json");
     let allowedDataURL = crossOriginURL("cors-allowed", "resource-timing/resources/data.json") + "&pipe=header(Access-Control-Allow-Origin,*)";
 
-    fetch(rejectedDataURL);
+    fetch(rejectedDataURL).catch(function(){});
     fetch(allowedDataURL);
 
     return observeResources(1).then(([entry]) => {

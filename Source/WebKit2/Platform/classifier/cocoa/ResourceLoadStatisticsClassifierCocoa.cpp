@@ -26,9 +26,12 @@
 #include "config.h"
 #include "ResourceLoadStatisticsClassifierCocoa.h"
 
+#if HAVE(CORE_PREDICTION)
+
+#include "CorePredictionSPI.h"
 #include "Logging.h"
 #include <wtf/NeverDestroyed.h>
-#include "CorePredictionSoftLink.h"
+#include <wtf/darwin/WeakLinking.h>
 
 namespace WebKit {
 
@@ -78,7 +81,7 @@ bool ResourceLoadStatisticsClassifierCocoa::canUseCorePrediction()
     if (!m_useCorePrediction)
         return false;
 
-    if (!CorePredictionLibrary()) {
+    if (isNullFunctionPointer(svm_load_model)) {
         m_useCorePrediction = false;
         return false;
     }
@@ -110,3 +113,5 @@ const struct svm_model* ResourceLoadStatisticsClassifierCocoa::singletonPredicti
     return nullptr;
 }
 }
+
+#endif

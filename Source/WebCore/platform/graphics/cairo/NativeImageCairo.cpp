@@ -56,11 +56,6 @@ Color nativeImageSinglePixelSolidColor(const NativeImagePtr& image)
     return colorFromPremultipliedARGB(*pixel);
 }
 
-float subsamplingScale(GraphicsContext&, const FloatRect&, const FloatRect&)
-{
-    return 1;
-}
-
 void drawNativeImage(const NativeImagePtr& image, GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, const IntSize&, CompositeOperator op, BlendMode mode, const ImageOrientation& orientation)
 {
     context.save();

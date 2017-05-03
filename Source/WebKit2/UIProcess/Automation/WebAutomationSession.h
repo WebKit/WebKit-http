@@ -109,6 +109,8 @@ public:
     void createBrowsingContext(Inspector::ErrorString&, String*) override;
     void closeBrowsingContext(Inspector::ErrorString&, const String&) override;
     void switchToBrowsingContext(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle) override;
+    void resizeWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& size) override;
+    void moveWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& position) override;
     void navigateBrowsingContext(Inspector::ErrorString&, const String& handle, const String& url, Ref<NavigateBrowsingContextCallback>&&) override;
     void goBackInBrowsingContext(Inspector::ErrorString&, const String&, Ref<GoBackInBrowsingContextCallback>&&) override;
     void goForwardInBrowsingContext(Inspector::ErrorString&, const String&, Ref<GoForwardInBrowsingContextCallback>&&) override;
@@ -132,8 +134,6 @@ public:
 
     // Platform: macOS
 #if PLATFORM(MAC)
-    void resizeWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& size) override;
-    void moveWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& position) override;
     void inspectBrowsingContext(Inspector::ErrorString&, const String&, const bool* optionalEnableAutoCapturing, Ref<InspectBrowsingContextCallback>&&) override;
 #endif
 
@@ -223,9 +223,10 @@ private:
 
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(GTK)
     // Keep track of currently active modifiers across multiple keystrokes.
     // We don't synthesize platform keyboard events on iOS, so we need to track it ourselves.
+    // GTK+ doesn't keep track of the active modifiers when using synthesized events.
     unsigned m_currentModifiers { 0 };
 #endif
 };

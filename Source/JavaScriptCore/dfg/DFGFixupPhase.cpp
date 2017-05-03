@@ -164,8 +164,27 @@ private:
             if (attemptToMakeFastStringAdd(node))
                 break;
 
-            fixEdge<UntypedUse>(node->child1());
-            fixEdge<UntypedUse>(node->child2());
+            Edge& child1 = node->child1();
+            Edge& child2 = node->child2();
+            if (child1->shouldSpeculateString() || child2->shouldSpeculateString()) {
+                if (child1->shouldSpeculateInt32() || child2->shouldSpeculateInt32()) {
+                    auto convertString = [&](Node* node, Edge& edge) {
+                        if (edge->shouldSpeculateInt32())
+                            convertStringAddUse<Int32Use>(node, edge);
+                        else {
+                            ASSERT(edge->shouldSpeculateString());
+                            convertStringAddUse<StringUse>(node, edge);
+                        }
+                    };
+                    convertString(node, child1);
+                    convertString(node, child2);
+                    convertToMakeRope(node);
+                    break;
+                }
+            }
+
+            fixEdge<UntypedUse>(child1);
+            fixEdge<UntypedUse>(child2);
             node->setResult(NodeResultJS);
             break;
         }
@@ -890,6 +909,73 @@ private:
             break;
         }
             
+        case AtomicsAdd:
+        case AtomicsAnd:
+        case AtomicsCompareExchange:
+        case AtomicsExchange:
+        case AtomicsLoad:
+        case AtomicsOr:
+        case AtomicsStore:
+        case AtomicsSub:
+        case AtomicsXor: {
+            Edge& base = m_graph.child(node, 0);
+            Edge& index = m_graph.child(node, 1);
+            
+            bool badNews = false;
+            for (unsigned i = numExtraAtomicsArgs(node->op()); i--;) {
+                Edge& child = m_graph.child(node, 2 + i);
+                // NOTE: DFG is not smart enough to handle double->int conversions in atomics. So, we
+                // just call the function when that happens. But the FTL is totally cool with those
+                // conversions.
+                if (!child->shouldSpeculateInt32()
+                    && !child->shouldSpeculateAnyInt()
+                    && !(child->shouldSpeculateNumberOrBoolean() && isFTL(m_graph.m_plan.mode)))
+                    badNews = true;
+            }
+            
+            if (badNews) {
+                node->setArrayMode(ArrayMode(Array::Generic));
+                break;
+            }
+            
+            node->setArrayMode(
+                node->arrayMode().refine(
+                    m_graph, node, base->prediction(), index->prediction()));
+            
+            if (node->arrayMode().type() == Array::Generic)
+                break;
+            
+            for (unsigned i = numExtraAtomicsArgs(node->op()); i--;) {
+                Edge& child = m_graph.child(node, 2 + i);
+                if (child->shouldSpeculateInt32())
+                    fixIntOrBooleanEdge(child);
+                else if (child->shouldSpeculateAnyInt())
+                    fixEdge<Int52RepUse>(child);
+                else {
+                    RELEASE_ASSERT(child->shouldSpeculateNumberOrBoolean() && isFTL(m_graph.m_plan.mode));
+                    fixDoubleOrBooleanEdge(child);
+                }
+            }
+            
+            blessArrayOperation(base, index, m_graph.child(node, 2 + numExtraAtomicsArgs(node->op())));
+            fixEdge<CellUse>(base);
+            fixEdge<Int32Use>(index);
+            
+            if (node->arrayMode().type() == Array::Uint32Array) {
+                // NOTE: This means basically always doing Int52.
+                if (node->shouldSpeculateAnyInt() && enableInt52())
+                    node->setResult(NodeResultInt52);
+                else
+                    node->setResult(NodeResultDouble);
+            }
+            break;
+        }
+            
+        case AtomicsIsLockFree:
+            if (node->child1()->shouldSpeculateInt32())
+                fixIntOrBooleanEdge(node->child1());
+            break;
+            
         case ArrayPush: {
             // May need to refine the array mode in case the value prediction contravenes
             // the array prediction. For example, we may have evidence showing that the
@@ -1382,8 +1468,8 @@ private:
 
         case HasOwnProperty: {
             fixEdge<ObjectUse>(node->child1());
-#if CPU(X86) && USE(JSVALUE32_64)
-            // We don't have enough registers to do anything interesting on x86.
+#if (CPU(X86) || CPU(MIPS)) && USE(JSVALUE32_64)
+            // We don't have enough registers to do anything interesting on x86 and mips.
             fixEdge<UntypedUse>(node->child2());
 #else
             if (node->child2()->shouldSpeculateString())
@@ -1642,6 +1728,10 @@ private:
             break;
         }
 
+        case ResolveScopeForHoistingFuncDeclInEval: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
         case ResolveScope:
         case GetDynamicVar:
         case PutDynamicVar: {
@@ -1758,6 +1848,17 @@ private:
             // more types in the future, we need to ensure that the clobberize rules
             // are correct.
             fixEdge<StringUse>(node->child1());
+            break;
+        }
+
+        case NumberToStringWithRadix: {
+            if (node->child1()->shouldSpeculateInt32())
+                fixEdge<Int32Use>(node->child1());
+            else if (enableInt52() && node->child1()->shouldSpeculateAnyInt())
+                fixEdge<Int52RepUse>(node->child1());
+            else
+                fixEdge<DoubleRepUse>(node->child1());
+            fixEdge<Int32Use>(node->child2());
             break;
         }
 
@@ -1916,9 +2017,20 @@ private:
     template<UseKind useKind>
     void createToString(Node* node, Edge& edge)
     {
-        edge.setNode(m_insertionSet.insertNode(
+        Node* toString = m_insertionSet.insertNode(
             m_indexInBlock, SpecString, ToString, node->origin,
-            Edge(edge.node(), useKind)));
+            Edge(edge.node(), useKind));
+        switch (useKind) {
+        case Int32Use:
+        case Int52RepUse:
+        case DoubleRepUse:
+        case NotCellUse:
+            toString->clearFlags(NodeMustGenerate);
+            break;
+        default:
+            break;
+        }
+        edge.setNode(toString);
     }
     
     template<UseKind useKind>
@@ -2233,6 +2345,24 @@ private:
         
         if (node->child1()->shouldSpeculateCell()) {
             fixEdge<CellUse>(node->child1());
+            return;
+        }
+
+        if (node->child1()->shouldSpeculateInt32()) {
+            fixEdge<Int32Use>(node->child1());
+            node->clearFlags(NodeMustGenerate);
+            return;
+        }
+
+        if (enableInt52() && node->child1()->shouldSpeculateAnyInt()) {
+            fixEdge<Int52RepUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
+            return;
+        }
+
+        if (node->child1()->shouldSpeculateNumber()) {
+            fixEdge<DoubleRepUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
             return;
         }
 

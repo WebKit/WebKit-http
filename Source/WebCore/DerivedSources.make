@@ -162,7 +162,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
     $(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
     $(WebCore)/Modules/mediastream/CanvasCaptureMediaStreamTrack.idl \
-    $(WebCore)/Modules/mediastream/DOMURLMediaStream.idl \
     $(WebCore)/Modules/mediastream/DoubleRange.idl \
     $(WebCore)/Modules/mediastream/LongRange.idl \
     $(WebCore)/Modules/mediastream/MediaDeviceInfo.idl \
@@ -184,7 +183,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCDataChannel.idl \
     $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
-    $(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCPeerConnectionIceEvent.idl \
     $(WebCore)/Modules/mediastream/RTCIceConnectionState.idl \
     $(WebCore)/Modules/mediastream/RTCIceGatheringState.idl \
     $(WebCore)/Modules/mediastream/RTCIceServer.idl \
@@ -193,6 +192,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCOfferAnswerOptions.idl \
     $(WebCore)/Modules/mediastream/RTCOfferOptions.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
+    $(WebCore)/Modules/mediastream/RTCPeerConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
     $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
@@ -287,10 +288,13 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
     $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
+    $(WebCore)/crypto/parameters/AesCtrParams.idl \
     $(WebCore)/crypto/parameters/AesGcmParams.idl \
     $(WebCore)/crypto/parameters/AesKeyParams.idl \
     $(WebCore)/crypto/parameters/EcKeyParams.idl \
     $(WebCore)/crypto/parameters/EcdhKeyDeriveParams.idl \
+    $(WebCore)/crypto/parameters/EcdsaParams.idl \
+    $(WebCore)/crypto/parameters/HkdfParams.idl \
     $(WebCore)/crypto/parameters/HmacKeyParams.idl \
     $(WebCore)/crypto/parameters/Pbkdf2Params.idl \
     $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
@@ -338,8 +342,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/CDATASection.idl \
     $(WebCore)/dom/CharacterData.idl \
     $(WebCore)/dom/ChildNode.idl \
-    $(WebCore)/dom/ClientRect.idl \
-    $(WebCore)/dom/ClientRectList.idl \
     $(WebCore)/dom/ClipboardEvent.idl \
     $(WebCore)/dom/Comment.idl \
     $(WebCore)/dom/CompositionEvent.idl \
@@ -399,7 +401,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/PopStateEvent.idl \
     $(WebCore)/dom/ProcessingInstruction.idl \
     $(WebCore)/dom/ProgressEvent.idl \
-    $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/PromiseRejectionEvent.idl \
     $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
@@ -574,6 +576,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGPUBuffer.idl \
     $(WebCore)/html/canvas/WebGPUCommandBuffer.idl \
     $(WebCore)/html/canvas/WebGPUCommandQueue.idl \
+	$(WebCore)/html/canvas/WebGPUComputeCommandEncoder.idl \
+	$(WebCore)/html/canvas/WebGPUComputePipelineState.idl \
     $(WebCore)/html/canvas/WebGPUDepthStencilDescriptor.idl \
     $(WebCore)/html/canvas/WebGPUDepthStencilState.idl \
     $(WebCore)/html/canvas/WebGPUDrawable.idl \
@@ -588,6 +592,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGPURenderPipelineColorAttachmentDescriptor.idl \
     $(WebCore)/html/canvas/WebGPURenderPipelineDescriptor.idl \
     $(WebCore)/html/canvas/WebGPURenderPipelineState.idl \
+	$(WebCore)/html/canvas/WebGPUSize.idl \
     $(WebCore)/html/canvas/WebGPUTexture.idl \
     $(WebCore)/html/canvas/WebGPUTextureDescriptor.idl \
     $(WebCore)/html/track/AudioTrack.idl \
@@ -843,19 +848,19 @@ ifneq ($(SDKROOT),)
     SDK_FLAGS=-isysroot $(SDKROOT)
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
     WTF_PLATFORM_IOS = 1
 else
     WTF_PLATFORM_IOS = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
     USE_APPLE_INTERNAL_SDK = 1
 else
     USE_APPLE_INTERNAL_SDK = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
     ENABLE_ORIENTATION_EVENTS = 1
 endif
 
@@ -1323,7 +1328,7 @@ WINDOW_CONSTRUCTORS_FILE = ./DOMWindowConstructors.idl
 WORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./WorkerGlobalScopeConstructors.idl
 DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./DedicatedWorkerGlobalScopeConstructors.idl
 IDL_FILES_TMP = ./idl_files.tmp
-IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.txt
+IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.json
 
 # The following lines get a newline character stored in a variable.
 # See <http://stackoverflow.com/questions/7039811/how-do-i-process-extremely-long-lists-of-files-in-a-make-recipe>.
