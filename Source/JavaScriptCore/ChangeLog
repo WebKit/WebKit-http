@@ -1,3 +1,79 @@
+2017-05-02  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Build fix after r216078
+        https://bugs.webkit.org/show_bug.cgi?id=171554
+
+        Reviewed by Saam Barati.
+
+        * API/tests/testapi.c:
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix pedantic C compilers.
+
+        * API/tests/testapi.c:
+        (markingConstraint):
+        (testMarkingConstraints):
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cmake build.
+
+        * CMakeLists.txt:
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC C API should expose GC marking constraints and weak references
+        https://bugs.webkit.org/show_bug.cgi?id=171554
+
+        Reviewed by Geoffrey Garen.
+        
+        This exposes an API that lets you participate in the GC's fixpoint. You can ask the GC
+        what is marked and you can tell the GC to mark things. The constraint callback cannot
+        do a whole lot, but it can query marking state and it can dereference weak references.
+        
+        Additionally, this exposes a very simple weak reference API in C.
+
+        * API/JSMarkingConstraintPrivate.cpp: Added.
+        (JSC::isMarked):
+        (JSC::mark):
+        (JSContextGroupRegisterMarkingConstraint):
+        * API/JSMarkingConstraintPrivate.h: Added.
+        * API/JSWeakPrivate.cpp: Added.
+        (OpaqueJSWeak::OpaqueJSWeak):
+        (JSWeakCreate):
+        (JSWeakRetain):
+        (JSWeakRelease):
+        (JSWeakGetObject):
+        * API/JSWeakPrivate.h: Added.
+        * API/tests/testapi.c:
+        (markingConstraint):
+        (testMarkingConstraints):
+        (main):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::appendHiddenUnbarriered):
+        (JSC::SlotVisitor::appendHidden):
+
+2017-05-02  Mark Lam  <mark.lam@apple.com>
+
+        JSFixedArray::allocationSize() should not allow for allocation failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171516
+
+        Reviewed by Geoffrey Garen.
+
+        Since JSFixedArray::createFromArray() now handles allocation failures by throwing
+        OutOfMemoryErrors, its helper function allocationSize() (which computes the buffer
+        size to allocate) should also allow for allocation failure on overflow.
+
+        This issue is covered by the stress/js-fixed-array-out-of-memory.js test when
+        run on 32-bit builds.
+
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::tryCreate):
+        (JSC::JSFixedArray::allocationSize):
+
 2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
 
         [aarch64][Linux] m_allowScratchRegister assert hit in MacroAssemblerARM64 under B3::Air::CCallSpecial::generate()

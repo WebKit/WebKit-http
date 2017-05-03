@@ -1,3 +1,186 @@
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Dynamically added position:fixed element is in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=170280
+        rdar://problem/31374008
+
+        Reviewed by Tim Horton.
+
+        * scrollingcoordinator/ios/nested-fixed-layer-positions-expected.html: Added.
+        * scrollingcoordinator/ios/nested-fixed-layer-positions.html: Added.
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move flaky expectation for svg/animations/getCurrentTime-pause-unpause.html ios-wk1 to ios TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=170907
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-02  Zalan Bujtas  <zalan@apple.com>
+
+        Defer AX cache update when text content changes until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=171429
+        <rdar://problem/31885984>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-while-adding-text-child-with-transform-expected.txt: Added.
+        * accessibility/crash-while-adding-text-child-with-transform.html: Added.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change attempts to fix all whitespace issues in these two
+        files (which are now identical and will be kept in sync by
+        check-webkit-style):
+
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+
+        It also syncs the implementation of shouldBe(), shouldNotBe(),
+        shouldNotThrow() and shouldThrow() across the following files:
+
+            JSTests/stress/resources/standalone-pre.js
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+            LayoutTests/resources/js-test.js
+            LayoutTests/resources/standalone-pre.js
+
+        Only interesting (non-whitespace) changes are listed below.
+
+        * http/tests/resources/js-test-pre.js: Copy from resources/js-test-pre.js.
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+        * resources/js-test-pre.js:
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+        * resources/js-test.js:
+        (shouldBe): Prefix 'quiet' variable with underscore.  Use
+        stringify() when printing '_bv' value.
+
+        * resources/standalone-pre.js:
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Moved the mac aria-orientation.html test to the shared tests and add several
+        new test cases to it. Update the orientation-related assertion in two tests
+        to reflect the ARIA 1.1 behavior.
+
+        * accessibility/aria-orientation-expected.txt: Renamed from LayoutTests/accessibility/mac/aria-orientation-expected.txt.
+        * accessibility/aria-orientation.html: Renamed from LayoutTests/accessibility/mac/aria-orientation.html.
+        * accessibility/mac/slider-supports-actions.html: Updated.
+        * accessibility/gtk/combobox-descendants-orientation-crash-expected.txt: Updated.
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r211382): Partial right-to-left text runs are painted at an offset (breaks Find indicators, Look Up, and custom ::selection style)
+        https://bugs.webkit.org/show_bug.cgi?id=169517
+        <rdar://problem/30652443>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/complex-text-selection-expected.html: Added.
+        * fast/text/complex-text-selection.html: Added.
+        * platform/ios/TestExpectations:
+
+2017-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] WK1: http/tests/inspector/network/resource-sizes tests are failing
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        Skip these tests on WebKit1. They depend on the NSURLSession
+        loading path which is not used in WebKit1.
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Flaky Crash under EventTarget::fireEventListeners on imported/blink/paint/deprecatedpaintlayer/non-self-painting-layer-overrides-visibility.html
+        https://bugs.webkit.org/show_bug.cgi?id=171406
+        <rdar://problem/30945281>
+
+        Reviewed by Eric Carlson.
+
+        Unskip test.
+
+        * platform/mac/TestExpectations:
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test svg/animations/animated-svg-image-removed-from-document-paused.html as flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171559
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html as flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=170818
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font Loading API specifies font is loaded but sizing of font after load reports inconsistent values
+        https://bugs.webkit.org/show_bug.cgi?id=168533
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/font-loading-local-expected.txt: Added.
+        * fast/text/font-loading-local.html: Added.
+        * fast/text/web-font-load-fallback-during-loading.html:
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Allow media stream based videos with sound autoplay if the page is already playing sound
+        https://bugs.webkit.org/show_bug.cgi?id=171447
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/autoplay-if-audio-is-playing-expected.txt: Added.
+        * http/tests/media/autoplay-if-audio-is-playing.html: Added.
+        * http/tests/media/resources/test-25fps.mp4: Added.
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test http/tests/xmlhttprequest/methods-async.html as flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=171530
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
 2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
 
         [GCrypt] ECDSA signing and verification support

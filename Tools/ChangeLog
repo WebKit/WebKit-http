@@ -1,3 +1,124 @@
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should also keep js-test-post[-async].js in sync
+        <https://webkit.org/b/171568>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/style/checker.py:
+        (_NEVER_SKIPPED_JS_FILES): Add new list that just contains
+        JavaScript files not to be skipped.
+        (_NEVER_SKIPPED_FILES): Update to use _NEVER_SKIPPED_JS_FILES.
+        (CheckerDispatcher._create_checker): Update to use
+        _NEVER_SKIPPED_JS_FILES.
+
+        * Scripts/webkitpy/style/checkers/jstest.py:
+        (ALL_JS_TEST_FUNCTION_FILES): Rename from ALL_JS_TEST_FILES.
+        This is the list of files containing functions that need to be
+        kept in sync.
+        (KEEP_JS_TEST_FILES_IN_SYNC): Change to list-of-lists format so
+        we can keep more sets of files in sync between
+        LayoutTests/resources and LayoutTests/http/tests/resources.
+        (JSTestChecker.check): Update to use KEEP_JS_TEST_FILES_IN_SYNC
+        as list of lists.  Update for ALL_JS_TEST_FUNCTION_FILES rename.
+        (JSTestChecker.check_js_test_files): Add 'file_group' argument
+        for list of files to check instead of using
+        KEEP_JS_TEST_FILES_IN_SYNC.
+        (JSTestChecker.check_js_test_functions): Update for
+        ALL_JS_TEST_FUNCTION_FILES rename.
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py:
+        (JSTestCheckerTestCase):
+        (JSTestCheckerTestCase.test_map_functions_to_dict):
+        - Add test case for map_functions_to_dict() in jstest.py.
+
+2017-05-02  Aakash Jain  <aakash_jain@apple.com>
+
+        ews should indicate in logs when it fails to fetch the attachment
+        https://bugs.webkit.org/show_bug.cgi?id=171583
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.fetch_attachment): Added log statement.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        Rolling out jstest_unittest.py so it can be reviewed
+
+        Follow-up fix for:
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py: Remove.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a new JSTestChecker for check-webkit-style that keeps these
+        two files in sync:
+
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+
+        And keeps implementations of shouldBe(), shouldNotBe(),
+        shouldNotThrow(), and shouldThrow() in sync across multiple
+        files (with the ability to add more functions later):
+
+            JSTests/stress/resources/standalone-pre.js
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+            LayoutTests/resources/js-test.js
+            LayoutTests/resources/standalone-pre.js
+
+        * Scripts/webkitpy/style/checker.py: Remove unused import.  Add
+        import for JSTestChecker.
+        (_NEVER_SKIPPED_FILES): Add array of file names that are never
+        skipped regardless of other rules.
+        (_all_categories): Add JSTestChecker categories.
+        (CheckerDispatcher.should_skip_without_warning): Use
+        _NEVER_SKIPPED_FILES.
+        (CheckerDispatcher._create_checker): Return JSTestChecker for
+        the files to check.
+
+        * Scripts/webkitpy/style/checkers/jstest.py: Add.
+        (map_functions_to_dict): Parse JavaScript source by splitting on
+        /^function\s+/ regex.  This is good enough for the sanity checks
+        to keep function implementations in sync.
+        (strip_blank_lines_and_comments): Strips blank lines and lines
+        with comments from the end of a chunk of text representing a
+        function.
+        (JSTestChecker): New checker.
+        (JSTestChecker.__init__):
+        (JSTestChecker.check):
+        (JSTestChecker.check_js_test_files): Keeps whole files in sync.
+        (JSTestChecker.check_js_test_functions): Keeps individual
+        functions in sync.
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py: Add test
+        case.
+        (JSTestTestCase):
+        (JSTestTestCase.test_map_functions_to_dict):
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Return "AXUnknownOrientation" when ATK_STATE_VERTICAL and ATK_STATE_HORIZONTAL
+        are both absent from the state set. Before we were returning an empty string
+        which was not consistent with what the Mac port does, thus making shared tests
+        harder.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::orientation):
+
 2017-05-01  David Kilzer  <ddkilzer@apple.com>
 
         Stop using sprintf() in JavaScriptCore debugger

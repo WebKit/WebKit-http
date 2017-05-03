@@ -1,3 +1,488 @@
+2017-05-02  Andrew Gold  <agold@apple.com>
+
+        Typo in AVAudioSessionCaptureDeviceManager.mm
+        https://bugs.webkit.org/show_bug.cgi?id=171572
+
+        Reviewed by Jer Noble.
+
+        We attempt to call +[AVAudioSession sharedSession], but the actual method is 
+        called +[AVAudioSession sharedInstance].
+
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm:
+        (WebCore::AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices):
+
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve scrolling tree logging
+        https://bugs.webkit.org/show_bug.cgi?id=171574
+
+        Reviewed by Tim Horton.
+
+        Make a call to showScrollingStateTree() print debugging-related information like node and layer IDs.
+        Required fixing scrolling state tree nodes to respect ScrollingStateTreeAsTextBehavior, and fixing
+        fixed and sticky nodes to call super.
+
+        Also enhance compositing logging to show layer IDs, and to log for layer scrolling tree registration.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::scrollingStateTreeAsText):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::scrollingStateTreeAsText):
+        * page/scrolling/ScrollingCoordinator.h:
+        * page/scrolling/ScrollingStateFixedNode.cpp:
+        (WebCore::ScrollingStateFixedNode::dumpProperties):
+        * page/scrolling/ScrollingStateNode.cpp:
+        (WebCore::ScrollingStateNode::dumpProperties):
+        (WebCore::ScrollingStateNode::scrollingStateTreeAsText):
+        * page/scrolling/ScrollingStateNode.h:
+        * page/scrolling/ScrollingStateScrollingNode.cpp:
+        (WebCore::ScrollingStateScrollingNode::dumpProperties):
+        * page/scrolling/ScrollingStateStickyNode.cpp:
+        (WebCore::ScrollingStateStickyNode::dumpProperties):
+        * page/scrolling/ScrollingStateTree.cpp:
+        (showScrollingStateTree):
+        * page/scrolling/mac/ScrollingCoordinatorMac.mm:
+        (WebCore::ScrollingCoordinatorMac::commitTreeState):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinator):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::logLayerInfo):
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+
+2017-05-02  Daniel Bates  <dabates@apple.com>
+
+        Using StringView.split() instead of String.split() in some places
+        https://bugs.webkit.org/show_bug.cgi?id=170925
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        Replace some uses of String.split() with StringView.split() (added in r211087) as the latter
+        avoids the need to allocate an intermediary Vector of substrings. Instead StringView.split()
+        returns an iterator for traversing the substrings.
+
+        No functionality changed. So, no new tests.
+
+        * accessibility/AccessibilityObject.cpp: Convert some typedefs to modern C++ using declarations.
+        (WebCore::AccessibilityObject::ariaRoleToWebCoreRole): Modified code to use StringView.split().
+        (WebCore::AccessibilityObject::elementsFromAttribute): Ditto.
+        * dom/TreeScope.cpp:
+        (WebCore::TreeScope::getElementById): Added.
+        * dom/TreeScope.h:
+        * html/LinkRelAttribute.cpp:
+        (WebCore::LinkRelAttribute::LinkRelAttribute): Modified code to use StringView.split().
+        * html/parser/XSSAuditor.cpp:
+        (WebCore::semicolonSeparatedValueContainsJavaScriptURL): Ditto.
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm:
+        (WebCore::CDMPrivateMediaSourceAVFObjC::createSession): Ditto.
+        * platform/network/CacheValidation.cpp:
+        (WebCore::collectVaryingRequestHeaders): Simplify code by using the String.split(UChar, Vector<String>&) overload.
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::parseKeyTimes): Modified code to use StringView.split().
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::SVGToOTFFontConverter): Ditto.
+        * testing/Internals.cpp:
+        (WebCore::Internals::setMediaSessionRestrictions): Ditto.
+        (WebCore::Internals::setMediaElementRestrictions): Ditto.
+        (WebCore::Internals::setAudioContextRestrictions): Ditto.
+        (WebCore::Internals::setPageMuted): Ditto.
+        * testing/Internals.h:
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Drop coordinated surfaces from the compositing thread as soon as possible
+        https://bugs.webkit.org/show_bug.cgi?id=171544
+
+        Reviewed by Žan Doberšek.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        Remove atlasesToRemove from the GraphicsState. It is not a commit
+        state anymore.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Recycle textures while handling tiles
+        https://bugs.webkit.org/show_bug.cgi?id=171541
+
+        Reviewed by Žan Doberšek.
+
+        * platform/graphics/texmap/TextureMapperTile.h:
+        Modified m_texture as a protected member to avoid unnessary
+        refcountings from the CoordinatedBackingStore.
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.h:
+        Use reference instead of RefPtr to pass BitmapTexture
+
+        No new tests since there should be no change in behavior.
+
+2017-05-02  Zalan Bujtas  <zalan@apple.com>
+
+        Defer AX cache update when text content changes until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=171429
+        <rdar://problem/31885984>
+
+        Reviewed by Simon Fraser.
+
+        When the content of the RenderText changes (even as the result of a text-transform change)
+        instead of updating the AX cache eagerly (and trigger layout on a half-backed render tree)
+        we should just defer it until after the subsequent layout is done. 
+
+        Test: accessibility/crash-while-adding-text-child-with-transform.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::remove):
+        (WebCore::AXObjectCache::performDeferredCacheUpdate):
+        (WebCore::AXObjectCache::recomputeDeferredIsIgnored):
+        (WebCore::AXObjectCache::deferTextChanged):
+        (WebCore::AXObjectCache::performDeferredIsIgnoredChange): Deleted.
+        * accessibility/AXObjectCache.h:
+        (WebCore::AXObjectCache::deferTextChanged):
+        (WebCore::AXObjectCache::performDeferredCacheUpdate):
+        (WebCore::AXObjectCache::performDeferredIsIgnoredChange): Deleted.
+        * page/FrameView.cpp:
+        (WebCore::FrameView::performPostLayoutTasks):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::setText):
+
+2017-05-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove an extraneous call to dispatch_group_async in WebItemProviderPasteboard.mm
+        https://bugs.webkit.org/show_bug.cgi?id=171561
+
+        Reviewed by Tim Horton.
+
+        In -[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:], the lifetime of the dispatch group
+        `fileLoadingGroup` is already guarded by dispatch_group_enter/leave calls when beginning and concluding an
+        item provider load, respectively. As such, the call to dispatch_group_async serves no purpose and should be removed.
+
+        No new tests, since there is no change in behavior.
+
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        [LibWebRTC] Set explicitly logging level in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=171562
+
+        Reviewed by Eric Carlson.
+
+        No change of behavior.
+
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp:
+        (WebCore::initializePeerConnectionFactoryAndThreads): Setting explictly LibWebRTC logging to Info level for
+        debug builds if WebRTC channel is on.
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Update AccessibilityRenderObject::orientation() to be consistent with what is
+        in the ARIA 1.1 spec. Also add an isTreeGrid() convenience method to be consistent
+        with what we do for other roles.
+
+        Test: accessibility/aria-orientation.html
+
+        * accessibility/AccessibilityARIAGridRow.cpp:
+        (WebCore::AccessibilityARIAGridRow::isARIATreeGridRow):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::isTreeGrid):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::orientation):
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r211382): Partial right-to-left text runs are painted at an offset (breaks Find indicators, Look Up, and custom ::selection style)
+        https://bugs.webkit.org/show_bug.cgi?id=169517
+        <rdar://problem/30652443>
+
+        Reviewed by Dean Jackson.
+
+        FontCascade::getGlyphsAndAdvancesForComplexText() is tasked with calculating paint advances for a
+        subrange of RTL text. It does this by creating a ComplexTextController, telling it to iterate to
+        the beginning of the subrange (outputting to a GlyphBuffer), then telling it to iterate to the end
+        of the subrange (outputting to another GlyphBuffer). Because the text is RTL, the sum of the
+        advances gathered so far is the distance from the right edge of the text to the left edge of the
+        subrange (because we advance in logical order). Therefore, the x-coordinate we are at now is the
+        total width minus the sum of both of the GlyphBuffers. For some reason, when I wrote this code I
+        forgot to add in the contribution from the first GlyphBuffer. Unfortunately, this particular
+        codepath is rarely hit in practice and completely untested, which made me miss it when I wrote it.
+
+        Test: fast/text/complex-text-selection.html
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::FontCascade::getGlyphsAndAdvancesForComplexText):
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Flaky Crash under EventTarget::fireEventListeners on imported/blink/paint/deprecatedpaintlayer/non-self-painting-layer-overrides-visibility.html
+        https://bugs.webkit.org/show_bug.cgi?id=171406
+        <rdar://problem/30945281>
+
+        Reviewed by Eric Carlson.
+
+        I was unfortunately unable to reproduce the flaky crash locally. However, the crash trace
+        indicates that one of the EventTarget::scriptExecutionContext() overrides is returning a
+        stale ScriptExecutionContext pointer. Since a GenericEventQueue is involved, the EventTarget
+        is likely a media-related object. I therefore audited media classes that override
+        EventTarget::scriptExecutionContext() and found several that look unsafe. I am fixing those
+        by having them override ContextDestructionObserver, instead of having a raw
+        ScriptExecutionContext pointer member. This makes sure the pointer gets nulled out whenever
+        the scriptexecutioncontext gets destroyed, ensuring that those classes's
+        EventTarget::scriptExecutionContext() overrides can never return a stale pointer.
+
+        * Modules/mediasource/SourceBufferList.cpp:
+        (WebCore::SourceBufferList::SourceBufferList):
+        * Modules/mediasource/SourceBufferList.h:
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::TextTrack):
+        * html/track/TextTrack.h:
+        * html/track/TrackListBase.cpp:
+        (TrackListBase::TrackListBase):
+        * html/track/TrackListBase.h:
+
+2017-05-02  Antti Koivisto  <antti@apple.com>
+
+        Document style resolvers should share user rulesets
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+
+        Reviewed by Andreas Kling.
+
+        Large user stylesheets (like those used by ad blockers) can end up using lots of memory if
+        a document uses large number of shadow trees. User style is inherently per-document and
+        the resulting rulesets can be shared between the document and the shadow trees.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::DocumentRuleSets):
+        (WebCore::DocumentRuleSets::userStyle):
+
+            Return per-document user style for shadow trees.
+
+        (WebCore::DocumentRuleSets::collectFeatures):
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::setUsesSharedUserStyle):
+        (WebCore::DocumentRuleSets::userStyle): Deleted.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::StyleResolver):
+        (WebCore::StyleResolver::initializeUserStyle):
+
+            Separate user style initialization from construction.
+
+        * css/StyleResolver.h:
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+
+            Don't initialize user style for user agents shadow trees.
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font Loading API specifies font is loaded but sizing of font after load reports inconsistent values
+        https://bugs.webkit.org/show_bug.cgi?id=168533
+
+        Reviewed by Zalan Bujtas.
+
+        Previously, we were marking all local() fonts as immediately successful,
+        regardless of whether or not they were present on the system. Instead, we
+        should use the load() function to make this determination and mark the font
+        as failed if it doesn't exist. (This is, after all, the whole point of the
+        load() function). This brings us in-line with Firefox's and Chrome's
+        behavior.
+
+        Test: fast/text/font-loading-local.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::pump): Remote loading requires the FontSelector,
+        but it isn't available for local fonts. Now that load() is called for both
+        local and remote fonts, the ASSERT() should be lowered into the load()
+        function and scoped to just the case where we have a remote font.
+        (WebCore::CSSFontFace::font): Ditto.
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::CSSFontFaceSource): Don't immediatley set
+        the success/failure state for local fonts.
+        (WebCore::CSSFontFaceSource::load): Move loading logic from font() to
+        load(). None of this code is new; it just is moved.
+        (WebCore::CSSFontFaceSource::font): Delete code moved to load().
+        * css/CSSFontFaceSource.h:
+        * css/FontFace.cpp:
+        (WebCore::FontFace::create):
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Allow media stream based videos with sound to autoplay if the page is already playing sound
+        https://bugs.webkit.org/show_bug.cgi?id=171447
+
+        Reviewed by Eric Carlson.
+
+        Test: http/tests/media/autoplay-if-audio-is-playing.html for ensuring non-mediastream based video will not autoplay.
+        Manual testing for the autoplay of media stream based videos since such a test should happen without using getUserMedia.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::playbackPermitted):
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        Use PassRefPtr less in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=171534
+
+        Reviewed by Geoffrey Garen.
+
+        Use PassRefPtr less in editing code.
+
+        * editing/AppendNodeCommand.cpp:
+        (WebCore::AppendNodeCommand::AppendNodeCommand):
+        (WebCore::AppendNodeCommand::getNodesInCommand):
+        * editing/AppendNodeCommand.h:
+        (WebCore::AppendNodeCommand::create):
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::ApplyStyleCommand::surroundNodeRangeWithElement):
+        (WebCore::ApplyStyleCommand::positionToComputeInlineStyleChange):
+        * editing/BreakBlockquoteCommand.cpp:
+        (WebCore::BreakBlockquoteCommand::doApply):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::insertNodeBefore):
+        (WebCore::CompositeEditCommand::insertNodeAfter):
+        (WebCore::CompositeEditCommand::insertNodeAt):
+        (WebCore::CompositeEditCommand::appendNode):
+        (WebCore::CompositeEditCommand::moveRemainingSiblingsToNewParent):
+        (WebCore::CompositeEditCommand::mergeIdenticalElements):
+        (WebCore::CompositeEditCommand::insertNodeAtTabSpanPosition):
+        (WebCore::CompositeEditCommand::appendBlockPlaceholder):
+        (WebCore::CompositeEditCommand::insertBlockPlaceholder):
+        (WebCore::CompositeEditCommand::addBlockPlaceholderIfNeeded):
+        (WebCore::CompositeEditCommand::insertNewDefaultParagraphElementAt):
+        (WebCore::CompositeEditCommand::cloneParagraphUnderNewElement):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/CompositeEditCommand.h:
+        * editing/CreateLinkCommand.cpp:
+        (WebCore::CreateLinkCommand::doApply):
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::makeStylingElementsDirectChildrenOfEditableRootToPreventStyleLoss):
+        (WebCore::DeleteSelectionCommand::mergeParagraphs):
+        * editing/FormatBlockCommand.cpp:
+        (WebCore::FormatBlockCommand::formatRange):
+        * editing/IndentOutdentCommand.cpp:
+        (WebCore::IndentOutdentCommand::tryIndentingAsListItem):
+        (WebCore::IndentOutdentCommand::indentIntoBlockquote):
+        (WebCore::IndentOutdentCommand::outdentParagraph):
+        * editing/InsertLineBreakCommand.cpp:
+        (WebCore::InsertLineBreakCommand::doApply):
+        * editing/InsertLineBreakCommand.h:
+        * editing/InsertListCommand.cpp:
+        (WebCore::InsertListCommand::fixOrphanedListChild):
+        (WebCore::InsertListCommand::doApplyForSingleParagraph):
+        (WebCore::InsertListCommand::unlistifyParagraph):
+        (WebCore::InsertListCommand::listifyParagraph):
+        * editing/InsertListCommand.h:
+        * editing/InsertNodeBeforeCommand.cpp:
+        (WebCore::InsertNodeBeforeCommand::InsertNodeBeforeCommand):
+        (WebCore::InsertNodeBeforeCommand::doApply):
+        (WebCore::InsertNodeBeforeCommand::doUnapply):
+        (WebCore::InsertNodeBeforeCommand::getNodesInCommand):
+        * editing/InsertNodeBeforeCommand.h:
+        (WebCore::InsertNodeBeforeCommand::create):
+        * editing/InsertParagraphSeparatorCommand.cpp:
+        (WebCore::InsertParagraphSeparatorCommand::cloneHierarchyUnderNewBlock):
+        (WebCore::InsertParagraphSeparatorCommand::doApply):
+        * editing/InsertParagraphSeparatorCommand.h:
+        * editing/InsertTextCommand.cpp:
+        (WebCore::InsertTextCommand::positionInsideTextNode):
+        (WebCore::InsertTextCommand::insertTab):
+        * editing/ModifySelectionListLevel.cpp:
+        (WebCore::ModifySelectionListLevelCommand::insertSiblingNodeRangeBefore):
+        (WebCore::ModifySelectionListLevelCommand::insertSiblingNodeRangeAfter):
+        (WebCore::ModifySelectionListLevelCommand::appendSiblingNodeRange):
+        (WebCore::IncreaseSelectionListLevelCommand::doApply):
+        * editing/RemoveNodePreservingChildrenCommand.cpp:
+        (WebCore::RemoveNodePreservingChildrenCommand::doApply):
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::moveNodeOutOfAncestor):
+        (WebCore::ReplaceSelectionCommand::mergeEndIfNeeded):
+        (WebCore::ReplaceSelectionCommand::doApply):
+        (WebCore::ReplaceSelectionCommand::addSpacesForSmartReplace):
+        (WebCore::ReplaceSelectionCommand::insertAsListItems):
+        * editing/SimplifyMarkupCommand.cpp:
+        (WebCore::SimplifyMarkupCommand::pruneSubsequentAncestorsToRemove):
+
+2017-05-02  Ben Kelly <ben@wanderview.com>
+
+        Set Response.blob() type correctly when body is a ReadableStream.
+        https://bugs.webkit.org/show_bug.cgi?id=171489
+
+        Reviewed by Youenn Fablet
+
+        The Fetch API specification requires setting the blob contentType
+        using the Content-Type header value, if present.  Currently WebKit
+        only sets the type on the FetchBodyConsumer when FetchBody::blob()
+        is called.  Unfortunately, this is never called if the body is
+        actually a ReadableStream.
+
+        This change allows WebKit to pass the "Consume response's body: from
+        stream to blob" case in the WPT response-consume.html test.
+
+        Test: http://w3c-test.org/fetch/api/response/response-consume.html
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::startConsumingStream): Modified to call
+        FetchBodyConsumer::setContentType() before processing the stream.
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216069.
+
+        This change broke the build.
+
+        Reverted changeset:
+
+        "Document style resolvers should share user rulesets"
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+        http://trac.webkit.org/changeset/216069
+
+2017-05-02  Antti Koivisto  <antti@apple.com>
+
+        Document style resolvers should share user rulesets
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+
+        Reviewed by Andreas Kling.
+
+        Large user stylesheets (like those used by ad blockers) can end up using lots of memory if
+        a document uses large number of shadow trees. User style is inherently per-document and
+        the resulting rulesets can be shared between the document and the shadow trees.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::DocumentRuleSets):
+        (WebCore::DocumentRuleSets::userStyle):
+
+            Return per-document user style for shadow trees.
+
+        (WebCore::DocumentRuleSets::collectFeatures):
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::setUsesSharedUserStyle):
+        (WebCore::DocumentRuleSets::userStyle): Deleted.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::StyleResolver):
+        (WebCore::StyleResolver::initializeUserStyle):
+
+            Separate user style initialization from construction.
+
+        * css/StyleResolver.h:
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+
+            Don't initialize user style for user agents shadow trees.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Remove undefined nativeImage method from the ImageBuffer's header
+        https://bugs.webkit.org/show_bug.cgi?id=171502
+
+        Unreviewed, remove a dead code accidentally committed in r194630.
+
+        * platform/graphics/ImageBuffer.h: Remove nativeImage method.
+        It is accidentally added during a refectorying at r194630, and there is
+        no definition for this method.
+
 2017-05-02  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GStreamer] Dailymotion live stream videos don't play

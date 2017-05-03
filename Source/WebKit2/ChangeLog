@@ -1,3 +1,169 @@
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Dynamically added position:fixed element is in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=170280
+        rdar://problem/31374008
+
+        Reviewed by Tim Horton.
+
+        Layers for position:fixed elements have their positions reconciled after scrolls
+        via AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions() and GraphicsLayerCA::syncPosition(),
+        which updates the GraphicsLayer's position, but does not push it to the PlatformCALayer.
+
+        This bug was a case where a position:fixed element gained a fixed ancestor, so had a GraphicsLayerCA whose
+        position had been updated via syncPosition() in the past. A subsequent layout updated the GraphicsLayerCA position,
+        but to a value that was the same as its pre-sync position, so the PlatformCALayerRemote's position didn't change,
+        but there was no signal to the UI process to restore the layer's pre-scrolled position.
+
+        Fix by avoiding the early return in PlatformCALayerRemote::setPosition(), to ensure that GraphicsLayerCA
+        geometry updates in the web process always send new positions to the UI process.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::setPosition):
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Drop coordinated surfaces from the compositing thread as soon as possible
+        https://bugs.webkit.org/show_bug.cgi?id=171544
+
+        Reviewed by Žan Doberšek.
+
+        Released coordinated surface from the main thread didn't be freed until
+        next commit message because the deletion of coordinated surfaces is
+        considered as a part of scene state.  We need to release corresponding
+        surfaces whenever the compositing coordinator drops update atlases to
+        reduce memory usages.
+
+        No new tests, only an optimization.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        Remove atlasesToRemove from the GraphicsState. it is not a commit
+        state anymore.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::syncUpdateAtlases):
+        (WebKit::CoordinatedGraphicsScene::releaseUpdateAtlases):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::CompositingCoordinator::releaseAtlases): Pass the list of
+        released update atlases to the compositing thread right after cleaning
+        up deactivated update atlases.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::clearPendingStateChanges):
+        (WebKit::CompositingCoordinator::removeUpdateAtlas):
+        (WebKit::CompositingCoordinator::releaseAtlases):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::releaseUpdateAtlases):
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+
+2017-05-02  Timothy Horton  <timothy_horton@apple.com>
+
+        Inform clients when viewport-fit state changes, so they can recompute insets
+        https://bugs.webkit.org/show_bug.cgi?id=171573
+        <rdar://problem/31947614>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didChangeAvoidsUnsafeArea]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didChangeAvoidsUnsafeArea):
+        For clients who use setObscuredInsets/setUnobscuredSafeAreaInsets
+        themselves, we need to let them know when the current state of
+        viewport-fit changes so that they can recompute the insets.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Recycle textures while handling tiles
+        https://bugs.webkit.org/show_bug.cgi?id=171541
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+        Whenever we create new tiles or delete tiles, CoordGfx creates and
+        deletes textures accordingly.  We should avoid this kind of heavy
+        operations whenever possible.  This patch modifies to use the texture
+        pool to reduce texture allocations.  Also this patch reduces number of
+        resetting textures, which is also expensive operation.
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::copyToTexture):
+        Modified to pass BitmapTexture as a reference.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::copyToTexture): Ditto.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using strcpy() in WebProcess::registerWithStateDumper() in WebProcessCocoa.mm
+        <https://webkit.org/b/171520>
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::registerWithStateDumper): Switch from
+        strcpy() to strlcpy(), removing comment in the process.
+
+2017-05-02  Andrew Gold  <agold@apple.com>
+
+        MediaDevices is not enabled for MobileSafari
+        https://bugs.webkit.org/show_bug.cgi?id=171433
+        <rdar://problem/31923178>
+
+        Reviewed by Youenn Fablet.
+
+        Added the Cocoa API for toggling this feature and removed API for toggling
+        MediaStreamEnabled since it will always be on.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _mediaDevicesEnabled]):
+        (-[WKPreferences _setMediaDevicesEnabled:]):
+        (-[WKPreferences _mediaStreamEnabled]): Deleted.
+        (-[WKPreferences _setMediaStreamEnabled:]): Deleted.
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2017-05-02  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r213036): Crash in -[WKContentView _webTouchEventsRecognized:] when a touch event arrives after a WebPageProxy has been invalidated
+        https://bugs.webkit.org/show_bug.cgi?id=171539
+        <rdar://problem/31614982>
+
+        Reviewed by Tim Horton.
+
+        Prior to r213036, the layer tree transaction at last touch start was tracked by
+        WebPageProxy::handleTouchEventSynchronously(), which would ask the drawing area proxy for
+        its most recent transaction ID after ensuring that the WebPageProxy was valid.
+
+        r213036 moved the tracking up to -[WKContentView _webTouchEventsRecognized:], but failed to
+        check if _page was valid before asking for its drawing area proxy's last transaction ID; the
+        drawing area proxy is set to null on WebPageProxy invalidation.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _webTouchEventsRecognized:]): Added an early return if _page isn't valid.
+
+2017-05-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Automation: generate resizeWindowOfBrowsingContext and moveWindowOfBrowsingContext for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=171107
+
+        Reviewed by Brian Burg.
+
+        The implementation is actually cross-platform, so it could be moved from WebAutomationSessionMac.mm to
+        WebAutomationSession.cpp and simply return a NotImplemented error for iOS. This will allow to use these methods
+        in other platforms.
+
+        * UIProcess/Automation/Automation.json:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/mac/WebAutomationSessionMac.mm:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext): Deleted.
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext): Deleted.
+
 2017-05-01  Chris Dumez  <cdumez@apple.com>
 
         Use RELEASE_LOG_ERROR() to do process termination logging
