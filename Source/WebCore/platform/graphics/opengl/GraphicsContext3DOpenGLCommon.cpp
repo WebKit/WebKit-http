@@ -236,9 +236,6 @@ void GraphicsContext3D::prepareTexture()
         resolveMultisamplingIfNecessary();
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-#if USE(OPENGL_ES_2)
-    ::glFlush();
-#endif
     std::swap(m_texture, m_compositorTexture);
     std::swap(m_texture, m_intermediateTexture);
     ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
