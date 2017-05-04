@@ -96,7 +96,7 @@ void MockCDMFactory::setSupportedDataTypes(Vector<String>&& types)
         m_supportedDataTypes.append(type);
 }
 
-std::unique_ptr<CDMPrivate> MockCDMFactory::createCDM(CDM&)
+std::unique_ptr<CDMPrivate> MockCDMFactory::createCDM(CDM&, const String&)
 {
     return std::make_unique<MockCDM>(m_weakPtrFactory.createWeakPtr());
 }

@@ -4,8 +4,8 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDMPrivate.h"
-#include "UUID.h"
 #include "inspector/InspectorValues.h"
+#include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
 
 using namespace Inspector;
@@ -257,7 +257,7 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
                 if (!WTF::base64URLDecode(keyValue, { keyValueData }))
                     return false;
 
-                updatedKeys.append(Key{ keyID, KeyStatus::Usable, SharedBuffer::adoptVector(keyIDData), SharedBuffer::adoptVector(keyValueData) });
+                updatedKeys.append(Key{ keyID, KeyStatus::Usable, SharedBuffer::create(WTFMove(keyIDData)), SharedBuffer::create(WTFMove(keyValueData)) });
             }
 
             return true;

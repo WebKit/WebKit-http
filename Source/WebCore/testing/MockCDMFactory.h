@@ -77,7 +77,7 @@ public:
 
 private:
     MockCDMFactory();
-    std::unique_ptr<CDMPrivate> createCDM(CDM&) final;
+    std::unique_ptr<CDMPrivate> createCDM(CDM&, const String&) final;
     bool supportsKeySystem(const String&) final;
 
     MediaKeysRequirement m_distinctiveIdentifiersRequirement { MediaKeysRequirement::Optional };

@@ -271,7 +271,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     , m_cdmSession(nullptr)
 #endif
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
     , m_initDataProcessed(false)
 #endif
 {
