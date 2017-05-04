@@ -2499,7 +2499,7 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
                         if (Image* image = renderImage.cachedImage()->imageForRenderer(&renderImage)) {
                             if (image->width() > 1 && image->height() > 1) {
-                                info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
+                                info.imageURL = element->document().completeURL(renderImage.cachedImage()->url());
                                 info.isAnimatedImage = image->isAnimated();
 
                                 if (request.includeSnapshot) {
@@ -2524,7 +2524,7 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
                 }
             }
             if (linkElement)
-                info.url = [(NSURL *)linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr))) absoluteString];
+                info.url = linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr)));
             info.title = element->attributeWithoutSynchronization(HTMLNames::titleAttr).string();
             if (linkElement && info.title.isEmpty())
                 info.title = element->innerText();
@@ -2559,7 +2559,7 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
                 const HTMLAttachmentElement& attachment = downcast<HTMLAttachmentElement>(*hitNode);
                 info.title = attachment.attachmentTitle();
                 if (attachment.file())
-                    info.url = downcast<HTMLAttachmentElement>(*hitNode).file()->path();
+                    info.url = URL::fileURLWithFileSystemPath(downcast<HTMLAttachmentElement>(*hitNode).file()->path());
             } else {
                 info.isSelectable = renderer->style().userSelect() != SELECT_NONE;
                 if (info.isSelectable && !hitNode->isTextNode())

@@ -1626,7 +1626,6 @@ set(WebCore_SOURCES
     editing/MergeIdenticalElementsCommand.cpp
     editing/ModifySelectionListLevel.cpp
     editing/MoveSelectionCommand.cpp
-    editing/RemoveCSSPropertyCommand.cpp
     editing/RemoveFormatCommand.cpp
     editing/RemoveNodeCommand.cpp
     editing/RemoveNodePreservingChildrenCommand.cpp

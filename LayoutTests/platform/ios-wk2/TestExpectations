@@ -1940,9 +1940,6 @@ webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/ev
 
 webkit.org/b/169558 fast/history/ios/history-scroll-restoration.html [ Pass Failure ]
 
-webkit.org/b/170153 fast/scrolling/ios/touch-scroll-pointer-events-none.html [ Failure ]
-webkit.org/b/170153 fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Failure ]
-
 webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]
 
 webkit.org/b/171301 [ Release ] http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html [ Pass Timeout ]
@@ -1958,3 +1955,17 @@ webkit.org/b/171528 [ Release ] http/tests/preload/not_delaying_window_onload_be
 webkit.org/b/171530 [ Release ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/171559 svg/animations/animated-svg-image-removed-from-document-paused.html [ Pass Failure ]
+
+webkit.org/b/171564 http/tests/local/blob/send-sliced-data-blob.html [ Pass Failure Timeout ]
+
+webkit.org/b/171613 http/tests/xmlhttprequest/supported-xml-content-types.html [ Pass Timeout ]
+
+webkit.org/b/171617 [ Release ] perf/object-keys.html [ Pass Failure ]
+
+webkit.org/b/171331 http/tests/preload/single_download_preload.html [ Pass Failure ]
+
+webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
+
+webkit.org/b/171628 scrollingcoordinator/ios/nested-fixed-layer-positions.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/171638 [ Release ] http/tests/xmlhttprequest/methods.html [ Pass Timeout ]

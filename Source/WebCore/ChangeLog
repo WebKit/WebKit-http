@@ -1,3 +1,550 @@
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        No new layout tests, added an API test instead.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::endStream): New, stop all tracks.
+        * Modules/mediastream/MediaStream.h:
+
+        * Modules/mediastream/MediaStreamRegistry.cpp:
+        (WebCore::MediaStreamRegistry::unregisterStream): Minor cleanup.
+        (WebCore::MediaStreamRegistry::forEach): New, call the lambda with each stream.
+        (WebCore::MediaStreamRegistry::MediaStreamRegistry): Deleted, unused.
+        * Modules/mediastream/MediaStreamRegistry.h:
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::stopTrack): Add parameter so caller can specify if an 'ended' 
+        event should be sent or not.
+        (WebCore::MediaStreamTrack::trackMutedChanged): Don't post an event if the track has ended.
+        * Modules/mediastream/MediaStreamTrack.h:
+
+        * dom/Document.cpp:
+        (WebCore::Document::stopMediaCapture): Stop all streams in the document.
+        * dom/Document.h:
+
+        * page/Page.cpp:
+        (WebCore::Page::stopMediaCapture): Stop all streams.
+        * page/Page.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode): Display a black frame
+        when the stream ends.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::activeStatusChanged): Signal a characteristics
+        change to HTMLMediaElement refresh state.
+        * platform/mediastream/MediaStreamPrivate.h:
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::stopProducingData): Don't return early if the session isn't 
+        running, we always need to clear m_session on iOS.
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html
+
+        * loader/ResourceLoadObserver.cpp:
+        (WebCore::ResourceLoadObserver::clearInMemoryAndPersistentStore):
+            Now clears all regardless of the modifiedSince parameter's value.
+
+2017-05-03  Andy Estes  <aestes@apple.com>
+
+        Try to fix the macOS Public SDK build
+        https://bugs.webkit.org/show_bug.cgi?id=171635
+        <rdar://problem/31812751>
+
+        Unreviewed because the commit queue told me to say this.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: aria-rowspan value should be ignored if td/th rowspan value is provided
+        https://bugs.webkit.org/show_bug.cgi?id=171214
+
+        Reviewed by Chris Fleizach.
+
+        Return -1 in AccessibilityTableCell::ariaColumnSpan() and ariaRowSpan() if the
+        cell element has an explicit value for the native host language's span attribute.
+        Add checks to AccessibilityTableCell::columnIndexRange() and rowIndexRange() so
+        that we prefer an author-provided ARIA span value over an implicit host-language
+        span value. Similarly, add checks to AccessibilityARIAGridCell::columnIndexRange()
+        and rowIndexRange() so that we fall back on implicit host-language span values
+        when there is no author-provided ARIA span value and the ARIA cell is associated
+        with a cell element.
+
+        Test: accessibility/aria-cellspans-with-native-cellspans.html
+
+        * accessibility/AccessibilityARIAGridCell.cpp:
+        (WebCore::AccessibilityARIAGridCell::ariaRowSpanWithRowIndex):
+        (WebCore::AccessibilityARIAGridCell::columnIndexRange):
+        * accessibility/AccessibilityTableCell.cpp:
+        (WebCore::AccessibilityTableCell::rowIndexRange):
+        (WebCore::AccessibilityTableCell::columnIndexRange):
+        (WebCore::AccessibilityTableCell::ariaColumnSpan):
+        (WebCore::AccessibilityTableCell::ariaRowSpan):
+
+2017-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216160 and r216161.
+        https://bugs.webkit.org/show_bug.cgi?id=171640
+
+        These changes broke the iOS build. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216160
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216161
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        No new layout tests, added an API test instead.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::endStream): New, stop all tracks.
+        * Modules/mediastream/MediaStream.h:
+
+        * Modules/mediastream/MediaStreamRegistry.cpp:
+        (WebCore::MediaStreamRegistry::unregisterStream): Minor cleanup.
+        (WebCore::MediaStreamRegistry::forEach): New, call the lambda with each stream.
+        (WebCore::MediaStreamRegistry::MediaStreamRegistry): Deleted, unused.
+        * Modules/mediastream/MediaStreamRegistry.h:
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::stopTrack): Add parameter so caller can specify if an 'ended' 
+        event should be sent or not.
+        (WebCore::MediaStreamTrack::trackMutedChanged): Don't post an event if the track has ended.
+        * Modules/mediastream/MediaStreamTrack.h:
+
+        * dom/Document.cpp:
+        (WebCore::Document::stopMediaCapture): Stop all streams in the document.
+        * dom/Document.h:
+
+        * page/Page.cpp:
+        (WebCore::Page::stopMediaCapture): Stop all streams.
+        * page/Page.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode): Display a black frame
+        when the stream ends.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::activeStatusChanged): Signal a characteristics
+        change to HTMLMediaElement refresh state.
+        * platform/mediastream/MediaStreamPrivate.h:
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::stopProducingData): Don't return early if the session isn't 
+        running, we always need to clear m_session on iOS.
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        SearchInputType could end up with a mismatched renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=171547
+        <rdar://problem/31935047>
+
+        Reviewed by Antti Koivisto.
+
+        Normally we've got the correct renderer by the time we call into SearchInputType.
+        However, since HTMLInputElement::updateType() eagerly updates the type while the associated renderers are done lazily
+        (so we don't get them updated until after the next tree update), we could actually end up
+        with a mismatched renderer (e.g. through form submission).
+
+        Test: fast/forms/change-input-type-and-submit-form-crash.html
+
+        * html/SearchInputType.cpp:
+        (WebCore::SearchInputType::addSearchResult):
+        (WebCore::SearchInputType::didSetValueByUserEdit):
+
+2017-05-03  Jer Noble  <jer.noble@apple.com>
+
+        Make the VPIO audio unit a singleton, shared between multiple CaptureSources
+        https://bugs.webkit.org/show_bug.cgi?id=171622
+
+        Reviewed by Eric Carlson.
+
+        Move the implemnetation of CoreAudioCaptureSource into a shared singleton class, CoreAudioSharedUnit,
+        which will send audio to each of it's client CoreAudioCaptureSources. The first registered client will
+        define the settings used by the shared unit.
+
+        Drive-by fixes: Fix up setUseAVFoundationAudioCapture() to always accept the first value set.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioSharedUnit::isProducingData):
+        (WebCore::CoreAudioSharedUnit::microphoneFormat):
+        (WebCore::CoreAudioSharedUnit::singleton):
+        (WebCore::CoreAudioSharedUnit::addClient):
+        (WebCore::CoreAudioSharedUnit::removeClient):
+        (WebCore::CoreAudioSharedUnit::addEchoCancellationSource):
+        (WebCore::CoreAudioSharedUnit::removeEchoCancellationSource):
+        (WebCore::CoreAudioSharedUnit::preferredIOBufferSize):
+        (WebCore::CoreAudioSharedUnit::setupAudioUnits):
+        (WebCore::CoreAudioSharedUnit::configureMicrophoneProc):
+        (WebCore::CoreAudioSharedUnit::configureSpeakerProc):
+        (WebCore::CoreAudioSharedUnit::checkTimestamps):
+        (WebCore::CoreAudioSharedUnit::provideSpeakerData):
+        (WebCore::CoreAudioSharedUnit::speakerCallback):
+        (WebCore::CoreAudioSharedUnit::processMicrophoneSamples):
+        (WebCore::CoreAudioSharedUnit::microphoneCallback):
+        (WebCore::CoreAudioSharedUnit::cleanupAudioUnits):
+        (WebCore::CoreAudioSharedUnit::startProducingData):
+        (WebCore::CoreAudioSharedUnit::stopProducingData):
+        (WebCore::CoreAudioSharedUnit::suspend):
+        (WebCore::CoreAudioSharedUnit::defaultInputDevice):
+        (WebCore::CoreAudioCaptureSource::create):
+        (WebCore::CoreAudioCaptureSource::factory):
+        (WebCore::CoreAudioCaptureSource::CoreAudioCaptureSource):
+        (WebCore::CoreAudioCaptureSource::~CoreAudioCaptureSource):
+        (WebCore::CoreAudioCaptureSource::addEchoCancellationSource):
+        (WebCore::CoreAudioCaptureSource::removeEchoCancellationSource):
+        (WebCore::CoreAudioCaptureSource::startProducingData):
+        (WebCore::CoreAudioCaptureSource::stopProducingData):
+        (WebCore::CoreAudioCaptureSource::audioSourceProvider):
+        (WebCore::CoreAudioCaptureSource::preferredSampleRate): Deleted.
+        (WebCore::CoreAudioCaptureSource::preferredIOBufferSize): Deleted.
+        (WebCore::CoreAudioCaptureSource::configureMicrophoneProc): Deleted.
+        (WebCore::CoreAudioCaptureSource::configureSpeakerProc): Deleted.
+        (WebCore::CoreAudioCaptureSource::checkTimestamps): Deleted.
+        (WebCore::CoreAudioCaptureSource::provideSpeakerData): Deleted.
+        (WebCore::CoreAudioCaptureSource::speakerCallback): Deleted.
+        (WebCore::CoreAudioCaptureSource::processMicrophoneSamples): Deleted.
+        (WebCore::CoreAudioCaptureSource::microphoneCallback): Deleted.
+        (WebCore::CoreAudioCaptureSource::cleanupAudioUnits): Deleted.
+        (WebCore::CoreAudioCaptureSource::defaultInputDevice): Deleted.
+        (WebCore::CoreAudioCaptureSource::setupAudioUnits): Deleted.
+        (WebCore::CoreAudioCaptureSource::suspend): Deleted.
+        (WebCore::CoreAudioCaptureSource::resume): Deleted.
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+        * platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp:
+        (WebCore::RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture):
+
+2017-05-03  Jer Noble  <jer.noble@apple.com>
+
+        getUserMedia() fails because devices list is empty / inactive
+        https://bugs.webkit.org/show_bug.cgi?id=171626
+
+        Reviewed by Eric Carlson.
+
+        When creating a AVAudioSessionCaptureDevice, set the device's enabled state to true if the port description
+        has any items in its dataSources property (which is the best analogue to "isActive" we have in AVAudioSession).
+
+        Also, when creating the generic list of CaptureDevices, use the copy constructor to ensure the enabled state
+        gets copied to the new generic device.
+
+        * platform/mediastream/ios/AVAudioSessionCaptureDevice.mm:
+        (WebCore::AVAudioSessionCaptureDevice::create):
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm:
+        (WebCore::AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices):
+
+2017-05-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Implement the imageready event to reliably test the async image decoding
+        https://bugs.webkit.org/show_bug.cgi?id=171016
+
+        Reviewed by Simon Fraser.
+
+        The event will be fired for each client of the image. Firing the event
+        will happen after finishing the decoding and repainting the client.
+
+        Existing tests will be modified in a separate patch to use this event.
+
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchWebKitImageReadyEventForTesting):
+        * dom/Element.h:
+        * page/Settings.in:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::imageFrameAvailable):
+
+2017-05-03  Tim Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information URL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171623
+
+        Reviewed by Simon Fraser.
+
+        No new tests, not a behavior change.
+
+        * platform/URL.h:
+
+2017-05-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Link preload HTMLPreloadScanner support
+        https://bugs.webkit.org/show_bug.cgi?id=170747
+
+        Reviewed by Youenn Fablet.
+
+        Test: http/tests/preload/preloadscanner_download_resources.html
+
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::StartTagScanner): Initialize link preload flag.
+        (WebCore::TokenPreloadScanner::StartTagScanner::createPreloadRequest): Create a request only if the type is known (so ignore
+        preloads with unknown type).
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttribute): Add handling for link preload and the `as` attribute.
+        (WebCore::TokenPreloadScanner::StartTagScanner::relAttributeIsStyleSheet): Get LinkRelAttribute as input.
+        (WebCore::TokenPreloadScanner::StartTagScanner::resourceType): Return an std::optional, in case the preload type is unknown.
+        (WebCore::TokenPreloadScanner::StartTagScanner::shouldPreload): Return true for the link preload case.
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::preload): Return the resource rather than a nullptr if it's already in m_preloads.
+
+2017-05-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        YouTube user agent quirk breaks new YouTube
+        https://bugs.webkit.org/show_bug.cgi?id=171603
+
+        Reviewed by Carlos Garcia Campos.
+
+        Our user agent quirk to make YouTube 360 work breaks the new YouTube UI, causing it to
+        attempt to use the obsolete custom elements v0 API. WebKit only supports the v1 API. We
+        have to remove this quirk.
+
+        Note this does not affect Safari as Apple ports don't use our user agent quirks.
+
+        * platform/UserAgentQuirks.cpp:
+        (WebCore::urlRequiresChromeBrowser):
+
+2017-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: 404 Image Load does not appear as a failure in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171587
+        <rdar://problem/13222846>
+
+        Reviewed by Matt Baker.
+
+        * inspector/InspectorPageAgent.h:
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::cachedResourceContent):
+        (WebCore::prepareCachedResourceBuffer): Deleted.
+        Inline the function to make this less confusing.
+
+        (WebCore::InspectorPageAgent::buildObjectForFrameTree):
+        Treat a DecodeError as a failure.
+
+2017-05-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding should be disabled for snapshots, printing and preview
+        https://bugs.webkit.org/show_bug.cgi?id=171467
+ 
+        Reviewed by Simon Fraser.
+ 
+        Asynchronous image decoding should only be used for window display where
+        RenderElements can be repainted and painted. For cases where there is only
+        one chance to draw the image, synchronous decoding should be used. 
+
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::paintFillLayerExtended):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::paintIntoRect):
+
+2017-05-03  Nan Wang  <n_wang@apple.com>
+
+        AX: VO skips cells after cell with aria-colspan
+        https://bugs.webkit.org/show_bug.cgi?id=171579
+
+        Reviewed by Chris Fleizach.
+
+        We should consider the previous cells' column span value when
+        calculating the column index.
+
+        Test: accessibility/mac/aria-grid-column-span.html
+
+        * accessibility/AccessibilityARIAGridCell.cpp:
+        (WebCore::AccessibilityARIAGridCell::columnIndexRange):
+
+2017-05-03  Jiewen Tan  <jiewen_tan@apple.com>
+
+        ASSERTION FAILED: m_scriptExecutionContext->isContextThread() seen with LayoutTest crypto/workers/crypto-random-values-limits-worker.html
+        https://bugs.webkit.org/show_bug.cgi?id=171462
+        <rdar://problem/31906859>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * workers/WorkerGlobalScope.cpp:
+        (WebCore::WorkerGlobalScope::~WorkerGlobalScope):
+        Clear Crypto early in destruction since its ContextDestructionObserver
+        destruction makes checks about the WorkerThread.
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        RenderSearchField should not use isTextField() in SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT
+        https://bugs.webkit.org/show_bug.cgi?id=171608
+
+        Reviewed by Simon Fraser.
+
+        isTextField() is true for any generic single line text control.
+
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::isSearchField):
+        * rendering/RenderSearchField.h:
+
+2017-05-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove ScrollingCoordinator::supportsFixedPositionLayers()
+        https://bugs.webkit.org/show_bug.cgi?id=171557
+
+        Reviewed by Simon Fraser.
+
+        No new tests, behavior is not changed.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::shouldUpdateCompositingLayersAfterScrolling):
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::updateViewportConstrainedNode):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::synchronousScrollingReasons):
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollingCoordinator::supportsFixedPositionLayers): Deleted.
+        * page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp:
+        (WebCore::ScrollingCoordinatorCoordinatedGraphics::updateViewportConstrainedNode):
+        * page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.h:
+        (): Deleted.
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        Use PassRefPtr less in CompositeEditCommand
+        https://bugs.webkit.org/show_bug.cgi?id=171590
+
+        Reviewed by Sam Weinig.
+
+        Use PassRefPtr less in CompositeEditCommand.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::hasNoAttributeOrOnlyStyleAttribute):
+        (WebCore::isStyleSpanOrSpanWithOnlyStyleAttribute):
+        (WebCore::isSpanWithoutAttributesOrUnstyledStyleSpan):
+        (WebCore::isEmptyFontTag):
+        (WebCore::ApplyStyleCommand::doApply):
+        (WebCore::ApplyStyleCommand::applyBlockStyle):
+        (WebCore::ApplyStyleCommand::applyRelativeFontStyleChange):
+        (WebCore::dummySpanAncestorForNode):
+        (WebCore::ApplyStyleCommand::cleanupUnstyledAppleStyleSpans):
+        (WebCore::ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock):
+        (WebCore::ApplyStyleCommand::applyInlineStyle):
+        (WebCore::ApplyStyleCommand::fixRangeAndApplyInlineStyle):
+        (WebCore::ApplyStyleCommand::applyInlineStyleToNodeRange):
+        (WebCore::ApplyStyleCommand::shouldApplyInlineStyleToRun):
+        (WebCore::ApplyStyleCommand::removeConflictingInlineStyleFromRun):
+        (WebCore::ApplyStyleCommand::removeInlineStyleFromElement):
+        (WebCore::ApplyStyleCommand::replaceWithSpanOrRemoveIfWithoutAttributes):
+        (WebCore::ApplyStyleCommand::removeImplicitlyStyledElement):
+        (WebCore::ApplyStyleCommand::removeCSSStyle):
+        (WebCore::ApplyStyleCommand::highestAncestorWithConflictingInlineStyle):
+        (WebCore::ApplyStyleCommand::pushDownInlineStyleAroundNode):
+        (WebCore::ApplyStyleCommand::removeInlineStyle):
+        (WebCore::ApplyStyleCommand::shouldSplitTextElement):
+        (WebCore::ApplyStyleCommand::mergeStartWithPreviousIfIdentical):
+        (WebCore::ApplyStyleCommand::mergeEndWithNextIfIdentical):
+        (WebCore::ApplyStyleCommand::surroundNodeRangeWithElement):
+        (WebCore::ApplyStyleCommand::addBlockStyle):
+        (WebCore::ApplyStyleCommand::joinChildTextNodes):
+        * editing/ApplyStyleCommand.h:
+        (WebCore::ApplyStyleCommand::shouldRemoveInlineStyleFromElement):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::removeChildrenInRange):
+        (WebCore::CompositeEditCommand::mergeIdenticalElements):
+        (WebCore::CompositeEditCommand::insertTextIntoNode):
+        (WebCore::CompositeEditCommand::deleteTextFromNode):
+        (WebCore::CompositeEditCommand::replaceTextInNode):
+        (WebCore::CompositeEditCommand::replaceSelectedTextInNode):
+        (WebCore::CompositeEditCommand::replaceTextInNodePreservingMarkers):
+        (WebCore::CompositeEditCommand::removeNodeAttribute):
+        (WebCore::CompositeEditCommand::rebalanceWhitespaceAt):
+        (WebCore::CompositeEditCommand::rebalanceWhitespaceOnTextSubstring):
+        (WebCore::CompositeEditCommand::prepareWhitespaceAtPositionForSplit):
+        (WebCore::CompositeEditCommand::deleteInsignificantText):
+        (WebCore::CompositeEditCommand::removePlaceholderAt):
+        (WebCore::CompositeEditCommand::cleanupAfterDeletion):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/CompositeEditCommand.h:
+        * editing/DeleteFromTextNodeCommand.cpp:
+        (WebCore::DeleteFromTextNodeCommand::DeleteFromTextNodeCommand):
+        (WebCore::DeleteFromTextNodeCommand::doApply):
+        (WebCore::DeleteFromTextNodeCommand::doUnapply):
+        (WebCore::DeleteFromTextNodeCommand::getNodesInCommand):
+        * editing/DeleteFromTextNodeCommand.h:
+        (WebCore::DeleteFromTextNodeCommand::create):
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::deleteTextFromNode):
+        (WebCore::DeleteSelectionCommand::handleGeneralDelete):
+        (WebCore::DeleteSelectionCommand::fixupWhitespace):
+        * editing/DeleteSelectionCommand.h:
+        * editing/EditingAllInOne.cpp:
+        * editing/EditingStyle.cpp:
+        (WebCore::EditingStyle::removeStyleConflictingWithStyleOfNode):
+        (WebCore::elementMatchesAndPropertyIsNotInInlineStyleDecl):
+        (WebCore::EditingStyle::mergeInlineAndImplicitStyleOfElement):
+        (WebCore::EditingStyle::wrappingStyleForSerialization):
+        (WebCore::styleFromMatchedRulesForElement):
+        (WebCore::EditingStyle::mergeStyleFromRules):
+        (WebCore::EditingStyle::mergeStyleFromRulesForSerialization):
+        (WebCore::EditingStyle::removeStyleFromRulesAndContext):
+        (WebCore::EditingStyle::removePropertiesInElementDefaultStyle):
+        * editing/EditingStyle.h:
+        * editing/IndentOutdentCommand.cpp:
+        (WebCore::IndentOutdentCommand::tryIndentingAsListItem):
+        * editing/InsertIntoTextNodeCommand.cpp:
+        (WebCore::InsertIntoTextNodeCommand::InsertIntoTextNodeCommand):
+        (WebCore::InsertIntoTextNodeCommand::getNodesInCommand):
+        * editing/InsertIntoTextNodeCommand.h:
+        (WebCore::InsertIntoTextNodeCommand::create):
+        * editing/InsertLineBreakCommand.cpp:
+        (WebCore::InsertLineBreakCommand::doApply):
+        * editing/InsertListCommand.cpp:
+        (WebCore::InsertListCommand::mergeWithNeighboringLists):
+        (WebCore::InsertListCommand::listifyParagraph):
+        * editing/InsertParagraphSeparatorCommand.cpp:
+        (WebCore::InsertParagraphSeparatorCommand::doApply):
+        * editing/InsertTextCommand.cpp:
+        (WebCore::InsertTextCommand::performOverwrite):
+        (WebCore::InsertTextCommand::doApply):
+        (WebCore::InsertTextCommand::insertTab):
+        * editing/MergeIdenticalElementsCommand.cpp:
+        (WebCore::MergeIdenticalElementsCommand::MergeIdenticalElementsCommand):
+        (WebCore::MergeIdenticalElementsCommand::doApply):
+        (WebCore::MergeIdenticalElementsCommand::doUnapply):
+        (WebCore::MergeIdenticalElementsCommand::getNodesInCommand):
+        * editing/MergeIdenticalElementsCommand.h:
+        (WebCore::MergeIdenticalElementsCommand::create):
+        * editing/RemoveCSSPropertyCommand.cpp: Removed.
+        * editing/RemoveCSSPropertyCommand.h: Removed.
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline):
+        (WebCore::ReplaceSelectionCommand::doApply):
+        (WebCore::ReplaceSelectionCommand::addSpacesForSmartReplace):
+        (WebCore::ReplaceSelectionCommand::mergeTextNodesAroundPosition):
+        * editing/markup.cpp:
+        (WebCore::StyledMarkupAccumulator::appendElement):
+        (WebCore::styleFromMatchedRulesAndInlineDecl):
+        (WebCore::createMarkupInternal):
+
 2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
 
         AX: Treat cells with ARIA table cell properties as cells

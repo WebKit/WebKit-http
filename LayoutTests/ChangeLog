@@ -1,3 +1,208 @@
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html: Added.
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: aria-rowspan value should be ignored if td/th rowspan value is provided
+        https://bugs.webkit.org/show_bug.cgi?id=171214
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-cellspans-with-native-cellspans-expected.txt: Added.
+        * accessibility/aria-cellspans-with-native-cellspans.html: Added.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark http/tests/xmlhttprequest/methods.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171638
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark scrollingcoordinator/ios/nested-fixed-layer-positions.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171628
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        SearchInputType could end up with a mismatched renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=171547
+        <rdar://problem/31935047>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/forms/change-input-type-and-submit-form-crash-expected.txt: Added.
+        * fast/forms/change-input-type-and-submit-form-crash.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/slider/slider-styles.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171629
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest http/tests/inspector/network/fetch-network-data.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=166038
+        <rdar://problem/29488489>
+
+        Reviewed by Matt Baker.
+
+        * platform/mac/TestExpectations:
+        * http/tests/inspector/network/fetch-network-data.html:
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly.html:
+        Use singleFireEventListener instead of awaitEvent so that the follow-up event handlers
+        can be added synchronously instead of in a microtask. When the microtask happened later
+        than other incoming events then the follow-up handlers would have been added too late.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170699.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Have WKWebView call _updateVisibleContentRects for the current transaction if possible, rather than always delaying
+        https://bugs.webkit.org/show_bug.cgi?id=171619
+        https://bugs.webkit.org/show_bug.cgi?id=170153
+
+        Reviewed by Tim Horton.
+
+        These tests need to wait a bit for the scrolling state of the document to be updated.
+
+        * fast/scrolling/ios/touch-scroll-pointer-events-none.html:
+        * fast/scrolling/ios/touch-scroll-visibility-hidden.html:
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Link preload HTMLPreloadScanner support
+        https://bugs.webkit.org/show_bug.cgi?id=170747
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/preload/preloadscanner_download_resources-expected.txt: Added.
+        * http/tests/preload/preloadscanner_download_resources.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/preload/single_download_preload.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171331
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark perf/object-keys.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171617
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Different behaviour with the .sort(callback) method (unlike Firefox & Chrome)
+        https://bugs.webkit.org/show_bug.cgi?id=47825
+
+        Reviewed by Saam Barati.
+
+        Fix broken test.
+
+        * http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts-expected.txt:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark http/tests/xmlhttprequest/supported-xml-content-types.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171613
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Nan Wang  <n_wang@apple.com>
+
+        AX: VO skips cells after cell with aria-colspan
+        https://bugs.webkit.org/show_bug.cgi?id=171579
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/aria-grid-column-span-expected.txt: Added.
+        * accessibility/mac/aria-grid-column-span.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/websocket/tests/hybi/inspector/binary.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171553
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Detach frame from document when entering page cache
+        https://bugs.webkit.org/show_bug.cgi?id=166774
+        <rdar://problem/29904368>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations: Unskip tests.
+        * fast/history/page-cache-after-window-open-expected.txt: Update expected result.
+        * fast/history/page-cache-after-window-open.html: Ditto.
+        * fast/history/page-cache-with-opener-expected.txt: Ditto.
+        * fast/history/page-cache-with-opener.html: Update test given its new expected behavior.
+        * fast/history/resources/page-cache-window-with-opener.html: Ditto.
+        * http/tests/security/xss-DENIED-click-and-form-submission-from-inactive-domwindow-expected.txt: Added.
+        * http/tests/security/xss-DENIED-click-and-form-submission-from-inactive-domwindow.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window3-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window3.html: Added.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Marking three imported/w3c/web-platform-tests/webrtc test as flaky failures.
+        https://bugs.webkit.org/show_bug.cgi?id=171605
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test http/tests/local/blob/send-sliced-data-blob.html as flaky failure and timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=171564
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
 2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
 
         AX: Treat cells with ARIA table cell properties as cells

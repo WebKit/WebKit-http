@@ -40,6 +40,7 @@
 #include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
 #include "PageLoadState.h"
+#include "ProcessCrashReason.h"
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
@@ -863,7 +864,7 @@ public:
 
     void processDidBecomeUnresponsive();
     void processDidBecomeResponsive();
-    void processDidCrash();
+    void processDidCrash(ProcessCrashReason);
     void willChangeProcessIsResponsive();
     void didChangeProcessIsResponsive();
 
@@ -984,6 +985,9 @@ public:
     void setMuted(WebCore::MediaProducer::MutedStateFlags);
     void setMayStartMediaWhenInWindow(bool);
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
+    void setMediaCaptureEnabled(bool);
+    bool mediaCaptureEnabled() const { return m_mediaCaptureEnabled; }
+
         
 #if ENABLE(MEDIA_SESSION)
     bool hasMediaSessionWithActiveMediaElements() const { return m_hasMediaSessionWithActiveMediaElements; }
@@ -1945,6 +1949,7 @@ private:
     float m_mediaVolume;
     WebCore::MediaProducer::MutedStateFlags m_mutedState { WebCore::MediaProducer::NoneMuted };
     bool m_mayStartMediaWhenInWindow;
+    bool m_mediaCaptureEnabled { true };
 
     bool m_waitingForDidUpdateActivityState;
 
