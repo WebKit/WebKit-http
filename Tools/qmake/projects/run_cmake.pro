@@ -28,8 +28,14 @@ build_pass|!debug_and_release {
         PORT=Qt \
         CMAKE_BUILD_TYPE=$$configuration \
         CMAKE_TOOLCHAIN_FILE=$$toolchain_file \
-        CMAKE_PREFIX_PATH=\"$$[QT_INSTALL_PREFIX];$$ROOT_QT_BUILD_DIR/qtbase;$$ROOT_QT_BUILD_DIR/qtlocation;$$ROOT_QT_BUILD_DIR/qtsensors\" \
         USE_LIBHYPHEN=OFF
+
+    !isEmpty(_QMAKE_SUPER_CACHE_) {
+        CMAKE_PREFIX_PATH=\"$$ROOT_QT_BUILD_DIR/qtbase;$$ROOT_QT_BUILD_DIR/qtlocation;$$ROOT_QT_BUILD_DIR/qtsensors;$$ROOT_QT_BUILD_DIR/qtdeclarative;$$ROOT_QT_BUILD_DIR/qtwebchannel\"
+    } else {
+        CMAKE_PREFIX_PATH=\"$$[QT_INSTALL_PREFIX]\"
+    }
+    CMAKE_CONFIG += CMAKE_PREFIX_PATH=$$CMAKE_PREFIX_PATH
 
     static: CMAKE_CONFIG += USE_THIN_ARCHIVES=OFF
 
