@@ -1,3 +1,299 @@
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMediaCaptureEnabled): New.
+        (WKPageGetMediaCaptureEnabled): New.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setMediaCaptureEnabled:]): New.
+        (-[WKWebView _mediaCaptureEnabled]): New.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler
+        and webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler on macOS
+        and iOS.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        Initialize the rejection timer.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        Call invalidatePendingRequests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidatePendingRequests): Invalidate all
+        pending requests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::rejectionTimerFired): Reject a promise and
+        schedule the timer if there are any others pending.
+        (WebKit::UserMediaPermissionRequestManagerProxy::scheduleNextRejection): 
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame): Don't
+        prompt the user if capture is disabled.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidateRequests): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Stop capture in the current
+        page on iOS.
+        (WebKit::UserMediaProcessManager::setCaptureEnabled):
+        * UIProcess/UserMediaProcessManager.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMediaCaptureEnabled):
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::mediaCaptureEnabled):
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::cancelPendingRequests): New, cancel all pending
+        requests.
+        (WebKit::UserMediaPermissionRequestManager::cancelUserMediaRequest): Deny the request.
+        (WebKit::UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopMediaCapture):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        These are all test infrastructure changes.
+
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.cpp:
+        (WKResourceLoadStatisticsManagerClearInMemoryAndPersistentStoreModifiedSinceHours):
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.h:
+        * UIProcess/WebResourceLoadStatisticsManager.cpp:
+        (WebKit::WebResourceLoadStatisticsManager::clearInMemoryAndPersistentStoreModifiedSinceHours):
+        * UIProcess/WebResourceLoadStatisticsManager.h:
+
+2017-05-03  Timothy Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information imageURL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171639
+
+        Reviewed by Sam Weinig.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        (-[WKContentView _previewItemController:commitPreview:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2017-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216160 and r216161.
+        https://bugs.webkit.org/show_bug.cgi?id=171640
+
+        These changes broke the iOS build. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216160
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216161
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Unreviewed build fix.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::clearUserMediaState):
+        * UIProcess/WebPageProxy.h:
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMediaCaptureEnabled): New.
+        (WKPageGetMediaCaptureEnabled): New.
+        (WKPageClearUserMediaState): Deleted, unused.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setMediaCaptureEnabled:]): New.
+        (-[WKWebView _mediaCaptureEnabled]): New.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler
+        and webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler on macOS
+        and iOS.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        Initialize the rejection timer.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        Call invalidatePendingRequests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidatePendingRequests): Invalidate all
+        pending requests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::rejectionTimerFired): Reject a promise and
+        schedule the timer if there are any others pending.
+        (WebKit::UserMediaPermissionRequestManagerProxy::scheduleNextRejection): 
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame): Don't
+        prompt the user if capture is disabled.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidateRequests): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Stop capture in the current
+        page on iOS.
+        (WebKit::UserMediaProcessManager::setCaptureEnabled):
+        * UIProcess/UserMediaProcessManager.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMediaCaptureEnabled):
+        (WebKit::WebPageProxy::clearUserMediaState): Deleted.
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::mediaCaptureEnabled):
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::cancelPendingRequests): New, cancel all pending
+        requests.
+        (WebKit::UserMediaPermissionRequestManager::cancelUserMediaRequest): Deny the request.
+        (WebKit::UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopMediaCapture):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-05-03  Tim Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information URL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171623
+
+        Reviewed by Simon Fraser.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _showAttachmentSheet]):
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView annotation:isBeingPressedAtPoint:controller:]):
+        (-[WKPDFView actionSheetAssistant:performAction:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2017-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Have WKWebView call _updateVisibleContentRects for the current transaction if possible, rather than always delaying
+        https://bugs.webkit.org/show_bug.cgi?id=171619
+        
+        Also fixes webkit.org/b/170153 and webkit.org/b/170195
+
+        Reviewed by Tim Horton.
+
+        In r214391 we started adding the pre-commit handler in a dispatch_async() to ensure that
+        the handler would always run, since we couldn't reliably test the phase of the current
+        transaction. Now that problem has been solved (rdar://problem/31253952) we can go back to
+        checking the transaction phase on newer iOS versions. If we're too late for the current transaction
+        we still need to dispatch_async() to get into the next one.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _addUpdateVisibleContentRectPreCommitHandler]):
+        (-[WKWebView _scheduleVisibleContentRectUpdateAfterScrollInView:]):
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r216129): ASSERTION FAILED: m_process->state() == WebProcessProxy::State::Terminated
+        https://bugs.webkit.org/show_bug.cgi?id=171616
+
+        Reviewed by Brady Eidson.
+
+        Stop calling resetStateAfterProcessExited() in WebPageProxy::terminateProcess() as the call to
+        WebProcessProxy::requestTermination() already causes WebPageProxy::processDidCrash() to be called
+        after r216129. WebPageProxy::processDidCrash() already takes care of calling
+        resetStateAfterProcessExited().
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::terminateProcess):
+
+2017-05-03  Brady Eidson  <beidson@apple.com>
+
+        Handle KVO updating of the "hasOnlySecureContent" before a page results in an HTTP auth challenge.
+        https://bugs.webkit.org/show_bug.cgi?id=171607
+
+        Reviewed by Andy Estes.
+        
+        To test this fix we'd need the combination of an HTTPD inside API tests, so no test for now.
+
+        * UIProcess/PageLoadState.cpp:
+        (WebKit::PageLoadState::hasOnlySecureContent): If the state is provisional, check the provisional URL instead.
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Extend processDidCrash delegate to let the client know the reason for the crash
+        https://bugs.webkit.org/show_bug.cgi?id=171565
+        <rdar://problem/31204417>
+
+        Reviewed by Sam Weinig.
+
+        Extend processDidCrash delegate to let the client know the reason for the crash. This
+        is needed by some clients to distinguish actual crashes from terminations due to
+        resource limits.
+
+        * Shared/ProcessCrashReason.h: Added.
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::processDidCrash):
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toAPI):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/C/WKPageNavigationClient.h:
+        * UIProcess/API/C/WKProcessCrashReason.h: Added.
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::processDidCrash):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::processDidCrash):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didClose):
+        (WebKit::WebProcessProxy::requestTermination):
+        (WebKit::diagnosticLoggingKeyForTerminationReason):
+        (WebKit::toProcessCrashReason):
+        (WebKit::WebProcessProxy::terminateProcessDueToResourceLimits):
+        (WebKit::WebProcessProxy::didExceedActiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedInactiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedBackgroundCPULimit):
+        * UIProcess/WebProcessProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
 2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Add GTK+ implementation of WebAutomationSession

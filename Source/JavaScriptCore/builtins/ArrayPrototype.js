@@ -543,10 +543,17 @@ function sort(comparator)
 
         for (var dstIndex = left; dstIndex < rightEnd; ++dstIndex) {
             if (right < rightEnd) {
-                if (left >= leftEnd || comparator(src[right], src[left]) < 0) {
+                if (left >= leftEnd) {
                     dst[dstIndex] = src[right++];
                     continue;
                 }
+
+                let comparisonResult = comparator(src[right], src[left]);
+                if ((typeof comparisonResult === "boolean" && !comparisonResult) || comparisonResult < 0) {
+                    dst[dstIndex] = src[right++];
+                    continue;
+                }
+
             }
 
             dst[dstIndex] = src[left++];
@@ -639,7 +646,7 @@ function sort(comparator)
 
     if (typeof comparator == "function")
         comparatorSort(array, length, comparator);
-    else if (comparator === @undefined)
+    else if (comparator === null || comparator === @undefined)
         stringSort(array, length);
     else
         @throwTypeError("Array.prototype.sort requires the comparsion function be a function or undefined");

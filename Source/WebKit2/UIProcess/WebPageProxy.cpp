@@ -2412,7 +2412,6 @@ void WebPageProxy::terminateProcess()
         return;
 
     m_process->requestTermination();
-    resetStateAfterProcessExited();
 }
 
 SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForwardListItem&)>& filter) const
@@ -4207,6 +4206,18 @@ void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
     activityStateDidChange(ActivityState::IsAudible | ActivityState::IsCapturingMedia);
 }
 
+void WebPageProxy::setMediaCaptureEnabled(bool enabled)
+{
+    m_mediaCaptureEnabled = enabled;
+
+    if (!isValid())
+        return;
+
+#if ENABLE(MEDIA_STREAM)
+    UserMediaProcessManager::singleton().setCaptureEnabled(enabled);
+#endif
+}
+
 #if ENABLE(MEDIA_SESSION)
 void WebPageProxy::handleMediaEvent(MediaEventType eventType)
 {
@@ -5293,7 +5304,7 @@ void WebPageProxy::didChangeProcessIsResponsive()
     m_pageLoadState.didChangeProcessIsResponsive();
 }
 
-void WebPageProxy::processDidCrash()
+void WebPageProxy::processDidCrash(ProcessCrashReason reason)
 {
     ASSERT(m_isValid);
 
@@ -5316,7 +5327,7 @@ void WebPageProxy::processDidCrash()
     navigationState().clearAllNavigations();
 
     if (m_navigationClient)
-        m_navigationClient->processDidCrash(*this);
+        m_navigationClient->processDidCrash(*this, reason);
     else
         m_loaderClient->processDidCrash(*this);
 
