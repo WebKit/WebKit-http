@@ -84,7 +84,8 @@ void WorkQueue::performWorkOnRegisteredWorkThread()
         m_workItemQueueLock.unlock();
         for (auto& workItem : workItemQueue) {
             workItem->function()();
-            deref();
+            // QTFIMXE: Fix reference leak https://bugs.webkit.org/show_bug.cgi?id=142471
+            //deref();
         }
         m_workItemQueueLock.lock();
     }
