@@ -33,7 +33,7 @@ namespace WebKit {
 
 CompositingManager::~CompositingManager()
 {
-    ASSERT(m_connectionFd == -1);
+    ASSERT(!m_connectionFd);
 }
 
 void CompositingManager::establishConnection(WebPage& webPage)
@@ -43,6 +43,13 @@ void CompositingManager::establishConnection(WebPage& webPage)
         Messages::CompositingManagerProxy::EstablishConnection::Reply(connectionHandle));
 
     m_connectionFd = connectionHandle.releaseFileDescriptor();
+}
+
+int CompositingManager::releaseConnectionFd()
+{
+    int fd = m_connectionFd.value_or(-1);
+    m_connectionFd = std::nullopt;
+    return fd;
 }
 
 } // namespace WebKit
