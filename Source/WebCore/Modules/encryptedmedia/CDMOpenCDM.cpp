@@ -26,7 +26,6 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDMPrivate.h"
-#include "UUID.h"
 #include "inspector/InspectorValues.h"
 #include <open_cdm.h>
 #include <wtf/text/Base64.h>
