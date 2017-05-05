@@ -1,3 +1,448 @@
+2017-05-05  Brian Burg  <bburg@apple.com>
+
+        CrashTracer: [USER] com.apple.WebKit.WebContent.Development at com.apple.WebCore: WebCore::commonVMSlow + 57
+        https://bugs.webkit.org/show_bug.cgi?id=171669
+        <rdar://problem/31967684>
+
+        Reviewed by Mark Lam.
+
+        safaridriver's AutomaticInspection capability causes us to call WebInspectorProxy::connect()
+        underneath the Automation.inspectBrowsingContext command. This fires a NeedDebuggerBreak
+        interrupt for the web content's VM, but this is racy because the web content process may
+        not yet be fully initialized when this interrupt is handled.
+
+        To work around this, just don't deliver any interrupts if the VM singleton is still null.
+        This is a reliable signal that the web content process is not fully initialized yet. Not delivering
+        is harmless; the interrupt only exists to break out of infinite loops in JS code, but there
+        could not be any such infinite loop yet if the web content process is not fully initialized.
+
+        * WebProcess/WebPage/WebInspectorInterruptDispatcher.cpp:
+        (WebKit::WebInspectorInterruptDispatcher::notifyNeedDebuggerBreak):
+
+2017-05-05  Brian Burg  <bburg@apple.com>
+
+        Web Automation: cookie-related commands don't work correctly
+        https://bugs.webkit.org/show_bug.cgi?id=171713
+        <rdar://problem/29829930>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Commands that use WebCookieManager directly should complete when
+        the manager's completion handler is called. Otherwise, this will race
+        with subsequent accesses to cookies via the web process (document.cookie).
+
+        Also, these commands need to use the active browsing context's session ID.
+        They currently use the process pool's storage session, which is wrong
+        since we specially configure automation instances with an ephemeral store.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::addSingleCookie):
+        (WebKit::WebAutomationSession::deleteAllCookies):
+
+2017-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Rename webProcessDidCrashWithReason callback to webProcessDidTerminate and stop calling webProcessDidCrash for client terminations
+        https://bugs.webkit.org/show_bug.cgi?id=171624
+
+        Reviewed by Dan Bernstein.
+
+        Follow-up fixes after r216129 based on feedback I have received:
+        - Rename webProcessDidCrashWithReason callback function to webProcessDidTerminate given that this is called
+          for non-crashes (e.g. terminations requested by the client).
+        - Rename WKProcessCrashReason / ProcessCrashReason to WKProcessTerminationReason / ProcessTerminationReason
+          for consistency with the new naming.
+        - Stop calling processDidCrash / webProcessDidCrash for terminations requested by the client, to maintain
+          pre-r216129 behavior. Those are not crashes (The client used an API such as WKPageTerminateProcess()).
+          webProcessDidTerminate will still be called though.
+        - Fix a bug where - for terminations due to resource limits - WebPageProxy::processDidCrash() was getting
+          called twice: First by WebProcessProxy::requestTermination() with reason "RequestedByClient" then a
+          second time by WebProcessProxy::terminateProcessDueToResourceLimits() with the proper reason.
+
+        * Shared/ProcessTerminationReason.h: Renamed from Source/WebKit2/Shared/ProcessCrashReason.h.
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::processDidTerminate):
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toAPI):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageTerminate):
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/C/WKPageNavigationClient.h:
+        * UIProcess/API/C/WKProcessTerminationReason.h: Renamed from Source/WebKit2/UIProcess/API/C/WKProcessCrashReason.h.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _killWebContentProcessAndResetState]):
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::processDidTerminate):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::processDidTerminate):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didClose):
+        (WebKit::WebProcessProxy::requestTermination):
+        (WebKit::WebProcessProxy::logDiagnosticMessageForResourceLimitTermination):
+        (WebKit::WebProcessProxy::didExceedActiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedInactiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedBackgroundCPULimit):
+        * UIProcess/WebProcessProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-05-05  Derek Schuff  <dschuff@chromium.org>
+
+        Mac cmake buildfix after r216037
+        https://bugs.webkit.org/show_bug.cgi?id=171558
+
+        Reviewed by JF Bastien.
+
+        * PlatformMac.cmake:
+
+2017-05-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Enable runtime flag for MediaDevices with enable-media-stream property.
+        https://bugs.webkit.org/show_bug.cgi?id=171730
+
+        Reviewed by Michael Catanzaro.
+
+        After r215939 the MediaDevices runtime setting has to be enabled
+        also to use MediaStream / WebRTC.
+
+        Enable it as part of the enable-media-stream property of the
+        WebKitGTK+ API.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webkit_settings_set_enable_media_stream):
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Assertion failure in Inspector::RemoteInspector::setRemoteInspectorClient when disposing WebKitWebContext
+        https://bugs.webkit.org/show_bug.cgi?id=171644
+
+        Reviewed by Michael Catanzaro.
+
+        Ensure that it's not possible to enable automation in more than one WebKitWebContext at the same time. Instead
+        of creating the AutomationClient unconditionally when the context is constructed, it's now created only when
+        automation is enabled, and deleted if it's disabled.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+        (webkit_web_context_is_automation_allowed):
+        (webkit_web_context_set_automation_allowed):
+        * UIProcess/Cocoa/AutomationClient.mm:
+        (WebKit::AutomationClient::AutomationClient):
+        (WebKit::AutomationClient::~AutomationClient):
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216206.
+        https://bugs.webkit.org/show_bug.cgi?id=171714
+
+        Multiple LayoutTests crashing in Document::page() (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove support for legacy Notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+        http://trac.webkit.org/changeset/216206
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        NeverDestroyed<String>(ASCIILiteral(...)) is not thread safe.
+        https://bugs.webkit.org/show_bug.cgi?id=171586
+        <rdar://problem/31873190>
+
+        Reviewed by Yusuke Suzuki.
+
+        * Shared/API/APIError.cpp:
+        (API::Error::webKitErrorDomain):
+        (API::Error::webKitNetworkErrorDomain):
+        (API::Error::webKitPolicyErrorDomain):
+        (API::Error::webKitPluginErrorDomain):
+        (API::Error::webKitDownloadErrorDomain):
+        (API::Error::webKitPrintErrorDomain):
+        * Shared/WebPreferencesKeys.cpp:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::executeEditCommand):
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::didBeginEditing):
+        (WebKit::WebEditorClient::respondToChangedContents):
+        (WebKit::WebEditorClient::respondToChangedSelection):
+        (WebKit::WebEditorClient::didEndEditing):
+
+2017-05-04  Jeremy Jones  <jeremyj@apple.com>
+
+        Add mute to WebPlaybackSessionModel.
+        https://bugs.webkit.org/show_bug.cgi?id=171592
+        rdar://problem/31814074
+
+        Reviewed by Jer Noble.
+
+        Plumb through muted.
+
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.messages.in:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.mm:
+        (WebKit::WebPlaybackSessionModelContext::toggleMuted):
+        (WebKit::WebPlaybackSessionModelContext::setMuted):
+        (WebKit::WebPlaybackSessionManagerProxy::setMuted):
+        (WebKit::WebPlaybackSessionManagerProxy::toggleMuted):
+        * WebProcess/cocoa/WebPlaybackSessionManager.h:
+        * WebProcess/cocoa/WebPlaybackSessionManager.messages.in:
+        * WebProcess/cocoa/WebPlaybackSessionManager.mm:
+        (WebKit::WebPlaybackSessionInterfaceContext::mutedChanged):
+        (WebKit::WebPlaybackSessionManager::mutedChanged):
+        (WebKit::WebPlaybackSessionManager::toggleMuted):
+
+2017-05-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Image action sheets sometimes do not dismiss when beginning data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=171687
+        <rdar://problem/31996534>
+
+        Reviewed by Beth Dakin.
+
+        When presenting an image sheet using WKActionSheetAssistant, we may present the popover asynchronously. In this
+        case, even if -cleanupSheet is invoked after -showImageSheet, the popover will still be presented. To fix this,
+        add a flag, _hasPendingActionSheet, that is set to true when an image action sheet will be presented in the
+        future.
+
+        In cleanupSheet, we revert this flag to NO, and in the sheet presentation block, we first check to see if there
+        is a pending action sheet. If there is not, then simply do not invoke the image sheet presentation block.
+
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant showImageSheet]):
+        (-[WKActionSheetAssistant cleanupSheet]):
+
+2017-05-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add support for keeping the selection in a focused editable element when dragging begins
+        https://bugs.webkit.org/show_bug.cgi?id=171585
+        <rdar://problem/31544320>
+
+        Reviewed by Beth Dakin and Zalan Bujtas.
+
+        Minor adjustments and refactoring in WebKit2. See WebCore ChangeLog for more details.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::startDrag):
+        (WebKit::WebPageProxy::didStartDrag):
+
+        Factor out code in WebPageProxy that sends a WebPage::DidStartDrag message to the web process into a separate
+        helper, and tweak the places where we directly send this IPC message to the web process to instead call this
+        helper.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::setDragImage):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didStartDrag):
+        (WebKit::WebPage::dragCancelled):
+
+        Clear out state in the web process and call out to the EventHandler to handle drag cancellation and the drag
+        start response from the UI process.
+
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::didStartDrag): Deleted.
+        (WebKit::WebPage::dragCancelled): Deleted.
+
+2017-05-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/WebProcessCreationParameters.cpp:
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/WebProcessPool.cpp:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        * WebProcess/Notifications/NotificationPermissionRequestManager.cpp:
+        * WebProcess/Notifications/NotificationPermissionRequestManager.h:
+        * WebProcess/Notifications/WebNotificationManager.cpp:
+        * WebProcess/Notifications/WebNotificationManager.h:
+        * WebProcess/WebCoreSupport/WebNotificationClient.cpp:
+        * WebProcess/WebCoreSupport/WebNotificationClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebProcess.cpp:
+        Remove legacy notification specific code.
+
+2017-05-04  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMediaCaptureEnabled): New.
+        (WKPageGetMediaCaptureEnabled): New.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setMediaCaptureEnabled:]): New.
+        (-[WKWebView _mediaCaptureEnabled]): New.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler
+        and webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler on macOS
+        and iOS.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        Initialize the rejection timer.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        Call invalidatePendingRequests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidatePendingRequests): Invalidate all
+        pending requests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::rejectionTimerFired): Reject a promise and
+        schedule the timer if there are any others pending.
+        (WebKit::UserMediaPermissionRequestManagerProxy::scheduleNextRejection): 
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame): Don't
+        prompt the user if capture is disabled.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidateRequests): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Stop capture in the current
+        page on iOS.
+        (WebKit::UserMediaProcessManager::setCaptureEnabled):
+        * UIProcess/UserMediaProcessManager.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMediaCaptureEnabled):
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::mediaCaptureEnabled):
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::cancelPendingRequests): New, cancel all pending
+        requests.
+        (WebKit::UserMediaPermissionRequestManager::cancelUserMediaRequest): Deny the request.
+        (WebKit::UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopMediaCapture):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * Shared/API/c/WKString.cpp:
+        (WKStringGetCharacters):
+
+2017-05-04  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] -[WKWebsiteDataStore httpCookieStore] is declared in the main @interface but implemented in a category
+        https://bugs.webkit.org/show_bug.cgi?id=171657
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore httpCookieStore]): Moved from the WKPrivate category into the main
+          @implementation block.
+
+2017-05-04  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an optional width parameter to -[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]
+        https://bugs.webkit.org/show_bug.cgi?id=171646
+        <rdar://problem/30306321>
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]): Called
+        -renderedImageWithOptions:width: with a nil width.
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:width:]): Passed an optional width
+        to InjectedBundleNodeHandle::renderedImage().
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect): If a width is specified, create an image graphics context at that
+        width, preserving the aspect ratio of paintingRect.
+        (WebKit::InjectedBundleNodeHandle::renderedImage):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216172.
+        https://bugs.webkit.org/show_bug.cgi?id=171654
+
+        FTBFS for iOS due to missing WebPageProxy::stopMediaCapture()
+        implementation. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216172
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] SHOULD NEVER BE REACHED in WebKit::CompositingRunLoop::updateCompleted
+        https://bugs.webkit.org/show_bug.cgi?id=171336
+
+        Reviewed by Michael Catanzaro.
+
+        We are assuming that all calls to ThreadedCompositor::renderLayerTree() happen because of an scheduled update,
+        but that's not true in the case of ThreadedCompositor::forceRepaint(). In that case we never want to call
+        CompositingRunLoop::updateCompleted().
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::forceRepaint):
+        (WebKit::ThreadedCompositor::sceneUpdateFinished):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+
+2017-05-04  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style exits with an error while parsing Source/WebKit2/Scripts/webkit/ directory: KeyError: 'st'
+        <https://bugs.webkit.org/show_bug.cgi?id=171510>
+
+        Reviewed by Daniel Bates.
+
+        The problem was that 'import parser' was ambiguous since there
+        is a built-in parser module that comes with Python.  Changing
+        'import parser' to 'from webkit import parser' fixed the error
+        in check-webkit-style (and pylint) by forcing it to load the
+        local 'parser' module, but then running messages_unittest.py
+        directly would fail because .../Source/WebKit2/Scripts was not
+        in the module search path by default.  This is fixed by using
+        sys.path.append() to add .../Source/WebKit2/Scripts to the
+        module search path based on the path to messages_unittest.py.
+
+        As an added bonus, this patch also fixes all webkit-style issues
+        in Source/WebKit2/Scripts/webkit/*.py files.
+
+        * Scripts/webkit/messages.py:
+        - Separate local module imports from built-in modules for
+          consistency.
+        - Fix whitespace issues for check-webkit-style, and remove stray
+          semi-colon.
+        * Scripts/webkit/messages_unittest.py:
+        - Update sys.path to find the 'webkit' module based on the path
+          to messages_unittest.py.  This makes 'from webkit import ...'
+          statements work when running messages_unittest.py directly.
+        - Change 'messages' and 'parser' modules to use
+          'from webkit import ...' format for consistency.
+        - Fix whitespace issues for check-webkit-style.
+        * Scripts/webkit/model.py:
+        - Fix whitespace issue for check-webkit-style.
+        * Scripts/webkit/parser.py:
+        - Fix whitespace issue for check-webkit-style.
+
 2017-05-03  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] Allow host application to enable/disable media capture

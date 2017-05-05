@@ -118,6 +118,12 @@ void TestRunner::display()
 {
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundlePageForceRepaint(page);
+}
+
+void TestRunner::displayAndTrackRepaints()
+{
+    WKBundlePageRef page = InjectedBundle::singleton().page()->page();
+    WKBundlePageForceRepaint(page);
     WKBundlePageSetTracksRepaints(page, true);
     WKBundlePageResetTrackedRepaints(page);
 }

@@ -127,7 +127,7 @@ void UserMediaPermissionRequestManagerProxy::invalidatePendingRequests()
 void UserMediaPermissionRequestManagerProxy::stopCapture()
 {
     invalidatePendingRequests();
-    m_page.process().send(Messages::WebPage::StopMediaCapture(), m_page.pageID());
+    m_page.stopMediaCapture();
 }
 
 void UserMediaPermissionRequestManagerProxy::clearCachedState()

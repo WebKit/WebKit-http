@@ -1,3 +1,511 @@
+2017-05-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Use ImageDiff built by host SDK and remove ImageDiff from DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=168945
+        <rdar://problem/30745695>
+
+        Reviewed by David Kilzer.
+
+        Use ImageDiff built with the host machine's SDK and stop building ImageDiff with the
+        target SDK. These two changes must happen simultaneously because some archives will
+        clobber the ImageDiff from the host SDK with the ImageDiff from the target SDK.
+
+        * DumpRenderTree/mac/Configurations/ImageDiff.xcconfig: Remove ImageDiff from project.
+        * DumpRenderTree/PlatformWin.cmake: Remove ImageDiff. Note that the CMakeLists.txt in the
+        tools directory still includes ImageDiff.
+        * DumpRenderTree/cg/ImageDiffCG.cpp: Removed.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig: Removed.
+        * Scripts/webkitpy/port/darwin.py: 
+        (DarwinPort._path_to_image_diff): Return the correct path to ImageDiff when building
+        locally or when running archives.
+        * Scripts/webkitpy/port/image_diff.py:
+        (IOSSimulatorImageDiffer): Deleted.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.diff_image): Deleted.
+
+2017-05-05  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Converting from WebCore::Cookie to NSHTTPCookie always marks cookies as secure
+        https://bugs.webkit.org/show_bug.cgi?id=171700
+        <rdar://problem/32017975>
+
+        Reviewed by Brady Eidson.
+
+        Fix a mistake in the test that should have caught this bug.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+        The assertions that were meant to check round-tripping were actually checking
+        the properties of the original cookie objects, not the round-tripped ones.
+        This test now fails without the bugfix and passes when it is applied.
+
+2017-05-05  Daniel Bates  <dabates@apple.com>
+
+        Use EXPECT_EQ() when comparing strings in TestWebKitAPI tests
+        https://bugs.webkit.org/show_bug.cgi?id=171698
+
+        Reviewed by Darin Adler.
+
+        We should use EXPECT_EQ() instead of EXPECT_TRUE() to compare WTF::String() objects
+        so that we get pretty diff output when the actual string differs from the expected
+        string as opposed to seeing a boolean result. The former makes makes it straightforward
+        to diagnose a regression without reading the code for the test or instrumenting it to
+        determine the actual string that was compared.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/mac/GPUFunction.mm:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/mac/GPULibrary.mm:
+        (TestWebKitAPI::TEST_F):
+
+2017-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Rename webProcessDidCrashWithReason callback to webProcessDidTerminate and stop calling webProcessDidCrash for client terminations
+        https://bugs.webkit.org/show_bug.cgi?id=171624
+
+        Reviewed by Dan Bernstein.
+
+        Extend API test coverage to cover crashes in addition to terminations requested by the client.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/ProcessDidTerminate.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebKit2/ProcessDidCrashWithReason.cpp.
+        (TestWebKitAPI::webProcessWasTerminatedByClient):
+        (TestWebKitAPI::webProcessCrashed):
+        (TestWebKitAPI::TEST):
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        DRT's setAudioResultCallback() and IDBRequest::setResult() need to acquire the JSLock.
+        https://bugs.webkit.org/show_bug.cgi?id=171716
+        <rdar://problem/30878027>
+
+        Reviewed by Saam Barati.
+
+        setAudioResultCallback() needs to acquire the JSLock before calling toJS() (which
+        does JS conversion and therefore, potentially JS allocations) and accessing
+        methods of internal JS data structures (which may do JS invocation, etc).
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setAudioResultCallback):
+
+2017-05-05  Jonathan Bedard  <jbedard@apple.com>
+
+        buildbot: Cleanup simulators after running tests
+        https://bugs.webkit.org/show_bug.cgi?id=171679
+        <rdar://problem/31994361>
+
+        Reviewed by Aakash Jain.
+
+        We shutdown the simulator process between tests, but in some cases, this is not
+        sufficient. Explicitly shutdown every booted simulator.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main): Shutdown all booted simulators.
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Assertion failure in Inspector::RemoteInspector::setRemoteInspectorClient when disposing WebKitWebContext
+        https://bugs.webkit.org/show_bug.cgi?id=171644
+
+        Reviewed by Michael Catanzaro.
+
+        Check that only one WebKitWebContext can have automation enabled.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAutomationSession.cpp:
+        (testAutomationSessionRequestSession):
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] TestController timeout source callback should return G_SOURCE_REMOVE
+        https://bugs.webkit.org/show_bug.cgi?id=171724
+
+        Reviewed by Michael Catanzaro.
+
+        It's currently returning CONTINUE which causes it to be called again even if the run loop has been stopped.
+
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::timeoutSource):
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix wrong assert after r215176.
+
+        Cairo surface received by computeMD5HashStringForCairoSurface() doesn't need to be ARGB32 since r215176, it
+        could also be RGB24 when created from a web view snapshot.
+
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        (WTR::computeMD5HashStringForCairoSurface):
+
+2017-05-04  Brian Burg  <bburg@apple.com>
+
+        lldb_webkit.py should provide a type summary for WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=171670
+
+        Reviewed by Jer Noble.
+
+        Just print out the underlying string using the WTFString provider.
+
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+        (WebCoreURL_SummaryProvider):
+        (WebCoreURLProvider):
+        (WebCoreURLProvider.__init__):
+        (WebCoreURLProvider.to_string):
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216206.
+        https://bugs.webkit.org/show_bug.cgi?id=171714
+
+        Multiple LayoutTests crashing in Document::page() (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove support for legacy Notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+        http://trac.webkit.org/changeset/216206
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        API test WTF.StaticStringImpl crashing in TestWebKitAPI::WTF_StaticStringImpl_Test::TestBody() + 3188
+        https://bugs.webkit.org/show_bug.cgi?id=171702
+
+        Reviewed by Filip Pizlo.
+
+        The test was supposed to use the MAKE_STATIC_STRING_IMPL macro.  I had previously
+        changed it to instantiate an automatic StaticStringImpl (i.e. stack allocated) to
+        confirm that the test will detect a regression.  Unfortunately, I forgot to
+        change it back to using MAKE_STATIC_STRING_IMPL before I landed the test.
+        This patch fixes that.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::neverDestroyedString):
+
+2017-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable failing API test WebKit2.ResizeWithHiddenContentDoesNotHang.
+        https://bugs.webkit.org/show_bug.cgi?id=170195
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+        (TEST):
+
+2017-05-04  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove redundant macros that are set in the CMake config
+        https://bugs.webkit.org/show_bug.cgi?id=171571
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/config.h:
+        * MiniBrowser/win/stdafx.h:
+        * TestWebKitAPI/config.h:
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add testRunner.display() to force displaying the web page for testing
+        https://bugs.webkit.org/show_bug.cgi?id=171694
+
+        Reviewed by Simon Fraser.
+
+        Unlike testRunner.displayAndTrackRepaints(), this new function forces 
+        drawing the web page but without track repaints.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (displayCallback):
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::display):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::display):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::display):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        NeverDestroyed<String>(ASCIILiteral(...)) is not thread safe.
+        https://bugs.webkit.org/show_bug.cgi?id=171586
+        <rdar://problem/31873190>
+
+        Reviewed by Yusuke Suzuki.
+
+        API test for exercising StaticStringImpl and the MAKE_STATIC_STRING_IMPL macro.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::neverDestroyedString):
+        (TestWebKitAPI::getNeverDestroyedStringAtStackDepth):
+        (TestWebKitAPI::TEST):
+
+2017-05-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add support for keeping the selection in a focused editable element when dragging begins
+        https://bugs.webkit.org/show_bug.cgi?id=171585
+        <rdar://problem/31544320>
+
+        Reviewed by Beth Dakin and Zalan Bujtas.
+
+        Adds 1 new unit test and tweaks existing tests to check that when first responder status is lost after beginning
+        a drag while editing, content is still moved (and not copied) when performing data interaction on a different
+        element. ContentEditableMoveParagraphs checks that content can be shifted within a single element via a move
+        operation rather than a copy.
+
+        See WebCore ChangeLog for more details.
+
+        Tests:  DataInteractionSimulator.ContentEditableToContentEditable
+                DataInteractionSimulator.ContentEditableToTextarea
+                DataInteractionSimulator.ContentEditableMoveParagraphs
+                DataInteractionSimulator.TextAreaToInput
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/two-paragraph-contenteditable.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator initWithWebView:]):
+        (-[DataInteractionSimulator dealloc]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator waitForInputSession]):
+        (-[DataInteractionSimulator _webView:focusShouldStartInputSession:]):
+        (-[DataInteractionSimulator _webView:didStartInputSession:]):
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename TestRunner.display() to TestRunner::displayAndTrackRepaints()
+        https://bugs.webkit.org/show_bug.cgi?id=171641
+
+        Reviewed by Simon Fraser.
+
+        The plan is to add back the TestRunner.display() which does the display
+        only without track repaints.
+
+        * DumpRenderTree/DumpRenderTree.h:
+        * DumpRenderTree/TestRunner.cpp:
+        (displayAndTrackRepaintsCallback):
+        (TestRunner::staticFunctions):
+        (displayCallback): Deleted.
+        (displayInvalidatedRegionCallback): Deleted.
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (displayWebView):
+        (displayAndTrackRepaintsWebView):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::displayAndTrackRepaints):
+        (TestRunner::display): Deleted.
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::displayAndTrackRepaints):
+        (TestRunner::display): Deleted.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::displayAndTrackRepaints):
+        (WTR::TestRunner::display): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-05-04  Brady Eidson  <beidson@apple.com>
+
+        [ios-simulator] API test WebKit2.WebsiteDataStoreCustomPaths is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=171513
+
+        Unreviewed gardening.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST): Skip the failing parts of the test on iOS for now.
+
+2017-05-03  Jonathan Bedard  <jbedard@apple.com>
+
+        Make ImageDiff stand-alone
+        https://bugs.webkit.org/show_bug.cgi?id=168939
+
+        Reviewed by David Kilzer.
+
+        Create ImageDiff without dependencies on bmalloc and WTF so that it exists as a
+        stand-alone project. Note that this change does not eliminate the ImageDiff inside
+        the DumpRenderTree project.
+
+        * ImageDiff/ImageDiff.xcodeproj: Added.
+        * ImageDiff/ImageDiff.xcodeproj/project.pbxproj: Added.
+        * ImageDiff/Makefile: Use ImageDiff project.
+        * ImageDiff/PlatformMac.cmake: Added.
+        * ImageDiff/PlatformWin.cmake: Added.
+        * ImageDiff/cg: Added.
+        * ImageDiff/cg/Configurations: Added.
+        * ImageDiff/cg/Configurations/Base.xcconfig: Copied from Tools/DumpRenderTree/mac/Configurations/Base.xcconfig.
+        * ImageDiff/cg/Configurations/DebugRelease.xcconfig: Copied from Tools/DumpRenderTree/mac/Configurations/DebugRelease.xcconfig.
+        * ImageDiff/cg/Configurations/ImageDiff.xcconfig: Copied from Tools/DumpRenderTree/mac/Configurations/ImageDiff.xcconfig.
+        * ImageDiff/cg/ImageDiff.cpp: Copied from Tools/DumpRenderTree/cg/ImageDiffCG.cpp.
+        (createImageFromStdin): Stop using RetainPtr.
+        (createDifferenceImage): Ditto.
+        (main): Ditto.
+        * Scripts/build-imagediff: Stop building WTF and bmalloc.
+
+2017-05-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        (DRTDesktopNotificationPresenter::checkNotificationPermission):
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        Remove use and definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-04  Andy Estes  <aestes@apple.com>
+
+        Give +testwebkitapi_configurationWithTestPlugInClassName: a shorter name
+        https://bugs.webkit.org/show_bug.cgi?id=171673
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLs.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegate.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParameters.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/CancelFontSubresource.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+        (configurationWithContentFilterSettings):
+        (-[LazilyLoadPlatformFrameworksController init]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RemoteObjectRegistry.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptions.mm:
+        (runTestWithWidth):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentWorld.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/WKWebViewConfigurationExtras.h:
+        * TestWebKitAPI/WKWebViewConfigurationExtras.mm:
+        (+[WKWebViewConfiguration _test_configurationWithTestPlugInClassName:]):
+        (+[WKWebViewConfiguration testwebkitapi_configurationWithTestPlugInClassName:]): Renamed to
+        +_test_configurationWithTestPlugInClassName:
+
+2017-05-04  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserMediaDisabled.mm: Added.
+        (-[UserMediaMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[UserMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (-[UserMediaUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+        (MediaCaptureDisabledTest::SetUp):
+        (MediaCaptureDisabledTest::loadTestAndWaitForMessage):
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/disableGetUserMedia.html: Added.
+
+2017-05-04  Caio Lima  <ticaiolima@gmail.com>
+
+        Unreviewed, Adding self to contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json: Added name.
+
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * TestRunnerShared/UIScriptContext/UIScriptContext.cpp:
+        (UIScriptContext::tryToCompleteUIScriptForCurrentParentCallback):
+
+2017-05-04  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an optional width parameter to -[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]
+        https://bugs.webkit.org/show_bug.cgi?id=171646
+        <rdar://problem/30306321>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptions.mm:
+        (runTestWithWidth):
+        (TEST):
+        (-[RenderedImageWithOptionsObject didRenderImageWithSize:]): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsPlugIn.mm:
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugInBrowserContextController:didFinishLoadForFrame:]):
+        (-[RenderedImageWithOptionsPlugIn renderImageWithWidth:completionHandler:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsProtocol.h:
+
+2017-05-04  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Fontconfig 2.11.2 in JHBuild does not build with glibc 2.25+ or gperf 3.1+
+        https://bugs.webkit.org/show_bug.cgi?id=171649
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add two patches picked from the upstream repository to fix building of
+        the Fontconfig module in JHBuild. Additionally, this needed a patch to
+        add "autogen.sh" as it is not included in release tarballs. Also:
+        building the module with srcdir!=builddir prevents "fcobjshash.gperf"
+        being regenerated (which is needed) so this is disabled for the
+        Fontconfig module.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/fontconfig-2.11.1-add-autogen.patch: Added.
+        * gtk/patches/fontconfig-Avoid-conflicts-with-integer-width-macros-from-TS-18661-1-2014.patch: Added.
+        * gtk/patches/fontconfig-Fix-the-build-issue-with-gperf-3.1.patch: Added.
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216172.
+        https://bugs.webkit.org/show_bug.cgi?id=171654
+
+        FTBFS for iOS due to missing WebPageProxy::stopMediaCapture()
+        implementation. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216172
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GStreamer version to 1.10.4 in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171595
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch: Removed.
+        * gtk/patches/gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch: Removed.
+        * gtk/patches/gst-plugins-good-0001-rtpbin-pipeline-gets-an-EOS-when-any-rtpsources-byes.patch: Removed.
+        * gtk/patches/gst-plugins-good-0002-rtpbin-avoid-generating-errors-when-rtcp-messages-ar.patch: Removed.
+        * gtk/patches/gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch:
+        * gtk/patches/gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch: Removed.
+        * gtk/patches/gst-plugins-good-use-the-tfdt-decode-time.patch: Removed.
+
+2017-05-03  Saam Barati  <sbarati@apple.com>
+
+        How we build polymorphic cases is wrong when making a call from Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=171527
+
+        Reviewed by JF Bastien.
+
+        * Scripts/run-jsc-stress-tests:
+
 2017-05-03  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] Allow host application to enable/disable media capture
