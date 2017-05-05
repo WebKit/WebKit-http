@@ -70,23 +70,6 @@ ImageFrameCache::~ImageFrameCache()
     ASSERT(!hasDecodingQueue());
 }
 
-void ImageFrameCache::setDecoder(ImageDecoder* decoder)
-{
-    if (m_decoder == decoder)
-        return;
-
-    // Changing the decoder has to stop the decoding thread. The current frame will
-    // continue decoding safely because the decoding thread has its own
-    // reference of the old decoder.
-    stopAsyncDecodingQueue();
-    m_decoder = decoder;
-}
-
-ImageDecoder* ImageFrameCache::decoder() const
-{
-    return m_decoder.get();
-}
-
 void ImageFrameCache::destroyDecodedData(bool destroyAll, size_t count)
 {
     if (destroyAll)
@@ -282,15 +265,14 @@ void ImageFrameCache::startAsyncDecodingQueue()
 
     Ref<ImageFrameCache> protectedThis = Ref<ImageFrameCache>(*this);
     Ref<WorkQueue> protectedQueue = decodingQueue();
-    Ref<ImageDecoder> protectedDecoder = Ref<ImageDecoder>(*m_decoder);
 
-    // We need to protect this, m_decodingQueue and m_decoder from being deleted while we are in the decoding loop.
-    decodingQueue()->dispatch([this, protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedQueue), protectedDecoder = WTFMove(protectedDecoder)] {
+    // We need to protect this and m_decodingQueue from being deleted while we are in the decoding loop.
+    decodingQueue()->dispatch([this, protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedQueue)] {
         ImageFrameRequest frameRequest;
 
         while (m_frameRequestQueue.dequeue(frameRequest)) {
             // Get the frame NativeImage on the decoding thread.
-            NativeImagePtr nativeImage = const_cast<ImageDecoder*>(protectedDecoder.ptr())->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, DecodingMode::Immediate);
+            NativeImagePtr nativeImage = m_decoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, DecodingMode::Immediate);
 
             // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
             callOnMainThread([this, nativeImage, frameRequest] () mutable {
@@ -367,9 +349,9 @@ T ImageFrameCache::metadata(const T& defaultValue, Optional<T>* cachedValue)
         return defaultValue;
 
     if (!cachedValue)
-        return (*m_decoder.*functor)();
+        return (m_decoder->*functor)();
 
-    *cachedValue = (*m_decoder.*functor)();
+    *cachedValue = (m_decoder->*functor)();
     didDecodeProperties(m_decoder->bytesDecodedToDetermineProperties());
     return cachedValue->value();
 }

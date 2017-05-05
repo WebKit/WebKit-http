@@ -35,14 +35,14 @@ typedef const struct __CFData* CFDataRef;
 
 namespace WebCore {
 
-class ImageDecoder : public RefCounted<ImageDecoder> {
+class ImageDecoder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     ImageDecoder(AlphaOption, GammaAndColorProfileOption);
 
-    static Ref<ImageDecoder> create(const SharedBuffer&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+    static std::unique_ptr<ImageDecoder> create(const SharedBuffer&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
     {
-        return adoptRef(*new ImageDecoder(alphaOption, gammaAndColorProfileOption));
+        return std::make_unique<ImageDecoder>(alphaOption, gammaAndColorProfileOption);
     }
     
     static size_t bytesDecodedToDetermineProperties();

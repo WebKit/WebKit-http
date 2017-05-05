@@ -36,14 +36,14 @@ interface IWICImagingFactory;
 
 namespace WebCore {
 
-class ImageDecoder : public RefCounted<ImageDecoder> {
+class ImageDecoder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     ImageDecoder();
     
-    static Ref<ImageDecoder> create(const SharedBuffer&, AlphaOption, GammaAndColorProfileOption)
+    static std::unique_ptr<ImageDecoder> create(const SharedBuffer&, AlphaOption, GammaAndColorProfileOption)
     {
-        return adoptRef(*new ImageDecoder());
+        return std::make_unique<ImageDecoder>();
     }
     
     static size_t bytesDecodedToDetermineProperties();
