@@ -107,7 +107,8 @@ String formatDateTime(const GregorianDateTime& t, DateTimeFormat format, bool as
 #if OS(WINDOWS)
             TIME_ZONE_INFORMATION timeZoneInformation;
             GetTimeZoneInformation(&timeZoneInformation);
-            const WCHAR* timeZoneName = t.isDST() ? timeZoneInformation.DaylightName : timeZoneInformation.StandardName;
+            const WCHAR* winTimeZoneName = t.isDST() ? timeZoneInformation.DaylightName : timeZoneInformation.StandardName;
+            String timeZoneName(reinterpret_cast<const UChar*>(winTimeZoneName));
 #else
             struct tm gtm = t;
             char timeZoneName[70];
