@@ -11,6 +11,10 @@ else ()
     set(WebKit2_LIBRARY_TYPE STATIC)
 endif ()
 
+if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
+    add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
+endif ()
+
 #set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
