@@ -1,3 +1,271 @@
+2017-05-06  Bill Ming  <mbbill@gmail.com>
+
+        Fix 32bit Windows build by giving correct parameters to MASM
+        https://bugs.webkit.org/show_bug.cgi?id=170833
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-05-06  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6] Arrow function. Issue in access to this after eval('super()') within constructor
+        https://bugs.webkit.org/show_bug.cgi?id=171543
+
+        Reviewed by Saam Barati.
+
+        Current patch force to use 'this' within arrow function or eval 
+        from virtual scope each time, instead of using thisRegister.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::ensureThis):
+
+2017-05-05  Keith Miller  <keith_miller@apple.com>
+
+        Put does not properly consult the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=171754
+
+        Reviewed by Saam Barati.
+
+        We should do a follow up that cleans up the rest of put. See:
+        https://bugs.webkit.org/show_bug.cgi?id=171759
+
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::canPerformFastPutInline):
+
+2017-05-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: Air::Inst::generate crashes on large binary on A64
+        https://bugs.webkit.org/show_bug.cgi?id=170215
+
+        Reviewed by Filip Pizlo.
+
+        ARM can't encode all offsets in a single instruction. We usualy
+        handle this type of detail early, or the macro assembler uses a
+        scratch register to take care of the large immediate. After
+        register allocation we assumed that we would never get large
+        offsets, and asserted this was the case. That was a fine
+        assumption with JavaScript, but WebAssembly ends up generating
+        stack frames which are too big to encode.
+
+        There are two places that needed to be fixed:
+            1. AirGenerate
+            2. AirLowerStackArgs
+
+        We now unconditionally pin the dataTempRegister on ARM64, and use
+        it when immediates don't fit.
+
+        Number 1. is easy: we're just incrementing SP, make sure we can
+        use a scratch register when that happens.
+
+        Number 2. is more complex: not all Inst can receive a stack
+        argument whose base register isn't SP or FP. Specifically,
+        Patchpoints and Stackmaps get very sad because they just want to
+        know the offset value, but when we materialize the offset as
+        follows:
+
+            Move (spill337), (spill201), %r0, @8735
+
+        Becomes (where %r16 is dataTempRegister):
+            Move $1404, %r16, @8736
+            Add64 %sp, %r16, @8736
+            Move (%r16), 2032(%sp), %r0, @8736
+
+        The code currently doesn't see through our little dance. To work
+        around this issue we introduce a new Air Arg kind:
+        ExtendedOffsetAddr. This is the same as a regular Addr, but with
+        an offset which may be too big to encode. Opcodes then declare
+        whether their arguments can handle such inputs, and if so we
+        generate them, otherwise we generate Addr as shown above.
+
+        None of this affects x86 because it can always encode large
+        immediates.
+
+        This patch also drive-by converts some uses of `override` to
+        `final`. It makes the code easier to grok, and maybe helps the
+        optimizer sometimes but really that doens't matter.
+
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerARM64.h:
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::admitsExtendedOffsetAddr):
+        * b3/B3CheckSpecial.h:
+        * b3/B3Common.cpp:
+        (JSC::B3::pinnedExtendedOffsetAddrRegister): keep the CPU-specific
+        pinning information in a cpp file
+        * b3/B3Common.h:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::admitsExtendedOffsetAddr):
+        * b3/B3PatchpointSpecial.h:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        (JSC::B3::StackmapSpecial::repForArg):
+        * b3/B3StackmapSpecial.h:
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::isStackMemory):
+        (JSC::B3::Air::Arg::jsHash):
+        (JSC::B3::Air::Arg::dump):
+        (WTF::printInternal):
+        (JSC::B3::Air::Arg::stackAddrImpl): Deleted. There was only one
+        use of this (in AirLowerStackArgs) and it was now confusing to
+        split the logic up between these two. Inline the code that used to
+        be here into its one usepoint instead.
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::extendedOffsetAddr):
+        (JSC::B3::Air::Arg::isExtendedOffsetAddr):
+        (JSC::B3::Air::Arg::isMemory):
+        (JSC::B3::Air::Arg::base):
+        (JSC::B3::Air::Arg::offset):
+        (JSC::B3::Air::Arg::isGP):
+        (JSC::B3::Air::Arg::isFP):
+        (JSC::B3::Air::Arg::isValidForm):
+        (JSC::B3::Air::Arg::forEachTmpFast):
+        (JSC::B3::Air::Arg::forEachTmp):
+        (JSC::B3::Air::Arg::asAddress):
+        (JSC::B3::Air::Arg::stackAddr): Deleted.
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::isValid):
+        (JSC::B3::Air::CCallSpecial::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::CCallSpecial::generate):
+        * b3/air/AirCCallSpecial.h:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::pinRegister): Check that the register wasn't
+        pinned before pinning it. It's likely a bug to pin the same
+        register twice.
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::CCallCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::ShuffleCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::EntrySwitchCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::WasmBoundsCheckCustom::admitsExtendedOffsetAddr):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::admitsExtendedOffsetAddr):
+        * b3/air/AirLowerStackArgs.cpp:
+        (JSC::B3::Air::lowerStackArgs):
+        * b3/air/AirPrintSpecial.cpp:
+        (JSC::B3::Air::PrintSpecial::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::PrintSpecial::generate):
+        * b3/air/AirPrintSpecial.h:
+        * b3/air/AirSpecial.h:
+        * b3/air/opcode_generator.rb:
+
+2017-05-05  Oliver Hunt  <oliver@apple.com>
+
+        Move trivial String prototype functions to JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=171737
+
+        Reviewed by Saam Barati.
+
+        Super simple change to migrate all of the old school
+        html-ifying string operations to builtin JS.
+
+        Core implementation is basically a 1-for-1 match to the spec.
+
+        * builtins/StringPrototype.js:
+        (globalPrivate.createHTML):
+        (anchor):
+        (big):
+        (blink):
+        (bold):
+        (fixed):
+        (fontcolor):
+        (fontsize):
+        (italics):
+        (link):
+        (small):
+        (strike):
+        (sub):
+        (sup):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncBig): Deleted.
+        (JSC::stringProtoFuncSmall): Deleted.
+        (JSC::stringProtoFuncBlink): Deleted.
+        (JSC::stringProtoFuncBold): Deleted.
+        (JSC::stringProtoFuncFixed): Deleted.
+        (JSC::stringProtoFuncItalics): Deleted.
+        (JSC::stringProtoFuncStrike): Deleted.
+        (JSC::stringProtoFuncSub): Deleted.
+        (JSC::stringProtoFuncSup): Deleted.
+        (JSC::stringProtoFuncFontcolor): Deleted.
+        (JSC::stringProtoFuncFontsize): Deleted.
+        (JSC::stringProtoFuncAnchor): Deleted.
+        (JSC::stringProtoFuncLink): Deleted.
+
+2017-05-05  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [JSC] Remove export from Intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=171752
+
+        Reviewed by Alexey Proskuryakov.
+
+        * runtime/Intrinsic.h:
+
+2017-05-05  Saam Barati  <sbarati@apple.com>
+
+        putDirectIndex does not properly do defineOwnProperty
+        https://bugs.webkit.org/show_bug.cgi?id=171591
+        <rdar://problem/31735695>
+
+        Reviewed by Geoffrey Garen.
+
+        This patch fixes putDirectIndex and its JIT implementations to be
+        compatible with the ES6 spec. I think our code became out of date
+        when we implemented ArraySpeciesCreate since ArraySpeciesCreate may
+        return arbitrary objects. We perform putDirectIndex on that arbitrary
+        object. The behavior we want is as if we performed defineProperty({configurable:true, enumerable:true, writable:true}).
+        However, we weren't doing this. putDirectIndex assumed it could just splat
+        data into any descendent of JSObject's butterfly. For example, this means
+        we'd just splat into the butterfly of a typed array, even though a typed
+        array doesn't use its butterfly to store its indexed properties in the usual
+        way. Also, typed array properties are non-configurable, so this operation
+        should throw. This also means if we saw a ProxyObject, we'd just splat
+        into its butterfly, but this is obviously wrong because ProxyObject should
+        intercept the defineProperty operation.
+        
+        This patch fixes this issue by adding a whitelist of cell types that can
+        go down putDirectIndex's fast path. Anything not in that whitelist will
+        simply call into defineOwnProperty.
+
+        * bytecode/ByValInfo.h:
+        (JSC::jitArrayModePermitsPutDirect):
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::refine):
+        * jit/JITOperations.cpp:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSplice):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createStructure):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        * runtime/JSObject.cpp:
+        (JSC::canDoFastPutDirectIndex):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+        (JSC::JSObject::putDirectIndexBeyondVectorLength): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectIndex):
+        (JSC::JSObject::canSetIndexQuicklyForPutDirect): Deleted.
+        * runtime/JSType.h:
+
+2017-05-05  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] include JSCInlines.h in ObjectInitializationScope.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=171744
+
+        Reviewed by Mark Lam.
+
+        * runtime/ObjectInitializationScope.cpp:
+
+
 2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Assertion failure in Inspector::RemoteInspector::setRemoteInspectorClient when disposing WebKitWebContext

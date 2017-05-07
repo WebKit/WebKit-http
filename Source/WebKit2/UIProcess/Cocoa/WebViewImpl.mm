@@ -674,6 +674,9 @@ static const NSUInteger orderedListSegment = 2;
         colorPickerItem.target = self;
         colorPickerItem.action = @selector(_wkChangeColor:);
         colorPickerItem.showsAlpha = NO;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+        colorPickerItem.allowedColorSpaces = @[ [NSColorSpace sRGBColorSpace] ];
+#endif
     }
 
     return item;
@@ -3762,7 +3765,7 @@ void WebViewImpl::startWindowDrag()
 }
 #endif
 
-void WebViewImpl::dragImageForView(NSView *view, NSImage *image, CGPoint clientPoint, bool linkDrag)
+void WebViewImpl::dragImageForView(NSView *view, NSImage *image, CGPoint clientPoint, bool)
 {
     // The call below could release the view.
     RetainPtr<NSView> protector(m_view);
@@ -3776,7 +3779,7 @@ void WebViewImpl::dragImageForView(NSView *view, NSImage *image, CGPoint clientP
     [view dragImage:image
                  at:NSPointFromCGPoint(clientPoint)
              offset:NSZeroSize
-              event:linkDrag ? [NSApp currentEvent] : m_lastMouseDownEvent.get()
+              event:m_lastMouseDownEvent.get()
          pasteboard:pasteboard
              source:m_view
           slideBack:YES];

@@ -1,3 +1,312 @@
+2017-05-07  Sam Weinig  <sam@webkit.org>
+
+        Implement Subresource Integrity (SRI)
+        https://bugs.webkit.org/show_bug.cgi?id=148363
+        <rdar://problem/18945879>
+
+        Reviewed by Daniel Bates.
+
+        Add tests for Subresource Integrity based off the ones from Web 
+        Platform Tests. They have been changed to:
+        - Split <link> and <script> testing.
+        - Add additional tests:
+            - Integrity hashes using base64URL encoding.
+            - Integrity hashes using mixed base64 and base64URL encoding.
+            - Integrity metadata that does not conform to the grammar at all.
+            - Multiple valid, but only one matching, integrity hashes.
+            - Non-matching integrity hash with options.
+        - Run one at a time, so console output is consistent.
+        
+        We can/should upstream these changes, but this avoids the possibility that
+        an update of the imported web-platform-tests could cause these tests to fail.
+        
+        Also adds tests that show the Subresource Integrity setting works correctly.
+
+        * http/tests/subresource-integrity: Added.
+        * http/tests/subresource-integrity/.htaccess: Added.
+        * http/tests/subresource-integrity/resources: Added.
+        * http/tests/subresource-integrity/resources/alternate.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-anon-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-anon-style.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-creds-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-creds-style.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-ineligible-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-ineligible-style.css: Added.
+        * http/tests/subresource-integrity/resources/matching-digest.js: Added.
+        * http/tests/subresource-integrity/resources/non-matching-digest.js: Added.
+        * http/tests/subresource-integrity/resources/sri-utilities.js: Added.
+        * http/tests/subresource-integrity/resources/style.css: Added.
+        * http/tests/subresource-integrity/sri-disabled-with-setting-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-disabled-with-setting.html: Added.
+        * http/tests/subresource-integrity/sri-enabled-with-setting-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-enabled-with-setting.html: Added.
+        * http/tests/subresource-integrity/sri-script-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-script.html: Added.
+        * http/tests/subresource-integrity/sri-style-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-style.html: Added.
+
+2017-05-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not case insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        <rdar://problem/30811218>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/lastResort-expected.html: Added.
+        * fast/text/lastResort.html: Added.
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement the concept of cookie-averse document
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        <rdar://problem/32004466>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/cookies/cookie-averse-document-expected.txt: Added.
+        * fast/cookies/cookie-averse-document.html: Added.
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Align our IDL files with the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=171777
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline a few tests.
+
+        * fast/dom/Document/adoptNode-null-expected.txt:
+        * fast/dom/Document/adoptNode-null.html:
+        * fast/dom/Document/importNode-null-expected.txt:
+        * fast/dom/Document/importNode-null.html:
+        * fast/dom/Range/range-intersectsNode-expected.txt:
+        * fast/text/text-combine-crash-expected.txt:
+
+2017-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171785
+
+        * platform/wk2/TestExpectations:
+
+2017-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r216294): The new test fails on WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=171780
+
+        Rolling back https://trac.webkit.org/r216294, https://trac.webkit.org/r216296,
+        https://trac.webkit.org/216299, https://trac.webkit.org/216330
+
+        * http/tests/css/filters-on-iframes-expected.html: Removed.
+        * http/tests/css/filters-on-iframes.html: Removed.
+        * http/tests/css/resources/blank.html: Removed.
+        * http/tests/css/resources/references-external.html: Removed.
+        * http/tests/css/resources/solid-red.html: Removed.
+
+2017-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Make rotation tests more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=171778
+
+        Reviewed by Tim Horton.
+
+        New baseline.
+
+        * fast/events/ios/rotation/zz-no-rotation-expected.txt:
+        * fast/events/ios/rotation/zz-no-rotation.html:
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r216333.
+
+        Caused layout test failures
+
+        Reverted changeset:
+
+        "Implement the concept of cookie-averse document"
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        http://trac.webkit.org/changeset/216333
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement the concept of cookie-averse document
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        <rdar://problem/32004466>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/cookies/cookie-averse-document-expected.txt: Added.
+        * fast/cookies/cookie-averse-document.html: Added.
+
+2017-05-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGERSSION(r213499): Emoji with Fitzpatrick modifiers are drawn as two separate glyphs
+        https://bugs.webkit.org/show_bug.cgi?id=171750
+        <rdar://problem/31122612>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/fitzpatrick-combination-expected.html: Added.
+        * fast/text/fitzpatrick-combination.html: Added.
+
+2017-05-05  Zalan Bujtas  <zalan@apple.com>
+
+        Renderers being destroyed should not be added to AX's deferred list.
+        https://bugs.webkit.org/show_bug.cgi?id=171768
+        <rdar://problem/31955660>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-when-renderers-are-added-back-to-deferred-list-expected.txt: Added.
+        * accessibility/crash-when-renderers-are-added-back-to-deferred-list.html: Added.
+
+2017-05-05  Matt Lewis  <jlewis3@apple.com>
+
+        Mark compositing/tiling/non-active-window-tiles-size.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171763
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-05  Oliver Hunt  <oliver@apple.com>
+
+        Move trivial String prototype functions to JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=171737
+
+        Reviewed by Saam Barati.
+
+        Updated output
+
+        * js/dom/string-anchor-expected.txt:
+        * js/dom/string-anchor.html:
+        * js/dom/string-fontcolor-expected.txt:
+        * js/dom/string-fontcolor.html:
+        * js/dom/string-fontsize-expected.txt:
+        * js/dom/string-fontsize.html:
+        * js/dom/string-link-expected.txt:
+        * js/dom/string-link.html:
+
+2017-05-05  Dean Jackson  <dino@apple.com>
+
+        Restrict SVG filters to accessible security origins
+        https://bugs.webkit.org/show_bug.cgi?id=118689
+        <rdar://problem/27362159>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that shows safe frames, unsafe frames, and
+        then a safe frame that itself has an unsafe frame, to
+        show that the security requirements are being forwarded
+        down the tree.
+
+        * http/tests/css/filters-on-iframes-expected.html: Added.
+        * http/tests/css/filters-on-iframes.html: Added.
+        * http/tests/css/resources/blank.html: Added.
+        * http/tests/css/resources/references-external.html: Added.
+        * http/tests/css/resources/solid-red.html: Added.
+
+2017-05-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to test rotation in iOS WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=171755
+
+        Reviewed by Tim Horton.
+
+        Two rotation tests and one that comes last to ensure that the device was not left in a rotated state.
+
+        * fast/events/ios/rotation/basic-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/basic-rotation.html: Added.
+        * fast/events/ios/rotation/safari-like-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/safari-like-rotation.html: Added.
+        * fast/events/ios/rotation/zz-no-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/zz-no-rotation.html: Added.
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171756
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-05-05  Matt Lewis  <jlewis3@apple.com>
+
+        Mark test http/tests/security/module-correct-mime-types.html slow.
+        https://bugs.webkit.org/show_bug.cgi?id=164960
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216275.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "[Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not
+        case insensitive"
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        http://trac.webkit.org/changeset/216275
+
+2017-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not case insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        <rdar://problem/30811218>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/lastResort-expected.html: Added.
+        * fast/text/lastResort.html: Added.
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unskip media/click-placeholder-not-pausing.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: LayoutTest streams/reference-implementation/readable-stream-templated.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=171580
+        <rdar://problem/32009647>
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * TestExpectations:
+        * streams/reference-implementation/pipe-to-expected.txt:
+        Rebaseline expectations. This test was previously flakey so the results were
+        missed unless the test was run with --force.
+
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/readable-stream-templated.html:
+        Silence unhandled rejections. This test did not expect unhandled promise
+        rejections to affect test results, so ignore them.
+
+2017-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [macOS Sierra] LayoutTest http/tests/inspector/network/resource-request-headers.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170702
+        <rdar://problem/31616643>
+
+        Rubber-stamped by Brian Burg.
+
+        * platform/mac-wk2/TestExpectations:
+        * http/tests/inspector/network/resource-request-headers.html:
+        Make this test unflakey by ensuring we wait for the load to complete.
+
 2017-05-05  Chris Dumez  <cdumez@apple.com>
 
         Attr Nodes should not have children
