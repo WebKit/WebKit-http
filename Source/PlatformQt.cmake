@@ -20,6 +20,19 @@ if (USE_MINIMAL_DEBUG_INFO AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif ()
 endif ()
 
+if (USE_MINIMAL_DEBUG_INFO_MSVC AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_RELEASE})
+    set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_RELEASE})
+
+    target_compile_options(WebKit             PRIVATE /Zi)
+    if (TARGET WebKit2)
+        target_compile_options(WebKit2        PRIVATE /Zi)
+    endif ()
+    if (TARGET WebKitWidgets)
+        target_compile_options(WebKitWidgets  PRIVATE /Zi)
+    endif ()
+endif ()
+
 # GTest
 
 if (TARGET gtest)

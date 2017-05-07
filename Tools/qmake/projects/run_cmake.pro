@@ -6,14 +6,6 @@ TEMPLATE = aux
 
 qtConfig(debug_and_release): CONFIG += debug_and_release build_all
 
-msvc:!contains(QMAKE_HOST.arch, x86_64) {
-    debug_and_release {
-        warning("Skipping debug build of QtWebKit because it requires a 64-bit toolchain")
-        CONFIG -= debug_and_release debug
-        CONFIG += release
-    }
-}
-
 CONFIG(debug, debug|release) {
     configuration = Debug
 } else {
@@ -68,6 +60,10 @@ build_pass|!debug_and_release {
 
     exists($$ROOT_BUILD_DIR/conanbuildinfo.cmake):exists($$ROOT_BUILD_DIR/conanfile.txt) {
         CMAKE_CONFIG += QT_CONAN_DIR=$$ROOT_BUILD_DIR
+    }
+
+    msvc:!contains(QMAKE_HOST.arch, x86_64) {
+        CMAKE_CONFIG += USE_MINIMAL_DEBUG_INFO_MSVC=ON
     }
 
     macos {
