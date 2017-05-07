@@ -695,7 +695,7 @@ void MediaPlayerPrivateMediaFoundation::createVideoWindow()
 
     PlatformPageClient pageClient = view->hostWindow()->platformPageClient();
 #if PLATFORM(QT)
-    QWindow* ownerWindow = pageClient->ownerWindow();
+    QWindow* ownerWindow = pageClient ? pageClient->ownerWindow() : nullptr;
     if (!ownerWindow)
         return;
     hWndParent = (HWND)ownerWindow->winId();
