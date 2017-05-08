@@ -486,6 +486,7 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         ${WEBKIT2_DIR}/UIProcess/API/C/WKPageUIClient.h
         ${WEBKIT2_DIR}/UIProcess/API/C/WKPluginLoadPolicy.h
         ${WEBKIT2_DIR}/UIProcess/API/C/WKPreferencesRef.h
+        ${WEBKIT2_DIR}/UIProcess/API/C/WKProcessCrashReason.h
         ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionStateRef.h
         ${WEBKIT2_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
         ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h
