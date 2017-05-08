@@ -1,3 +1,235 @@
+2017-05-07  Ben Kelly  <ben@wanderview.com>
+
+        Set the Response.blob() type based on the content-type header value.
+        https://bugs.webkit.org/show_bug.cgi?id=170849
+
+        Reviewed by Youenn Fablet.
+
+        There are two problems to fix here:
+
+        1.  Currently the FetchResponse class only called updateContentType()
+        when first created even though all the headers were not available.  This
+        patch calls updateContentType() again after the headers are populated.
+
+        2.  The fetch design requires propagating the normalized blob
+        type to FetchBodyConsumer as well.  Currently this is only done if
+        Response.blob() is called after the body is completely loaded.  If
+        we hit the consumeOnceLoadingFinished() path, then the type is not
+        passed.  This is similar to what was happening in bug 171489 with
+        ReadableStream bodies.  This patch sets the type on the
+        FetchBodyConsumer in consumeOnceLoadingFinished() as well.
+
+        Theses changes allow WebKit to pass the "Consume response's body: from
+        fetch to blob" case in the WPT response-consume.html test.
+
+        Test: http://w3c-test.org/fetch/api/response/response-consume.html
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::BodyLoader::didReceiveResponse): Modified to
+        call FetchBodyOwner::updateContentType() after filling m_headers.
+        (WebCore::FetchBody::consumeOnceLoadingFinished): Call
+        FetchBodyConsumer::setContentType() when being consumed as
+        a blob.
+        * Modules/fetch/FetchBody.h: Modify consumeOnceLoadingFinished()
+        to take the content type string.
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::consumeOnceLoadingFinished): Pass
+        the content type string down to FetchBody so it can be
+        propagated to the FetchBodyConsumer.
+
+2017-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] REGRESSION (r209409): getBoundingClientRect is wrong for fixed-position elements in resize/orientationchange
+        https://bugs.webkit.org/show_bug.cgi?id=171140
+
+        Reviewed by Sam Weinig.
+
+        WebPage::dynamicViewportSizeUpdate() is called during rotation, and does a layout which needs to have
+        an up-to-date layout viewport, since the layout viewport state is detectable in orientationchange and
+        resize events via fetching the client rect of fixed elements. Normally we send in the layout viewport
+        from the UI process, but in this case we need to compute one in the web process. So factor code
+        into FrameView to do the computation, called from both places.
+
+        Tests: fast/events/ios/rotation/layout-viewport-during-rotation.html
+               fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::computeUpdatedLayoutViewportRect):
+        * page/FrameView.h:
+
+2017-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Drop remaining uses of PassRefPtr in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=171787
+
+        Reviewed by Darin Adler.
+
+        Drop remaining uses of PassRefPtr in editing code.
+
+        * editing/AlternativeTextController.cpp:
+        (WebCore::AlternativeTextController::timerFired):
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::toIdentifier):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::didApplyCommand):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/CompositeEditCommand.h:
+        * editing/Editor.cpp:
+        (WebCore::Editor::shouldInsertFragment):
+        (WebCore::Editor::replaceSelectionWithFragment):
+        (WebCore::Editor::appliedEditing):
+        (WebCore::Editor::performCutOrCopy):
+        (WebCore::Editor::willWriteSelectionToPasteboard):
+        (WebCore::Editor::advanceToNextMisspelling):
+        (WebCore::Editor::isSelectionUngrammatical):
+        (WebCore::Editor::guessesForMisspelledOrUngrammatical):
+        (WebCore::Editor::markMisspellingsOrBadGrammar):
+        (WebCore::Editor::markAllMisspellingsAndBadGrammarInRanges):
+        (WebCore::correctSpellcheckingPreservingTextCheckingParagraph):
+        (WebCore::Editor::markAndReplaceFor):
+        (WebCore::Editor::changeBackToReplacedString):
+        * editing/Editor.h:
+        * editing/EditorCommand.cpp:
+        (WebCore::executeInsertFragment):
+        (WebCore::Editor::command):
+        (WebCore::Editor::Command::Command):
+        * editing/FormatBlockCommand.cpp:
+        (WebCore::FormatBlockCommand::formatRange):
+        * editing/IndentOutdentCommand.cpp:
+        (WebCore::IndentOutdentCommand::indentIntoBlockquote):
+        (WebCore::IndentOutdentCommand::outdentParagraph):
+        * editing/InsertListCommand.cpp:
+        (WebCore::InsertListCommand::fixOrphanedListChild):
+        (WebCore::InsertListCommand::mergeWithNeighboringLists):
+        (WebCore::InsertListCommand::doApplyForSingleParagraph):
+        (WebCore::InsertListCommand::unlistifyParagraph):
+        (WebCore::InsertListCommand::listifyParagraph):
+        * editing/InsertListCommand.h:
+        * editing/InsertParagraphSeparatorCommand.cpp:
+        (WebCore::InsertParagraphSeparatorCommand::doApply):
+        * editing/InsertTextCommand.cpp:
+        (WebCore::InsertTextCommand::InsertTextCommand):
+        * editing/InsertTextCommand.h:
+        (WebCore::InsertTextCommand::createWithMarkerSupplier):
+        * editing/MoveSelectionCommand.cpp:
+        (WebCore::MoveSelectionCommand::MoveSelectionCommand):
+        * editing/MoveSelectionCommand.h:
+        (WebCore::MoveSelectionCommand::create):
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplacementFragment::removeNodePreservingChildren):
+        (WebCore::ReplacementFragment::removeNode):
+        (WebCore::ReplacementFragment::insertNodeBefore):
+        (WebCore::ReplacementFragment::restoreAndRemoveTestRenderingNodesToFragment):
+        (WebCore::ReplacementFragment::removeUnrenderedNodes):
+        (WebCore::ReplacementFragment::removeInterchangeNodes):
+        (WebCore::ReplaceSelectionCommand::makeInsertedContentRoundTrippableWithHTMLTreeBuilder):
+        (WebCore::ReplaceSelectionCommand::moveNodeOutOfAncestor):
+        (WebCore::removeHeadContents):
+        (WebCore::ReplaceSelectionCommand::doApply):
+        (WebCore::ReplaceSelectionCommand::insertAsListItems):
+        * editing/ReplaceSelectionCommand.h:
+        * editing/SpellChecker.cpp:
+        (WebCore::SpellCheckRequest::SpellCheckRequest):
+        (WebCore::SpellCheckRequest::create):
+        (WebCore::SpellChecker::canCheckAsynchronously):
+        (WebCore::SpellChecker::isCheckable):
+        (WebCore::SpellChecker::requestCheckingFor):
+        (WebCore::SpellChecker::invokeRequest):
+        (WebCore::SpellChecker::enqueueRequest):
+        (WebCore::SpellChecker::didCheck):
+        * editing/SpellChecker.h:
+        (WebCore::SpellCheckRequest::checkingRange):
+        (WebCore::SpellCheckRequest::paragraphRange):
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::expandToParagraphBoundary):
+        (WebCore::TextCheckingParagraph::TextCheckingParagraph):
+        (WebCore::TextCheckingParagraph::expandRangeToNextEnd):
+        (WebCore::TextCheckingParagraph::rangeLength):
+        (WebCore::TextCheckingParagraph::paragraphRange):
+        (WebCore::TextCheckingParagraph::subrange):
+        (WebCore::TextCheckingParagraph::offsetTo):
+        (WebCore::TextCheckingParagraph::offsetAsRange):
+        (WebCore::TextCheckingParagraph::text):
+        (WebCore::TextCheckingParagraph::checkingStart):
+        (WebCore::TextCheckingParagraph::checkingEnd):
+        (WebCore::TextCheckingParagraph::checkingLength):
+        (WebCore::TextCheckingHelper::TextCheckingHelper):
+        (WebCore::TextCheckingHelper::findFirstMisspelling):
+        (WebCore::TextCheckingHelper::findFirstMisspellingOrBadGrammar):
+        (WebCore::TextCheckingHelper::findFirstGrammarDetail):
+        (WebCore::TextCheckingHelper::findFirstBadGrammar):
+        (WebCore::TextCheckingHelper::isUngrammatical):
+        (WebCore::TextCheckingHelper::guessesForMisspelledOrUngrammaticalRange):
+        (WebCore::TextCheckingHelper::unifiedTextCheckerEnabled):
+        * editing/TextCheckingHelper.h:
+        * editing/TypingCommand.cpp:
+        (WebCore::TypingCommand::typingAddedToOpenCommand):
+        * editing/cocoa/EditorCocoa.mm:
+        (WebCore::Editor::replaceSelectionWithAttributedString):
+        * editing/gtk/EditorGtk.cpp:
+        (WebCore::Editor::pasteWithPasteboard):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::pasteWithPasteboard):
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::pasteWithPasteboard):
+        (WebCore::Editor::replaceNodeFromPasteboard):
+        * editing/win/EditorWin.cpp:
+        (WebCore::Editor::pasteWithPasteboard):
+        (WebCore::createFragmentFromPlatformData):
+        * page/DragController.cpp:
+        (WebCore::DragController::concludeEditDrag):
+        (WebCore::DragController::startDrag):
+
+2017-05-07  Youenn Fablet  <youenn@apple.com>
+
+        [MediaStream] r216197 caused some webrtc tests to fail
+        https://bugs.webkit.org/show_bug.cgi?id=171728
+
+        Reviewed by Eric Carlson.
+
+        Covered by existing tests.
+
+        Rename MediaStream::endStream to MediaStream::endCaptureTracks and only stopping capture tracks.
+        Using it when Document is asked to stop media capture.
+
+        Adding the ability to have only one active capture source at a time in a WebProcess.
+        This is done by keeping in its related factory the active capture source.
+        When a new source is created and started, it replaces the active capture source which becomes muted.
+        Using that mechanism for iOS.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::endCaptureTracks):
+        (WebCore::MediaStream::endStream): Deleted.
+        * Modules/mediastream/MediaStream.h:
+        * Modules/mediastream/MediaStreamTrack.h:
+        (WebCore::MediaStreamTrack::isCaptureTrack):
+        * dom/Document.cpp:
+        (WebCore::Document::stopMediaCapture):
+        * platform/mediastream/mac/AVAudioCaptureSource.mm:
+        (WebCore::AVAudioCaptureSourceFactory::setActiveSource):
+        (WebCore::AVAudioCaptureSource::setupCaptureSession):
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSourceFactory::setActiveSource):
+        (WebCore::AVVideoCaptureSource::setupCaptureSession):
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSourceFactory::setActiveSource):
+        (WebCore::CoreAudioSharedUnit::startProducingData):
+
+2017-05-07  Tim Horton  <timothy_horton@apple.com>
+
+        Clean up some WebProcessProxy, WebPage, and message handler includes
+        https://bugs.webkit.org/show_bug.cgi?id=171791
+
+        Reviewed by Sam Weinig.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/CompositionUnderline.h: Added.
+        (WebCore::CompositionUnderline::CompositionUnderline):
+        * editing/Editor.h:
+        (WebCore::CompositionUnderline::CompositionUnderline): Deleted.
+        Move CompositionUnderline out of Editor.h, so that other files can
+        include that without Editor.h (which is quite large). Also, modernize it slightly.
+
 2017-05-07  Sam Weinig  <sam@webkit.org>
 
         Implement Subresource Integrity (SRI)

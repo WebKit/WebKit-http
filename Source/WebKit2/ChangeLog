@@ -1,3 +1,95 @@
+2017-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] REGRESSION (r209409): getBoundingClientRect is wrong for fixed-position elements in resize/orientationchange
+        https://bugs.webkit.org/show_bug.cgi?id=171140
+        rdar://problem/31765167
+
+        Reviewed by Sam Weinig.
+
+        WebPage::dynamicViewportSizeUpdate() is called during rotation, and does a layout which needs to have
+        an up-to-date layout viewport, since the layout viewport state is detectable in orientationchange and
+        resize events via fetching the client rect of fixed elements. Normally we send in the layout viewport
+        from the UI process, but in this case we need to compute one in the web process. So factor code
+        into FrameView to do the computation, called from both places.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::customFixedPositionRect):
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInsets:unobscuredSafeAreaInsets:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computeCustomFixedPositionRect):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+
+2017-05-07  Youenn Fablet  <youenn@apple.com>
+
+        [MediaStream] r216197 caused some webrtc tests to fail
+        https://bugs.webkit.org/show_bug.cgi?id=171728
+
+        Reviewed by Eric Carlson.
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Removing muting streams of the page requesting
+        additional capture streams. This is now done in the WebProcess.
+
+2017-05-07  Tim Horton  <timothy_horton@apple.com>
+
+        Clean up some WebProcessProxy, WebPage, and message handler includes
+        https://bugs.webkit.org/show_bug.cgi?id=171791
+
+        Reviewed by Sam Weinig.
+
+        This is worth another ~10% off WebKit2 clean build time on Mac.
+        This time, the most impactful change is the removal of
+        UserMediaPermissionRequestManager.h from WebPage.h, which completely
+        eradicates JSC's VM.h (which is enormous) from WebPage.h (at least on Mac).
+
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        Stop specializing CompositionUnderline now that it has its own file.
+
+        * Shared/API/c/WKDeprecatedFunctions.cpp:
+        * Shared/WebCoreArgumentCoders.cpp:
+        * UIProcess/API/Cocoa/WKBrowsingContextGroup.mm:
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        * UIProcess/HiddenPageThrottlingAutoIncreasesCounter.h: Added.
+        * UIProcess/HighPerformanceGraphicsUsageSampler.cpp:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        * UIProcess/PerActivityStateCPUUsageSampler.cpp:
+        * UIProcess/UserContent/WebUserContentControllerProxy.cpp:
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::toWebCore):
+        * UIProcess/VisibleWebPageCounter.h: Added.
+        * UIProcess/VisitedLinkStore.h:
+        * UIProcess/WebPageGroup.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessLifetimeTracker.cpp:
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.h:
+        Remove WebPageProxy and forward-declare a whole bunch of things.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebUserMediaClient.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::userMediaAccessWasGranted):
+        (WebKit::WebPage::userMediaAccessWasDenied):
+        (WebKit::WebPage::didCompleteMediaDeviceEnumeration):
+        (WebKit::WebPage::grantUserMediaDeviceSandboxExtensions):
+        (WebKit::WebPage::revokeUserMediaDeviceSandboxExtensions):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::userMediaPermissionRequestManager):
+        * WebProcess/WebPage/ios/FindControllerIOS.mm:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.h:
+        (WebKit::RemoteLayerTreeContext::deviceScaleFactor): Deleted.
+        (WebKit::RemoteLayerTreeContext::layerHostingMode): Deleted.
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.mm:
+        (WebKit::RemoteLayerTreeContext::deviceScaleFactor):
+        (WebKit::RemoteLayerTreeContext::layerHostingMode):
+
 2017-05-06  Chris Dumez  <cdumez@apple.com>
 
         Align our IDL files with the latest DOM specification
