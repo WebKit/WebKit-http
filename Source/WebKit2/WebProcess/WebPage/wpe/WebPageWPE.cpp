@@ -30,6 +30,7 @@
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include <WebCore/Settings.h>
+#include <WebCore/SharedBuffer.h>
 
 using namespace WebCore;
 

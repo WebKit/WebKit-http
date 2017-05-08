@@ -2,11 +2,11 @@ list(APPEND WTF_SOURCES
     PlatformUserPreferredLanguagesUnix.cpp
     UniStdExtras.cpp
 
+    generic/MainThreadGeneric.cpp
     generic/WorkQueueGeneric.cpp
 
     glib/GLibUtilities.cpp
     glib/GRefPtr.cpp
-    glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
 
     linux/CurrentProcessMemoryStatus.cpp
