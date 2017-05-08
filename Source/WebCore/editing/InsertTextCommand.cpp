@@ -45,12 +45,12 @@ InsertTextCommand::InsertTextCommand(Document& document, const String& text, boo
 {
 }
 
-InsertTextCommand::InsertTextCommand(Document& document, const String& text, PassRefPtr<TextInsertionMarkerSupplier> markerSupplier, EditAction editingAction)
+InsertTextCommand::InsertTextCommand(Document& document, const String& text, Ref<TextInsertionMarkerSupplier>&& markerSupplier, EditAction editingAction)
     : CompositeEditCommand(document, editingAction)
     , m_text(text)
     , m_selectInsertedText(false)
     , m_rebalanceType(RebalanceLeadingAndTrailingWhitespaces)
-    , m_markerSupplier(markerSupplier)
+    , m_markerSupplier(WTFMove(markerSupplier))
 {
 }
 
@@ -267,7 +267,7 @@ Position InsertTextCommand::insertTab(const Position& pos)
             // second node in the split, so we need to
             // insert the span before it.
             if (offset > 0)
-                splitTextNode(textNode.ptr(), offset);
+                splitTextNode(textNode, offset);
             insertNodeBefore(WTFMove(spanNode), textNode);
         }
     }

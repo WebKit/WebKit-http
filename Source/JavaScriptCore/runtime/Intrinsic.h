@@ -27,17 +27,27 @@
 
 namespace JSC {
 
-enum JS_EXPORT_PRIVATE Intrinsic {
+enum Intrinsic {
     // Call intrinsics.
     NoIntrinsic,
     AbsIntrinsic,
+    ACosIntrinsic,
+    ASinIntrinsic,
+    ATanIntrinsic,
+    ACoshIntrinsic,
+    ASinhIntrinsic,
+    ATanhIntrinsic,
     MinIntrinsic,
     MaxIntrinsic,
     SqrtIntrinsic,
     SinIntrinsic,
+    CbrtIntrinsic,
     Clz32Intrinsic,
     CosIntrinsic,
     TanIntrinsic,
+    CoshIntrinsic,
+    SinhIntrinsic,
+    TanhIntrinsic,
     ArrayPushIntrinsic,
     ArrayPopIntrinsic,
     ArraySliceIntrinsic,
@@ -49,7 +59,11 @@ enum JS_EXPORT_PRIVATE Intrinsic {
     CeilIntrinsic,
     RoundIntrinsic,
     ExpIntrinsic,
+    Expm1Intrinsic,
     LogIntrinsic,
+    Log10Intrinsic,
+    Log1pIntrinsic,
+    Log2Intrinsic,
     RegExpExecIntrinsic,
     RegExpTestIntrinsic,
     RegExpTestFastIntrinsic,

@@ -1,3 +1,879 @@
+2017-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] REGRESSION (r209409): getBoundingClientRect is wrong for fixed-position elements in resize/orientationchange
+        https://bugs.webkit.org/show_bug.cgi?id=171140
+
+        Reviewed by Sam Weinig.
+
+        Tests that fetch the dimensions of a fixed element in resize and orientationchange handlers,
+        which is a proxy for reading the layout viewport.
+
+        * fast/events/ios/rotation/layout-viewport-during-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/layout-viewport-during-rotation.html: Added.
+        * fast/events/ios/rotation/layout-viewport-during-safari-type-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html: Added.
+        * fast/events/ios/rotation/resources/rotation-utils.js: Added.
+        (stringFromRect):
+        (accumulateLog):
+        (logFixedObject):
+        (logFixedAndViewports):
+        (doTest):
+
+2017-05-07  Youenn Fablet  <youenn@apple.com>
+
+        [MediaStream] r216197 caused some webrtc tests to fail
+        https://bugs.webkit.org/show_bug.cgi?id=171728
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-07  Sam Weinig  <sam@webkit.org>
+
+        Implement Subresource Integrity (SRI)
+        https://bugs.webkit.org/show_bug.cgi?id=148363
+        <rdar://problem/18945879>
+
+        Reviewed by Daniel Bates.
+
+        Add tests for Subresource Integrity based off the ones from Web 
+        Platform Tests. They have been changed to:
+        - Split <link> and <script> testing.
+        - Add additional tests:
+            - Integrity hashes using base64URL encoding.
+            - Integrity hashes using mixed base64 and base64URL encoding.
+            - Integrity metadata that does not conform to the grammar at all.
+            - Multiple valid, but only one matching, integrity hashes.
+            - Non-matching integrity hash with options.
+        - Run one at a time, so console output is consistent.
+        
+        We can/should upstream these changes, but this avoids the possibility that
+        an update of the imported web-platform-tests could cause these tests to fail.
+        
+        Also adds tests that show the Subresource Integrity setting works correctly.
+
+        * http/tests/subresource-integrity: Added.
+        * http/tests/subresource-integrity/.htaccess: Added.
+        * http/tests/subresource-integrity/resources: Added.
+        * http/tests/subresource-integrity/resources/alternate.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-anon-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-anon-style.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-creds-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-creds-style.css: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-ineligible-script.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-ineligible-style.css: Added.
+        * http/tests/subresource-integrity/resources/matching-digest.js: Added.
+        * http/tests/subresource-integrity/resources/non-matching-digest.js: Added.
+        * http/tests/subresource-integrity/resources/sri-utilities.js: Added.
+        * http/tests/subresource-integrity/resources/style.css: Added.
+        * http/tests/subresource-integrity/sri-disabled-with-setting-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-disabled-with-setting.html: Added.
+        * http/tests/subresource-integrity/sri-enabled-with-setting-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-enabled-with-setting.html: Added.
+        * http/tests/subresource-integrity/sri-script-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-script.html: Added.
+        * http/tests/subresource-integrity/sri-style-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-style.html: Added.
+
+2017-05-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not case insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        <rdar://problem/30811218>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/lastResort-expected.html: Added.
+        * fast/text/lastResort.html: Added.
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement the concept of cookie-averse document
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        <rdar://problem/32004466>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/cookies/cookie-averse-document-expected.txt: Added.
+        * fast/cookies/cookie-averse-document.html: Added.
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Align our IDL files with the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=171777
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline a few tests.
+
+        * fast/dom/Document/adoptNode-null-expected.txt:
+        * fast/dom/Document/adoptNode-null.html:
+        * fast/dom/Document/importNode-null-expected.txt:
+        * fast/dom/Document/importNode-null.html:
+        * fast/dom/Range/range-intersectsNode-expected.txt:
+        * fast/text/text-combine-crash-expected.txt:
+
+2017-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171785
+
+        * platform/wk2/TestExpectations:
+
+2017-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r216294): The new test fails on WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=171780
+
+        Rolling back https://trac.webkit.org/r216294, https://trac.webkit.org/r216296,
+        https://trac.webkit.org/216299, https://trac.webkit.org/216330
+
+        * http/tests/css/filters-on-iframes-expected.html: Removed.
+        * http/tests/css/filters-on-iframes.html: Removed.
+        * http/tests/css/resources/blank.html: Removed.
+        * http/tests/css/resources/references-external.html: Removed.
+        * http/tests/css/resources/solid-red.html: Removed.
+
+2017-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Make rotation tests more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=171778
+
+        Reviewed by Tim Horton.
+
+        New baseline.
+
+        * fast/events/ios/rotation/zz-no-rotation-expected.txt:
+        * fast/events/ios/rotation/zz-no-rotation.html:
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r216333.
+
+        Caused layout test failures
+
+        Reverted changeset:
+
+        "Implement the concept of cookie-averse document"
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        http://trac.webkit.org/changeset/216333
+
+2017-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement the concept of cookie-averse document
+        https://bugs.webkit.org/show_bug.cgi?id=171746
+        <rdar://problem/32004466>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/cookies/cookie-averse-document-expected.txt: Added.
+        * fast/cookies/cookie-averse-document.html: Added.
+
+2017-05-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGERSSION(r213499): Emoji with Fitzpatrick modifiers are drawn as two separate glyphs
+        https://bugs.webkit.org/show_bug.cgi?id=171750
+        <rdar://problem/31122612>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/fitzpatrick-combination-expected.html: Added.
+        * fast/text/fitzpatrick-combination.html: Added.
+
+2017-05-05  Zalan Bujtas  <zalan@apple.com>
+
+        Renderers being destroyed should not be added to AX's deferred list.
+        https://bugs.webkit.org/show_bug.cgi?id=171768
+        <rdar://problem/31955660>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-when-renderers-are-added-back-to-deferred-list-expected.txt: Added.
+        * accessibility/crash-when-renderers-are-added-back-to-deferred-list.html: Added.
+
+2017-05-05  Matt Lewis  <jlewis3@apple.com>
+
+        Mark compositing/tiling/non-active-window-tiles-size.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171763
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-05  Oliver Hunt  <oliver@apple.com>
+
+        Move trivial String prototype functions to JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=171737
+
+        Reviewed by Saam Barati.
+
+        Updated output
+
+        * js/dom/string-anchor-expected.txt:
+        * js/dom/string-anchor.html:
+        * js/dom/string-fontcolor-expected.txt:
+        * js/dom/string-fontcolor.html:
+        * js/dom/string-fontsize-expected.txt:
+        * js/dom/string-fontsize.html:
+        * js/dom/string-link-expected.txt:
+        * js/dom/string-link.html:
+
+2017-05-05  Dean Jackson  <dino@apple.com>
+
+        Restrict SVG filters to accessible security origins
+        https://bugs.webkit.org/show_bug.cgi?id=118689
+        <rdar://problem/27362159>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that shows safe frames, unsafe frames, and
+        then a safe frame that itself has an unsafe frame, to
+        show that the security requirements are being forwarded
+        down the tree.
+
+        * http/tests/css/filters-on-iframes-expected.html: Added.
+        * http/tests/css/filters-on-iframes.html: Added.
+        * http/tests/css/resources/blank.html: Added.
+        * http/tests/css/resources/references-external.html: Added.
+        * http/tests/css/resources/solid-red.html: Added.
+
+2017-05-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to test rotation in iOS WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=171755
+
+        Reviewed by Tim Horton.
+
+        Two rotation tests and one that comes last to ensure that the device was not left in a rotated state.
+
+        * fast/events/ios/rotation/basic-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/basic-rotation.html: Added.
+        * fast/events/ios/rotation/safari-like-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/safari-like-rotation.html: Added.
+        * fast/events/ios/rotation/zz-no-rotation-expected.txt: Added.
+        * fast/events/ios/rotation/zz-no-rotation.html: Added.
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171756
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-05-05  Matt Lewis  <jlewis3@apple.com>
+
+        Mark test http/tests/security/module-correct-mime-types.html slow.
+        https://bugs.webkit.org/show_bug.cgi?id=164960
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216275.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "[Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not
+        case insensitive"
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        http://trac.webkit.org/changeset/216275
+
+2017-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] CTFontDescriptorCreateMatchingFontDescriptor() is not case insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=171636
+        <rdar://problem/30811218>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/lastResort-expected.html: Added.
+        * fast/text/lastResort.html: Added.
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unskip media/click-placeholder-not-pausing.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: LayoutTest streams/reference-implementation/readable-stream-templated.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=171580
+        <rdar://problem/32009647>
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * TestExpectations:
+        * streams/reference-implementation/pipe-to-expected.txt:
+        Rebaseline expectations. This test was previously flakey so the results were
+        missed unless the test was run with --force.
+
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/readable-stream-templated.html:
+        Silence unhandled rejections. This test did not expect unhandled promise
+        rejections to affect test results, so ignore them.
+
+2017-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [macOS Sierra] LayoutTest http/tests/inspector/network/resource-request-headers.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=170702
+        <rdar://problem/31616643>
+
+        Rubber-stamped by Brian Burg.
+
+        * platform/mac-wk2/TestExpectations:
+        * http/tests/inspector/network/resource-request-headers.html:
+        Make this test unflakey by ensuring we wait for the load to complete.
+
+2017-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Attr Nodes should not have children
+        https://bugs.webkit.org/show_bug.cgi?id=171688
+        <rdar://problem/31998412>
+
+        Reviewed by Andreas Kling.
+
+        * fast/dom/Attr/cannot-have-children-expected.txt: Added.
+        * fast/dom/Attr/cannot-have-children.html: Added.
+        Add layout test coverage. I have verified that this test passes in both
+        Firefox and Chrome.
+
+        * dom/html/level1/*: Removed legacy / outdated tests.
+        * dom/xhtml/level1/*: Removed legacy / outdated tests.
+
+        * fast/dom/Attr/child-nodes-cache-expected.txt: Removed.
+        * fast/dom/Attr/child-nodes-cache.html: Removed.
+        * fast/dom/Attr/child-nodes-length-cache-expected.txt: Removed.
+        * fast/dom/Attr/child-nodes-length-cache.html: Removed.
+        * fast/dom/Attr/invalidate-nodelist-after-attr-setvalue-expected.txt: Removed.
+        * fast/dom/Attr/invalidate-nodelist-after-attr-setvalue.html: Removed.
+        * fast/dom/attribute-change-on-mutate-expected.txt: Removed.
+        * fast/dom/attribute-change-on-mutate.html: Removed.
+        * svg/custom/image-with-attr-change-after-delete-crash-expected.txt: Removed.
+        * svg/custom/image-with-attr-change-after-delete-crash.html: Removed.
+        * traversal/moz-bug590771-expected.txt: Removed.
+        * traversal/moz-bug590771.html: Removed.
+        Removed some outdated tests.
+
+        * fast/custom-elements/reactions-for-webkit-extensions-expected.txt:
+        * fast/custom-elements/reactions-for-webkit-extensions.html:
+        * fast/dom/Attr/change-id-via-attr-node-value-expected.txt:
+        * fast/dom/Attr/change-id-via-attr-node-value.html:
+        * fast/dom/Element/normalize-crash.html:
+        * fast/dom/Element/normalize-crash2.html:
+        * fast/dom/HTMLLinkElement/event-while-removing-attribute-expected.txt:
+        * fast/dom/HTMLLinkElement/event-while-removing-attribute.html:
+        * fast/dom/MutationObserver/observe-attributes-expected.txt:
+        * fast/dom/MutationObserver/observe-attributes.html:
+        * fast/dom/import-attribute-node.html:
+        * fast/dom/insertedIntoDocument-child.html:
+        * fast/dom/insertedIntoDocument-sibling.html:
+        * fast/dom/no-assert-for-malformed-js-url-attribute-expected.txt:
+        * fast/dom/no-assert-for-malformed-js-url-attribute.html:
+        * fast/dom/normalize-attributes-mutation-event-crash.html:
+        * fast/dom/serialize-nodes.xhtml:
+        * http/tests/security/xss-DENIED-iframe-src-alias-expected.txt:
+        Update existing tests so they stop relying on Attr Node having Text children.
+
+2017-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark w3c test persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=161360
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-05  Matt Lewis  <jlewis3@apple.com>
+
+        Mark 2 webrtc test as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=171728
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-05  Chris Dumez  <cdumez@apple.com>
+
+        Refactor / Clean up Element.idl
+        https://bugs.webkit.org/show_bug.cgi?id=171734
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline a couple of tests due to Element properties being enumerated in a slightly
+        different order and because exception messages have changed slightly.
+
+        * fast/dom/Element/attr-param-typechecking-expected.txt:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2017-05-05  Jeremy Jones  <jeremyj@apple.com>
+
+        REGRESSION (r215951): LayoutTest media/modern-media-controls/placard-support/placard-support-pip.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=171610
+        <rdar://problem/31976820>
+
+        Reviewed by Eric Carlson.
+
+        enable test: media/modern-media-controls/pip-support/pip-support-click.html
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of tests failing after GST upgrade to 1.10.4.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests.
+
+        * platform/gtk/editing/simple-line-layout-caret-is-gone-expected.txt: Added.
+        * platform/gtk/fast/repaint/mutate-non-visible-expected.txt: Added.
+        * platform/gtk/fast/visual-viewport/rubberbanding-viewport-rects-extended-background-expected.txt:
+        * platform/gtk/http/tests/security/video-cross-origin-accessfailure-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/http-cache/cc-request-expected.txt: Added.
+
+2017-05-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening.
+
+        * platform/gtk/TestExpectations: Enable already-passing Web Crypto layout tests
+        for the GTK+ port. Also update expectations for the imported W3C Web Crypto tests.
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216206.
+        https://bugs.webkit.org/show_bug.cgi?id=171714
+
+        Multiple LayoutTests crashing in Document::page() (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove support for legacy Notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+        http://trac.webkit.org/changeset/216206
+
+2017-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Element.slot should be marked as [Unscopable]
+        https://bugs.webkit.org/show_bug.cgi?id=171683
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage. This test is passing in Firefox and Chrome.
+
+        * fast/shadow-dom/Element-slot-unscopable-expected.txt: Added.
+        * fast/shadow-dom/Element-slot-unscopable.html: Added.
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Change the asynchronous image decoding tests to use the event webkitImageFrameReady
+        https://bugs.webkit.org/show_bug.cgi?id=171634
+
+        Reviewed by Simon Fraser.
+
+        To test the async image decoding reliably we need to do the following:
+
+        -- Make sure to load the image before setting its src to the element.
+        -- Call document.body.offsetHeight to force layout.
+        -- Call testRunner.display() to force the first paint.
+        -- Use the webkitImageFrameReady to reliably know when an image frame is ready.
+        -- When webkitImageFrameReady is fired call testRunner.notifyDone(). This
+           will force the second paint.
+
+        * fast/images/async-image-background-image-repeated.html:
+        * fast/images/async-image-background-image.html:
+        * fast/images/sprite-sheet-image-draw.html:
+
+2017-05-04  Matt Lewis  <jlewis3@apple.com>
+
+        Mark webrtc/libwebrtc/descriptionGetters.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171703
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename testRunner.displayAndTrackRepaints() to testRunner.displayAndTrackRepaints()
+        https://bugs.webkit.org/show_bug.cgi?id=171641
+
+        Reviewed by Simon Fraser.
+
+        Replace all the calls to testRunner.displayAndTrackRepaints() by testRunner.displayAndTrackRepaints()
+        Replace all the calls to testRunner.displayInvalidatedRegion() by
+        testRunner.displayAndTrackRepaints() since the former is a copy of the later.
+
+        * compositing/clip-change.html:
+        * compositing/geometry/foreground-offset-change.html:
+        * compositing/geometry/limit-layer-bounds-transformed-overflow.html:
+        * compositing/iframes/become-composited-nested-iframes.html:
+        * compositing/iframes/become-overlapped-iframe.html:
+        * compositing/iframes/connect-compositing-iframe-delayed.html:
+        * compositing/iframes/connect-compositing-iframe.html:
+        * compositing/iframes/connect-compositing-iframe2.html:
+        * compositing/iframes/connect-compositing-iframe3.html:
+        * compositing/iframes/enter-compositing-iframe.html:
+        * compositing/iframes/iframe-content-flipping.html:
+        * compositing/iframes/iframe-resize.html:
+        * compositing/iframes/iframe-size-to-zero.html:
+        * compositing/iframes/iframe-src-change.html:
+        * compositing/iframes/invisible-nested-iframe-hide.html:
+        * compositing/iframes/invisible-nested-iframe-show.html:
+        * compositing/iframes/leave-compositing-iframe.html:
+        * compositing/iframes/overlapped-iframe-iframe.html:
+        * compositing/iframes/overlapped-iframe.html:
+        * compositing/iframes/overlapped-nested-iframes.html:
+        * compositing/iframes/repaint-after-losing-scrollbars.html:
+        * compositing/iframes/resources/fixed-position-subframe.html:
+        * compositing/iframes/resources/fixed-position-transformed-subframe.html:
+        * compositing/iframes/resources/scrollgrandchild-inner.html:
+        * compositing/iframes/scrolling-iframe.html:
+        * compositing/overflow/content-gains-scrollbars.html:
+        * compositing/overflow/content-loses-scrollbars.html:
+        * compositing/overflow/do-not-paint-outline-into-composited-scrolling-contents.html:
+        * compositing/overflow/overflow-scrollbar-layers.html:
+        * compositing/overflow/paint-neg-z-order-descendants-into-scrolling-contents-layer.html:
+        * compositing/overflow/repaint-after-losing-scrollbars.html:
+        * compositing/patterns/direct-pattern-compositing-add-text-expected.html:
+        * compositing/patterns/direct-pattern-compositing-add-text.html:
+        * compositing/patterns/direct-pattern-compositing-change-expected.html:
+        * compositing/patterns/direct-pattern-compositing-change.html:
+        * compositing/patterns/direct-pattern-compositing-load-expected.html:
+        * compositing/patterns/direct-pattern-compositing-load.html:
+        * compositing/plugins/invalidate_rect.html:
+        * compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html:
+        * compositing/repaint/iframes/compositing-iframe-scroll-repaint.html:
+        * compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint.html:
+        * compositing/repaint/newly-composited-on-scroll.html:
+        * compositing/repaint/newly-composited-repaint-rect.html:
+        * compositing/repaint/page-scale-repaint.html:
+        * compositing/repaint/requires-backing-repaint.html:
+        * compositing/repaint/transform-style-change.html:
+        * compositing/rtl/rtl-overflow-invalidation.html:
+        * compositing/scroll-painted-composited-content.html:
+        * compositing/tiling/huge-layer-resize.html:
+        * compositing/video-page-visibility.html:
+        * compositing/video/video-with-invalid-source.html:
+        * compositing/webgl/webgl-repaint.html:
+        * css3/filters/multiple-filters-invalidation.html:
+        * css3/flexbox/repaint-column-reverse.html:
+        * css3/flexbox/repaint-during-resize-no-flex.html:
+        * css3/flexbox/repaint-rtl-column.html:
+        * css3/flexbox/repaint.html:
+        * displaylists/canvas-display-list.html:
+        * displaylists/resources/dump-target-display-list.js:
+        (doTest):
+        * displaylists/resources/dump-target-replay-list.js:
+        (doTest):
+        * fast/animation/request-animation-frame-detach-element.html:
+        * fast/animation/request-animation-frame-detach-element2.html:
+        * fast/animation/request-animation-frame-during-modal.html:
+        * fast/animation/request-animation-frame-iframe.html:
+        * fast/animation/request-animation-frame-iframe2.html:
+        * fast/animation/script-tests/request-animation-frame-cancel.js:
+        * fast/animation/script-tests/request-animation-frame-cancel2.js:
+        * fast/animation/script-tests/request-animation-frame-disabled.js:
+        * fast/animation/script-tests/request-animation-frame-prefix.js:
+        (window.webkitRequestAnimationFrame):
+        (window.testRunner.window.setTimeout):
+        * fast/animation/script-tests/request-animation-frame-time-unit.js:
+        (window.requestAnimationFrame):
+        * fast/animation/script-tests/request-animation-frame-timestamps-advance.js:
+        (window.requestAnimationFrame):
+        (window.testRunner.window.setTimeout):
+        * fast/animation/script-tests/request-animation-frame-timestamps.js:
+        * fast/animation/script-tests/request-animation-frame-within-callback.js:
+        * fast/animation/script-tests/request-animation-frame.js:
+        * fast/backgrounds/obscured-background-child-style-change-expected.html:
+        * fast/backgrounds/obscured-background-child-style-change.html:
+        * fast/backgrounds/solid-color-context-restore.html:
+        * fast/canvas/canvas-as-image-incremental-repaint.html:
+        * fast/canvas/canvas-incremental-repaint-2.html:
+        * fast/canvas/canvas-incremental-repaint.html:
+        * fast/canvas/canvas-resize-after-paint.html:
+        * fast/canvas/resources/repaint.js:
+        (runRepaintTest):
+        * fast/canvas/script-tests/canvas-imageSmoothingEnabled-repaint.js:
+        (TestControllerPaint):
+        * fast/canvas/webgl/canvas-test.html:
+        * fast/canvas/webgl/webgl-layer-update.html:
+        * fast/css/pseudostyle-anonymous-text.html:
+        * fast/css/relative-positioned-block-crash.html:
+        * fast/dom/Window/post-message-crash.html:
+        * fast/dom/Window/web-timing-minimal-performance-now.html:
+        * fast/dynamic/containing-block-change.html:
+        * fast/dynamic/layer-no-longer-paginated.html:
+        * fast/events/touch/gesture/pad-gesture-cancel.js:
+        * fast/events/touch/gesture/pad-gesture-fling.js:
+        * fast/forms/hidden-listbox.html:
+        * fast/forms/listbox-clip.html:
+        * fast/frames/inline-object-inside-frameset.html:
+        * fast/frames/transparent-scrollbar.html:
+        * fast/images/animated-background-image-crash.html:
+        * fast/layers/add-layer-with-nested-stacking.html:
+        * fast/layers/inline-dirty-z-order-lists.html:
+        * fast/layers/layer-content-visibility-change.html:
+        * fast/layers/nested-layers-1.html:
+        * fast/layers/nested-layers-2.html:
+        * fast/layers/nested-layers-3.html:
+        * fast/layers/nested-layers-4.html:
+        * fast/layers/remove-layer-with-nested-stacking.html:
+        * fast/overflow/hidden-scrollbar-resize.html:
+        * fast/reflections/inline-crash.html:
+        * fast/repaint/animation-after-layer-scroll.html:
+        * fast/repaint/background-shorthand-with-gradient-and-height-changes.html:
+        * fast/repaint/fixed-child-move-after-scroll.html:
+        * fast/repaint/fixed-child-of-fixed-move-after-scroll.html:
+        * fast/repaint/fixed-child-of-transformed-move-after-scroll.html:
+        * fast/repaint/fixed-move-after-scroll.html:
+        * fast/repaint/no-animation-outside-viewport-subframe.html:
+        * fast/repaint/no-animation-outside-viewport.html:
+        * fast/repaint/obscured-background-no-repaint.html:
+        * fast/repaint/overflow-hidden-in-overflow-hidden-scrolled.html:
+        * fast/repaint/renderer-destruction-by-invalidateSelection-crash.html:
+        * fast/repaint/repaint-during-scroll-with-zoom.html:
+        * fast/repaint/resources/fixed-move-after-keyboard-scroll-iframe.html:
+        * fast/repaint/resources/iframe-scroll-repaint-iframe.html:
+        * fast/repaint/resources/line-flow-with-floats.js:
+        (beginTest):
+        * fast/repaint/resources/repaint.js:
+        (runRepaintTest):
+        * fast/repaint/table-overflow-hidden-in-overflow-hidden-scrolled.html:
+        * fast/replaced/width100percent-textarea.html:
+        * fast/scrolling/scrollbar-tickmarks-hittest.html:
+        * fast/table/border-collapsing/cached-69296.html:
+        * fast/table/border-collapsing/cached-cell-append.html:
+        * fast/table/border-collapsing/cached-cell-remove.html:
+        * fast/table/border-collapsing/cached-change-cell-border-color.html:
+        * fast/table/border-collapsing/cached-change-cell-border-width.html:
+        * fast/table/border-collapsing/cached-change-cell-sl-border-color.html:
+        * fast/table/border-collapsing/cached-change-col-border-color.html:
+        * fast/table/border-collapsing/cached-change-col-border-width.html:
+        * fast/table/border-collapsing/cached-change-colgroup-border-color.html:
+        * fast/table/border-collapsing/cached-change-colgroup-border-width.html:
+        * fast/table/border-collapsing/cached-change-row-border-color.html:
+        * fast/table/border-collapsing/cached-change-row-border-width.html:
+        * fast/table/border-collapsing/cached-change-table-border-color.html:
+        * fast/table/border-collapsing/cached-change-table-border-width.html:
+        * fast/table/border-collapsing/cached-change-tbody-border-color.html:
+        * fast/table/border-collapsing/cached-change-tbody-border-width.html:
+        * fast/table/empty-section-crash.html:
+        * fast/text/font-initial.html:
+        * fast/text/international/harfbuzz-runs-with-no-glyph.html:
+        * fast/text/text-shadow-extreme-value.html:
+        * http/tests/misc/slow-loading-image-in-pattern.html:
+        * media/audio-repaint.html:
+        * media/media-document-audio-repaint.html:
+        * plugins/windowless_plugin_paint_test.html:
+        * scrollbars/scrollbar-percent-padding-crash.html:
+        * svg/custom/non-scaling-stroke-update.svg:
+        * svg/custom/stale-resource-data-crash.svg:
+
+2017-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Reformat / Clean up Node.idl to match the specification
+        https://bugs.webkit.org/show_bug.cgi?id=171686
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline existing test now that the Node properties are enumerated in a
+        slightly different order.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2017-05-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        - Remove fast/notifications/. It was skipped on all platforms and use legacy Notifications API.
+        - Remove http/notifications/legacy. It tested the legacy API.
+        - Update two tests in fast/history to use the non-legacy API to test page cache + notifications.
+        - Update TestExpectations for removals.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * fast/history/page-cache-notification-non-suspendable.html:
+        * fast/history/page-cache-notification-suspendable.html:
+        * fast/notifications: Removed.
+        * fast/notifications/notification-after-close-expected.txt: Removed.
+        * fast/notifications/notification-after-close.html: Removed.
+        * fast/notifications/notification-permisssion-deletable-expected.txt: Removed.
+        * fast/notifications/notification-permisssion-deletable.html: Removed.
+        * fast/notifications/notifications-cancel-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-cancel-request-permission.html: Removed.
+        * fast/notifications/notifications-check-permission-expected.txt: Removed.
+        * fast/notifications/notifications-check-permission.html: Removed.
+        * fast/notifications/notifications-click-event-expected.txt: Removed.
+        * fast/notifications/notifications-click-event-focus-expected.txt: Removed.
+        * fast/notifications/notifications-click-event-focus.html: Removed.
+        * fast/notifications/notifications-click-event.html: Removed.
+        * fast/notifications/notifications-constructor-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-request-permission.html: Removed.
+        * fast/notifications/notifications-constructor-with-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-with-permission.html: Removed.
+        * fast/notifications/notifications-constructor-without-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-without-permission.html: Removed.
+        * fast/notifications/notifications-display-close-events-expected.txt: Removed.
+        * fast/notifications/notifications-display-close-events.html: Removed.
+        * fast/notifications/notifications-document-close-crash-expected.txt: Removed.
+        * fast/notifications/notifications-document-close-crash.html: Removed.
+        * fast/notifications/notifications-event-stop-propagation-expected.txt: Removed.
+        * fast/notifications/notifications-event-stop-propagation.html: Removed.
+        * fast/notifications/notifications-multi-events-expected.txt: Removed.
+        * fast/notifications/notifications-multi-events.html: Removed.
+        * fast/notifications/notifications-no-icon-expected.txt: Removed.
+        * fast/notifications/notifications-no-icon.html: Removed.
+        * fast/notifications/notifications-permission-expected.txt: Removed.
+        * fast/notifications/notifications-permission.html: Removed.
+        * fast/notifications/notifications-replace-expected.txt: Removed.
+        * fast/notifications/notifications-replace.html: Removed.
+        * fast/notifications/notifications-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-request-permission-optional-expected.txt: Removed.
+        * fast/notifications/notifications-request-permission-optional.html: Removed.
+        * fast/notifications/notifications-request-permission.html: Removed.
+        * fast/notifications/notifications-rtl-expected.txt: Removed.
+        * fast/notifications/notifications-rtl.html: Removed.
+        * fast/notifications/notifications-sandbox-permission-expected.txt: Removed.
+        * fast/notifications/notifications-sandbox-permission.html: Removed.
+        * fast/notifications/notifications-window-close-crash-expected.txt: Removed.
+        * fast/notifications/notifications-window-close-crash.html: Removed.
+        * fast/notifications/notifications-with-permission-expected.txt: Removed.
+        * fast/notifications/notifications-with-permission.html: Removed.
+        * fast/notifications/notifications-without-permission-expected.txt: Removed.
+        * fast/notifications/notifications-without-permission.html: Removed.
+        * fast/notifications/request-notification-permission-while-reloading-expected.txt: Removed.
+        * fast/notifications/request-notification-permission-while-reloading.html: Removed.
+        * fast/notifications/resources: Removed.
+        * fast/notifications/resources/notifications-cancel-request-permission.html: Removed.
+        * fast/notifications/resources/notifications-iframe.html: Removed.
+        * http/tests/notifications/legacy: Removed.
+        * http/tests/notifications/legacy/double-show-expected.txt: Removed.
+        * http/tests/notifications/legacy/double-show.html: Removed.
+        * http/tests/notifications/legacy/events-expected.txt: Removed.
+        * http/tests/notifications/legacy/events.html: Removed.
+        * http/tests/notifications/legacy/notification-request-permission-then-navigate-expected.txt: Removed.
+        * http/tests/notifications/legacy/notification-request-permission-then-navigate.html: Removed.
+        * http/tests/notifications/legacy/request-expected.txt: Removed.
+        * http/tests/notifications/legacy/request-no-callback-expected.txt: Removed.
+        * http/tests/notifications/legacy/request-no-callback.html: Removed.
+        * http/tests/notifications/legacy/request.html: Removed.
+        * http/tests/notifications/legacy/resources: Removed.
+        * http/tests/notifications/legacy/resources/notify-opener-done.html: Removed.
+        * http/tests/notifications/legacy/resources/request-permission-then-navigate.html: Removed.
+        * http/tests/notifications/legacy/show-expected.txt: Removed.
+        * http/tests/notifications/legacy/show.html: Removed.
+        * http/tests/notifications/legacy/window-show-on-click-expected.txt: Removed.
+        * http/tests/notifications/legacy/window-show-on-click.html: Removed.
+
+2017-05-04  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/xmlhttprequest/workers/methods-async.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=160368
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-04  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (Safari 10.1): When 'transition' contains -ms-transform, transform-origin is also transitioned
+        https://bugs.webkit.org/show_bug.cgi?id=171250
+        <rdar://problem/31827243>
+
+        Reviewed by Geoffrey Garen.
+
+        * transitions/transition-unknown-property-ignore-expected.txt: Added.
+        * transitions/transition-unknown-property-ignore.html: Added.
+        * transitions/transitions-parsing-expected.txt:
+        * transitions/transitions-parsing.html:
+
+            Update the roundtrip expectations for unknown properties. The new results match Blink and Gecko.
+
+2017-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Reformat / clean up Event.idl
+        https://bugs.webkit.org/show_bug.cgi?id=171675
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline test now that the Event properties are in a slightly different order.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+
+2017-05-04  Daniel Bates  <dabates@apple.com>
+
+        importScripts() should respect X-Content-Type-Options: nosniff
+        https://bugs.webkit.org/show_bug.cgi?id=171248
+        <rdar://problem/31819023>
+
+        Reviewed by Andy Estes.
+
+        Unskip web-platform-tests/fetch/nosniff/importscripts as it now passes.
+
+        * TestExpectations:
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed: Replace Windows line ending (CRLF) by Unix line ending (CR).
+
+        * plugins/windowless_plugin_paint_test.html:
+
+2017-05-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed: Replace Windows line ending (CRLF) by Unix line ending (CR).
+
+        * compositing/video/video-with-invalid-source.html:
+
+2017-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip media/modern-media-controls/pip-support/pip-support-click.html on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171610
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-04  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION(STP): rgb() with calc() containing variables doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=169939
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/variables/calc-float-to-int-expected.html: Added.
+        * fast/css/variables/calc-float-to-int.html: Added.
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed gardening. Update main expectations of http/tests/inspector/network/resource-request-headers.html.
+
+        And add platform specific results for mac-wk2.
+
+        * http/tests/inspector/network/resource-request-headers-expected.txt:
+        * platform/mac-wk2/http/tests/inspector/network/resource-request-headers-expected.txt: Copied from LayoutTests/http/tests/inspector/network/resource-request-headers-expected.txt.
+
 2017-05-03  John Wilander  <wilander@apple.com>
 
         Resource Load Statistics: Remove all statistics for modifiedSince website data removals

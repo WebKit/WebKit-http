@@ -499,9 +499,6 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
 [ Sierra+ ] media/video-contained-in-fullscreen-element-going-into-pip.html [ Pass ]
 
-# rdar://problem/26885345
-[ Sierra+ ] media/click-placeholder-not-pausing.html [ Pass ]
-
 # RTL Scrollbars are enabled on Sierra WebKit2.
 [ Sierra+ ] fast/scrolling/rtl-scrollbars.html [ Pass ]
 [ Sierra+ ] fast/scrolling/rtl-scrollbars-simple.html [ Pass ]
@@ -648,8 +645,6 @@ webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failur
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
 
-webkit.org/b/170702 [ Sierra ] http/tests/inspector/network/resource-request-headers.html [ Pass Failure ]
-
 webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
 
 webkit.org/b/170629 [ Sierra Debug ] memory/memory-pressure-simulation.html [ Pass Failure ]
@@ -667,3 +662,7 @@ webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/promises-call.html [ 
 webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Pass Failure ]
 
 webkit.org/b/171553 [ Release ] http/tests/websocket/tests/hybi/inspector/binary.html [ Pass Failure ]
+
+webkit.org/b/172703 [ Sierra Debug ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
+
+webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]

@@ -255,6 +255,11 @@ void TestRunner::display()
     displayWebView();
 }
 
+void TestRunner::displayAndTrackRepaints()
+{
+    displayAndTrackRepaintsWebView();
+}
+
 void TestRunner::keepWebHistory()
 {
     if (![WebHistory optionalSharedHistory]) {

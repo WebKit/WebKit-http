@@ -26,6 +26,7 @@
 #pragma once
 
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
 
 namespace WebKit {
 
@@ -38,10 +39,10 @@ public:
     ~CompositingManager();
 
     void establishConnection(WebPage&);
-    int releaseConnectionFd() { return std::exchange(m_connectionFd, -1); };
+    int releaseConnectionFd();
 
 private:
-    int m_connectionFd { -1 };
+    std::optional<int> m_connectionFd;
 };
 
 } // namespace WebKit

@@ -1,3 +1,646 @@
+2017-05-06  Bill Ming  <mbbill@gmail.com>
+
+        Fix 32bit Windows build by giving correct parameters to MASM
+        https://bugs.webkit.org/show_bug.cgi?id=170833
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-05-06  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6] Arrow function. Issue in access to this after eval('super()') within constructor
+        https://bugs.webkit.org/show_bug.cgi?id=171543
+
+        Reviewed by Saam Barati.
+
+        Current patch force to use 'this' within arrow function or eval 
+        from virtual scope each time, instead of using thisRegister.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::ensureThis):
+
+2017-05-05  Keith Miller  <keith_miller@apple.com>
+
+        Put does not properly consult the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=171754
+
+        Reviewed by Saam Barati.
+
+        We should do a follow up that cleans up the rest of put. See:
+        https://bugs.webkit.org/show_bug.cgi?id=171759
+
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::canPerformFastPutInline):
+
+2017-05-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: Air::Inst::generate crashes on large binary on A64
+        https://bugs.webkit.org/show_bug.cgi?id=170215
+
+        Reviewed by Filip Pizlo.
+
+        ARM can't encode all offsets in a single instruction. We usualy
+        handle this type of detail early, or the macro assembler uses a
+        scratch register to take care of the large immediate. After
+        register allocation we assumed that we would never get large
+        offsets, and asserted this was the case. That was a fine
+        assumption with JavaScript, but WebAssembly ends up generating
+        stack frames which are too big to encode.
+
+        There are two places that needed to be fixed:
+            1. AirGenerate
+            2. AirLowerStackArgs
+
+        We now unconditionally pin the dataTempRegister on ARM64, and use
+        it when immediates don't fit.
+
+        Number 1. is easy: we're just incrementing SP, make sure we can
+        use a scratch register when that happens.
+
+        Number 2. is more complex: not all Inst can receive a stack
+        argument whose base register isn't SP or FP. Specifically,
+        Patchpoints and Stackmaps get very sad because they just want to
+        know the offset value, but when we materialize the offset as
+        follows:
+
+            Move (spill337), (spill201), %r0, @8735
+
+        Becomes (where %r16 is dataTempRegister):
+            Move $1404, %r16, @8736
+            Add64 %sp, %r16, @8736
+            Move (%r16), 2032(%sp), %r0, @8736
+
+        The code currently doesn't see through our little dance. To work
+        around this issue we introduce a new Air Arg kind:
+        ExtendedOffsetAddr. This is the same as a regular Addr, but with
+        an offset which may be too big to encode. Opcodes then declare
+        whether their arguments can handle such inputs, and if so we
+        generate them, otherwise we generate Addr as shown above.
+
+        None of this affects x86 because it can always encode large
+        immediates.
+
+        This patch also drive-by converts some uses of `override` to
+        `final`. It makes the code easier to grok, and maybe helps the
+        optimizer sometimes but really that doens't matter.
+
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerARM64.h:
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::admitsExtendedOffsetAddr):
+        * b3/B3CheckSpecial.h:
+        * b3/B3Common.cpp:
+        (JSC::B3::pinnedExtendedOffsetAddrRegister): keep the CPU-specific
+        pinning information in a cpp file
+        * b3/B3Common.h:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::admitsExtendedOffsetAddr):
+        * b3/B3PatchpointSpecial.h:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        (JSC::B3::StackmapSpecial::repForArg):
+        * b3/B3StackmapSpecial.h:
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::isStackMemory):
+        (JSC::B3::Air::Arg::jsHash):
+        (JSC::B3::Air::Arg::dump):
+        (WTF::printInternal):
+        (JSC::B3::Air::Arg::stackAddrImpl): Deleted. There was only one
+        use of this (in AirLowerStackArgs) and it was now confusing to
+        split the logic up between these two. Inline the code that used to
+        be here into its one usepoint instead.
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::extendedOffsetAddr):
+        (JSC::B3::Air::Arg::isExtendedOffsetAddr):
+        (JSC::B3::Air::Arg::isMemory):
+        (JSC::B3::Air::Arg::base):
+        (JSC::B3::Air::Arg::offset):
+        (JSC::B3::Air::Arg::isGP):
+        (JSC::B3::Air::Arg::isFP):
+        (JSC::B3::Air::Arg::isValidForm):
+        (JSC::B3::Air::Arg::forEachTmpFast):
+        (JSC::B3::Air::Arg::forEachTmp):
+        (JSC::B3::Air::Arg::asAddress):
+        (JSC::B3::Air::Arg::stackAddr): Deleted.
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::isValid):
+        (JSC::B3::Air::CCallSpecial::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::CCallSpecial::generate):
+        * b3/air/AirCCallSpecial.h:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::pinRegister): Check that the register wasn't
+        pinned before pinning it. It's likely a bug to pin the same
+        register twice.
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::CCallCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::ShuffleCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::EntrySwitchCustom::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::WasmBoundsCheckCustom::admitsExtendedOffsetAddr):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::admitsExtendedOffsetAddr):
+        * b3/air/AirLowerStackArgs.cpp:
+        (JSC::B3::Air::lowerStackArgs):
+        * b3/air/AirPrintSpecial.cpp:
+        (JSC::B3::Air::PrintSpecial::admitsExtendedOffsetAddr):
+        (JSC::B3::Air::PrintSpecial::generate):
+        * b3/air/AirPrintSpecial.h:
+        * b3/air/AirSpecial.h:
+        * b3/air/opcode_generator.rb:
+
+2017-05-05  Oliver Hunt  <oliver@apple.com>
+
+        Move trivial String prototype functions to JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=171737
+
+        Reviewed by Saam Barati.
+
+        Super simple change to migrate all of the old school
+        html-ifying string operations to builtin JS.
+
+        Core implementation is basically a 1-for-1 match to the spec.
+
+        * builtins/StringPrototype.js:
+        (globalPrivate.createHTML):
+        (anchor):
+        (big):
+        (blink):
+        (bold):
+        (fixed):
+        (fontcolor):
+        (fontsize):
+        (italics):
+        (link):
+        (small):
+        (strike):
+        (sub):
+        (sup):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncBig): Deleted.
+        (JSC::stringProtoFuncSmall): Deleted.
+        (JSC::stringProtoFuncBlink): Deleted.
+        (JSC::stringProtoFuncBold): Deleted.
+        (JSC::stringProtoFuncFixed): Deleted.
+        (JSC::stringProtoFuncItalics): Deleted.
+        (JSC::stringProtoFuncStrike): Deleted.
+        (JSC::stringProtoFuncSub): Deleted.
+        (JSC::stringProtoFuncSup): Deleted.
+        (JSC::stringProtoFuncFontcolor): Deleted.
+        (JSC::stringProtoFuncFontsize): Deleted.
+        (JSC::stringProtoFuncAnchor): Deleted.
+        (JSC::stringProtoFuncLink): Deleted.
+
+2017-05-05  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [JSC] Remove export from Intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=171752
+
+        Reviewed by Alexey Proskuryakov.
+
+        * runtime/Intrinsic.h:
+
+2017-05-05  Saam Barati  <sbarati@apple.com>
+
+        putDirectIndex does not properly do defineOwnProperty
+        https://bugs.webkit.org/show_bug.cgi?id=171591
+        <rdar://problem/31735695>
+
+        Reviewed by Geoffrey Garen.
+
+        This patch fixes putDirectIndex and its JIT implementations to be
+        compatible with the ES6 spec. I think our code became out of date
+        when we implemented ArraySpeciesCreate since ArraySpeciesCreate may
+        return arbitrary objects. We perform putDirectIndex on that arbitrary
+        object. The behavior we want is as if we performed defineProperty({configurable:true, enumerable:true, writable:true}).
+        However, we weren't doing this. putDirectIndex assumed it could just splat
+        data into any descendent of JSObject's butterfly. For example, this means
+        we'd just splat into the butterfly of a typed array, even though a typed
+        array doesn't use its butterfly to store its indexed properties in the usual
+        way. Also, typed array properties are non-configurable, so this operation
+        should throw. This also means if we saw a ProxyObject, we'd just splat
+        into its butterfly, but this is obviously wrong because ProxyObject should
+        intercept the defineProperty operation.
+        
+        This patch fixes this issue by adding a whitelist of cell types that can
+        go down putDirectIndex's fast path. Anything not in that whitelist will
+        simply call into defineOwnProperty.
+
+        * bytecode/ByValInfo.h:
+        (JSC::jitArrayModePermitsPutDirect):
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::refine):
+        * jit/JITOperations.cpp:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSplice):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createStructure):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        * runtime/JSObject.cpp:
+        (JSC::canDoFastPutDirectIndex):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+        (JSC::JSObject::putDirectIndexBeyondVectorLength): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectIndex):
+        (JSC::JSObject::canSetIndexQuicklyForPutDirect): Deleted.
+        * runtime/JSType.h:
+
+2017-05-05  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] include JSCInlines.h in ObjectInitializationScope.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=171744
+
+        Reviewed by Mark Lam.
+
+        * runtime/ObjectInitializationScope.cpp:
+
+
+2017-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Assertion failure in Inspector::RemoteInspector::setRemoteInspectorClient when disposing WebKitWebContext
+        https://bugs.webkit.org/show_bug.cgi?id=171644
+
+        Reviewed by Michael Catanzaro.
+
+        Fix ASSERT that requires given client to be a valid pointer, since it's valid to pass nullptr to unset the
+        client. The ASSERT now ensures that client is set or unset. I also renamed the function to setClient because
+        setRemoteInspectorClient is redundant for a class named RemoteInspector. And added a getter too, to check if the
+        remote inspector has a client.
+
+        * inspector/remote/RemoteInspector.cpp:
+        (Inspector::RemoteInspector::setClient):
+        * inspector/remote/RemoteInspector.h:
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216206.
+        https://bugs.webkit.org/show_bug.cgi?id=171714
+
+        Multiple LayoutTests crashing in Document::page() (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove support for legacy Notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+        http://trac.webkit.org/changeset/216206
+
+2017-05-04  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove redundant macros that are set in the CMake config
+        https://bugs.webkit.org/show_bug.cgi?id=171571
+
+        Reviewed by Brent Fulgham.
+
+        * config.h:
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Build fix for Windows after r216217.
+        https://bugs.webkit.org/show_bug.cgi?id=171586
+
+        Not reviewed.
+
+        * shell/PlatformWin.cmake:
+
+2017-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC::Heap should expose a richer API for requesting GCs
+        https://bugs.webkit.org/show_bug.cgi?id=171690
+
+        Reviewed by Geoffrey Garen.
+        
+        I want to stop WebCore from requesting synchronous GCs. But various parts of that work
+        may cause regressions, so I'd like to land it separately from the functionality that is
+        needed on the JSC side. This change is mostly a JSC-side refactoring that does not
+        change behavior. In the future I'll land the behavior changes (i.e. not requesting sync
+        GCs).
+        
+        This change allows you to enumerate over synchronousness, so that we can make all APIs
+        take synchronousness as an argument. It replaces the collectAllGarbage API with a
+        collectNow(Synchronousness, GCRequest) API. GCRequest is a new concept, which subsumes
+        std::optional<CollectionScope> and gives us the ability to register callbacks along
+        with a GC. So, you can ask for an async GC and get a callback when it's done.
+        
+        Also adds ability to request that fastMalloc memory be released after the incremental
+        sweeper finishes.
+        
+        * API/JSBase.cpp:
+        (JSSynchronousGarbageCollectForDebugging):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        * heap/FullGCActivityCallback.h:
+        * heap/GCRequest.cpp: Added.
+        (JSC::GCRequest::subsumedBy):
+        (JSC::GCRequest::dump):
+        * heap/GCRequest.h: Added.
+        (JSC::GCRequest::GCRequest):
+        * heap/Heap.cpp:
+        (JSC::Heap::collect):
+        (JSC::Heap::collectNow):
+        (JSC::Heap::collectAsync):
+        (JSC::Heap::collectSync):
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::runEndPhase):
+        (JSC::Heap::requestCollection):
+        (JSC::Heap::willStartCollection):
+        (JSC::Heap::sweeper):
+        (JSC::Heap::collectNowFullIfNotDoneRecently):
+        (JSC::Heap::shouldDoFullCollection):
+        (JSC::Heap::collectAllGarbage): Deleted.
+        (JSC::Heap::collectAllGarbageIfNotDoneRecently): Deleted.
+        * heap/Heap.h:
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::buildSnapshot):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::doSweep):
+        * heap/IncrementalSweeper.h:
+        (JSC::IncrementalSweeper::freeFastMallocMemoryAfterSweeping):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::doTestCollectionsIfNeeded):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::sweep):
+        * heap/Synchronousness.cpp: Added.
+        (WTF::printInternal):
+        * heap/Synchronousness.h: Added.
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::InspectorHeapAgent::gc):
+        * jsc.cpp:
+        (functionGCAndSweep):
+        (runJSC):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::gc):
+        * wasm/WasmMemory.cpp:
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        NeverDestroyed<String>(ASCIILiteral(...)) is not thread safe.
+        https://bugs.webkit.org/show_bug.cgi?id=171586
+        <rdar://problem/31873190>
+
+        Reviewed by Yusuke Suzuki.
+
+        JavaScriptCore allows multiple VMs to be instantiated, and each of these should
+        be able to run concurrently on different threads.  There is code in the VM that
+        allocates NeverDestroyed<String>(ASCIILiteral(...)) to defined immortal strings
+        meant to be shared by all VMs.
+
+        However, NeverDestroyed<String>(ASCIILiteral(...)) is not thread-safe because
+        each thread will ref and deref the underlying StringImpl.  Since this ref and
+        deref is not done in a thread-safe way, the NeverDestroyed<String> may get
+        destroyed due to the ref/deref races.  Additionally, each thread may modify the
+        StringImpl by setting its hash and also twiddling its flags.
+
+        The fix is to use the StaticStringImpl class which is safe for ref/derefing
+        concurrently from different threads.  StaticStringImpl is also pre-set with a
+        hash on construction, and its flags are set in such a way as to prevent twiddling
+        at runtime.  Hence, we will be able to share a NeverDestroyed<String> between
+        VMs, as long as it is backed by a StaticStringImpl.
+
+        An alternative solution would be to change all the uses of NeverDestroyed<String>
+        to use per-VM strings.  However, this solution is cumbersome, and makes it harder
+        to allocate the intended shared string.  It also uses more memory and takes more
+        CPU time because it requires allocating the same string for each VM instance.
+        The StaticStringImpl solution wins out because it is more efficient and is easier
+        to use.
+
+        The StaticStringImpl solution also can be used in WTF without a layer violation.
+        See Source/WTF/wtf/text/icu/TextBreakIteratorICU.h for an example.
+
+        Also added the MultithreadedMultiVMExecutionTest which runs multiple VMs in
+        multiple threads, all banging on the BuiltinExecutable's baseConstructorCode
+        NeverDestroyed<String>.  The test will manifest the issue reliably (before this
+        fix) if run on an ASAN build.
+
+        * API/tests/MultithreadedMultiVMExecutionTest.cpp: Added.
+        (threadsList):
+        (startMultithreadedMultiVMExecutionTest):
+        (finalizeMultithreadedMultiVMExecutionTest):
+        * API/tests/MultithreadedMultiVMExecutionTest.h: Added.
+        * API/tests/testapi.c:
+        (main):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createDefaultConstructor):
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::objectGroupForBreakpointAction):
+        * replay/scripts/CodeGeneratorReplayInputsTemplates.py:
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::SavedMouseButton>::type):
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::SavedMouseButton>::type):
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::HandleWheelEvent>::type):
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::FormCombo>::type):
+        * replay/scripts/tests/expected/generate-input-with-guard.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::GetCurrentTime>::type):
+        (JSC::InputTraits<Test::SetRandomSeed>::type):
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ArrayOfThings>::type):
+        (JSC::InputTraits<Test::SavedHistory>::type):
+        * replay/scripts/tests/expected/generate-inputs-with-flags.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ScalarInput1>::type):
+        (JSC::InputTraits<Test::ScalarInput2>::type):
+        * replay/scripts/tests/expected/generate-memoized-type-modes.json-TestReplayInputs.cpp:
+        (JSC::InputTraits<Test::ScalarInput>::type):
+        (JSC::InputTraits<Test::MapInput>::type):
+        * runtime/IntlObject.cpp:
+        (JSC::numberingSystemsForLocale):
+
+2017-05-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * API/JSStringRef.cpp:
+        (JSStringCreateWithCharacters):
+        (JSStringCreateWithCharactersNoCopy):
+        (JSStringGetCharactersPtr):
+        * runtime/DateConversion.cpp:
+        (JSC::formatDateTime):
+
+2017-05-04  Saam Barati  <sbarati@apple.com>
+
+        stress/call-apply-exponential-bytecode-size.js.no-llint failing on 32-bit debug for OOM on executable memory
+        https://bugs.webkit.org/show_bug.cgi?id=171008
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch lowers the threshold for .call/.apply recursion
+        in an attempt to emit less code and not impact perf.
+        We're currently failing tests on x86-32 by running out
+        of executable memory. If perf gets impacted because of this,
+        then I'll apply a stricter change just to 32-bit platforms.
+        However, if this doesn't negatively impact perf, it's all around
+        better than all platforms emit less bytecode.
+
+        * bytecompiler/NodesCodegen.cpp:
+
+2017-05-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Math unary functions should be handled by DFG
+        https://bugs.webkit.org/show_bug.cgi?id=171269
+
+        Reviewed by Saam Barati.
+
+        ArithSin, ArithCos, and ArithLog are just calling a C runtime function.
+        While handling them in DFG is not very effective for performance, they
+        can drop some type checks & value conversions and mark them as pure
+        operations. It is effective if they are involved in some complex
+        optimization phase. Actually, ArithLog is effective in kraken.
+
+        While a few of Math functions have DFG nodes, basically math functions
+        are pure. And large part of these functions are just calling a C runtime
+        function. This patch generalizes these nodes in DFG as ArithUnary. And
+        we annotate many unary math functions with Intrinsics and convert them
+        to ArithUnary in DFG. It also cleans up duplicate code in ArithSin,
+        ArithCos, and ArithLog. If your math function has some good DFG / FTL
+        optimization rather than calling a C runtime function, you should add
+        a specialized DFG node, like ArithSqrt.
+
+        We also create a new namespace JSC::Math. Inside it, we collect math functions.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArithMode.cpp:
+        (JSC::DFG::arithUnaryFunction):
+        (JSC::DFG::arithUnaryOperation):
+        (WTF::printInternal):
+        * dfg/DFGArithMode.h:
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasArithUnaryType):
+        (JSC::DFG::Node::arithUnaryType):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithUnary):
+        (JSC::DFG::SpeculativeJIT::compileArithCos): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithTan): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithSin): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithLog): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithUnary):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithSin): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithCos): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithTan): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithLog): Deleted.
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::doubleUnary):
+        (JSC::FTL::Output::doubleSin): Deleted.
+        (JSC::FTL::Output::doubleCos): Deleted.
+        (JSC::FTL::Output::doubleTan): Deleted.
+        (JSC::FTL::Output::doubleLog): Deleted.
+        * ftl/FTLOutput.h:
+        * runtime/Intrinsic.h:
+        * runtime/MathCommon.cpp:
+        (JSC::Math::log1p):
+        * runtime/MathCommon.h:
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+        (JSC::mathProtoFuncACos):
+        (JSC::mathProtoFuncASin):
+        (JSC::mathProtoFuncATan):
+        (JSC::mathProtoFuncCos):
+        (JSC::mathProtoFuncExp):
+        (JSC::mathProtoFuncLog):
+        (JSC::mathProtoFuncSin):
+        (JSC::mathProtoFuncTan):
+        (JSC::mathProtoFuncACosh):
+        (JSC::mathProtoFuncASinh):
+        (JSC::mathProtoFuncATanh):
+        (JSC::mathProtoFuncCbrt):
+        (JSC::mathProtoFuncCosh):
+        (JSC::mathProtoFuncExpm1):
+        (JSC::mathProtoFuncLog1p):
+        (JSC::mathProtoFuncLog10):
+        (JSC::mathProtoFuncLog2):
+        (JSC::mathProtoFuncSinh):
+        (JSC::mathProtoFuncTanh):
+
+2017-05-03  Saam Barati  <sbarati@apple.com>
+
+        How we build polymorphic cases is wrong when making a call from Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=171527
+
+        Reviewed by JF Bastien.
+
+        This patches fixes a bug when we emit a polymorphic call IC from
+        Wasm. We were incorrectly assuming that if we made a call *from wasm*,
+        then the thing we are *calling to* does not have a CodeBlock. This
+        is obviously wrong. This patch fixes the incorrect assumption.
+        
+        This patch also does two more things:
+        1. Add a new option that makes us make calls to JS using a
+        slow path instead of using a call IC.
+        2. Fixes a potential GC bug where we didn't populate JSWebAssemblyCodeBlock's
+        JSWebAssemblyModule pointer.
+
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * runtime/Options.h:
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        (JSC::JSWebAssemblyCodeBlock::create):
+        (JSC::JSWebAssemblyCodeBlock::finishCreation):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::finalizeCreation):
+
 2017-05-03  Keith Miller  <keith_miller@apple.com>
 
         Array.prototype.sort should also allow a null comparator

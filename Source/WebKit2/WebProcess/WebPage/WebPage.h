@@ -30,11 +30,9 @@
 #include "APIInjectedBundlePageContextMenuClient.h"
 #include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
-#include "Download.h"
 #include "EditingRange.h"
 #include "FindController.h"
 #include "GeolocationPermissionRequestManager.h"
-#include "ImageOptions.h"
 #include "InjectedBundlePageFullScreenClient.h"
 #include "InjectedBundlePageLoaderClient.h"
 #include "InjectedBundlePagePolicyClient.h"
@@ -44,33 +42,20 @@
 #include "MessageSender.h"
 #include "Plugin.h"
 #include "SandboxExtension.h"
-#include "ShareableBitmap.h"
 #include "UserData.h"
-#include "UserMediaPermissionRequestManager.h"
 #include "WebURLSchemeHandler.h"
 #include <WebCore/ActivityState.h>
-#include <WebCore/DictationAlternative.h>
-#include <WebCore/DictionaryPopupInfo.h>
-#include <WebCore/DragData.h>
-#include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
-#include <WebCore/HitTestResult.h>
 #include <WebCore/HysteresisActivity.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSizeHash.h>
-#include <WebCore/LibWebRTCProvider.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlay.h>
 #include <WebCore/PageVisibilityState.h>
-#include <WebCore/PlatformMouseEvent.h>
-#include <WebCore/ScrollTypes.h>
-#include <WebCore/TextChecking.h>
-#include <WebCore/TextIndicator.h>
 #include <WebCore/UserActivity.h>
 #include <WebCore/UserContentTypes.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/UserScriptTypes.h>
-#include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
 #include <memory>
 #include <wtf/HashMap.h>
@@ -92,7 +77,8 @@
 
 #if PLATFORM(IOS)
 #include "GestureTypes.h"
-#import "WebPageMessages.h"
+#include "WebPageMessages.h"
+#include <WebCore/ViewportConfiguration.h>
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -132,6 +118,7 @@ namespace WebCore {
 class DocumentLoader;
 class GraphicsContext;
 class Frame;
+class FrameSelection;
 class FrameView;
 class HTMLPlugInElement;
 class HTMLPlugInImageElement;
@@ -148,9 +135,12 @@ class SubstituteData;
 class TextCheckingRequest;
 class URL;
 class VisibleSelection;
+enum class TextIndicatorPresentationTransition : uint8_t;
+enum SyntheticClickType : int8_t;
 struct Highlight;
 struct KeypressCommand;
 struct TextCheckingResult;
+struct ViewportArguments;
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 class MediaPlayerRequestInstallMissingPluginsCallback;
@@ -159,12 +149,16 @@ class MediaPlayerRequestInstallMissingPluginsCallback;
 
 namespace WebKit {
 class DrawingArea;
+class DownloadID;
+class GamepadData;
 class InjectedBundleBackForwardList;
+class MediaDeviceSandboxExtensions;
 class NotificationPermissionRequestManager;
 class PDFPlugin;
 class PageBanner;
 class PluginView;
 class RemoteWebInspectorUI;
+class UserMediaPermissionRequestManager;
 class VisibleContentRectUpdateInfo;
 class WebColorChooser;
 class WebContextMenu;
@@ -196,7 +190,6 @@ struct AttributedString;
 struct BackForwardListItemState;
 struct EditingRange;
 struct EditorState;
-class GamepadData;
 struct InteractionInformationAtPosition;
 struct InteractionInformationRequest;
 struct LoadParameters;
@@ -205,6 +198,8 @@ struct WebsitePolicies;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 struct WebSelectionData;
+
+typedef uint32_t SnapshotOptions;
 
 #if PLATFORM(COCOA)
 class RemoteLayerTreeTransaction;
@@ -506,7 +501,7 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return m_userMediaPermissionRequestManager; }
+    UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return *m_userMediaPermissionRequestManager; }
 #endif
 
     void elementDidFocus(WebCore::Node*);
@@ -740,8 +735,8 @@ public:
     void mayPerformUploadDragDestinationAction();
 
     void willStartDrag() { ASSERT(!m_isStartingDrag); m_isStartingDrag = true; }
-    void didStartDrag() { ASSERT(m_isStartingDrag); m_isStartingDrag = false; }
-    void dragCancelled() { m_isStartingDrag = false; }
+    void didStartDrag();
+    void dragCancelled();
 #endif // ENABLE(DRAG_SUPPORT)
 
     void beginPrinting(uint64_t frameID, const PrintInfo&);
@@ -1119,7 +1114,7 @@ private:
     void platformPreferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
 
-    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, DownloadID);
+    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, const DownloadID&);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
     void suspendActiveDOMObjectsAndAnimations();
@@ -1194,8 +1189,8 @@ private:
     void disableICECandidateFiltering();
     void enableICECandidateFiltering();
 #if USE(LIBWEBRTC)
-    void disableEnumeratingAllNetworkInterfaces() { m_page->libWebRTCProvider().disableEnumeratingAllNetworkInterfaces(); }
-    void enableEnumeratingAllNetworkInterfaces() { m_page->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces(); }
+    void disableEnumeratingAllNetworkInterfaces();
+    void enableEnumeratingAllNetworkInterfaces();
 #endif
 #endif
 
@@ -1419,7 +1414,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    UserMediaPermissionRequestManager m_userMediaPermissionRequestManager;
+    std::unique_ptr<UserMediaPermissionRequestManager> m_userMediaPermissionRequestManager;
 #endif
 
     std::unique_ptr<WebCore::PrintContext> m_printContext;

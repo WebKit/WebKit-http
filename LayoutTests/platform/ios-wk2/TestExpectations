@@ -1882,7 +1882,7 @@ webkit.org/b/159881 [ Release ] fast/shapes/shape-outside-floats/shape-outside-b
 
 webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
 
-webkit.org/b/160368 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+webkit.org/b/160368 http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/161323 media/track/media-element-enqueue-event-crash.html [ Skip ]
 webkit.org/b/161323 media/track/track-remove-crash.html [ Skip ]
@@ -1918,7 +1918,7 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 webkit.org/b/163362 [ Debug ] platform/ios/ios/plugin/youtube-flash-plugin-iframe.html [ Pass Failure ]
 
-webkit.org/b/164960 [ Release ] http/tests/security/module-correct-mime-types.html [ Slow ]
+webkit.org/b/164960 http/tests/security/module-correct-mime-types.html [ Slow ]
 
 webkit.org/b/164961 [ Release ] http/tests/storage/callbacks-are-called-in-correct-context.html [ Timeout ]
 
@@ -1969,3 +1969,4 @@ webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/
 webkit.org/b/171628 scrollingcoordinator/ios/nested-fixed-layer-positions.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/171638 [ Release ] http/tests/xmlhttprequest/methods.html [ Pass Timeout ]
+

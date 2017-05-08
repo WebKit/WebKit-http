@@ -76,11 +76,8 @@ public:
 private:
     WorkQueuePool()
     {
-#if PLATFORM(GTK) || PLATFORM(WPE)
+        // FIXME: This is a sane default limit, but it should be configurable somehow.
         m_threadCountLimit = 1;
-#else
-        m_threadCountLimit = std::numeric_limits<unsigned>::max();
-#endif
     }
 
     WorkQueue& getOrCreateWorkQueueForContext(void* context)
