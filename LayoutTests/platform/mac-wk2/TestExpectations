@@ -492,7 +492,7 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 # rdar://problem/27574303
 [ Sierra+ ] media/controls/picture-in-picture.html [ Pass ]
 [ Sierra+ ] media/controls/pip-placeholder-without-video-controls.html [ Pass ]
-[ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass ]
+[ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass Timeout ]
 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Pass ]
 [ Sierra+ ] media/fullscreen-video-going-into-pip.html [ Pass ]
 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass ]
@@ -668,3 +668,9 @@ webkit.org/b/172703 [ Sierra Debug ] webrtc/libwebrtc/descriptionGetters.html [ 
 webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
+
+webkit.org/b/171862 [ Sierra Debug ] storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
+
+webkit.org/b/170870 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
+
+webkit.org/b/171895 webrtc/audio-replace-track.html [ Pass Failure Timeout ]

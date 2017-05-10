@@ -1,3 +1,594 @@
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix.
+
+        * platform/wpe/WidgetWPE.cpp:
+        (WebCore::Widget::paint): Add the missing SecurityOriginPaintPolicy parameter.
+
+2017-05-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        Test: fast/mediastream/get-user-media-device-id.html
+
+        * Modules/mediastream/MediaConstraintsImpl.h:
+        (WebCore::MediaConstraintsData::MediaConstraintsData): Add a constructor that 
+        takes a const MediaConstraints&.
+
+        * Modules/mediastream/MediaDevicesEnumerationRequest.cpp:
+        (WebCore::MediaDevicesEnumerationRequest::topLevelDocumentOrigin): Don't return
+        NULL for the main frame so the origin matches that returned for a UserMediaRequest.
+
+        * Modules/mediastream/UserMediaController.h:
+        (WebCore::UserMediaController::setDeviceIDHashSalt): Deleted, not used.
+        (WebCore::UserMediaController::deviceIDHashSalt): Deleted, not used.
+
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::allow): Add device ID hash salt parameter, set it on
+        constraints.
+        * Modules/mediastream/UserMediaRequest.h:
+
+        * platform/mediastream/MediaConstraints.h:
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::fitnessDistance): ASSERT if called for DeviceId.
+        (WebCore::RealtimeMediaSource::selectSettings): Special case DeviceId because it
+        we have to hash the device ID before comparing, and because the DeviceId can't be
+        changed so it should never be added to the flattened constraints.
+
+        * platform/mediastream/RealtimeMediaSourceSupportedConstraints.cpp:
+        (WebCore::RealtimeMediaSourceSupportedConstraints::nameForConstraint): Deleted, unused.
+        (WebCore::RealtimeMediaSourceSupportedConstraints::constraintFromName): Deleted, unused.
+        * platform/mediastream/RealtimeMediaSourceSupportedConstraints.h:
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        * platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp:
+        (WebCore::RealtimeMediaSourceCenterMac::bestSourcesForTypeAndConstraints): Pass device
+        id, not empty string.
+
+2017-05-09  Jeremy Jones  <jeremyj@apple.com>
+
+        Video fullscreen window level should be below status bar.
+        https://bugs.webkit.org/show_bug.cgi?id=171892
+        rdar://problem/31771707
+
+        Reviewed by Jer Noble.
+
+        No new tests because it only affects platform window level.
+
+        Move the fullscreen window below the status bar, but above the input field window level.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (WebVideoFullscreenInterfaceAVKit::setupFullscreen):
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Implement Subresource Integrity (SRI) [Part 2 - Fetch]
+        https://bugs.webkit.org/show_bug.cgi?id=148363
+        <rdar://problem/18945879>
+
+        Reviewed by Youenn Fablet.
+
+        Tests: http/tests/subresource-integrity/sri-fetch-worker.html
+               http/tests/subresource-integrity/sri-fetch.html
+
+        * loader/FetchOptions.h:
+        * loader/ThreadableLoader.cpp:
+        (WebCore::ThreadableLoaderOptions::isolatedCopy):
+        * loader/ThreadableLoader.h:
+        * loader/WorkerThreadableLoader.cpp:
+        (WebCore::LoaderTaskOptions::LoaderTaskOptions):
+        Add integrity metadata to the fetch options, and fix the implementation of
+        ThreadableLoaderOptions::isolatedCopy to work correctly (it was missing isolated
+        copy derivedCachedDataTypesToRetrieve).
+
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::buildOptions):
+        (WebCore::FetchRequest::initializeOptions):
+        * Modules/fetch/FetchRequest.h:
+        Switch to using the integrity metadata on the fetchOptions, removing the need to
+        store them directly on the internal request.
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::DocumentThreadableLoader):
+        (WebCore::DocumentThreadableLoader::didReceiveResponse):
+        (WebCore::DocumentThreadableLoader::didReceiveData):
+        (WebCore::DocumentThreadableLoader::didFinishLoading):
+        (WebCore::DocumentThreadableLoader::loadRequest):
+        (WebCore::DocumentThreadableLoader::reportIntegrityMetadataError):
+        * loader/DocumentThreadableLoader.h:
+        Add a new flag, m_delayCallbacksForIntegrityCheck, which is used when integrity metadata
+        is present, so we can implement the 'wait' concept from the fetch spec, and delay informing
+        the clients until we have validated the integrity metadata.
+
+2017-05-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216545.
+        https://bugs.webkit.org/show_bug.cgi?id=171889
+
+        Caused a test failure (Requested by eric_carlson on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] deviceId constraint doesn't work with
+        getUserMedia"
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        http://trac.webkit.org/changeset/216545
+
+2017-05-09  Zalan Bujtas  <zalan@apple.com>
+
+        resetFlowThreadContainingBlockAndChildInfoIncludingDescendants should not ignore RenderElement subtrees.
+        https://bugs.webkit.org/show_bug.cgi?id=171873
+        <rdar://problem/32004954>
+
+        Reviewed by Simon Fraser.
+
+        Normally a RenderBlock's parent is another RenderBlock, but In some cases (e.g. tables) a RenderBlock can
+        have a non-RenderBlock(RenderBox) ancestor.
+        While updating the flow thread state on a subtree, we should descent into subtrees with RenderElement
+        roots and not just RenderBlocks so that we clear the state on the entire subtree.
+
+        Test: fast/multicol/crash-when-column-inside-table.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::resetFlowThreadContainingBlockAndChildInfoIncludingDescendants):
+        * rendering/RenderBlock.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::resetFlowThreadContainingBlockAndChildInfoIncludingDescendants):
+        * rendering/RenderElement.h:
+
+2017-05-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        Test: fast/mediastream/get-user-media-device-id.html
+
+        * Modules/mediastream/MediaConstraintsImpl.h:
+        (WebCore::MediaConstraintsData::MediaConstraintsData): Add a constructor that 
+        takes a const MediaConstraints&.
+
+        * Modules/mediastream/MediaDevicesEnumerationRequest.cpp:
+        (WebCore::MediaDevicesEnumerationRequest::topLevelDocumentOrigin): Don't return
+        NULL for the main frame so the origin matches that returned for a UserMediaRequest.
+
+        * Modules/mediastream/UserMediaController.h:
+        (WebCore::UserMediaController::setDeviceIDHashSalt): Deleted, not used.
+        (WebCore::UserMediaController::deviceIDHashSalt): Deleted, not used.
+
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::allow): Add device ID hash salt parameter, set it on
+        constraints.
+        * Modules/mediastream/UserMediaRequest.h:
+
+        * platform/mediastream/MediaConstraints.h:
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::fitnessDistance): ASSERT if called for DeviceId.
+        (WebCore::RealtimeMediaSource::selectSettings): Special case DeviceId because it
+        we have to hash the device ID before comparing, and because the DeviceId can't be
+        changed so it should never be added to the flattened constraints.
+
+        * platform/mediastream/RealtimeMediaSourceSupportedConstraints.cpp:
+        (WebCore::RealtimeMediaSourceSupportedConstraints::nameForConstraint): Deleted, unused.
+        (WebCore::RealtimeMediaSourceSupportedConstraints::constraintFromName): Deleted, unused.
+        * platform/mediastream/RealtimeMediaSourceSupportedConstraints.h:
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        * platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp:
+        (WebCore::RealtimeMediaSourceCenterMac::bestSourcesForTypeAndConstraints): Pass device
+        id, not empty string.
+
+2017-05-09  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Localized strings aren't loaded
+        https://bugs.webkit.org/show_bug.cgi?id=171884
+
+        Reviewed by Dean Jackson.
+
+        Remove the extraneous file extension in the file name.
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeIOS::mediaControlsScript):
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::mediaControlsScript):
+
+2017-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Introduce DocumentAndElementEventHandlers IDL interface
+        https://bugs.webkit.org/show_bug.cgi?id=171879
+
+        Reviewed by Simon Fraser and Ryosuke Niwa.
+
+        Introduce DocumentAndElementEventHandlers IDL interface:
+        - https://html.spec.whatwg.org/#documentandelementeventhandlers
+
+        This avoids duplication between Document.idl and Element.idl.
+
+        Also mark oncopy / oncut / onpaste EventHandlers as enumerable to match
+        the specification.
+
+        Test: fast/events/DocumentAndElementEventHandlers.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Document.idl:
+        * dom/DocumentAndElementEventHandlers.idl: Added.
+        * dom/Element.idl:
+
+2017-05-10  Dean Jackson  <dino@apple.com>
+
+        Restrict SVG filters to accessible security origins
+        https://bugs.webkit.org/show_bug.cgi?id=118689
+        <rdar://problem/27362159>
+
+        Reviewed by Brent Fulgham.
+
+        Certain SVG filters should only be allowed to operate
+        on content that is has SecurityOrigin access to. Implement
+        this by including a flag in PaintInfo and LayerPaintingInfo,
+        and have RenderWidget make sure the documents have acceptable
+        SecurityOrigins as it goes to paint.
+
+        This could be used as the first step in a "safe painting"
+        strategy, allowing some content to be rendered into a 
+        canvas or via the element() CSS function... but it is only
+        a small first step.
+
+        Test: http/tests/css/filters-on-iframes.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::paintContents):
+        * page/FrameView.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::paint):
+        * platform/ScrollView.h:
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::paint):
+        * platform/Scrollbar.h:
+        * platform/Widget.h:
+        * platform/graphics/filters/FilterOperation.h:
+        (WebCore::FilterOperation::shouldBeRestrictedBySecurityOrigin):
+        * platform/graphics/filters/FilterOperations.cpp:
+        (WebCore::FilterOperations::hasFilterThatShouldBeRestrictedBySecurityOrigin):
+        * platform/graphics/filters/FilterOperations.h:
+        * platform/mac/WidgetMac.mm:
+        (WebCore::Widget::paint):
+        * rendering/FilterEffectRenderer.cpp:
+        (WebCore::FilterEffectRenderer::build):
+        * rendering/FilterEffectRenderer.h:
+        * rendering/PaintInfo.h:
+        (WebCore::PaintInfo::PaintInfo):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paint):
+        (WebCore::RenderLayer::setupFilters):
+        (WebCore::RenderLayer::paintForegroundForFragmentsWithPhase):
+        * rendering/RenderLayer.h:
+        * rendering/RenderScrollbar.cpp:
+        (WebCore::RenderScrollbar::paint):
+        * rendering/RenderScrollbar.h:
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::paintContents):
+
+2017-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Move onanimation* EventHandlers to GlobalEventHandlers
+        https://bugs.webkit.org/show_bug.cgi?id=171874
+
+        Reviewed by Simon Fraser.
+
+        Move onanimation* EventHandlers to GlobalEventHandlers to match the specification:
+        - https://drafts.csswg.org/css-animations/#interface-globaleventhandlers-idl
+
+        We previously have those on Window and Element only. Firefox complies with the
+        specification.
+
+        Test: fast/css/onanimation-eventhandlers.html
+
+        * dom/Element.idl:
+        * dom/GlobalEventHandlers.idl:
+        * page/DOMWindow.idl:
+
+2017-05-09  Youenn Fablet  <youenn@apple.com>
+
+        Refresh webrtc WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=171878
+
+        Reviewed by Eric Carlson.
+
+        Tests: imported/w3c/web-platform-tests/webrtc/RTCConfiguration-iceCandidatePoolSize.html
+               imported/w3c/web-platform-tests/webrtc/RTCDataChannel-id.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-canTrickleIceCandidates.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-constructor.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createDataChannel.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceGatheringState.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html
+               imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription.html
+               imported/w3c/web-platform-tests/webrtc/datachannel-idlharness.html
+               imported/w3c/web-platform-tests/webrtc/getstats.html
+               imported/w3c/web-platform-tests/webrtc/interfaces.html
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::createDataChannel): exiting early if libwebrtc is not creating a data channel.
+
+2017-05-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        space-evenly misbehaves with flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=170445
+
+        Reviewed by David Hyatt.
+
+        The CSS Box Alignment specification defines the <content-distribution>
+        set as some of the allowed values for the Content Distribution
+        properties, align-content and justify-content. The 'space-evenly' value
+        is not among the ones allowed for these properties according to the CSS
+        Flexible Box specification.
+
+        The CSS Flexbible box specification states that it must follow the CSS
+        Box Alignment specification, so this new value must be considered as
+        part of an upgraded level of the spec, which should be implemented
+        eventually.
+
+        Since we have already shipped an implementation of the new CSS Box
+        Alignment values for CSS Grid Layout, we need to implement it for
+        Flexbox as well.
+
+        No new tests, but several new test cases added.
+
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::initialJustifyContentOffset):
+        (WebCore::justifyContentSpaceBetweenChildren):
+        (WebCore::initialAlignContentOffset):
+        (WebCore::alignContentSpaceBetweenChildren):
+
+2017-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Avoid -Wformat warnings in RenderLayerCompositor.cpp and RenderLayerBacking.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=171875
+
+        Reviewed by Simon Fraser.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinator):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::logLayerInfo):
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+
+2017-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Drop custom bindings code for Window.location setter
+        https://bugs.webkit.org/show_bug.cgi?id=171846
+
+        Reviewed by Sam Weinig.
+
+        Drop custom bindings code for Window.location setter as the custom code was merely needed
+        to address a very old Mac widget that has long been fixed (rdar://problem/5695330).
+
+        No new tests, no Web-facing behavior change.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::setLocation): Deleted.
+        Drop custom code.
+
+        * page/DOMWindow.idl:
+        Align Window.location with https://html.spec.whatwg.org/#the-window-object:
+        - Mark property as readonly.
+        - Add [PutsForward=href] IDL extended attribute.
+        Also, we need to mark the atribute as nullable as this reflects our current implementation.
+        We currently return null if the associated Window does not have a frame. This does not match
+        the specification and we should update our implementation in the future to never return null.
+
+2017-05-09  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216508.
+
+        The layout test enabled in this change is failing on Sierra.
+
+        Reverted changeset:
+
+        "Invalid MediaSource duration value should throw TyperError
+        instead of InvalidStateError"
+        https://bugs.webkit.org/show_bug.cgi?id=171653
+        http://trac.webkit.org/changeset/216508
+
+2017-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Update Chrome and Firefox versions in user agent quirks
+        https://bugs.webkit.org/show_bug.cgi?id=171823
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * platform/UserAgentQuirks.cpp:
+        (WebCore::UserAgentQuirks::stringForQuirk):
+        (WebCore::UserAgentQuirks::firefoxRevisionString):
+
+2017-05-09  Youenn Fablet  <youenn@apple.com>
+
+        RealtimeOutgoingAudioSource is crashing when given data with more than two channels
+        https://bugs.webkit.org/show_bug.cgi?id=171868
+
+        Reviewed by Eric Carlson.
+
+        Manual testing.
+
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.cpp:
+        (WebCore::libwebrtcAudioFormat): Capping the number of channels to 2.
+        (WebCore::RealtimeOutgoingAudioSource::audioSamplesAvailable):
+
+2017-05-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-stretch: normal selects expanded fonts instead of condensed fonts
+        https://bugs.webkit.org/show_bug.cgi?id=171838
+        <rdar://problem/31005481>
+
+        Reviewed by Jon Lee.
+
+        CSS Fonts level 3 says: "If the value of ‘font-stretch’ is ‘normal’ or one of the condensed
+        values, narrower width values are checked first, then wider values."
+
+        CSS Fonts level 4 erroneously was incompatible with this, but was updated in
+        https://github.com/w3c/csswg-drafts/commit/4559389d183bbaaf3321af5ba1c924caa7c488bb
+        to be consistent with this.
+
+        Now, CSS Fonts level 4 states: "If the desired stretch value is less than or equal to100,
+        stretch values below the desired stretch value are checked in descending order followed by
+        stretch values above the desired stretch value in ascending order"
+
+        Test: fast/text/font-width-100.html
+
+        * platform/graphics/FontSelectionAlgorithm.cpp:
+
+2017-05-09  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Enable creation of ReadableStreamBYOBReader
+        https://bugs.webkit.org/show_bug.cgi?id=171665
+
+        Reviewed by Youenn Fablet.
+
+        Enabled the creation of ReadableStreamBYOBReader.
+
+        Test: streams/readable-stream-byob-reader.html
+
+        * CMakeLists.txt: Updated to support ReadableStreamBYOBReader.
+        * DerivedSources.cpp: Updated to support ReadableStreamBYOBReader.
+        * DerivedSources.make: Updated to support ReadableStreamBYOBReader.
+        * Modules/streams/ReadableByteStreamInternals.js: Updated to support ReadableStreamBYOBReader.
+        (privateInitializeReadableStreamBYOBReader):
+        (isReadableStreamBYOBReader):
+        * Modules/streams/ReadableStream.js: Updated to support ReadableStreamBYOBReader.
+        (getReader):
+        * Modules/streams/ReadableStreamBYOBReader.idl: Added.
+        * Modules/streams/ReadableStreamBYOBReader.js: Added.
+        (cancel): To be implemented.
+        (read): To be implemented.
+        (releaseLock): To be implemented.
+        (closed): To be implemented.
+        * WebCore.xcodeproj/project.pbxproj: Updated to support ReadableStreamBYOBReader.
+        * bindings/js/JSDOMGlobalObject.cpp: Updated to support ReadableStreamBYOBReader.
+        (WebCore::JSDOMGlobalObject::addBuiltinGlobals):
+        * bindings/js/JSReadableStreamPrivateConstructors.cpp: Updated to support ReadableStreamBYOBReader.
+        (WebCore::constructJSReadableStreamReaderGeneric):
+        (WebCore::constructJSReadableStreamDefaultReader):
+        (WebCore::constructJSReadableStreamBYOBReader):
+        (WebCore::JSBuiltinReadableStreamBYOBReaderPrivateConstructor::initializeExecutable):
+        (WebCore::createReadableStreamBYOBReaderPrivateConstructor):
+        * bindings/js/JSReadableStreamPrivateConstructors.h: Updated to support ReadableStreamBYOBReader.
+        * bindings/js/WebCoreBuiltinNames.h: Updated to support ReadableStreamBYOBReader.
+
+2017-05-09  Frederic Wang  <fwang@igalia.com>
+
+        Print more properties in the output of scrolling trees
+        https://bugs.webkit.org/show_bug.cgi?id=171858
+
+        Reviewed by Simon Fraser.
+
+        No new tests, no behavior changes.
+
+        * page/scrolling/ScrollingCoordinator.cpp: Implement << operator to print ScrollableAreaParameters.
+        (WebCore::operator<<):
+        * page/scrolling/ScrollingCoordinator.h: Declare new << operator.
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp: Print new properties.
+        (WebCore::ScrollingStateFrameScrollingNode::dumpProperties):
+        * page/scrolling/ScrollingStateScrollingNode.cpp: ditto.
+        (WebCore::ScrollingStateScrollingNode::dumpProperties):
+        * page/scrolling/ScrollingTreeScrollingNode.cpp: ditto.
+        (WebCore::ScrollingTreeScrollingNode::dumpProperties):
+
+2017-05-09  Chris Dumez  <cdumez@apple.com>
+
+        ontransitionend eventHandler should be in GlobalEventHandlers
+        https://bugs.webkit.org/show_bug.cgi?id=171836
+
+        Reviewed by Ryosuke Niwa.
+
+        ontransitionend eventHandler should be in GlobalEventHandlers:
+        - https://drafts.csswg.org/css-transitions/#interface-globaleventhandlers-idl
+
+        WebKit currently has in on Window and Element only. Firefox matches the specification.
+
+        Test: fast/css/ontransitionend-eventhandler.html
+
+        * dom/Element.idl:
+        * dom/GlobalEventHandlers.idl:
+        * page/DOMWindow.idl:
+
+2017-05-09  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        MediaSource.readyState should use an IDL enum
+        https://bugs.webkit.org/show_bug.cgi?id=171672
+
+        Reviewed by Eric Carlson and Chris Dumez.
+
+        MediaSource.readyState should use an IDL enum as per specification
+        (https://www.w3.org/TR/2016/CR-media-source-20160503/#idl-def-ReadyState).
+
+        No new tests required since no behavior change.
+
+        * Modules/mediasource/MediaSource.cpp:
+        (WebCore::toString):
+        (WebCore::MediaSource::MediaSource):
+        (WebCore::MediaSource::setPrivateAndOpen):
+        (WebCore::MediaSource::buffered):
+        (WebCore::MediaSource::setReadyState):
+        (WebCore::MediaSource::streamEndedWithError):
+        (WebCore::MediaSource::isOpen):
+        (WebCore::MediaSource::isClosed):
+        (WebCore::MediaSource::isEnded):
+        (WebCore::MediaSource::detachFromElement):
+        (WebCore::MediaSource::openIfInEndedState):
+        (WebCore::MediaSource::stop):
+        (WebCore::MediaSource::onReadyStateChange):
+        * Modules/mediasource/MediaSource.h:
+        * Modules/mediasource/MediaSource.idl:
+
+2017-05-09  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Invalid MediaSource duration value should throw TyperError instead of InvalidStateError
+        https://bugs.webkit.org/show_bug.cgi?id=171653
+
+        Reviewed by Youenn Fablet.
+
+        Modify MediaSource::setDuration to throw a TypeError when duration value is invalid as per MSE specification
+        (https://www.w3.org/TR/2016/REC-media-source-20161117/#dom-mediasource-duration).
+
+        Update expectation of corresponding WPT test.
+
+        * Modules/mediasource/MediaSource.cpp:
+        (WebCore::MediaSource::setDuration):
+        (WebCore::MediaSource::setDurationInternal):
+
+2017-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, update binding-tests results
+        https://bugs.webkit.org/show_bug.cgi?id=166752
+
+        * bindings/scripts/test/JS/JSTestNode.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+
+2017-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Update DocumentOrShadowRoot.idl to match specifications
+        https://bugs.webkit.org/show_bug.cgi?id=171845
+
+        Reviewed by Ryosuke Niwa.
+
+        Update DocumentOrShadowRoot.idl to match specifications:
+        - https://dom.spec.whatwg.org/#mixin-documentorshadowroot
+        - https://w3c.github.io/webcomponents/spec/shadow/#extensions-to-the-documentorshadowroot-mixin
+        - https://w3c.github.io/pointerlock/#extensions-to-the-documentorshadowroot-mixin
+
+        No Web-facing behavior change. Things that do not match the specification were merely
+        annotated with FIXME comments.
+
+        * dom/Document.idl:
+        * dom/DocumentOrShadowRoot.idl:
+
 2017-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Unreviewed, attempt to fix macOS ports using ApplePay

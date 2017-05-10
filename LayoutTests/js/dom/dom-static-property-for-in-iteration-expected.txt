@@ -110,6 +110,10 @@ PASS a["ontoggle"] is null
 PASS a["onunhandledrejection"] is null
 PASS a["onvolumechange"] is null
 PASS a["onwaiting"] is null
+PASS a["ontransitionend"] is null
+PASS a["onanimationend"] is null
+PASS a["onanimationiteration"] is null
+PASS a["onanimationstart"] is null
 PASS a["namespaceURI"] is http://www.w3.org/1999/xhtml
 PASS a["prefix"] is null
 PASS a["localName"] is a
@@ -131,6 +135,9 @@ PASS a["clientHeight"] is 0
 PASS a["innerHTML"] is nerget
 PASS a["outerHTML"] is <a id="foo" href="bar">nerget</a>
 PASS a["webkitRegionOverset"] is undefined
+PASS a["oncopy"] is null
+PASS a["oncut"] is null
+PASS a["onpaste"] is null
 PASS a["previousElementSibling"] is [object HTMLDivElement]
 PASS a["nextElementSibling"] is [object HTMLScriptElement]
 PASS a["children"] is [object HTMLCollection]

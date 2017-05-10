@@ -283,6 +283,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/CountQueuingStrategy.idl
     Modules/streams/ReadableByteStreamController.idl
     Modules/streams/ReadableStream.idl
+    Modules/streams/ReadableStreamBYOBReader.idl
     Modules/streams/ReadableStreamBYOBRequest.idl
     Modules/streams/ReadableStreamDefaultController.idl
     Modules/streams/ReadableStreamDefaultReader.idl
@@ -434,6 +435,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DeviceMotionEvent.idl
     dom/DeviceOrientationEvent.idl
     dom/Document.idl
+    dom/DocumentAndElementEventHandlers.idl
     dom/DocumentFragment.idl
     dom/DocumentOrShadowRoot.idl
     dom/DocumentType.idl
@@ -3828,6 +3830,7 @@ set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/streams/ReadableByteStreamController.js
     ${WEBCORE_DIR}/Modules/streams/ReadableByteStreamInternals.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStreamBYOBReader.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamBYOBRequest.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamDefaultController.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamInternals.js

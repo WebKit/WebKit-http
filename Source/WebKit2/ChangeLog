@@ -1,3 +1,159 @@
+2017-05-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<MediaConstraintsData>::encode): Encode deviceIDHashSalt.
+        (IPC::ArgumentCoder<MediaConstraintsData>::decode): Decode deviceIDHashSalt.
+
+        * UIProcess/UserMediaPermissionCheckProxy.cpp:
+        (WebKit::UserMediaPermissionCheckProxy::UserMediaPermissionCheckProxy): Initialize
+        completion handler, frame ID, and security origins.
+        (WebKit::UserMediaPermissionCheckProxy::setUserMediaAccessInfo): Complete by calling
+        completion handler because we now sometimes request access info before calling gUM.
+        (WebKit::UserMediaPermissionCheckProxy::invalidate): Clear completion handler.
+        * UIProcess/UserMediaPermissionCheckProxy.h:
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::FrameAuthorizationState::FrameAuthorizationState): Take security origins, not
+        UserMediaPermissionRequestProxy, so it can be constructed with a UserMediaPermissionCheckProxy.
+        (WebKit::FrameAuthorizationState::ensureSecurityOriginsAreEqual): Ditto. Clear has salt
+        when origins don't match.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stateForRequest): Templatize.
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied): Fix typo.
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted): Ditto.
+        Don't set state for empty UIDs. Pass hash salt to web process.
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        The device ID hash salt is now required to validate constraints, so get it first.
+        (WebKit::UserMediaPermissionRequestManagerProxy::getUserMediaPermissionInfo): Helper
+        method used to get the device ID hash salt.
+        (WebKit::UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame): Restructure
+        to use getUserMediaPermissionInfo.
+        (WebKit::UserMediaPermissionRequestManagerProxy::didCompleteUserMediaPermissionCheck): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::userMediaAccessWasGranted): Add device ID
+        hash salt parameter.
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::userMediaAccessWasGranted): Ditto.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::createCaptureSource): Use new MediaConstraintsData 
+        constructor.
+
+2017-05-09  Alex Christensen  <achristensen@webkit.org>
+
+        Buffer media in NetworkProcess to reduce IPC overhead
+        https://bugs.webkit.org/show_bug.cgi?id=171834
+        <rdar://problem/31485485>
+
+        Reviewed by Jer Noble.
+
+        I have measured a significant CPU usage reduction when buffering media data in the NetworkProcess,
+        especially on arm64 processors.  Buffering data in the NetworkProcess introduces no additional data
+        copies after r215686, and it reduces the number of messages sent from the NetworkProcess to the WebProcess,
+        each of which must also be forwarded to mediaserverd by AVFoundation.  This reduces the number of messages
+        from thousands per second to a maximum of 20 per second.  This adds 1/20 second additional latency in
+        media loading, which will probably not be noticed by most users.  This also adds the possibility of large
+        allocations when decoding IPC messages in the WebProcess, and if that becomes the source of crashes we can
+        add a maximum buffered amount in addition to a maximum buffered time, but we are likely not to receive
+        so much data in 1/20 second to have problems allocating the buffer.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::maximumBufferingTime):
+        Buffer data in the NetworkProcess for up to 50ms before sending it to the WebProcess in one message.
+        This value is used in NetworkResourceLoader::didReceiveBuffer to append to m_bufferedData instead of
+        sending the small chunks immediately.
+
+2017-05-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216545.
+        https://bugs.webkit.org/show_bug.cgi?id=171889
+
+        Caused a test failure (Requested by eric_carlson on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] deviceId constraint doesn't work with
+        getUserMedia"
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        http://trac.webkit.org/changeset/216545
+
+2017-05-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<MediaConstraintsData>::encode): Encode deviceIDHashSalt.
+        (IPC::ArgumentCoder<MediaConstraintsData>::decode): Decode deviceIDHashSalt.
+
+        * UIProcess/UserMediaPermissionCheckProxy.cpp:
+        (WebKit::UserMediaPermissionCheckProxy::UserMediaPermissionCheckProxy): Initialize
+        completion handler, frame ID, and security origins.
+        (WebKit::UserMediaPermissionCheckProxy::setUserMediaAccessInfo): Complete by calling
+        completion handler because we now sometimes request access info before calling gUM.
+        (WebKit::UserMediaPermissionCheckProxy::invalidate): Clear completion handler.
+        * UIProcess/UserMediaPermissionCheckProxy.h:
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::FrameAuthorizationState::FrameAuthorizationState): Take security origins, not
+        UserMediaPermissionRequestProxy, so it can be constructed with a UserMediaPermissionCheckProxy.
+        (WebKit::FrameAuthorizationState::ensureSecurityOriginsAreEqual): Ditto. Clear has salt
+        when origins don't match.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stateForRequest): Templatize.
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied): Fix typo.
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted): Ditto.
+        Don't set state for empty UIDs. Pass hash salt to web process.
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        The device ID hash salt is now required to validate constraints, so get it first.
+        (WebKit::UserMediaPermissionRequestManagerProxy::getUserMediaPermissionInfo): Helper
+        method used to get the device ID hash salt.
+        (WebKit::UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame): Restructure
+        to use getUserMediaPermissionInfo.
+        (WebKit::UserMediaPermissionRequestManagerProxy::didCompleteUserMediaPermissionCheck): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::userMediaAccessWasGranted): Add device ID
+        hash salt parameter.
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::userMediaAccessWasGranted): Ditto.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::createCaptureSource): Use new MediaConstraintsData 
+        constructor.
+
+2017-05-10  Dean Jackson  <dino@apple.com>
+
+        Restrict SVG filters to accessible security origins
+        https://bugs.webkit.org/show_bug.cgi?id=118689
+        <rdar://problem/27362159>
+
+        Reviewed by Brent Fulgham.
+
+        Update parameter lists.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::paint):
+        * WebProcess/Plugins/PluginView.h:
+
 2017-05-09  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
 
         [Coordinated Graphics] Debug Visuals don't hide
