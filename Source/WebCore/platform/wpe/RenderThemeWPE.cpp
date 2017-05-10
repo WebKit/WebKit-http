@@ -52,7 +52,7 @@ String RenderThemeWPE::extraDefaultStyleSheet()
 #if ENABLE(VIDEO)
 String RenderThemeWPE::mediaControlsStyleSheet()
 {
-    return String(mediaControlsBaseUserAgentStyleSheet, sizeof(mediaControlsBaseUserAgentStyleSheet));
+    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
 }
 
 String RenderThemeWPE::mediaControlsScript()

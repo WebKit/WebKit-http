@@ -334,28 +334,9 @@ void ThreadedCompositor::coordinateUpdateCompletionWithClient()
 #endif
 
 #if PLATFORM(WPE)
-static void debugThreadedCompositorFPS()
-{
-    static double lastTime = currentTime();
-    static unsigned frameCount = 0;
-
-    double ct = currentTime();
-    frameCount++;
-
-    if (ct - lastTime >= 5.0) {
-        fprintf(stderr, "ThreadedCompositor: frame callbacks %.2f FPS\n", frameCount / (ct - lastTime));
-        lastTime = ct;
-        frameCount = 0;
-    }
-}
-
 void ThreadedCompositor::frameComplete()
 {
     ASSERT(m_compositingRunLoop->isCurrent());
-    static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
-    if (reportFPS)
-        debugThreadedCompositorFPS();
-
     sceneUpdateFinished();
 }
 #endif

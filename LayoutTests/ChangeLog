@@ -1,3 +1,557 @@
+2017-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Handle IDLPromise<> properly
+        https://bugs.webkit.org/show_bug.cgi?id=166752
+
+        Reviewed by Youenn Fablet.
+
+        * js/dom/promise-rejection-event-should-follow-webidl-promise-conversion-rule-expected.txt: Added.
+        * js/dom/promise-rejection-event-should-follow-webidl-promise-conversion-rule.html: Added.
+
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Landing the WPE layout test baselines.
+
+        Baseline filenames are omitted for brevity.
+
+        * platform/wpe/TestExpectations: Added.
+        * platform/wpe/animations/: Added.
+        * platform/wpe/css1/: Added.
+        * platform/wpe/css2.1/: Added.
+        * platform/wpe/css3/: Added.
+        * platform/wpe/fast/: Added.
+        * platform/wpe/ietestcenter/: Added.
+        * platform/wpe/js/: Added.
+        * platform/wpe/scrollbars/: Added.
+        * platform/wpe/security/: Added.
+        * platform/wpe/sputnik/: Added.
+        * platform/wpe/tables/: Added.
+        * platform/wpe/transforms/: Added.
+        * platform/wpe/transitions/: Added.
+
+2017-05-08  Frederic Wang  <fwang@igalia.com>
+
+        Simplify ScrollingStateNode::scrollingStateTreeAsText
+        https://bugs.webkit.org/show_bug.cgi?id=171802
+
+        Reviewed by Simon Fraser.
+
+        Update references due to minor format changes in text ouput of scrolling state trees.
+
+        * fast/scrolling/ios/remove-scrolling-role-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-then-up-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state-expected.txt:
+        * tiled-drawing/scrolling/clamp-out-of-bounds-scrolls-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/nested-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/percentage-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * tiled-drawing/scrolling/frames/fixed-inside-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/remove-coordinated-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/scroll-region-after-frame-layout-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-after-scroll-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-slow-scrolling-expected.txt:
+        * tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt:
+
+2017-05-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK expectations gardening
+
+        * platform/gtk/TestExpectations:
+        * webaudio/codec-tests/wav/24bit-22khz-resample-expected.wav:
+
+2017-05-08  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/security/storage-blocking-loosened-plugin.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171837
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Move offsetParent / offsetLeft / offsetTop / offsetWidth / offsetHeight from Element to HTMLElement
+        https://bugs.webkit.org/show_bug.cgi?id=171829
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/htmlelement-offset-properties-expected.txt:
+        * fast/css/htmlelement-offset-properties.html:
+        Add layout test coverage.
+
+        * editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html:
+        * fast/css-grid-layout/grid-item-display.html:
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * mathml/presentation/menclose-notation-no-overlap-expected.txt:
+        * mathml/presentation/menclose-notation-no-overlap.html:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        * svg/dynamic-updates/resources/SVGTestCase.js:
+        (clickAt):
+        * svg/text/inline-text-destroy-attributes-crash.xhtml:
+        Use getClientBoundingRect() instead of offset* properties for non-HTML elements.
+
+2017-05-08  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multiple-fetches.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169637
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Implement PlatformWebView::windowSnapshotImage and createBitmapContextFromWebView for iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=169421
+        <rdar://problem/30950171>
+
+        Reviewed by Tim Horton.
+
+        * platform/ios-device/TestExpectations: Mark compositing tests as failures, this
+        is due to a bug tracked in https://bugs.webkit.org/show_bug.cgi?id=170772.
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard document.implementation.createCSSStyleSheet() API
+        https://bugs.webkit.org/show_bug.cgi?id=171825
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/DOMImplementation.createCSSStyleSheet-obsolete-expected.txt:
+        * fast/css/DOMImplementation.createCSSStyleSheet-obsolete.html:
+        Add layout test coverage.
+
+        * fast/dom/StyleSheet/gc-parent-rule-expected.txt:
+        * fast/dom/StyleSheet/gc-parent-rule.html:
+        * fast/dom/StyleSheet/gc-parent-stylesheet-expected.txt:
+        * fast/dom/StyleSheet/gc-parent-stylesheet.html:
+        Add utility functions to construct a CSSStyleSheet object and use it instead
+        of document.implementation.createCSSStyleSheet().
+
+2017-05-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: don't expose empty roledescription
+        https://bugs.webkit.org/show_bug.cgi?id=163647
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-roledescription-expected.txt: New test cases, updated expectations.
+        * accessibility/aria-roledescription.html: New test cases, updated expectations.
+        * platform/gtk/accessibility/aria-roledescription-expected.txt: New test cases, updated expectations.
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard Element.scrollByLines() / scrollByPages()
+        https://bugs.webkit.org/show_bug.cgi?id=171820
+
+        Reviewed by Simon Fraser.
+
+        * LayoutTests/fast/css/element-scrollByLines-scrollByPages-obsolete-expected.txt:
+        * LayoutTests/fast/css/element-scrollByLines-scrollByPages-obsolete.html:
+        Add layout test coverage.
+
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+        * fast/events/scroll-event-does-not-bubble.html:
+        * fast/layers/scroll-overflow-no-layer-expected.txt: Renamed from LayoutTests/fast/layers/scrollByLines-overflow-no-layer-expected.txt.
+        * fast/layers/scroll-overflow-no-layer.html: Renamed from LayoutTests/fast/layers/scrollByLines-overflow-no-layer.html.
+        Update existing tests to stop relying on the API.
+
+2017-05-08  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/websocket/tests/hybi/workers/close.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171830
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/status-label/status-label-font.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171828
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Setting aria-orientation="horizontal" on a listbox is being overridden on the Mac
+        https://bugs.webkit.org/show_bug.cgi?id=171821
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-orientation-expected.txt: New test case.
+        * accessibility/aria-orientation.html: New test case.
+
+2017-05-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [CG] To decode an image frame asynchronously, pass the native size of the image to CGImageSourceCreateThumbnailAtIndex() if it's smaller than the sizeForDrawing
+        https://bugs.webkit.org/show_bug.cgi?id=170864
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/async-image-background-image-repeated-expected.html:
+        * fast/images/async-image-background-image-repeated.html:
+        * fast/images/resources/sprite-sheet-red-green-blue.png:
+        * fast/images/sprite-sheet-image-draw-expected.html:
+        * fast/images/sprite-sheet-image-draw.html:
+        Change the sprite image to be 200x33100 instead of 200x2100 and use it in drawing.
+        If the maxPixelSize is not passed to CGImageSourceCreateThumbnailAtIndex(), the
+        decoded farme of this image will be 30x5000 pixels (15% of the original size).
+
+2017-05-08  Beth Dakin  <bdakin@apple.com>
+
+        WebKit should default to using sRGB with NSColor conversion instead of device 
+        color space
+        https://bugs.webkit.org/show_bug.cgi?id=171745
+        -and corresponding-
+        rdar://problem/28314183
+
+        Reviewed by Tim Horton.
+
+        * editing/mac/attributed-string/anchor-element-expected.txt:
+        * editing/mac/attributed-string/basic-expected.txt:
+        * editing/mac/attributed-string/comment-cdata-section-expected.txt:
+        * editing/mac/attributed-string/font-size-expected.txt:
+        * editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * editing/mac/attributed-string/font-weight-expected.txt:
+        * editing/mac/attributed-string/letter-spacing-expected.txt:
+        * editing/mac/attributed-string/text-decorations-expected.txt:
+        * editing/mac/attributed-string/vertical-align-expected.txt:
+
+2017-05-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Search events should not fire synchronously for search type input elements with incremental attribute set
+        https://bugs.webkit.org/show_bug.cgi?id=171376
+        <rdar://problem/31863296>
+
+        Reviewed by Chris Dumez.
+
+        * fast/forms/search/search-incremental-crash-expected.txt: Added.
+        * fast/forms/search/search-incremental-crash.html: Added.
+
+2017-05-08  Zalan Bujtas  <zalan@apple.com>
+
+        Text overlaps on http://www.duden.de/rechtschreibung/Acre
+        https://bugs.webkit.org/show_bug.cgi?id=171796
+        <rdar://problem/31036028>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/simple-line-layout-fallback-space-glyph-expected.html: Added.
+        * fast/text/simple-line-layout-fallback-space-glyph.html: Added.
+
+2017-05-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r216419.
+
+        Broke 70 layout tests on GTK bot
+
+        Reverted changeset:
+
+        "Ensure clean tree before AX cache update."
+        https://bugs.webkit.org/show_bug.cgi?id=171546
+        http://trac.webkit.org/changeset/216419
+
+2017-05-08  Antti Koivisto  <antti@apple.com>
+
+        ComposedTreeIterator does not traverse all slotted children if the traversal root is a slot element.
+        https://bugs.webkit.org/show_bug.cgi?id=171375
+        <rdar://problem/31863184>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/html/details-flow-thread-expected.txt: Added.
+        * fast/html/details-flow-thread.html: Added.
+        * fast/shadow-dom/composed-tree-slots-expected.txt:
+        * fast/shadow-dom/composed-tree-slots.html:
+
+            Expand the test so it also prints out slot subtrees using slots as traversal roots.
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Move 'style' from Element to HTMLElement / SVGElement and make it settable
+        https://bugs.webkit.org/show_bug.cgi?id=171795
+
+        Reviewed by Alex Christensen.
+
+        * accessibility/roles-exposed.html:
+        Add null check for element.style.
+
+        * fast/css/Element-style-expected.txt: Added.
+        * fast/css/Element-style.html: Added.
+        Add layout test coverage.
+
+        * fast/forms/input-width-height-attributes-without-renderer-loaded-image-expected.txt:
+        Rebaseline test that was setting HTMLElement.style which was a no-op until this patch. Now that it actually
+        does something, the input element actually looses its renderer. This found a bug which I fixed in this
+        patch.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        Rebaseline as property enumeration order has changed.
+
+2017-05-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Propagate aria-readonly to grid descendants
+        https://bugs.webkit.org/show_bug.cgi?id=171189
+
+        Reviewed by Chris Fleizach.
+
+        Add new test cases to aria-readonly.html. In addition, because the platform-specific
+        test expectations seem due to how platforms treat whitespace from the test file, hide
+        the test cases after the test is run so that there are no extraneous characters and
+        a single expectations file can be shared.
+
+        * accessibility/aria-readonly-expected.txt: Updated.
+        * accessibility/aria-readonly.html: Updated.
+        * accessibility/gtk/aria-readonly-propagated-expected.txt: Added.
+        * accessibility/gtk/aria-readonly-propagated.html: Added.
+        * platform/mac-elcapitan/accessibility/aria-readonly-expected.txt: Removed.
+        * platform/mac/accessibility/aria-readonly-expected.txt: Removed.
+        * platform/win/accessibility/aria-readonly-expected.txt: Removed.
+
+2017-05-06  Zalan Bujtas  <zalan@apple.com>
+
+        Ensure clean tree before AX cache update.
+        https://bugs.webkit.org/show_bug.cgi?id=171546
+        <rdar://problem/31934942>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/crash-when-render-tree-is-not-clean.html: Added.
+
+2017-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix unicode-bidi CSS values
+        https://bugs.webkit.org/show_bug.cgi?id=171761
+
+        Reviewed by Simon Fraser.
+
+        Import W3C's internationalization tests from
+        https://www.w3.org/International/tests/repo/results/writing-modes-bidi
+
+        * fast/css/default-bidi-css-rules-expected.txt: Updating expected results.
+        * fast/css/default-bidi-css-rules.html: Ditto.
+        * fast/css/unicode-bidi-computed-value-expected.txt: Ditto.
+        * fast/css/unicode-bidi-computed-value.html: Ditto.
+        * fast/text/bidi-unprefix-expected.txt: Added. Test unprefixing.
+        * fast/text/bidi-unprefix.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-embed-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-012-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-isolate-override-012.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-normal-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-012-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-override-012.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-010.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-011-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-plaintext-011.html: Added.
+        * imported/w3c/i18n/bidi/bidi-table-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-table-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-001.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-002.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-003.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-004.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-005.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-006.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-007-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-007.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-008-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-008.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-009-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-009.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-010-expected.html: Added.
+        * imported/w3c/i18n/bidi/bidi-unset-010.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-001.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-002.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-embed-003.html: Added.
+        * imported/w3c/i18n/bidi/block-override-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-001.html: Added.
+        * imported/w3c/i18n/bidi/block-override-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-002.html: Added.
+        * imported/w3c/i18n/bidi/block-override-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-003.html: Added.
+        * imported/w3c/i18n/bidi/block-override-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-004.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-001.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-002.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-003.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-override-isolate-004.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-001-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-001.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-002-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-002.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-003-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-003.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-004-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-004.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-005-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-005.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-006-expected.html: Added.
+        * imported/w3c/i18n/bidi/block-plaintext-006.html: Added.
+        * imported/w3c/i18n/bidi/resources/sileot-webfont.woff: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several tests.
+
+        * platform/gtk/TestExpectations:
+
 2017-05-07  Simon Fraser  <simon.fraser@apple.com>
 
         [iOS] REGRESSION (r209409): getBoundingClientRect is wrong for fixed-position elements in resize/orientationchange

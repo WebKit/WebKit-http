@@ -1,3 +1,331 @@
+2017-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Handle IDLPromise<> properly
+        https://bugs.webkit.org/show_bug.cgi?id=166752
+
+        Reviewed by Youenn Fablet.
+
+        Add JSPromise::resolve static function.
+        This applies `Promise.resolve()` conversion to a given value.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::promiseResolveFunction):
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::resolve):
+        * runtime/JSPromise.h:
+
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Upstream the WPE port
+        https://bugs.webkit.org/show_bug.cgi?id=171110
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWPE.cmake: Added.
+        * shell/PlatformWPE.cmake: Added.
+
+2017-05-09  Saam Barati  <sbarati@apple.com>
+
+        CallLinkInfos belonging to Wasm->JS stubs need to be informed when we clearCode() from all Executables
+        https://bugs.webkit.org/show_bug.cgi?id=171707
+        <rdar://problem/31891649>
+
+        Reviewed by Filip Pizlo.
+
+        This patch fixes a bug where a Wasm->JS IC call stub would go stale
+        and point into a CodeBlock no longer owned by any executable. The
+        problematic scenario is this:
+
+        1. We generate the call IC which has a branch on a callee check. This
+           callee owns the Executable in question. If the branch succeeds, it
+           will call code belonging to a particular CodeBlock associated with
+           that Executable.
+
+        2. Heap::deleteAllCodeBlocks is called. This leads the Executable to clear
+           its various CodeBlock references.
+
+        3. Wasm has no idea this happened, so now it has stale ICs that point into
+           code from a CodeBlock no longer belonging to an Executable.
+
+        This patch fixes the bug by informing all JSWebAssemblyCodeBlocks to unlink
+        their CallLinkInfo when Heap::deleteAllCodeBlocks is called.
+
+        We track all JSWebAssemblyCodeBlocks by creating a new subspace for them.
+        This allows us to quickly iterate over the live JSWebAssemblyCodeBlocks in the
+        heap.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::deleteAllCodeBlocks):
+        * heap/Subspace.h:
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachLiveCell):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        (JSC::JSWebAssemblyCodeBlock::clearJSCallICs):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        (JSC::JSWebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::functionImportCount): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::module): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::jsEntrypointCalleeFromFunctionIndexSpace): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::wasmEntrypointLoadLocationFromFunctionIndexSpace): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::wasmToJsCallStubForImport): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::offsetOfImportWasmToJSStub): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::codeBlock): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::offsetOfImportStubs): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::allocationSize): Deleted.
+        (JSC::JSWebAssemblyCodeBlock::importWasmToJSStub): Deleted.
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.cpp: Added.
+        (JSC::JSWebAssemblyCodeBlockSubspace::JSWebAssemblyCodeBlockSubspace):
+        (JSC::JSWebAssemblyCodeBlockSubspace::~JSWebAssemblyCodeBlockSubspace):
+        (JSC::JSWebAssemblyCodeBlockSubspace::finishSweep):
+        (JSC::JSWebAssemblyCodeBlockSubspace::destroy):
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.h: Added.
+
+2017-05-08  Saam Barati  <sbarati@apple.com>
+
+        testWasmBoundsCheck and testCallFunctionWithHellaArguments is broken in testb3
+        https://bugs.webkit.org/show_bug.cgi?id=171392
+        <rdar://problem/31872222>
+
+        Reviewed by Keith Miller.
+
+        This patch fixes two bugs. The first one is:
+        Inside testb3, we were using the wrong WasmBoundsCheckValue constructor.
+        Everything compiled OK because of implicit casting in C. I've changed one
+        of the constructors to take arguments in a different order so we don't
+        run into this problem again.
+        
+        The second bug was that Air::ShufflePair::inst was assuming that a move
+        from BigImm to its destination is always valid. This is not the case.
+        For example, the store, `Move BigImm, Addr` is not allowed. I refactored
+        the code to be correct by emitting more than one instruction when needeed.
+        
+        When testing my changes, I ran ARM64 testb3 both in debug and
+        release. I ran into many pre-existing failures. I've opened
+        a new bug to fix those here: https://bugs.webkit.org/show_bug.cgi?id=171826
+
+        * b3/B3WasmBoundsCheckValue.cpp:
+        (JSC::B3::WasmBoundsCheckValue::WasmBoundsCheckValue):
+        * b3/B3WasmBoundsCheckValue.h:
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::ShufflePair::insts):
+        (JSC::B3::Air::ShufflePair::inst): Deleted.
+        * b3/air/AirEmitShuffle.h:
+        * b3/air/AirLowerMacros.cpp:
+        (JSC::B3::Air::lowerMacros):
+        * b3/testb3.cpp:
+        (JSC::B3::testLoadAcq42):
+        (JSC::B3::testStoreRelAddLoadAcq32):
+        (JSC::B3::testStoreRelAddLoadAcq8):
+        (JSC::B3::testStoreRelAddFenceLoadAcq8):
+        (JSC::B3::testStoreRelAddLoadAcq16):
+        (JSC::B3::testStoreRelAddLoadAcq64):
+        (JSC::B3::testSimplePatchpointWithOuputClobbersGPArgs):
+        (JSC::B3::testCheckMul):
+        (JSC::B3::testCheckMulMemory):
+        (JSC::B3::testCheckMul64):
+        (JSC::B3::testCheckMulFold):
+        (JSC::B3::testCheckMulFoldFail):
+        (JSC::B3::testCheckMulArgumentAliasing64):
+        (JSC::B3::testCheckMulArgumentAliasing32):
+        (JSC::B3::testCheckMul64SShr):
+        (JSC::B3::testCallFunctionWithHellaArguments):
+        (JSC::B3::functionWithHellaArguments2):
+        (JSC::B3::testCallFunctionWithHellaArguments2):
+        (JSC::B3::functionWithHellaArguments3):
+        (JSC::B3::testCallFunctionWithHellaArguments3):
+        (JSC::B3::testSpillDefSmallerThanUse):
+        (JSC::B3::testLateRegister):
+        (JSC::B3::testTerminalPatchpointThatNeedsToBeSpilled):
+        (JSC::B3::testTerminalPatchpointThatNeedsToBeSpilled2):
+        (JSC::B3::testMoveConstants):
+        (JSC::B3::testAtomicWeakCAS):
+        (JSC::B3::testAtomicStrongCAS):
+        (JSC::B3::testAtomicXchg):
+        (JSC::B3::testWasmBoundsCheck):
+        (JSC::B3::run):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+
+2017-05-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Expose a function to get proxy targets
+        https://bugs.webkit.org/show_bug.cgi?id=171797
+        <rdar://problem/32027549>
+
+        Reviewed by Mark Lam.
+        
+        This exposes a new private API function, JSObjectGetProxyTarget(), that gets the target of a
+        proxy. It works with both ProxyObject and JSProxy, but it's primarily intended for use with
+        JSProxy.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectGetProxyTarget):
+        * API/JSObjectRefPrivate.h:
+        * API/tests/JSObjectGetProxyTargetTest.cpp: Added.
+        (testJSObjectGetProxyTarget):
+        * API/tests/JSObjectGetProxyTargetTest.h: Added.
+        * API/tests/testapi.c:
+        (main):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/ProxyObject.h:
+        * shell/PlatformWin.cmake: 
+
+2017-05-08  Mark Lam  <mark.lam@apple.com>
+
+        op_throw_static_error's use of its first operand should be reflected in DFG BytecodeUseDef as well.
+        https://bugs.webkit.org/show_bug.cgi?id=171786
+        <rdar://problem/32051023>
+
+        Reviewed by Saam Barati.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        - Fix BytecodeDumper to dump op_throw_static_error correctly.  Previously,
+          it was expecting op1 to always be a constant.  r206870 changed it to take a
+          variable string as well.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        - Fix the bug.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        - Move the Phantom of op1 after the ThrowStaticError node, because technically,
+          the ThrowStaticError represents op_throw_static_error, and op_throw_static_error
+          uses op1.  In practice, this probably doesn't matter, but let's have the code
+          accurately communicate the behavior we're expecting.
+
+2017-05-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: don't just emit extended offset adds for patch
+        https://bugs.webkit.org/show_bug.cgi?id=171799
+
+        Reviewed by Mark Lam.
+
+        It isn't necessary to restrict.
+
+        * b3/air/AirLowerStackArgs.cpp:
+        (JSC::B3::Air::lowerStackArgs):
+
+2017-05-08  Mark Lam  <mark.lam@apple.com>
+
+        Introduce ExceptionScope::assertNoException() and releaseAssertNoException().
+        https://bugs.webkit.org/show_bug.cgi?id=171776
+
+        Reviewed by Keith Miller.
+
+        Instead of ASSERT(!scope.exception()), we can now do scope.assertNoException().
+        Ditto for RELEASE_ASSERT and scope.releaseAssertNoException().  
+
+        The advantage of using ExceptionScope::assertNoException() and
+        releaseAssertNoException() is that if the assertion fails, these utility
+        functions will print the stack trace for where the unexpected exception is
+        detected as well as where the unexpected exception was thrown from.  This makes
+        it much easier to debug the source of unhandled exceptions.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::pauseIfNeeded):
+        * dfg/DFGOperations.cpp:
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        (JSC::notifyDebuggerOfUnwinding):
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::debug):
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::functionsOnStack):
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderResolve):
+        (GlobalObject::moduleLoaderFetch):
+        (functionGenerateHeapSnapshot):
+        (functionSamplingProfilerStackTraces):
+        (box):
+        (runWithScripts):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::tryInitializeSpeciesWatchpoint):
+        * runtime/Completion.cpp:
+        (JSC::rejectPromise):
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::sanitizedToString):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::assertNoException):
+        (JSC::ExceptionScope::releaseAssertNoException):
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        * runtime/IntlCollator.cpp:
+        (JSC::IntlCollator::createCollator):
+        (JSC::IntlCollator::resolvedOptions):
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::resolvedOptions):
+        (JSC::IntlDateTimeFormat::format):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::createNumberFormat):
+        (JSC::IntlNumberFormat::resolvedOptions):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitiveByIndex):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncIncludes):
+        (JSC::genericTypedArrayViewProtoFuncIndexOf):
+        (JSC::genericTypedArrayViewProtoFuncLastIndexOf):
+        (JSC::genericTypedArrayViewPrivateFuncSubarrayCreate):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncHostPromiseRejectionTracker):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::getOwnPropertySlot):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::finishCreation):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::toJSON):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::ordinaryToPrimitive):
+        * runtime/JSPropertyNameEnumerator.h:
+        (JSC::propertyNameEnumerator):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyDescriptors):
+        (JSC::objectConstructorDefineProperty):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncHasOwnProperty):
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectDefineProperty):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::nameFromCallee):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncRepeatCharacter):
+        * runtime/TemplateRegistry.cpp:
+        (JSC::TemplateRegistry::getTemplateObject):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::nativeStackTraceOfLastThrow):
+        (JSC::VM::clearException):
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+
 2017-05-06  Bill Ming  <mbbill@gmail.com>
 
         Fix 32bit Windows build by giving correct parameters to MASM

@@ -72,9 +72,12 @@ private:
 
     void startProducingData(uint64_t);
     void stopProducingData(uint64_t);
-    WebCore::RealtimeMediaSourceCapabilities&& capabilities(uint64_t);
+    WebCore::RealtimeMediaSourceCapabilities capabilities(uint64_t);
     void setMuted(uint64_t, bool);
     void setEnabled(uint64_t, bool);
+    void applyConstraints(uint64_t, const WebCore::MediaConstraints&);
+    void applyConstraintsSucceeded(uint64_t, const WebCore::RealtimeMediaSourceSettings&);
+    void applyConstraintsFailed(uint64_t, const String&, const String&);
 
     class Source;
     friend class Source;

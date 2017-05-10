@@ -51,7 +51,7 @@ class AudioSampleDataSource;
 class CaptureDeviceInfo;
 class WebAudioSourceProviderAVFObjC;
 
-class CoreAudioCaptureSource : public RealtimeMediaSource {
+class CoreAudioCaptureSource final : public RealtimeMediaSource {
 public:
 
     static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
@@ -75,14 +75,16 @@ private:
     friend class CoreAudioSharedUnit;
     friend class CoreAudioCaptureSourceFactory;
 
+    void scheduleReconfiguration();
+
     bool isCaptureSource() const final { return true; }
     void startProducingData() final;
     void stopProducingData() final;
     bool isProducingData() const final { return m_isProducingData; }
 
-    bool applyVolume(double) override { return true; }
-    bool applySampleRate(int) override { return true; }
-    bool applyEchoCancellation(bool) override { return true; }
+    bool applyVolume(double) final { return true; }
+    bool applySampleRate(int) final;
+    bool applyEchoCancellation(bool) final;
 
     const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
@@ -94,11 +96,11 @@ private:
     bool m_isProducingData { false };
     bool m_isSuspended { false };
 
-    mutable std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
+    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
     mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
 
     RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;
+    bool m_reconfigurationOngoing { false };
 };
 
 } // namespace WebCore

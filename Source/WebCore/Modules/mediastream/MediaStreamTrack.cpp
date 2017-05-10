@@ -253,7 +253,7 @@ static Ref<MediaConstraintsImpl> createMediaConstraintsImpl(const std::optional<
     return createMediaConstraintsImpl(constraints.value());
 }
 
-void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraints>& constraints, DOMPromise<void>&& promise)
+void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraints>& constraints, DOMPromiseDeferred<void>&& promise)
 {
     m_promise = WTFMove(promise);
 
@@ -269,7 +269,7 @@ void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraint
         weakThis->m_promise->resolve();
         weakThis->m_constraints = constraints.value_or(MediaTrackConstraints { });
     };
-    m_private->applyConstraints(createMediaConstraintsImpl(constraints), successHandler, failureHandler);
+    m_private->applyConstraints(createMediaConstraintsImpl(constraints), WTFMove(successHandler), WTFMove(failureHandler));
 }
 
 void MediaStreamTrack::addObserver(Observer& observer)

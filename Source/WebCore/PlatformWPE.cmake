@@ -200,10 +200,6 @@ set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/wpe/RenderTh
 list(APPEND WebCore_LIBRARIES
     ${BCM_HOST_LIBRARIES}
     ${CAIRO_LIBRARIES}
-)
-
-
-list(APPEND WebCore_LIBRARIES
     ${EGL_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
     ${FREETYPE2_LIBRARIES}
@@ -310,5 +306,4 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/keys/CryptoKeySerializationRaw.cpp
     )
 endif ()
-
 

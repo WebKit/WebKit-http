@@ -172,6 +172,9 @@ VM::VM(VMType vmType, HeapType heapType)
     , stringSpace("JSString", heap)
     , destructibleObjectSpace("JSDestructibleObject", heap)
     , segmentedVariableObjectSpace("JSSegmentedVariableObjectSpace", heap)
+#if ENABLE(WEBASSEMBLY)
+    , webAssemblyCodeBlockSpace("JSWebAssemblyCodeBlockSpace", heap)
+#endif
     , vmType(vmType)
     , clientData(0)
     , topVMEntryFrame(nullptr)
@@ -614,6 +617,10 @@ void VM::throwException(ExecState* exec, Exception* exception)
     interpreter->notifyDebuggerOfExceptionToBeThrown(*this, exec, exception);
 
     setException(exception);
+
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+    m_nativeStackTraceOfLastThrow = std::unique_ptr<StackTrace>(StackTrace::captureStackTrace(25));
+#endif
 }
 
 JSValue VM::throwException(ExecState* exec, JSValue thrownValue)

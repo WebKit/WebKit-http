@@ -1,3 +1,356 @@
+2017-05-09  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [Coordinated Graphics] Debug Visuals don't hide
+        https://bugs.webkit.org/show_bug.cgi?id=162704
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::encode):
+        (IPC::ArgumentCoder<CoordinatedGraphicsLayerState>::decode):
+        (IPC::ArgumentCoder<DebugVisuals>::encode):
+        (IPC::ArgumentCoder<DebugVisuals>::decode):
+        The encoder and decoder for DebugVisuals have been added.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.h:
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::setLayerState):
+        Update the debug visuals of a layer according to the DebugVisuals information
+        if the debugVisualsChanged flag is set to true.
+
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Upstream the WPE port
+        https://bugs.webkit.org/show_bug.cgi?id=171110
+
+        Reviewed by Alex Christensen.
+
+        webkit-dev thread:
+        https://lists.webkit.org/pipermail/webkit-dev/2017-April/028923.html
+
+        Existing files changed to properly use PLATFORM(WPE) build guards or other
+        WPE-specific additions (e.g. pasteboard support).
+        In-file changes removed from this ChangeLog entry for brevity.
+
+        * Platform/IPC/glib/GSocketMonitor.cpp:
+        * PlatformWPE.cmake: Added.
+        * Scripts/generate-forwarding-headers.pl:
+        * Shared/API/c/WKBase.h:
+        * Shared/API/c/wpe/WKBaseWPE.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * Shared/API/c/wpe/WebKit.h: Added.
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * Shared/DrawingAreaInfo.h:
+        * Shared/NativeWebKeyboardEvent.h:
+        * Shared/NativeWebMouseEvent.h:
+        * Shared/NativeWebTouchEvent.h:
+        * Shared/NativeWebWheelEvent.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/WebPreferencesDefinitions.h:
+        * Shared/wpe/NativeWebKeyboardEventWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * Shared/wpe/NativeWebMouseEventWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * Shared/wpe/NativeWebTouchEventWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * Shared/wpe/NativeWebWheelEventWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * Shared/wpe/ProcessExecutablePathWPE.cpp: Added.
+        * Shared/wpe/WebEventFactory.cpp: Added.
+        * Shared/wpe/WebEventFactory.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/wpe/WKAPICastWPE.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/C/wpe/WKView.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/C/wpe/WKView.h: Copied from Source/WebKit2/Shared/NativeWebWheelEvent.h.
+        * UIProcess/API/wpe/CompositingManagerProxy.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/wpe/CompositingManagerProxy.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/wpe/CompositingManagerProxy.messages.in: Added.
+        * UIProcess/API/wpe/DrawingAreaProxyWPE.cpp: Added.
+        * UIProcess/API/wpe/DrawingAreaProxyWPE.h: Copied from Source/WebKit2/Shared/NativeWebWheelEvent.h.
+        * UIProcess/API/wpe/PageClientImpl.cpp: Added.
+        * UIProcess/API/wpe/PageClientImpl.h: Added.
+        * UIProcess/API/wpe/ScrollGestureController.cpp: Added.
+        * UIProcess/API/wpe/ScrollGestureController.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/wpe/WPEView.cpp: Added.
+        * UIProcess/API/wpe/WPEView.h: Added.
+        * UIProcess/API/wpe/WPEViewClient.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/wpe/WPEViewClient.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml: Added.
+        * UIProcess/ChildProcessProxy.cpp:
+        * UIProcess/Launcher/ProcessLauncher.h:
+        * UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp: Added.
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * UIProcess/WebProcessPool.cpp:
+        * UIProcess/wpe/TextCheckerWPE.cpp: Added.
+        * UIProcess/wpe/WebInspectorProxyWPE.cpp: Added.
+        * UIProcess/wpe/WebPageProxyWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/wpe/WebPasteboardProxyWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * UIProcess/wpe/WebPreferencesWPE.cpp: Copied from Source/WebKit2/Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h.
+        * UIProcess/wpe/WebProcessPoolWPE.cpp: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebKit2Prefix.h:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebCoreSupport/wpe/WebContextMenuClientWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp: Added.
+        * WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        * WebProcess/WebPage/DrawingArea.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/wpe/CompositingManager.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebPage/wpe/CompositingManager.h: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebPage/wpe/DrawingAreaWPE.cpp: Added.
+        * WebProcess/WebPage/wpe/DrawingAreaWPE.h: Added.
+        * WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebPage/wpe/WebInspectorWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * WebProcess/WebPage/wpe/WebPageWPE.cpp: Copied from Source/WebKit2/Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h.
+        * WebProcess/wpe/WebProcessMainWPE.cpp: Copied from Source/WebKit2/Shared/DrawingAreaInfo.h.
+        * wpe/wpe-webkit.pc.in: Added.
+
+2017-05-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Building Webkit2Gtk without OpenGL fails.
+        https://bugs.webkit.org/show_bug.cgi?id=170959
+
+        Reviewed by Žan Doberšek.
+
+        * UIProcess/gtk/HardwareAccelerationManager.cpp:
+        (WebKit::HardwareAccelerationManager::HardwareAccelerationManager):
+
+2017-05-08  Youenn Fablet  <youenn@apple.com>
+
+        Follow-up to bug 171710: use more references and reject if either audio or video source creation is failing
+        https://bugs.webkit.org/show_bug.cgi?id=171824
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints):
+
+2017-05-08  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r213564): Flash video playback failures
+        https://bugs.webkit.org/show_bug.cgi?id=171840
+        <rdar://problem/32041569>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The sandbox restrictions added in r213564 to prevent access to unused iokit properties
+        blocked some items needed for Flash video playback. This change relaxes the sandbox
+        to allow this software to run properly.
+
+        * PluginProcess/mac/com.apple.WebKit.plugin-common.sb.in:
+
+2017-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce PassRefPtr use in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=171831
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/API/C/WKPageGroup.cpp:
+        (WKPageGroupCreateWithIdentifier):
+        * UIProcess/GenericCallback.h:
+        (WebKit::GenericCallback::create):
+        (WebKit::CallbackMap::put):
+        * UIProcess/StatisticsRequest.cpp:
+        (WebKit::StatisticsRequest::StatisticsRequest):
+        * UIProcess/StatisticsRequest.h:
+        (WebKit::StatisticsRequest::create):
+        * UIProcess/TextChecker.h:
+        * UIProcess/TextCheckerCompletion.cpp:
+        (WebKit::TextCheckerCompletion::create):
+        * UIProcess/TextCheckerCompletion.h:
+        * UIProcess/WebColorPicker.h:
+        (WebKit::WebColorPicker::create):
+        * UIProcess/WebConnectionToWebProcess.cpp:
+        (WebKit::WebConnectionToWebProcess::create):
+        * UIProcess/WebConnectionToWebProcess.h:
+        * UIProcess/WebContextInjectedBundleClient.cpp:
+        (WebKit::WebContextInjectedBundleClient::getInjectedBundleInitializationUserData):
+        * UIProcess/WebContextInjectedBundleClient.h:
+        * UIProcess/WebContextMenuListenerProxy.h:
+        (WebKit::WebContextMenuListenerProxy::create):
+        * UIProcess/WebCookieManagerProxy.cpp:
+        (WebKit::WebCookieManagerProxy::create):
+        * UIProcess/WebCookieManagerProxy.h:
+        * UIProcess/WebEditCommandProxy.h:
+        (WebKit::WebEditCommandProxy::create):
+        * UIProcess/WebFormSubmissionListenerProxy.h:
+        (WebKit::WebFormSubmissionListenerProxy::create):
+        * UIProcess/WebFrameListenerProxy.h:
+        * UIProcess/WebFrameProxy.h:
+        (WebKit::WebFrameProxy::create):
+        * UIProcess/WebFullScreenManagerProxy.cpp:
+        (WebKit::WebFullScreenManagerProxy::create):
+        * UIProcess/WebFullScreenManagerProxy.h:
+        * UIProcess/WebGeolocationManagerProxy.cpp:
+        (WebKit::WebGeolocationManagerProxy::create):
+        * UIProcess/WebGeolocationManagerProxy.h:
+        * UIProcess/WebIconDatabase.cpp:
+        (WebKit::WebIconDatabase::create):
+        (WebKit::WebIconDatabase::iconDataForPageURL):
+        * UIProcess/WebIconDatabase.h:
+        * UIProcess/WebMediaSessionFocusManager.cpp:
+        (WebKit::WebMediaSessionFocusManager::create):
+        * UIProcess/WebMediaSessionFocusManager.h:
+        * UIProcess/WebOpenPanelResultListenerProxy.h:
+        (WebKit::WebOpenPanelResultListenerProxy::create):
+        * UIProcess/WebPageGroup.cpp:
+        (WebKit::WebPageGroup::create):
+        * UIProcess/WebPageGroup.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::forceRepaint):
+        (WebKit::WebPageProxy::computePagesForPrinting):
+        (WebKit::WebPageProxy::drawRectToImage):
+        (WebKit::WebPageProxy::drawPagesToPDF):
+        (WebKit::WebPageProxy::drawPagesForPrinting):
+        (WebKit::WebPageProxy::callAfterNextPresentationUpdate):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/TextCheckerIOS.mm:
+        (WebKit::TextChecker::requestCheckingOfString):
+        * UIProcess/mac/TextCheckerMac.mm:
+        (WebKit::TextChecker::requestCheckingOfString):
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController finishedExitFullScreenAnimation:]):
+        * UIProcess/mac/WKPrintingView.mm:
+        (-[WKPrintingView _preparePDFDataForPrintingOnSecondaryThread]):
+        (-[WKPrintingView _drawPreview:]):
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::loadURL):
+        (WebKit::NetscapePlugin::manualStreamDidReceiveResponse):
+        * WebProcess/Plugins/Netscape/NetscapePluginStream.cpp:
+        (WebKit::NetscapePluginStream::NetscapePluginStream):
+        * WebProcess/Plugins/Netscape/NetscapePluginStream.h:
+        (WebKit::NetscapePluginStream::create):
+        * WebProcess/WebCoreSupport/SessionStateConversion.cpp:
+        (WebKit::toFormData):
+
+2017-05-08  Youenn Fablet  <youenn@apple.com>
+
+        Add support for reading and writing settings from UIProcess audio capture
+        https://bugs.webkit.org/show_bug.cgi?id=171633
+
+        Reviewed by Eric Carlson.
+
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints):
+        (WebKit::UserMediaCaptureManagerProxy::applyConstraints):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::setSettings):
+        (WebKit::UserMediaCaptureManager::Source::applyConstraintsSucceeded):
+        (WebKit::UserMediaCaptureManager::Source::applyConstraintsFailed):
+        (WebKit::UserMediaCaptureManager::createCaptureSource):
+        (WebKit::UserMediaCaptureManager::sourceSettingsChanged):
+        (WebKit::UserMediaCaptureManager::applyConstraints):
+        (WebKit::UserMediaCaptureManager::applyConstraintsSucceeded):
+        (WebKit::UserMediaCaptureManager::applyConstraintsFailed):
+        (WebKit::UserMediaCaptureManager::Source::setMuted): Deleted.
+        (WebKit::UserMediaCaptureManager::Source::setEnabled): Deleted.
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+        * WebProcess/cocoa/UserMediaCaptureManager.messages.in:
+
+2017-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce PassRefPtr use
+        https://bugs.webkit.org/show_bug.cgi?id=171809
+
+        Reviewed by Chris Dumez.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::setInitializationReply):
+        * PluginProcess/PluginControllerProxy.h:
+        * PluginProcess/WebProcessConnection.cpp:
+        (WebKit::WebProcessConnection::destroyPlugin):
+        (WebKit::WebProcessConnection::createPlugin):
+        * PluginProcess/WebProcessConnection.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runOpenPanel):
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::registerUndoStep):
+        * WebProcess/WebPage/VisitedLinkTableController.cpp:
+        (WebKit::VisitedLinkTableController::getOrCreate):
+        * WebProcess/WebPage/VisitedLinkTableController.h:
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::hitTest):
+        (WebKit::WebFrame::createSelectionSnapshot):
+        * WebProcess/WebPage/WebFrame.h:
+        * WebProcess/WebPage/WebOpenPanelResultListener.cpp:
+        (WebKit::WebOpenPanelResultListener::create):
+        (WebKit::WebOpenPanelResultListener::WebOpenPanelResultListener):
+        * WebProcess/WebPage/WebOpenPanelResultListener.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::unapplyEditCommand):
+        (WebKit::WebPage::reapplyEditCommand):
+        * WebProcess/WebPage/WebPageGroupProxy.cpp:
+        (WebKit::WebPageGroupProxy::create):
+        * WebProcess/WebPage/WebPageGroupProxy.h:
+        * WebProcess/WebPage/WebUndoStep.cpp:
+        (WebKit::WebUndoStep::create):
+        * WebProcess/WebPage/WebUndoStep.h:
+        (WebKit::WebUndoStep::step):
+        (WebKit::WebUndoStep::WebUndoStep):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::create):
+        (WebKit::PlatformCALayerRemote::clone):
+        (WebKit::PlatformCALayerRemote::animationForKey):
+        (WebKit::PlatformCALayerRemote::createCompatibleLayer):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.h:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (WebKit::PlatformCALayerRemoteCustom::create):
+        (WebKit::PlatformCALayerRemoteCustom::clone):
+
+2017-05-08  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Audio capture fails when shouldCaptureAudioInUIProcess is set.
+        https://bugs.webkit.org/show_bug.cgi?id=171710
+
+        Reviewed by Eric Carlson.
+
+        RealtimeMediaSourceCenterMac's setUseAVFoundationAudioCapture() is now accessed via a singleton.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::syncWithWebCorePrefs):
+
+2017-05-08  Andy Estes  <aestes@apple.com>
+
+        [macOS] com.macromedia.Flash Player ESR.plugin.sb is installed outside of PlugInSandboxProfiles
+        https://bugs.webkit.org/show_bug.cgi?id=171774
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-05-08  Youenn Fablet  <youenn@apple.com>
+
+        Clean UserMediaCaptureManager::capabilities return value
+        https://bugs.webkit.org/show_bug.cgi?id=171808
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::capabilities):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Move 'style' from Element to HTMLElement / SVGElement and make it settable
+        https://bugs.webkit.org/show_bug.cgi?id=171795
+
+        Reviewed by Alex Christensen.
+
+        Build fix.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::shouldApplyStyle):
+
 2017-05-07  Simon Fraser  <simon.fraser@apple.com>
 
         [iOS] REGRESSION (r209409): getBoundingClientRect is wrong for fixed-position elements in resize/orientationchange

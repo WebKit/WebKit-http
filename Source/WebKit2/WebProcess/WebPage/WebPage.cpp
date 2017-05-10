@@ -3722,7 +3722,7 @@ void WebPage::unapplyEditCommand(uint64_t stepID)
     if (!step)
         return;
 
-    step->step()->unapply();
+    step->step().unapply();
 }
 
 void WebPage::reapplyEditCommand(uint64_t stepID)
@@ -3732,7 +3732,7 @@ void WebPage::reapplyEditCommand(uint64_t stepID)
         return;
 
     m_isInRedo = true;
-    step->step()->reapply();
+    step->step().reapply();
     m_isInRedo = false;
 }
 

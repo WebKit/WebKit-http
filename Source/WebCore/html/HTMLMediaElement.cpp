@@ -53,7 +53,7 @@
 #include "HTMLSourceElement.h"
 #include "HTMLVideoElement.h"
 #include "JSDOMError.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSHTMLMediaElement.h"
 #include "Language.h"
 #include "Logging.h"
@@ -1038,7 +1038,7 @@ void HTMLMediaElement::scheduleResolvePendingPlayPromises()
 
 void HTMLMediaElement::rejectPendingPlayPromises(DOMError& error)
 {
-    Vector<DOMPromise<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
+    Vector<DOMPromiseDeferred<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
 
     for (auto& promise : pendingPlayPromises)
         promise.rejectType<IDLInterface<DOMError>>(error);
@@ -1046,7 +1046,7 @@ void HTMLMediaElement::rejectPendingPlayPromises(DOMError& error)
 
 void HTMLMediaElement::resolvePendingPlayPromises()
 {
-    Vector<DOMPromise<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
+    Vector<DOMPromiseDeferred<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
 
     for (auto& promise : pendingPlayPromises)
         promise.resolve();
@@ -3371,7 +3371,7 @@ void HTMLMediaElement::setPreload(const String& preload)
     setAttributeWithoutSynchronization(preloadAttr, preload);
 }
 
-void HTMLMediaElement::play(DOMPromise<void>&& promise)
+void HTMLMediaElement::play(DOMPromiseDeferred<void>&& promise)
 {
     LOG(Media, "HTMLMediaElement::play(%p)", this);
 
@@ -7147,7 +7147,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     argList.append(mediaControlsHostJSWrapper);
 
     JSC::JSObject* function = functionValue.toObject(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSC::CallData callData;
     JSC::CallType callType = function->methodTable()->getCallData(function, callData);
     if (callType == JSC::CallType::None)
@@ -7161,7 +7161,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 
     // Connect the Media, MediaControllerHost, and Controller so the GC knows about their relationship
     JSC::JSObject* mediaJSWrapperObject = mediaJSWrapper.toObject(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSC::Identifier controlsHost = JSC::Identifier::fromString(&exec->vm(), "controlsHost");
     
     ASSERT(!mediaJSWrapperObject->hasProperty(exec, controlsHost));
@@ -7231,7 +7231,7 @@ void HTMLMediaElement::updateMediaControlsAfterPresentationModeChange()
         return;
 
     JSC::JSObject* function = functionValue.toObject(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSC::CallData callData;
     JSC::CallType callType = function->methodTable()->getCallData(function, callData);
     if (callType == JSC::CallType::None)
@@ -7273,7 +7273,7 @@ String HTMLMediaElement::getCurrentMediaControlsStatus()
         return emptyString();
 
     JSC::JSObject* function = functionValue.toObject(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSC::CallData callData;
     JSC::CallType callType = function->methodTable()->getCallData(function, callData);
     JSC::MarkedArgumentBuffer argList;

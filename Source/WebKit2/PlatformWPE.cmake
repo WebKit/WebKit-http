@@ -26,10 +26,6 @@ if (USE_WPEWEBKIT_BACKEND_WESTEROS)
     list(REMOVE_ITEM WebProcess_LIBRARIES  wayland-server)
 endif ()
 
-list(APPEND DatabaseProcess_SOURCES
-    DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
-)
-
 list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )

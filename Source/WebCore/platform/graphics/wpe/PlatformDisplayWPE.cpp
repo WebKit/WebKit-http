@@ -32,7 +32,6 @@
 #include "IntSize.h"
 #include <EGL/egl.h>
 #include <wpe/renderer-backend-egl.h>
-#include <stdio.h>
 
 namespace WebCore {
 
@@ -49,7 +48,7 @@ void PlatformDisplayWPE::initialize(int hostFd)
 
     m_eglDisplay = eglGetDisplay(wpe_renderer_backend_egl_get_native_display(m_backend));
     if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "PlatformDisplayWPE: could not create the EGL display.\n");
+        WTFLogAlways("PlatformDisplayWPE: could not create the EGL display.");
         return;
     }
 

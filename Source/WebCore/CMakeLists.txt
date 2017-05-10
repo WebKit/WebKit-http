@@ -391,6 +391,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/DeprecatedCSSOMValue.idl
     css/DeprecatedCSSOMValueList.idl
     css/DOMCSSNamespace.idl
+    css/ElementCSSInlineStyle.idl
     css/FontFace.idl
     css/FontFaceSet.idl
     css/MediaList.idl
@@ -1168,7 +1169,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMGlobalObjectTask.cpp
     bindings/js/JSDOMGuardedObject.cpp
     bindings/js/JSDOMMapLike.cpp
-    bindings/js/JSDOMPromise.cpp
+    bindings/js/JSDOMPromiseDeferred.cpp
     bindings/js/JSDOMStringMapCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
@@ -2392,6 +2393,7 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
+    platform/mediastream/CaptureDeviceManager.cpp
     platform/mediastream/MediaConstraints.cpp
     platform/mediastream/MediaEndpointConfiguration.cpp
     platform/mediastream/MediaStreamPrivate.cpp

@@ -4087,7 +4087,7 @@ sub GenerateImplementation
 
             my $functionImplementationName = $function->extendedAttributes->{ImplementedAs} || $codeGenerator->WK_lcfirst($function->name);
 
-            AddToImplIncludes("JSDOMPromise.h") if IsReturningPromise($function);
+            AddToImplIncludes("JSDOMPromiseDeferred.h") if IsReturningPromise($function);
 
             if (!$function->isStatic) {
                 my $classParameterType = $className eq "JSEventTarget" ? "JSEventTargetWrapper*" : "${className}*";
@@ -4552,7 +4552,7 @@ sub GenerateSerializerFunction
         my $name = $attribute->name;
         my $getFunctionName = GetAttributeGetterName($interface, $className, $attribute);
         push(@implContent, "    auto ${name}Value = ${getFunctionName}Getter(*state, *thisObject, throwScope);\n");
-        push(@implContent, "    ASSERT(!throwScope.exception());\n");
+        push(@implContent, "    throwScope.assertNoException();\n");
         push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}Value);\n");
         push(@implContent, "\n");
     }

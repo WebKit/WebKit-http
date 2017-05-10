@@ -504,7 +504,7 @@ auto B3IRGenerator::addGrowMemory(ExpressionType delta, ExpressionType& result) 
         // grow() does not require ExecState* if it doesn't throw exceptions.
         ExecState* exec = nullptr; 
         PageCount result = wasmMemory->grow(vm, exec, static_cast<uint32_t>(delta), shouldThrowExceptionsOnFailure);
-        RELEASE_ASSERT(!scope.exception());
+        scope.releaseAssertNoException();
         if (!result)
             return -1;
 
@@ -568,7 +568,7 @@ inline Value* B3IRGenerator::emitCheckAndPreparePointer(ExpressionType pointer, 
         // We're not using signal handling at all, we must therefore check that no memory access exceeds the current memory size.
         ASSERT(m_memorySizeGPR);
         ASSERT(sizeOfOperation + offset > offset);
-        m_currentBlock->appendNew<WasmBoundsCheckValue>(m_proc, origin(), pointer, sizeOfOperation + offset - 1, m_memorySizeGPR);
+        m_currentBlock->appendNew<WasmBoundsCheckValue>(m_proc, origin(), m_memorySizeGPR, pointer, sizeOfOperation + offset - 1);
         break;
 
     case MemoryMode::Signaling:

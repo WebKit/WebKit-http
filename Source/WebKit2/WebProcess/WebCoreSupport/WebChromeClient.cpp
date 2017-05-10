@@ -816,7 +816,7 @@ void WebChromeClient::runOpenPanel(Frame& frame, FileChooser& fileChooser)
     if (m_page.activeOpenPanelResultListener())
         return;
 
-    m_page.setActiveOpenPanelResultListener(WebOpenPanelResultListener::create(&m_page, &fileChooser));
+    m_page.setActiveOpenPanelResultListener(WebOpenPanelResultListener::create(m_page, fileChooser));
 
     auto* webFrame = WebFrame::fromCoreFrame(frame);
     ASSERT(webFrame);

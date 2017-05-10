@@ -969,7 +969,7 @@ public:
     bool hasContentEditableAttributeSet() const;
 
     bool supportsARIAReadOnly() const;
-    String ariaReadOnlyValue() const;
+    virtual String ariaReadOnlyValue() const;
 
     bool supportsARIAAutoComplete() const;
     String ariaAutoCompleteValue() const;

@@ -42,10 +42,12 @@ namespace WebCore {
 
 class RealtimeMediaSourceCenterMac final : public RealtimeMediaSourceCenter {
 public:
-    RealtimeMediaSourceCenterMac();
+    WEBCORE_EXPORT static RealtimeMediaSourceCenterMac& singleton();
 
-    WEBCORE_EXPORT static void setUseAVFoundationAudioCapture(bool enabled);
+    WEBCORE_EXPORT void setUseAVFoundationAudioCapture(bool enabled);
 private:
+    friend class NeverDestroyed<RealtimeMediaSourceCenterMac>;
+    RealtimeMediaSourceCenterMac();
     ~RealtimeMediaSourceCenterMac();
 
     void validateRequestConstraints(ValidConstraintsHandler&& validHandler, InvalidConstraintsHandler&& invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
@@ -54,8 +56,13 @@ private:
 
     Vector<String> bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type, const MediaConstraints&, String& invalidConstraint);
 
-    RealtimeMediaSource::AudioCaptureFactory* defaultAudioFactory() final;
-    RealtimeMediaSource::VideoCaptureFactory* defaultVideoFactory() final;
+    RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() final;
+    RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() final;
+
+    CaptureDeviceManager& defaultAudioCaptureDeviceManager() final;
+    CaptureDeviceManager& defaultVideoCaptureDeviceManager() final;
+
+    bool m_useAVFoundationAudioCapture { false };
 };
 
 } // namespace WebCore

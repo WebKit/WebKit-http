@@ -123,7 +123,7 @@ public:
 
     using SuccessHandler = std::function<void()>;
     using FailureHandler = std::function<void(const String& badConstraint, const String& errorString)>;
-    void applyConstraints(const MediaConstraints&, SuccessHandler, FailureHandler);
+    virtual void applyConstraints(const MediaConstraints&, SuccessHandler&&, FailureHandler&&);
     std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
     virtual bool supportsConstraints(const MediaConstraints&, String&);
@@ -214,6 +214,10 @@ protected:
     const Vector<Observer*> observers() const { return m_observers; }
 
     void notifyMutedObservers() const;
+
+    void initializeVolume(double volume) { m_volume = volume; }
+    void initializeSampleRate(int sampleRate) { m_sampleRate = sampleRate; }
+    void initializeEchoCancellation(bool echoCancellation) { m_echoCancellation = echoCancellation; }
 
     bool m_muted { false };
     bool m_enabled { true };

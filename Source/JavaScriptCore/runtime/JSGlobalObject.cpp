@@ -428,6 +428,11 @@ void JSGlobalObject::init(VM& vm)
             init.set(JSFunction::createBuiltinFunction(init.vm, iteratorHelpersPerformIterationCodeGenerator(init.vm), init.owner));
         });
 
+    m_promiseResolveFunction.initLater(
+        [] (const Initializer<JSFunction>& init) {
+            init.set(JSFunction::createBuiltinFunction(init.vm, promiseConstructorResolveCodeGenerator(init.vm), init.owner));
+        });
+
     m_newPromiseCapabilityFunction.set(vm, this, JSFunction::createBuiltinFunction(vm, promiseOperationsNewPromiseCapabilityCodeGenerator(vm), this));
     m_functionProtoHasInstanceSymbolFunction.set(vm, this, hasInstanceSymbolFunction);
     m_throwTypeErrorGetterSetter.initLater(
@@ -743,20 +748,20 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncConcatSlowPath = JSFunction::createBuiltinFunction(vm, arrayPrototypeConcatSlowPathCodeGenerator(vm), this);
 
     JSObject* regExpProtoFlagsGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->flags);
-    ASSERT_UNUSED(catchScope, !catchScope.exception());
+    catchScope.assertNoException();
     JSObject* regExpProtoGlobalGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->global);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     m_regExpProtoGlobalGetter.set(vm, this, regExpProtoGlobalGetterObject);
     JSObject* regExpProtoIgnoreCaseGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->ignoreCase);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     JSObject* regExpProtoMultilineGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->multiline);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     JSObject* regExpProtoSourceGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->source);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     JSObject* regExpProtoStickyGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->sticky);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     JSObject* regExpProtoUnicodeGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->unicode);
-    ASSERT(!catchScope.exception());
+    catchScope.assertNoException();
     m_regExpProtoUnicodeGetter.set(vm, this, regExpProtoUnicodeGetterObject);
     JSObject* builtinRegExpExec = asObject(m_regExpPrototype->getDirect(vm, vm.propertyNames->exec).asCell());
     m_regExpProtoExec.set(vm, this, builtinRegExpExec);
@@ -913,10 +918,10 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
             PropertySlot slot(base, PropertySlot::InternalMethodType::Get);
             bool result = base->getOwnPropertySlot(base, exec, ident, slot);
             ASSERT_UNUSED(result, result);
-            ASSERT(!catchScope.exception());
+            catchScope.assertNoException();
             RELEASE_ASSERT(slot.isCacheableValue());
             JSValue functionValue = slot.getValue(exec, ident);
-            ASSERT(!catchScope.exception());
+            catchScope.assertNoException();
             ASSERT(jsDynamicCast<JSFunction*>(vm, functionValue));
 
             ObjectPropertyCondition condition = generateConditionForSelfEquivalence(m_vm, nullptr, base, ident.impl());
@@ -1187,6 +1192,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_arrayProtoValuesFunction.visit(visitor);
     thisObject->m_initializePromiseFunction.visit(visitor);
     thisObject->m_iteratorProtocolFunction.visit(visitor);
+    thisObject->m_promiseResolveFunction.visit(visitor);
     visitor.append(thisObject->m_objectProtoValueOfFunction);
     visitor.append(thisObject->m_newPromiseCapabilityFunction);
     visitor.append(thisObject->m_functionProtoHasInstanceSymbolFunction);
