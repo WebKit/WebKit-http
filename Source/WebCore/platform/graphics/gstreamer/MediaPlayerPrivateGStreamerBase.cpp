@@ -519,15 +519,11 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             needKey(initDataArray);
 #elif ENABLE(ENCRYPTED_MEDIA)
             fprintf(stderr, "MediaPlayerPrivateGStreamerBase: got init data of size %zu\n", initData.size());
-#if USE(OCDM)
             m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));
-#else
-            m_player->initializationDataEncountered(ASCIILiteral("hoi"), ArrayBuffer::create(initData.data(), initData.size()));
-#endif
 
             // FIXME: ClearKey BestKey
             LockHolder lock(m_protectionMutex);
-            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
             m_protectionCondition.notifyOne();
 #else
             ASSERT_NOT_REACHED();
