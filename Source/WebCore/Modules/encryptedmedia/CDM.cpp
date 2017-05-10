@@ -29,9 +29,6 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDMClearKey.h"
-#if USE(OCDM)
-#include "CDMOpenCDM.h"
-#endif
 #include "CDMPrivate.h"
 #include "Document.h"
 #include "InitDataRegistry.h"
@@ -43,6 +40,14 @@
 #include "SecurityOrigin.h"
 #include <wtf/NeverDestroyed.h>
 
+#if USE(OCDM)
+#include "CDMOpenCDM.h"
+#endif
+
+#if USE(PLAYREADY)
+#include "CDMPlayReady.h"
+#endif
+
 namespace WebCore {
 
 static Vector<CDMFactory*>& cdmFactories()
@@ -52,6 +57,9 @@ static Vector<CDMFactory*>& cdmFactories()
         factories.get().append(new CDMFactoryClearKey);
 #if USE(OCDM)
         factories.get().append(new CDMFactoryOpenCDM);
+#endif
+#if USE(PLAYREADY)
+        factories.get().append(new CDMFactoryPlayReady);
 #endif
     }
 
