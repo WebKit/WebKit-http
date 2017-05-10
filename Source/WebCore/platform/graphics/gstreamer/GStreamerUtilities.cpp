@@ -197,6 +197,20 @@ bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* caps
     return result;
 }
 
+GstElement* getPipeline(GstElement* element)
+{
+    if (!element)
+        return nullptr;
+
+    GRefPtr<GstElement> parent = element;
+    GstElement* result;
+    do {
+        result = parent.get();
+        parent = adoptGRef(GST_ELEMENT(gst_object_get_parent(GST_OBJECT(result))));
+    } while (parent);
+    return result;
+}
+
 #if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
 GstElement* createGstDecryptor(const gchar* protectionSystem)
 {

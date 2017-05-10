@@ -356,7 +356,7 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
         gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-        m_playerPrivate->handleProtectionEvent(event.get());
+        m_playerPrivate->handleProtectionEvent(event.get(), getPipeline(GST_ELEMENT(message->src)));
     }
 }
 #endif
@@ -712,6 +712,10 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 
     {
         LockHolder locker(m_newSampleLock);
+
+        // If we were in KeyNegotiation but samples are coming, assume we're already OnGoing
+        if (m_appendState == AppendState::KeyNegotiation)
+            setAppendState(AppendState::Ongoing);
 
         // Ignore samples if we're not expecting them. Refuse processing if we're in Invalid state.
         if (m_appendState != AppendState::Ongoing && m_appendState != AppendState::Sampling) {

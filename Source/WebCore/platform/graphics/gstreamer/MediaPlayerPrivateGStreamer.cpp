@@ -1202,7 +1202,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GRefPtr<GstEvent> event;
                 gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-                handleProtectionEvent(event.get());
+                handleProtectionEvent(event.get(), GST_ELEMENT(message->src));
 #endif
             }
         }
