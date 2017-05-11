@@ -71,6 +71,8 @@ void TestRunnerQt::reset()
     m_geolocationPermission = false;
     m_audioData.clear();
 
+    m_drt->webPage()->setDevicePixelRatio(1);
+
     DumpRenderTreeSupportQt::dumpEditingCallbacks(false);
     DumpRenderTreeSupportQt::dumpFrameLoader(false);
     DumpRenderTreeSupportQt::dumpProgressFinishedCallback(false);
@@ -869,8 +871,9 @@ void TestRunner::focusWebView()
 {
 }
 
-void TestRunner::setBackingScaleFactor(double)
+void TestRunner::setBackingScaleFactor(double scale)
 {
+    DumpRenderTree::instance()->webPage()->setDevicePixelRatio(scale);
 }
 
 void TestRunner::removeChromeInputField()
