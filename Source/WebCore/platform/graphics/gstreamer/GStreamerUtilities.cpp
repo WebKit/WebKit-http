@@ -37,6 +37,9 @@
 #undef GST_USE_UNSTABLE_API
 #endif
 
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
+#define GST_CAT_DEFAULT webkit_media_player_debug
+
 namespace WebCore {
 
 const char* webkitGstMapInfoQuarkString = "webkit-gst-map-info";

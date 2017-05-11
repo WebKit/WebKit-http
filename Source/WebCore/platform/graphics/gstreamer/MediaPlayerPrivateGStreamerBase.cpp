@@ -1575,53 +1575,55 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     GST_DEBUG("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
 #if USE(PLAYREADY)
-    if (!equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
-        && !equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        return MediaPlayer::KeySystemNotSupported;
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
+        RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
+        RefPtr<Uint8Array> nextMessage;
+        unsigned short errorCode;
+        uint32_t systemCode;
+        PlayreadySession* prSession = prSessionBySessionId(sessionID);
+        bool result = prSession->playreadyProcessKey(key.get(), nextMessage, errorCode, systemCode);
 
-    RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
-    RefPtr<Uint8Array> nextMessage;
-    unsigned short errorCode;
-    uint32_t systemCode;
-    PlayreadySession* prSession = prSessionBySessionId(sessionID);
-    bool result = prSession->playreadyProcessKey(key.get(), nextMessage, errorCode, systemCode);
+        if (errorCode || !result) {
+            GST_ERROR("Error processing key: errorCode: %u, result: %d", errorCode, result);
+            return MediaPlayer::InvalidPlayerState;
+        }
 
-    if (errorCode || !result) {
-        GST_ERROR("Error processing key: errorCode: %u, result: %d", errorCode, result);
-        return MediaPlayer::InvalidPlayerState;
+        // XXX: use nextMessage here and send a new keyMessage is ack is needed?
+        emitPlayReadySession(prSession);
+
+        m_player->keyAdded(keySystem, sessionID);
+
+        return MediaPlayer::NoError;
     }
-
-    // XXX: use nextMessage here and send a new keyMessage is ack is needed?
-    emitPlayReadySession(prSession);
-
-    m_player->keyAdded(keySystem, sessionID);
-
-    return MediaPlayer::NoError;
-#elif USE(OCDM)
-    RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
-    RefPtr<Uint8Array> nextMessage;
-    unsigned short errorCode = 0;
-    uint32_t systemCode;
-    bool result = m_cdmSession->update(key.get(), nextMessage, errorCode, systemCode);
-    if (errorCode || !result) {
-        GST_ERROR("Error processing key: errorCode: %u, result: %d", errorCode, result);
-        return MediaPlayer::InvalidPlayerState;
-    }
-    emitOpenCDMSession();
-    m_player->keyAdded(keySystem, sessionID);
-    return MediaPlayer::NoError;
-#else
-    if (!equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
-        return MediaPlayer::KeySystemNotSupported;
-
-    GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
-    dispatchDecryptionKey(buffer);
-    gst_buffer_unref(buffer);
-
-    m_player->keyAdded(keySystem, sessionID);
-
-    return MediaPlayer::NoError;
 #endif
+#if USE(OCDM)
+    if (CDMPrivateOpenCDM::supportsKeySystem(keySystem)) {
+        RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
+        RefPtr<Uint8Array> nextMessage;
+        unsigned short errorCode = 0;
+        uint32_t systemCode;
+        bool result = m_cdmSession->update(key.get(), nextMessage, errorCode, systemCode);
+        if (errorCode || !result) {
+            GST_ERROR("Error processing key: errorCode: %u, result: %d", errorCode, result);
+            return MediaPlayer::InvalidPlayerState;
+        }
+        emitOpenCDMSession();
+        m_player->keyAdded(keySystem, sessionID);
+        return MediaPlayer::NoError;
+    }
+#endif
+    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey")) {
+        GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
+        dispatchDecryptionKey(buffer);
+        gst_buffer_unref(buffer);
+
+        m_player->keyAdded(keySystem, sessionID);
+
+        return MediaPlayer::NoError;
+    }
+
+    return MediaPlayer::KeySystemNotSupported;
 }
 
 void MediaPlayerPrivateGStreamerBase::trimInitData(String keySystemUuid, const unsigned char*& initDataPtr, unsigned &initDataLength)
@@ -1642,7 +1644,6 @@ void MediaPlayerPrivateGStreamerBase::trimInitData(String keySystemUuid, const u
     // Big/little-endian independent way to convert 4 bytes into a 32-bit word.
     uint32_t chunkSize = 0x1000000 * chunkBase[0] + 0x10000 * chunkBase[1] + 0x100 * chunkBase[2] + chunkBase[3];
 
-    int k = 0;
     while (chunkBase + chunkSize < initDataPtr + initDataLength) {
         StringBuilder parsedKeySystemBuilder;
         for (unsigned char i = 0; i < 16; i++) {
@@ -1676,116 +1677,115 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
     GST_DEBUG("generating key request for system: %s, init data size %u", keySystem.utf8().data(), initDataLength);
     GST_MEMDUMP("init data", initDataPtr, initDataLength);
 #if USE(PLAYREADY)
-    if (!equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
-        && !equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        return MediaPlayer::KeySystemNotSupported;
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
+        // For now we do not know if all protection systems should drop the pssh box, but during
+        // testing of PR, we found that it is mandatory (found using the EME certification tests)
+        // so for PR we remove the pssh and size, only ship the actual initdata.
+        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
 
-    // For now we do not know if all protection systems should drop the pssh box, but during
-    // testing of PR, we found that it is mandatory (found using the EME certification tests)
-    // so for PR we remove the pssh and size, only ship the actual initdata.
-    trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        // At this point, the initData is comparable to the one reaching handleProtectionEvent(),
+        // so it can be used to find prSession.
+        Vector<uint8_t> initDataVector;
+        initDataVector.append(reinterpret_cast<const uint8_t*>(initDataPtr), initDataLength);
+        LockHolder prSessionsLocker(m_prSessionsMutex);
+        PlayreadySession* prSession = prSessionByInitData(initDataVector, true);
+        if (!prSession)
+            GST_ERROR("prSession should already have been created when handling the protection events");
+        prSessionsLocker.unlockEarly();
 
-    // At this point, the initData is comparable to the one reaching handleProtectionEvent(),
-    // so it can be used to find prSession.
-    Vector<uint8_t> initDataVector;
-    initDataVector.append(reinterpret_cast<const uint8_t*>(initDataPtr), initDataLength);
-    LockHolder prSessionsLocker(m_prSessionsMutex);
-    PlayreadySession* prSession = prSessionByInitData(initDataVector, true);
-    if (!prSession)
-        GST_ERROR("prSession should already have been created when handling the protection events");
-    prSessionsLocker.unlockEarly();
+        LockHolder locker(prSession->mutex());
+        if (prSession->ready()) {
+            emitPlayReadySession(prSession);
+            return MediaPlayer::NoError;
+        }
+        if (prSession->keyRequested()) {
+            GST_DEBUG("previous key request already ongoing");
+            return MediaPlayer::NoError;
+        }
 
-    LockHolder locker(prSession->mutex());
-    if (prSession->ready()) {
-        emitPlayReadySession(prSession);
+        // there can be only 1 pssh, so skip this one (fixed lemgth)
+        // Data: <4 bytes total length><4 bytes FCC><4 bytes length ex this><Given Bytes in last length field><16 bytes GUID><4 bytes length ex this><Given Bytes in last length field>
+        // https://www.w3.org/TR/2014/WD-encrypted-media-20140828/cenc-format.html
+        unsigned int boxLength = 0;
+        if (initDataPtr[4] == 'p' && initDataPtr[5] == 's' && initDataPtr[6] == 's' && initDataPtr[7] == 'h')  {
+            boxLength = 4 + 4 + 16 +
+                        4 + (((initDataPtr[8] << 24) | (initDataPtr[9] << 16) |  (initDataPtr[10] << 8) | (initDataPtr[11])) * 16) +
+                        4;
+        }
+        GST_TRACE("current init data size %u, substracted %u", initDataLength, boxLength);
+        GST_MEMDUMP ("init data", &(initDataPtr[boxLength]), (initDataLength - boxLength));
+
+        unsigned short errorCode;
+        uint32_t systemCode;
+        RefPtr<Uint8Array> initData = Uint8Array::create(&(initDataPtr[boxLength]), initDataLength-boxLength);
+        String destinationURL;
+        RefPtr<Uint8Array> result = prSession->playreadyGenerateKeyRequest(initData.get(), customData, destinationURL, errorCode, systemCode);
+        if (errorCode) {
+            GST_ERROR("the key request wasn't properly generated");
+            return MediaPlayer::InvalidPlayerState;
+        }
+
+        if (prSession->ready()) {
+            emitPlayReadySession(prSession);
+            return MediaPlayer::NoError;
+        }
+        URL url(URL(), destinationURL);
+        GST_TRACE("playready generateKeyRequest result size %u, sessionId: %s", result->length(), prSession->sessionId().utf8().data());
+        GST_MEMDUMP("result", result->data(), result->length());
+        m_player->keyMessage(keySystem, prSession->sessionId(), result->data(), result->length(), url);
         return MediaPlayer::NoError;
     }
-    if (prSession->keyRequested()) {
-        GST_DEBUG("previous key request already ongoing");
-        return MediaPlayer::NoError;
-    }
-
-    // there can be only 1 pssh, so skip this one (fixed lemgth)
-    // Data: <4 bytes total length><4 bytes FCC><4 bytes length ex this><Given Bytes in last length field><16 bytes GUID><4 bytes length ex this><Given Bytes in last length field>
-    // https://www.w3.org/TR/2014/WD-encrypted-media-20140828/cenc-format.html
-    unsigned int boxLength = 0;
-    if (initDataPtr[4] == 'p' && initDataPtr[5] == 's' && initDataPtr[6] == 's' && initDataPtr[7] == 'h')  {
-        boxLength = 4 + 4 + 16 +
-                    4 + (((initDataPtr[8] << 24) | (initDataPtr[9] << 16) |  (initDataPtr[10] << 8) | (initDataPtr[11])) * 16) +
-                    4;
-    }
-    GST_TRACE("current init data size %u, substracted %u", initDataLength, boxLength);
-    GST_MEMDUMP ("init data", &(initDataPtr[boxLength]), (initDataLength - boxLength));
-
-    unsigned short errorCode;
-    uint32_t systemCode;
-    RefPtr<Uint8Array> initData = Uint8Array::create(&(initDataPtr[boxLength]), initDataLength-boxLength);
-    String destinationURL;
-    RefPtr<Uint8Array> result = prSession->playreadyGenerateKeyRequest(initData.get(), customData, destinationURL, errorCode, systemCode);
-    if (errorCode) {
-        GST_ERROR("the key request wasn't properly generated");
-        return MediaPlayer::InvalidPlayerState;
-    }
-
-    if (prSession->ready()) {
-        emitPlayReadySession(prSession);
-        return MediaPlayer::NoError;
-    }
-    URL url(URL(), destinationURL);
-    GST_TRACE("playready generateKeyRequest result size %u, sessionId: %s", result->length(), prSession->sessionId().utf8().data());
-    GST_MEMDUMP("result", result->data(), result->length());
-    m_player->keyMessage(keySystem, prSession->sessionId(), result->data(), result->length(), url);
-    return MediaPlayer::NoError;
-#elif USE(OCDM)
-    if (!CDMPrivateOpenCDM::supportsKeySystem(keySystem))
-        return MediaPlayer::InvalidPlayerState;
-    LockHolder locker(m_cdmSessionMutex);
-    if (!m_cdmSession)
-        m_cdmSession = CDMPrivateOpenCDM::createSession(nullptr, this);
-    if (m_cdmSession->ready()) {
-        emitOpenCDMSession();
-        return MediaPlayer::NoError;
-    }
-
-    trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
-    String mimeType;
-    if (equalIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID))
-        mimeType = "video/mp4";
-    else if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
-        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        mimeType = "video/x-h264";
-    
-    unsigned short errorCode = 0;
-    uint32_t systemCode;
-    RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
-    String destinationURL;
-    RefPtr<Uint8Array> result = m_cdmSession->generateKeyRequest(mimeType, initData.get(), destinationURL, errorCode, systemCode);
-    if (errorCode) {
-        GST_ERROR("the key request wasn't properly generated");
-        return MediaPlayer::InvalidPlayerState;
-    }
-
-    if (m_cdmSession->ready()) {
-        emitOpenCDMSession();
-        return MediaPlayer::NoError;
-    }
-    if (!result)
-        return MediaPlayer::NoError;
-    URL url(URL(), destinationURL);
-    GST_TRACE("OCDM generateKeyRequest result size %u", result->length());
-    GST_MEMDUMP("result", result->data(), result->length());
-    m_player->keyMessage(keySystem, m_cdmSession->sessionId(), result->data(), result->length(), url);
-    return MediaPlayer::NoError;
-#else
-    if (!equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
-        return MediaPlayer::KeySystemNotSupported;
-
-    trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
-    GST_TRACE("current init data size %u", initDataLength);
-    GST_MEMDUMP("init data", initDataPtr, initDataLength);
-    m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
-    return MediaPlayer::NoError;
 #endif
+#if USE(OCDM)
+    if (CDMPrivateOpenCDM::supportsKeySystem(keySystem)) {
+        LockHolder locker(m_cdmSessionMutex);
+        if (!m_cdmSession)
+            m_cdmSession = CDMPrivateOpenCDM::createSession(nullptr, this);
+        if (m_cdmSession->ready()) {
+            emitOpenCDMSession();
+            return MediaPlayer::NoError;
+        }
+
+        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        String mimeType;
+        if (equalIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID))
+            mimeType = "video/mp4";
+        else if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+            || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
+            mimeType = "video/x-h264";
+
+        unsigned short errorCode = 0;
+        uint32_t systemCode;
+        RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
+        String destinationURL;
+        RefPtr<Uint8Array> result = m_cdmSession->generateKeyRequest(mimeType, initData.get(), destinationURL, errorCode, systemCode);
+        if (errorCode) {
+            GST_ERROR("the key request wasn't properly generated");
+            return MediaPlayer::InvalidPlayerState;
+        }
+
+        if (m_cdmSession->ready()) {
+            emitOpenCDMSession();
+            return MediaPlayer::NoError;
+        }
+        if (!result)
+            return MediaPlayer::NoError;
+        URL url(URL(), destinationURL);
+        GST_TRACE("OCDM generateKeyRequest result size %u", result->length());
+        GST_MEMDUMP("result", result->data(), result->length());
+        m_player->keyMessage(keySystem, m_cdmSession->sessionId(), result->data(), result->length(), url);
+        return MediaPlayer::NoError;
+    }
+#endif
+    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey")) {
+        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        GST_TRACE("current init data size %u", initDataLength);
+        GST_MEMDUMP("init data", initDataPtr, initDataLength);
+        m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
+        return MediaPlayer::NoError;
+    }
+    return MediaPlayer::KeySystemNotSupported;
 }
 
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::cancelKeyRequest(const String& /* keySystem */ , const String& /* sessionID */)
