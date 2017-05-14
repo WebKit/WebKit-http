@@ -746,16 +746,14 @@ void GraphicsContext::strokePath(const Path& path)
         fillPathStroke(p, platformPath, pen);
 }
 
-static inline void drawRepeatPattern(QPainter* p, PassRefPtr<Pattern> pattern, const FloatRect& rect)
+static inline void drawRepeatPattern(QPainter* p, Pattern& pattern, const FloatRect& rect)
 {
-    ASSERT(pattern);
-
-    const QBrush brush = pattern->createPlatformPattern();
+    const QBrush brush = pattern.createPlatformPattern();
     if (brush.style() != Qt::TexturePattern)
         return;
 
-    const bool repeatX = pattern->repeatX();
-    const bool repeatY = pattern->repeatY();
+    const bool repeatX = pattern.repeatX();
+    const bool repeatY = pattern.repeatY();
     // Patterns must be painted so that the top left of the first image is anchored at
     // the origin of the coordinate space
 
@@ -803,11 +801,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
             GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
-                drawRepeatPattern(shadowPainter, m_state.fillPattern, normalizedRect);
+                drawRepeatPattern(shadowPainter, *m_state.fillPattern, normalizedRect);
                 shadow.endShadowLayer(*this);
             }
         }
-        drawRepeatPattern(p, m_state.fillPattern, normalizedRect);
+        drawRepeatPattern(p, *m_state.fillPattern, normalizedRect);
     } else if (m_state.fillGradient) {
         QBrush brush(*m_state.fillGradient->platformGradient());
         brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
