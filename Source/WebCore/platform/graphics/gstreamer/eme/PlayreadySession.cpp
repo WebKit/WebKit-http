@@ -222,6 +222,9 @@ ErrorExit:
         GST_DEBUG("DRM key generation failed");
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
+#elif ENABLE(ENCRYPTED_MEDIA)
+        systemCode = dr;
+        errorCode = 1;
 #endif
     }
     return result;
