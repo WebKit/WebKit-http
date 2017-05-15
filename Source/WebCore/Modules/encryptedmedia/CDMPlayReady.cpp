@@ -175,7 +175,19 @@ CDMInstance::SuccessValue CDMInstancePlayReady::setServerCertificate(Ref<SharedB
 void CDMInstancePlayReady::requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {
     fprintf(stderr, "NotImplemented: CDMInstancePlayReady::%s()\n", __func__);
-    callback(initData->copy(), createCanonicalUUIDString(), false, Succeeded);
+
+    String destinationURL;
+    unsigned short errorCode = 0;
+    uint32_t systemCode = 0;
+    RefPtr<Uint8Array> initDataArray = Uint8Array::create(reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
+    auto result = m_prSession->playreadyGenerateKeyRequest(initDataArray.get(), String(), destinationURL, errorCode, systemCode);
+
+    if (!result) {
+        callback(SharedBuffer::create(), String(), false, Failed);
+        return;
+    }
+
+    callback(SharedBuffer::create(result->data(), result->byteLength()), createCanonicalUUIDString(), false, Succeeded);
 }
 
 void CDMInstancePlayReady::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback)
