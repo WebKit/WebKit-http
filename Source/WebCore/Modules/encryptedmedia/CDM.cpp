@@ -506,11 +506,12 @@ std::optional<Vector<MediaKeySystemMediaCapability>> CDM::getSupportedCapabiliti
         // 3.13. If the user agent and implementation definitely support playback of encrypted media data for the
         //       combination of container, media types, robustness and local accumulated configuration in combination
         //       with restrictions:
+        // FIXME: Re-enable.
+#if 0
         MediaEngineSupportParameters parameters;
         parameters.type = contentType.mimeType();
         parameters.codecs = codecs;
-#if !USE(OCDM)
-        if (true /* !MediaPlayer::supportsType(parameters, nullptr) */) {
+        if (!MediaPlayer::supportsType(parameters, nullptr)) {
             // Try with Media Source:
             parameters.isMediaSource = true;
             if (!MediaPlayer::supportsType(parameters, nullptr))
