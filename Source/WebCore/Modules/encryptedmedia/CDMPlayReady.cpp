@@ -127,10 +127,10 @@ bool CDMPrivatePlayReady::supportsInitData(const AtomicString& initDataType, con
     return supportsInitDataType(initDataType);
 }
 
-RefPtr<SharedBuffer> CDMPrivatePlayReady::sanitizeResponse(const SharedBuffer&) const
+RefPtr<SharedBuffer> CDMPrivatePlayReady::sanitizeResponse(const SharedBuffer& response) const
 {
     fprintf(stderr, "NotImplemented: CDMPrivatePlayReady::%s()\n", __func__);
-    return { };
+    return response.copy();
 }
 
 std::optional<String> CDMPrivatePlayReady::sanitizeSessionId(const String&) const
