@@ -469,7 +469,9 @@ void MediaKeySession::update(const BufferSource& response, Ref<DeferredPromise>&
                     }
                 }
 #if USE(OCDM)
-                m_keys->decryptWithSession(m_sessionId);
+                CDMInstance::KeyStatusVector&& keyStatuses = WTFMove(*changedKeys);
+                if (!message && (keyStatuses[0].second == CDMInstance::KeyStatus::Usable))
+                    m_keys->decryptWithSession(m_sessionId);
 #endif
                 // 6.8.2. Resolve promise.
                 promise->resolve();

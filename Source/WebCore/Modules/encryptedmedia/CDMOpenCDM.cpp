@@ -84,8 +84,9 @@ public:
     void gatherAvailableKeys(AvailableKeysCallback) override;
 
 private:
-    media::OpenCdm* m_openCdmSession; 
-    String m_sessionId;
+    MediaKeyStatus getKeyStatus(std::string &);
+    media::OpenCdm* m_openCdmSession;
+    HashMap<String, Ref<SharedBuffer>> sessionIdMap;
     String m_keySystem;
 };
 
@@ -232,6 +233,7 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuf
 void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {   
     std::string sessionId;
+    String sessionIdValue;
     String mimeType = "video/x-h264";
     if (equalLettersIgnoringASCIICase(m_keySystem, "com.microsoft.playready")
         || equalLettersIgnoringASCIICase(m_keySystem, "com.youtube.playready"))
@@ -241,10 +243,10 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<Sh
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
         initData->size(), sessionId);
     if (!sessionId.size()) {
-        callback(WTFMove(initData), m_sessionId, false, Failed);
+        callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }
-    m_sessionId = String::fromUTF8(sessionId.c_str());
+    sessionIdValue = String::fromUTF8(sessionId.c_str());
 
     unsigned char temporaryUrl[1024] = {'\0'};
     std::string message;
@@ -253,21 +255,49 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<Sh
     int returnValue = m_openCdmSession->GetKeyMessage(message,
         &messageLength, temporaryUrl, &destinationUrlLength);
     if (returnValue || !messageLength || !destinationUrlLength) {
-        callback(WTFMove(initData), m_sessionId, false, Failed);
+        callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }
-    Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), messageLength);     
-    callback(WTFMove(licenseRequestMessage), m_sessionId, false, Succeeded);
+    Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), messageLength);
+    callback(WTFMove(licenseRequestMessage), sessionIdValue, false, Succeeded);
+    sessionIdMap.add(sessionIdValue, WTFMove(initData));
 }
 
 void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
 {
     std::string responseMessage;
-    if (m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage))
-        callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
-    responseMessage = "UpdateStatus: " + responseMessage;
-    Ref<SharedBuffer> nextMessage = SharedBuffer::create(responseMessage.c_str(), responseMessage.length());
-    callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded);
+    int ret = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
+    if (ret) {
+        if (!responseMessage.compare(0, 8, "request:")) {
+            Ref<SharedBuffer> nextMessage = SharedBuffer::create(responseMessage.c_str()+8, responseMessage.length()-8);
+            CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
+            callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
+            return;
+        }
+    }
+    SharedBuffer* initData = sessionIdMap.get(sessionId);
+    KeyStatusVector changedKeys;
+    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+    changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
+    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
+}
+
+MediaKeyStatus CDMInstanceOpenCDM::getKeyStatus(std::string& keyStatus)
+{
+    if (keyStatus == "KeyUsable")
+        return MediaKeyStatus::Usable;
+    else if (keyStatus == "KeyExpired")
+        return  MediaKeyStatus::Expired;
+    else if (keyStatus == "KeyOutputRestricted")
+        return MediaKeyStatus::OutputRestricted;
+    else if (keyStatus == "KeyStatusPending")
+        return MediaKeyStatus::OutputRestricted;
+    else if (keyStatus == "KeyInternalError")
+        return MediaKeyStatus::InternalError;
+    else if (keyStatus == "KeyReleased")
+        return MediaKeyStatus::Released;
+    else
+        return MediaKeyStatus::InternalError;
 }
 
 void CDMInstanceOpenCDM::loadSession(LicenseType, const String&, const String&, LoadSessionCallback)
