@@ -190,9 +190,32 @@ void CDMInstancePlayReady::requestLicense(LicenseType, const AtomicString& initD
     callback(SharedBuffer::create(result->data(), result->byteLength()), createCanonicalUUIDString(), false, Succeeded);
 }
 
-void CDMInstancePlayReady::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback)
+void CDMInstancePlayReady::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
 {
     fprintf(stderr, "NotImplemented: CDMInstancePlayReady::%s()\n", __func__);
+
+    RefPtr<Uint8Array> message;
+    unsigned short errorCode = 0;
+    uint32_t systemCode = 0;
+    RefPtr<Uint8Array> responseArray = Uint8Array::create(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+    bool result = m_prSession->playreadyProcessKey(responseArray.get(), message, errorCode, systemCode);
+
+    if (!result || errorCode) {
+        callback(false, std::nullopt, std::nullopt, std::nullopt, Failed);
+        return;
+    }
+
+    std::optional<KeyStatusVector> changedKeys;
+    if (m_prSession->ready()) {
+        auto& key = m_prSession->key();
+        if (key) {
+            changedKeys = KeyStatusVector();
+            Ref<SharedBuffer> keyData = SharedBuffer::create(reinterpret_cast<const char*>(key->data()), key->byteLength());
+            changedKeys->append({ WTFMove(keyData), KeyStatus::Usable });
+        }
+    }
+
+    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, Succeeded);
 }
 
 void CDMInstancePlayReady::loadSession(LicenseType, const String& sessionId, const String& origin, LoadSessionCallback)
