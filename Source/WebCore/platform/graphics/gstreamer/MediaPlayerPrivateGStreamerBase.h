@@ -147,6 +147,7 @@ public:
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*, GstElement*);
     void receivedGenerateKeyRequest(const String&);
+    void abortEncryptionSetup();
 
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
