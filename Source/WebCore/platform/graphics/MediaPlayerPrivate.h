@@ -240,7 +240,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    virtual void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) { }
+    virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
 #if USE(OCDM)
     virtual void emitSession(String&) { }
 #endif

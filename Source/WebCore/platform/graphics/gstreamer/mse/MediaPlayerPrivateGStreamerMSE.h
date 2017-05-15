@@ -87,10 +87,6 @@ public:
 #endif
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) override;
-#endif
-
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
     void notifySeekNeedsDataForTime(const MediaTime&);
 

@@ -27,6 +27,7 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
+#include "CDMInstancePlayReady.h"
 #include "GStreamerUtilities.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
@@ -1569,6 +1570,20 @@ void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
     m_initDataProcessed = false;
 }
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& baseInstance)
+{
+#if USE(PLAYREADY)
+    auto& instance = reinterpret_cast<const CDMInstancePlayReady&>(baseInstance);
+    auto& prSession = instance.prSession();
+
+    if (prSession.ready())
+        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+            gst_structure_new("playready-session", "session", G_TYPE_POINTER, &prSession, nullptr)));
+#endif
+}
+#endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* /* initData */, unsigned /* initDataLength */ , const String& sessionID)

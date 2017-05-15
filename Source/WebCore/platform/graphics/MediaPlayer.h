@@ -69,6 +69,9 @@ namespace WebCore {
 
 class AudioSourceProvider;
 class AuthenticationChallenge;
+#if ENABLE(ENCRYPTED_MEDIA)
+class CDMInstance;
+#endif
 class MediaPlaybackTarget;
 #if ENABLE(MEDIA_SOURCE)
 class MediaSourcePrivateClient;
@@ -386,7 +389,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&);
+    void attemptToDecryptWithInstance(const CDMInstance&);
 #if USE(OCDM)
     void emitSession(String&);
 #endif

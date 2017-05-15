@@ -7,6 +7,7 @@
 
 namespace WebCore {
 
+class CDMInstance;
 class SharedBuffer;
 
 class CDMClient {
@@ -14,7 +15,7 @@ public:
     virtual ~CDMClient() { }
 
     virtual void cdmClientAttemptToResumePlaybackIfNecessary() = 0;
-    virtual void cdmClientAttemptToDecryptWithKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) = 0;
+    virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
 #if USE(OCDM)
     virtual void emitSession(String&) = 0;
 #endif

@@ -3,6 +3,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(PLAYREADY)
 
+#include "CDMInstancePlayReady.h"
 #include "CDMPrivate.h"
 #include <wtf/UUID.h>
 
@@ -28,25 +29,6 @@ public:
     bool supportsInitData(const AtomicString&, const SharedBuffer&) const override;
     RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const override;
     std::optional<String> sanitizeSessionId(const String&) const override;
-};
-
-class CDMInstancePlayReady : public CDMInstance {
-public:
-    CDMInstancePlayReady();
-    virtual ~CDMInstancePlayReady();
-
-    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
-    SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
-    SuccessValue setPersistentStateAllowed(bool) override;
-    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
-
-    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) override;
-    void updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback) override;
-    void loadSession(LicenseType, const String& sessionId, const String& origin, LoadSessionCallback) override;
-    void closeSession(const String& sessionId, CloseSessionCallback) override;
-    void removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback) override;
-    void storeRecordOfKeyUsage(const String& sessionId) override;
-    void gatherAvailableKeys(AvailableKeysCallback) override;
 };
 
 // CDMFactoryPlayReady
@@ -159,7 +141,11 @@ std::optional<String> CDMPrivatePlayReady::sanitizeSessionId(const String&) cons
 
 // CDMInstancePlayReady
 
-CDMInstancePlayReady::CDMInstancePlayReady() = default;
+CDMInstancePlayReady::CDMInstancePlayReady()
+    : m_prSession(std::make_unique<PlayreadySession>())
+{
+}
+
 CDMInstancePlayReady::~CDMInstancePlayReady() = default;
 
 CDMInstance::SuccessValue CDMInstancePlayReady::initializeWithConfiguration(const MediaKeySystemConfiguration&)
@@ -219,7 +205,6 @@ void CDMInstancePlayReady::storeRecordOfKeyUsage(const String& sessionId)
 
 void CDMInstancePlayReady::gatherAvailableKeys(AvailableKeysCallback)
 {
-    fprintf(stderr, "NotImplemented: CDMInstancePlayReady::%s()\n", __func__);
 }
 
 } // namespace WebCore

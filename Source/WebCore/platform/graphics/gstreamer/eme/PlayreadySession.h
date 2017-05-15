@@ -58,6 +58,7 @@ public:
     RefPtr<Uint8Array> playreadyGenerateKeyRequest(Uint8Array* initData, const String& customData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
     bool playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode);
 
+    const RefPtr<ArrayBuffer>& key() const { return m_key; }
     bool keyRequested() const { return m_eKeyState == KEY_PENDING; }
     bool ready() const { return m_eKeyState == KEY_READY; }
     int processPayload(const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize);

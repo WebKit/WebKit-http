@@ -839,20 +839,6 @@ void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
 #endif
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
-{
-    if (keys.isEmpty())
-        return;
-
-    auto& keyValue = keys.first().second;
-    GRefPtr<GstBuffer> buffer(gst_buffer_new_wrapped(g_memdup(keyValue->data(), keyValue->size()), keyValue->size()));
-
-    for (auto iterator : m_appendPipelinesMap)
-        iterator.value->dispatchDecryptionKey(buffer.get());
-}
-#endif
-
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     if (status != MediaSourcePrivate::EosNoError)

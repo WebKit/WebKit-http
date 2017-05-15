@@ -642,7 +642,7 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) override;
     void cdmClientAttemptToResumePlaybackIfNecessary() override;
-    void cdmClientAttemptToDecryptWithKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) override;
+    void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
 #if USE(OCDM)
     void emitSession(String&);
 #endif

@@ -618,9 +618,9 @@ void MediaPlayer::keyAdded()
 #endif
     
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayer::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
+void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
-    m_private->haveSomeKeys(keys);
+    m_private->attemptToDecryptWithInstance(instance);
 }
 
 #if USE(OCDM)

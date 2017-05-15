@@ -164,6 +164,10 @@ public:
     virtual void resetOpenCDMFlag();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    void attemptToDecryptWithInstance(const CDMInstance&) override;
+#endif
+
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&, MediaPlayer::SupportsType);
 

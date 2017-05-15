@@ -154,27 +154,7 @@ void MediaKeys::attemptToDecrypt(CDMClient& client)
         // 3.4.1. Let block be the first entry in the media element's encrypted block queue.
         // 3.4.2. Let the block key ID be the key ID of block.
         // 3.4.3. Use the cdm to execute the following steps:
-        m_instance->gatherAvailableKeys([this, &client] (CDMInstance::KeyVector&& keys) mutable {
-            // 3.4.3.1. Let available keys be the union of keys in sessions that were created by the media keys.
-            // 3.4.3.2. Let block key be null.
-            // 3.4.3.3. If any of the available keys corresponds to the block key ID and is usable for decryption, let session be a MediaKeySession object containing that key and let block key be that key.
-            // 3.4.3.4. If the status of any of the available keys changed as the result of running the preceding step, queue a task to run the Update Key Statuses algorithm on each affected session, providing all key ID(s) in the session along with the appropriate MediaKeyStatus value(s) for each.
-            // 3.4.3.5. If block key is not null, run the following steps:
-            //   3.4.3.5.1. Use the cdm to decrypt block using block key.
-            //   3.4.3.5.2. Follow the steps for the first matching condition from the following list:
-            //     ↳ If decryption fails
-            //       3.4.3.5.2.1.1. Run the media data is corrupted steps of the resource fetch algorithm.
-            //       3.4.3.5.2.1.2. If cdm is no longer usable for any reason then run the CDM Unavailable algorithm on media keys.
-            //       3.4.3.5.2.1.3. Abort these steps.
-            //     ↳ Otherwise
-            //       3.4.3.5.2.2.1. Remove block from the front of the media element's encrypted block queue.
-            //       3.4.3.5.2.2.2. Process the decrypted block as normal.
-            //       3.4.3.5.2.2.3. Return to the beginning of this algorithm.
-            // FIXME: Currently we pass the key information to the pipeline in order to maintain
-            // compatibility with the previous EME system.
-
-            client.cdmClientAttemptToDecryptWithKeys(keys);
-        });
+        client.cdmClientAttemptToDecryptWithInstance(m_instance);
     }
 }
 

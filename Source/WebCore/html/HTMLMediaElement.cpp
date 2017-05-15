@@ -2737,10 +2737,10 @@ void HTMLMediaElement::cdmClientAttemptToResumePlaybackIfNecessary()
     // FIXME: ^
 }
 
-void HTMLMediaElement::cdmClientAttemptToDecryptWithKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
+void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& instance)
 {
     if (m_player)
-        m_player->haveSomeKeys(keys);
+        m_player->attemptToDecryptWithInstance(instance);
 }
 
 #if USE(OCDM)
