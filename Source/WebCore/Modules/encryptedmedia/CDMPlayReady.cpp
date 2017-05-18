@@ -142,7 +142,7 @@ std::optional<String> CDMPrivatePlayReady::sanitizeSessionId(const String&) cons
 // CDMInstancePlayReady
 
 CDMInstancePlayReady::CDMInstancePlayReady()
-    : m_prSession(std::make_unique<PlayreadySession>())
+    : m_prSession(std::make_unique<PlayreadySession>(Vector<uint8_t>{ }, nullptr))
 {
 }
 

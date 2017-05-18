@@ -1215,7 +1215,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GRefPtr<GstEvent> event;
                 gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-                handleProtectionEvent(event.get());
+                handleProtectionEvent(event.get(), GST_ELEMENT(message->src));
 #endif
             }
         }
@@ -2289,8 +2289,14 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 #else    
     unsigned flagNativeVideo = 0x0;
 #endif
+
+#if ENABLE(NATIVE_AUDIO)
+    unsigned flagNativeAudio = getGstPlayFlag("native-audio");
+#else
+    unsigned flagNativeAudio = 0x0;
+#endif
     
-    g_object_set(m_pipeline.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo, nullptr);
+    g_object_set(m_pipeline.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo | flagNativeAudio, nullptr);
 
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
     gst_bus_set_sync_handler(bus.get(), [](GstBus*, GstMessage* message, gpointer userData) {

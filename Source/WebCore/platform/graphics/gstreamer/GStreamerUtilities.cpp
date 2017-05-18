@@ -37,6 +37,9 @@
 #undef GST_USE_UNSTABLE_API
 #endif
 
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
+#define GST_CAT_DEFAULT webkit_media_player_debug
+
 namespace WebCore {
 
 const char* webkitGstMapInfoQuarkString = "webkit-gst-map-info";
@@ -194,6 +197,20 @@ bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* caps
     bool result = candidates;
 
     gst_plugin_feature_list_free(candidates);
+    return result;
+}
+
+GstElement* getPipeline(GstElement* element)
+{
+    if (!element)
+        return nullptr;
+
+    GRefPtr<GstElement> parent = element;
+    GstElement* result;
+    do {
+        result = parent.get();
+        parent = adoptGRef(GST_ELEMENT(gst_object_get_parent(GST_OBJECT(result))));
+    } while (parent);
     return result;
 }
 

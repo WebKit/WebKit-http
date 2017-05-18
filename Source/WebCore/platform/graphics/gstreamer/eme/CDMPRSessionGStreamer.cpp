@@ -44,7 +44,8 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 namespace WebCore {
 
 CDMPRSessionGStreamer::CDMPRSessionGStreamer(CDMSessionClient* client, MediaPlayerPrivateGStreamerBase* playerPrivate)
-    : PlayreadySession()
+    // FIXME: Create PlayreadySession with actual initData and pipeline values.
+    : PlayreadySession(Vector<uint8_t>(), nullptr)
     , m_client(client)
     , m_sessionId(createCanonicalUUIDString())
     , m_playerPrivate(playerPrivate)

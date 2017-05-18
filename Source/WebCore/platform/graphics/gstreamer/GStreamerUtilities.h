@@ -64,6 +64,7 @@ bool initializeGStreamer();
 unsigned getGstPlayFlag(const char* nick);
 GstClockTime toGstClockTime(float time);
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
+GstElement* getPipeline(GstElement*);
 
 #if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA))
 GstElement* createGstDecryptor(const gchar* protectionSystem);

@@ -340,9 +340,15 @@ BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
             destroyDecodedDataIfNecessary(false);
             return StartAnimationStatus::CannotStart;
         }
-
-        destroyDecodedDataIfNecessary(true);
     }
+
+    // When looping on an animation, destroy de decoded data when in the first frame instead of the last one.
+    // If it's done in the last one and a redraw happens before the animation advances, we need to decode all
+    // the animation frames to get the last one again, which causes a delay in the animation. If this happens
+    // while in the first one, we only need to decode a single frame.
+    if (m_currentFrame == 0)
+        destroyDecodedDataIfNecessary(true);
+
 
     // Don't advance the animation to an incomplete frame.
     if (!m_source.isAllDataReceived() && !frameIsCompleteAtIndex(nextFrame))

@@ -145,12 +145,12 @@ public:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     virtual void dispatchDecryptionKey(GstBuffer*);
-    void handleProtectionEvent(GstEvent*);
+    void handleProtectionEvent(GstEvent*, GstElement*);
     void receivedGenerateKeyRequest(const String&);
 
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
-    virtual void emitPlayReadySession();
+    virtual void emitPlayReadySession(PlayreadySession*);
 #endif
 #endif
 
@@ -286,8 +286,17 @@ private:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
-    std::unique_ptr<PlayreadySession> m_prSession;
-    Lock m_prSessionMutex;
+    PlayreadySession* createPlayreadySession(const Vector<uint8_t> &, GstElement* pipeline, bool alreadyLocked = false);
+    PlayreadySession* prSessionByInitData(const Vector<uint8_t>&, bool alreadyLocked = false) const;
+    PlayreadySession* prSessionBySessionId(const String&, bool alreadyLocked = false) const;
+
+    // Maps each pipeline (playback pipeline for normal videos, append pipeline for MSE) to its latest sessionId.
+    HashMap<GstElement*, String> m_prSessionIds;
+
+    Vector<std::unique_ptr<PlayreadySession>> m_prSessions;
+
+    // Protects the previous two HashMaps for concurrent access.
+    mutable Lock m_prSessionsMutex;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OCDM)

@@ -32,6 +32,7 @@
 #undef __out
 #include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -52,7 +53,7 @@ private:
     };
 
 public:
-    PlayreadySession();
+    PlayreadySession(const Vector<uint8_t> &initData, const void* pipeline);
     ~PlayreadySession();
 
     RefPtr<Uint8Array> playreadyGenerateKeyRequest(Uint8Array* initData, const String& customData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
@@ -62,6 +63,12 @@ public:
     bool keyRequested() const { return m_eKeyState == KEY_PENDING; }
     bool ready() const { return m_eKeyState == KEY_READY; }
     int processPayload(const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize);
+
+    // Helper for PlayreadySession clients.
+    Lock& mutex() { return m_prSessionMutex; }
+    const Vector<uint8_t>& initData() { return m_initData; }
+    const String& sessionId() { return m_sessionId; }
+    bool hasPipeline(const void* pipeline) { return m_pipeline == pipeline; }
 
 protected:
     RefPtr<ArrayBuffer> m_key;
@@ -79,6 +86,11 @@ private:
     KeyState m_eKeyState;
     DRM_CHAR m_rgchSessionID[CCH_BASE64_EQUIV(SIZEOF(DRM_ID)) + 1];
     DRM_BOOL m_fCommit;
+
+    Lock m_prSessionMutex;
+    String m_sessionId;
+    Vector<uint8_t> m_initData;
+    const void* m_pipeline;
 };
 
 }
