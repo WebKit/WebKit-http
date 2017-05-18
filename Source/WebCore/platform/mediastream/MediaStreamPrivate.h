@@ -127,7 +127,7 @@ private:
     void characteristicsChanged();
     void updateActiveVideoTrack();
 
-    void scheduleDeferredTask(Function<void ()>&&);
+    void scheduleDeferredTask(WTF::Function<void ()>&&);
 
     WeakPtrFactory<MediaStreamPrivate> m_weakPtrFactory;
     Vector<Observer*> m_observers;

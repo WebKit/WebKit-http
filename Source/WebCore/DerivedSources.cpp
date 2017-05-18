@@ -320,7 +320,7 @@
 #endif
 #if ENABLE(MEDIA_STREAM)
 #include "JSMediaDeviceInfo.cpp"
-#include "JSMediaDeviceso.cpp"
+#include "JSMediaDevices.cpp"
 #endif
 #if ENABLE(VIDEO) && ENABLE(WEB_AUDIO)
 #include "JSMediaElementAudioSourceNode.cpp"
@@ -619,10 +619,8 @@
 #include "JSVTTCue.cpp"
 #include "JSVideoTrack.cpp"
 #include "JSVideoTrackList.cpp"
-#if ENABLE(WEBVTT_REGIONS)
 #include "JSVTTRegion.cpp"
 #include "JSVTTRegionList.cpp"
-#endif
 #endif
 #include "JSTimeRanges.cpp"
 #include "JSTouch.cpp"
@@ -648,7 +646,7 @@
 #include "JSWebKitCSSMatrix.cpp"
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitCSSViewportRule.cpp"
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 #include "JSWebKitMediaKeyError.cpp"
 #include "JSWebKitMediaKeyMessageEvent.cpp"
 #include "JSWebKitMediaKeyNeededEvent.cpp"
