@@ -111,6 +111,9 @@ struct MediaEngineSupportParameters {
     String codecs;
     URL url;
     String keySystem;
+    unsigned int channels;
+    FloatSize dimension;
+    float framerate;
     bool isMediaSource { false };
     bool isMediaStream { false };
 };

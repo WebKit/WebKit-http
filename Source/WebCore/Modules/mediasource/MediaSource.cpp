@@ -859,6 +859,23 @@ bool MediaSource::isTypeSupported(const String& type)
     if (contentType.type().isEmpty())
         return false;
 
+    bool ok;
+    unsigned int channels = contentType.parameter("channels").toUInt(&ok);
+    if (!ok)
+        channels = 0;
+
+    float width = contentType.parameter("width").toFloat(&ok);
+    if (!ok)
+        width = 0;
+
+    float height = contentType.parameter("height").toFloat(&ok);
+    if (!ok)
+        height = 0;
+
+    float framerate = contentType.parameter("framerate").toFloat(&ok);
+    if (!ok)
+        framerate = 0;
+
     // 3. If type contains a media type or media subtype that the MediaSource does not support, then return false.
     // 4. If type contains at a codec that the MediaSource does not support, then return false.
     // 5. If the MediaSource does not support the specified combination of media type, media subtype, and codecs then return false.
@@ -866,6 +883,9 @@ bool MediaSource::isTypeSupported(const String& type)
     MediaEngineSupportParameters parameters;
     parameters.type = contentType.type();
     parameters.codecs = codecs;
+    parameters.channels = channels;
+    parameters.dimension = FloatSize(width, height);
+    parameters.framerate = framerate;
     parameters.isMediaSource = true;
     MediaPlayer::SupportsType supported = MediaPlayer::supportsType(parameters, 0);
 
