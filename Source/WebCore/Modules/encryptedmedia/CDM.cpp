@@ -28,6 +28,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
+#include "CDMClearKey.h"
 #include "CDMPrivate.h"
 #include "Document.h"
 #include "InitDataRegistry.h"
@@ -44,6 +45,10 @@ namespace WebCore {
 static Vector<CDMFactory*>& cdmFactories()
 {
     static NeverDestroyed<Vector<CDMFactory*>> factories;
+    if (factories.get().isEmpty()) {
+        factories.get().append(new CDMFactoryClearKey);
+    }
+
     return factories;
 }
 
@@ -490,7 +495,7 @@ std::optional<Vector<MediaKeySystemMediaCapability>> CDM::getSupportedCapabiliti
         MediaEngineSupportParameters parameters;
         parameters.type = contentType.mimeType();
         parameters.codecs = codecs;
-        if (!MediaPlayer::supportsType(parameters, nullptr)) {
+        if (true /* !MediaPlayer::supportsType(parameters, nullptr) */) {
             // Try with Media Source:
             parameters.isMediaSource = true;
             if (!MediaPlayer::supportsType(parameters, nullptr))

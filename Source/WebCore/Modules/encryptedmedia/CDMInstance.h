@@ -45,6 +45,13 @@ class CDMInstance : public RefCounted<CDMInstance> {
 public:
     virtual ~CDMInstance() { }
 
+    enum class ImplementationType {
+        ClearKey,
+        Mock,
+    };
+
+    virtual ImplementationType implementationType() const = 0;
+
     enum SuccessValue {
         Failed,
         Succeeded,
@@ -85,8 +92,17 @@ public:
     virtual void removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback) = 0;
 
     virtual void storeRecordOfKeyUsage(const String& sessionId) = 0;
+
+    using KeyVector = Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>;
+    using AvailableKeysCallback = Function<void(KeyVector&&)>;
+    virtual void gatherAvailableKeys(AvailableKeysCallback) = 0;
 };
 
-}
+} // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_CDM_INSTANCE(ToValueTypeName, ImplementationTypeName) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
+static bool isType(const WebCore::CDMInstance& instance) { return instance.implementationType() == ImplementationTypeName; } \
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

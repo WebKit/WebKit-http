@@ -232,6 +232,10 @@ public:
     virtual void keyAdded() { }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
+#endif
+
 #if ENABLE(VIDEO_TRACK)
     virtual bool requiresTextTrackRepresentation() const { return false; }
     virtual void setTextTrackRepresentation(TextTrackRepresentation*) { }

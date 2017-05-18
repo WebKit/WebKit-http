@@ -223,7 +223,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     m_protectionCondition.notifyOne();
 #endif
     m_notifier.cancelPendingNotifications();
@@ -271,7 +271,7 @@ void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
     m_pipeline = pipeline;
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage* message)
 {
     const GstStructure* structure = gst_message_get_structure(message);
@@ -313,7 +313,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
     }
 #endif // USE(GSTREAMER_GL)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
         if (isMainThread()) {
             GST_ERROR("can't handle drm-preferred-decryption-system-id need context message in the main thread");
@@ -367,9 +367,22 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
             GST_MEMDUMP("init datas", initData.data(), initData.size());
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
             // FIXME: Provide a somehow valid sessionId.
             RefPtr<Uint8Array> initDataArray = Uint8Array::create(initData.data(), initData.size());
             needKey(initDataArray);
+
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+            fprintf(stderr, "MediaPlayerPrivateGStreamerBase: got init data of size %zu\n", initData.size());
+            m_player->initializationDataEncountered(ASCIILiteral("hoi"), ArrayBuffer::create(initData.data(), initData.size()));
+
+            // FIXME: ClearKey BestKey
+            LockHolder lock(m_protectionMutex);
+            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+            m_protectionCondition.notifyOne();
+#endif
+
         });
 
         GST_INFO("waiting for a key request to arrive");
@@ -389,7 +402,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
         return true;
     }
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 
     return false;
 }
@@ -1311,6 +1324,10 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
 {
     GST_INFO("Checking for KeySystem support with %s and type %s: false.", keySystem.utf8().data(), mimeType.utf8().data());
+
+    if (equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey"))
+        return true;
+
     return false;
 }
 

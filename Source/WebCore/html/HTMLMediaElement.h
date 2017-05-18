@@ -55,6 +55,10 @@
 #include "AudioSession.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMClient.h"
+#endif
+
 #ifndef NDEBUG
 #include <wtf/StringPrintStream.h>
 #endif
@@ -127,6 +131,9 @@ class HTMLMediaElement
 #endif
 #if USE(AUDIO_SESSION) && PLATFORM(MAC)
     , private AudioSession::MutedStateObserver
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    , private CDMClient
 #endif
 {
 public:
@@ -619,6 +626,13 @@ private:
     bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) override;
     String mediaPlayerMediaKeysStorageDirectory() const override;
 #endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) override;
+    void cdmClientAttemptToResumePlaybackIfNecessary() override;
+    void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
+    void attemptToDecrypt();
+#endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
@@ -1066,6 +1080,15 @@ private:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<WebKitMediaKeys> m_webKitMediaKeys;
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    RefPtr<MediaKeys> m_mediaKeys;
+    bool m_attachingMediaKeys { false };
+    // encrypted block queue
+    bool m_decryptionBlockedWaitingForKey { false };
+    // playback blocked waiting for key
+    bool m_playbackBlockedWaitingForKey { false };
+    GenericTaskQueue<Timer> m_encryptedMediaQueue;
 #endif
 
     std::unique_ptr<MediaElementSession> m_mediaSession;

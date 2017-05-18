@@ -147,6 +147,11 @@
 #include "WebKitMediaKeys.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "MediaEncryptedEvent.h"
+#include "MediaKeys.h"
+#endif
+
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 #include "JSMediaControlsHost.h"
 #include "MediaControlsHost.h"
@@ -582,6 +587,9 @@ HTMLMediaElement::~HTMLMediaElement()
     m_pauseAfterDetachedTaskQueue.close();
     m_updatePlaybackControlsManagerQueue.close();
     m_playbackControlsManagerBehaviorRestrictionsQueue.close();
+#if ENABLE(ENCRYPTED_MEDIA)
+    m_encryptedMediaQueue.close();
+#endif
 
     m_completelyLoaded = true;
 
@@ -2536,12 +2544,148 @@ void HTMLMediaElement::keyAdded()
 
 MediaKeys* HTMLMediaElement::mediaKeys() const
 {
-    return nullptr;
+    return m_mediaKeys.get();
 }
 
-void HTMLMediaElement::setMediaKeys(MediaKeys*, Ref<DeferredPromise>&&)
+void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&& promise)
 {
-    notImplemented();
+    // https://w3c.github.io/encrypted-media/#dom-htmlmediaelement-setmediakeys
+    // W3C Editor's Draft 09 November 2016
+
+    // 1. If mediaKeys and the mediaKeys attribute are the same object, return a resolved promise.
+    if (mediaKeys == m_mediaKeys) {
+        promise->resolve();
+        return;
+    }
+
+    // 2. If this object's attaching media keys value is true, return a promise rejected with an InvalidStateError.
+    if (m_attachingMediaKeys) {
+        promise->reject(INVALID_STATE_ERR);
+        return;
+    }
+
+    // 3. Let this object's attaching media keys value be true.
+    m_attachingMediaKeys = true;
+
+    // 4. Let promise be a new promise.
+    // 5. Run the following steps in parallel:
+    m_encryptedMediaQueue.enqueueTask([this, mediaKeys = RefPtr<MediaKeys>(mediaKeys), promise = WTFMove(promise)]() mutable {
+        // 5.1. If all the following conditions hold:
+        //      - mediaKeys is not null,
+        //      - the CDM instance represented by mediaKeys is already in use by another media element
+        //      - the user agent is unable to use it with this element
+        //      then let this object's attaching media keys value be false and reject promise with a QuotaExceededError.
+        // FIXME: ^
+
+        // 5.2. If the mediaKeys attribute is not null, run the following steps:
+        if (m_mediaKeys) {
+            // 5.2.1. If the user agent or CDM do not support removing the association, let this object's attaching media keys value be false and reject promise with a NotSupportedError.
+            // 5.2.2. If the association cannot currently be removed, let this object's attaching media keys value be false and reject promise with an InvalidStateError.
+            // 5.2.3. Stop using the CDM instance represented by the mediaKeys attribute to decrypt media data and remove the association with the media element.
+            // 5.2.4. If the preceding step failed, let this object's attaching media keys value be false and reject promise with the appropriate error name.
+            // FIXME: ^
+
+            m_mediaKeys->detachCDMClient(*this);
+        }
+
+        // 5.3. If mediaKeys is not null, run the following steps:
+        if (mediaKeys) {
+            // 5.3.1. Associate the CDM instance represented by mediaKeys with the media element for decrypting media data.
+            // 5.3.2. If the preceding step failed, run the following steps:
+            //   5.3.2.1. Set the mediaKeys attribute to null.
+            //   5.3.2.2. Let this object's attaching media keys value be false.
+            //   5.3.2.3. Reject promise with a new DOMException whose name is the appropriate error name.
+            // 5.3.3. Queue a task to run the Attempt to Resume Playback If Necessary algorithm on the media element.
+            // FIXME: ^
+
+            mediaKeys->attachCDMClient(*this);
+        }
+
+        // 5.4. Set the mediaKeys attribute to mediaKeys.
+        // 5.5. Let this object's attaching media keys value be false.
+        // 5.6. Resolve promise.
+        m_mediaKeys = WTFMove(mediaKeys);
+        m_attachingMediaKeys = false;
+        promise->resolve();
+    });
+
+    // 6. Return promise.
+}
+
+bool HTMLMediaElement::mediaPlayerInitializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+{
+    // https://w3c.github.io/encrypted-media/#initdata-encountered
+    // W3C Editor's Draft 09 November 2016
+
+    // 1. Let the media element be the specified HTMLMediaElement object.
+    // 2. Let initDataType be the empty string.
+    // 3. Let initData be null.
+    // 4. If the media data is CORS-same-origin and not mixed content, run the following steps:
+    //   4.1. Let initDataType be the string representing the Initialization Data Type of the Initialization Data.
+    //   4.2. Let initData be the Initialization Data.
+    // FIXME: ^
+
+    // 5. Queue a task to create an event named encrypted that does not bubble and is not cancellable using the MediaEncryptedEvent
+    //    interface with its type attribute set to message and its isTrusted attribute initialized to true, and dispatch it at the media element.
+    //    The event interface MediaEncryptedEvent has:
+    //      initDataType = initDataType
+    //      initData = initData
+    MediaEncryptedEventInit initializer { initDataType, WTFMove(initData) };
+    m_asyncEventQueue.enqueueEvent(MediaEncryptedEvent::create(eventNames().encryptedEvent, initializer, Event::IsTrusted::Yes));
+
+    return true;
+}
+
+void HTMLMediaElement::cdmClientAttemptToResumePlaybackIfNecessary()
+{
+    // https://w3c.github.io/encrypted-media/#resume-playback
+    // W3C Editor's Draft 09 November 2016
+
+    // 1. Let the media element be the specified HTMLMediaElement object.
+    // 2. If the media element's playback blocked waiting for key is false, abort these steps.
+    // FIXME: ^
+
+    // 3. Run the Attempt to Decrypt algorithm on the media element.
+    attemptToDecrypt();
+
+    // 4. If the user agent can advance the current playback position in the direction of playback:
+    //   4.1. Set the media element's decryption blocked waiting for key value to false.
+    //   4.2. Set the media element's playback blocked waiting for key value to false.
+    //   4.3. Set the media element's readyState value to HAVE_CURRENT_DATA, HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA as appropriate.
+    // FIXME: ^
+}
+
+void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    if (m_player)
+        m_player->attemptToDecryptWithInstance(instance);
+}
+
+void HTMLMediaElement::attemptToDecrypt()
+{
+    // https://w3c.github.io/encrypted-media/#attempt-to-decrypt
+    // W3C Editor's Draft 09 November 2016
+
+    // 1. Let the media element be the specified HTMLMediaElement object.
+    // 2. If the media element's encrypted block queue is empty, abort these steps.
+    // FIXME: ^
+
+    // 3. If the media element's mediaKeys attribute is not null, run the following steps:
+    if (m_mediaKeys) {
+        // 3.1. Let media keys be the MediaKeys object referenced by that attribute.
+        // 3.2. Let cdm be the CDM instance represented by media keys's cdm instance value.
+        // 3.3. If cdm is no longer usable for any reason, run the following steps:
+        //   3.3.1. Run the media data is corrupted steps of the resource fetch algorithm.
+        //   3.3.2. Run the CDM Unavailable algorithm on media keys.
+        //   3.3.3. Abort these steps.
+        // FIXME: ^
+
+        // Continued in MediaKeys::attemptToDecrypt().
+        m_mediaKeys->attemptToDecrypt(*this);
+    }
+
+    // 4. Set the media element's decryption blocked waiting for key value to true.
+    // FIXME: ^
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA)
@@ -5263,6 +5407,9 @@ void HTMLMediaElement::contextDestroyed()
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
     m_updatePlaybackControlsManagerQueue.close();
+#if ENABLE(ENCRYPTED_MEDIA)
+    m_encryptedMediaQueue.close();
+#endif
 
     m_pendingPlayPromises.clear();
 

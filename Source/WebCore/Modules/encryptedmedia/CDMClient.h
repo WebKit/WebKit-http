@@ -1,0 +1,23 @@
+#pragma once
+
+#if ENABLE(ENCRYPTED_MEDIA)
+
+#include <utility>
+#include <wtf/Forward.h>
+
+namespace WebCore {
+
+class CDMInstance;
+class SharedBuffer;
+
+class CDMClient {
+public:
+    virtual ~CDMClient() { }
+
+    virtual void cdmClientAttemptToResumePlaybackIfNecessary() = 0;
+    virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
+};
+
+} // namespace WebCore
+
+#endif // ENABLE(ENCRYPTED_MEDIA)

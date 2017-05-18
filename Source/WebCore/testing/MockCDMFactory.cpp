@@ -220,6 +220,11 @@ MockCDMInstance::MockCDMInstance(WeakPtr<MockCDM> cdm)
 {
 }
 
+CDMInstance::ImplementationType MockCDMInstance::implementationType() const
+{
+    return ImplementationType::Mock;
+}
+
 CDMInstance::SuccessValue MockCDMInstance::initializeWithConfiguration(const MediaKeySystemConfiguration& configuration)
 {
     if (!m_cdm || !m_cdm->supportsConfiguration(configuration))
@@ -375,6 +380,10 @@ void MockCDMInstance::removeSessionData(const String& id, LicenseType, RemoveSes
 void MockCDMInstance::storeRecordOfKeyUsage(const String&)
 {
     // FIXME: This should be implemented along with the support for persistent-usage-record sessions.
+}
+
+void MockCDMInstance::gatherAvailableKeys(AvailableKeysCallback)
+{
 }
 
 }

@@ -583,6 +583,13 @@ void MediaPlayer::keyAdded()
 }
 #endif
     
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    m_private->attemptToDecryptWithInstance(instance);
+}
+#endif
+
 MediaTime MediaPlayer::duration() const
 {
     return m_private->durationMediaTime();
@@ -1210,6 +1217,13 @@ bool MediaPlayer::keyNeeded(Uint8Array* initData)
 String MediaPlayer::mediaKeysStorageDirectory() const
 {
     return client().mediaPlayerMediaKeysStorageDirectory();
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+bool MediaPlayer::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+{
+    return client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
 #endif
 
