@@ -472,7 +472,6 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
             break;
         case AppendState::Invalid:
             ok = true;
-            m_playerPrivate->abortEncryptionSetup();
             break;
         default:
             break;

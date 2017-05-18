@@ -139,9 +139,6 @@ using namespace std;
 
 namespace WebCore {
 
-// Fake UUID (well, actually not, just a special value) to break m_protectionCondition.waitFor() in handleSyncMessage().
-static const String ABORT_ENCRYPTION_SETUP_PROTECTION_SYSTEM_UUID = "abort";
-
 void registerWebKitGStreamerElements()
 {
     if (!webkitGstCheckVersion(1, 6, 1))
@@ -539,7 +536,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
                 return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty();
             });
-            if (!m_lastGenerateKeyRequestKeySystemUuid.isEmpty() && m_lastGenerateKeyRequestKeySystemUuid != ABORT_ENCRYPTION_SETUP_PROTECTION_SYSTEM_UUID) {
+            if (!m_lastGenerateKeyRequestKeySystemUuid.isEmpty()) {
                 GST_INFO("got a key request, continuing with %s on %s", m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), GST_MESSAGE_SRC_NAME(message));
 
                 GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
@@ -1802,17 +1799,7 @@ void MediaPlayerPrivateGStreamerBase::needKey(const String& keySystem, const Str
     if (!m_player->keyNeeded(keySystem, sessionId, initData, initDataLength))
         GST_DEBUG("no event handler for key needed");
 }
-
-void MediaPlayerPrivateGStreamerBase::abortEncryptionSetup()
-{
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    GST_DEBUG("aborting wait for generateKeyRequest() during encryption setup");
-    this->m_lastGenerateKeyRequestKeySystemUuid = ABORT_ENCRYPTION_SETUP_PROTECTION_SYSTEM_UUID;
-    m_protectionCondition.notifyOne();
 #endif
-}
-
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerBase::needKey(RefPtr<Uint8Array> initData)

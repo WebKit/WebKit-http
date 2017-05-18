@@ -135,7 +135,6 @@ public:
     MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override;
     MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
     void needKey(const String&, const String&, const unsigned char*, unsigned);
-    void abortEncryptionSetup();
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
