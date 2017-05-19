@@ -695,7 +695,6 @@ private:
 
     QualifiedName m_tagName;
     RefPtr<ElementData> m_elementData;
-    SelectionRevealMode m_revealModeOnFocus { SelectionRevealMode::Reveal };
 };
 
 inline bool Node::hasAttributes() const

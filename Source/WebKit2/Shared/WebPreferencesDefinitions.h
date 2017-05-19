@@ -240,6 +240,7 @@
     macro(AsyncImageDecodingEnabled, asyncImageDecodingEnabled, Bool, bool, false, "", "") \
     macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "", "") \
     macro(AllowScriptsToCloseWindows, allowScriptsToCloseWindows, Bool, bool, false, "", "") \
+    macro(ScrollToFocusedElementEnabled, scrollToFocusedElementEnabled, Bool, bool, true, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

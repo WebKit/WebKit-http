@@ -289,3 +289,5 @@ youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacemen
 forcedPrefersReducedMotionValue type=ForcedPrefersReducedMotionValue, initial=defaultForcedPrefersReducedMotionValue
 
 asyncImageDecodingEnabled initial=true
+
+scrollToFocusedElementEnabled initial=true
