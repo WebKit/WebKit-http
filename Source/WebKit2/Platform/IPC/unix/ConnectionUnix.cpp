@@ -199,6 +199,11 @@ bool Connection::processMessage()
     memcpy(&messageInfo, messageData, sizeof(messageInfo));
     messageData += sizeof(messageInfo);
 
+    if (messageInfo.attachmentCount() > attachmentMaxAmount || (!messageInfo.isMessageBodyIsOutOfLine() && messageInfo.bodySize() > messageMaxSize)) {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
     size_t messageLength = sizeof(MessageInfo) + messageInfo.attachmentCount() * sizeof(AttachmentInfo) + (messageInfo.isMessageBodyIsOutOfLine() ? 0 : messageInfo.bodySize());
     if (m_readBuffer.size() < messageLength)
         return false;
