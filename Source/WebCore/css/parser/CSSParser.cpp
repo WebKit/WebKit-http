@@ -87,6 +87,7 @@ CSSParserContext::CSSParserContext(Document& document, const URL& baseURL, const
     textAutosizingEnabled = document.settings().textAutosizingEnabled();
 #endif
     springTimingFunctionEnabled = document.settings().springTimingFunctionEnabled();
+    constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
     deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
 
 #if PLATFORM(IOS)
@@ -108,6 +109,7 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
         && a.enforcesCSSMIMETypeInNoQuirksMode == b.enforcesCSSMIMETypeInNoQuirksMode
         && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
         && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled
+        && a.constantPropertiesEnabled == b.constantPropertiesEnabled
         && a.deferredCSSParserEnabled == b.deferredCSSParserEnabled;
 }
 
@@ -171,16 +173,13 @@ Color CSSParser::parseColor(const String& string, bool strict)
     return primitiveValue.color();
 }
 
-Color CSSParser::parseSystemColor(const String& string, Document* document)
+Color CSSParser::parseSystemColor(const String& string)
 {
-    if (!document || !document->page())
-        return Color();
-    
     CSSValueID id = cssValueKeywordID(string);
     if (!StyleColor::isSystemColor(id))
         return Color();
     
-    return document->page()->theme().systemColor(id);
+    return RenderTheme::singleton().systemColor(id);
 }
 
 RefPtr<CSSValue> CSSParser::parseSingleValue(CSSPropertyID propertyID, const String& string, const CSSParserContext& context)

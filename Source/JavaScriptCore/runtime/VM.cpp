@@ -38,7 +38,6 @@
 #include "CommonIdentifiers.h"
 #include "CommonSlowPaths.h"
 #include "CustomGetterSetter.h"
-#include "DFGLongLivedState.h"
 #include "DFGWorklist.h"
 #include "Disassembler.h"
 #include "ErrorInstance.h"
@@ -315,11 +314,6 @@ VM::VM(VMType vmType, HeapType heapType)
 
     callFrameForCatch = nullptr;
 
-#if ENABLE(DFG_JIT)
-    if (canUseJIT())
-        dfgState = std::make_unique<DFG::LongLivedState>();
-#endif
-    
     // Initialize this last, as a free way of asserting that VM initialization itself
     // won't use this.
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
@@ -619,7 +613,8 @@ void VM::throwException(ExecState* exec, Exception* exception)
     setException(exception);
 
 #if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
-    m_nativeStackTraceOfLastThrow = std::unique_ptr<StackTrace>(StackTrace::captureStackTrace(25));
+    m_nativeStackTraceOfLastThrow = std::unique_ptr<StackTrace>(StackTrace::captureStackTrace(Options::unexpectedExceptionStackTraceLimit()));
+    m_throwingThread = currentThread();
 #endif
 }
 
@@ -865,9 +860,9 @@ void VM::dumpTypeProfilerData()
     typeProfiler()->dumpTypeProfilerData(*this);
 }
 
-void VM::queueMicrotask(JSGlobalObject* globalObject, Ref<Microtask>&& task)
+void VM::queueMicrotask(JSGlobalObject& globalObject, Ref<Microtask>&& task)
 {
-    m_microtaskQueue.append(std::make_unique<QueuedTask>(*this, globalObject, WTFMove(task)));
+    m_microtaskQueue.append(std::make_unique<QueuedTask>(*this, &globalObject, WTFMove(task)));
 }
 
 void VM::drainMicrotasks()

@@ -1,3 +1,68 @@
+2017-05-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Set and expose ENABLE_DEVELOPER_MODE in build when DEVELOPER_MODE is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=172159
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsWPE.cmake: Expose the ENABLE_DEVELOPER_MODE macro
+        when the DEVELOPER_MODE configuration options is enabled.
+
+2017-05-11  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for regex.h
+        https://bugs.webkit.org/show_bug.cgi?id=171950
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Vibration API
+        https://bugs.webkit.org/show_bug.cgi?id=171766
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-05-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.17.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-05-10  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Specify source file type when preprocessing IDL files
+        https://bugs.webkit.org/show_bug.cgi?id=171864
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-05-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Remove some last remnants of the EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=171922
+
+        Reviewed by Antonio Gomes.
+
+        The EFL port is no more.
+
+        * Source/PlatformEfl.cmake: Removed.
+
+2017-05-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Enable FTL JIT by default on AArch64
+        https://bugs.webkit.org/show_bug.cgi?id=144039
+
+        Reviewed by Yusuke Suzuki.
+
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitFeatures.cmake: Set FTL as enabled by default
+        when targeting either WTF_CPU_X86_64 or WTF_CPU_ARM64.
+
 2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
 
         Upstream the WPE port

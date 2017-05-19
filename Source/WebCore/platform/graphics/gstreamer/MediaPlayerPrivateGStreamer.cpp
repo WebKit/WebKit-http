@@ -1333,7 +1333,7 @@ void MediaPlayerPrivateGStreamer::processTableOfContentsEntry(GstTocEntry* entry
 {
     ASSERT(entry);
 
-    RefPtr<GenericCueData> cue = GenericCueData::create();
+    auto cue = GenericCueData::create();
 
     gint64 start = -1, stop = -1;
     gst_toc_entry_get_start_stop_times(entry, &start, &stop);
@@ -1352,7 +1352,7 @@ void MediaPlayerPrivateGStreamer::processTableOfContentsEntry(GstTocEntry* entry
         }
     }
 
-    m_chaptersTrack->addGenericCue(cue.release());
+    m_chaptersTrack->addGenericCue(cue);
 
     for (GList* i = gst_toc_entry_get_sub_entries(entry); i; i = i->next)
         processTableOfContentsEntry(static_cast<GstTocEntry*>(i->data));

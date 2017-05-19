@@ -37,7 +37,6 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "MediaConstraintsImpl.h"
 #include "MediaDevicesRequest.h"
 #include "MediaTrackSupportedConstraints.h"
 #include "UserMediaRequest.h"
@@ -48,8 +47,12 @@ namespace WebCore {
 inline MediaDevices::MediaDevices(Document& document)
     : ContextDestructionObserver(&document)
     , m_scheduledEventTimer(*this, &MediaDevices::scheduledEventTimerFired)
+    , m_weakPtrFactory(this)
 {
-    m_deviceChangedToken = RealtimeMediaSourceCenter::singleton().addDevicesChangedObserver([this]() {
+    m_deviceChangedToken = RealtimeMediaSourceCenter::singleton().addDevicesChangedObserver([weakThis = createWeakPtr(), this]() {
+
+        if (!weakThis)
+            return;
 
         // FIXME: We should only dispatch an event if the user has been granted access to the type of
         // device that was added or removed.
@@ -61,7 +64,7 @@ inline MediaDevices::MediaDevices(Document& document)
 MediaDevices::~MediaDevices()
 {
     if (m_deviceChangedToken)
-        RealtimeMediaSourceCenter::singleton().removeDevicesChangedObserver(m_deviceChangedToken);
+        RealtimeMediaSourceCenter::singleton().removeDevicesChangedObserver(m_deviceChangedToken.value());
 }
 
 Ref<MediaDevices> MediaDevices::create(Document& document)
@@ -74,14 +77,16 @@ Document* MediaDevices::document() const
     return downcast<Document>(scriptExecutionContext());
 }
 
-static Ref<MediaConstraintsImpl> createMediaConstraintsImpl(const Variant<bool, MediaTrackConstraints>& constraints)
+static MediaConstraints createMediaConstraints(const Variant<bool, MediaTrackConstraints>& constraints)
 {
     return WTF::switchOn(constraints,
-        [&] (bool constraints) {
-            return MediaConstraintsImpl::create({ }, { }, constraints);
+        [&] (bool isValid) {
+            MediaConstraints constraints;
+            constraints.isValid = isValid;
+            return constraints;
         },
-        [&] (const MediaTrackConstraints& constraints) {
-            return createMediaConstraintsImpl(constraints);
+        [&] (const MediaTrackConstraints& trackConstraints) {
+            return createMediaConstraints(trackConstraints);
         }
     );
 }
@@ -92,10 +97,10 @@ ExceptionOr<void> MediaDevices::getUserMedia(const StreamConstraints& constraint
     if (!document)
         return Exception { INVALID_STATE_ERR };
 
-    auto audioConstraints = createMediaConstraintsImpl(constraints.audio);
-    auto videoConstraints = createMediaConstraintsImpl(constraints.video);
-    if (videoConstraints->isValid())
-        videoConstraints->setDefaultVideoConstraints();
+    auto audioConstraints = createMediaConstraints(constraints.audio);
+    auto videoConstraints = createMediaConstraints(constraints.video);
+    if (videoConstraints.isValid)
+        videoConstraints.setDefaultVideoConstraints();
     return UserMediaRequest::start(*document, WTFMove(audioConstraints), WTFMove(videoConstraints), WTFMove(promise));
 }
 

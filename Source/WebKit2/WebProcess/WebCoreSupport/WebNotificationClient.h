@@ -26,7 +26,7 @@
 #ifndef WebNotificationClient_h
 #define WebNotificationClient_h
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 #include <WebCore/NotificationClient.h>
 
@@ -51,21 +51,16 @@ private:
     void clearNotifications(WebCore::ScriptExecutionContext*) override;
     void notificationObjectDestroyed(WebCore::Notification*) override;
     void notificationControllerDestroyed() override;
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    void requestPermission(WebCore::ScriptExecutionContext*, RefPtr<WebCore::VoidCallback>&&) override;
-#endif
-#if ENABLE(NOTIFICATIONS)
     void requestPermission(WebCore::ScriptExecutionContext*, RefPtr<WebCore::NotificationPermissionCallback>&&) override;
-#endif
     void cancelRequestsForPermission(WebCore::ScriptExecutionContext*) override;
     bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override;
-    NotificationClient::Permission checkPermission(WebCore::ScriptExecutionContext*) override;
+    WebCore::NotificationClient::Permission checkPermission(WebCore::ScriptExecutionContext*) override;
     
     WebPage* m_page;
 };
 
 } // namespace WebKit
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
 #endif // WebNotificationClient_h

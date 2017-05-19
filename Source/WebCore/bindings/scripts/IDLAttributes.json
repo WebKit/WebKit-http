@@ -66,7 +66,7 @@
         },
         "ConstructorCallWith": {
             "contextsAllowed": ["interface"],
-            "values": ["Document", "ScriptExecutionContext", "ScriptState"]
+            "values": ["Document", "RuntimeFlags", "ScriptExecutionContext", "ScriptState"]
         },
         "ConstructorMayThrowException": {
             "contextsAllowed": ["interface"]
@@ -126,7 +126,7 @@
             "contextsAllowed": ["interface"]
         },
         "DOMJIT": {
-            "contextsAllowed": ["attribute", "operation"],
+            "contextsAllowed": ["interface", "attribute", "operation"],
             "values": ["", "ReadDOM", "Getter"]
         },
         "DoNotCheckConstants": {

@@ -580,7 +580,7 @@ static PKPaymentErrorCode toPKPaymentErrorCode(WebCore::PaymentError::Code code)
         return PKPaymentShippingContactInvalidError;
     case WebCore::PaymentError::Code::BillingContactInvalid:
         return PKPaymentBillingContactInvalidError;
-    case WebCore::PaymentError::Code::AddressUnservicable:
+    case WebCore::PaymentError::Code::AddressUnserviceable:
         return PKPaymentShippingAddressUnserviceableError;
     }
 }
@@ -666,7 +666,7 @@ static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(const std::op
         auto& error = result->errors[0];
         switch (error.code) {
         case WebCore::PaymentError::Code::Unknown:
-        case WebCore::PaymentError::Code::AddressUnservicable:
+        case WebCore::PaymentError::Code::AddressUnserviceable:
             return PKPaymentAuthorizationStatusFailure;
 
         case WebCore::PaymentError::Code::BillingContactInvalid:
@@ -743,14 +743,14 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(const s
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
 static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(const std::optional<WebCore::ShippingContactUpdate>& update)
 {
-    if (!update)
+    if (!update || update->errors.isEmpty())
         return PKPaymentAuthorizationStatusSuccess;
 
     if (update->errors.size() == 1) {
         auto& error = update->errors[0];
         switch (error.code) {
         case WebCore::PaymentError::Code::Unknown:
-        case WebCore::PaymentError::Code::AddressUnservicable:
+        case WebCore::PaymentError::Code::AddressUnserviceable:
             return PKPaymentAuthorizationStatusFailure;
 
         case WebCore::PaymentError::Code::BillingContactInvalid:
@@ -785,8 +785,6 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(const 
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
     auto pkShippingContactUpdate = adoptNS([allocPKPaymentRequestShippingContactUpdateInstance() initWithErrors:update ? toNSErrors(update->errors).get() : @[ ] paymentSummaryItems:m_paymentAuthorizationViewControllerDelegate->_paymentSummaryItems.get() shippingMethods:m_paymentAuthorizationViewControllerDelegate->_shippingMethods.get()]);
-    if ([pkShippingContactUpdate errors].count)
-        [pkShippingContactUpdate setStatus:PKPaymentAuthorizationStatusFailure];
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion(pkShippingContactUpdate.get());
 #else
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion(toPKPaymentAuthorizationStatus(update), m_paymentAuthorizationViewControllerDelegate->_shippingMethods.get(), m_paymentAuthorizationViewControllerDelegate->_paymentSummaryItems.get());

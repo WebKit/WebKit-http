@@ -1,3 +1,159 @@
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        Reviewed by Saam Barati.
+
+        * stress/check-sub-class.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (calling):
+        (array.forEach):
+        (i.array.forEach):
+
+2017-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, address mlam's review feedback.
+
+        * stress/arguments-elimination-varargs-too-many-args-arg-count.js:
+
+2017-05-17  Saam Barati  <sbarati@apple.com>
+
+        We don't do context switches for Wasm->Wasm call indirect
+        https://bugs.webkit.org/show_bug.cgi?id=172188
+        <rdar://problem/32231828>
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/context-switch.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance2):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.i2.makeInstance2):
+        (makeInstance):
+        (makeInstance2):
+        (assert.eq.makeInstance):
+        (assert.eq.makeInstance2):
+        (assert.eq):
+
+2017-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC: Incorrect LoadVarargs handling in ArgumentsEliminationPhase::transform
+        https://bugs.webkit.org/show_bug.cgi?id=172208
+
+        Reviewed by Saam Barati.
+
+        * stress/arguments-elimination-varargs-too-many-args-arg-count.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Constant Folding Phase should convert MakeRope("", String) => Identity(String)
+        https://bugs.webkit.org/show_bug.cgi?id=172115
+
+        Reviewed by Saam Barati.
+
+        * stress/constant-folding-should-fold-make-rope-with-empty-strings.js: Added.
+        (shouldBe):
+        (unknown):
+        (readWord1):
+        (readWord2):
+        (readWord3):
+        (readWord4):
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: add memory fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=169976
+        <rdar://problem/31965328>
+
+        Reviewed by Keith Miller.
+
+        * wasm/fuzz/memory.js: Added.
+        (const.insert):
+        (const.action.string_appeared_here):
+        (const.performAction):
+        (catch):
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: validate load / store alignment
+        https://bugs.webkit.org/show_bug.cgi?id=168836
+        <rdar://problem/31965349>
+
+        Reviewed by Keith Miller.
+
+        * wasm/WASM.js: fix regular expression greed
+        * wasm/function-tests/memory-alignment.js: Added.
+        (const.op.of.WASM.opcodes):
+        * wasm/wasm.json: fix formatting
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        * stress/object-rest-deconstruct.js: Removed.
+        * stress/object-spread.js: Removed.
+
+2017-05-11  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: stop supporting 0xD
+        https://bugs.webkit.org/show_bug.cgi?id=168788
+        <rdar://problem/31880922>
+
+        Reviewed by Saam Barati.
+
+        Test that only version 1 is supported.
+
+        * wasm/js-api/version.js: Added.
+
+2017-05-10  JF Bastien  <jfbastien@apple.com>
+
+        WebAssemby: builder doesn't do Memory section maximum correctly
+        https://bugs.webkit.org/show_bug.cgi?id=171931
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Memory):
+        * wasm/function-tests/memory-grow-invalid.js: Added.
+
+2017-05-10  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support name section
+        https://bugs.webkit.org/show_bug.cgi?id=171263
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/nameSection.js: Added.
+        (const.compile):
+        * wasm/function-tests/nameSection.wasm: Added.
+        * wasm/function-tests/stack-trace.js: Update format
+
+2017-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Null pointer dereference in WTF::RefPtr<WTF::StringImpl>::operator!() under slow_path_get_direct_pname
+        https://bugs.webkit.org/show_bug.cgi?id=171801
+
+        Reviewed by Michael Saboff.
+        
+        These tests used to crash. The prefix and postfix tests cover different paths, except
+        postfix-ignored goes down the same path as prefix due to an optimization.
+
+        * stress/for-in-postfix-ignored-index.js: Added.
+        (foo):
+        * stress/for-in-postfix-index.js: Added.
+        (foo):
+        * stress/for-in-prefix-index.js: Added.
+        (foo):
+
 2017-05-08  Mark Lam  <mark.lam@apple.com>
 
         op_throw_static_error's use of its first operand should be reflected in DFG BytecodeUseDef as well.

@@ -2188,6 +2188,15 @@ bool RenderLayer::handleTouchEvent(const PlatformTouchEvent& touchEvent)
 #endif
 #endif // PLATFORM(IOS)
 
+bool RenderLayer::usesAcceleratedScrolling() const
+{
+#if PLATFORM(IOS)
+    return hasTouchScrollableOverflow();
+#else
+    return needsCompositedScrolling();
+#endif
+}
+
 #if ENABLE(IOS_TOUCH_EVENTS)
 void RenderLayer::registerAsTouchEventListenerForScrolling()
 {
@@ -3714,12 +3723,12 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext& context, const Layou
     RefPtr<Image> resizeCornerImage;
     FloatSize cornerResizerSize;
     if (renderer().document().deviceScaleFactor() >= 2) {
-        static NeverDestroyed<Image*> resizeCornerImageHiRes(Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef());
+        static NeverDestroyed<Image*> resizeCornerImageHiRes(&Image::loadPlatformResource("textAreaResizeCorner@2x").leakRef());
         resizeCornerImage = resizeCornerImageHiRes;
         cornerResizerSize = resizeCornerImage->size();
         cornerResizerSize.scale(0.5f);
     } else {
-        static NeverDestroyed<Image*> resizeCornerImageLoRes(Image::loadPlatformResource("textAreaResizeCorner").leakRef());
+        static NeverDestroyed<Image*> resizeCornerImageLoRes(&Image::loadPlatformResource("textAreaResizeCorner").leakRef());
         resizeCornerImage = resizeCornerImageLoRes;
         cornerResizerSize = resizeCornerImage->size();
     }

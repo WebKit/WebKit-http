@@ -260,7 +260,7 @@ void RenderVideo::updatePlayer()
     IntRect windowRect = document().view()->contentsToScreen(absoluteBoundingBoxRect(true));
     mediaPlayer->setPosition(IntPoint(windowRect.x(), windowRect.y()));
 #endif
-    mediaPlayer->setVisible(true);
+    mediaPlayer->setVisible(!videoElement().elementIsHidden());
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
 }
 

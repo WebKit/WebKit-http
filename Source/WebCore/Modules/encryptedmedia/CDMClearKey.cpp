@@ -39,6 +39,8 @@ public:
     CDMInstanceClearKey();
     virtual ~CDMInstanceClearKey();
 
+    ImplementationType implementationType() const { return ImplementationType::ClearKey; }
+
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
     SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
     SuccessValue setPersistentStateAllowed(bool) override;
@@ -131,7 +133,7 @@ bool CDMPrivateClearKey::supportsSessions() const
     return true;
 }
 
-bool CDMPrivateClearKey::supportsInitData(const AtomicString& initDataType, const SharedBuffer& initData) const
+bool CDMPrivateClearKey::supportsInitData(const AtomicString& initDataType, const SharedBuffer&) const
 {
     return equalLettersIgnoringASCIICase(initDataType, "keyids");
 }

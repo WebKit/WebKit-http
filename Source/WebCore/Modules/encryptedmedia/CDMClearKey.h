@@ -3,6 +3,7 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDM.h"
+#include "CDMInstance.h"
 
 namespace WebCore {
 
@@ -15,6 +16,11 @@ public:
     bool supportsKeySystem(const String&) override;
 };
 
+class CDMInstanceClearKey;
+
 } // namespace WebCore
+
+
+SPECIALIZE_TYPE_TRAITS_CDM_INSTANCE(WebCore::CDMInstanceClearKey, WebCore::CDMInstance::ImplementationType::ClearKey);
 
 #endif // ENABLE(ENCRYPTED_MEDIA)

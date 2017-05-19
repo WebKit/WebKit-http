@@ -44,6 +44,7 @@ inline auto HTMLCollection::rootTypeFromCollectionType(CollectionType type) -> R
     case DocAll:
     case WindowNamedItems:
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
     case FormControls:
         return HTMLCollection::IsRootedAtDocument;
     case AllDescendants:
@@ -96,8 +97,8 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
     case DocLinks:
         return InvalidateOnHRefAttrChange;
     case WindowNamedItems:
-        return InvalidateOnIdNameAttrChange;
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
         return InvalidateOnIdNameAttrChange;
     case FormControls:
         return InvalidateForFormControls;
@@ -130,13 +131,14 @@ HTMLCollection::~HTMLCollection()
     case ByHTMLTag:
     case WindowNamedItems:
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
         break;
     default:
         ownerNode().nodeLists()->removeCachedCollection(this);
     }
 }
 
-void HTMLCollection::invalidateCache(Document& document)
+void HTMLCollection::invalidateCacheForDocument(Document& document)
 {
     if (hasNamedElementCache())
         invalidateNamedElementCache(document);

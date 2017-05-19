@@ -280,14 +280,14 @@ public:
     bool isEditable() const;
     bool executeSavedCommandBySelector(SEL);
     void executeEditCommandForSelector(SEL, const String& argument = String());
-    void registerEditCommand(RefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo);
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo);
     void clearAllEditCommands();
     bool writeSelectionToPasteboard(NSPasteboard *, NSArray *types);
     bool readSelectionFromPasteboard(NSPasteboard *);
     id validRequestorForSendAndReturnTypes(NSString *sendType, NSString *returnType);
     void centerSelectionInVisibleArea();
     void selectionDidChange();
-    void startObservingFontPanel();
+    void didBecomeEditable();
     void updateFontPanelIfNeeded();
     void changeFontFromFontPanel();
     bool validateUserInterfaceItem(id <NSValidatedUserInterfaceItem>);

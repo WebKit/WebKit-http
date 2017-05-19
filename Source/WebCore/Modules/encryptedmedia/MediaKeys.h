@@ -64,6 +64,7 @@ public:
     void detachCDMClient(CDMClient&);
     void attemptToResumePlaybackOnClients();
     void attemptToDecrypt(CDMClient&);
+
 #if USE(OCDM)
     void decryptWithSession(String&);
 #endif

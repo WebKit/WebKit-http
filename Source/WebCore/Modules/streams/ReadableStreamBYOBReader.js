@@ -28,8 +28,13 @@ function cancel(reason)
 {
     "use strict";
 
-    // FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableStreamBYOBReader cancel() is not implemented");
+    if (!@isReadableStreamBYOBReader(this))
+        return @Promise.@reject(@makeThisTypeError("ReadableStreamBYOBReader", "cancel"));
+
+    if (!this.@ownerReadableStream)
+        return @Promise.@reject(new @TypeError("cancel() called on a reader owned by no readable stream"));
+
+    return @readableStreamReaderGenericCancel(this, reason);
 }
 
 function read(view)
@@ -44,14 +49,24 @@ function releaseLock()
 {
     "use strict";
 
-    // FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableStreamBYOBReader releaseLock() is not implemented");
+    if (!@isReadableStreamBYOBReader(this))
+        throw @makeThisTypeError("ReadableStreamBYOBReader", "releaseLock");
+
+    if (!this.@ownerReadableStream)
+        return;
+
+    if (this.@readIntoRequests.length)
+        @throwTypeError("There are still pending read requests, cannot release the lock");
+
+    @readableStreamReaderGenericRelease(this);
 }
 
 function closed()
 {
     "use strict";
 
-    // FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableStreamBYOBReader closed is not implemented");
+    if (!@isReadableStreamBYOBReader(this))
+        return @Promise.@reject(@makeGetterTypeError("ReadableStreamBYOBReader", "closed"));
+
+    return this.@closedPromiseCapability.@promise;
 }

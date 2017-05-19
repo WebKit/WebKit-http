@@ -29,7 +29,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/speech"
     "${WEBCORE_DIR}/Modules/streams"
-    "${WEBCORE_DIR}/Modules/vibration"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/webdriver"
@@ -152,7 +151,6 @@ set(WebCore_IDL_INCLUDES
     Modules/quota
     Modules/speech
     Modules/streams
-    Modules/vibration
     Modules/webaudio
     Modules/webdatabase
     Modules/websockets
@@ -265,11 +263,9 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/navigatorcontentutils/NavigatorContentUtils.idl
 
-    Modules/notifications/DOMWindowNotifications.idl
     Modules/notifications/Notification.idl
-    Modules/notifications/NotificationCenter.idl
+    Modules/notifications/NotificationPermission.idl
     Modules/notifications/NotificationPermissionCallback.idl
-    Modules/notifications/WorkerGlobalScopeNotifications.idl
 
     Modules/proximity/DeviceProximityEvent.idl
 
@@ -289,8 +285,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/ReadableStreamDefaultReader.idl
     Modules/streams/ReadableStreamSource.idl
     Modules/streams/WritableStream.idl
-
-    Modules/vibration/NavigatorVibration.idl
 
     Modules/webaudio/AnalyserNode.idl
     Modules/webaudio/AudioBuffer.idl
@@ -385,6 +379,9 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSStyleSheet.idl
     css/CSSSupportsRule.idl
     css/CSSUnknownRule.idl
+    css/DOMMatrix.idl
+    css/DOMMatrixInit.idl
+    css/DOMMatrixReadOnly.idl
     css/DeprecatedCSSOMCounter.idl
     css/DeprecatedCSSOMPrimitiveValue.idl
     css/DeprecatedCSSOMRGBColor.idl
@@ -957,7 +954,6 @@ set(WebCore_SOURCES
     Modules/mediasource/VideoPlaybackQuality.cpp
 
     Modules/mediastream/CanvasCaptureMediaStreamTrack.cpp
-    Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaDeviceInfo.cpp
     Modules/mediastream/MediaDevices.cpp
     Modules/mediastream/MediaDevicesEnumerationRequest.cpp
@@ -991,11 +987,8 @@ set(WebCore_SOURCES
 
     Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
-    Modules/notifications/DOMWindowNotifications.cpp
     Modules/notifications/Notification.cpp
-    Modules/notifications/NotificationCenter.cpp
     Modules/notifications/NotificationController.cpp
-    Modules/notifications/WorkerGlobalScopeNotifications.cpp
 
     Modules/proximity/DeviceProximityController.cpp
     Modules/proximity/DeviceProximityEvent.cpp
@@ -1005,9 +998,6 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisEvent.cpp
     Modules/speech/SpeechSynthesisUtterance.cpp
     Modules/speech/SpeechSynthesisVoice.cpp
-
-    Modules/vibration/NavigatorVibration.cpp
-    Modules/vibration/Vibration.cpp
 
     Modules/webaudio/AnalyserNode.cpp
     Modules/webaudio/AsyncAudioDecoder.cpp
@@ -1187,14 +1177,12 @@ set(WebCore_SOURCES
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
-    bindings/js/JSHTMLAllCollectionCustom.cpp
     bindings/js/JSHTMLAppletElementCustom.cpp
     bindings/js/JSHTMLCanvasElementCustom.cpp
     bindings/js/JSHTMLCollectionCustom.cpp
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
     bindings/js/JSHTMLEmbedElementCustom.cpp
-    bindings/js/JSHTMLFormControlsCollectionCustom.cpp
     bindings/js/JSHTMLFrameSetElementCustom.cpp
     bindings/js/JSHTMLObjectElementCustom.cpp
     bindings/js/JSHTMLOptionsCollectionCustom.cpp
@@ -1241,13 +1229,11 @@ set(WebCore_SOURCES
     bindings/js/JSVideoTrackCustom.cpp
     bindings/js/JSVideoTrackListCustom.cpp
     bindings/js/JSWebGL2RenderingContextCustom.cpp
-    bindings/js/JSWebGLRenderingContextBaseCustom.cpp
     bindings/js/JSWebGLRenderingContextCustom.cpp
     bindings/js/JSWebGPUCommandBufferCustom.cpp
     bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
     bindings/js/JSWebGPURenderingContextCustom.cpp
     bindings/js/JSWebKitSubtleCryptoCustom.cpp
-    bindings/js/JSWorkerCustom.cpp
     bindings/js/JSWorkerGlobalScopeBase.cpp
     bindings/js/JSWorkerGlobalScopeCustom.cpp
     bindings/js/JSXMLDocumentCustom.cpp
@@ -1378,6 +1364,8 @@ set(WebCore_SOURCES
     css/CSSVariableData.cpp
     css/CSSVariableReferenceValue.cpp
     css/DOMCSSNamespace.cpp
+    css/DOMMatrix.cpp
+    css/DOMMatrixReadOnly.cpp
     css/DeprecatedCSSOMPrimitiveValue.cpp
     css/DeprecatedCSSOMValue.cpp
     css/DeprecatedCSSOMValueList.cpp
@@ -1597,6 +1585,9 @@ set(WebCore_SOURCES
 
     domjit/DOMJITHelpers.cpp
     domjit/JSDocumentDOMJIT.cpp
+    domjit/JSDocumentFragmentDOMJIT.cpp
+    domjit/JSElementDOMJIT.cpp
+    domjit/JSEventDOMJIT.cpp
     domjit/JSNodeDOMJIT.cpp
 
     editing/AlternativeTextController.cpp
@@ -2198,6 +2189,7 @@ set(WebCore_SOURCES
     platform/PlatformSpeechSynthesizer.cpp
     platform/PlatformStrategies.cpp
     platform/RemoteCommandListener.cpp
+    platform/RuntimeApplicationChecks.cpp
     platform/SchemeRegistry.cpp
     platform/ScrollAnimator.cpp
     platform/ScrollView.cpp
@@ -2429,6 +2421,7 @@ set(WebCore_SOURCES
     platform/network/BlobRegistryImpl.cpp
     platform/network/BlobResourceHandle.cpp
     platform/network/CacheValidation.cpp
+    platform/network/Cookie.cpp
     platform/network/CredentialBase.cpp
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp

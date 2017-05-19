@@ -45,6 +45,14 @@ class CDMInstance : public RefCounted<CDMInstance> {
 public:
     virtual ~CDMInstance() { }
 
+    enum class ImplementationType {
+        ClearKey,
+        Mock,
+        PlayReady,
+    };
+
+    virtual ImplementationType implementationType() const = 0;
+
     enum SuccessValue {
         Failed,
         Succeeded,
@@ -91,6 +99,11 @@ public:
     virtual void gatherAvailableKeys(AvailableKeysCallback) = 0;
 };
 
-}
+} // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_CDM_INSTANCE(ToValueTypeName, ImplementationTypeName) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
+static bool isType(const WebCore::CDMInstance& instance) { return instance.implementationType() == ImplementationTypeName; } \
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

@@ -32,7 +32,6 @@
 
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/CString.h>
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);

@@ -1231,6 +1231,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithEnfor
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionDomStringListFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetElementById(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(JSC::ExecState*);
@@ -1260,6 +1261,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSingleConditionalOve
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAttachShadowRoot(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLegacyCallerNamed(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(JSC::ExecState*);
 
@@ -1630,7 +1632,7 @@ template<> void JSTestObjConstructor::initializeProperties(VM& vm, JSDOMGlobalOb
     reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
 }
 
-template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestObjConstructor) };
+template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestObjConstructor) };
 
 /* Hash table for prototype */
 
@@ -1893,6 +1895,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "methodWithUnsignedLongSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence), (intptr_t) (1) } },
     { "stringArrayFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStringArrayFunction), (intptr_t) (1) } },
     { "domStringListFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionDomStringListFunction), (intptr_t) (1) } },
+    { "operationWithOptionalUnionParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter), (intptr_t) (0) } },
     { "methodWithAndWithoutNullableSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence), (intptr_t) (2) } },
     { "getElementById", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetElementById), (intptr_t) (1) } },
     { "getSVGDocument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSVGDocument), (intptr_t) (0) } },
@@ -1922,6 +1925,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "attachShadowRoot", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAttachShadowRoot), (intptr_t) (1) } },
     { "operationWithExternalDictionaryParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter), (intptr_t) (1) } },
     { "bufferSourceParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionBufferSourceParameter), (intptr_t) (1) } },
+    { "legacyCallerNamed", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionLegacyCallerNamed), (intptr_t) (1) } },
     { "toString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToString), (intptr_t) (0) } },
     { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToJSON), (intptr_t) (0) } },
 #if ENABLE(Condition1)
@@ -1943,7 +1947,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0) } },
 };
 
-const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestObjPrototype) };
+const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestObjPrototype) };
 
 void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
@@ -1994,7 +1998,7 @@ void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
     putDirectWithoutTransition(vm, vm.propertyNames->unscopablesSymbol, &unscopables, DontEnum | ReadOnly);
 }
 
-const ClassInfo JSTestObj::s_info = { "TestObject", &Base::s_info, &JSTestObjTable, CREATE_METHOD_TABLE(JSTestObj) };
+const ClassInfo JSTestObj::s_info = { "TestObject", &Base::s_info, &JSTestObjTable, nullptr, CREATE_METHOD_TABLE(JSTestObj) };
 
 JSTestObj::JSTestObj(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestObj>&& impl)
     : JSDOMWrapper<TestObj>(structure, globalObject, WTFMove(impl))
@@ -6364,7 +6368,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAr
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto opt = state->argument(0).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(0));
+    auto opt = state->argument(0).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalArg(WTFMove(opt));
     return JSValue::encode(jsUndefined());
@@ -6404,7 +6408,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonOptiona
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto nonOpt = convert<IDLLong>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto opt = state->argument(1).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(1));
+    auto opt = state->argument(1).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithNonOptionalArgAndOptionalArg(WTFMove(nonOpt), WTFMove(opt));
     return JSValue::encode(jsUndefined());
@@ -6426,9 +6430,9 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonOptiona
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto nonOpt = convert<IDLLong>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto opt1 = state->argument(1).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(1));
+    auto opt1 = state->argument(1).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto opt2 = state->argument(2).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(2));
+    auto opt2 = state->argument(2).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(2)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithNonOptionalArgAndTwoOptionalArgs(WTFMove(nonOpt), WTFMove(opt1), WTFMove(opt2));
     return JSValue::encode(jsUndefined());
@@ -6680,7 +6684,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalLo
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto number = state->argument(0).isUndefined() ? std::optional<int64_t>() : convert<IDLLongLong>(*state, state->uncheckedArgument(0));
+    auto number = state->argument(0).isUndefined() ? std::optional<int64_t>() : std::optional<int64_t>(convert<IDLLongLong>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalLongLong(WTFMove(number));
     return JSValue::encode(jsUndefined());
@@ -6716,7 +6720,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalUn
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto number = state->argument(0).isUndefined() ? std::optional<uint64_t>() : convert<IDLUnsignedLongLong>(*state, state->uncheckedArgument(0));
+    auto number = state->argument(0).isUndefined() ? std::optional<uint64_t>() : std::optional<uint64_t>(convert<IDLUnsignedLongLong>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalUnsignedLongLong(WTFMove(number));
     return JSValue::encode(jsUndefined());
@@ -6788,7 +6792,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalBo
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto b = state->argument(0).isUndefined() ? std::optional<bool>() : convert<IDLBoolean>(*state, state->uncheckedArgument(0));
+    auto b = state->argument(0).isUndefined() ? std::optional<bool>() : std::optional<bool>(convert<IDLBoolean>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalBoolean(WTFMove(b));
     return JSValue::encode(jsUndefined());
@@ -6842,7 +6846,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalOb
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto a = state->argument(0).isUndefined() ? std::optional<JSC::Strong<JSC::JSObject>>() : convert<IDLObject>(*state, state->uncheckedArgument(0));
+    auto a = state->argument(0).isUndefined() ? std::optional<JSC::Strong<JSC::JSObject>>() : std::optional<JSC::Strong<JSC::JSObject>>(convert<IDLObject>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalObject(WTFMove(a));
     return JSValue::encode(jsUndefined());
@@ -7158,7 +7162,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod2Cal
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethod", "TestObj"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto longArg = state->argument(1).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(1));
+    auto longArg = state->argument(1).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.overloadedMethod(WTFMove(objArg), WTFMove(longArg));
     return JSValue::encode(jsUndefined());
@@ -7466,7 +7470,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethodWithOptionalParameter", "TestObj"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto longArg = state->argument(1).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(1));
+    auto longArg = state->argument(1).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.overloadedMethodWithOptionalParameter(WTFMove(objArg), WTFMove(longArg));
     return JSValue::encode(jsUndefined());
@@ -7873,7 +7877,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethodWithOptional
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto arg = state->argument(0).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(0));
+    auto arg = state->argument(0).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLLong>(TestObj::classMethodWithOptional(WTFMove(arg))));
 }
@@ -8074,6 +8078,24 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionDomStringListFunctio
     auto values = convert<IDLInterface<DOMStringList>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "values", "TestObject", "domStringListFunction", "DOMStringList"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLInterface<DOMStringList>>(*state, *castedThis->globalObject(), throwScope, impl.domStringListFunction(*values)));
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOperationWithOptionalUnionParameterCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOperationWithOptionalUnionParameterCaller>(state, "operationWithOptionalUnionParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOperationWithOptionalUnionParameterCaller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto optionalUnion = state->argument(0).isUndefined() ? std::optional<Converter<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>::ReturnType>() : std::optional<Converter<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>::ReturnType>(convert<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.operationWithOptionalUnionParameter(WTFMove(optionalUnion));
+    return JSValue::encode(jsUndefined());
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequenceCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
@@ -8449,7 +8471,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionW
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto a = state->argument(0).isUndefined() ? std::optional<int32_t>() : convert<IDLLong>(*state, state->uncheckedArgument(0));
+    auto a = state->argument(0).isUndefined() ? std::optional<int32_t>() : std::optional<int32_t>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.testPromiseFunctionWithOptionalIntArgument(WTFMove(a), WTFMove(promise));
     return JSValue::encode(jsUndefined());
@@ -8763,6 +8785,26 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionBufferSourceParamete
     return JSValue::encode(jsUndefined());
 }
 
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionLegacyCallerNamedCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLegacyCallerNamed(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionLegacyCallerNamedCaller>(state, "legacyCallerNamed");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionLegacyCallerNamedCaller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto param = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.legacyCallerNamed(WTFMove(param));
+    return JSValue::encode(jsUndefined());
+}
+
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(ExecState* state)
@@ -8776,6 +8818,73 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringCaller(JSC::
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     return JSValue::encode(toJS<IDLUSVString>(*state, impl.stringifierAttribute()));
+}
+
+static inline EncodedJSValue callJSTestObj1(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    auto param = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.legacyCallerNamed(WTFMove(param));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline EncodedJSValue callJSTestObj2(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    auto param = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLLong>(impl.legacyCallerOperationFromBindings(WTFMove(param))));
+}
+
+static inline EncodedJSValue callJSTestObj3(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    impl.legacyCallerOperationFromBindings();
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL callJSTestObj(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 0) {
+        return callJSTestObj3(state);
+    }
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isNumber())
+            return callJSTestObj1(state);
+        return callJSTestObj2(state);
+    }
+    return throwVMTypeError(state, throwScope);
+}
+
+CallType JSTestObj::getCallData(JSCell*, CallData& callData)
+{
+    callData.native.function = callJSTestObj;
+    return CallType::Host;
 }
 
 JSC::JSObject* JSTestObj::serialize(ExecState* state, JSTestObj* thisObject, ThrowScope& throwScope)

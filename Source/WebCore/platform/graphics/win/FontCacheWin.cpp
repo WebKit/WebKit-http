@@ -319,7 +319,7 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
         DeleteObject(hfont);
     }
 
-    return fontData.release();
+    return fontData;
 }
 
 Vector<String> FontCache::systemFontFamilies()
@@ -336,11 +336,6 @@ RefPtr<Font> FontCache::fontFromDescriptionAndLogFont(const FontDescription& fon
     if (fontData)
         outFontFamilyName = familyName;
     return fontData;
-}
-
-Ref<Font> FontCache::lastResortFallbackFontForEveryCharacter(const FontDescription& fontDescription)
-{
-    return lastResortFallbackFont(fontDescription);
 }
 
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)

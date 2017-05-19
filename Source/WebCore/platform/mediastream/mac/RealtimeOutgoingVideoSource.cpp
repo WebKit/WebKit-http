@@ -31,6 +31,7 @@
 
 #if USE(LIBWEBRTC)
 
+#include <webrtc/api/video/i420_buffer.h>
 #include <webrtc/common_video/include/corevideo_frame_buffer.h>
 #include <webrtc/common_video/libyuv/include/webrtc_libyuv.h>
 #include <webrtc/media/base/videoframe.h>
@@ -62,7 +63,11 @@ bool RealtimeOutgoingVideoSource::setSource(Ref<RealtimeMediaSource>&& newSource
     m_videoSource->removeObserver(*this);
     m_videoSource = WTFMove(newSource);
     m_videoSource->addObserver(*this);
+
     setSizeFromSource();
+    m_muted = m_videoSource->muted();
+    m_enabled = m_videoSource->enabled();
+
     return true;
 }
 
@@ -76,19 +81,29 @@ void RealtimeOutgoingVideoSource::stop()
 void RealtimeOutgoingVideoSource::sourceMutedChanged()
 {
     ASSERT(m_muted != m_videoSource->muted());
+
     m_muted = m_videoSource->muted();
 
-    if (m_muted && m_sinks.size() && m_enabled)
-        sendBlackFrame();
+    if (m_muted && m_sinks.size() && m_enabled) {
+        sendBlackFrames();
+        return;
+    }
+    if (m_blackFrameTimer.isActive())
+        m_blackFrameTimer.stop();
 }
 
 void RealtimeOutgoingVideoSource::sourceEnabledChanged()
 {
     ASSERT(m_enabled != m_videoSource->enabled());
+
     m_enabled = m_videoSource->enabled();
 
-    if (!m_enabled && m_sinks.size() && !m_muted)
-        sendBlackFrame();
+    if (!m_enabled && m_sinks.size() && !m_muted) {
+        sendBlackFrames();
+        return;
+    }
+    if (m_blackFrameTimer.isActive())
+        m_blackFrameTimer.stop();
 }
 
 void RealtimeOutgoingVideoSource::setSizeFromSource()
@@ -103,9 +118,13 @@ bool RealtimeOutgoingVideoSource::GetStats(Stats*)
     return false;
 }
 
-void RealtimeOutgoingVideoSource::AddOrUpdateSink(rtc::VideoSinkInterface<webrtc::VideoFrame>* sink, const rtc::VideoSinkWants&)
+void RealtimeOutgoingVideoSource::AddOrUpdateSink(rtc::VideoSinkInterface<webrtc::VideoFrame>* sink, const rtc::VideoSinkWants& sinkWants)
 {
-    // FIXME: support sinkWants
+    ASSERT(!sinkWants.black_frames);
+
+    if (sinkWants.rotation_applied)
+        m_shouldApplyRotation = true;
+
     if (!m_sinks.contains(sink))
         m_sinks.append(sink);
 }
@@ -115,7 +134,7 @@ void RealtimeOutgoingVideoSource::RemoveSink(rtc::VideoSinkInterface<webrtc::Vid
     m_sinks.removeFirst(sink);
 }
 
-void RealtimeOutgoingVideoSource::sendBlackFrame()
+void RealtimeOutgoingVideoSource::sendBlackFrames()
 {
     if (!m_blackFrame) {
         auto frame = m_bufferPool.CreateBuffer(m_width, m_height);
@@ -123,8 +142,7 @@ void RealtimeOutgoingVideoSource::sendBlackFrame()
         m_blackFrame = WTFMove(frame);
     }
     sendOneBlackFrame();
-    // FIXME: We should not need to send two black frames but VTB requires that so we are sure a black frame is sent over the wire.
-    m_blackFrameTimer.startOneShot(0_s);
+    m_blackFrameTimer.startRepeating(1_s);
 }
 
 void RealtimeOutgoingVideoSource::sendOneBlackFrame()
@@ -134,6 +152,12 @@ void RealtimeOutgoingVideoSource::sendOneBlackFrame()
 
 void RealtimeOutgoingVideoSource::sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&& buffer)
 {
+    // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
+    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
+        // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
+        buffer = buffer->NativeToI420Buffer();
+        buffer = webrtc::I420Buffer::Rotate(*buffer, m_currentRotation);
+    }
     webrtc::VideoFrame frame(buffer, 0, 0, m_currentRotation);
     for (auto* sink : m_sinks)
         sink->OnFrame(frame);

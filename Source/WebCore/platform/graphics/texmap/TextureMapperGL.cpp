@@ -36,7 +36,7 @@
 #include "Timer.h"
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/SetForScope.h>
 
@@ -746,12 +746,12 @@ IntRect TextureMapperGL::clipBounds()
     return clipStack().current().scissorBox;
 }
 
-PassRefPtr<BitmapTexture> TextureMapperGL::createTexture()
+Ref<BitmapTexture> TextureMapperGL::createTexture()
 {
     return BitmapTextureGL::create(*m_context3D);
 }
 
-PassRefPtr<BitmapTexture> TextureMapperGL::createTexture(GC3Dint internalFormat)
+Ref<BitmapTexture> TextureMapperGL::createTexture(GC3Dint internalFormat)
 {
     return BitmapTextureGL::create(*m_context3D, internalFormat);
 }

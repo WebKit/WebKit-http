@@ -87,9 +87,9 @@ extern "C" {
       attributeKeys:(NSArray *)keys
     attributeValues:(NSArray *)values
        loadManually:(BOOL)loadManually
-            element:(PassRefPtr<WebCore::HTMLPlugInElement>)element
+            element:(RefPtr<WebCore::HTMLPlugInElement>&&)element
 {
-    self = [super initWithFrame:frame pluginPackage:pluginPackage URL:URL baseURL:baseURL MIMEType:MIME attributeKeys:keys attributeValues:values loadManually:loadManually element:element];
+    self = [super initWithFrame:frame pluginPackage:pluginPackage URL:URL baseURL:baseURL MIMEType:MIME attributeKeys:keys attributeValues:values loadManually:loadManually element:WTFMove(element)];
     if (!self)
         return nil;
     
@@ -462,12 +462,12 @@ extern "C" {
     }
 }
 
-- (PassRefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(PassRefPtr<JSC::Bindings::RootObject>)rootObject
+- (RefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(Ref<JSC::Bindings::RootObject>&&)rootObject
 {
     if (!_proxy)
-        return 0;
+        return nullptr;
     
-    return _proxy->createBindingsInstance(rootObject);
+    return _proxy->createBindingsInstance(WTFMove(rootObject));
 }
 
 - (void)pluginView:(NSView *)pluginView receivedResponse:(NSURLResponse *)response

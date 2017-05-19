@@ -346,7 +346,7 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
         if (m_private->hasCaptureAudioSource()) {
             if (m_private->muted())
                 state |= HasMutedAudioCaptureDevice;
-            else if (m_isProducingData)
+            else if (m_isProducingData && m_private->isProducingData())
                 state |= HasActiveAudioCaptureDevice;
         }
     }
@@ -356,7 +356,7 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
         if (m_private->hasCaptureVideoSource()) {
             if (m_private->muted())
                 state |= HasMutedVideoCaptureDevice;
-            else if (m_isProducingData)
+            else if (m_isProducingData && m_private->isProducingData())
                 state |= HasActiveVideoCaptureDevice;
         }
     }
@@ -504,6 +504,11 @@ String MediaStream::sourceApplicationIdentifier() const
 bool MediaStream::canProduceAudio() const
 {
     return !muted() && active() && m_private->hasAudio() && m_isProducingData;
+}
+
+bool MediaStream::processingUserGestureForMedia() const
+{
+    return document() ? document()->processingUserGestureForMedia() : false;
 }
 
 } // namespace WebCore

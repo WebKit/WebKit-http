@@ -460,6 +460,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
+    parameters.presentingApplicationPID = getpid();
 
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
@@ -504,32 +505,37 @@ void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::
 }
 
 #if ENABLE(DATABASE_PROCESS)
-void WebProcessPool::ensureDatabaseProcess()
+void WebProcessPool::ensureDatabaseProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore)
 {
-    if (m_databaseProcess)
-        return;
-
-    m_databaseProcess = DatabaseProcessProxy::create(this);
-
     // *********
     // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
     // *********
-    DatabaseProcessCreationParameters parameters;
-#if ENABLE(INDEXED_DATABASE)
-    ASSERT(!m_configuration->indexedDBDatabaseDirectory().isEmpty());
 
-    parameters.sessionID = websiteDataStore().websiteDataStore().sessionID();
-    parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
-    SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+    if (!m_databaseProcess) {
+        m_databaseProcess = DatabaseProcessProxy::create(this);
+
+        DatabaseProcessCreationParameters parameters;
+#if ENABLE(INDEXED_DATABASE)
+        ASSERT(!m_configuration->indexedDBDatabaseDirectory().isEmpty());
+
+        parameters.sessionID = websiteDataStore().websiteDataStore().sessionID();
+        parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
 #endif
 
-    ASSERT(!parameters.indexedDatabaseDirectory.isEmpty());
-    m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(parameters), 0);
+        ASSERT(!parameters.indexedDatabaseDirectory.isEmpty());
+        m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(parameters), 0);
+    }
+
+    if (!relevantDataStore || relevantDataStore == &websiteDataStore().websiteDataStore())
+        return;
+
+    m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(relevantDataStore->databaseProcessParameters()), 0);
 }
 
 void WebProcessPool::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    ensureDatabaseProcess();
+    ensureDatabaseProcessAndWebsiteDataStore(nullptr);
 
     m_databaseProcess->getDatabaseProcessConnection(WTFMove(reply));
 }
@@ -572,7 +578,7 @@ void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool private
 
     if (networkProcess()) {
         if (privateBrowsingEnabled)
-            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(SessionID::legacyPrivateSessionID()), 0);
+            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({SessionID::legacyPrivateSessionID(), { }, { }, { }}), 0);
         else
             networkProcess()->send(Messages::NetworkProcess::DestroySession(SessionID::legacyPrivateSessionID()), 0);
     }
@@ -709,7 +715,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 
     parameters.defaultRequestTimeoutInterval = API::URLRequest::defaultTimeoutInterval();
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     // FIXME: There should be a generic way for supplements to add to the intialization parameters.
     supplement<WebNotificationManagerProxy>()->populateCopyOfNotificationPermissions(parameters.notificationPermissions);
 #endif
@@ -746,6 +752,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 #if ENABLE(MEDIA_STREAM)
     parameters.shouldCaptureAudioInUIProcess = m_configuration->shouldCaptureAudioInUIProcess();
 #endif
+
+    parameters.presentingApplicationPID = getpid();
 
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
@@ -937,7 +945,9 @@ void WebProcessPool::pageAddedToProcess(WebPageProxy& page)
 
     auto sessionID = page.sessionID();
     if (sessionID.isEphemeral()) {
-        sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(sessionID));
+        // FIXME: Merge NetworkProcess::EnsurePrivateBrowsingSession and NetworkProcess::AddWebsiteDataStore into one message type.
+        // They do basically the same thing.
+        sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(page.websiteDataStore().parameters()));
         page.process().send(Messages::WebProcess::EnsurePrivateBrowsingSession(sessionID), 0);
     } else if (sessionID != SessionID::defaultSessionID()) {
         sendToNetworkingProcess(Messages::NetworkProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()));
@@ -1537,7 +1547,7 @@ void WebProcessPool::plugInDidReceiveUserInteraction(unsigned plugInOriginHash, 
     m_plugInAutoStartProvider.didReceiveUserInteraction(plugInOriginHash, sessionID);
 }
 
-PassRefPtr<API::Dictionary> WebProcessPool::plugInAutoStartOriginHashes() const
+Ref<API::Dictionary> WebProcessPool::plugInAutoStartOriginHashes() const
 {
     return m_plugInAutoStartProvider.autoStartOriginsTableCopy();
 }

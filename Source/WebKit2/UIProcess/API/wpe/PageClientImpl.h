@@ -73,7 +73,7 @@ private:
     void setCursorHiddenUntilMouseMoves(bool) override;
     void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
 
-    void registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo) override;
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo) override;
     void clearAllEditCommands() override;
     bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
     void executeUndoRedo(WebPageProxy::UndoOrRedo) override;

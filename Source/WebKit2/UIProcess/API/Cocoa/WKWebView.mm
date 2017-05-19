@@ -244,6 +244,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     UIEdgeInsets _unobscuredSafeAreaInsets;
     BOOL _haveSetUnobscuredSafeAreaInsets;
+    UIRectEdge _obscuredInsetEdgesAffectedBySafeArea;
 
     UIInterfaceOrientation _interfaceOrientationOverride;
     BOOL _overridesInterfaceOrientation;
@@ -523,6 +524,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     [_scrollView addSubview:_contentView.get()];
     [_scrollView addSubview:[_contentView unscaledView]];
     [self _updateScrollViewBackground];
+    _obscuredInsetEdgesAffectedBySafeArea = UIRectEdgeTop | UIRectEdgeLeft | UIRectEdgeRight;
 
     _viewportMetaTagWidth = WebCore::ViewportArguments::ValueAuto;
     _initialScaleFactor = 1;
@@ -1201,6 +1203,11 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     return [_configuration selectionGranularity];
 }
 
+- (BOOL)_allowsBlockSelection
+{
+    return [_configuration _allowsBlockSelection];
+}
+
 - (void)_setHasCustomContentView:(BOOL)pageHasCustomContentView loadedMIMEType:(const WTF::String&)mimeType
 {
     if (pageHasCustomContentView) {
@@ -1351,10 +1358,14 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     if (self._safeAreaShouldAffectObscuredInsets) {
         UIEdgeInsets systemInsets = [_scrollView _systemContentInset];
-        insets.top += systemInsets.top;
-        insets.bottom += systemInsets.bottom;
-        insets.left += systemInsets.left;
-        insets.right += systemInsets.right;
+        if (_obscuredInsetEdgesAffectedBySafeArea & UIRectEdgeTop)
+            insets.top += systemInsets.top;
+        if (_obscuredInsetEdgesAffectedBySafeArea & UIRectEdgeBottom)
+            insets.bottom += systemInsets.bottom;
+        if (_obscuredInsetEdgesAffectedBySafeArea & UIRectEdgeLeft)
+            insets.left += systemInsets.left;
+        if (_obscuredInsetEdgesAffectedBySafeArea & UIRectEdgeRight)
+            insets.right += systemInsets.right;
     }
 #endif
 
@@ -1462,6 +1473,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 {
     if (![self usesStandardContentView])
         return;
+
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
 
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         if (_resizeAnimationTransformTransactionID && layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID.value()) {
@@ -1625,7 +1638,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     _scaleToRestore = scale;
 }
 
-- (PassRefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
+- (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
 {
     float deviceScale = WebCore::screenScaleFactor();
     WebCore::FloatSize snapshotSize(self.bounds.size);
@@ -2170,12 +2183,17 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [self _scheduleVisibleContentRectUpdateAfterScrollInView:scrollView];
 }
 
-- (CGRect)_visibleRectInEnclosingScrollView:(UIScrollView *)enclosingScrollView
+- (UIView *)_enclosingViewForExposedRectComputation
 {
-    if (!enclosingScrollView)
+    return [self _scroller];
+}
+
+- (CGRect)_visibleRectInEnclosingView:(UIView *)enclosingView
+{
+    if (!enclosingView)
         return self.bounds;
 
-    CGRect exposedRect = [enclosingScrollView convertRect:enclosingScrollView.bounds toView:self];
+    CGRect exposedRect = [enclosingView convertRect:enclosingView.bounds toView:self];
     return CGRectIntersectsRect(exposedRect, self.bounds) ? CGRectIntersection(exposedRect, self.bounds) : CGRectZero;
 }
 
@@ -2186,8 +2204,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     CGRect visibleRectInContentCoordinates = [self convertRect:self.bounds toView:_contentView.get()];
     
-    if (UIScrollView *enclosingScroller = [self _scroller]) {
-        CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
+    if (UIView *enclosingView = [self _enclosingViewForExposedRectComputation]) {
+        CGRect viewVisibleRect = [self _visibleRectInEnclosingView:enclosingView];
         CGRect viewVisibleContentRect = [self convertRect:viewVisibleRect toView:_contentView.get()];
         visibleRectInContentCoordinates = CGRectIntersection(visibleRectInContentCoordinates, viewVisibleContentRect);
     }
@@ -3624,7 +3642,8 @@ WEBCORE_COMMAND(yankAndSelect)
 {
     _page->setEditable(editable);
 #if PLATFORM(MAC)
-    _impl->startObservingFontPanel();
+    if (editable)
+        _impl->didBecomeEditable();
 #endif
 }
 
@@ -4534,6 +4553,21 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _obscuredInsets = obscuredInsets;
+
+    [self _scheduleVisibleContentRectUpdate];
+}
+
+- (UIRectEdge)_obscuredInsetEdgesAffectedBySafeArea
+{
+    return _obscuredInsetEdgesAffectedBySafeArea;
+}
+
+- (void)_setObscuredInsetEdgesAffectedBySafeArea:(UIRectEdge)edges
+{
+    if (edges == _obscuredInsetEdgesAffectedBySafeArea)
+        return;
+
+    _obscuredInsetEdgesAffectedBySafeArea = edges;
 
     [self _scheduleVisibleContentRectUpdate];
 }

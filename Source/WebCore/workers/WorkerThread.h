@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,7 +69,7 @@ public:
     WEBCORE_EXPORT static unsigned workerThreadCount();
     static void releaseFastMallocFreeMemoryInAllThreads();
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationClient* getNotificationClient() { return m_notificationClient; }
     void setNotificationClient(NotificationClient* client) { m_notificationClient = client; }
 #endif
@@ -106,11 +106,11 @@ private:
     bool m_pausedForDebugger { false };
 
     RefPtr<WorkerGlobalScope> m_workerGlobalScope;
-    Lock m_threadCreationMutex;
+    Lock m_threadCreationAndWorkerGlobalScopeMutex;
 
     std::unique_ptr<WorkerThreadStartupData> m_startupData;
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     NotificationClient* m_notificationClient { nullptr };
 #endif
 

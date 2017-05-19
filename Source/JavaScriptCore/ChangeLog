@@ -1,3 +1,1340 @@
+2017-05-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, rebaseline for newly added ClassInfo
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        * wasm/js/WebAssemblyFunctionBase.cpp:
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        Reviewed by Saam Barati.
+
+        In this patch, we generalize CheckDOM to CheckSubClass.
+        It can accept any ClassInfo and perform ClassInfo check
+        in DFG / FTL. Now, we add a new function pointer to ClassInfo,
+        checkSubClassPatchpoint. It can create DOMJIT patchpoint
+        for that ClassInfo. It it natural that ClassInfo holds the
+        way to emit DOMJIT::Patchpoint to perform CheckSubClass
+        rather than having it in each DOMJIT getter / function
+        signature annotation.
+
+        One problem is that it enlarges the size of ClassInfo.
+        But this is the best place to put this function pointer.
+        By doing so, we can add a patchpoint for CheckSubClass
+        in an non-intrusive manner: WebCore can inject patchpoints
+        without interactive JSC.
+
+        We still have a way to reduce the size of ClassInfo if
+        we move ArrayBuffer related methods out to the other places.
+
+        This patch touches many files because we add a new function
+        pointer to ClassInfo. But they are basically mechanical change.
+
+        * API/JSAPIWrapperObject.mm:
+        * API/JSCallbackConstructor.cpp:
+        * API/JSCallbackFunction.cpp:
+        * API/JSCallbackObject.cpp:
+        * API/ObjCCallbackFunction.mm:
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        * bytecode/DOMJITAccessCasePatchpointParams.h:
+        (JSC::DOMJITAccessCasePatchpointParams::DOMJITAccessCasePatchpointParams):
+        * bytecode/EvalCodeBlock.cpp:
+        * bytecode/FunctionCodeBlock.cpp:
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::emitDOMJITGetter):
+        * bytecode/ModuleProgramCodeBlock.cpp:
+        * bytecode/ProgramCodeBlock.cpp:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        * bytecode/UnlinkedEvalCodeBlock.cpp:
+        * bytecode/UnlinkedFunctionCodeBlock.cpp:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        * debugger/DebuggerScope.cpp:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleDOMJITGetter):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDOMJITPatchpointParams.h:
+        (JSC::DFG::DOMJITPatchpointParams::DOMJITPatchpointParams):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::attemptToMakeCallDOM):
+        (JSC::DFG::FixupPhase::fixupCheckSubClass):
+        (JSC::DFG::FixupPhase::fixupCheckDOM): Deleted.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasClassInfo):
+        (JSC::DFG::Node::classInfo):
+        (JSC::DFG::Node::hasCheckDOMPatchpoint): Deleted.
+        (JSC::DFG::Node::checkDOMPatchpoint): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckSubClass):
+        (JSC::DFG::SpeculativeJIT::compileCheckDOM): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::vm):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        In DFG, we rename CheckDOM to CheckSubClass. It just holds ClassInfo.
+        And ClassInfo knows how to perform CheckSubClass efficiently.
+        If ClassInfo does not have a way to perform CheckSubClass efficiently,
+        we just perform jsDynamicCast thing in ASM.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * domjit/DOMJITGetterSetter.h:
+        * domjit/DOMJITPatchpointParams.h:
+        (JSC::DOMJIT::PatchpointParams::PatchpointParams):
+        (JSC::DOMJIT::PatchpointParams::vm):
+        * domjit/DOMJITSignature.h:
+        (JSC::DOMJIT::Signature::Signature):
+        (JSC::DOMJIT::Signature::checkDOM): Deleted.
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLDOMJITPatchpointParams.h:
+        (JSC::FTL::DOMJITPatchpointParams::DOMJITPatchpointParams):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckSubClass):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckDOM): Deleted.
+        * inspector/JSInjectedScriptHost.cpp:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        * jsc.cpp:
+        (WTF::DOMJITNode::checkSubClassPatchpoint):
+        (WTF::DOMJITFunctionObject::checkSubClassPatchpoint):
+        (WTF::DOMJITFunctionObject::finishCreation):
+        (WTF::DOMJITCheckSubClassObject::DOMJITCheckSubClassObject):
+        (WTF::DOMJITCheckSubClassObject::createStructure):
+        (WTF::DOMJITCheckSubClassObject::create):
+        (WTF::DOMJITCheckSubClassObject::safeFunction):
+        (WTF::DOMJITCheckSubClassObject::unsafeFunction):
+        (WTF::DOMJITCheckSubClassObject::finishCreation):
+        (GlobalObject::finishCreation):
+        (functionCreateDOMJITCheckSubClassObject):
+        (WTF::DOMJITNode::checkDOMJITNode): Deleted.
+        (WTF::DOMJITFunctionObject::checkDOMJITNode): Deleted.
+        * runtime/AbstractModuleRecord.cpp:
+        * runtime/ArrayBufferNeuteringWatchpoint.cpp:
+        * runtime/ArrayConstructor.cpp:
+        * runtime/ArrayIteratorPrototype.cpp:
+        * runtime/ArrayPrototype.cpp:
+        * runtime/AsyncFunctionConstructor.cpp:
+        * runtime/AsyncFunctionPrototype.cpp:
+        * runtime/AtomicsObject.cpp:
+        * runtime/BooleanConstructor.cpp:
+        * runtime/BooleanObject.cpp:
+        * runtime/BooleanPrototype.cpp:
+        * runtime/ClassInfo.cpp: Copied from Source/JavaScriptCore/tools/JSDollarVM.cpp.
+        (JSC::ClassInfo::dump):
+        * runtime/ClassInfo.h:
+        (JSC::ClassInfo::offsetOfParentClass):
+        * runtime/ClonedArguments.cpp:
+        * runtime/ConsoleObject.cpp:
+        * runtime/CustomGetterSetter.cpp:
+        * runtime/DateConstructor.cpp:
+        * runtime/DateInstance.cpp:
+        * runtime/DatePrototype.cpp:
+        * runtime/DirectArguments.cpp:
+        * runtime/Error.cpp:
+        * runtime/ErrorConstructor.cpp:
+        * runtime/ErrorInstance.cpp:
+        * runtime/ErrorPrototype.cpp:
+        * runtime/EvalExecutable.cpp:
+        * runtime/Exception.cpp:
+        * runtime/ExceptionHelpers.cpp:
+        * runtime/ExecutableBase.cpp:
+        * runtime/FunctionConstructor.cpp:
+        * runtime/FunctionExecutable.cpp:
+        * runtime/FunctionPrototype.cpp:
+        * runtime/FunctionRareData.cpp:
+        * runtime/GeneratorFunctionConstructor.cpp:
+        * runtime/GeneratorFunctionPrototype.cpp:
+        * runtime/GeneratorPrototype.cpp:
+        * runtime/GetterSetter.cpp:
+        * runtime/HashMapImpl.cpp:
+        * runtime/HashMapImpl.h:
+        * runtime/InferredType.cpp:
+        (JSC::InferredType::create):
+        * runtime/InferredTypeTable.cpp:
+        * runtime/InferredValue.cpp:
+        * runtime/InspectorInstrumentationObject.cpp:
+        * runtime/InternalFunction.cpp:
+        * runtime/IntlCollator.cpp:
+        * runtime/IntlCollatorConstructor.cpp:
+        * runtime/IntlCollatorPrototype.cpp:
+        * runtime/IntlDateTimeFormat.cpp:
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        * runtime/IntlNumberFormat.cpp:
+        * runtime/IntlNumberFormatConstructor.cpp:
+        * runtime/IntlNumberFormatPrototype.cpp:
+        * runtime/IntlObject.cpp:
+        * runtime/IteratorPrototype.cpp:
+        * runtime/JSAPIValueWrapper.cpp:
+        * runtime/JSArray.cpp:
+        * runtime/JSArrayBuffer.cpp:
+        * runtime/JSArrayBufferConstructor.cpp:
+        * runtime/JSArrayBufferPrototype.cpp:
+        * runtime/JSArrayBufferView.cpp:
+        * runtime/JSAsyncFunction.cpp:
+        * runtime/JSBoundFunction.cpp:
+        * runtime/JSCallee.cpp:
+        * runtime/JSCustomGetterSetterFunction.cpp:
+        * runtime/JSDataView.cpp:
+        * runtime/JSDataViewPrototype.cpp:
+        * runtime/JSEnvironmentRecord.cpp:
+        * runtime/JSFixedArray.cpp:
+        * runtime/JSFunction.cpp:
+        * runtime/JSGeneratorFunction.cpp:
+        * runtime/JSGlobalLexicalEnvironment.cpp:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSInternalPromise.cpp:
+        * runtime/JSInternalPromiseConstructor.cpp:
+        * runtime/JSInternalPromiseDeferred.cpp:
+        * runtime/JSInternalPromisePrototype.cpp:
+        * runtime/JSLexicalEnvironment.cpp:
+        * runtime/JSMap.cpp:
+        * runtime/JSMapIterator.cpp:
+        * runtime/JSModuleEnvironment.cpp:
+        * runtime/JSModuleLoader.cpp:
+        * runtime/JSModuleNamespaceObject.cpp:
+        * runtime/JSModuleRecord.cpp:
+        * runtime/JSNativeStdFunction.cpp:
+        * runtime/JSONObject.cpp:
+        * runtime/JSObject.cpp:
+        * runtime/JSPromise.cpp:
+        * runtime/JSPromiseConstructor.cpp:
+        * runtime/JSPromiseDeferred.cpp:
+        * runtime/JSPromisePrototype.cpp:
+        * runtime/JSPropertyNameEnumerator.cpp:
+        * runtime/JSPropertyNameIterator.cpp:
+        * runtime/JSProxy.cpp:
+        * runtime/JSScriptFetcher.cpp:
+        * runtime/JSSet.cpp:
+        * runtime/JSSetIterator.cpp:
+        * runtime/JSSourceCode.cpp:
+        * runtime/JSString.cpp:
+        * runtime/JSStringIterator.cpp:
+        * runtime/JSSymbolTableObject.cpp:
+        * runtime/JSTemplateRegistryKey.cpp:
+        * runtime/JSTypedArrayConstructors.cpp:
+        * runtime/JSTypedArrayPrototypes.cpp:
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        * runtime/JSTypedArrays.cpp:
+        * runtime/JSWeakMap.cpp:
+        * runtime/JSWeakSet.cpp:
+        * runtime/JSWithScope.cpp:
+        * runtime/MapConstructor.cpp:
+        * runtime/MapIteratorPrototype.cpp:
+        * runtime/MapPrototype.cpp:
+        * runtime/MathObject.cpp:
+        * runtime/ModuleLoaderPrototype.cpp:
+        * runtime/ModuleProgramExecutable.cpp:
+        * runtime/NativeErrorConstructor.cpp:
+        * runtime/NativeExecutable.cpp:
+        * runtime/NativeStdFunctionCell.cpp:
+        * runtime/NullGetterFunction.cpp:
+        * runtime/NullSetterFunction.cpp:
+        * runtime/NumberConstructor.cpp:
+        * runtime/NumberObject.cpp:
+        * runtime/NumberPrototype.cpp:
+        * runtime/ObjectConstructor.cpp:
+        * runtime/ObjectPrototype.cpp:
+        * runtime/ProgramExecutable.cpp:
+        * runtime/PropertyTable.cpp:
+        * runtime/ProxyConstructor.cpp:
+        * runtime/ProxyObject.cpp:
+        * runtime/ProxyRevoke.cpp:
+        * runtime/ReflectObject.cpp:
+        * runtime/RegExp.cpp:
+        * runtime/RegExpConstructor.cpp:
+        * runtime/RegExpObject.cpp:
+        * runtime/RegExpPrototype.cpp:
+        * runtime/ScopedArguments.cpp:
+        * runtime/ScopedArgumentsTable.cpp:
+        * runtime/ScriptExecutable.cpp:
+        * runtime/SetConstructor.cpp:
+        * runtime/SetIteratorPrototype.cpp:
+        * runtime/SetPrototype.cpp:
+        * runtime/SparseArrayValueMap.cpp:
+        * runtime/StrictEvalActivation.cpp:
+        * runtime/StringConstructor.cpp:
+        * runtime/StringIteratorPrototype.cpp:
+        * runtime/StringObject.cpp:
+        * runtime/StringPrototype.cpp:
+        * runtime/Structure.cpp:
+        * runtime/StructureChain.cpp:
+        * runtime/StructureRareData.cpp:
+        * runtime/Symbol.cpp:
+        * runtime/SymbolConstructor.cpp:
+        * runtime/SymbolObject.cpp:
+        * runtime/SymbolPrototype.cpp:
+        * runtime/SymbolTable.cpp:
+        * runtime/WeakMapConstructor.cpp:
+        * runtime/WeakMapData.cpp:
+        * runtime/WeakMapPrototype.cpp:
+        * runtime/WeakSetConstructor.cpp:
+        * runtime/WeakSetPrototype.cpp:
+        * testRegExp.cpp:
+        * tools/JSDollarVM.cpp:
+        * tools/JSDollarVMPrototype.cpp:
+        * wasm/JSWebAssembly.cpp:
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        * wasm/js/JSWebAssemblyCompileError.cpp:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        * wasm/js/JSWebAssemblyLinkError.cpp:
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        * wasm/js/JSWebAssemblyModule.cpp:
+        * wasm/js/JSWebAssemblyRuntimeError.cpp:
+        * wasm/js/JSWebAssemblyTable.cpp:
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        * wasm/js/WebAssemblyFunction.cpp:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp:
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        * wasm/js/WebAssemblyPrototype.cpp:
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        * wasm/js/WebAssemblyToJSCallee.cpp:
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+
+2017-05-17  Saam Barati  <sbarati@apple.com>
+
+        We don't do context switches for Wasm->Wasm call indirect
+        https://bugs.webkit.org/show_bug.cgi?id=172188
+        <rdar://problem/32231828>
+
+        Reviewed by Keith Miller.
+
+        We did not do a context switch when doing an indirect call. 
+        This is clearly wrong, since the thing we're making an indirect
+        call to could be from another instance. This patch fixes this
+        oversight by doing a very simple context switch. I've also opened
+        a bug to make indirect calls fast: https://bugs.webkit.org/show_bug.cgi?id=172197
+        since this patch adds yet another branch to the indirect call path.
+        I've also added tests that either throw or crash before this change.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/js/JSWebAssemblyTable.h:
+        (JSC::JSWebAssemblyTable::offsetOfJSFunctions):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::visitChildren):
+        (JSC::WebAssemblyFunction::finishCreation): Deleted.
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::instance): Deleted.
+        (JSC::WebAssemblyFunction::offsetOfInstance): Deleted.
+        * wasm/js/WebAssemblyFunctionBase.cpp: Added.
+        (JSC::WebAssemblyFunctionBase::WebAssemblyFunctionBase):
+        (JSC::WebAssemblyFunctionBase::visitChildren):
+        (JSC::WebAssemblyFunctionBase::finishCreation):
+        * wasm/js/WebAssemblyFunctionBase.h: Added.
+        (JSC::WebAssemblyFunctionBase::instance):
+        (JSC::WebAssemblyFunctionBase::offsetOfInstance):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+        (JSC::WebAssemblyWrapperFunction::create):
+        (JSC::WebAssemblyWrapperFunction::finishCreation):
+        (JSC::WebAssemblyWrapperFunction::visitChildren):
+        * wasm/js/WebAssemblyWrapperFunction.h:
+
+2017-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC: Incorrect LoadVarargs handling in ArgumentsEliminationPhase::transform
+        https://bugs.webkit.org/show_bug.cgi?id=172208
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2017-05-17  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Support $vm.getpid()
+        https://bugs.webkit.org/show_bug.cgi?id=172248
+
+        Reviewed by Mark Lam.
+
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionGetPID):
+        (JSC::JSDollarVMPrototype::finishCreation):
+
+2017-05-17  Michael Saboff  <msaboff@apple.com>
+
+        [iOS] The Garbage Collector shouldn't rely on the bmalloc scavenger for up to date memory footprint info
+        https://bugs.webkit.org/show_bug.cgi?id=172186
+
+        Reviewed by Geoffrey Garen.
+
+        The calls to bmalloc::api::memoryFootprint() and ::percentAvailableMemoryInUse() now call
+        the OS to get up to date values.  In overCriticalMemoryThreshold(), we get the current value every
+        100th call and use a cached value the rest of the time.  When colleciton is done, we start with
+        a new overCriticalMemoryThreshold value for the next cycle.
+
+        The choice of 1 out of 100 calls was validated by using JetStream and verifying that it didn't impact
+        performance and still provides timely memory footprint data.  With additional debug logging, I
+        determined that we call overCriticalMemoryThreshold() over 20,000 times/second running JetStream.
+        Other logging showed that there were over 1700 calls to overCriticalMemoryThreshold() on average per
+        GC cycle.  Dividing both of these numbers by 100 seems reasonable.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::overCriticalMemoryThreshold):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::shouldDoFullCollection):
+        * heap/Heap.h:
+
+2017-05-17  Saam Barati  <sbarati@apple.com>
+
+        PinnedRegisters should be better modeled in IRC/Briggs
+        https://bugs.webkit.org/show_bug.cgi?id=171955
+
+        Reviewed by Filip Pizlo.
+
+        This patch fixes a bug in Briggs/IRC with respect to pinned registers.
+        Pinned registers were not part of the assignable register file in IRC/Briggs,
+        and this would lead to an asymmetry because they were modeled in the
+        interference graph. The bug is that we use registerCount() to move various
+        Tmps between various lists in the different allocators, and if a Tmp
+        interfered with a pinned register (usually via a Patchpoint's clobbered set),
+        we'd have an interference edge modeled in the degree for that Tmp, but the registerCount()
+        would make us think that this particular Tmp is not assignable. This would
+        lead us to fail to color a colorable graph. Specifically, this happened in
+        our various patchpoint tests that stress the register allocator by forcing
+        the entire register file into arguments for the patchpoint and then doing
+        interesting things with the result, arguments, etc.
+        
+        This patch fixes the bug by coming up with an more natural way to model pinned
+        registers. Pinned registers are now part of the register file. However,
+        pinned registers are live at every point in the program (this is a defining
+        property of a pinned register). In practice, this means that the only Tmps 
+        that can be assigned to pinned registers are ones that are coalescing
+        candidates. This means the program has some number of defs for a Tmp T like:
+        MoveType pinnedReg, T
+        
+        Note, if any other defs for T happen, like:
+        Add32, t1, t2, T
+        T will have an interference edge with pinnedReg, since pinnedReg is live
+        at every point in the program. Modeling pinned registers this way allows
+        IRC/Briggs to have no special casing for them. It treats it like any other
+        precolored Tmp. This allows us to do coalescing, biased coloring, etc, which
+        could all lead to a Tmp being assigned to a pinned register.
+        
+        Interestingly, we used to have special handling for the frame pointer
+        register, which in many ways, acts like a pinned register, since FP is
+        always live, and we wanted it to take place in coalescing. The allocator
+        had a side-table interference graph with FP. Interestingly, we didn't even
+        handle this properly everywhere since we could rely on a patchpoint never
+        claiming to clobber FP (this would be illegal). So the code only handled
+        the pseudo-pinned register properties of FP in various places. This patch
+        drops this special casing and pins FP since all pinned registers can take
+        part in coalescing.
+
+        * b3/B3PatchpointSpecial.h:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::mutableGPRs):
+        (JSC::B3::Procedure::mutableFPRs):
+        * b3/B3Procedure.h:
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::pinRegister):
+        (JSC::B3::Air::Code::mutableGPRs):
+        (JSC::B3::Air::Code::mutableFPRs):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::pinnedRegisters):
+        * b3/air/AirSpecial.h:
+        * b3/air/testair.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testSimplePatchpointWithOuputClobbersGPArgs):
+        (JSC::B3::testSpillDefSmallerThanUse):
+        (JSC::B3::testLateRegister):
+        (JSC::B3::testTerminalPatchpointThatNeedsToBeSpilled):
+        (JSC::B3::testTerminalPatchpointThatNeedsToBeSpilled2):
+        (JSC::B3::testMoveConstants):
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Constant Folding Phase should convert MakeRope("", String) => Identity(String)
+        https://bugs.webkit.org/show_bug.cgi?id=172115
+
+        Reviewed by Saam Barati.
+
+        In Fixup phase, we attempt to fold MakeRope to Identity (or reduce arguments) by dropping
+        empty strings. However, when we are in Fixup phase, we do not have much information about
+        constant values.
+
+        In ARES-6 Babylon, we find that we can constant-fold MakeRope by using constants figured
+        out by CFA. Without it, Babylon repeatedly produces rope strings. To fix this, we introduce
+        MakeRope handling in constant folding phase.
+
+        It shows 7.5% performance improvement in ARES-6 Babylon steadyState.
+
+            Before:
+
+            firstIteration:     50.02 +- 14.56 ms
+            averageWorstCase:   26.52 +- 4.52 ms
+            steadyState:        8.15 +- 0.23 ms
+
+            After:
+
+            firstIteration:     49.08 +- 12.90 ms
+            averageWorstCase:   25.16 +- 3.82 ms
+            steadyState:        7.58 +- 0.21 ms
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, add Objective C files to CMake Mac port
+        https://bugs.webkit.org/show_bug.cgi?id=172103
+
+        * shell/PlatformMac.cmake: Added.
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: enforce size limits
+        https://bugs.webkit.org/show_bug.cgi?id=165833
+        <rdar://problem/29760219>
+
+        Reviewed by Keith Miller.
+
+        Use the same limits as V8.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * wasm/WasmLimits.h: Added.
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser<SuccessType>::consumeUTF8String):
+
+2017-05-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Build testapi in non Apple ports
+        https://bugs.webkit.org/show_bug.cgi?id=172103
+
+        Reviewed by Filip Pizlo.
+
+        This patch makes JSC testapi buildable in non-Apple ports.
+        We isolate CF related tests in testapi.c. If we do not use
+        CF, we include JavaScript.h instead of JavaScriptCore.h.
+
+        By running the testapi in Linux, we found that contraints
+        test have a bug: If constraint marker runs after WeakRefs
+        are destroyed, it accesses destroyed WeakRef. This patch
+        also fixes it.
+
+        * API/tests/CurrentThisInsideBlockGetterTest.h:
+        * API/tests/CustomGlobalObjectClassTest.c:
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        * API/tests/FunctionOverridesTest.cpp:
+        * API/tests/GlobalContextWithFinalizerTest.cpp:
+        * API/tests/JSObjectGetProxyTargetTest.cpp:
+        * API/tests/MultithreadedMultiVMExecutionTest.cpp:
+        * API/tests/PingPongStackOverflowTest.cpp:
+        * API/tests/TypedArrayCTest.cpp:
+        * API/tests/testapi.c:
+        (assertEqualsAsCharactersPtr):
+        (markingConstraint):
+        (testMarkingConstraintsAndHeapFinalizers):
+        (testCFStrings):
+        (main):
+        * shell/CMakeLists.txt:
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: report Memory usage to GC
+        https://bugs.webkit.org/show_bug.cgi?id=170690
+        <rdar://problem/31965310>
+
+        Reviewed by Keith Miller.
+
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::grow):
+        (JSC::JSWebAssemblyMemory::finishCreation):
+        (JSC::JSWebAssemblyMemory::visitChildren):
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: validate load / store alignment
+        https://bugs.webkit.org/show_bug.cgi?id=168836
+        <rdar://problem/31965349>
+
+        Reviewed by Keith Miller.
+
+        * wasm/WasmFunctionParser.h: check the alignment
+        * wasm/generateWasm.py: generate the log2 alignment helper
+        (Wasm):
+        (isSimple):
+        (memoryLog2Alignment):
+        * wasm/generateWasmOpsHeader.py:
+        (memoryLog2AlignmentGenerator):
+        * wasm/wasm.json: fix formatting
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        I rolled out every thing in those 2 patches except for the change to make
+        CodeBlock::finishCreation() return a bool plus its clients that depend on this.
+        I made this exception because r214931 relies on this change, and this part of
+        the change looks correct.
+
+        * builtins/BuiltinNames.h:
+        * builtins/GlobalOperations.js:
+        (globalPrivate.speciesConstructor):
+        (globalPrivate.copyDataProperties): Deleted.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::setConstantIdentifierSetRegisters): Deleted.
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addBitVector):
+        (JSC::UnlinkedCodeBlock::constantRegisters):
+        (JSC::UnlinkedCodeBlock::addSetConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantIdentifierSets): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::ObjectPatternNode::bindValue):
+        (JSC::ObjectSpreadExpressionNode::emitBytecode): Deleted.
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createProperty):
+        (JSC::ASTBuilder::appendObjectPatternEntry):
+        (JSC::ASTBuilder::createObjectSpreadExpression): Deleted.
+        (JSC::ASTBuilder::appendObjectPatternRestEntry): Deleted.
+        (JSC::ASTBuilder::setContainsObjectRestElement): Deleted.
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        (JSC::SpreadExpressionNode::SpreadExpressionNode):
+        (JSC::ObjectSpreadExpressionNode::ObjectSpreadExpressionNode): Deleted.
+        * parser/Nodes.h:
+        (JSC::ObjectPatternNode::appendEntry):
+        (JSC::ObjectSpreadExpressionNode::expression): Deleted.
+        (JSC::ObjectPatternNode::setContainsRestElement): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createSpreadExpression):
+        (JSC::SyntaxChecker::createProperty):
+        (JSC::SyntaxChecker::operatorStackPop):
+        (JSC::SyntaxChecker::createObjectSpreadExpression): Deleted.
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+
+2017-05-15  David Kilzer  <ddkilzer@apple.com>
+
+        JSEnvironmentRecord::allocationSizeForScopeSize() and offsetOfVariable(ScopeOffset) should used checked arithmetic
+        <https://webkit.org/b/172134>
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSEnvironmentRecord.h:
+        (JSC::JSEnvironmentRecord::offsetOfVariable): Change to return
+        size_t and use checked arithmetic.
+        (JSC::JSEnvironmentRecord::allocationSizeForScopeSize): Change
+        to use checked arithmetic.
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        WorkerRunLoop::Task::performTask() should check !scriptController->isTerminatingExecution().
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Filip Pizlo.
+
+        Increased the number of frames captured in VM::nativeStackTraceOfLastThrow()
+        from 25 to 100.  From experience, I found that 25 is sometimes not sufficient
+        for our debugging needs.
+
+        Also added VM::throwingThread() to track which thread an exception was thrown in.
+        This may be useful if the client is entering the VM from different threads.
+
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::exception):
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/Options.h:
+        - Added the unexpectedExceptionStackTraceLimit option.
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::throwingThread):
+        (JSC::VM::clearException):
+
+2017-05-13  David Kilzer  <ddkilzer@apple.com>
+
+        Unused lambda capture in JSContextGroupAddMarkingConstraint()
+        <https://webkit.org/b/172084>
+
+        Reviewed by Saam Barati.
+
+        Fixes the following warning with newer clang:
+
+            Source/JavaScriptCore/API/JSMarkingConstraintPrivate.cpp:78:11: error: lambda capture 'vm' is not used [-Werror,-Wunused-lambda-capture]
+                    [&vm, constraintCallback, userData]
+                      ^
+
+        * API/JSMarkingConstraintPrivate.cpp:
+        (JSContextGroupAddMarkingConstraint): Remove unused lambda
+        capture for '&vm'.
+
+2017-05-13  David Kilzer  <ddkilzer@apple.com>
+
+        [JSC] config.rb fails when checking some clang versions
+        <https://webkit.org/b/172082>
+
+        Reviewed by Mark Lam.
+
+        * offlineasm/config.rb:
+        - Add support for quad-dotted version of Apple clang (800.0.12.1).
+        - Add support for checking open source clang version (5.0.0).
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216808.
+        https://bugs.webkit.org/show_bug.cgi?id=172075
+
+        caused lldb to hang when debugging (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use Mach exceptions instead of signals where possible"
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+        http://trac.webkit.org/changeset/216808
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216801.
+        https://bugs.webkit.org/show_bug.cgi?id=172072
+
+        Many memory corruption crashes on worker threads (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "WorkerRunLoop::Task::performTask() should check
+        !scriptController->isTerminatingExecution()."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216801
+
+2017-05-12  Geoffrey Garen  <ggaren@apple.com>
+
+        [JSC] DFG::Node should not have its own allocator
+        https://bugs.webkit.org/show_bug.cgi?id=160098
+
+        Reviewed by Saam Barati.
+
+        I just rebased the patch from <http://trac.webkit.org/changeset/203808>.
+
+        I ran Octane and JetStream locally on a MacBook Air and I wasn't able to
+        reproduce a regression. Let's land this again and see what the bots say.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3SparseCollection.h:
+        (JSC::B3::SparseCollection::packIndices):
+        * dfg/DFGAllocator.h: Removed.
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        (JSC::DFG::Graph::~Graph):
+        (JSC::DFG::Graph::deleteNode):
+        (JSC::DFG::Graph::packNodeIndices):
+        (JSC::DFG::Graph::addNodeToMapByIndex): Deleted.
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addNode):
+        (JSC::DFG::Graph::maxNodeCount):
+        (JSC::DFG::Graph::nodeAt):
+        * dfg/DFGLongLivedState.cpp: Removed.
+        * dfg/DFGLongLivedState.h: Removed.
+        * dfg/DFGNode.h:
+        * dfg/DFGNodeAllocator.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPlan.h:
+        * dfg/DFGWorklist.cpp:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-05-12  Keith Miller  <keith_miller@apple.com>
+
+        Use Mach exceptions instead of signals where possible
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+
+        Reviewed by Mark Lam.
+
+        This patch adds some new JSC options. The first is an option that
+        enables or disables web assembly tier up. The second controls
+        whether or not we use mach exceptions (where available).
+
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        (dispatchTermitateCallback):
+        (testExecutionTimeLimit):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+        * runtime/VMTraps.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::adjustPCToPointToTrappingInstruction):
+        (JSC::installSignalHandler):
+        (JSC::VMTraps::SignalSender::send):
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::dump):
+        (JSC::installCrashHandler):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+        * wasm/WasmMachineThreads.cpp:
+        (JSC::Wasm::resetInstructionCacheOnAllThreads):
+
+2017-05-12  Mark Lam  <mark.lam@apple.com>
+
+        WorkerRunLoop::Task::performTask() should check !scriptController->isTerminatingExecution().
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Saam Barati.
+
+        Increased the number of frames captured in VM::nativeStackTraceOfLastThrow()
+        from 25 to 100.  From experience, I found that 25 is sometimes not sufficient
+        for our debugging needs.
+
+        Also added VM::throwingThread() to track which thread an exception was thrown in.
+        This may be useful if the client is entering the VM from different threads.
+
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::exception):
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/Options.h:
+        - Added the unexpectedExceptionStackTraceLimit option.
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::throwingThread):
+        (JSC::VM::clearException):
+
+2017-05-12  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Make QueueTaskToEventLoopFunctionPtr take JSGlobalObject&
+        https://bugs.webkit.org/show_bug.cgi?id=172021
+
+        Reviewed by Mark Lam.
+
+        Change the function alias for QueueTaskToEventLoopFunctionPtr to take JSGlobalObject&
+        instead of a const JSGlobalObject* as all implementations expect to be passed a non-
+        const, non-null JSGlobalObject object.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::queueMicrotask):
+        * runtime/JSGlobalObject.h:
+        * runtime/VM.cpp:
+        (JSC::VM::queueMicrotask):
+        * runtime/VM.h: Remove JS_EXPORT_PRIVATE annotation from queueMicrotask() as
+        it is only called from JavaScriptCore code.
+
+2017-05-12  Michael Saboff  <msaboff@apple.com>
+
+        [iOS] Use memory footprint to dynamically adjust behavior of allocators
+        https://bugs.webkit.org/show_bug.cgi?id=171944
+
+        Reviewed by Filip Pizlo.
+
+        This change is iOS only.
+
+        Added the ability to react to when memory usage is critical.  This is defined as memory
+        usage being above the newly added option criticalGCMemoryThreshold.  When we are in this
+        critical state, all collections are Full and we limit the amount of memory we allocate
+        between collections to 1/4th the memory above the critical threshold.
+
+        Changed the calculation of proportionalHeapSize to be based on process memory footprint
+        and not how big the heap is.  Also, the values of Options::smallHeapRAMFraction and
+        Options::mediumHeapRAMFraction are overriden so that most of the heap growth is happens
+        using the more agressive Options::smallHeapGrowthFactor.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::overCriticalMemoryThreshold):
+        (JSC::Heap::shouldDoFullCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        * heap/Heap.h:
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+
+2017-05-11  Saam Barati  <sbarati@apple.com>
+
+        Computing optionalDefArgWidth in CheckSpecial should not consider Scratch roles
+        https://bugs.webkit.org/show_bug.cgi?id=171962
+
+        Reviewed by Filip Pizlo.
+
+        The purpose of getting the result width is to get the width of
+        the result of the arithmetic. It does not care about that the
+        Check happens to define scratches.
+
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/testb3.cpp:
+        (JSC::B3::testCheckMul):
+        (JSC::B3::testCheckMulMemory):
+        (JSC::B3::testCheckMul64):
+        (JSC::B3::testCheckMulFold):
+        (JSC::B3::testCheckMulFoldFail):
+        (JSC::B3::testCheckMulArgumentAliasing64):
+        (JSC::B3::testCheckMulArgumentAliasing32):
+        (JSC::B3::testCheckMul64SShr):
+
+2017-05-11  Saam Barati  <sbarati@apple.com>
+
+        isValidForm for SimpleAddr should use ptr() instead of tmp()
+        https://bugs.webkit.org/show_bug.cgi?id=171992
+
+        Reviewed by Filip Pizlo.
+
+        Arg::tmp() asserts that its kind is Tmp. Inst::isValidForm for
+        SimpleAddr was using Arg::tmp() instead of ptr() to check
+        if the address Tmp isGP(). It should be using Arg::ptr() instead
+        of Arg::tmp() since Arg::ptr() is designed for SimpleAddr.
+        
+        This patch also fixes an incorrect assertion in the ARM64
+        macro assembler. We were asserting various atomic ops were
+        only over 32/64 bit operations. However, the code was properly handling
+        8/16/32/64 bit ops. I changed the assertion to reflect what is
+        actually going on.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::ldar):
+        (JSC::ARM64Assembler::ldxr):
+        (JSC::ARM64Assembler::ldaxr):
+        (JSC::ARM64Assembler::stxr):
+        (JSC::ARM64Assembler::stlr):
+        (JSC::ARM64Assembler::stlxr):
+        * b3/air/opcode_generator.rb:
+        * b3/testb3.cpp:
+        (JSC::B3::testLoadAcq42):
+        (JSC::B3::testStoreRelAddLoadAcq32):
+        (JSC::B3::testStoreRelAddLoadAcq8):
+        (JSC::B3::testStoreRelAddFenceLoadAcq8):
+        (JSC::B3::testStoreRelAddLoadAcq16):
+        (JSC::B3::testStoreRelAddLoadAcq64):
+        (JSC::B3::testAtomicWeakCAS):
+        (JSC::B3::testAtomicStrongCAS):
+        (JSC::B3::testAtomicXchg):
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216677.
+
+        Patch caused layout test crashes.
+
+        Reverted changeset:
+
+        "WorkerThread::stop() should call
+        scheduleExecutionTermination() last."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216677
+
+2017-05-11  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for regex.h
+        https://bugs.webkit.org/show_bug.cgi?id=171950
+
+        Reviewed by Michael Catanzaro.
+
+        * runtime/ConfigFile.cpp:
+        (JSC::ConfigFile::parse):
+
+2017-05-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Callers of JSString::unsafeView() should check exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=171995
+
+        Reviewed by Mark Lam.
+        
+        unsafeView() can throw OOME. So, callers of unsafeView() should check for exceptions before trying
+        to access the view.
+
+        Also, I made the functions surrounding unsafeView() take ExecState* not ExecState&, to comply with
+        the rest of JSC.
+
+        * dfg/DFGOperations.cpp:
+        * jsc.cpp:
+        (printInternal):
+        (functionDebug):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncJoin):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorFuncCompare):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncJoin):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncParseFloat):
+        * runtime/JSONObject.cpp:
+        (JSC::JSONProtoFuncParse):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getPrimitiveNumber):
+        (JSC::JSString::toNumber):
+        * runtime/JSString.h:
+        (JSC::JSString::getIndex):
+        (JSC::JSRopeString::unsafeView):
+        (JSC::JSRopeString::viewWithUnderlyingString):
+        (JSC::JSString::unsafeView):
+        (JSC::JSString::viewWithUnderlyingString):
+        * runtime/JSStringJoiner.h:
+        (JSC::JSStringJoiner::appendWithoutSideEffects):
+        (JSC::JSStringJoiner::append):
+        * runtime/ParseInt.h:
+        (JSC::toStringView):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncRepeatCharacter):
+        (JSC::stringProtoFuncCharAt):
+        (JSC::stringProtoFuncCharCodeAt):
+        (JSC::stringProtoFuncIndexOf):
+        (JSC::stringProtoFuncNormalize):
+
+2017-05-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Offer SPI to notify clients that GC has happened
+        https://bugs.webkit.org/show_bug.cgi?id=171980
+
+        Reviewed by Geoffrey Garen.
+        
+        Sometimes when you're programming with weak references, it's most convenient if the GC tells
+        you when it finishes. This adds exactly such an API. This API is called at the *flip*: the
+        moment when the GC knows for sure which objects are dead and has definitely not allocated any
+        new objects or executed any JS code. The finalization part of the flip, which is where this
+        callback gets called, runs on the "main" thread - i.e. some thread that is attempting to
+        execute JS code and holds the JS lock. This will usually run as a side-effect of some
+        allocation or from the runloop.
+        
+        This means, for example, that if you implemented a vector of weak references and registered a
+        callback to prune the vector of null weak references, then aside from the callback, nobody
+        would ever see a null weak reference in the vector.
+
+        * API/JSHeapFinalizerPrivate.cpp: Added.
+        (JSContextGroupAddHeapFinalizer):
+        (JSContextGroupRemoveHeapFinalizer):
+        * API/JSHeapFinalizerPrivate.h: Added.
+        * API/tests/testapi.c:
+        (heapFinalizer):
+        (testMarkingConstraintsAndHeapFinalizers):
+        (main):
+        (testMarkingConstraints): Deleted.
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::finalize):
+        (JSC::Heap::addHeapFinalizerCallback):
+        (JSC::Heap::removeHeapFinalizerCallback):
+        * heap/Heap.h:
+        * heap/HeapFinalizerCallback.cpp: Added.
+        (JSC::HeapFinalizerCallback::dump):
+        * heap/HeapFinalizerCallback.h: Added.
+        (JSC::HeapFinalizerCallback::HeapFinalizerCallback):
+        (JSC::HeapFinalizerCallback::operator==):
+        (JSC::HeapFinalizerCallback::operator!=):
+        (JSC::HeapFinalizerCallback::operator bool):
+        (JSC::HeapFinalizerCallback::run):
+
+2017-05-11  Filip Pizlo  <fpizlo@apple.com>
+
+        JSWeakCreate/Retain/Release should take a JSContextGroupRef and not a JSContextRef
+        https://bugs.webkit.org/show_bug.cgi?id=171979
+
+        Reviewed by Mark Lam.
+        
+        Functions that don't execute arbitrary JS but just need access to the VM should take a
+        JSContextGroupRef, not a JSContextRef.
+
+        * API/JSWeakPrivate.cpp:
+        (JSWeakCreate):
+        (JSWeakRetain):
+        (JSWeakRelease):
+        * API/JSWeakPrivate.h:
+        * API/tests/testapi.c:
+        (testMarkingConstraints):
+
+2017-05-11  Mark Lam  <mark.lam@apple.com>
+
+        WorkerThread::stop() should call scheduleExecutionTermination() last.
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Geoffrey Garen.
+
+        Increased the number of frames captured in VM::nativeStackTraceOfLastThrow()
+        from 25 to 100.  From experience, I found that 25 is sometimes not sufficient
+        for our debugging needs.
+
+        Also added VM::throwingThread() to track which thread an exception was thrown in.
+        This may be useful if the client is entering the VM from different threads.
+
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        (JSC::ExceptionScope::releaseAssertIsTerminatedExecutionException):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::exception):
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::throwingThread):
+        (JSC::VM::clearException):
+
+2017-05-11  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: stop supporting 0xD
+        https://bugs.webkit.org/show_bug.cgi?id=168788
+        <rdar://problem/31880922>
+
+        Reviewed by Saam Barati.
+
+        Only version 1 is supported by other browsers, and there shouldn't
+        be any 0xD binaries in the wild anymore.
+
+        * wasm/WasmModuleParser.cpp:
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Remove definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216635.
+        https://bugs.webkit.org/show_bug.cgi?id=171953
+
+        "Some worker tests are failing". (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "WorkerThread::stop() should call
+        scheduleExecutionTermination() last."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216635
+
+2017-05-10  Mark Lam  <mark.lam@apple.com>
+
+        Crash in JavaScriptCore GC when using JSC on dispatch queues (thread_get_state returns NULL stack pointer).
+        https://bugs.webkit.org/show_bug.cgi?id=160337
+        <rdar://problem/27611733>
+
+        Not reviewed.
+
+        Updated a comment per Geoff's suggestion.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+
+2017-05-10  Mark Lam  <mark.lam@apple.com>
+
+        WorkerThread::stop() should call scheduleExecutionTermination() last.
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Geoffrey Garen.
+
+        Increased the number of frames captured in VM::nativeStackTraceOfLastThrow()
+        from 25 to 100.  From experience, I found that 25 is sometimes not sufficient
+        for our debugging needs.
+
+        Also added VM::throwingThread() to track which thread an exception was thrown in.
+        This may be useful if the client is entering the VM from different threads.
+
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        (JSC::ExceptionScope::releaseAssertIsTerminatedExecutionException):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::exception):
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::throwingThread):
+        (JSC::VM::clearException):
+
+2017-05-10  Mark Lam  <mark.lam@apple.com>
+
+        Crash in JavaScriptCore GC when using JSC on dispatch queues (thread_get_state returns NULL stack pointer).
+        https://bugs.webkit.org/show_bug.cgi?id=160337
+        <rdar://problem/27611733>
+
+        Reviewed by Filip Pizlo and Geoffrey Garen.
+
+        This is a workaround for <rdar://problem/27607384>. During thread initialization,
+        for some target platforms, thread state is momentarily set to 0 before being
+        filled in with the target thread's real register values. As a result, there's
+        a race condition that may result in us getting a null stackPointer during a GC scan.
+        This issue may manifest with workqueue threads where the OS may choose to recycle
+        a thread for an expired task.
+
+        The workaround is simply to indicate that there's nothing to copy and return.
+        This is correct because we will only ever observe a null pointer during thread
+        initialization. Hence, by definition, there's nothing there that we need to scan
+        yet, and therefore, nothing that needs to be copied.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+
+2017-05-10  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support name section
+
+        https://bugs.webkit.org/show_bug.cgi?id=171263
+
+        Reviewed by Keith Miller.
+
+        The name section is an optional custom section in the WebAssembly
+        spec. At least when debugging, developers expect to be able to use
+        this section to obtain intelligible stack traces, otherwise we
+        just number the wasm functions which is somewhat painful.
+
+        This patch parses this section, dropping its content eagerly on
+        error, and if there is a name section then backtraces use their
+        value instead of numbers. Otherwise we stick to numbers as before.
+
+        Note that the format of name sections changed in mid-February:
+          https://github.com/WebAssembly/design/pull/984
+        And binaryen was only updated in early March:
+          https://github.com/WebAssembly/binaryen/pull/933
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * interpreter/Interpreter.cpp:
+        (JSC::GetStackTraceFunctor::operator()):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::readNonInlinedFrame):
+        (JSC::StackVisitor::Frame::functionName):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::Frame::wasmFunctionIndexOrName):
+        * runtime/StackFrame.cpp:
+        (JSC::StackFrame::functionName):
+        * runtime/StackFrame.h:
+        (JSC::StackFrame::StackFrame):
+        (JSC::StackFrame::wasm):
+        * wasm/WasmBBQPlanInlines.h:
+        (JSC::Wasm::BBQPlan::initializeCallees):
+        * wasm/WasmCallee.cpp:
+        (JSC::Wasm::Callee::Callee):
+        * wasm/WasmCallee.h:
+        (JSC::Wasm::Callee::create):
+        (JSC::Wasm::Callee::indexOrName):
+        * wasm/WasmFormat.cpp:
+        (JSC::Wasm::makeString):
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::isValidExternalKind):
+        (JSC::Wasm::isValidNameType):
+        (JSC::Wasm::NameSection::get):
+        * wasm/WasmIndexOrName.cpp: Copied from Source/JavaScriptCore/wasm/WasmCallee.cpp.
+        (JSC::Wasm::IndexOrName::IndexOrName):
+        (JSC::Wasm::makeString):
+        * wasm/WasmIndexOrName.h: Copied from Source/JavaScriptCore/wasm/WasmFormat.cpp.
+        * wasm/WasmModuleInformation.h:
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmName.h: Copied from Source/JavaScriptCore/wasm/WasmCallee.cpp.
+        * wasm/WasmNameSectionParser.cpp: Added.
+        * wasm/WasmNameSectionParser.h: Copied from Source/JavaScriptCore/wasm/WasmCallee.cpp.
+        (JSC::Wasm::NameSectionParser::NameSectionParser):
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser<SuccessType>::consumeUTF8String):
+
+2017-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Null pointer dereference in WTF::RefPtr<WTF::StringImpl>::operator!() under slow_path_get_direct_pname
+        https://bugs.webkit.org/show_bug.cgi?id=171801
+
+        Reviewed by Michael Saboff.
+        
+        This was a goofy oversight. The for-in optimization relies on the bytecode generator
+        to detect when the loop's index variable gets mutated. We forgot to have the hooks for
+        detecting this in prefix and postfix operations (++i and i++).
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PostfixNode::emitResolve):
+        (JSC::PrefixNode::emitResolve):
+
+2017-05-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] -Wmissing-field-initializers triggered by RemoteInspectorServer.cpp:128
+        https://bugs.webkit.org/show_bug.cgi?id=171273
+
+        Reviewed by Carlos Garcia Campos.
+
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        * inspector/remote/glib/RemoteInspectorServer.cpp:
+
+2017-05-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Remove some last remnants of the EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=171922
+
+        Reviewed by Antonio Gomes.
+
+        The EFL port is no more.
+
+        * PlatformEfl.cmake: Removed.
+        * shell/PlatformEfl.cmake: Removed.
+
 2017-05-09  Filip Pizlo  <fpizlo@apple.com>
 
         JSInjectedScriptHost should get a copy of the boundArgs

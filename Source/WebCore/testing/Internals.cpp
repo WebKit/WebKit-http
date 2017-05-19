@@ -139,7 +139,7 @@
 #include "ViewportArguments.h"
 #include "WebCoreJSClientData.h"
 #if ENABLE(WEBGL)
-#include "WebGLRenderingContextBase.h"
+#include "WebGLRenderingContext.h"
 #endif
 #include "WorkerThread.h"
 #include "WritingDirection.h"
@@ -191,10 +191,6 @@
 #include "DOMWindowSpeechSynthesis.h"
 #include "PlatformSpeechSynthesizerMock.h"
 #include "SpeechSynthesis.h"
-#endif
-
-#if ENABLE(VIBRATION)
-#include "Vibration.h"
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -732,6 +728,11 @@ void Internals::pruneMemoryCacheToSize(unsigned size)
 {
     MemoryCache::singleton().pruneDeadResourcesToSize(size);
     MemoryCache::singleton().pruneLiveResourcesToSize(size, true);
+}
+    
+void Internals::destroyDecodedDataForAllImages()
+{
+    MemoryCache::singleton().destroyDecodedDataForAllImages();
 }
 
 unsigned Internals::memoryCacheSize() const
@@ -2180,7 +2181,7 @@ RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
 {
     auto* inspectedPage = contextDocument()->frame()->page();
     auto* window = inspectedPage->mainFrame().document()->domWindow();
-    auto frontendWindow = window->open(url, "", "", *window, *window);
+    auto frontendWindow = window->open(*window, *window, url, "", "");
     m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(*inspectedPage, frontendWindow.copyRef());
     return frontendWindow;
 }
@@ -3130,17 +3131,6 @@ ExceptionOr<Ref<DOMRect>> Internals::selectionBounds()
     return DOMRect::create(document->frame()->selection().selectionBounds());
 }
 
-#if ENABLE(VIBRATION)
-
-bool Internals::isVibrating()
-{
-    auto* document = contextDocument();
-    auto* page = document ? document->page() : nullptr;
-    return page && Vibration::from(page)->isVibrating();
-}
-
-#endif
-
 ExceptionOr<bool> Internals::isPluginUnavailabilityIndicatorObscured(Element& element)
 {
     auto* renderer = element.renderer();
@@ -3976,12 +3966,27 @@ void Internals::setAsRunningUserScripts(Document& document)
 }
 
 #if ENABLE(WEBGL)
-void Internals::simulateWebGLContextChanged(WebGLRenderingContextBase& context)
+void Internals::simulateWebGLContextChanged(WebGLRenderingContext& context)
 {
     context.simulateContextChanged();
 }
 #endif
 
+void Internals::setPageVisibility(bool isVisible)
+{
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return;
+    auto& page = *document->page();
+    auto state = page.activityState();
+
+    if (!isVisible)
+        state &= ~ActivityState::IsVisible;
+    else
+        state |= ActivityState::IsVisible;
+
+    page.setActivityState(state);
+}
 
 #if ENABLE(MEDIA_STREAM)
 void Internals::observeMediaStreamTrack(MediaStreamTrack& track)
@@ -4001,14 +4006,15 @@ void Internals::videoSampleAvailable(MediaSample& sample)
     if (!m_nextTrackFramePromise)
         return;
 
-    auto videoSettings = m_track->getSettings();
-    if (!videoSettings.width || !videoSettings.height)
+    auto& videoSettings = m_track->source().settings();
+    if (!videoSettings.width() || !videoSettings.height())
         return;
-
+    
     auto rgba = sample.getRGBAImageData();
     if (!rgba)
         return;
-    auto imageData = ImageData::create(rgba.releaseNonNull(), *videoSettings.width, *videoSettings.height);
+    
+    auto imageData = ImageData::create(rgba.releaseNonNull(), videoSettings.width(), videoSettings.height());
     if (!imageData.hasException())
         m_nextTrackFramePromise->resolve(imageData.releaseReturnValue().releaseNonNull());
     else
@@ -4035,6 +4041,11 @@ ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String&
         return result.releaseException();
 
     return { };
+}
+
+void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float delay)
+{
+    track.source().delaySamples(delay);
 }
 
 #endif

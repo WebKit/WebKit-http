@@ -369,6 +369,9 @@ class WinPort(ApplePort):
         self.restore_crash_log_saving()
         super(WinPort, self).clean_up_test_run()
 
+    def path_to_crash_logs(self):
+        return self.results_directory()
+
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
         # Note that we do slow-spin here and wait, since it appears the time
         # ReportCrash takes to actually write and flush the file varies when there are
@@ -377,7 +380,7 @@ class WinPort(ApplePort):
         time_fn = time_fn or time.time
         sleep_fn = sleep_fn or time.sleep
         crash_log = ''
-        crash_logs = CrashLogs(self.host, self.results_directory())
+        crash_logs = CrashLogs(self.host, self.path_to_crash_logs())
         now = time_fn()
         # FIXME: delete this after we're sure this code is working ...
         _log.debug('looking for crash log for %s:%s' % (name, str(pid)))

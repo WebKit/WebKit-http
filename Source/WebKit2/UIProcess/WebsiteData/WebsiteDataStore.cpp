@@ -285,7 +285,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
 #if ENABLE(VIDEO)
     if (dataTypes.contains(WebsiteDataType::DiskCache)) {
         callbackAggregator->addPendingCallback();
-        m_queue->dispatch([fetchOptions, mediaCacheDirectory = m_configuration.mediaCacheDirectory.isolatedCopy(), callbackAggregator] {
+        m_queue->dispatch([mediaCacheDirectory = m_configuration.mediaCacheDirectory.isolatedCopy(), callbackAggregator] {
             // FIXME: Make HTMLMediaElement::originsInMediaCache return a collection of SecurityOriginDatas.
             HashSet<RefPtr<WebCore::SecurityOrigin>> origins = WebCore::HTMLMediaElement::originsInMediaCache(mediaCacheDirectory);
             WebsiteData websiteData;
@@ -419,7 +419,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
 #if ENABLE(DATABASE_PROCESS)
     if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
         for (auto& processPool : processPools()) {
-            processPool->ensureDatabaseProcess();
+            processPool->ensureDatabaseProcessAndWebsiteDataStore(this);
 
             callbackAggregator->addPendingCallback();
             processPool->databaseProcess()->fetchWebsiteData(m_sessionID, dataTypes, [callbackAggregator, processPool](WebsiteData websiteData) {
@@ -503,7 +503,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
 
 void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Vector<String>&& topPrivatelyControlledDomains, std::function<void(Vector<WebsiteDataRecord>&&, Vector<String>&&)> completionHandler)
 {
-    fetchData(dataTypes, fetchOptions, [topPrivatelyControlledDomains = WTFMove(topPrivatelyControlledDomains), completionHandler, this](auto&& existingDataRecords) {
+    fetchData(dataTypes, fetchOptions, [topPrivatelyControlledDomains = WTFMove(topPrivatelyControlledDomains), completionHandler](auto&& existingDataRecords) {
         Vector<WebsiteDataRecord> matchingDataRecords;
         Vector<String> domainsWithMatchingDataRecords;
         for (auto&& dataRecord : existingDataRecords) {
@@ -691,7 +691,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
 #if ENABLE(DATABASE_PROCESS)
     if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
         for (auto& processPool : processPools()) {
-            processPool->ensureDatabaseProcess();
+            processPool->ensureDatabaseProcessAndWebsiteDataStore(this);
 
             callbackAggregator->addPendingCallback();
             processPool->databaseProcess()->deleteWebsiteData(m_sessionID, dataTypes, modifiedSince, [callbackAggregator, processPool] {
@@ -959,7 +959,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
 #if ENABLE(DATABASE_PROCESS)
     if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
         for (auto& processPool : processPools()) {
-            processPool->ensureDatabaseProcess();
+            processPool->ensureDatabaseProcessAndWebsiteDataStore(this);
 
             callbackAggregator->addPendingCallback();
             processPool->databaseProcess()->deleteWebsiteDataForOrigins(m_sessionID, dataTypes, origins, [callbackAggregator, processPool] {
@@ -1250,6 +1250,8 @@ void WebsiteDataStore::registerSharedResourceLoadObserver()
 
 DatabaseProcessCreationParameters WebsiteDataStore::databaseProcessParameters()
 {
+    resolveDirectoriesIfNecessary();
+
     DatabaseProcessCreationParameters parameters;
 
     parameters.sessionID = m_sessionID;
@@ -1261,6 +1263,23 @@ DatabaseProcessCreationParameters WebsiteDataStore::databaseProcessParameters()
 #endif
 
     return parameters;
+}
+
+Vector<WebCore::Cookie> WebsiteDataStore::pendingCookies() const
+{
+    Vector<WebCore::Cookie> cookies;
+    copyToVector(m_pendingCookies, cookies);
+    return cookies;
+}
+
+void WebsiteDataStore::addPendingCookie(const WebCore::Cookie& cookie)
+{
+    m_pendingCookies.add(cookie);
+}
+
+void WebsiteDataStore::removePendingCookie(const WebCore::Cookie& cookie)
+{
+    m_pendingCookies.remove(cookie);
 }
 
 #if !PLATFORM(COCOA)

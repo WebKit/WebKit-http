@@ -27,20 +27,20 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSFunction.h"
 #include "JSWebAssemblyCodeBlock.h"
+#include "WebAssemblyFunctionBase.h"
 
 namespace JSC {
 
-class WebAssemblyWrapperFunction : public JSFunction {
+class WebAssemblyWrapperFunction : public WebAssemblyFunctionBase {
 public:
-    typedef JSFunction Base;
+    using Base = WebAssemblyFunctionBase;
 
     const static unsigned StructureFlags = Base::StructureFlags;
 
     DECLARE_INFO;
 
-    static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, JSObject*, unsigned importIndex, JSWebAssemblyCodeBlock*, Wasm::SignatureIndex);
+    static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, JSObject*, unsigned importIndex, JSWebAssemblyInstance*, Wasm::SignatureIndex);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     Wasm::SignatureIndex signatureIndex() const { return m_wasmFunction.signatureIndex; }
@@ -51,18 +51,15 @@ public:
 protected:
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    void finishCreation(VM&, NativeExecutable*, unsigned length, const String& name, JSObject*, JSWebAssemblyCodeBlock*);
+    void finishCreation(VM&, NativeExecutable*, unsigned length, const String& name, JSObject*, JSWebAssemblyInstance*);
 
 private:
     WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, Wasm::CallableFunction);
 
-    // We keep a reference to our CodeBlock because we have a raw
-    // pointer to asm code that it owns.
-    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlock;
     WriteBarrier<JSObject> m_function;
     // It's safe to just hold the raw CallableFunction because we have a reference
-    // to our CodeBlock, which points to the Module that exported us, which
-    // ensures that the actual Signature/code doesn't get deallocated.
+    // to our Instance, which points to the CodeBlock, which points to the Module
+    // that exported us, which ensures that the actual Signature/code doesn't get deallocated.
     Wasm::CallableFunction m_wasmFunction;
 };
 

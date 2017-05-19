@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2004, 2007-2008, 2015-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -33,7 +33,7 @@
 
 namespace JSC {
     
-const ClassInfo JSString::s_info = { "string", 0, 0, CREATE_METHOD_TABLE(JSString) };
+const ClassInfo JSString::s_info = { "string", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(JSString) };
 
 Structure* JSString::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
 {
@@ -395,14 +395,22 @@ JSValue JSString::toPrimitive(ExecState*, PreferredPrimitiveType) const
 
 bool JSString::getPrimitiveNumber(ExecState* exec, double& number, JSValue& result) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    StringView view = unsafeView(exec);
+    RETURN_IF_EXCEPTION(scope, false);
     result = this;
-    number = jsToNumber(unsafeView(*exec));
+    number = jsToNumber(view);
     return false;
 }
 
 double JSString::toNumber(ExecState* exec) const
 {
-    return jsToNumber(unsafeView(*exec));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    StringView view = unsafeView(exec);
+    RETURN_IF_EXCEPTION(scope, 0);
+    return jsToNumber(view);
 }
 
 inline StringObject* StringObject::create(VM& vm, JSGlobalObject* globalObject, JSString* string)

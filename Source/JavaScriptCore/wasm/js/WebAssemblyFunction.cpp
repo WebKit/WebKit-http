@@ -47,7 +47,7 @@
 
 namespace JSC {
 
-const ClassInfo WebAssemblyFunction::s_info = { "WebAssemblyFunction", &Base::s_info, nullptr, CREATE_METHOD_TABLE(WebAssemblyFunction) };
+const ClassInfo WebAssemblyFunction::s_info = { "WebAssemblyFunction", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(WebAssemblyFunction) };
 
 static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
 {
@@ -184,14 +184,6 @@ void WebAssemblyFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     WebAssemblyFunction* thisObject = jsCast<WebAssemblyFunction*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(thisObject->m_instance);
-}
-
-void WebAssemblyFunction::finishCreation(VM& vm, NativeExecutable* executable, unsigned length, const String& name, JSWebAssemblyInstance* instance)
-{
-    Base::finishCreation(vm, executable, length, name);
-    ASSERT(inherits(vm, info()));
-    m_instance.set(vm, this, instance);
 }
 
 } // namespace JSC

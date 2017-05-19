@@ -29,6 +29,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
+#include "WebResourceLoadStatisticsManager.h"
 #include "WebResourceLoadStatisticsStoreMessages.h"
 #include "WebsiteDataFetchOption.h"
 #include "WebsiteDataType.h"
@@ -182,7 +183,10 @@ void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
 void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)>&& shouldPartitionCookiesForDomainsHandler)
 {
     registerSharedResourceLoadObserver();
-    m_resourceLoadStatisticsStore->setShouldPartitionCookiesCallback([this, shouldPartitionCookiesForDomainsHandler = WTFMove(shouldPartitionCookiesForDomainsHandler)] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst) {
+#if PLATFORM(COCOA)
+    WebResourceLoadStatisticsManager::registerUserDefaultsIfNeeded();
+#endif
+    m_resourceLoadStatisticsStore->setShouldPartitionCookiesCallback([shouldPartitionCookiesForDomainsHandler = WTFMove(shouldPartitionCookiesForDomainsHandler)] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst) {
         shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd, clearFirst);
     });
     m_resourceLoadStatisticsStore->setWritePersistentStoreCallback([this]() {
@@ -219,7 +223,7 @@ void WebResourceLoadStatisticsStore::processDidCloseConnection(WebProcessProxy&,
 void WebResourceLoadStatisticsStore::applicationWillTerminate()
 {
     BinarySemaphore semaphore;
-    m_statisticsQueue->dispatch([this, &semaphore] {
+    m_statisticsQueue->dispatch([&semaphore] {
         // Make sure any ongoing work in our queue is finished before we terminate.
         semaphore.signal();
     });

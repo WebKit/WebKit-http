@@ -16,6 +16,7 @@ public:
 
     virtual void cdmClientAttemptToResumePlaybackIfNecessary() = 0;
     virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
+
 #if USE(OCDM)
     virtual void emitSession(String&) = 0;
 #endif

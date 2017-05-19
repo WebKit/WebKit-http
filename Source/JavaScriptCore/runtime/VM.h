@@ -141,11 +141,6 @@ class Watchdog;
 class Watchpoint;
 class WatchpointSet;
 
-#if ENABLE(DFG_JIT)
-namespace DFG {
-class LongLivedState;
-}
-#endif // ENABLE(DFG_JIT)
 #if ENABLE(FTL_JIT)
 namespace FTL {
 class Thunks;
@@ -299,10 +294,6 @@ public:
 #if ENABLE(WEBASSEMBLY)
     JSWebAssemblyCodeBlockSubspace webAssemblyCodeBlockSpace;
 #endif
-
-#if ENABLE(DFG_JIT)
-    std::unique_ptr<DFG::LongLivedState> dfgState;
-#endif // ENABLE(DFG_JIT)
 
     VMType vmType;
     ClientData* clientData;
@@ -653,7 +644,7 @@ public:
     bool enableControlFlowProfiler();
     bool disableControlFlowProfiler();
 
-    JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, Ref<Microtask>&&);
+    void queueMicrotask(JSGlobalObject&, Ref<Microtask>&&);
     JS_EXPORT_PRIVATE void drainMicrotasks();
     void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
     ALWAYS_INLINE bool globalConstRedeclarationShouldThrow() const { return m_globalConstRedeclarationShouldThrow; }
@@ -684,6 +675,7 @@ public:
 
 #if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
     StackTrace* nativeStackTraceOfLastThrow() const { return m_nativeStackTraceOfLastThrow.get(); }
+    ThreadIdentifier throwingThread() const { return m_throwingThread; }
 #endif
 
 private:
@@ -719,6 +711,7 @@ private:
 #if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
         m_needExceptionCheck = false;
         m_nativeStackTraceOfLastThrow = nullptr;
+        m_throwingThread = 0;
 #endif
         m_exception = nullptr;
     }
@@ -766,6 +759,7 @@ private:
     unsigned m_simulatedThrowPointRecursionDepth { 0 };
     mutable bool m_needExceptionCheck { false };
     std::unique_ptr<StackTrace> m_nativeStackTraceOfLastThrow;
+    ThreadIdentifier m_throwingThread;
 #endif
 
     bool m_failNextNewCodeBlock { false };

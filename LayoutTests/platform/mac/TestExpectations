@@ -47,9 +47,6 @@ fast/events/attempt-scroll-with-no-scrollbars.html [ Failure ]
 # Pixel test doesn't repaint entire view so result is corrupted by previous test
 webkit.org/b/21916 tables/mozilla_expected_failures/bugs/bug178855.xml [ Pass ImageOnlyFailure Failure ]
 
-# https://bugs.webkit.org/show_bug.cgi?id=81697 Skip file:// based notifications tests
-fast/notifications
-
 # This port doesn't support detecting slow unload handlers.
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
@@ -281,9 +278,6 @@ webkit.org/b/102257 fast/dom/Window/open-window-min-size.html
 # Fails because MutationObservers are not notified at end-of-task
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
 
-# Needs PageClients::vibrationClient() implementation.
-webkit.org/b/72010 vibration
-
 # <rdar://problem/11059777>
 webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
 
@@ -399,8 +393,6 @@ webkit.org/b/95027 fast/block/float/016.html [ Failure ]
 editing/pasteboard/paste-TIFF.html [ Skip ]
 editing/mac/pasteboard/dataTransfer-set-data-file-url.html [ Skip ]
 webkit.org/b/147674 editing/mac/pasteboard/5583362.html [ Skip ]
-
-webkit.org/b/112620 [ Debug ] svg/custom/image-with-attr-change-after-delete-crash.html [ Crash Pass ]
 
 # Assorted failures that need investigation
 
@@ -1001,7 +993,6 @@ webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/U
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-append-buffer.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-appendbuffer-quota-exceeded.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-av-framesize.html [ Skip ]
-webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-endofstream.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-errors.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-is-type-supported.html [ Skip ]
@@ -1197,6 +1188,7 @@ webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/167265 inspector/network/client-blocked-load.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
+webkit.org/b/168146 [ Debug ] inspector/protocol/inspector-backend-invocation-return-value.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Timeout Failure ]
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
 webkit.org/b/164278 inspector/storage/domStorage-events.html [ Pass Failure ]
@@ -1595,3 +1587,5 @@ webkit.org/b/171465 media/track/track-in-band-style.html [ Pass Timeout ]
 webkit.org/b/171760 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 
 webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-streams/general.html [ Pass Failure ]
+
+webkit.org/b/169876 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Timeout ]

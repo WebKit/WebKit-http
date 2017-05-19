@@ -45,7 +45,6 @@ public:
 
     void setCachedImage(CachedImage*);
     CachedImage* cachedImage() const { return m_cachedImage.get(); }
-    virtual bool hasImage() const { return m_cachedImage; }
 
     void resetAnimation();
 
@@ -62,7 +61,7 @@ public:
     virtual WrappedImagePtr imagePtr() const { return m_cachedImage.get(); }
 
 protected:
-    RenderElement* m_renderer;
+    RenderElement* m_renderer { nullptr };
     CachedResourceHandle<CachedImage> m_cachedImage;
 
 private:

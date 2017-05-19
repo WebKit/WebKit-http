@@ -331,7 +331,7 @@ bool CSSPropertyParser::parseValueStart(CSSPropertyID propertyID, bool important
         }
     }
 
-    if (CSSVariableParser::containsValidVariableReferences(originalRange)) {
+    if (CSSVariableParser::containsValidVariableReferences(originalRange, m_context)) {
         RefPtr<CSSVariableReferenceValue> variable = CSSVariableReferenceValue::create(CSSVariableData::create(originalRange));
 
         if (isShorthand) {
@@ -630,7 +630,7 @@ public:
     {
         if (!m_result->length())
             return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-        return m_result.release();
+        return WTFMove(m_result);
     }
 
 private:
@@ -832,7 +832,7 @@ public:
     {
         if (!m_result->length())
             return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-        return m_result.release();
+        return WTFMove(m_result);
     }
 
 
@@ -4429,7 +4429,7 @@ bool CSSPropertyParser::consumeSystemFont(bool important)
         return false;
     
     FontCascadeDescription fontDescription;
-    RenderTheme::defaultTheme()->systemFont(systemFontID, fontDescription);
+    RenderTheme::singleton().systemFont(systemFontID, fontDescription);
     if (!fontDescription.isAbsoluteSize())
         return false;
     
@@ -5545,6 +5545,25 @@ bool CSSPropertyParser::consumePlaceItemsShorthand(bool important)
     return true;
 }
 
+bool CSSPropertyParser::consumePlaceSelfShorthand(bool important)
+{
+    ASSERT(shorthandForProperty(CSSPropertyPlaceSelf).length() == 2);
+
+    RefPtr<CSSValue> alignSelfValue = consumeSimplifiedItemPosition(m_range);
+    if (!alignSelfValue)
+        return false;
+    RefPtr<CSSValue> justifySelfValue = m_range.atEnd() ? alignSelfValue : consumeSimplifiedItemPosition(m_range);
+    if (!justifySelfValue)
+        return false;
+
+    if (!m_range.atEnd())
+        return false;
+
+    addProperty(CSSPropertyAlignSelf, CSSPropertyPlaceSelf, alignSelfValue.releaseNonNull(), important);
+    addProperty(CSSPropertyJustifySelf, CSSPropertyPlaceSelf, justifySelfValue.releaseNonNull(), important);
+    return true;
+}
+
 bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
 {
     switch (property) {
@@ -5730,6 +5749,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
         return consumePlaceContentShorthand(important);
     case CSSPropertyPlaceItems:
         return consumePlaceItemsShorthand(important);
+    case CSSPropertyPlaceSelf:
+        return consumePlaceSelfShorthand(important);
     case CSSPropertyWebkitMarquee:
         return consumeShorthandGreedily(webkitMarqueeShorthand(), important);
     default:

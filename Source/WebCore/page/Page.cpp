@@ -205,7 +205,6 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_progress(std::make_unique<ProgressTracker>(*pageConfiguration.progressTrackerClient))
     , m_backForwardController(std::make_unique<BackForwardController>(*this, *WTFMove(pageConfiguration.backForwardClient)))
     , m_mainFrame(MainFrame::create(*this, pageConfiguration))
-    , m_theme(RenderTheme::themeForPage(this))
     , m_editorClient(WTFMove(pageConfiguration.editorClient))
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
@@ -2116,6 +2115,8 @@ void Page::mainFrameLoadStarted(const URL& destinationURL, FrameLoadType type)
     String domain;
 #if ENABLE(PUBLIC_SUFFIX_LIST)
     domain = topPrivatelyControlledDomain(destinationURL.host());
+#else
+    UNUSED_PARAM(destinationURL);
 #endif
 
     Navigation navigation = { domain, type };

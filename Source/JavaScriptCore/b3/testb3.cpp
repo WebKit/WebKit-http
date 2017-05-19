@@ -300,13 +300,6 @@ void testLoad42()
 
 void testLoadAcq42()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int x = 42;
@@ -5777,13 +5770,6 @@ void testStoreAddLoad32(int amount)
 
 void testStoreRelAddLoadAcq32(int amount)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int slot = 37;
@@ -5857,13 +5843,6 @@ void testStoreAddLoad8(int amount, B3::Opcode loadOpcode)
 
 void testStoreRelAddLoadAcq8(int amount, B3::Opcode loadOpcode)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int8_t slot = 37;
@@ -5893,13 +5872,6 @@ void testStoreRelAddLoadAcq8(int amount, B3::Opcode loadOpcode)
 
 void testStoreRelAddFenceLoadAcq8(int amount, B3::Opcode loadOpcode)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int8_t slot = 37;
@@ -5983,13 +5955,6 @@ void testStoreAddLoad16(int amount, B3::Opcode loadOpcode)
 
 void testStoreRelAddLoadAcq16(int amount, B3::Opcode loadOpcode)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int16_t slot = 37;
@@ -6061,13 +6026,6 @@ void testStoreAddLoad64(int amount)
 
 void testStoreRelAddLoadAcq64(int amount)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     int64_t slot = 37000000000ll;
@@ -8171,11 +8129,6 @@ void testSimplePatchpointWithoutOuputClobbersGPArgs()
 
 void testSimplePatchpointWithOuputClobbersGPArgs()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-
     // We can't predict where the output will be but we want to be sure it is not
     // one of the clobbered registers which is a bit hard to test.
     //
@@ -9624,12 +9577,6 @@ void testCheckNeg64()
 
 void testCheckMul()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
@@ -9667,12 +9614,6 @@ void testCheckMul()
 
 void testCheckMulMemory()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
 
@@ -9761,12 +9702,6 @@ void testCheckMul2()
 
 void testCheckMul64()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
@@ -9800,12 +9735,6 @@ void testCheckMul64()
 
 void testCheckMulFold(int a, int b)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
@@ -9824,12 +9753,6 @@ void testCheckMulFold(int a, int b)
 
 void testCheckMulFoldFail(int a, int b)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
@@ -9851,12 +9774,6 @@ void testCheckMulFoldFail(int a, int b)
 
 void testCheckMulArgumentAliasing64()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
@@ -9894,12 +9811,6 @@ void testCheckMulArgumentAliasing64()
 
 void testCheckMulArgumentAliasing32()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
@@ -9943,12 +9854,6 @@ void testCheckMulArgumentAliasing32()
 
 void testCheckMul64SShr()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
@@ -12869,11 +12774,6 @@ void testPatchpointDoubleRegs()
 
 void testSpillDefSmallerThanUse()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
 
@@ -12965,11 +12865,6 @@ void testSpillUseLargerThanDef()
 
 void testLateRegister()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-
     Procedure proc;
     BasicBlock* root = proc.addBlock();
 
@@ -13782,10 +13677,6 @@ void testBranchBitAndImmFusion(
 
 void testTerminalPatchpointThatNeedsToBeSpilled()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
     // This is a unit test for how FTL's heap allocation fast paths behave.
     Procedure proc;
     
@@ -13820,10 +13711,7 @@ void testTerminalPatchpointThatNeedsToBeSpilled()
     
     Vector<Value*> args;
     {
-        RegisterSet fillAllGPRsSet = RegisterSet::allGPRs();
-        fillAllGPRsSet.exclude(RegisterSet::stackRegisters());
-        fillAllGPRsSet.exclude(RegisterSet::reservedHardwareRegisters());
-
+        RegisterSet fillAllGPRsSet = proc.mutableGPRs();
         for (unsigned i = 0; i < fillAllGPRsSet.numberOfSetRegisters(); i++)
             args.append(success->appendNew<Const32Value>(proc, Origin(), i));
     }
@@ -13853,11 +13741,6 @@ void testTerminalPatchpointThatNeedsToBeSpilled()
 
 void testTerminalPatchpointThatNeedsToBeSpilled2()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826 
-        return;
-    }
-
     // This is a unit test for how FTL's heap allocation fast paths behave.
     Procedure proc;
     
@@ -13905,9 +13788,7 @@ void testTerminalPatchpointThatNeedsToBeSpilled2()
     
     Vector<Value*> args;
     {
-        RegisterSet fillAllGPRsSet = RegisterSet::allGPRs();
-        fillAllGPRsSet.exclude(RegisterSet::stackRegisters());
-        fillAllGPRsSet.exclude(RegisterSet::reservedHardwareRegisters());
+        RegisterSet fillAllGPRsSet = proc.mutableGPRs();
         for (unsigned i = 0; i < fillAllGPRsSet.numberOfSetRegisters(); i++)
             args.append(success->appendNew<Const32Value>(proc, Origin(), i));
     }
@@ -14210,11 +14091,6 @@ void testTrappingStoreElimination()
 
 void testMoveConstants()
 {
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-
     auto check = [] (Procedure& proc) {
         proc.resetReachability();
         
@@ -14696,12 +14572,6 @@ void testOptimizeMaterialization()
 template<typename T>
 void testAtomicWeakCAS()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Type type = NativeTraits<T>::type;
     Width width = NativeTraits<T>::width;
     
@@ -14949,12 +14819,6 @@ void testAtomicWeakCAS()
 template<typename T>
 void testAtomicStrongCAS()
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Type type = NativeTraits<T>::type;
     Width width = NativeTraits<T>::width;
     
@@ -15224,12 +15088,6 @@ void testAtomicStrongCAS()
 template<typename T>
 void testAtomicXchg(B3::Opcode opcode)
 {
-#ifndef NDEBUG
-    if (isARM64()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=171826
-        return;
-    }
-#endif
     Type type = NativeTraits<T>::type;
     Width width = NativeTraits<T>::width;
     

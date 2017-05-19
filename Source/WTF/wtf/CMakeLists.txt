@@ -95,7 +95,6 @@ set(WTF_HEADERS
     ParallelJobsOpenMP.h
     ParallelVectorIterator.h
     ParkingLot.h
-    PassRefPtr.h
     Platform.h
     PlatformRegisters.h
     PrintStream.h
@@ -225,7 +224,6 @@ set(WTF_SOURCES
     MD5.cpp
     MainThread.cpp
     MediaTime.cpp
-    MemoryFootprint.cpp
     MemoryPressureHandler.cpp
     MetaAllocator.cpp
     MonotonicTime.cpp

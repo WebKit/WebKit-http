@@ -182,8 +182,8 @@ set(WebKit2_SOURCES
     Shared/UserData.cpp
     Shared/VisitedLinkTable.cpp
     Shared/WebBackForwardListItem.cpp
-    Shared/WebCompiledContentExtension.cpp
-    Shared/WebCompiledContentExtensionData.cpp
+    Shared/WebCompiledContentRuleList.cpp
+    Shared/WebCompiledContentRuleListData.cpp
     Shared/WebConnection.cpp
     Shared/WebConnectionClient.cpp
     Shared/WebContextMenuItem.cpp
@@ -328,12 +328,10 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessProxy.cpp
     UIProcess/WebURLSchemeHandler.cpp
     UIProcess/WebURLSchemeTask.cpp
-    UIProcess/WebVibrationProvider.cpp
-    UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
 
-    UIProcess/API/APIContentExtension.cpp
-    UIProcess/API/APIContentExtensionStore.cpp
+    UIProcess/API/APIContentRuleList.cpp
+    UIProcess/API/APIContentRuleListStore.cpp
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
     UIProcess/API/APIHTTPCookieStorage.cpp
@@ -399,7 +397,6 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKUserContentControllerRef.cpp
     UIProcess/API/C/WKUserMediaPermissionCheck.cpp
     UIProcess/API/C/WKUserMediaPermissionRequest.cpp
-    UIProcess/API/C/WKVibration.cpp
     UIProcess/API/C/WKViewportAttributes.cpp
     UIProcess/API/C/WKWebsiteDataStoreRef.cpp
     UIProcess/API/C/WKWebsitePolicies.cpp
@@ -567,7 +564,6 @@ set(WebKit2_SOURCES
     WebProcess/WebCoreSupport/WebProgressTrackerClient.cpp
     WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp
     WebProcess/WebCoreSupport/WebUserMediaClient.cpp
-    WebProcess/WebCoreSupport/WebVibrationClient.cpp
 
     WebProcess/WebPage/DrawingArea.cpp
     WebProcess/WebPage/EventDispatcher.cpp
@@ -634,7 +630,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebProcessPool.messages.in
     UIProcess/WebProcessProxy.messages.in
     UIProcess/WebResourceLoadStatisticsStore.messages.in
-    UIProcess/WebVibrationProxy.messages.in
 
     UIProcess/Automation/WebAutomationSession.messages.in
 

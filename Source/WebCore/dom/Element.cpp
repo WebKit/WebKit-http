@@ -1157,7 +1157,7 @@ Vector<Ref<DOMRect>> Element::getClientRects()
 
     Vector<FloatQuad> quads;
     renderBoxModelObject->absoluteQuads(quads);
-    document().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(quads, renderBoxModelObject->style());
+    document().convertAbsoluteToClientQuads(quads, renderBoxModelObject->style());
     return createDOMRectVector(quads);
 }
 
@@ -1185,10 +1185,11 @@ Ref<DOMRect> Element::getBoundingClientRect()
     for (size_t i = 1; i < quads.size(); ++i)
         result.unite(quads[i].boundingBox());
 
-    document().adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(result, renderer()->style());
+    document().convertAbsoluteToClientRect(result, renderer()->style());
     return DOMRect::create(result);
 }
 
+// Note that this is not web-exposed, and does not use the same coordinate system as getBoundingClientRect() and friends.
 IntRect Element::clientRect() const
 {
     if (RenderObject* renderer = this->renderer())
@@ -1276,15 +1277,8 @@ inline void Element::setAttributeInternal(unsigned index, const QualifiedName& n
     willModifyAttribute(attributeName, oldValue, newValue);
 
     if (newValue != oldValue) {
-        // If there is an Attr node hooked to this attribute, the Attr::setValue() call below
-        // will write into the ElementData.
-        // FIXME: Refactor this so it makes some sense.
-        if (RefPtr<Attr> attrNode = attrIfExists(attributeName))
-            attrNode->setValue(newValue);
-        else {
-            Style::AttributeChangeInvalidation styleInvalidation(*this, name, oldValue, newValue);
-            ensureUniqueElementData().attributeAt(index).setValue(newValue);
-        }
+        Style::AttributeChangeInvalidation styleInvalidation(*this, name, oldValue, newValue);
+        ensureUniqueElementData().attributeAt(index).setValue(newValue);
     }
 
     didModifyAttribute(attributeName, oldValue, newValue);
@@ -1340,7 +1334,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
     if (valueIsSameAsBefore)
         return;
 
-    invalidateNodeListAndCollectionCachesInAncestors(&name, this);
+    invalidateNodeListAndCollectionCachesInAncestorsForAttribute(name);
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->handleAttributeChanged(name, this);

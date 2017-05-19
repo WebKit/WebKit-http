@@ -13,6 +13,8 @@ public:
     CDMInstancePlayReady();
     virtual ~CDMInstancePlayReady();
 
+    ImplementationType implementationType() const final { return  ImplementationType::PlayReady; }
+
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
     SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
     SuccessValue setPersistentStateAllowed(bool) override;

@@ -31,6 +31,7 @@
 #include "GCRequest.h"
 #include "HandleSet.h"
 #include "HandleStack.h"
+#include "HeapFinalizerCallback.h"
 #include "HeapObserver.h"
 #include "ListableHandler.h"
 #include "MarkedBlock.h"
@@ -374,6 +375,9 @@ public:
 #endif // USE(CF)
 
     HeapVerifier* verifier() const { return m_verifier.get(); }
+    
+    void addHeapFinalizerCallback(const HeapFinalizerCallback&);
+    void removeHeapFinalizerCallback(const HeapFinalizerCallback&);
 
 private:
     friend class AllocatingScope;
@@ -511,7 +515,7 @@ private:
     void sweepAllLogicallyEmptyWeakBlocks();
     bool sweepNextLogicallyEmptyWeakBlock();
 
-    bool shouldDoFullCollection() const;
+    bool shouldDoFullCollection();
 
     void incrementDeferralDepth();
     void decrementDeferralDepth();
@@ -527,6 +531,13 @@ private:
     void setMutatorShouldBeFenced(bool value);
     
     void addCoreConstraints();
+
+    enum class MemoryThresholdCallType {
+        Cached,
+        Direct
+    };
+
+    bool overCriticalMemoryThreshold(MemoryThresholdCallType memoryThresholdCallType = MemoryThresholdCallType::Cached);
     
     template<typename Func>
     void iterateExecutingAndCompilingCodeBlocks(const Func&);
@@ -549,6 +560,7 @@ private:
     size_t m_webAssemblyFastMemoriesAllocatedThisCycle;
     size_t m_bytesAbandonedSinceLastFullCollect;
     size_t m_maxEdenSize;
+    size_t m_maxEdenSizeWhenCritical;
     size_t m_maxHeapSize;
     bool m_shouldDoFullCollection;
     size_t m_totalBytesVisited;
@@ -620,7 +632,9 @@ private:
     RefPtr<StopIfNecessaryTimer> m_stopIfNecessaryTimer;
 
     Vector<HeapObserver*> m_observers;
-
+    
+    Vector<HeapFinalizerCallback> m_heapFinalizerCallbacks;
+    
     unsigned m_deferralDepth;
     bool m_didDeferGCWork { false };
 
@@ -686,7 +700,12 @@ private:
     Box<Lock> m_threadLock;
     RefPtr<AutomaticThreadCondition> m_threadCondition; // The mutator must not wait on this. It would cause a deadlock.
     RefPtr<AutomaticThread> m_thread;
-    
+
+#if PLATFORM(IOS)
+    unsigned m_precentAvailableMemoryCachedCallCount;
+    bool m_overCriticalMemoryThreshold;
+#endif
+
     Lock m_collectContinuouslyLock;
     Condition m_collectContinuouslyCondition;
     bool m_shouldStopCollectingContinuously { false };

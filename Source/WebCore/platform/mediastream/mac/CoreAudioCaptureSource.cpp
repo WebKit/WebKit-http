@@ -49,23 +49,15 @@
 
 namespace WebCore {
 
-class CoreAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory {
+class CoreAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory
+#if PLATFORM(IOS)
+    , public RealtimeMediaSource::SingleSourceFactory<CoreAudioCaptureSource>
+#endif
+{
 public:
     CaptureSourceOrError createAudioCaptureSource(const String& deviceID, const MediaConstraints* constraints) final {
         return CoreAudioCaptureSource::create(deviceID, constraints);
     }
-
-#if PLATFORM(IOS)
-    void setActiveSource(CoreAudioCaptureSource& source)
-    {
-        if (m_activeSource && m_activeSource->isProducingData())
-            m_activeSource->setMuted(true);
-        m_activeSource = &source;
-    }
-
-private:
-    CoreAudioCaptureSource* m_activeSource { nullptr };
-#endif
 };
 
 static CoreAudioCaptureSourceFactory& coreAudioCaptureSourceFactory()
@@ -316,7 +308,7 @@ OSStatus CoreAudioSharedUnit::configureMicrophoneProc()
     AudioStreamBasicDescription microphoneProcFormat = { };
 
     UInt32 size = sizeof(microphoneProcFormat);
-    err = AudioUnitGetProperty(m_ioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, inputBus, &microphoneProcFormat, &size);
+    err = AudioUnitGetProperty(m_ioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, inputBus, &microphoneProcFormat, &size);
     if (err) {
         LOG(Media, "CoreAudioSharedUnit::configureMicrophoneProc(%p) unable to get output stream format, error %d (%.4s)", this, (int)err, (char*)&err);
         return err;
@@ -656,8 +648,6 @@ CoreAudioCaptureSource::CoreAudioCaptureSource(const String& deviceID, const Str
     : RealtimeMediaSource(deviceID, RealtimeMediaSource::Type::Audio, label)
     , m_captureDeviceID(persistentID)
 {
-    m_muted = true;
-
     auto& unit = CoreAudioSharedUnit::singleton();
 
     initializeEchoCancellation(unit.enableEchoCancellation());
@@ -669,6 +659,10 @@ CoreAudioCaptureSource::CoreAudioCaptureSource(const String& deviceID, const Str
 
 CoreAudioCaptureSource::~CoreAudioCaptureSource()
 {
+#if PLATFORM(IOS)
+    coreAudioCaptureSourceFactory().unsetActiveSource(*this);
+#endif
+
     CoreAudioSharedUnit::singleton().removeClient(*this);
 }
 
@@ -684,20 +678,11 @@ void CoreAudioCaptureSource::removeEchoCancellationSource(AudioSampleDataSource&
 
 void CoreAudioCaptureSource::startProducingData()
 {
-    if (m_isProducingData)
-        return;
-
 #if PLATFORM(IOS)
     coreAudioCaptureSourceFactory().setActiveSource(*this);
 #endif
 
     CoreAudioSharedUnit::singleton().startProducingData();
-    m_isProducingData = CoreAudioSharedUnit::singleton().isProducingData();
-
-    if (!m_isProducingData)
-        return;
-
-    m_muted = false;
 
     if (m_audioSourceProvider)
         m_audioSourceProvider->prepare(&CoreAudioSharedUnit::singleton().microphoneFormat().streamDescription());
@@ -705,12 +690,7 @@ void CoreAudioCaptureSource::startProducingData()
 
 void CoreAudioCaptureSource::stopProducingData()
 {
-    if (!m_isProducingData)
-        return;
-    
     CoreAudioSharedUnit::singleton().stopProducingData();
-    m_isProducingData = false;
-    m_muted = false;
 
     if (m_audioSourceProvider)
         m_audioSourceProvider->unprepare();
@@ -760,7 +740,7 @@ AudioSourceProvider* CoreAudioCaptureSource::audioSourceProvider()
 {
     if (!m_audioSourceProvider) {
         m_audioSourceProvider = WebAudioSourceProviderAVFObjC::create(*this);
-        if (m_isProducingData)
+        if (isProducingData())
             m_audioSourceProvider->prepare(&CoreAudioSharedUnit::singleton().microphoneFormat().streamDescription());
     }
 

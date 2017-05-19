@@ -53,8 +53,8 @@
 #include <WebCore/Settings.h>
 
 namespace API {
-class ContentExtension;
-class ContentExtensionStore;
+class ContentRuleList;
+class ContentRuleListStore;
 class ExperimentalFeature;
 class FrameHandle;
 class FrameInfo;
@@ -114,7 +114,6 @@ class WebRenderObject;
 class WebResourceLoadStatisticsManager;
 class WebTextChecker;
 class WebUserContentControllerProxy;
-class WebVibrationProxy;
 class WebViewportAttributes;
 class WebProxy;
 struct WebsitePolicies;
@@ -168,12 +167,11 @@ WK_ADD_API_MAPPING(WKResourceLoadStatisticsManagerRef, WebResourceLoadStatistics
 WK_ADD_API_MAPPING(WKSessionStateRef, API::SessionState)
 WK_ADD_API_MAPPING(WKTextCheckerRef, WebTextChecker)
 WK_ADD_API_MAPPING(WKUserContentControllerRef, WebUserContentControllerProxy)
-WK_ADD_API_MAPPING(WKUserContentExtensionStoreRef, API::ContentExtensionStore)
-WK_ADD_API_MAPPING(WKUserContentFilterRef, API::ContentExtension)
+WK_ADD_API_MAPPING(WKUserContentExtensionStoreRef, API::ContentRuleListStore)
+WK_ADD_API_MAPPING(WKUserContentFilterRef, API::ContentRuleList)
 WK_ADD_API_MAPPING(WKUserMediaPermissionCheckRef, UserMediaPermissionCheckProxy)
 WK_ADD_API_MAPPING(WKUserMediaPermissionRequestRef, UserMediaPermissionRequestProxy)
 WK_ADD_API_MAPPING(WKUserScriptRef, API::UserScript)
-WK_ADD_API_MAPPING(WKVibrationRef, WebVibrationProxy)
 WK_ADD_API_MAPPING(WKViewportAttributesRef, WebViewportAttributes)
 WK_ADD_API_MAPPING(WKWebsiteDataStoreRef, API::WebsiteDataStore)
 WK_ADD_API_MAPPING(WKWebsitePoliciesRef, API::WebsitePolicies)

@@ -61,8 +61,11 @@ static inline PeerConnectionFactoryAndThreads& staticFactoryAndThreads()
 {
     static NeverDestroyed<PeerConnectionFactoryAndThreads> factoryAndThreads;
 #if PLATFORM(COCOA)
-    factoryAndThreads.get().encoderFactoryGetter = []() -> std::unique_ptr<cricket::WebRtcVideoEncoderFactory> { return std::make_unique<VideoToolboxVideoEncoderFactory>(); };
-    factoryAndThreads.get().decoderFactoryGetter = []() -> std::unique_ptr<cricket::WebRtcVideoDecoderFactory> { return std::make_unique<webrtc::VideoToolboxVideoDecoderFactory>(); };
+    static std::once_flag once;
+    std::call_once(once, [] {
+        factoryAndThreads.get().encoderFactoryGetter = []() -> std::unique_ptr<cricket::WebRtcVideoEncoderFactory> { return std::make_unique<VideoToolboxVideoEncoderFactory>(); };
+        factoryAndThreads.get().decoderFactoryGetter = []() -> std::unique_ptr<cricket::WebRtcVideoDecoderFactory> { return std::make_unique<webrtc::VideoToolboxVideoDecoderFactory>(); };
+    });
 #endif
     return factoryAndThreads.get();
 }
@@ -109,12 +112,14 @@ static void initializePeerConnectionFactoryAndThreads()
 
     ASSERT(!factoryAndThreads.factory);
 
-    auto thread = rtc::Thread::Create();
     factoryAndThreads.networkThread = factoryAndThreads.networkThreadWithSocketServer ? rtc::Thread::CreateWithSocketServer() : rtc::Thread::Create();
+    factoryAndThreads.networkThread->SetName("WebKitWebRTCNetwork", nullptr);
     bool result = factoryAndThreads.networkThread->Start();
     ASSERT_UNUSED(result, result);
 
     factoryAndThreads.signalingThread = rtc::Thread::Create();
+    factoryAndThreads.signalingThread->SetName("WebKitWebRTCSignaling", nullptr);
+    
     result = factoryAndThreads.signalingThread->Start();
     ASSERT(result);
 

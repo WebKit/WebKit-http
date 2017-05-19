@@ -48,10 +48,10 @@ fast/events/constructors/device-proximity-event-constructor.html
 printing
 
 # Web Notifications are not supported on iOS.
-fast/notifications
 http/tests/notifications
 fast/history/page-cache-notification-non-suspendable.html
 fast/history/page-cache-notification-suspendable.html
+imported/w3c/web-platform-tests/notifications/
 
 # Web Audio tests are skipped on iOS for now.
 webaudio
@@ -92,7 +92,6 @@ gamepad
 java
 mhtml
 proximity
-vibration
 
 # ENABLE(MEDIA_CAPTURE) is not enabled
 fast/forms/file/file-input-capture.html
@@ -361,7 +360,7 @@ webkit.org/b/152993 http/tests/contentdispositionattachmentsandbox/form-submissi
 fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
 fast/text/all-small-caps-whitespace.html [ Skip ]
 
-# This test relies on EventSender.keydown(), which is not supported on iOS
+# These tests rely on EventSender.keydown(), which is not supported on iOS
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/events/beforeunload-alert-handled-keydown.html [ Skip ]
 fast/events/beforeunload-alert-unhandled-keydown.html [ Skip ]
@@ -377,7 +376,9 @@ fast/shadow-dom/hover-over-slotted-content.html [ Skip ]
 fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
+http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html [ Skip ]
 media/audio-dealloc-crash.html [ Skip ]
+media/restricted-audio-playback-with-document-gesture.html [ Skip ]
 
 # Tests that use EventSender's mouseMoveTo, mouseUp and mouseDown
 fast/forms/range/disabled-while-dragging.html [ Skip ]
@@ -1189,6 +1190,7 @@ fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
 fast/dom/Range/getBoundingClientRect.html [ Failure ]
 fast/dom/Range/getClientRects.html [ Failure ]
 fast/dom/Range/range-expand.html [ Failure ]
+webkit.org/b/172058 fast/dom/Range/simple-line-layout-getclientrects.html [ ImageOnlyFailure ]
 fast/dom/Window/mozilla-focus-blur.html [ Failure ]
 fast/dom/Window/new-window-opener.html [ Failure ]
 fast/dom/Window/open-invalid-url.html [ Failure ]
@@ -2778,6 +2780,7 @@ fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-into-view-fixed.html [ Skip ]
 fast/scrolling/scroll-to-anchor-zoomed-header.html [ Skip ]
+fast/visual-viewport/client-coordinates-relative-to-layout-viewport.html [ Skip ]
 
 # This test relies on Arial being used to draw Arabic. However, on iOS,
 # we explicitly disallow this because this font is too slow.
@@ -2954,3 +2957,5 @@ webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Fail
 
 webkit.org/b/171760 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 webkit.org/b/171760 imported/w3c/i18n/bidi/block-plaintext-005.html [ ImageOnlyFailure ]
+
+webkit.org/b/172019 imported/w3c/web-platform-tests/cssom-view/elementFromPoint.html [ Failure ]

@@ -839,6 +839,22 @@ void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* sess
 #endif
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance&)
+{
+#if 0
+    if (keys.isEmpty())
+        return;
+
+    auto& keyValue = keys.first().second;
+    GRefPtr<GstBuffer> buffer(gst_buffer_new_wrapped(g_memdup(keyValue->data(), keyValue->size()), keyValue->size()));
+
+    for (auto iterator : m_appendPipelinesMap)
+        iterator.value->dispatchDecryptionKey(buffer.get());
+#endif
+}
+#endif
+
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     if (status != MediaSourcePrivate::EosNoError)

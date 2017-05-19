@@ -1,3 +1,269 @@
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-05-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop PassRefPtr class from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=172091
+
+        Reviewed by Alex Christensen.
+
+        Drop PassRefPtr class from WTF as it is no longer used or needed.
+        Also drop RefPtr::release() for the same reasons.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.cpp:
+        * wtf/CrossThreadCopier.h:
+        * wtf/Forward.h:
+        * wtf/PassRefPtr.h: Removed.
+        * wtf/RefPtr.h:
+        (WTF::refIfNotNull):
+        (WTF::derefIfNotNull):
+        (WTF::RefPtr::RefPtr):
+        (WTF::RefPtr::release): Deleted.
+        * wtf/SizeLimits.cpp:
+        * wtf/Vector.h:
+
+2017-05-13  Chris Dumez  <cdumez@apple.com>
+
+        Stop using RefPtr::release()
+        https://bugs.webkit.org/show_bug.cgi?id=172074
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216808.
+        https://bugs.webkit.org/show_bug.cgi?id=172075
+
+        caused lldb to hang when debugging (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use Mach exceptions instead of signals where possible"
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+        http://trac.webkit.org/changeset/216808
+
+2017-05-12  Keith Miller  <keith_miller@apple.com>
+
+        Use Mach exceptions instead of signals where possible
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+
+        Reviewed by Mark Lam.
+
+        This patch enables using mach exceptions on darwin. The way the
+        mach exception api works is that we create a mach port, which is
+        like a file descriptor.  We then wait for a message to arrive on
+        that port in a thread. When another thread raises an exception (say
+        due to a bad memory access) the OS sends our thread a message. The
+        payload of that message is the register file of the crashing
+        thread. We then call our custom handlers that change the state as
+        needed. In order to restart the thread we send a payload back to
+        the OS with an updated register file along with a success message
+        header.
+
+        This patch also makes thread messages work without signals by
+        simply suspending the thread, and then running the message at that
+        time.
+
+        You can read more about mach exceptions here:
+        http://www.cs.cmu.edu/afs/cs/project/mach/public/doc/unpublished/exception.ps
+        and the Mach interface Generator (MiG) here:
+        http://www.cs.cmu.edu/afs/cs/project/mach/public/doc/unpublished/mig.ps
+
+        * Configurations/WTF.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageUsingSignal):
+        (WTF::sendMessageUsingMach):
+        (WTF::deliverMessagesUsingMach):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h:
+        (WTF::sendMessage):
+        * wtf/Threading.h:
+        (WTF::Thread::machThread):
+        * wtf/mac/MachExceptions.defs: Copied from Source/WTF/wtf/ThreadMessage.h.
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::handleSignalsWithMach):
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::unregisterThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+
+2017-05-12  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include algorithm before using std::min
+        https://bugs.webkit.org/show_bug.cgi?id=171733
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/StringCommon.h:
+
+2017-05-12  Andreas Kling  <akling@apple.com>
+
+        More aggressive memory kill limits.
+        https://bugs.webkit.org/show_bug.cgi?id=172037
+        <rdar://problem/31969082>
+
+        Reviewed by Michael Saboff.
+
+        Bring down the memory kill limits to 4GB for active processes, and 2GB for inactive.
+        Also make MemoryUsagePolicy::Strict kick in above 1.5GB.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::thresholdForPolicy):
+
+2017-05-12  Michael Saboff  <msaboff@apple.com>
+
+        [iOS] Use memory footprint to dynamically adjust behavior of allocators
+        https://bugs.webkit.org/show_bug.cgi?id=171944
+
+        Reviewed by Filip Pizlo.
+
+        Moved the non-Windows implementation of RAMSize() to bmalloc/AvailableMemory.cpp and
+        called the function availableMemory().
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2017-05-12  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Add MemoryFootprintLinux to build
+
+        Unreviewed build fix after r216731.
+
+        * wtf/PlatformWPE.cmake:
+
+2017-05-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed trivial JSCOnly buildfix after r216731.
+        https://bugs.webkit.org/show_bug.cgi?id=171693
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2017-05-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Implement memoryFootprint for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=171693
+
+        Reviewed by Alex Christensen.
+
+        This patch implements memoryFootprint for Windows. In Windows, we calculate the size
+        of private working set. This can be done by enumerating private pages in working set.
+
+        And we also split MemoryFootprint.cpp to cocoa, linux, and win versions.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MallocPtr.h:
+        (WTF::MallocPtr::operator*):
+        (WTF::MallocPtr::operator->):
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cocoa/MemoryFootprintCocoa.cpp: Copied from Source/WTF/wtf/MemoryFootprint.cpp.
+        (WTF::memoryFootprint):
+        * wtf/linux/MemoryFootprintLinux.cpp: Renamed from Source/WTF/wtf/MemoryFootprint.cpp.
+        (WTF::forEachLine):
+        (WTF::memoryFootprint):
+        * wtf/win/MemoryFootprintWin.cpp: Added.
+        (WTF::memoryFootprint):
+
+2017-05-11  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for regex.h
+        https://bugs.webkit.org/show_bug.cgi?id=171950
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
+2017-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Annotate Ref::ptr() with RETURNS_NONNULL
+        https://bugs.webkit.org/show_bug.cgi?id=171996
+
+        Reviewed by Andreas Kling.
+
+        Annotate Ref::ptr() with RETURNS_NONNULL as it can never return null.
+
+        * wtf/Ref.h:
+        (WTF::Ref::ptr): Deleted.
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Vibration API
+        https://bugs.webkit.org/show_bug.cgi?id=171766
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * wtf/FeatureDefines.h:
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * wtf/FeatureDefines.h:
+        Remove definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Remove some last remnants of the EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=171922
+
+        Reviewed by Antonio Gomes.
+
+        The EFL port is no more.
+
+        * wtf/PlatformEfl.cmake: Removed.
+
+2017-05-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] StaticStringImpl in HTMLNames.cpp aren't constructed
+        https://bugs.webkit.org/show_bug.cgi?id=171800
+
+        Reviewed by Yusuke Suzuki.
+
+        Global variables of StaticStringImpl in HTMLNames.cpp aren't
+        constructed on Windows since Bug 171586. It seems that
+        reinterpret_cast prevents constexpr's compile time initialization
+        in VC++.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImplShape::StringImplShape): Added const char* and
+        const char16_t* members in the union. Do not use reinterpret_cast
+        in constexpr constructors.
+
 2017-05-09  Mark Lam  <mark.lam@apple.com>
 
         Force StaticStringImpl constructor to use the constexpr versions of StringImplShape constructors.

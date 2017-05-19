@@ -1,3 +1,788 @@
+2017-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217014.
+
+        This change caused mac-wk2 LayoutTests to exit early due to
+        crashes.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Grandfather domains for existing
+        data records"
+        https://bugs.webkit.org/show_bug.cgi?id=172155
+        http://trac.webkit.org/changeset/217014
+
+2017-05-17  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Grandfather domains for existing data records
+        https://bugs.webkit.org/show_bug.cgi?id=172155
+        <rdar://problem/24913532>
+
+        Reviewed by Alex Christensen.
+
+        Adds test infrastructure needed for the added functionality.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsGrandfathered):
+        (WTR::TestRunner::isStatisticsGrandfathered):
+        (WTR::TestRunner::installStatisticsDidScanDataRecordsCallback):
+        (WTR::TestRunner::statisticsDidScanDataRecordsCallback):
+        (WTR::TestRunner::setStatisticsGrandfatheringTime):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsGrandfathered):
+        (WTR::TestController::isStatisticsGrandfathered):
+        (WTR::TestController::setStatisticsGrandfatheringTime):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-05-17  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ios-simulator API test after r216977
+        https://bugs.webkit.org/show_bug.cgi?id=171987
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+        <rdar://problem/32260156> covers the investigation of this, but fixing it is 
+        not as urgent as having the rest of this working. Notably the ephemeral part of the
+        test works, so something is just wrong with the persistent part.
+
+2017-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216955.
+
+        This change caused strange behavior with web-platform-tests
+        locally and on EWS.
+
+        Reverted changeset:
+
+        "webkitpy: Start servers before setting-up for testing"
+        https://bugs.webkit.org/show_bug.cgi?id=172176
+        http://trac.webkit.org/changeset/216955
+
+2017-05-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        A URL type is vended for a non-URL plain text string when starting data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=172228
+        <rdar://problem/32166729>
+
+        Reviewed by Andy Estes.
+
+        Adds two new data interaction tests, SinglePlainTextWordTypeIdentifiers and SinglePlainTextURLTypeIdentifiers,
+        to verify that a URL UTI is not vended when beginning a data interaction on a single word, but that a URL is
+        still vended when beginning data interaction on something that resembles a link.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+
+2017-05-17  David Kilzer  <ddkilzer@apple.com>
+
+        BlobDataFileReference::generateReplacementFile() should use mkstemp()
+        <https://webkit.org/b/172192>
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_language): Add check for mktemp.
+        (CppChecker): Add 'security/temp_file' category.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_insecure_temp_file): Add test.
+
+2017-05-17  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, change my email.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-05-17  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216974.
+
+        Revision caused consistent timeouts on all platforms.
+
+        Reverted changeset:
+
+        "Add a RuntimeEnabledFeature for display: contents, defaulted
+        to false."
+        https://bugs.webkit.org/show_bug.cgi?id=171984
+        http://trac.webkit.org/changeset/216974
+
+2017-05-17  Alex Christensen  <achristensen@webkit.org>
+
+        Interacting with WKHTTPCookieStores before creating WKWebViews and WKProcessPools should affect cookies used
+        https://bugs.webkit.org/show_bug.cgi?id=171987
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (-[CookieUIDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2017-05-17  Emilio Cobos Álvarez  <ecobos@igalia.com>
+
+        Add a RuntimeEnabledFeature for display: contents, defaulted to false.
+        https://bugs.webkit.org/show_bug.cgi?id=171984
+
+        Reviewed by Antti Koivisto.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-05-16  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        (TestWebKitAPI::PageVisibilityStateWithWindowChanges::runTest):
+
+2017-05-16  Tim Horton  <timothy_horton@apple.com>
+
+        PageVisibilityStateWithWindowChanges tests sometimes time out
+        https://bugs.webkit.org/show_bug.cgi?id=172202
+        <rdar://problem/29653266>
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        (TestWebKitAPI::PageVisibilityStateWithWindowChanges::runTest):
+        Make sure the window is miniaturizable, otherwise, in some cases, miniaturize: will not work.
+
+2017-05-16  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Start servers before setting-up for testing
+        https://bugs.webkit.org/show_bug.cgi?id=172176
+        <rdar://problem/32225538>
+
+        Reviewed by Alexey Proskuryakov.
+
+        On-device testing requires that servers are started before ports set-up their
+        test environments.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.__init__): Start servers when initializing LayoutTestRunner.
+        (LayoutTestRunner.run_tests): Move the starting of servers to the initializer.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.__init__): Delay construction of the test runner until we can determine
+        if servers need to be started.
+        (Manager.run): Determine if servers need to be started and construct the test runner.
+        (Manager._run_tests): Move the determination of servers to run into Manager.run.
+
+2017-05-16  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed, adding myself to contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-05-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Tests that always pass when run alone, but fail in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=168572
+
+        Reviewed by Michael Catanzaro.
+
+        PlatformWebView::viewSupportsOptions() is basically a comparison
+        that checks that the passed options are the ones supported by the
+        web view. There is no reason for them to be implemented for each
+        platform differently. In fact doing so causes issues each time a
+        new option is added, if the corresponding platform implementation
+        is not updated accordingly.
+
+        A consequence of not updating the viewSupportOptions()
+        implementations when new options are added is that tests that need
+        these options might fail if they are executed after a test that
+        didn't need the option, as the webview will be reused even if the
+        option is not supported. This cannot be spotted when running the
+        tests individually. See bug #165133 for other example of the same
+        problem.
+
+        Remove the platform implementations and make the comparison a
+        method of the TestOptions structure, so that the check is in one
+        place. For the time being, only include in the comparison the
+        options that were checked in the mac platform, which seem to be
+        the only ones relevant this far (unless newer ones have also been
+        forgotten).
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::viewSupportsOptions): Use the method
+        defined below.
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions): Added.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::viewSupportsOptions): Deleted.
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions): Deleted.
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::viewSupportsOptions): Deleted.
+        * WebKitTestRunner/wpe/PlatformWebViewWPE.cpp:
+        (WTR::PlatformWebView::viewSupportsOptions): Deleted.
+
+2017-05-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Build testapi in non Apple ports
+        https://bugs.webkit.org/show_bug.cgi?id=172103
+
+        Reviewed by Filip Pizlo.
+
+        Now testapi is drived in JSCOnly, GTK and WPE ports too.
+
+        * Scripts/build-jsc:
+        * Scripts/run-javascriptcore-tests:
+
+2017-05-15  Youenn Fablet  <youenn@apple.com>
+
+        WPT test importer should not account for slow manual tests
+        https://bugs.webkit.org/show_bug.cgi?id=172127
+
+        Reviewed by Ryosuke Niwa.
+
+        Making sure manual tests are not triggering updating tests-options.json file.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.find_importable_tests):
+        (TestImporter._already_identified_as_resource_file):
+        (TestImporter.update_tests_options):
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (test_manual_slow_test):
+
+2017-05-15  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Some versions of simctl do not place parenthesis around runtime identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=172142
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator._parse_runtimes): Newer versions of simctl output do not put parenthesis
+        around runtime identifiers.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Add tests for new simctl output.
+
+2017-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update ARES-6 plan file to use the latest version
+        https://bugs.webkit.org/show_bug.cgi?id=172139
+
+        Reviewed by Keith Miller.
+
+        Include r216538.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/ares6.plan:
+
+2017-05-15  Jeremy Jones  <jeremyj@apple.com>
+
+        Disable Picture In Picture API tests on unsupported platforms.
+        https://bugs.webkit.org/show_bug.cgi?id=172125
+        rdar://problem/32199477
+
+        Reviewed by Simon Fraser.
+
+        The callbacks and allowing picture-in-picture require new SPI.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PictureInPictureDelegate.mm:
+
+2017-05-15  Brady Eidson  <beidson@apple.com>
+
+        [ios-simulator] API test WKWebView.ClearAppCache is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=172120
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageClear.mm:
+        (TEST): ios-sim needs explicit deleting of the app cache paths that I'd removed in 216805.
+          Restoring that code fixes this.
+
+2017-05-15  Timothy Horton  <timothy_horton@apple.com>
+
+        Null deref under WebContentReader::readURL when interacting with a file URL
+        https://bugs.webkit.org/show_bug.cgi?id=172045
+        <rdar://problem/25880647>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        The text of the file URL is pasted because a textual version of it gets
+        onto the pasteboard. However, this test would have crashed before. Also
+        tests that we don't make an <a>.
+
+2017-05-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] fast/cookies/local-file-can-set-cookies.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172071
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-05-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop PassRefPtr class from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=172091
+
+        Reviewed by Alex Christensen.
+
+        Drop API test coverage.
+
+        * TestWebKitAPI/Tests/WTF/Ref.cpp:
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::passWithPassRefPtr): Deleted.
+
+2017-05-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        The device ID hash salt is now required for getUserMedia to check deviceId constraint, so
+        implement the "checkUserMediaPermission" callback.
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack):
+        (TestWebKitAPI::checkUserMediaPermissionCallback):
+        (TestWebKitAPI::TEST):
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserMediaDisabled.mm:
+        (-[UserMediaUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+
+2017-05-13  Chris Dumez  <cdumez@apple.com>
+
+        Stop using RefPtr::release()
+        https://bugs.webkit.org/show_bug.cgi?id=172074
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216808.
+        https://bugs.webkit.org/show_bug.cgi?id=172075
+
+        caused lldb to hang when debugging (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use Mach exceptions instead of signals where possible"
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+        http://trac.webkit.org/changeset/216808
+
+2017-05-12  Alex Christensen  <achristensen@webkit.org>
+
+        Rename WKContentExtension to WKContentRuleList
+        https://bugs.webkit.org/show_bug.cgi?id=172053
+        <rdar://problem/32141005>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKContentExtensionStore.mm:
+        (WKContentRuleListStoreTest::SetUp):
+        (TEST_F):
+        (-[ContentRuleListDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (WKContentExtensionStoreTest::SetUp): Deleted.
+        (-[ContentExtensionDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]): Deleted.
+
+2017-05-12  Keith Miller  <keith_miller@apple.com>
+
+        Use Mach exceptions instead of signals where possible
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/ThreadMessages.cpp:
+        (runThreadMessageTest):
+        (TEST):
+
+2017-05-12  Jeremy Jones  <jeremyj@apple.com>
+
+        Add objc version of WK2 UIPageClient setHasVideoInPictureInPicture and rename it to hasVideoInPictureInPictureDidChange.
+        https://bugs.webkit.org/show_bug.cgi?id=172048
+        rdar://problem/32163054
+
+        Reviewed by Simon Fraser.
+
+        Add a WKWebView test for hasVideoInPictureInPictureDidChange UIDelegate callback.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PictureInPictureDelegate.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PictureInPictureDelegate.mm:
+        (hasVideoInPictureInPictureDidChange):
+        (-[PictureInPictureUIDelegate _webView:hasVideoInPictureInPictureDidChange:]):
+        (-[PictureInPictureUIDelegate userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+
+2017-05-12  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r216711): API test WKWebView.ClearAppCache is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=172030
+
+        Unreviewed - Test gardening
+
+        Try to resolve this once and for all by using the WebsiteDataStore API to nuke everything
+        before the test starts.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageClear.mm:
+        (defaultWebsiteCacheDirectory):
+        (defaultApplicationCacheDirectory):
+        (TEST):
+        (defaultWebsiteDataDirectory): Deleted.
+
+2017-05-12  David Quesada  <david_quesada@apple.com>
+
+        Add SPI for overriding WKWebView's clipping behavior for _visibleContentRect
+        https://bugs.webkit.org/show_bug.cgi?id=172000
+        rdar://problem/32144756
+
+        Reviewed by Simon Fraser.
+
+        Added API tests to verify that WKWebView provides the expected value for
+        _visibleContentRect in various configurations. (i.e. not inside a scrollview,
+        inside a scrollview but not clipped, clipped by an ancestor scrollview,
+        clipped by the webview's _enclosingViewForExposedRectComputation)
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VisibleContentRect.mm: Added.
+        (-[TestWKWebViewWithEnclosingView _enclosingViewForExposedRectComputation]):
+        (TestWebKitAPI::TEST):
+
+2017-05-12  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r216711): API test WKWebView.ClearAppCache is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=172030
+
+        Unreviewed - Test gardening, in effect...
+
+        More exploration as to why this continues to fail on the bots.
+        
+        This change should give us a smoking gun.
+        
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageClear.mm:
+        (TEST):
+
+2017-05-12  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [GTK] Fix compile warnings in PlatformImageCairo.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=171850
+
+        Reviewed by Michael Catanzaro.
+
+        * ImageDiff/cairo/PlatformImageCairo.cpp:
+        (ImageDiff::PlatformImage::createFromStdin):
+        (ImageDiff::PlatformImage::writeAsPNGToStdout):
+
+2017-05-12  Jeremy Jones  <jeremyj@apple.com>
+
+        Add UIClient callback for when picture-in-picture is activated.
+        https://bugs.webkit.org/show_bug.cgi?id=172023
+
+        Reviewed by Simon Fraser.
+
+        Added a test for WKPageUIClientV10 setHasVideoInPictureInPicture.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PictureInPictureDelegate.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PictureInPictureDelegate.mm: Added.
+        (onLoadedCompletedCallback):
+        (waitUntilOnLoadIsCompleted):
+        (didFinishLoadForFrame):
+        (setHasVideoInPictureInPicture):
+        (TestWebKitAPI::TEST):
+
+2017-05-12  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed follow-up to r216776.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.path_to_crash_logs): Raise not implemented.
+        * Scripts/webkitpy/port/test.py:
+        (TestPort.path_to_crash_logs): Return results directory as the location of crash logs.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.path_to_crash_logs): Ditto.
+
+2017-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Bot watcher's dashboard shows results links twice sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=172043
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype._presentPopoverForGenericTestFailures):
+
+2017-05-12  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r216711): API test WKWebView.ClearAppCache is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=172030
+
+        Unreviewed - Test gardening, in effect...
+
+        This failure is only being seen by the bots.
+        
+        I believe this test is utterly broken in the first place; when it checks the .wal file's
+        size that is not actually an indicator that the records were deleted.
+        
+        But that isn't what's coming up as failure on the bots.
+        
+        This patch is an attempt to:
+        1 - More forcefully clear the Website data directory of leftovers before the test starts.
+        2 - Give an earlier indication of the failure that the bots are seeing, to possibly reveal more.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageClear.mm:
+        (defaultWebsiteDataDirectory):
+        (defaultApplicationCacheDirectory):
+        (TEST):
+
+2017-05-12  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Pass directory with crash logs into CrashLogs
+        https://bugs.webkit.org/show_bug.cgi?id=172033
+        <rdar://problem/32157616>
+
+        Reviewed by Daniel Bates.
+
+        Refactor CrashLogs and the callers of CrashLogs so that the port object owns
+        the location of crash logs.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs.__init__): Pass mandatory crash_log_directory when constructing.
+        (CrashLogs._find_newest_log_darwin): Use self._crash_log_directory instead of
+        generating one.
+        (CrashLogs._find_newest_log_win): Use self._crash_log_directory instead of
+        self._results_directory.
+        (CrashLogs._find_all_logs_darwin): Use self._crash_log_directory instead of
+        generating one.
+        (CrashLogs._log_directory_darwin): Moved to port.
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py: Update tests since the path
+        to the crash log is no longer owned by CrashLogs.
+        * Scripts/webkitpy/layout_tests/run_webkit_tests_integrationtest.py: Use the general
+        directory for uploading crash logs. Note that crash logs are only supported on Mac
+        and Windows.
+        * Scripts/webkitpy/port/apple.py: Remove unneeded CrashLogs import.
+        * Scripts/webkitpy/port/base.py:
+        (Port.path_to_crash_logs): Unless ports declare otherwise, crash logs are assumed
+        to be in the results directory.
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.path_to_crash_logs): Moved from CrashLogs._log_directory_darwin.
+        (DarwinPort._look_for_all_crash_logs_in_log_dir): Use port specific crash log path.
+        (DarwinPort._get_crash_log): Ditto.
+        * Scripts/webkitpy/port/darwin_testcase.py:
+        (DarwinTest.test_crashlog_path): Test that the Darwin ports are correctly calculating
+        the path to crash logs.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.path_to_crash_logs): Currently, crash log retrieval is undefined for iOS.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_crashlog_path): Currently, crash log retrieval is undefined for iOS.
+        * Scripts/webkitpy/port/ios_simulator.py: Remove unneeded CrashLogs import.
+        * Scripts/webkitpy/port/mac.py: Ditto.
+        * Scripts/webkitpy/port/test.py:
+        (TestDriver.run_test): Use port specific crash log path when retrieving crash logs.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._get_crash_log): Ditto.
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (execute): Construct a port object since this is the object which owns the path to crash logs.
+
+2017-05-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ test /webkit2/WebKitWebView/create-navigation-data after r216615.
+
+        In r216615 the custom code for window.open() was removed. The generated code now correctly handles the optional
+        URL parameter using the default value "about:blank" when not provided.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewCreateNavigationData):
+
+2017-05-11  Youenn Fablet  <youenn@apple.com>
+
+        Allow WPT server to serve specific WebKit test
+        https://bugs.webkit.org/show_bug.cgi?id=171479
+
+        Reviewed by Ryosuke Niwa.
+
+        Adding a new mount point to WPT server.
+        It points to LayoutTests/http/wpt folder and is triggered on "/WebKit" urls.
+
+        Updating the webkitpy infrastructure to launch WPT server and do test url mapping for LayoutTests/wpt tests.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.__init__):
+        (Manager._is_http_test):
+        (Manager._needs_web_platform_test):
+        (Manager._run_tests):
+        (Manager._is_web_platform_test): Deleted.
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (build_routes):
+        (main):
+        * Scripts/webkitpy/port/driver.py:
+        (Driver):
+        (Driver.is_webkit_specific_web_platform_test):
+        (Driver.test_to_uri):
+        (Driver._command_from_driver_input):
+
+2017-05-11  Brady Eidson  <beidson@apple.com>
+
+        [WKWebsiteDataStore removeDataOfTypes:...] doesn't work for IndexedDB if the data store has a custom IDB path.
+        <rdar://problem/30612463> and https://bugs.webkit.org/show_bug.cgi?id=171994
+
+        Reviewed by Andy Estes.
+        Informal review by Maureen Daum.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r216217): lldb_webkit.py no longer prints out a WTFString, StringImpl needs to handle StringImplShape change
+        https://bugs.webkit.org/show_bug.cgi?id=171989
+
+        Reviewed by Brian Burg.
+
+        * lldb/lldb_webkit.py:
+        (WTFStringImplProvider.get_data8):
+        (WTFStringImplProvider.get_data16):
+        m_data8 and m_data16 are now part of the superclass StringImplShape
+        instead of directly in StringImpl. So first get the shape by getting
+        index 0, and the data properties are the same offset within that.
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Vibration API
+        https://bugs.webkit.org/show_bug.cgi?id=171766
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2017-05-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Add WPE release bots
+        https://bugs.webkit.org/show_bug.cgi?id=171973
+
+        Reviewed by Žan Doberšek.
+
+        This adds a WPE Release Build bot (64-bit) and a WPE Release Test bot.
+        It also adds a new WPE buildbot category.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (InstallWpeDependencies):
+        (appendCustomBuildFlags):
+        (Factory.__init__):
+        (loadBuilderConfig):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html:
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        (DRTDesktopNotificationPresenter::checkNotificationPermission):
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        Remove use and definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove user agent quirk for Slack
+        https://bugs.webkit.org/show_bug.cgi?id=171869
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the corresponding test.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216578.
+        https://bugs.webkit.org/show_bug.cgi?id=171920
+
+        Broke the GTK+ build with Wayland enabled (Requested by KaL on
+        #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Bump GTK+ and its dependencies in jhbuild"
+        https://bugs.webkit.org/show_bug.cgi?id=171918
+        http://trac.webkit.org/changeset/216578
+
+2017-05-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GTK+ and its dependencies in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171918
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * WebKitTestRunner/InjectedBundle/gtk/ActivateFontsGtk.cpp:
+        (WTR::initializeGtkSettings):
+        * gtk/jhbuild.modules:
+        * gtk/patches/gtk+-configure-fix-detecting-CUPS-2.x.patch: Removed.
+        * gtk/patches/librsvg-2.36.1-bump-up-config.guess-to-support-aarch64.patch: Removed.
+
+2017-05-10  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Set CMake args in build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=171436
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/build-webkit:
+
+2017-05-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        ImageDiff: Add CG implementation for new ImageDiff
+        https://bugs.webkit.org/show_bug.cgi?id=170608
+
+        Reviewed Alex Christensen.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/win/ImageDiffCairo.cpp: Removed.
+        * DumpRenderTree/win/ImageDiffWin.cpp: Removed.
+        * ImageDiff/CMakeLists.txt:
+        * ImageDiff/Cairo.cmake:
+        * ImageDiff/ImageDiff.cpp:
+        (main):
+        * ImageDiff/ImageDiff.xcodeproj/project.pbxproj:
+        * ImageDiff/PlatformImage.cpp:
+        * ImageDiff/PlatformImage.h:
+        * ImageDiff/cairo/PlatformImageCairo.cpp:
+        * ImageDiff/cg/ImageDiff.cpp: Removed.
+        * ImageDiff/cg/PlatformImageCG.cpp: Added.
+        (ImageDiff::PlatformImage::createFromStdin):
+        (ImageDiff::PlatformImage::createFromDiffData):
+        (ImageDiff::PlatformImage::PlatformImage):
+        (ImageDiff::PlatformImage::~PlatformImage):
+        (ImageDiff::PlatformImage::width):
+        (ImageDiff::PlatformImage::height):
+        (ImageDiff::PlatformImage::rowBytes):
+        (ImageDiff::PlatformImage::hasAlpha):
+        (ImageDiff::PlatformImage::pixels):
+        (ImageDiff::PlatformImage::writeAsPNGToStdout):
+
+2017-05-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Enable FTL JIT by default on AArch64
+        https://bugs.webkit.org/show_bug.cgi?id=144039
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/build-jsc: Enable the FTL JIT option by default on ARM64.
+        * Scripts/run-jsc-stress-tests: Unmark the ARM64 and Linux combination
+        as an unsupported FTL platform.
+        * Scripts/webkitdirs.pm:
+        (isARM64): Returns 1 if the determined architecture is 'arm64'.
+        * Scripts/webkitperl/FeatureList.pm: Enable FTL_JIT and WEBASSEMBLY on ARM64.
+
 2017-05-09  Jonathan Bedard  <jbedard@apple.com>
 
         webkitpy: Remove unneeded crash log retrieval, refactor Darwin crash retrieval

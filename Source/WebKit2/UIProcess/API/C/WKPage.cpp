@@ -89,10 +89,6 @@
 #include "WebContextMenuItem.h"
 #endif
 
-#if ENABLE(VIBRATION)
-#include "WebVibrationProxy.h"
-#endif
-
 #if ENABLE(MEDIA_SESSION)
 #include "WebMediaSessionMetadata.h"
 #include <WebCore/MediaSessionEvents.h>
@@ -119,7 +115,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8, WKPageUIClientV9> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8, WKPageUIClientV9, WKPageUIClientV10> Versions;
 };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -368,16 +364,6 @@ uint64_t WKPageGetRenderTreeSize(WKPageRef page)
 WKInspectorRef WKPageGetInspector(WKPageRef pageRef)
 {
     return toAPI(toImpl(pageRef)->inspector());
-}
-
-WKVibrationRef WKPageGetVibration(WKPageRef page)
-{
-#if ENABLE(VIBRATION)
-    return toAPI(toImpl(page)->vibration());
-#else
-    UNUSED_PARAM(page);
-    return 0;
-#endif
 }
 
 double WKPageGetEstimatedProgress(WKPageRef pageRef)
@@ -1817,6 +1803,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 return;
 
             m_client.fullscreenMayReturnToInline(toAPI(page), m_client.base.clientInfo);
+        }
+        
+        void hasVideoInPictureInPictureDidChange(WebPageProxy* page, bool hasVideoInPictureInPicture) override
+        {
+            if (!m_client.hasVideoInPictureInPictureDidChange)
+                return;
+            
+            m_client.hasVideoInPictureInPictureDidChange(toAPI(page), hasVideoInPictureInPicture, m_client.base.clientInfo);
         }
 
         void close(WebPageProxy* page) override

@@ -193,7 +193,7 @@ void HTMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelec
 bool HTMLSelectElement::usesMenuList() const
 {
 #if !PLATFORM(IOS)
-    if (RenderTheme::themeForPage(document().page())->delegatesMenuListRendering())
+    if (RenderTheme::singleton().delegatesMenuListRendering())
         return true;
 
     return !m_multiple && m_size <= 1;
@@ -741,7 +741,7 @@ const Vector<HTMLElement*>& HTMLSelectElement::listItems() const
 void HTMLSelectElement::invalidateSelectedItems()
 {
     if (HTMLCollection* collection = cachedHTMLCollection(SelectedOptions))
-        collection->invalidateCache(document());
+        collection->invalidateCache();
 }
 
 void HTMLSelectElement::setRecalcListItems()
@@ -753,7 +753,7 @@ void HTMLSelectElement::setRecalcListItems()
     invalidateStyleForSubtree();
     if (!isConnected()) {
         if (HTMLCollection* collection = cachedHTMLCollection(SelectOptions))
-            collection->invalidateCache(document());
+            collection->invalidateCache();
     }
     if (!isConnected())
         invalidateSelectedItems();
@@ -1085,7 +1085,7 @@ void HTMLSelectElement::reset()
 
 bool HTMLSelectElement::platformHandleKeydownEvent(KeyboardEvent* event)
 {
-    if (!RenderTheme::themeForPage(document().page())->popsMenuByArrowKeys())
+    if (!RenderTheme::singleton().popsMenuByArrowKeys())
         return false;
 
     if (!isSpatialNavigationEnabled(document().frame())) {
@@ -1118,8 +1118,6 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event& event)
 {
     ASSERT(renderer());
     ASSERT(renderer()->isMenuList());
-
-    RefPtr<RenderTheme> renderTheme = RenderTheme::themeForPage(document().page());
 
     if (event.type() == eventNames().keydownEvent) {
         if (!is<KeyboardEvent>(event))
@@ -1188,7 +1186,7 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event& event)
             return;
         }
 
-        if (renderTheme->popsMenuBySpaceOrReturn()) {
+        if (RenderTheme::singleton().popsMenuBySpaceOrReturn()) {
             if (keyCode == ' ' || keyCode == '\r') {
                 focus();
 
@@ -1205,7 +1203,7 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event& event)
                 downcast<RenderMenuList>(*renderer).showPopup();
                 handled = true;
             }
-        } else if (renderTheme->popsMenuByArrowKeys()) {
+        } else if (RenderTheme::singleton().popsMenuByArrowKeys()) {
             if (keyCode == ' ') {
                 focus();
 

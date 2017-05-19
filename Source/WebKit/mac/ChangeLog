@@ -1,3 +1,236 @@
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        Reviewed by Saam Barati.
+
+        * Plugins/Hosted/ProxyInstance.mm:
+        * Plugins/Hosted/ProxyRuntimeObject.mm:
+
+2017-05-17  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216974.
+
+        Revision caused consistent timeouts on all platforms.
+
+        Reverted changeset:
+
+        "Add a RuntimeEnabledFeature for display: contents, defaulted
+        to false."
+        https://bugs.webkit.org/show_bug.cgi?id=171984
+        http://trac.webkit.org/changeset/216974
+
+2017-05-17  Emilio Cobos Álvarez  <ecobos@igalia.com>
+
+        Add a RuntimeEnabledFeature for display: contents, defaulted to false.
+        https://bugs.webkit.org/show_bug.cgi?id=171984
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences displayContentsEnabled]):
+        (-[WebPreferences setDisplayContentsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-05-16  Sam Weinig  <sam@webkit.org>
+
+        Bring Notification.idl up to spec
+        https://bugs.webkit.org/show_bug.cgi?id=172156
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebNotificationClient.h:
+        * WebCoreSupport/WebNotificationClient.mm:
+        (generateNotificationID):
+        (WebNotificationClient::show):
+        (WebNotificationClient::cancel):
+        (WebNotificationClient::clearNotifications):
+        (WebNotificationClient::notificationObjectDestroyed):
+        (WebNotificationClient::requestPermission):
+        (WebNotificationClient::hasPendingPermissionRequests):
+        (WebNotificationClient::checkPermission):
+        (-[WebNotificationPolicyListener allow]):
+        (-[WebNotificationPolicyListener deny]):
+        * WebView/WebNotification.mm:
+        (-[WebNotification iconURL]):
+        (-[WebNotification dir]):
+        Simplify #ifdefs and update for enum vs String usage.
+
+2017-05-15  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Do not delete asynchronously decoded frames for large images if their clients are in the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=170640
+
+        Reviewed by Simon Fraser.
+
+        Enable the async decoding for large images.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-05-15  Jer Noble  <jer.noble@apple.com>
+
+        Add experimental setting to allow document gesture interaction to fulfill media playback gesture requirement
+        https://bugs.webkit.org/show_bug.cgi?id=172131
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaUserGestureInheritsFromDocument]):
+        (-[WebPreferences setMediaUserGestureInheritsFromDocument:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2017-05-12  Chris Dumez  <cdumez@apple.com>
+
+        Drop uses of PassRefPtr in WebKit/mac
+        https://bugs.webkit.org/show_bug.cgi?id=172066
+
+        Reviewed by Sam Weinig.
+
+        * History/WebBackForwardListInternal.h:
+        * History/WebHistoryItem.mm:
+        (kit):
+        (-[WebHistoryItem initWithWebCoreHistoryItem:]):
+        * History/WebHistoryItemInternal.h:
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        (WebKit::HostedNetscapePluginStream::create):
+        * Plugins/Hosted/NetscapePluginHostManager.h:
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::PluginRequest::create):
+        (WebKit::NetscapePluginInstanceProxy::create):
+        (WebKit::NetscapePluginInstanceProxy::setManualStream):
+        * Plugins/Hosted/ProxyInstance.h:
+        (WebKit::ProxyInstance::create):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::ProxyInstance):
+        (WebKit::ProxyInstance::newRuntimeObject):
+        * Plugins/Hosted/ProxyRuntimeObject.h:
+        (WebKit::ProxyRuntimeObject::create):
+        * Plugins/Hosted/ProxyRuntimeObject.mm:
+        (WebKit::ProxyRuntimeObject::ProxyRuntimeObject):
+        * Plugins/Hosted/WebHostedNetscapePluginView.h:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView initWithFrame:pluginPackage:URL:baseURL:MIMEType:attributeKeys:attributeValues:loadManually:element:]):
+        * Plugins/WebBaseNetscapePluginView.h:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView initWithFrame:pluginPackage:URL:baseURL:MIMEType:attributeKeys:attributeValues:loadManually:element:]):
+        * Plugins/WebNetscapePluginStream.h:
+        (WebNetscapePluginStream::create):
+        * Plugins/WebNetscapePluginView.h:
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView initWithFrame:pluginPackage:URL:baseURL:MIMEType:attributeKeys:attributeValues:loadManually:element:]):
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::requestPermission):
+        (-[WebNotificationPolicyListener initWithCallback:]):
+        * WebCoreSupport/WebOpenPanelResultListener.mm:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::enumerateMediaDevices):
+        (-[WebUserMediaPolicyListener initWithUserMediaRequest:]):
+        (-[WebUserMediaPolicyCheckerListener initWithMediaDevicesEnumerationRequest:]):
+        * WebView/WebArchive.mm:
+        (-[WebArchivePrivate initWithCoreArchive:]):
+        (-[WebArchivePrivate setCoreArchive:]):
+        (-[WebArchive initWithData:]):
+        (-[WebArchive subframeArchives]):
+        (-[WebArchive _initWithCoreLegacyWebArchive:]):
+        * WebView/WebArchiveInternal.h:
+        * WebView/WebDataSource.mm:
+        (WebDataSourcePrivate::WebDataSourcePrivate):
+        (WebDataSourcePrivate::~WebDataSourcePrivate):
+        (-[WebDataSource _initWithDocumentLoader:]):
+        * WebView/WebDataSourceInternal.h:
+        * WebView/WebDeviceOrientation.mm:
+        (-[WebDeviceOrientation initWithCoreDeviceOrientation:]):
+        * WebView/WebDeviceOrientationInternal.h:
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:]):
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]):
+        * WebView/WebFrameInternal.h:
+        * WebView/WebFullScreenController.h:
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController setElement:]):
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPositionInternal initWithCoreGeolocationPosition:]):
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+        * WebView/WebHTMLView.mm:
+        (currentKeyboardEvent):
+        * WebView/WebResource.mm:
+        * WebView/WebScriptWorld.mm:
+        (-[WebScriptWorld initWithWorld:]):
+        (+[WebScriptWorld standardWorld]):
+        (+[WebScriptWorld findOrCreateWorld:]):
+        * WebView/WebViewData.h:
+        (LayerFlushController::create):
+
+2017-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Drop remaining uses of PassRefPtr in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=172013
+
+        Reviewed by Yusuke Suzuki.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        (WebKit::NetscapePluginInstanceProxy::createBindingsInstance):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView createPluginBindingsInstance:]):
+
+2017-05-11  Tim Horton  <timothy_horton@apple.com>
+
+        Mail spins launching spell checker when typing
+        https://bugs.webkit.org/show_bug.cgi?id=171986
+        <rdar://problem/26305327>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebView.mm:
+        (-[WebView setEditable:]):
+        Asynchronously pre-warm the spell checker when a WebView becomes editable.
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCoreSupport/WebNotificationClient.h:
+        * WebCoreSupport/WebNotificationClient.mm:
+        * WebView/WebNotification.mm:
+        * WebView/WebNotificationInternal.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _notificationIDForTesting:]):
+        Remove legacy notification specific code.
+
+2017-05-10  Chris Dumez  <cdumez@apple.com>
+
+        Simplify relationship between Attr and Element now that Attr is childless
+        https://bugs.webkit.org/show_bug.cgi?id=171909
+
+        Reviewed by Ryosuke Niwa.
+
+        Build fix.
+
+        * DOM/DOMAttr.mm:
+        (-[DOMAttr value]):
+        (-[DOMAttr setValue:]):
+
 2017-05-08  Chris Dumez  <cdumez@apple.com>
 
         Move 'style' from Element to HTMLElement / SVGElement and make it settable

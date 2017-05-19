@@ -204,10 +204,6 @@
 #include <WebCore/MHTMLArchive.h>
 #endif
 
-#if ENABLE(VIBRATION)
-#include "WebVibrationClient.h"
-#endif
-
 #if ENABLE(POINTER_LOCK)
 #include <WebCore/PointerLockController.h>
 #endif
@@ -355,6 +351,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
+    , m_allowsBlockSelection(parameters.allowsBlockSelection)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -434,11 +431,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), new WebGeolocationClient(this));
 #endif
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(m_page.get(), new WebNotificationClient(this));
-#endif
-#if ENABLE(VIBRATION)
-    WebCore::provideVibrationTo(m_page.get(), new WebVibrationClient(this));
 #endif
 #if ENABLE(PROXIMITY_EVENTS)
     WebCore::provideDeviceProximityTo(m_page.get(), new WebDeviceProximityClient(this));
@@ -574,7 +568,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_userContentController->addUserStyleSheets(parameters.userStyleSheets);
     m_userContentController->addUserScriptMessageHandlers(parameters.messageHandlers);
 #if ENABLE(CONTENT_EXTENSIONS)
-    m_userContentController->addContentExtensions(parameters.contentExtensions);
+    m_userContentController->addContentRuleLists(parameters.contentRuleLists);
 #endif
 }
 
@@ -2886,12 +2880,11 @@ void WebPage::getContentsAsString(uint64_t callbackID)
 #if ENABLE(MHTML)
 void WebPage::getContentsAsMHTMLData(uint64_t callbackID)
 {
-    RefPtr<SharedBuffer> buffer = MHTMLArchive::generateMHTMLData(m_page.get());
+    auto buffer = MHTMLArchive::generateMHTMLData(m_page.get());
 
     // FIXME: Use SharedBufferDataReference.
     IPC::DataReference dataReference;
-    if (buffer)
-        dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+    dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 #endif
@@ -3137,6 +3130,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAudioPlaybackRequiresUserGesture(requiresUserGestureForMedia || store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForAudioPlaybackKey()));
     settings.setRequiresUserGestureToLoadVideo(store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureToLoadVideoKey()));
     settings.setMainContentUserGestureOverrideEnabled(store.getBoolValueForKey(WebPreferencesKey::mainContentUserGestureOverrideEnabledKey()));
+    settings.setMediaUserGestureInheritsFromDocument(store.getBoolValueForKey(WebPreferencesKey::mediaUserGestureInheritsFromDocumentKey()));
     settings.setAllowsInlineMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackKey()));
     settings.setAllowsInlineMediaPlaybackAfterFullscreen(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackAfterFullscreenKey()));
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(store.getBoolValueForKey(WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey()));
@@ -3222,7 +3216,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShouldDisplayTextDescriptions(store.getBoolValueForKey(WebPreferencesKey::shouldDisplayTextDescriptionsKey()));
 #endif
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     settings.setNotificationsEnabled(store.getBoolValueForKey(WebPreferencesKey::notificationsEnabledKey()));
 #endif
 
@@ -3349,6 +3343,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
 
+    settings.setConstantPropertiesEnabled(store.getBoolValueForKey(WebPreferencesKey::constantPropertiesEnabledKey()));
+
+    settings.setViewportFitEnabled(store.getBoolValueForKey(WebPreferencesKey::viewportFitEnabledKey()));
+
     settings.setVisualViewportEnabled(store.getBoolValueForKey(WebPreferencesKey::visualViewportEnabledKey()));
 
     settings.setInputEventsEnabled(store.getBoolValueForKey(WebPreferencesKey::inputEventsEnabledKey()));
@@ -3391,9 +3389,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints);
     setForceAlwaysUserScalable(m_forceAlwaysUserScalable || store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
 #endif
-    // FIXME: enable async image decoding after the flickering bug wk170640 is fixed.
-    // settings.setLargeImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::largeImageAsyncDecodingEnabledKey()));
-    settings.setLargeImageAsyncDecodingEnabled(false);
+    settings.setLargeImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::largeImageAsyncDecodingEnabledKey()));
     settings.setAnimatedImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::animatedImageAsyncDecodingEnabledKey()));
     settings.setShouldSuppressKeyboardInputDuringProvisionalNavigation(store.getBoolValueForKey(WebPreferencesKey::shouldSuppressKeyboardInputDuringProvisionalNavigationKey()));
 }
@@ -3876,19 +3872,19 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 }
 
 #if ENABLE(MEDIA_STREAM)
-void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, const String& audioDeviceUID, const String& videoDeviceUID, const String& mediaDeviceIdentifierHashSalt)
+void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, String&& audioDeviceUID, String&& videoDeviceUID, String&& mediaDeviceIdentifierHashSalt)
 {
-    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, audioDeviceUID, videoDeviceUID, mediaDeviceIdentifierHashSalt);
+    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, WTFMove(audioDeviceUID), WTFMove(videoDeviceUID), WTFMove(mediaDeviceIdentifierHashSalt));
 }
 
-void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint)
+void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String&& invalidConstraint)
 {
-    m_userMediaPermissionRequestManager->userMediaAccessWasDenied(userMediaID, static_cast<UserMediaRequest::MediaAccessDenialReason>(reason), invalidConstraint);
+    m_userMediaPermissionRequestManager->userMediaAccessWasDenied(userMediaID, static_cast<UserMediaRequest::MediaAccessDenialReason>(reason), WTFMove(invalidConstraint));
 }
 
-void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<CaptureDevice>& devices, const String& deviceIdentifierHashSalt, bool originHasPersistentAccess)
+void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<CaptureDevice>& devices, String&& deviceIdentifierHashSalt, bool originHasPersistentAccess)
 {
-    m_userMediaPermissionRequestManager->didCompleteMediaDeviceEnumeration(userMediaID, devices, deviceIdentifierHashSalt, originHasPersistentAccess);
+    m_userMediaPermissionRequestManager->didCompleteMediaDeviceEnumeration(userMediaID, devices, WTFMove(deviceIdentifierHashSalt), originHasPersistentAccess);
 }
 #if ENABLE(SANDBOX_EXTENSIONS)
 void WebPage::grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions& extensions)
@@ -5115,7 +5111,7 @@ void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
 {
     if (!m_assistedNode)
         return;
-    if (m_assistedNode->document().frame() == frame->coreFrame()) {
+    if (frame->isMainFrame() || m_assistedNode->document().frame() == frame->coreFrame()) {
 #if PLATFORM(IOS)
         send(Messages::WebPageProxy::StopAssistingNode());
 #elif PLATFORM(MAC)
@@ -5807,14 +5803,14 @@ void WebPage::addUserScript(const String& source, WebCore::UserContentInjectedFr
 {
     WebCore::UserScript userScript{ source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectionTime, injectedFrames };
 
-    m_userContentController->addUserScript(*InjectedBundleScriptWorld::normalWorld(), WTFMove(userScript));
+    m_userContentController->addUserScript(InjectedBundleScriptWorld::normalWorld(), WTFMove(userScript));
 }
 
 void WebPage::addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames injectedFrames)
 {
     WebCore::UserStyleSheet userStyleSheet{ source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectedFrames, UserStyleUserLevel };
 
-    m_userContentController->addUserStyleSheet(*InjectedBundleScriptWorld::normalWorld(), WTFMove(userStyleSheet));
+    m_userContentController->addUserStyleSheet(InjectedBundleScriptWorld::normalWorld(), WTFMove(userStyleSheet));
 }
 
 void WebPage::removeAllUserContent()

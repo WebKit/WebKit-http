@@ -29,7 +29,7 @@
 #include <WebCore/Document.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
-#include <WebCore/MediaConstraintsImpl.h>
+#include <WebCore/MediaConstraints.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 
@@ -104,8 +104,8 @@ void UserMediaPermissionRequestManager::sendUserMediaRequest(UserMediaRequest& r
     ASSERT(webFrame);
 
     SecurityOrigin* topLevelDocumentOrigin = request.topLevelDocumentOrigin();
-    String topLevelDocumentOriginString = topLevelDocumentOrigin ? SecurityOriginData::fromSecurityOrigin(*topLevelDocumentOrigin).databaseIdentifier() : emptyString();
-    m_page.send(Messages::WebPageProxy::RequestUserMediaPermissionForFrame(requestID, webFrame->frameID(), SecurityOriginData::fromSecurityOrigin(*request.userMediaDocumentOrigin()).databaseIdentifier(), topLevelDocumentOriginString, request.audioConstraints().data(), request.videoConstraints().data()));
+    ASSERT(topLevelDocumentOrigin);
+    m_page.send(Messages::WebPageProxy::RequestUserMediaPermissionForFrame(requestID, webFrame->frameID(), SecurityOriginData::fromSecurityOrigin(*request.userMediaDocumentOrigin()), SecurityOriginData::fromSecurityOrigin(*topLevelDocumentOrigin), request.audioConstraints(), request.videoConstraints()));
 }
 
 void UserMediaPermissionRequestManager::cancelUserMediaRequest(UserMediaRequest& request)
@@ -154,24 +154,24 @@ void UserMediaPermissionRequestManager::removeMediaRequestFromMaps(UserMediaRequ
     m_userMediaRequestToIDMap.remove(&request);
 }
 
-void UserMediaPermissionRequestManager::userMediaAccessWasGranted(uint64_t requestID, const String& audioDeviceUID, const String& videoDeviceUID, const String& deviceIdentifierHashSalt)
+void UserMediaPermissionRequestManager::userMediaAccessWasGranted(uint64_t requestID, String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt)
 {
     auto request = m_idToUserMediaRequestMap.take(requestID);
     if (!request)
         return;
     removeMediaRequestFromMaps(*request);
 
-    request->allow(audioDeviceUID, videoDeviceUID, deviceIdentifierHashSalt);
+    request->allow(WTFMove(audioDeviceUID), WTFMove(videoDeviceUID), WTFMove(deviceIdentifierHashSalt));
 }
 
-void UserMediaPermissionRequestManager::userMediaAccessWasDenied(uint64_t requestID, WebCore::UserMediaRequest::MediaAccessDenialReason reason, const String& invalidConstraint)
+void UserMediaPermissionRequestManager::userMediaAccessWasDenied(uint64_t requestID, WebCore::UserMediaRequest::MediaAccessDenialReason reason, String&& invalidConstraint)
 {
     auto request = m_idToUserMediaRequestMap.take(requestID);
     if (!request)
         return;
     removeMediaRequestFromMaps(*request);
 
-    request->deny(reason, invalidConstraint);
+    request->deny(reason, WTFMove(invalidConstraint));
 }
 
 void UserMediaPermissionRequestManager::enumerateMediaDevices(MediaDevicesEnumerationRequest& request)
@@ -192,8 +192,8 @@ void UserMediaPermissionRequestManager::enumerateMediaDevices(MediaDevicesEnumer
     ASSERT(webFrame);
 
     SecurityOrigin* topLevelDocumentOrigin = request.topLevelDocumentOrigin();
-    String topLevelDocumentOriginString = topLevelDocumentOrigin ? SecurityOriginData::fromSecurityOrigin(*topLevelDocumentOrigin).databaseIdentifier() : emptyString();
-    m_page.send(Messages::WebPageProxy::EnumerateMediaDevicesForFrame(requestID, webFrame->frameID(), SecurityOriginData::fromSecurityOrigin(*request.userMediaDocumentOrigin()).databaseIdentifier(), topLevelDocumentOriginString));
+    ASSERT(topLevelDocumentOrigin);
+    m_page.send(Messages::WebPageProxy::EnumerateMediaDevicesForFrame(requestID, webFrame->frameID(), SecurityOriginData::fromSecurityOrigin(*request.userMediaDocumentOrigin()), SecurityOriginData::fromSecurityOrigin(*topLevelDocumentOrigin)));
 }
 
 void UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration(WebCore::MediaDevicesEnumerationRequest& request)
@@ -205,14 +205,14 @@ void UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration(WebCore::M
     m_idToMediaDevicesEnumerationRequestMap.remove(requestID);
 }
 
-void UserMediaPermissionRequestManager::didCompleteMediaDeviceEnumeration(uint64_t requestID, const Vector<CaptureDevice>& deviceList, const String& mediaDeviceIdentifierHashSalt, bool hasPersistentAccess)
+void UserMediaPermissionRequestManager::didCompleteMediaDeviceEnumeration(uint64_t requestID, const Vector<CaptureDevice>& deviceList, String&& mediaDeviceIdentifierHashSalt, bool hasPersistentAccess)
 {
     RefPtr<MediaDevicesEnumerationRequest> request = m_idToMediaDevicesEnumerationRequestMap.take(requestID);
     if (!request)
         return;
     m_mediaDevicesEnumerationRequestToIDMap.remove(request);
     
-    request->setDeviceInfo(deviceList, mediaDeviceIdentifierHashSalt, hasPersistentAccess);
+    request->setDeviceInfo(deviceList, WTFMove(mediaDeviceIdentifierHashSalt), hasPersistentAccess);
 }
 
 void UserMediaPermissionRequestManager::grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions& extensions)

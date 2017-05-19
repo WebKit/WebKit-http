@@ -164,7 +164,7 @@ template<> void JSTestTypedefsConstructor::initializeProperties(VM& vm, JSDOMGlo
     reifyStaticProperties(vm, JSTestTypedefsConstructorTableValues, *this);
 }
 
-template<> const ClassInfo JSTestTypedefsConstructor::s_info = { "TestTypedefs", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestTypedefsConstructor) };
+template<> const ClassInfo JSTestTypedefsConstructor::s_info = { "TestTypedefs", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestTypedefsConstructor) };
 
 /* Hash table for prototype */
 
@@ -196,7 +196,7 @@ static const HashTableValue JSTestTypedefsPrototypeTableValues[] =
     { "methodWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionMethodWithException), (intptr_t) (0) } },
 };
 
-const ClassInfo JSTestTypedefsPrototype::s_info = { "TestTypedefsPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestTypedefsPrototype) };
+const ClassInfo JSTestTypedefsPrototype::s_info = { "TestTypedefsPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestTypedefsPrototype) };
 
 void JSTestTypedefsPrototype::finishCreation(VM& vm)
 {
@@ -204,7 +204,7 @@ void JSTestTypedefsPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestTypedefsPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestTypedefs::s_info = { "TestTypedefs", &Base::s_info, &JSTestTypedefsTable, CREATE_METHOD_TABLE(JSTestTypedefs) };
+const ClassInfo JSTestTypedefs::s_info = { "TestTypedefs", &Base::s_info, &JSTestTypedefsTable, nullptr, CREATE_METHOD_TABLE(JSTestTypedefs) };
 
 JSTestTypedefs::JSTestTypedefs(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestTypedefs>&& impl)
     : JSDOMWrapper<TestTypedefs>(structure, globalObject, WTFMove(impl))
@@ -607,7 +607,7 @@ static inline JSC::EncodedJSValue jsTestTypedefsPrototypeFunctionSetShadowCaller
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto color = state->argument(3).isUndefined() ? String() : convert<IDLDOMString>(*state, state->uncheckedArgument(3));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto alpha = state->argument(4).isUndefined() ? std::optional<float>() : convert<IDLUnrestrictedFloat>(*state, state->uncheckedArgument(4));
+    auto alpha = state->argument(4).isUndefined() ? std::optional<float>() : std::optional<float>(convert<IDLUnrestrictedFloat>(*state, state->uncheckedArgument(4)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.setShadow(WTFMove(width), WTFMove(height), WTFMove(blur), WTFMove(color), WTFMove(alpha));
     return JSValue::encode(jsUndefined());
@@ -748,7 +748,7 @@ static inline JSC::EncodedJSValue jsTestTypedefsPrototypeFunctionFuncWithClampCa
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto arg1 = convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto arg2 = state->argument(1).isUndefined() ? std::optional<uint64_t>() : convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(1));
+    auto arg2 = state->argument(1).isUndefined() ? std::optional<uint64_t>() : std::optional<uint64_t>(convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.funcWithClamp(WTFMove(arg1), WTFMove(arg2));
     return JSValue::encode(jsUndefined());

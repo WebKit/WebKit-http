@@ -1761,6 +1761,16 @@ bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPr
     return toImpl(preferencesRef)->shouldSuppressKeyboardInputDuringProvisionalNavigation();
 }
 
+void WKPreferencesSetMediaUserGestureInheritsFromDocument(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setMediaUserGestureInheritsFromDocument(flag);
+}
+
+bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaUserGestureInheritsFromDocument();
+}
+
 void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setAllowRunningOfInsecureContent(enabled);

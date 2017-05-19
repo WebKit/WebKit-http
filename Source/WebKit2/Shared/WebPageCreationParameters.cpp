@@ -84,6 +84,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << availableScreenSize;
     encoder << textAutosizingWidth;
     encoder << ignoresViewportScaleLimits;
+    encoder << allowsBlockSelection;
 #endif
 #if PLATFORM(COCOA)
     encoder << smartInsertDeleteEnabled;
@@ -106,7 +107,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << userStyleSheets;
     encoder << messageHandlers;
 #if ENABLE(CONTENT_EXTENSIONS)
-    encoder << contentExtensions;
+    encoder << contentRuleLists;
 #endif
 }
 
@@ -210,7 +211,10 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
         return false;
     if (!decoder.decode(parameters.ignoresViewportScaleLimits))
         return false;
+    if (!decoder.decode(parameters.allowsBlockSelection))
+        return false;
 #endif
+
 #if PLATFORM(COCOA)
     if (!decoder.decode(parameters.smartInsertDeleteEnabled))
         return false;
@@ -253,7 +257,7 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.messageHandlers))
         return false;
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (!decoder.decode(parameters.contentExtensions))
+    if (!decoder.decode(parameters.contentRuleLists))
         return false;
 #endif
     return true;

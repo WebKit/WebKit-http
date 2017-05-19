@@ -2725,7 +2725,7 @@ LRESULT CALLBACK WebView::WebViewWndProc(HWND hWnd, UINT message, WPARAM wParam,
         case WM_XP_THEMECHANGED:
             if (Frame* coreFrame = core(mainFrameImpl)) {
                 webView->deleteBackingStore();
-                coreFrame->page()->theme().themeChanged();
+                RenderTheme::singleton().themeChanged();
                 ScrollbarTheme::theme().themeChanged();
                 RECT windowRect;
                 ::GetClientRect(hWnd, &windowRect);
@@ -6734,7 +6734,7 @@ HRESULT WebView::globalHistoryItem(_COM_Outptr_opt_ IWebHistoryItem** item)
         return S_OK;
     }
 
-    *item = WebHistoryItem::createInstance(m_globalHistoryItem);
+    *item = WebHistoryItem::createInstance(m_globalHistoryItem.copyRef());
     return S_OK;
 }
 
@@ -7526,9 +7526,9 @@ FullScreenController* WebView::fullScreenController()
     return m_fullscreenController.get();
 }
 
-void WebView::setFullScreenElement(PassRefPtr<Element> element)
+void WebView::setFullScreenElement(RefPtr<Element>&& element)
 {
-    m_fullScreenElement = element;
+    m_fullScreenElement = WTFMove(element);
 }
 
 HWND WebView::fullScreenClientWindow() const

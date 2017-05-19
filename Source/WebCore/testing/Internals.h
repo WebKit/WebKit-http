@@ -76,7 +76,7 @@ class SourceBuffer;
 class StyleSheet;
 class TimeRanges;
 class TypeConversions;
-class WebGLRenderingContextBase;
+class WebGLRenderingContext;
 class XMLHttpRequest;
 
 class Internals final : public RefCounted<Internals>,  private ContextDestructionObserver
@@ -114,6 +114,7 @@ public:
 
     void clearMemoryCache();
     void pruneMemoryCacheToSize(unsigned size);
+    void destroyDecodedDataForAllImages();
     unsigned memoryCacheSize() const;
 
     unsigned imageFrameIndex(HTMLImageElement&);
@@ -450,10 +451,6 @@ public:
 
     ExceptionOr<Ref<DOMRect>> selectionBounds();
 
-#if ENABLE(VIBRATION)
-    bool isVibrating();
-#endif
-
     ExceptionOr<bool> isPluginUnavailabilityIndicatorObscured(Element&);
     bool isPluginSnapshotted(Element&);
 
@@ -565,8 +562,10 @@ public:
     void setAsRunningUserScripts(Document&);
 
 #if ENABLE(WEBGL)
-    void simulateWebGLContextChanged(WebGLRenderingContextBase&);
+    void simulateWebGLContextChanged(WebGLRenderingContext&);
 #endif
+
+    void setPageVisibility(bool isVisible);
 
 #if ENABLE(MEDIA_STREAM)
     ExceptionOr<void> setMediaDeviceState(const String& id, const String& property, bool value);
@@ -575,6 +574,7 @@ public:
     void observeMediaStreamTrack(MediaStreamTrack&);
     using TrackFramePromise = DOMPromiseDeferred<IDLInterface<ImageData>>;
     void grabNextMediaStreamTrackFrame(TrackFramePromise&&);
+    void delayMediaStreamTrackSamples(MediaStreamTrack&, float);
 #endif
 
 private:

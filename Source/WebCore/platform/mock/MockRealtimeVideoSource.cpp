@@ -48,7 +48,11 @@
 
 namespace WebCore {
 
-class MockRealtimeVideoSourceFactory : public RealtimeMediaSource::VideoCaptureFactory {
+class MockRealtimeVideoSourceFactory : public RealtimeMediaSource::VideoCaptureFactory
+#if PLATFORM(IOS)
+    , public RealtimeMediaSource::SingleSourceFactory<MockRealtimeVideoSource>
+#endif
+{
 public:
     CaptureSourceOrError createVideoCaptureSource(const String& deviceID, const MediaConstraints* constraints) final {
         for (auto& device : MockRealtimeMediaSource::videoDevices()) {
@@ -57,6 +61,14 @@ public:
         }
         return { };
     }
+#if PLATFORM(IOS)
+private:
+    void setVisibility(bool isVisible)
+    {
+        if (activeSource())
+            activeSource()->setMuted(!isVisible);
+    }
+#endif
 };
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
@@ -68,19 +80,24 @@ CaptureSourceOrError MockRealtimeVideoSource::create(const String& name, const M
 
     return CaptureSourceOrError(WTFMove(source));
 }
-
-RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const String& name)
-{
-    auto source = adoptRef(new MockRealtimeVideoSource(name));
-    source->m_muted = true;
-    return source;
-}
 #endif
 
-RealtimeMediaSource::VideoCaptureFactory& MockRealtimeVideoSource::factory()
+Ref<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const String& name)
+{
+    auto source = adoptRef(*new MockRealtimeVideoSource(name));
+    source->notifyMutedChange(true);
+    return source;
+}
+
+static MockRealtimeVideoSourceFactory& mockVideoCaptureSourceFactory()
 {
     static NeverDestroyed<MockRealtimeVideoSourceFactory> factory;
     return factory.get();
+}
+
+RealtimeMediaSource::VideoCaptureFactory& MockRealtimeVideoSource::factory()
+{
+    return mockVideoCaptureSourceFactory();
 }
 
 MockRealtimeVideoSource::MockRealtimeVideoSource(const String& name)
@@ -94,9 +111,19 @@ MockRealtimeVideoSource::MockRealtimeVideoSource(const String& name)
     m_dashWidths.uncheckedAppend(6);
 }
 
+MockRealtimeVideoSource::~MockRealtimeVideoSource()
+{
+#if PLATFORM(IOS)
+    mockVideoCaptureSourceFactory().unsetActiveSource(*this);
+#endif
+}
+
 void MockRealtimeVideoSource::startProducingData()
 {
-    MockRealtimeMediaSource::startProducingData();
+#if PLATFORM(IOS)
+    mockVideoCaptureSourceFactory().setActiveSource(*this);
+#endif
+
     if (size().isEmpty()) {
         setWidth(640);
         setHeight(480);
@@ -108,7 +135,6 @@ void MockRealtimeVideoSource::startProducingData()
 
 void MockRealtimeVideoSource::stopProducingData()
 {
-    MockRealtimeMediaSource::stopProducingData();
     m_timer.stop();
     m_elapsedTime += monotonicallyIncreasingTime() - m_startTime;
     m_startTime = NAN;
@@ -341,8 +367,19 @@ void MockRealtimeVideoSource::drawText(GraphicsContext& context)
     }
 }
 
+void MockRealtimeVideoSource::delaySamples(float delta)
+{
+    m_delayUntil = monotonicallyIncreasingTime() + delta;
+}
+
 void MockRealtimeVideoSource::generateFrame()
 {
+    if (m_delayUntil) {
+        if (m_delayUntil < monotonicallyIncreasingTime())
+            return;
+        m_delayUntil = 0;
+    }
+
     ImageBuffer* buffer = imageBuffer();
     if (!buffer)
         return;
@@ -354,7 +391,7 @@ void MockRealtimeVideoSource::generateFrame()
     FloatRect frameRect(FloatPoint(), size);
     context.fillRect(FloatRect(FloatPoint(), size), !deviceIndex() ? Color::black : Color::darkGray);
 
-    if (!m_muted && m_enabled) {
+    if (!muted() && enabled()) {
         drawText(context);
         drawAnimation(context);
         drawBoxes(context);

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeFuncResolvedOptions(Exe
 
 namespace JSC {
 
-const ClassInfo IntlCollatorPrototype::s_info = { "Object", &Base::s_info, &collatorPrototypeTable, CREATE_METHOD_TABLE(IntlCollatorPrototype) };
+const ClassInfo IntlCollatorPrototype::s_info = { "Object", &Base::s_info, &collatorPrototypeTable, nullptr, CREATE_METHOD_TABLE(IntlCollatorPrototype) };
 
 /* Source for IntlCollatorPrototype.lut.h
 @begin collatorPrototypeTable
@@ -98,9 +98,9 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorFuncCompare(ExecState* state)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 9. Return CompareStrings(collator, X, Y).
-    auto xViewWithString = x->viewWithUnderlyingString(*state);
+    auto xViewWithString = x->viewWithUnderlyingString(state);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    auto yViewWithString = y->viewWithUnderlyingString(*state);
+    auto yViewWithString = y->viewWithUnderlyingString(state);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     scope.release();
     return JSValue::encode(collator->compareStrings(*state, xViewWithString.view, yViewWithString.view));

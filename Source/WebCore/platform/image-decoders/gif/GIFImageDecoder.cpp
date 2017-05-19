@@ -155,7 +155,7 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     //     has a disposal method other than DisposalMethod::RestoreToPrevious, stop
     //     scanning, as we'll only need this frame when decoding the next one.
     Vector<ImageFrame>::iterator i(end);
-    for (; (i != m_frameBufferCache.begin()) && (i->isEmpty() || (i->disposalMethod() == ImageFrame::DisposalMethod::RestoreToPrevious)); --i) {
+    for (; (i != m_frameBufferCache.begin()) && (i->isInvalid() || (i->disposalMethod() == ImageFrame::DisposalMethod::RestoreToPrevious)); --i) {
         if (i->isComplete() && (i != end))
             i->clear();
     }
@@ -163,7 +163,7 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // Now |i| holds the last frame we need to preserve; clear prior frames.
     for (Vector<ImageFrame>::iterator j(m_frameBufferCache.begin()); j != i; ++j) {
         ASSERT(!j->isPartial());
-        if (j->isEmpty())
+        if (j->isInvalid())
             j->clear();
     }
 
@@ -203,7 +203,7 @@ bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned 
 
     // Initialize the frame if necessary.
     ImageFrame& buffer = m_frameBufferCache[frameIndex];
-    if ((buffer.isEmpty() && !initFrameBuffer(frameIndex)) || !buffer.hasBackingStore())
+    if ((buffer.isInvalid() && !initFrameBuffer(frameIndex)) || !buffer.hasBackingStore())
         return false;
 
     RGBA32* currentAddress = buffer.backingStore()->pixelAt(xBegin, yBegin);
@@ -240,10 +240,10 @@ bool GIFImageDecoder::frameComplete(unsigned frameIndex, unsigned frameDuration,
     // Initialize the frame if necessary.  Some GIFs insert do-nothing frames,
     // in which case we never reach haveDecodedRow() before getting here.
     ImageFrame& buffer = m_frameBufferCache[frameIndex];
-    if (buffer.isEmpty() && !initFrameBuffer(frameIndex))
+    if (buffer.isInvalid() && !initFrameBuffer(frameIndex))
         return false; // initFrameBuffer() has already called setFailed().
 
-    buffer.setDecoding(ImageFrame::Decoding::Complete);
+    buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
     buffer.setDuration(frameDuration);
     buffer.setDisposalMethod(disposalMethod);
 
@@ -396,7 +396,7 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
     buffer->backingStore()->setFrameRect(IntRect(left, top, right - left, bottom - top));
 
     // Update our status to be partially complete.
-    buffer->setDecoding(ImageFrame::Decoding::Partial);
+    buffer->setDecodingStatus(ImageFrame::DecodingStatus::Partial);
 
     // Reset the alpha pixel tracker for this frame.
     m_currentBufferSawAlpha = false;

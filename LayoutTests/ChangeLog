@@ -1,3 +1,1919 @@
+2017-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217014.
+
+        This change caused mac-wk2 LayoutTests to exit early due to
+        crashes.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Grandfather domains for existing
+        data records"
+        https://bugs.webkit.org/show_bug.cgi?id=172155
+        http://trac.webkit.org/changeset/217014
+
+2017-05-17  Zalan Bujtas  <zalan@apple.com>
+
+        Tighten TextIterator::handleTextNode run-renderer mapping logic.
+        https://bugs.webkit.org/show_bug.cgi?id=172174
+
+        Reviewed by Antti Koivisto.
+
+        * fast/shadow-dom/slot-crash-expected.txt:
+
+2017-05-17  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Grandfather domains for existing data records
+        https://bugs.webkit.org/show_bug.cgi?id=172155
+        <rdar://problem/24913532>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/loading/resourceLoadStatistics/grandfathering-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/grandfathering.html: Added.
+        * platform/wk2/TestExpectations:
+            Marked it Pass for WebKit2.
+
+2017-05-17  Zalan Bujtas  <zalan@apple.com>
+
+        Debug ASSERT: WebCore::RenderImageResource::shutdown
+        https://bugs.webkit.org/show_bug.cgi?id=172238
+        <rdar://problem/30064601>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/assert-when-insertion-point-is-incorrect-expected.txt: Added.
+        * fast/images/assert-when-insertion-point-is-incorrect.html: Added.
+
+2017-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/appcache/404-resource-with-slow-main-resource.php as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=172241
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-17  Chris Dumez  <cdumez@apple.com>
+
+        Setting URL.search to '' results in a stringified URL ending in '?'
+        https://bugs.webkit.org/show_bug.cgi?id=162345
+        <rdar://problem/31800441>
+
+        Reviewed by Alex Christensen.
+
+        * fast/dom/DOMURL/set-href-attribute-search-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-search.html:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-search.js:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-search-expected.txt:
+        Update / rebaseline existing tests to reflect behavior change.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        Unskip url-setters.html test as it seems to be passing for me on WK1.
+
+2017-05-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] videoWidth and videoHeight should be set when 'loadedmetadata' event fires
+        https://bugs.webkit.org/show_bug.cgi?id=172223
+        <rdar://problem/31899755>
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/get-user-media-on-loadedmetadata-expected.txt: Added.
+        * fast/mediastream/get-user-media-on-loadedmetadata.html: Added.
+
+2017-05-17  Youenn Fablet  <youenn@apple.com>
+
+        iOS WebRTC Media Capture should not allow camera capture from background tab
+        https://bugs.webkit.org/show_bug.cgi?id=172200
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/mediastream/getUserMedia-disabled-in-background-tabs-expected.txt: Added.
+        * platform/ios/mediastream/getUserMedia-disabled-in-background-tabs.html: Added.
+
+2017-05-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Replace CryptoOperationData with BufferSource for WebKitSubtleCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=172146
+        <rdar://problem/32122256>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/webkitSubtle/argument-conversion-expected.txt:
+        * crypto/webkitSubtle/import-export-raw-key-leak-expected.txt: Added.
+        * crypto/webkitSubtle/import-export-raw-key-leak.html: Added.
+
+2017-05-17  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip newly imported notifications tests on iOS
+
+        Notifications are not enabled on iOS.
+
+        * platform/ios/TestExpectations:
+
+2017-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two http/tests/media/hls/video tests as failing during investigation.
+        https://bugs.webkit.org/show_bug.cgi?id=171814
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-17  Nan Wang  <n_wang@apple.com>
+
+        ASSERTION FAILED in WebCore::AccessibilityNodeObject::insertChild()
+        https://bugs.webkit.org/show_bug.cgi?id=171927
+        <rdar://problem/32109781>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/insert-children-assert-expected.txt: Added.
+        * accessibility/insert-children-assert.html: Added.
+
+2017-05-17  Chris Dumez  <cdumez@apple.com>
+
+        Import Notification tests from web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=172196
+
+        Reviewed by Youenn Fablet.
+
+        * resources/testharnessreport.js:
+        Allow notifications as this is a pre-requirement for web-platform-tests.
+
+2017-05-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        getElementById can return a wrong elemnt when a matching element is removed during beforeload event
+        https://bugs.webkit.org/show_bug.cgi?id=171374
+
+        Reviewed by Brent Fulgham.
+
+        Added a regression test for calling getElementById after removing a matching element
+        during beforeload event of a link element.
+
+        * fast/html/link-element-removal-during-beforeload-expected.txt: Added.
+        * fast/html/link-element-removal-during-beforeload.html: Added.
+
+2017-05-17  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline js/dom/global-constructors-attributes.html after r216959.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt:
+
+2017-05-17  Ben Kelly  <ben@wanderview.com>
+
+        Import FileAPI WPT tests.
+        https://bugs.webkit.org/show_bug.cgi?id=171960
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+
+2017-05-17  Antti Koivisto  <antti@apple.com>
+
+        Regression (198943): <marquee> shouldn't wrap text
+        https://bugs.webkit.org/show_bug.cgi?id=172217
+
+        Reviewed by Andreas Kling.
+
+        * fast/html/marquee-child-wrap-expected.html: Added.
+        * fast/html/marquee-child-wrap.html: Added.
+
+2017-05-17  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r216966): fast/shadow-dom/slot-crash.html started to fail
+
+        Unreviewed test gardening.
+
+        Update test results after the fix for:
+            Do not skip <slot> children when collecting content for innerText.
+            https://bugs.webkit.org/show_bug.cgi?id=172113
+            <rdar://problem/30362324>
+
+        * fast/shadow-dom/slot-crash-expected.txt: Update results to add
+        a space to the end of the output.
+
+2017-05-16  Chris Dumez  <cdumez@apple.com>
+
+        [macOS Debug wk2] Layout test svg/animations/animations-paused-in-background-page-iframe.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=172183
+
+        Reviewed by Andreas Kling.
+
+        Fix test flakiness by using shouldBecome() instead of relying on a 30ms timer.
+
+        * svg/animations/animations-paused-in-background-page-iframe-expected.txt:
+        * svg/animations/animations-paused-in-background-page-iframe.html:
+
+2017-05-16  Sam Weinig  <sam@webkit.org>
+
+        Bring Notification.idl up to spec
+        https://bugs.webkit.org/show_bug.cgi?id=172156
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/notifications/notification-expected.txt: Added.
+        * http/tests/notifications/notification.html: Added.
+        Add test for basic Notification API functionality.
+
+2017-05-16  Zalan Bujtas  <zalan@apple.com>
+
+        Do not skip <slot> children when collecting content for innerText.
+        https://bugs.webkit.org/show_bug.cgi?id=172113
+        <rdar://problem/30362324>
+
+        Reviewed by Ryosuke Niwa and Brent Fulgham.
+
+        * fast/text/inner-text-should-include-slot-subtree-expected.txt: Added.
+        * fast/text/inner-text-should-include-slot-subtree.html: Added.
+
+2017-05-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, fix LayoutTests/plugins/navigator-plugin-crash.html
+        <rdar://problem/32236478>
+
+        * plugins/navigator-plugin-crash-expected.txt:
+        * plugins/navigator-plugin-crash.html:
+
+2017-05-16  Chris Dumez  <cdumez@apple.com>
+
+        Implement DOMMatrix / DOMMatrixReadOnly
+        https://bugs.webkit.org/show_bug.cgi?id=110001
+
+        Reviewed by Sam Weinig and Simon Fraser.
+
+        Drop test I previously added now that a better version landed in web-platform-tests
+        and was re-imported in this patch.
+
+        * fast/css/matrix-stringifier-expected.txt: Removed.
+        * fast/css/matrix-stringifier.html: Removed.
+
+2017-05-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r212513): LastResort is platform-dependent, so its semantics should not be required to perform font loading correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=168487
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/font-download-font-face-src-list-expected.txt: Added.
+        * fast/text/font-download-font-face-src-list.html: Copied from LayoutTests/fast/text/font-weight-download-2.html.
+        * fast/text/font-download-font-family-property-expected.txt: Added.
+        * fast/text/font-download-font-family-property.html: Copied from LayoutTests/fast/text/font-weight-download-2.html.
+        * fast/text/font-download-remote-fallback-all-expected.txt: Added.
+        * fast/text/font-download-remote-fallback-all.html: Copied from LayoutTests/fast/text/font-weight-download-2.html.
+        * fast/text/font-interstitial-invisible-width-while-loading-expected.txt: Added.
+        * fast/text/font-interstitial-invisible-width-while-loading.html: Added.
+        * fast/text/font-weight-download-2.html:
+        * fast/text/font-weight-download-3-expected.txt: Added.
+        * fast/text/font-weight-download-3.html: Copied from LayoutTests/fast/text/font-weight-download-2.html.
+        * fast/text/web-font-load-fallback-during-loading-2-expected.html: Added.
+        * fast/text/web-font-load-fallback-during-loading-2.html: Added.
+        * fast/text/web-font-load-fallback-during-loading-expected.html:
+        * fast/text/web-font-load-fallback-during-loading.html:
+        * fast/text/web-font-load-invisible-during-loading-expected.txt: Added.
+        * fast/text/web-font-load-invisible-during-loading.html: Added.
+        * http/tests/webfont/fallback-font-while-loading-expected.txt:
+        * http/tests/webfont/fallback-font-while-loading.html:
+
+2017-05-16  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Return default device list until user gives permission to capture
+        https://bugs.webkit.org/show_bug.cgi?id=172168
+        <rdar://problem/31816884>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt: Removed.
+        * fast/mediastream/MediaDevices-enumerateDevices.html: Removed.
+        * fast/mediastream/media-devices-enumerate-devices-expected.txt: Added.
+        * fast/mediastream/media-devices-enumerate-devices.html: Added.
+
+2017-05-16  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to adjust which edges are affected by safe area insets
+        https://bugs.webkit.org/show_bug.cgi?id=172149
+        <rdar://problem/31564729>
+
+        Reviewed by Beth Dakin.
+
+        * fast/viewport/ios/viewport-fit-auto-expected.txt:
+        * fast/viewport/ios/viewport-fit-contain-expected.txt:
+
+2017-05-16  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: rebased parser-syntax-check test results after r216891.
+        https://bugs.webkit.org/show_bug.cgi?id=172171
+
+        Not reviewed.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2017-05-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip LayoutTest media/restricted-audio-playback-with-document-gesture.html on iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-05-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Tests that always pass when run alone, but fail in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=168572
+
+        Reviewed by Michael Catanzaro.
+
+        PlatformWebView::viewSupportsOptions() is basically a comparison
+        that checks that the passed options are the ones supported by the
+        web view. There is no reason for them to be implemented for each
+        platform differently. In fact doing so causes issues each time a
+        new option is added, if the corresponding platform implementation
+        is not updated accordingly.
+
+        A consequence of not updating the viewSupportOptions()
+        implementations when new options are added is that tests that need
+        these options might fail if they are executed after a test that
+        didn't need the option, as the webview will be reused even if the
+        option is not supported. This cannot be spotted when running the
+        tests individually. See bug #165133 for other example of the same
+        problem.
+
+        Remove the platform implementations and make the comparison a
+        method of the TestOptions structure, so that the check is in one
+        place. For the time being include in the comparison the options
+        checked in the mac and ios platforms, which seem to be the only
+        ones relevant this far (unless newer ones have also been
+        forgotten).
+
+        * platform/gtk/TestExpectations: Unskip an affected test.
+
+2017-05-16  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBReader releaseLock()
+        https://bugs.webkit.org/show_bug.cgi?id=172111
+
+        Reviewed by Chris Dumez.
+
+        Added tests to check releaseLock() behavior.
+
+        * streams/readable-stream-byob-reader-expected.txt: Updated.
+        * streams/readable-stream-byob-reader.js: Added new tests.
+
+2017-05-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed Windows gardening. Skip svg animation test, since image throttling behaves differently on WK1.
+
+        * platform/win/TestExpectations:
+
+2017-05-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline tests after r216817.
+
+        * platform/gtk/fast/multicol/client-rects-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/gtk/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/gtk/fast/transforms/bounding-rect-zoom-expected.txt:
+
+2017-05-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several WebRTC tests.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix static position of positioned grid items
+        https://bugs.webkit.org/show_bug.cgi?id=172108
+
+        Reviewed by Sergio Villar Senin.
+
+        The test is updated as the expected results were wrong.
+        Note that after this patch we match Chrome and Firefox behavior on this test.
+
+        * fast/css-grid-layout/absolute-positioning-grid-container-parent.html:
+
+2017-05-15  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Do not delete asynchronously decoded frames for large images if their clients are in the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=170640
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/async-image-background-image-repeated.html:
+        * fast/images/async-image-background-image.html:
+        * fast/images/sprite-sheet-image-draw.html:
+
+2017-05-15  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC outgoing muted video sources should send black frames
+        https://bugs.webkit.org/show_bug.cgi?id=170627
+        <rdar://problem/31513869>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-mute-expected.txt:
+        * webrtc/video-mute.html:
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2017-05-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline platform/ios/ios/css/construct-WebKitCSSMatrix.html after r216881.
+
+        * platform/ios/ios/css/construct-WebKitCSSMatrix-expected.txt:
+        * platform/ios/ios/css/resources/construct-WebKitCSSMatrix.js:
+
+2017-05-15  Jer Noble  <jer.noble@apple.com>
+
+        Add experimental setting to allow document gesture interaction to fulfill media playback gesture requirement
+        https://bugs.webkit.org/show_bug.cgi?id=172131
+
+        Reviewed by Eric Carlson.
+
+        * media/restricted-audio-playback-with-document-gesture-expected.txt: Added.
+        * media/restricted-audio-playback-with-document-gesture.html: Added.
+
+2017-05-15  Per Arne Vollan  <pvollan@apple.com>
+
+        LayoutTest http/tests/media/track-in-band-hls-metadata-crash.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167749
+
+        Reviewed by Eric Carlson.
+
+        Start video playback when the 'canplaythrough' event is handled, and stop logging the event,
+        since the event sequence is not identical on all bots.
+
+        * http/tests/media/track-in-band-hls-metadata-crash-expected.txt:
+        * http/tests/media/track-in-band-hls-metadata-crash.html:
+
+2017-05-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CRASH seen with DOM.setOuterHTML when there is no documentElement
+        https://bugs.webkit.org/show_bug.cgi?id=172135
+        <rdar://problem/32175860>
+
+        Reviewed by Brian Burg.
+
+        * inspector/dom/setOuterHTML-no-document-element-expected.txt: Added.
+        * inspector/dom/setOuterHTML-no-document-element.html: Added.
+
+2017-05-15  Chris Dumez  <cdumez@apple.com>
+
+        Align WebKitCSSMatrix stringifier with spec for DOMMatrix
+        https://bugs.webkit.org/show_bug.cgi?id=172114
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/matrix-stringifier-expected.txt: Added.
+        * fast/css/matrix-stringifier.html: Added.
+        Add layout test coverage.
+
+        * fast/dom/Window/custom-constructors-expected.txt:
+        * fast/dom/Window/custom-constructors.html:
+        Rebaseline existing test to reflect behavior change.
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        WorkerRunLoop::Task::performTask() should check !scriptController->isTerminatingExecution().
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Filip Pizlo.
+
+        * TestExpectations:
+
+2017-05-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unicode characters which can't be rendered in any font are invisible
+        https://bugs.webkit.org/show_bug.cgi?id=171942
+        <rdar://problem/32054234>
+
+        Reviewed by Tim Horton.
+
+        * fast/text/default-ignorable-expected.html: Added.
+        * fast/text/default-ignorable.html: Added.
+        * fast/text/unknown-char-notdef-expected-mismatch.html: Added.
+        * fast/text/unknown-char-notdef.html: Added.
+
+2017-05-15  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Leading whitespace followed by a <br> produces an extra linebreak.
+        https://bugs.webkit.org/show_bug.cgi?id=172076
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-leading-whitespace-with-soft-hard-linebreak-expected.html: Added.
+        * fast/text/simple-line-layout-leading-whitespace-with-soft-hard-linebreak.html: Added.
+
+2017-05-15  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Invalid MediaSource duration value should throw TyperError instead of InvalidStateError
+        https://bugs.webkit.org/show_bug.cgi?id=171653
+
+        Reviewed by Chris Dumez.
+
+        Modify MediaSource::setDuration to throw a TypeError when duration value is invalid as per MSE specification
+        (https://www.w3.org/TR/2016/REC-media-source-20161117/#dom-mediasource-duration).
+
+        Update expectations of corresponding WPT test.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions-expected.txt: Added.
+        * platform/mac/TestExpectations:
+
+2017-05-15  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [CAIRO] Painting an image mask with a matrix above Pixman's limit breaks internal states of Cairo
+        https://bugs.webkit.org/show_bug.cgi?id=169094
+
+        Reviewed by Žan Doberšek.
+
+        * fast/hidpi/hidpi-long-page-with-inset-element-expected.html: Added.
+        * fast/hidpi/hidpi-long-page-with-inset-element.html: Added.
+
+2017-05-14  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL/DOM] Remove need for custom bindings for HTMLAllCollection and bring up to spec
+        https://bugs.webkit.org/show_bug.cgi?id=172095
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/collection-null-like-arguments-expected.txt:
+        Update results.
+
+        * fast/dom/document-all-expected.txt: Added.
+        * fast/dom/document-all.html: Added.
+        New test that covers a bunch of missing coverage.
+
+2017-05-14  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS/macOS Debug WK2] LayoutTests/imported/w3c/web-platform-tests/webrtc/interfaces.html is a flaky crash due to assertion failure
+        <https://bugs.webkit.org/show_bug.cgi?id=172094>
+        <rdar://problem/32184256>
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        - Mark test as flaky crash on Debug WK2 builds.
+
+2017-05-14  David Kilzer  <ddkilzer@apple.com>
+
+        [macOS Debug WK1] fast/parser/adoption-agency-unload-iframe-4.html is a flaky timeout (always on iOS 10 Release WK1)
+        <https://webkit.org/b/172092>
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk1/TestExpectations:
+        - This only times out on Release builds.
+
+2017-05-14  David Kilzer  <ddkilzer@apple.com>
+
+        [macOS Debug WK1] fast/parser/adoption-agency-unload-iframe-4.html is a flaky timeout (always on iOS 10 Release WK1)
+        <https://webkit.org/b/172092>
+
+        Unreviewed test gardening.
+
+        See also Bug 169211 for a similar GTK WK1 timeout.
+
+        * platform/ios-wk1/TestExpectations:
+        - Mark as always timing out on all builds.
+        * platform/mac-wk1/TestExpectations:
+        - Mark flaky on Debug builds.
+
+2017-05-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] deviceId constraint doesn't work with getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        <rdar://problem/31899730>
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/get-user-media-device-id-expected.txt: Added.
+        * fast/mediastream/get-user-media-device-id.html: Added.
+        * fast/mediastream/apply-constraints-video-expected.txt: Updated.
+        * fast/mediastream/apply-constraints-video.html: Ditto.
+
+2017-05-13  David Kilzer  <ddkilzer@apple.com>
+
+        TestExpectations: Remove last refereneces to Legacy Notifications
+
+        Unreviewed test gardening fixes these lint warnings:
+
+            LayoutTests/TestExpectations:1222 Path does not exist. fast/notifications/notifications-event-stop-propagation.html
+            LayoutTests/TestExpectations:1223 Path does not exist. fast/notifications/notifications-multi-events.html
+
+        * TestExpectations: Remove references to skipped tests.  Legacy
+        Notification support was removed in r216641.
+
+2017-05-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove flaky expectation for LayoutTest media/media-controls-clone-crash.html.
+        https://bugs.webkit.org/show_bug.cgi?id=171978
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-13  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] Implement the place-self shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=168846
+
+        Reviewed by Zalan Bujtas.
+
+        Regression tests for the new place-self alignment shorthand.
+
+        * css3/parse-place-self-expected.txt: Added.
+        * css3/parse-place-self.html: Added.
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216801.
+        https://bugs.webkit.org/show_bug.cgi?id=172072
+
+        Many memory corruption crashes on worker threads (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "WorkerRunLoop::Task::performTask() should check
+        !scriptController->isTerminatingExecution()."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216801
+
+2017-05-12  Simon Fraser  <simon.fraser@apple.com>
+
+        event.clientX/clientY should be in layout viewport coordinates
+        https://bugs.webkit.org/show_bug.cgi?id=172018
+
+        Reviewed by Zalan Bujtas.
+        
+        * fast/events/clientXY-in-zoom-and-scroll.html:
+        * fast/visual-viewport/client-coordinates-relative-to-layout-viewport-expected.txt: Added.
+        * fast/visual-viewport/client-coordinates-relative-to-layout-viewport.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/fast/events/clientXY-in-zoom-and-scroll-expected.txt:
+
+2017-05-12  Simon Fraser  <simon.fraser@apple.com>
+
+        The rects returned by Element/Range.getClientRects() should not be rounded
+        https://bugs.webkit.org/show_bug.cgi?id=172057
+
+        Reviewed by Chris Dumez.
+
+        Fix tests that were sensitive to rounding. I had to mark fast/text/multiglyph-characters.html
+        as failing (webkit.org/b/172056).
+
+        * TestExpectations:
+        * fast/dom/Document/CaretRangeFromPoint/caretRangeFromPoint-in-zoom-and-scroll.html:
+        * fast/dom/Range/getClientRects-expected.txt:
+        * fast/dom/Range/getClientRects.html:
+        * fast/dom/Range/simple-line-layout-getclientrects-expected.html:
+        * fast/dom/Range/simple-line-layout-getclientrects.html:
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-expected.txt:
+        * platform/ios/TestExpectations:
+        * platform/ios/fast/multicol/client-rects-expected.txt:
+        * platform/ios/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/ios/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/ios/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/ios/fast/transforms/bounding-rect-zoom-expected.txt:
+        * platform/mac/fast/multicol/client-rects-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/mac/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/mac/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/mac/fast/transforms/bounding-rect-zoom-expected.txt:
+
+2017-05-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Elements should be inserted into a template element as its content's last child
+        https://bugs.webkit.org/show_bug.cgi?id=171373
+        <rdar://problem/31862949>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/HTMLTemplateElement/insert-fostering-child-expected.txt: Added.
+        * fast/dom/HTMLTemplateElement/insert-fostering-child.html: Added.
+
+2017-05-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Incorrect position when dragging jQuery Draggable elements with position fixed after pinch zoom
+        https://bugs.webkit.org/show_bug.cgi?id=171113
+
+        Reviewed by Tim Horton.
+
+        Rebaseline tests which dumped the getBoundingClientRect for fixed elements; now that these
+        are layout viewport-relative, getBoundingClientRect() for a fixed element is unchanging.
+
+        New test that exercises getBoundingClientRect() and getClientRects() for fixed and absolute
+        elements after zooming.
+
+        * fast/events/autoscroll-when-zoomed.html: Adjust to account for behavior change.
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-expected.txt: Added.
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport.html: Added.
+        * fast/visual-viewport/zoomed-fixed-expected.txt:
+        * fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed.html:
+        * fast/zooming/client-rects-with-css-and-page-zoom-expected.txt: Added.
+        * fast/zooming/client-rects-with-css-and-page-zoom.html: Added.
+        * platform/ios-wk2/fast/visual-viewport/client-rects-relative-to-layout-viewport-expected.txt: Added.
+        * platform/ios/TestExpectations: Mark imported/w3c/web-platform-tests/cssom-view/elementFromPoint.html as failing;
+            it will be fixed via webkit.org/b/172019
+        * platform/ios/fast/visual-viewport/zoomed-fixed-expected.txt:
+        * platform/ios/fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt:
+
+2017-05-12  Mark Lam  <mark.lam@apple.com>
+
+        WorkerRunLoop::Task::performTask() should check !scriptController->isTerminatingExecution().
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Saam Barati.
+
+        * TestExpectations:
+
+2017-05-12  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix timeout failure of test plugins/navigator-plugin-crash.html in WebKit1
+        following <http://trac.webkit.org/changeset/216789>
+        (https://bugs.webkit.org/show_bug.cgi?id=171712)
+
+        In r216798 I inadvertently added testRunner.setPopupBlockingEnabled(true) instead
+        instead of testRunner.setPopupBlockingEnabled(false) to disable the popup blocker.
+
+        * plugins/navigator-plugin-crash.html:
+
+2017-05-12  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix timeout failure of test plugins/navigator-plugin-crash.html in WebKit1
+        following <http://trac.webkit.org/changeset/216789>
+        (https://bugs.webkit.org/show_bug.cgi?id=171712)
+
+        On WebKit1 we need to explicitly allow the test tool to open windows by calling
+        testRunner.setCanOpenWindows(). We should also call testRunner.setCloseRemainingWindowsWhenComplete(true)
+        to have the test tool close any open windows after running the test.
+
+        It is also good practice to explicitly disable the popup blocker by calling
+        testRunner.setPopupBlockingEnabled(false).
+
+        * plugins/navigator-plugin-crash.html:
+
+2017-05-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Check existence of a page before accessing its plugins
+        https://bugs.webkit.org/show_bug.cgi?id=171712
+        <rdar://problem/32007806>
+
+        Reviewed by Brent Fulgham.
+
+        * plugins/navigator-plugin-crash-expected.txt: Added.
+        * plugins/navigator-plugin-crash.html: Added.
+
+2017-05-12  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Add ReadableStreamBYOBReader closed getter
+        https://bugs.webkit.org/show_bug.cgi?id=172024
+
+        Reviewed by Youenn Fablet.
+
+        Added tests to check closed getter behaviour.
+
+        * streams/readable-stream-byob-reader-expected.txt: Updated.
+        * streams/readable-stream-byob-reader.js: Updated.
+
+2017-05-12  Matt Lewis  <jlewis3@apple.com>
+
+        Marked webrtc/closing-peerconnection.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172034
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-12  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] After upgrading glib and glib-networking, resources with zero bytes are always identified as text/plain
+        https://bugs.webkit.org/show_bug.cgi?id=171058
+
+        Reviewed by Carlos Garcia Campos.
+
+        GLib-based ports have issues detecting the mimetypes of empty
+        files, as they are all considered to be text/plain by
+        glib. Replace these resources with a minimal valid file for its
+        type (that is, 1x1 PNG files and 1 whitespace for text files).
+
+        * fast/preloader/resources/base-image1.png:
+        * fast/preloader/resources/base-image2.png:
+        * fast/preloader/resources/base-image3.png:
+        * fast/preloader/resources/image1.png:
+        * fast/preloader/resources/link1.css:
+        * fast/preloader/resources/noscript-image1.png:
+        * fast/preloader/resources/noscript-image2.png:
+        * fast/preloader/resources/script1.js:
+        * fast/preloader/resources/style1.css:
+        * tables/mozilla/core/col_widths_fix_autoFixPer.html:
+
+        * platform/gtk/TestExpectations: Unskip the now passing tests.
+
+2017-05-12  Antti Koivisto  <antti@apple.com>
+
+        Updating class name of a shadow host does not update the style applied by descendants of :host()
+        https://bugs.webkit.org/show_bug.cgi?id=170762
+        <rdar://problem/31572668>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-host-class-and-attribute-mutation-expected.html: Added.
+        * fast/shadow-dom/css-scoping-host-class-and-attribute-mutation.html: Added.
+
+2017-05-12  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Unreviewed gardening.
+
+        ClientRect, ClientRectList were removed, PromiseRejectionEvent was
+        added, update global constructors attributes test expectations.
+
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt:
+
+2017-05-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ASSERTION FAILED: !m_flushingLayers
+        https://bugs.webkit.org/show_bug.cgi?id=172025
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GIF images are not properly loaded the first time
+        https://bugs.webkit.org/show_bug.cgi?id=170432
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * http/tests/images/gif-progressive-load-expected.html: Added.
+        * http/tests/images/gif-progressive-load.html: Added.
+
+2017-05-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [selectors4] css/selectors4/focus-within-006.html test from WPT is failing
+        https://bugs.webkit.org/show_bug.cgi?id=170900
+
+        Reviewed by Sergio Villar Senin.
+
+        * TestExpectations: Remove test as it's passing now.
+
+2017-05-11  Per Arne Vollan  <pvollan@apple.com>
+
+        Geolocation requests should not be blocked when the security origin is local.
+        https://bugs.webkit.org/show_bug.cgi?id=171857
+
+        Reviewed by Brent Fulgham.
+
+        * fast/misc/geolocation-local-security-origin-expected.txt: Added.
+        * fast/misc/geolocation-local-security-origin.html: Added.
+
+2017-05-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [selectors4] :focus-within tests using shadow DOM don't pass on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=170935
+
+        Reviewed by Youenn Fablet.
+
+        * platform/mac-wk1/TestExpectations: Remove tests as they're passing now.
+
+2017-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        RenderImageResource::hasImage is redundant and RenderImageResourceStyleImage's override is incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=172010
+        <rdar://problem/31086735>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/missing-content-image-crash-expected.txt: Added.
+        * fast/images/missing-content-image-crash.html: Added.
+
+2017-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        AX: Defer text changes until after the tree is clean if needed.
+        https://bugs.webkit.org/show_bug.cgi?id=171546
+        <rdar://problem/31934942>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-when-render-tree-is-not-clean-expected.txt: Added.
+        * accessibility/crash-when-render-tree-is-not-clean.html: Added.
+
+2017-05-11  Youenn Fablet  <youenn@apple.com>
+
+        Allow WPT server to serve specific WebKit tests
+        https://bugs.webkit.org/show_bug.cgi?id=171479
+
+        Reviewed by Ryosuke Niwa.
+
+        Moving tests to ensure they are correctly runned.
+
+        * http/wpt/fetch/fetch-as-blob-expected.txt: Renamed from LayoutTests/http/tests/fetch/fetch-as-blob-expected.txt.
+        * http/wpt/fetch/fetch-as-blob-worker-expected.txt: Renamed from LayoutTests/http/tests/fetch/fetch-as-blob-worker-expected.txt.
+        * http/wpt/fetch/fetch-as-blob-worker.html: Renamed from LayoutTests/http/tests/fetch/fetch-as-blob-worker.html.
+        * http/wpt/fetch/fetch-as-blob.html: Renamed from LayoutTests/http/tests/fetch/fetch-as-blob.html.
+        * http/wpt/fetch/fetch-as-blob.js: Renamed from LayoutTests/http/tests/fetch/fetch-as-blob.js.
+        (promise_test):
+
+2017-05-11  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Unset active media capture source when stopped capturing
+        https://bugs.webkit.org/show_bug.cgi?id=171815
+        <rdar://problem/32117885>
+
+        Reviewed by Eric Carlson.
+
+        Improving the existing tests for better reliability and debugability.
+        Updating tests to use less webkitAudioContext.
+
+        * platform/ios/mediastream/getUserMedia-single-capture-expected.txt: Added.
+        * platform/ios/mediastream/getUserMedia-single-capture.html: Added.
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/audio-replace-track-expected.txt:
+        * webrtc/audio-replace-track.html:
+        * webrtc/peer-connection-audio-mute.html:
+        * webrtc/peer-connection-audio-mute2.html:
+        * webrtc/peer-connection-remote-audio-mute.html:
+        * webrtc/peer-connection-remote-audio-mute2.html:
+        * webrtc/routines.js:
+        * webrtc/video-replace-track-expected.txt:
+        * webrtc/video-replace-track.html:
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216677.
+
+        Patch caused layout test crashes.
+
+        Reverted changeset:
+
+        "WorkerThread::stop() should call
+        scheduleExecutionTermination() last."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216677
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Marked tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168937
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Vibration API
+        https://bugs.webkit.org/show_bug.cgi?id=171766
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+        * vibration/cancelVibration-after-pagevisibility-changed-to-hidden-expected.txt: Removed.
+        * vibration/cancelVibration-after-pagevisibility-changed-to-hidden.html: Removed.
+        * vibration/cancelVibration-during-pattern-vibrating-expected.txt: Removed.
+        * vibration/cancelVibration-during-pattern-vibrating.html: Removed.
+        * vibration/navigator-vibration-expected.txt: Removed.
+        * vibration/navigator-vibration.html: Removed.
+
+2017-05-11  Dean Jackson  <dino@apple.com>
+
+        WebGLRenderingContext should implement WebGLRenderingContextBase
+        https://bugs.webkit.org/show_bug.cgi?id=171961
+        <rdar://problem/32124920>
+
+        Reviewed by Sam Weinig.
+
+        New test to make sure constants from WebGLRenderingContextBase are
+        visible on the WebGLRenderingContext prototype.
+
+        Also, fix up some existing tests that were expecting to see
+        instances of WebGLRenderingContextBase.
+
+        * fast/canvas/webgl/constants-on-interface-expected.txt: Added.
+        * fast/canvas/webgl/constants-on-interface.html: Added.
+        * fast/canvas/webgl/gl-object-get-calls-expected.txt:
+        * fast/canvas/webgl/null-object-behaviour-expected.txt:
+        * fast/canvas/webgl/texImageTest-expected.txt:
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed typo errors in TestExpectations.
+
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed typo errors in TestExpectations.
+        
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170699
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-11  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBReader cancel()
+        https://bugs.webkit.org/show_bug.cgi?id=171919
+
+        Reviewed by Youenn Fablet.
+
+        Added test cases to check cancel() behaviour.
+
+        * streams/readable-stream-byob-reader-expected.txt: Updated.
+        * streams/readable-stream-byob-reader.js: Updated.
+
+2017-05-11  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/media-controls-clone-crash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171978
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Error trying to delete DOM breakpoints from the Debugger tab
+        https://bugs.webkit.org/show_bug.cgi?id=171970
+        <rdar://problem/32129262>
+
+        Reviewed by Brian Burg.
+
+        Add test for DOMDebuggerManager.prototype.removeDOMBreakpointsForNode.
+
+        * inspector/dom-debugger/dom-breakpoints-expected.txt:
+        * inspector/dom-debugger/dom-breakpoints.html:
+
+2017-05-11  Per Arne Vollan  <pvollan@apple.com>
+
+        LayoutTest http/tests/media/track-in-band-hls-metadata-crash.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167749
+
+        Reviewed by Eric Carlson.
+
+        Revert parts of r216588. The position of the 'canplaythrough' event in the event sequence
+        is not always the same, causing flakiness. Stop listening to the 'canplaythrough' event,
+        this was introduced in r216588.
+
+        * http/tests/media/track-in-band-hls-metadata-crash-expected.txt:
+        * http/tests/media/track-in-band-hls-metadata-crash.html:
+
+2017-05-11  Mark Lam  <mark.lam@apple.com>
+
+        WorkerThread::stop() should call scheduleExecutionTermination() last.
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestExpectations:
+
+2017-05-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of tests failing after r216450.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/animation/request-animation-frame-time-unit.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171957
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-10  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r167845): ASSERT(!m_renderView.needsLayout()) in svg/custom/bug79798.html
+        https://bugs.webkit.org/show_bug.cgi?id=132297
+
+        Reviewed by Simon Fraser.
+
+        * http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt:
+        * http/tests/navigation/keyboard-events-during-provisional-subframe-navigation-expected.txt:
+        * http/tests/navigation/resources/keyboard-events-test.js:
+        (runTest):
+        * platform/ios-wk2/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        - Remove fast/notifications/. It was skipped on all platforms and use legacy Notifications API.
+        - Remove http/notifications/legacy. It tested the legacy API.
+        - Update two tests in fast/history to use the non-legacy API to test page cache + notifications.
+        - Update TestExpectations for removals.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * fast/history/page-cache-notification-non-suspendable.html:
+        * fast/history/page-cache-notification-suspendable.html:
+        * fast/notifications: Removed.
+        * fast/notifications/notification-after-close-expected.txt: Removed.
+        * fast/notifications/notification-after-close.html: Removed.
+        * fast/notifications/notification-permisssion-deletable-expected.txt: Removed.
+        * fast/notifications/notification-permisssion-deletable.html: Removed.
+        * fast/notifications/notifications-cancel-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-cancel-request-permission.html: Removed.
+        * fast/notifications/notifications-check-permission-expected.txt: Removed.
+        * fast/notifications/notifications-check-permission.html: Removed.
+        * fast/notifications/notifications-click-event-expected.txt: Removed.
+        * fast/notifications/notifications-click-event-focus-expected.txt: Removed.
+        * fast/notifications/notifications-click-event-focus.html: Removed.
+        * fast/notifications/notifications-click-event.html: Removed.
+        * fast/notifications/notifications-constructor-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-request-permission.html: Removed.
+        * fast/notifications/notifications-constructor-with-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-with-permission.html: Removed.
+        * fast/notifications/notifications-constructor-without-permission-expected.txt: Removed.
+        * fast/notifications/notifications-constructor-without-permission.html: Removed.
+        * fast/notifications/notifications-display-close-events-expected.txt: Removed.
+        * fast/notifications/notifications-display-close-events.html: Removed.
+        * fast/notifications/notifications-document-close-crash-expected.txt: Removed.
+        * fast/notifications/notifications-document-close-crash.html: Removed.
+        * fast/notifications/notifications-event-stop-propagation-expected.txt: Removed.
+        * fast/notifications/notifications-event-stop-propagation.html: Removed.
+        * fast/notifications/notifications-multi-events-expected.txt: Removed.
+        * fast/notifications/notifications-multi-events.html: Removed.
+        * fast/notifications/notifications-no-icon-expected.txt: Removed.
+        * fast/notifications/notifications-no-icon.html: Removed.
+        * fast/notifications/notifications-permission-expected.txt: Removed.
+        * fast/notifications/notifications-permission.html: Removed.
+        * fast/notifications/notifications-replace-expected.txt: Removed.
+        * fast/notifications/notifications-replace.html: Removed.
+        * fast/notifications/notifications-request-permission-expected.txt: Removed.
+        * fast/notifications/notifications-request-permission-optional-expected.txt: Removed.
+        * fast/notifications/notifications-request-permission-optional.html: Removed.
+        * fast/notifications/notifications-request-permission.html: Removed.
+        * fast/notifications/notifications-rtl-expected.txt: Removed.
+        * fast/notifications/notifications-rtl.html: Removed.
+        * fast/notifications/notifications-sandbox-permission-expected.txt: Removed.
+        * fast/notifications/notifications-sandbox-permission.html: Removed.
+        * fast/notifications/notifications-window-close-crash-expected.txt: Removed.
+        * fast/notifications/notifications-window-close-crash.html: Removed.
+        * fast/notifications/notifications-with-permission-expected.txt: Removed.
+        * fast/notifications/notifications-with-permission.html: Removed.
+        * fast/notifications/notifications-without-permission-expected.txt: Removed.
+        * fast/notifications/notifications-without-permission.html: Removed.
+        * fast/notifications/request-notification-permission-while-reloading-expected.txt: Removed.
+        * fast/notifications/request-notification-permission-while-reloading.html: Removed.
+        * fast/notifications/resources: Removed.
+        * fast/notifications/resources/notifications-cancel-request-permission.html: Removed.
+        * fast/notifications/resources/notifications-iframe.html: Removed.
+        * http/tests/notifications/legacy: Removed.
+        * http/tests/notifications/legacy/double-show-expected.txt: Removed.
+        * http/tests/notifications/legacy/double-show.html: Removed.
+        * http/tests/notifications/legacy/events-expected.txt: Removed.
+        * http/tests/notifications/legacy/events.html: Removed.
+        * http/tests/notifications/legacy/notification-request-permission-then-navigate-expected.txt: Removed.
+        * http/tests/notifications/legacy/notification-request-permission-then-navigate.html: Removed.
+        * http/tests/notifications/legacy/request-expected.txt: Removed.
+        * http/tests/notifications/legacy/request-no-callback-expected.txt: Removed.
+        * http/tests/notifications/legacy/request-no-callback.html: Removed.
+        * http/tests/notifications/legacy/request.html: Removed.
+        * http/tests/notifications/legacy/resources: Removed.
+        * http/tests/notifications/legacy/resources/notify-opener-done.html: Removed.
+        * http/tests/notifications/legacy/resources/request-permission-then-navigate.html: Removed.
+        * http/tests/notifications/legacy/show-expected.txt: Removed.
+        * http/tests/notifications/legacy/show.html: Removed.
+        * http/tests/notifications/legacy/window-show-on-click-expected.txt: Removed.
+        * http/tests/notifications/legacy/window-show-on-click.html: Removed.
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169876
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/protocol/inspector-backend-invocation-return-value.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168146
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216635.
+        https://bugs.webkit.org/show_bug.cgi?id=171953
+
+        "Some worker tests are failing". (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "WorkerThread::stop() should call
+        scheduleExecutionTermination() last."
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        http://trac.webkit.org/changeset/216635
+
+2017-05-10  Mark Lam  <mark.lam@apple.com>
+
+        WorkerThread::stop() should call scheduleExecutionTermination() last.
+        https://bugs.webkit.org/show_bug.cgi?id=171775
+        <rdar://problem/30975761>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestExpectations:
+
+2017-05-10  Tim Horton  <timothy_horton@apple.com>
+
+        Add an experimental feature flag for viewport-fit
+        https://bugs.webkit.org/show_bug.cgi?id=171948
+        <rdar://problem/31995518>
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/variables/constants/ios/safe-area-inset-set-expected.html:
+        * fast/css/variables/constants/ios/safe-area-inset-set.html:
+        * fast/viewport/ios/viewport-fit-auto.html:
+        * fast/viewport/ios/viewport-fit-contain.html:
+        * fast/viewport/ios/viewport-fit-cover.html:
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/hidpi/filters-and-image-buffer-resolution.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171951
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-10  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r207372) Visibility property is not inherited when used in an animation
+        https://bugs.webkit.org/show_bug.cgi?id=171883
+        <rdar://problem/32086550>
+
+        Reviewed by Simon Fraser.
+
+        * animations/animation-initial-inheritance-expected.html: Added.
+        * animations/animation-initial-inheritance.html: Added.
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked transitions/extra-transition.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171947
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216591.
+
+        This change broke an internal build.
+
+        Reverted changeset:
+
+        "REGRESSION (r207372) Visibility property is not inherited
+        when used in an animation"
+        https://bugs.webkit.org/show_bug.cgi?id=171883
+        http://trac.webkit.org/changeset/216591
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, remove TestExpectation for a test that was removed in r216259.
+
+        * platform/mac/TestExpectations:
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked perf/class-list-remove.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171945
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-10  Andy Estes  <aestes@apple.com>
+
+        r216599 accidentally included two copies of the new layout test and expected result
+        https://bugs.webkit.org/show_bug.cgi?id=171938
+
+        Unreviewed.
+
+        * http/tests/navigation/keyboard-events-during-provisional-subframe-navigation-expected.txt:
+        * http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html:
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=171880
+
+        Unreviewed test gardening.
+
+        This test times out on ios-simulator because it relies on eventSender.keyDown.
+
+        * platform/ios/TestExpectations:
+
+2017-05-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Add an experimental feature flag for constant properties
+        https://bugs.webkit.org/show_bug.cgi?id=171913
+        <rdar://problem/31995518>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/css/variables/constants/invalid-constant-name-fallback.html:
+        * fast/css/variables/constants/ios/safe-area-inset-set.html:
+        * fast/css/variables/constants/safe-area-inset-cannot-override.html:
+        * fast/css/variables/constants/safe-area-inset-zero.html:
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/track/track-cue-rendering-on-resize.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171939
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/dom/nodes/ParentNode-querySelector-All tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171937
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171935
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-10  Andy Estes  <aestes@apple.com>
+
+        Keyboard input suppression should extend to subframes
+        https://bugs.webkit.org/show_bug.cgi?id=171880
+        <rdar://problem/31201793>
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt:
+        * http/tests/navigation/keyboard-events-during-provisional-navigation.html:
+        * http/tests/navigation/keyboard-events-during-provisional-subframe-navigation-expected.txt: Copied from LayoutTests/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt.
+        * http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html: Copied from LayoutTests/http/tests/navigation/keyboard-events-during-provisional-navigation.html.
+        * http/tests/navigation/resources/keyboard-events-after-navigation.html:
+        * http/tests/navigation/resources/keyboard-events-test.js:
+        (runTest):
+        (waitForProvisionalNavigation.xhr.onreadystatechange):
+        (waitForProvisionalNavigation):
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r216563.
+
+        Revision caused 2 api failures
+
+        Reverted changeset:
+
+        "[MediaStream] deviceId constraint doesn't work with
+        getUserMedia"
+        https://bugs.webkit.org/show_bug.cgi?id=171877
+        http://trac.webkit.org/changeset/216563
+
+2017-05-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171930
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-10  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r207372) Visibility property is not inherited when used in an animation
+        https://bugs.webkit.org/show_bug.cgi?id=171883
+        <rdar://problem/32086550>
+
+        Reviewed by Simon Fraser.
+
+        * animations/animation-initial-inheritance-expected.html: Added.
+        * animations/animation-initial-inheritance.html: Added.
+
+2017-05-10  Per Arne Vollan  <pvollan@apple.com>
+
+        LayoutTest http/tests/media/track-in-band-hls-metadata-crash.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167749
+
+        Reviewed by Eric Carlson.
+
+        This is a speculative fix of the test. I have not been able to reproduce the timeout.
+        When the test times out, the 'addtrack' event is never received. In case the event
+        was dispatched before we added the event listener, the event listener is added before
+        the video source is set. In case the test will continue to time out, a couple of
+        error event callbacks have been added to get more information. Also, video playback
+        will begin when the 'canplaythrough' event is received.
+ 
+        * http/tests/media/track-in-band-hls-metadata-crash-expected.txt:
+        * http/tests/media/track-in-band-hls-metadata-crash.html:
+
+2017-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216578.
+        https://bugs.webkit.org/show_bug.cgi?id=171920
+
+        Broke the GTK+ build with Wayland enabled (Requested by KaL on
+        #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Bump GTK+ and its dependencies in jhbuild"
+        https://bugs.webkit.org/show_bug.cgi?id=171918
+        http://trac.webkit.org/changeset/216578
+
+2017-05-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GTK+ and its dependencies in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171918
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Rebaseline tests for new GTK+ versin.
+
+        * platform/gtk/css1/box_properties/acid_test-expected.txt:
+        * platform/gtk/css2.1/20110323/replaced-elements-001-expected.png:
+        * platform/gtk/css2.1/20110323/replaced-elements-001-expected.txt:
+        * platform/gtk/css2.1/t09-c5526c-display-00-e-expected.png:
+        * platform/gtk/css2.1/t09-c5526c-display-00-e-expected.txt:
+        * platform/gtk/css3/flexbox/button-expected.png:
+        * platform/gtk/css3/flexbox/button-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-70-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-70-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-161-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-161-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-19b-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-19b-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-23-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-23-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-25-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-25-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-69-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-69-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-70-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-70-expected.txt:
+        * platform/gtk/editing/pasteboard/4641033-expected.png:
+        * platform/gtk/editing/pasteboard/4641033-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-1-expected.png:
+        * platform/gtk/editing/pasteboard/4944770-1-expected.txt:
+        * platform/gtk/editing/pasteboard/4944770-2-expected.png:
+        * platform/gtk/editing/pasteboard/4944770-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-2-expected.png:
+        * platform/gtk/editing/selection/3690703-2-expected.txt:
+        * platform/gtk/editing/selection/3690703-expected.png:
+        * platform/gtk/editing/selection/3690703-expected.txt:
+        * platform/gtk/editing/selection/3690719-expected.png:
+        * platform/gtk/editing/selection/3690719-expected.txt:
+        * platform/gtk/editing/selection/4397952-expected.png:
+        * platform/gtk/editing/selection/4397952-expected.txt:
+        * platform/gtk/editing/selection/5240265-expected.png:
+        * platform/gtk/editing/selection/5240265-expected.txt:
+        * platform/gtk/editing/selection/caret-before-select-expected.png:
+        * platform/gtk/editing/selection/caret-before-select-expected.txt:
+        * platform/gtk/editing/selection/replaced-boundaries-3-expected.png:
+        * platform/gtk/editing/selection/replaced-boundaries-3-expected.txt:
+        * platform/gtk/editing/selection/select-box-expected.png:
+        * platform/gtk/editing/selection/select-box-expected.txt:
+        * platform/gtk/editing/selection/select-element-paragraph-boundary-expected.png:
+        * platform/gtk/editing/selection/select-element-paragraph-boundary-expected.txt:
+        * platform/gtk/editing/selection/selection-button-text-expected.png:
+        * platform/gtk/editing/selection/selection-button-text-expected.txt:
+        * platform/gtk/fast/block/basic/011-expected.png:
+        * platform/gtk/fast/block/basic/011-expected.txt:
+        * platform/gtk/fast/block/float/float-avoidance-expected.png:
+        * platform/gtk/fast/block/float/float-avoidance-expected.txt:
+        * platform/gtk/fast/block/margin-collapse/103-expected.png:
+        * platform/gtk/fast/block/margin-collapse/103-expected.txt:
+        * platform/gtk/fast/block/positioning/inline-block-relposition-expected.png:
+        * platform/gtk/fast/block/positioning/inline-block-relposition-expected.txt:
+        * platform/gtk/fast/box-sizing/percentage-height-expected.png:
+        * platform/gtk/fast/box-sizing/percentage-height-expected.txt:
+        * platform/gtk/fast/css/continuationCrash-expected.png:
+        * platform/gtk/fast/css/continuationCrash-expected.txt:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.png:
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/gtk/fast/css/input-search-padding-expected.png:
+        * platform/gtk/fast/css/input-search-padding-expected.txt:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.png:
+        * platform/gtk/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.png:
+        * platform/gtk/fast/css/non-standard-checkbox-size-expected.txt:
+        * platform/gtk/fast/css/rtl-ordering-expected.png:
+        * platform/gtk/fast/css/rtl-ordering-expected.txt:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.png:
+        * platform/gtk/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.png:
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/css/text-transform-select-expected.png:
+        * platform/gtk/fast/css/text-transform-select-expected.txt:
+        * platform/gtk/fast/dom/HTMLInputElement/input-slider-update-expected.png:
+        * platform/gtk/fast/dom/HTMLInputElement/input-slider-update-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/indeterminate-progress-001-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/native-progress-bar-expected.png:
+        * platform/gtk/fast/dom/HTMLProgressElement/native-progress-bar-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.png:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-element-expected.png:
+        * platform/gtk/fast/dom/HTMLProgressElement/progress-element-expected.txt:
+        * platform/gtk/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.png:
+        * platform/gtk/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.png:
+        * platform/gtk/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/gtk/fast/dynamic/positioned-movement-with-positioned-children-expected.txt:
+        * platform/gtk/fast/forms/001-expected.png:
+        * platform/gtk/fast/forms/001-expected.txt:
+        * platform/gtk/fast/forms/003-expected.png:
+        * platform/gtk/fast/forms/003-expected.txt:
+        * platform/gtk/fast/forms/004-expected.png:
+        * platform/gtk/fast/forms/004-expected.txt:
+        * platform/gtk/fast/forms/basic-buttons-expected.png:
+        * platform/gtk/fast/forms/basic-buttons-expected.txt:
+        * platform/gtk/fast/forms/basic-inputs-expected.png:
+        * platform/gtk/fast/forms/basic-inputs-expected.txt:
+        * platform/gtk/fast/forms/basic-selects-expected.png:
+        * platform/gtk/fast/forms/basic-selects-expected.txt:
+        * platform/gtk/fast/forms/blankbuttons-expected.png:
+        * platform/gtk/fast/forms/blankbuttons-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.png:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/button-align-expected.png:
+        * platform/gtk/fast/forms/button-align-expected.txt:
+        * platform/gtk/fast/forms/button-cannot-be-nested-expected.png:
+        * platform/gtk/fast/forms/button-cannot-be-nested-expected.txt:
+        * platform/gtk/fast/forms/button-default-title-expected.png:
+        * platform/gtk/fast/forms/button-default-title-expected.txt:
+        * platform/gtk/fast/forms/button-generated-content-expected.png:
+        * platform/gtk/fast/forms/button-generated-content-expected.txt:
+        * platform/gtk/fast/forms/button-inner-block-reuse-expected.png:
+        * platform/gtk/fast/forms/button-inner-block-reuse-expected.txt:
+        * platform/gtk/fast/forms/button-positioned-expected.png:
+        * platform/gtk/fast/forms/button-positioned-expected.txt:
+        * platform/gtk/fast/forms/button-sizes-expected.png:
+        * platform/gtk/fast/forms/button-sizes-expected.txt:
+        * platform/gtk/fast/forms/button-style-color-expected.png:
+        * platform/gtk/fast/forms/button-style-color-expected.txt:
+        * platform/gtk/fast/forms/button-table-styles-expected.png:
+        * platform/gtk/fast/forms/button-table-styles-expected.txt:
+        * platform/gtk/fast/forms/button-text-transform-expected.png:
+        * platform/gtk/fast/forms/button-text-transform-expected.txt:
+        * platform/gtk/fast/forms/button-white-space-expected.png:
+        * platform/gtk/fast/forms/button-white-space-expected.txt:
+        * platform/gtk/fast/forms/control-clip-expected.png:
+        * platform/gtk/fast/forms/control-clip-expected.txt:
+        * platform/gtk/fast/forms/control-clip-overflow-expected.png:
+        * platform/gtk/fast/forms/control-clip-overflow-expected.txt:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.png:
+        * platform/gtk/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.png:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.png:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.png:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.png:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/formmove-expected.png:
+        * platform/gtk/fast/forms/formmove-expected.txt:
+        * platform/gtk/fast/forms/formmove2-expected.png:
+        * platform/gtk/fast/forms/formmove2-expected.txt:
+        * platform/gtk/fast/forms/formmove3-expected.png:
+        * platform/gtk/fast/forms/formmove3-expected.txt:
+        * platform/gtk/fast/forms/indeterminate-expected.png:
+        * platform/gtk/fast/forms/indeterminate-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.png:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-button-sizes-expected.png:
+        * platform/gtk/fast/forms/input-button-sizes-expected.txt:
+        * platform/gtk/fast/forms/input-first-letter-expected.png:
+        * platform/gtk/fast/forms/input-first-letter-expected.txt:
+        * platform/gtk/fast/forms/input-number-click-expected.txt: Added.
+        * platform/gtk/fast/forms/input-value-expected.png:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/forms/menulist-deselect-update-expected.png:
+        * platform/gtk/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/gtk/fast/forms/menulist-narrow-width-expected.png:
+        * platform/gtk/fast/forms/menulist-narrow-width-expected.txt:
+        * platform/gtk/fast/forms/menulist-no-overflow-expected.png:
+        * platform/gtk/fast/forms/menulist-no-overflow-expected.txt:
+        * platform/gtk/fast/forms/menulist-restrict-line-height-expected.png:
+        * platform/gtk/fast/forms/menulist-restrict-line-height-expected.txt:
+        * platform/gtk/fast/forms/menulist-separator-painting-expected.png:
+        * platform/gtk/fast/forms/menulist-separator-painting-expected.txt:
+        * platform/gtk/fast/forms/menulist-style-color-expected.png:
+        * platform/gtk/fast/forms/menulist-style-color-expected.txt:
+        * platform/gtk/fast/forms/menulist-width-change-expected.png:
+        * platform/gtk/fast/forms/menulist-width-change-expected.txt:
+        * platform/gtk/fast/forms/number/number-appearance-rtl-expected.png:
+        * platform/gtk/fast/forms/number/number-appearance-rtl-expected.txt:
+        * platform/gtk/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.png:
+        * platform/gtk/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt:
+        * platform/gtk/fast/forms/number/number-appearance-spinbutton-layer-expected.png:
+        * platform/gtk/fast/forms/number/number-appearance-spinbutton-layer-expected.txt:
+        * platform/gtk/fast/forms/number/number-spinbutton-change-and-input-events-expected.txt: Added.
+        * platform/gtk/fast/forms/number/number-spinbutton-click-in-iframe-expected.txt: Added.
+        * platform/gtk/fast/forms/number/number-spinbutton-gets-disabled-or-readonly-expected.txt: Added.
+        * platform/gtk/fast/forms/option-script-expected.png:
+        * platform/gtk/fast/forms/option-script-expected.txt:
+        * platform/gtk/fast/forms/option-strip-whitespace-expected.png:
+        * platform/gtk/fast/forms/option-strip-whitespace-expected.txt:
+        * platform/gtk/fast/forms/option-text-clip-expected.png:
+        * platform/gtk/fast/forms/option-text-clip-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.png:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.png:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/range/input-appearance-range-expected.png:
+        * platform/gtk/fast/forms/range/input-appearance-range-expected.txt:
+        * platform/gtk/fast/forms/range/slider-padding-expected.png:
+        * platform/gtk/fast/forms/range/slider-padding-expected.txt:
+        * platform/gtk/fast/forms/range/slider-thumb-shared-style-expected.png:
+        * platform/gtk/fast/forms/range/slider-thumb-shared-style-expected.txt:
+        * platform/gtk/fast/forms/range/slider-transformed-expected.txt:
+        * platform/gtk/fast/forms/range/thumbslider-no-parent-slider-expected.png:
+        * platform/gtk/fast/forms/range/thumbslider-no-parent-slider-expected.txt:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.png:
+        * platform/gtk/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.png:
+        * platform/gtk/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/gtk/fast/forms/search-input-rtl-expected.png:
+        * platform/gtk/fast/forms/search-input-rtl-expected.txt: Added.
+        * platform/gtk/fast/forms/search-rtl-expected.png:
+        * platform/gtk/fast/forms/search-rtl-expected.txt:
+        * platform/gtk/fast/forms/search-styled-expected.png:
+        * platform/gtk/fast/forms/search-styled-expected.txt:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.png:
+        * platform/gtk/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/gtk/fast/forms/searchfield-heights-expected.png:
+        * platform/gtk/fast/forms/searchfield-heights-expected.txt:
+        * platform/gtk/fast/forms/select-align-expected.png:
+        * platform/gtk/fast/forms/select-align-expected.txt:
+        * platform/gtk/fast/forms/select-background-none-expected.png:
+        * platform/gtk/fast/forms/select-background-none-expected.txt:
+        * platform/gtk/fast/forms/select-baseline-expected.png:
+        * platform/gtk/fast/forms/select-baseline-expected.txt:
+        * platform/gtk/fast/forms/select-change-listbox-to-popup-expected.png:
+        * platform/gtk/fast/forms/select-change-listbox-to-popup-expected.txt:
+        * platform/gtk/fast/forms/select-dirty-parent-pref-widths-expected.png:
+        * platform/gtk/fast/forms/select-dirty-parent-pref-widths-expected.txt:
+        * platform/gtk/fast/forms/select-disabled-appearance-expected.png:
+        * platform/gtk/fast/forms/select-disabled-appearance-expected.txt:
+        * platform/gtk/fast/forms/select-element-focus-ring-expected.png: Added.
+        * platform/gtk/fast/forms/select-element-focus-ring-expected.txt:
+        * platform/gtk/fast/forms/select-initial-position-expected.png:
+        * platform/gtk/fast/forms/select-initial-position-expected.txt:
+        * platform/gtk/fast/forms/select-non-native-rendering-direction-expected.png: Added.
+        * platform/gtk/fast/forms/select-non-native-rendering-direction-expected.txt: Added.
+        * platform/gtk/fast/forms/select-selected-expected.png:
+        * platform/gtk/fast/forms/select-selected-expected.txt:
+        * platform/gtk/fast/forms/select-style-expected.png:
+        * platform/gtk/fast/forms/select-style-expected.txt:
+        * platform/gtk/fast/forms/select-visual-hebrew-expected.png:
+        * platform/gtk/fast/forms/select-visual-hebrew-expected.txt:
+        * platform/gtk/fast/forms/select-writing-direction-natural-expected.png:
+        * platform/gtk/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/gtk/fast/forms/select/optgroup-rendering-expected.png:
+        * platform/gtk/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/gtk/fast/forms/selectlist-minsize-expected.png:
+        * platform/gtk/fast/forms/selectlist-minsize-expected.txt:
+        * platform/gtk/fast/forms/stuff-on-my-optgroup-expected.png:
+        * platform/gtk/fast/forms/stuff-on-my-optgroup-expected.txt:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.png:
+        * platform/gtk/fast/forms/targeted-frame-submission-expected.txt:
+        * platform/gtk/fast/forms/validation-message-appearance-expected.png:
+        * platform/gtk/fast/forms/validation-message-appearance-expected.txt:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.png:
+        * platform/gtk/fast/html/details-replace-summary-child-expected.txt:
+        * platform/gtk/fast/html/details-replace-text-expected.png:
+        * platform/gtk/fast/html/details-replace-text-expected.txt:
+        * platform/gtk/fast/html/keygen-expected.png:
+        * platform/gtk/fast/html/keygen-expected.txt:
+        * platform/gtk/fast/inline/positionedLifetime-expected.png:
+        * platform/gtk/fast/inline/positionedLifetime-expected.txt:
+        * platform/gtk/fast/invalid/014-expected.png:
+        * platform/gtk/fast/invalid/014-expected.txt:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.png:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.png:
+        * platform/gtk/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/gtk/fast/parser/bad-xml-slash-expected.png:
+        * platform/gtk/fast/parser/bad-xml-slash-expected.txt:
+        * platform/gtk/fast/parser/document-write-option-expected.png:
+        * platform/gtk/fast/parser/document-write-option-expected.txt:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.png:
+        * platform/gtk/fast/repaint/search-field-cancel-expected.txt:
+        * platform/gtk/fast/repaint/slider-thumb-drag-release-expected.png:
+        * platform/gtk/fast/repaint/slider-thumb-drag-release-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.png:
+        * platform/gtk/fast/replaced/replaced-breaking-expected.txt:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.png:
+        * platform/gtk/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/gtk/fast/replaced/three-selects-break-expected.png:
+        * platform/gtk/fast/replaced/three-selects-break-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-button-expected.png:
+        * platform/gtk/fast/replaced/width100percent-button-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.png:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.png:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/gtk/fast/scrolling/overflow-scrollable-after-back-expected.txt: Added.
+        * platform/gtk/fast/table/append-cells2-expected.png:
+        * platform/gtk/fast/table/append-cells2-expected.txt:
+        * platform/gtk/fast/table/remove-td-display-none-expected.png:
+        * platform/gtk/fast/table/remove-td-display-none-expected.txt:
+        * platform/gtk/fast/text/international/bidi-menulist-expected.png:
+        * platform/gtk/fast/text/international/bidi-menulist-expected.txt:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.png:
+        * platform/gtk/fast/text/international/hindi-spacing-expected.txt:
+        * platform/gtk/fast/text/international/pop-up-button-text-alignment-and-direction-expected.png:
+        * platform/gtk/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.png:
+        * platform/gtk/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/gtk/fast/text/whitespace/normal-after-nowrap-breaking-expected.png:
+        * platform/gtk/fast/text/whitespace/normal-after-nowrap-breaking-expected.txt:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.png:
+        * platform/gtk/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.png:
+        * platform/gtk/svg/custom/foreign-object-skew-expected.txt:
+        * platform/gtk/svg/custom/inline-svg-in-xhtml-expected.png:
+        * platform/gtk/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug1318-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug29326-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug29326-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4382-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug44505-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug44505-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug4527-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug51727-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52505-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug52506-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug68912-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug68912-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug92647-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug96334-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.png:
+        * platform/gtk/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/gtk/tables/mozilla/core/margins-expected.png:
+        * platform/gtk/tables/mozilla/core/margins-expected.txt:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.png:
+        * platform/gtk/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/gtk/tables/mozilla/other/move_row-expected.png:
+        * platform/gtk/tables/mozilla/other/move_row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions1-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions2-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions2-expected.txt:
+        * platform/gtk/transforms/2d/zoom-menulist-expected.png:
+        * platform/gtk/transforms/2d/zoom-menulist-expected.txt:
+
+2017-05-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Remove Blink-specific code for handling orthogonal grid items
+        https://bugs.webkit.org/show_bug.cgi?id=171807
+
+        Reviewed by Darin Adler.
+
+        Updated the expectations. They should now be compatible with Firefox and Chrome.
+
+        * fast/css-grid-layout/grid-track-sizing-with-orthogonal-flows.html:
+        * fast/css-grid-layout/grid-track-sizing-with-percentages-and-orthogonal-flows.html:
+        * fast/css-grid-layout/repeating-layout-must-produce-the-same-results.html:
+
 2017-05-09  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] deviceId constraint doesn't work with getUserMedia

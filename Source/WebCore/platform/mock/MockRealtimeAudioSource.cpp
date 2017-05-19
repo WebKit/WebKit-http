@@ -41,7 +41,11 @@
 
 namespace WebCore {
 
-class MockRealtimeAudioSourceFactory : public RealtimeMediaSource::AudioCaptureFactory {
+class MockRealtimeAudioSourceFactory : public RealtimeMediaSource::AudioCaptureFactory
+#if PLATFORM(IOS)
+    , public RealtimeMediaSource::SingleSourceFactory<MockRealtimeAudioSource>
+#endif
+{
 public:
     CaptureSourceOrError createAudioCaptureSource(const String& deviceID, const MediaConstraints* constraints) final {
         for (auto& device : MockRealtimeMediaSource::audioDevices()) {
@@ -61,25 +65,37 @@ CaptureSourceOrError MockRealtimeAudioSource::create(const String& name, const M
 
     return CaptureSourceOrError(WTFMove(source));
 }
-
-RefPtr<MockRealtimeAudioSource> MockRealtimeAudioSource::createMuted(const String& name)
-{
-    auto source = adoptRef(new MockRealtimeAudioSource(name));
-    source->m_muted = true;
-    return source;
-}
 #endif
 
-RealtimeMediaSource::AudioCaptureFactory& MockRealtimeAudioSource::factory()
+Ref<MockRealtimeAudioSource> MockRealtimeAudioSource::createMuted(const String& name)
+{
+    auto source = adoptRef(*new MockRealtimeAudioSource(name));
+    source->notifyMutedChange(true);
+    return source;
+}
+
+static MockRealtimeAudioSourceFactory& mockAudioCaptureSourceFactory()
 {
     static NeverDestroyed<MockRealtimeAudioSourceFactory> factory;
     return factory.get();
+}
+
+RealtimeMediaSource::AudioCaptureFactory& MockRealtimeAudioSource::factory()
+{
+    return mockAudioCaptureSourceFactory();
 }
 
 MockRealtimeAudioSource::MockRealtimeAudioSource(const String& name)
     : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Type::Audio, name)
     , m_timer(RunLoop::current(), this, &MockRealtimeAudioSource::tick)
 {
+}
+
+MockRealtimeAudioSource::~MockRealtimeAudioSource()
+{
+#if PLATFORM(IOS)
+    mockAudioCaptureSourceFactory().unsetActiveSource(*this);
+#endif
 }
 
 void MockRealtimeAudioSource::updateSettings(RealtimeMediaSourceSettings& settings)
@@ -105,10 +121,12 @@ void MockRealtimeAudioSource::initializeSupportedConstraints(RealtimeMediaSource
 
 void MockRealtimeAudioSource::startProducingData()
 {
+#if PLATFORM(IOS)
+    mockAudioCaptureSourceFactory().setActiveSource(*this);
+#endif
+
     if (!sampleRate())
         setSampleRate(!deviceIndex() ? 44100 : 48000);
-
-    MockRealtimeMediaSource::startProducingData();
 
     m_startTime = monotonicallyIncreasingTime();
     m_timer.startRepeating(renderInterval());
@@ -116,7 +134,6 @@ void MockRealtimeAudioSource::startProducingData()
 
 void MockRealtimeAudioSource::stopProducingData()
 {
-    MockRealtimeMediaSource::stopProducingData();
     m_timer.stop();
     m_elapsedTime += monotonicallyIncreasingTime() - m_startTime;
     m_startTime = NAN;
@@ -136,9 +153,21 @@ void MockRealtimeAudioSource::tick()
         m_lastRenderTime = monotonicallyIncreasingTime();
 
     double now = monotonicallyIncreasingTime();
+
+    if (m_delayUntil) {
+        if (m_delayUntil < now)
+            return;
+        m_delayUntil = 0;
+    }
+
     double delta = now - m_lastRenderTime;
     m_lastRenderTime = now;
     render(delta);
+}
+
+void MockRealtimeAudioSource::delaySamples(float delta)
+{
+    m_delayUntil = monotonicallyIncreasingTime() + delta;
 }
 
 } // namespace WebCore

@@ -1481,7 +1481,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(_private->page, new WebGeolocationClient(self));
 #endif
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(_private->page, new WebNotificationClient(self));
 #endif
 #if ENABLE(DEVICE_ORIENTATION)
@@ -3085,9 +3085,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertInvalidURLsToBlank(shouldConvertInvalidURLsToBlank());
 
-    // FIXME: enable async image decoding after the flickering bug wk170640 is fixed.
-    // settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
-    settings.setLargeImageAsyncDecodingEnabled(false);
+    settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
     settings.setAnimatedImageAsyncDecodingEnabled([preferences animatedImageAsyncDecodingEnabled]);
 }
 
@@ -8056,6 +8054,13 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
         _private->page->setEditable(flag);
         if (!_private->tabKeyCyclesThroughElementsChanged)
             _private->page->setTabKeyCyclesThroughElements(!flag);
+#if PLATFORM(MAC)
+        if (flag) {
+            dispatch_async(dispatch_get_main_queue(), [] {
+                [[NSSpellChecker sharedSpellChecker] _preflightChosenSpellServer];
+            });
+        }
+#endif
         Frame* mainFrame = [self _mainCoreFrame];
         if (mainFrame) {
             if (flag) {
@@ -10033,7 +10038,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 
 - (uint64_t)_notificationIDForTesting:(JSValueRef)jsNotification
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     auto* page = _private->page;
     if (!page)
         return 0;

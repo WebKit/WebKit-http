@@ -35,7 +35,7 @@
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
 #include <WebCore/CaptureDevice.h>
-#include <WebCore/MediaConstraintsImpl.h>
+#include <WebCore/MediaConstraints.h>
 #include <WebCore/RealtimeMediaSourceCenter.h>
 #include <WebCore/WebAudioBufferList.h>
 #include <WebCore/WebAudioSourceProviderAVFObjC.h>
@@ -110,8 +110,7 @@ public:
         WebAudioBufferList audioData(m_description, numberOfFrames);
         m_ringBuffer.fetch(audioData.list(), numberOfFrames, time.timeValue());
 
-        for (auto* observer : observers())
-            observer->audioSamplesAvailable(time, audioData, m_description, numberOfFrames);
+        RealtimeMediaSource::audioSamplesAvailable(time, audioData, m_description, numberOfFrames);
     }
 
     void applyConstraintsSucceeded(const WebCore::RealtimeMediaSourceSettings& settings)
@@ -125,24 +124,6 @@ public:
     {
         auto callbacks = m_pendingApplyConstraintsCallbacks.takeFirst();
         callbacks.failureHandler(failedConstraint, errorMessage);
-    }
-
-    void setMuted(bool muted) final
-    {
-        if (m_muted == muted)
-            return;
-
-        m_muted = muted;
-        m_manager.setMuted(m_id, m_muted);
-    }
-
-    void setEnabled(bool enabled) final
-    {
-        if (m_enabled == enabled)
-            return;
-
-        m_enabled = enabled;
-        m_manager.setEnabled(m_id, m_enabled);
     }
 
 private:
@@ -298,12 +279,7 @@ void UserMediaCaptureManager::setEnabled(uint64_t id, bool enabled)
 
 void UserMediaCaptureManager::applyConstraints(uint64_t id, const WebCore::MediaConstraints& constraints)
 {
-    MediaConstraintsData constraintsData;
-    constraintsData.mandatoryConstraints = constraints.mandatoryConstraints();
-    constraintsData.advancedConstraints = constraints.advancedConstraints();
-    constraintsData.isValid = constraints.isValid();
-
-    m_process.send(Messages::UserMediaCaptureManagerProxy::ApplyConstraints(id, constraintsData), 0);
+    m_process.send(Messages::UserMediaCaptureManagerProxy::ApplyConstraints(id, constraints), 0);
 }
 
 void UserMediaCaptureManager::applyConstraintsSucceeded(uint64_t id, const WebCore::RealtimeMediaSourceSettings& settings)

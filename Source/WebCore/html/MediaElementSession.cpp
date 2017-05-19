@@ -174,17 +174,17 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted(cons
     }
 #endif
 
-    if (m_restrictions & RequireUserGestureForVideoRateChange && element.isVideo() && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForVideoRateChange && element.isVideo() && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of video rate change restriction");
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    if (m_restrictions & RequireUserGestureForAudioRateChange && (!element.isVideo() || element.hasAudio()) && !element.muted() && element.volume() && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForAudioRateChange && (!element.isVideo() || element.hasAudio()) && !element.muted() && element.volume() && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of audio rate change restriction");
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
 
-    if (m_restrictions & RequireUserGestureForVideoDueToLowPowerMode && element.isVideo() && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForVideoDueToLowPowerMode && element.isVideo() && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE because of video low power mode restriction");
         return MediaPlaybackDenialReason::UserGestureRequired;
     }
@@ -219,12 +219,12 @@ bool MediaElementSession::autoplayPermitted() const
     return true;
 }
 
-bool MediaElementSession::dataLoadingPermitted(const HTMLMediaElement&) const
+bool MediaElementSession::dataLoadingPermitted(const HTMLMediaElement& element) const
 {
     if (m_restrictions & OverrideUserGestureRequirementForMainContent && updateIsMainContent())
         return true;
 
-    if (m_restrictions & RequireUserGestureForLoad && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForLoad && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::dataLoadingPermitted - returning FALSE");
         return false;
     }
@@ -232,9 +232,9 @@ bool MediaElementSession::dataLoadingPermitted(const HTMLMediaElement&) const
     return true;
 }
 
-bool MediaElementSession::fullscreenPermitted(const HTMLMediaElement&) const
+bool MediaElementSession::fullscreenPermitted(const HTMLMediaElement& element) const
 {
-    if (m_restrictions & RequireUserGestureForFullscreen && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureForFullscreen && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::fullscreenPermitted - returning FALSE");
         return false;
     }
@@ -282,7 +282,7 @@ bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose
     }
 
     if (client().presentationType() == Audio) {
-        if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || ScriptController::processingUserGestureForMedia()) {
+        if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || m_element.document().processingUserGestureForMedia()) {
             LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Audio element with user gesture");
             return true;
         }
@@ -316,7 +316,7 @@ bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose
         return false;
     }
 
-    if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || ScriptController::processingUserGestureForMedia()) {
+    if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || m_element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: No user gesture required");
         return true;
     }
@@ -385,7 +385,7 @@ void MediaElementSession::showPlaybackTargetPicker(const HTMLMediaElement& eleme
 {
     LOG(Media, "MediaElementSession::showPlaybackTargetPicker");
 
-    if (m_restrictions & RequireUserGestureToShowPlaybackTargetPicker && !ScriptController::processingUserGestureForMedia()) {
+    if (m_restrictions & RequireUserGestureToShowPlaybackTargetPicker && !element.document().processingUserGestureForMedia()) {
         LOG(Media, "MediaElementSession::showPlaybackTargetPicker - returning early because of permissions");
         return;
     }

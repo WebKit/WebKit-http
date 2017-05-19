@@ -34,6 +34,7 @@
 #include <WebCore/IndexedDB.h>
 #include <WebCore/MediaSelectionOption.h>
 #include <WebCore/NetworkLoadMetrics.h>
+#include <WebCore/NotificationDirection.h>
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
@@ -162,7 +163,7 @@ class MediaSessionMetadata;
 #if ENABLE(MEDIA_STREAM)
 namespace WebCore {
 class CaptureDevice;
-struct MediaConstraintsData;
+struct MediaConstraints;
 }
 #endif
 
@@ -640,9 +641,9 @@ template<> struct ArgumentCoder<WebCore::ShippingMethodUpdate> {
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-template<> struct ArgumentCoder<WebCore::MediaConstraintsData> {
-    static void encode(Encoder&, const WebCore::MediaConstraintsData&);
-    static bool decode(Decoder&, WebCore::MediaConstraintsData&);
+template<> struct ArgumentCoder<WebCore::MediaConstraints> {
+    static void encode(Encoder&, const WebCore::MediaConstraints&);
+    static bool decode(Decoder&, WebCore::MediaConstraints&);
 };
 
 template<> struct ArgumentCoder<WebCore::CaptureDevice> {
@@ -721,6 +722,15 @@ template<> struct EnumTraits<WebCore::NetworkLoadPriority> {
         WebCore::NetworkLoadPriority::Low,
         WebCore::NetworkLoadPriority::Medium,
         WebCore::NetworkLoadPriority::High
+    >;
+};
+
+template<> struct EnumTraits<WebCore::NotificationDirection> {
+    using values = EnumValues<
+        WebCore::NotificationDirection,
+        WebCore::NotificationDirection::Auto,
+        WebCore::NotificationDirection::Ltr,
+        WebCore::NotificationDirection::Rtl
     >;
 };
 

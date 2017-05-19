@@ -112,8 +112,8 @@ private:
     uint64_t m_serverIdentifier;
 };
 
-ProxyInstance::ProxyInstance(PassRefPtr<RootObject> rootObject, NetscapePluginInstanceProxy* instanceProxy, uint32_t objectID)
-    : Instance(rootObject)
+ProxyInstance::ProxyInstance(Ref<RootObject>&& rootObject, NetscapePluginInstanceProxy* instanceProxy, uint32_t objectID)
+    : Instance(WTFMove(rootObject))
     , m_instanceProxy(instanceProxy)
     , m_objectID(objectID)
 {
@@ -133,7 +133,7 @@ ProxyInstance::~ProxyInstance()
 RuntimeObject* ProxyInstance::newRuntimeObject(ExecState* exec)
 {
     // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object.
-    return ProxyRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<ProxyRuntimeObject>(exec), this);
+    return ProxyRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<ProxyRuntimeObject>(exec), *this);
 }
 
 JSC::Bindings::Class* ProxyInstance::getClass() const
@@ -210,7 +210,7 @@ private:
     }
 };
 
-const ClassInfo ProxyRuntimeMethod::s_info = { "ProxyRuntimeMethod", &RuntimeMethod::s_info, 0, CREATE_METHOD_TABLE(ProxyRuntimeMethod) };
+const ClassInfo ProxyRuntimeMethod::s_info = { "ProxyRuntimeMethod", &RuntimeMethod::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ProxyRuntimeMethod) };
 
 JSValue ProxyInstance::getMethod(JSC::ExecState* exec, PropertyName propertyName)
 {

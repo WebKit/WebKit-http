@@ -1,4 +1,4 @@
-function runTest()
+function runTest(window)
 {
     function eventHandler(event)
     {
@@ -14,6 +14,8 @@ function runTest()
     window.addEventListener("textInput", eventHandler, true);
     window.addEventListener("beforeinput", eventHandler, true);
     window.addEventListener("input", eventHandler, true);
+
+    var document = window.document;
 
     console.log("Dispatching untrusted keypress event.");
     var keyPressEvent = new KeyboardEvent("keypress");
@@ -37,4 +39,18 @@ function runTest()
     textInputController.insertText("c");
 
     console.log("Input element value after text input events: \"" + textInput.value + "\".");
+}
+
+function waitForProvisionalNavigation(completionHandler)
+{
+    // This exploits the fact that XHRs are cancelled when a location change begins.
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (this.readyState === this.DONE)
+            window.setTimeout(completionHandler, 0);
+    };
+    xhr.open("GET", "resources/never-respond.php");
+    xhr.send();
+
+    window.location = "resources/never-respond.php";
 }

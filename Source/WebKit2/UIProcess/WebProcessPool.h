@@ -49,7 +49,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounter.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringHash.h>
@@ -185,7 +184,7 @@ public:
     DownloadProxy* download(WebPageProxy* initiatingPage, const WebCore::ResourceRequest&, const String& suggestedFilename = { });
     DownloadProxy* resumeDownload(const API::Data* resumeData, const String& path);
 
-    void setInjectedBundleInitializationUserData(PassRefPtr<API::Object> userData) { m_injectedBundleInitializationUserData = userData; }
+    void setInjectedBundleInitializationUserData(RefPtr<API::Object>&& userData) { m_injectedBundleInitializationUserData = WTFMove(userData); }
 
     void postMessageToInjectedBundle(const String&, API::Object*);
 
@@ -306,7 +305,7 @@ public:
 
     void textCheckerStateChanged();
 
-    PassRefPtr<API::Dictionary> plugInAutoStartOriginHashes() const;
+    Ref<API::Dictionary> plugInAutoStartOriginHashes() const;
     void setPlugInAutoStartOriginHashes(API::Dictionary&);
     void setPlugInAutoStartOrigins(API::Array&);
     void setPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(API::Dictionary&, double time);
@@ -319,7 +318,7 @@ public:
     void getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&&);
 
 #if ENABLE(DATABASE_PROCESS)
-    void ensureDatabaseProcess();
+    void ensureDatabaseProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore);
     DatabaseProcessProxy* databaseProcess() { return m_databaseProcess.get(); }
     void getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&&);
     void databaseProcessCrashed(DatabaseProcessProxy*);
@@ -646,7 +645,7 @@ template<typename T>
 void WebProcessPool::sendToDatabaseProcessRelaunchingIfNecessary(T&& message)
 {
 #if ENABLE(DATABASE_PROCESS)
-    ensureDatabaseProcess();
+    ensureDatabaseProcessAndWebsiteDataStore(nullptr);
     m_databaseProcess->send(std::forward<T>(message), 0);
 #else
     sendToAllProcessesRelaunchingThemIfNecessary(std::forward<T>(message));

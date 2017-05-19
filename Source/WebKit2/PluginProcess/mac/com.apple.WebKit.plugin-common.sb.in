@@ -49,7 +49,7 @@
     (iokit-property "DeviceEqID")
     (iokit-property-regex #"^IOAudioControl(ChannelID|ID|SubType|Usage)")
     (iokit-property-regex #"^IOAudioDevice(CanBeDefaults|TransportType)")
-    (iokit-property-regex #"^IOAudioEngine(ChannelNames|ClientDescription|CoreAudioPlugIn|(Device)Description|Flavor|GlobalUniqueID|OutputChannelLayout|SampleOffset|State)")
+    (iokit-property-regex #"^IOAudioEngine(ChannelNames|ClientDescription|CoreAudioPlugIn|(|Device)Description|Flavor|GlobalUniqueID|OutputChannelLayout|SampleOffset|State)")
     (iokit-property-regex #"^IOAudioEngineClock(Domain|IsStable)")
     (iokit-property "IOAudioEngineDisableClockBoundsCheck")
     (iokit-property-regex #"^IOAudioEngine(Input|Output)Sample(Latency|Offset)")
@@ -63,14 +63,22 @@
     (iokit-property "IOGeneralInterest")
     (iokit-property "IOGLBundleName")
     (iokit-property "IOGVACodec")
+    (iokit-property-regex "^IOGVA[A-Z]+Decode")
+    (iokit-property "IOMACAddress") ;; For some Flash players
+    (iokit-property "IOPlatformSerialNumber") ;; Ditto
     (iokit-property "IOScreenRestoreState")
     (iokit-property "IOVARendererID")
     (iokit-property-regex #"^MetalPlugin(Name|ClassName)")
     (iokit-property "NoAutoRoute")
+    (iokit-property "Protocol Characteristics")
     (iokit-property "SupportAudioAUUC")
     (iokit-property "board-id")
     (iokit-property "idProduct")
     (iokit-property "idVendor"))
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+(deny mach-lookup (xpc-service-name-prefix ""))
 #endif
 
 ;; Utility functions
@@ -279,6 +287,7 @@
 
 ;; Various services required by AppKit and other frameworks
 (allow mach-lookup
+    (global-name "com.apple.audio.AudioComponentRegistrar")
     (global-name "com.apple.CoreServices.coreservicesd")
     (global-name "com.apple.DiskArbitration.diskarbitrationd")
     (global-name "com.apple.FileCoordination")
@@ -292,6 +301,9 @@
     (global-name "com.apple.SystemConfiguration.PPPController")
     (global-name "com.apple.SystemConfiguration.configd")
     (global-name "com.apple.UNCUserNotification")
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    (global-name "com.apple.analyticsd")
+#endif
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
     (global-name "com.apple.audio.VDCAssistant")
 #endif
@@ -302,6 +314,9 @@
     (global-name "com.apple.cookied") ;; FIXME: <rdar://problem/10790768> Limit access to cookies.
     (global-name "com.apple.coreservices.launchservicesd")
     (global-name "com.apple.fonts")
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    (global-name "com.apple.lsd.mapdb")
+#endif
     (global-name "com.apple.ocspd")
     (global-name "com.apple.pasteboard.1")
     (global-name "com.apple.pbs.fetch_services")
@@ -335,7 +350,6 @@
     (remote udp))
 (allow network-inbound
     (local udp))
-
 
 ;; Open and Save panels
 (define (webkit-powerbox)

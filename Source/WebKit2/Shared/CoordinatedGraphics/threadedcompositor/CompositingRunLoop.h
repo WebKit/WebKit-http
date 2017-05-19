@@ -57,10 +57,6 @@ public:
     void run();
     void stop();
 
-#ifndef NDEBUG
-    bool isCurrent();
-#endif
-
 private:
     enum class UpdateState {
         Completed,

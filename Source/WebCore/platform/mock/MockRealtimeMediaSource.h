@@ -65,13 +65,9 @@ protected:
     virtual void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) = 0;
 #endif
 
-    void startProducingData() override;
-    void stopProducingData() override;
-
     const RealtimeMediaSourceCapabilities& capabilities() const override;
     const RealtimeMediaSourceSettings& settings() const override;
 
-    MediaConstraints& constraints() { return *m_constraints.get(); }
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
 
     unsigned deviceIndex() { return m_deviceIndex; }
@@ -84,14 +80,10 @@ private:
     void initializeSettings();
 #endif
 
-    bool isProducingData() const override { return m_isProducingData; }
-
     RealtimeMediaSourceSettings m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
     std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
-    RefPtr<MediaConstraints> m_constraints;
     unsigned m_deviceIndex { 0 };
-    bool m_isProducingData { false };
 };
 
 } // namespace WebCore

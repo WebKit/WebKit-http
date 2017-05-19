@@ -27,6 +27,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "B3SparseCollection.h"
 #include "BasicBlockLocation.h"
 #include "CodeBlock.h"
 #include "DFGAbstractValue.h"
@@ -246,6 +247,7 @@ struct CallDOMGetterData {
 //
 // Node represents a single operation in the data flow graph.
 struct Node {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static const char HashSetTemplateInstantiationString[];
     
@@ -2414,17 +2416,6 @@ public:
         return m_opInfo.as<BasicBlockLocation*>();
     }
 
-    bool hasCheckDOMPatchpoint() const
-    {
-        return op() == CheckDOM;
-    }
-
-    DOMJIT::Patchpoint* checkDOMPatchpoint()
-    {
-        ASSERT(hasCheckDOMPatchpoint());
-        return m_opInfo.as<DOMJIT::Patchpoint*>();
-    }
-
     bool hasCallDOMGetterData() const
     {
         return op() == CallDOMGetter;
@@ -2438,12 +2429,12 @@ public:
 
     bool hasClassInfo() const
     {
-        return op() == CheckDOM;
+        return op() == CheckSubClass;
     }
 
     const ClassInfo* classInfo()
     {
-        return m_opInfo2.as<const ClassInfo*>();
+        return m_opInfo.as<const ClassInfo*>();
     }
 
     bool hasSignature() const
@@ -2533,7 +2524,7 @@ public:
     AdjacencyList children;
 
 private:
-    friend class Graph;
+    friend class B3::SparseCollection<Node>;
 
     unsigned m_index { std::numeric_limits<unsigned>::max() };
     unsigned m_op : 10; // real type is NodeType

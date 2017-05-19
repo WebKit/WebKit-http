@@ -2464,14 +2464,14 @@ bool RenderLayerCompositor::clipsCompositingDescendants(const RenderLayer& layer
 
 bool RenderLayerCompositor::requiresCompositingForScrollableFrame() const
 {
-    // Need this done first to determine overflow.
-    ASSERT(!m_renderView.needsLayout());
     if (isMainFrameCompositor())
         return false;
 
     if (!(m_compositingTriggers & ChromeClient::ScrollableInnerFrameTrigger))
         return false;
 
+    // Need this done first to determine overflow.
+    ASSERT(!m_renderView.needsLayout());
     return m_renderView.frameView().isScrollable();
 }
 
@@ -2723,11 +2723,7 @@ static bool useCoordinatedScrollingForLayer(RenderView& view, const RenderLayer&
     if (layer.isRootLayer() && view.frameView().frame().isMainFrame())
         return true;
 
-#if PLATFORM(IOS)
-    return layer.hasTouchScrollableOverflow();
-#else
-    return layer.needsCompositedScrolling();
-#endif
+    return layer.usesAcceleratedScrolling();
 }
 
 bool RenderLayerCompositor::requiresCompositingForPosition(RenderLayerModelObject& renderer, const RenderLayer& layer, RenderLayer::ViewportConstrainedNotCompositedReason* viewportConstrainedNotCompositedReason) const

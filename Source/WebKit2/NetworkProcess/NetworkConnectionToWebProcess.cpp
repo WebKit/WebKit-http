@@ -45,6 +45,7 @@
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PingHandle.h>
 #include <WebCore/PlatformCookieJar.h>
@@ -401,7 +402,7 @@ void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(boo
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
 {
-    NetworkProcess::singleton().ensurePrivateBrowsingSession(SessionID::legacyPrivateSessionID());
+    NetworkProcess::singleton().ensurePrivateBrowsingSession({SessionID::legacyPrivateSessionID(), { }, { }, { }});
 }
 
 } // namespace WebKit

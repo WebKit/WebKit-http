@@ -29,22 +29,18 @@
 #include "StdLibExtras.h"
 #include <mutex>
 
-#if OS(DARWIN)
-#import <dispatch/dispatch.h>
-#import <mach/host_info.h>
-#import <mach/mach.h>
-#import <mach/mach_error.h>
-#import <math.h>
-#elif OS(UNIX)
-#include <unistd.h>
-#include <wtf/text/WTFString.h>
-#elif OS(WINDOWS)
+#if OS(WINDOWS)
 #include <windows.h>
+#else
+#include <wtf/text/WTFString.h>
+#include <bmalloc/bmalloc.h>
 #endif
 
 namespace WTF {
-
+    
+#if OS(WINDOWS)
 static const size_t ramSizeGuess = 512 * MB;
+#endif
 
 static size_t customRAMSize()
 {
@@ -72,47 +68,19 @@ static size_t customRAMSize()
 
 static size_t computeRAMSize()
 {
-#if PLATFORM(IOS_SIMULATOR)
-    // Pretend we have 512MB of memory to make cache sizes behave like on device.
-    return ramSizeGuess;
-#elif OS(DARWIN)
-    host_basic_info_data_t hostInfo;
-
-    mach_port_t host = mach_host_self();
-    mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
-    kern_return_t r = host_info(host, HOST_BASIC_INFO, (host_info_t)&hostInfo, &count);
-    mach_port_deallocate(mach_task_self(), host);
-    if (r != KERN_SUCCESS) {
-        LOG_ERROR("%s : host_info(%d) : %s.\n", __FUNCTION__, r, mach_error_string(r));
-        return ramSizeGuess;
-    }
-
-    if (hostInfo.max_mem > std::numeric_limits<size_t>::max())
-        return std::numeric_limits<size_t>::max();
-
-    size_t sizeAccordingToKernel = static_cast<size_t>(hostInfo.max_mem);
-    size_t multiple = 128 * MB;
-
-    // Round up the memory size to a multiple of 128MB because max_mem may not be exactly 512MB
-    // (for example) and we have code that depends on those boundaries.
-    return ((sizeAccordingToKernel + multiple - 1) / multiple) * multiple;
-#elif OS(UNIX)
-    size_t custom = customRAMSize();
-    if (custom)
-        return custom;
-
-    long pages = sysconf(_SC_PHYS_PAGES);
-    long pageSize = sysconf(_SC_PAGE_SIZE);
-    if (pages == -1 || pageSize == -1)
-        return ramSizeGuess;
-    return pages * pageSize;
-#elif OS(WINDOWS)
+#if OS(WINDOWS)
     MEMORYSTATUSEX status;
     status.dwLength = sizeof(status);
     bool result = GlobalMemoryStatusEx(&status);
     if (!result)
         return ramSizeGuess;
     return status.ullTotalPhys;
+#else
+    size_t custom = customRAMSize();
+    if (custom)
+        return custom;
+
+    return bmalloc::api::availableMemory();
 #endif
 }
 

@@ -361,9 +361,9 @@ void CoordinatedGraphicsScene::createBackingStoreIfNeeded(TextureMapperLayer* la
     if (m_backingStores.contains(layer))
         return;
 
-    RefPtr<CoordinatedBackingStore> backingStore(CoordinatedBackingStore::create());
-    m_backingStores.add(layer, backingStore);
-    layer->setBackingStore(backingStore);
+    auto backingStore = CoordinatedBackingStore::create();
+    m_backingStores.add(layer, backingStore.copyRef());
+    layer->setBackingStore(WTFMove(backingStore));
 }
 
 void CoordinatedGraphicsScene::removeBackingStoreIfNeeded(TextureMapperLayer* layer)
@@ -372,7 +372,7 @@ void CoordinatedGraphicsScene::removeBackingStoreIfNeeded(TextureMapperLayer* la
     if (!backingStore)
         return;
 
-    layer->setBackingStore(0);
+    layer->setBackingStore(nullptr);
 }
 
 void CoordinatedGraphicsScene::resetBackingStoreSizeToLayerSize(TextureMapperLayer* layer)
@@ -428,7 +428,7 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
         SurfaceMap::iterator surfaceIt = m_surfaces.find(surfaceUpdateInfo.atlasID);
         ASSERT(surfaceIt != m_surfaces.end());
 
-        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value, surfaceUpdateInfo.surfaceOffset);
+        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value.copyRef(), surfaceUpdateInfo.surfaceOffset);
         m_backingStoresWithPendingBuffers.add(backingStore);
     }
 }
@@ -436,13 +436,13 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
 void CoordinatedGraphicsScene::syncUpdateAtlases(const CoordinatedGraphicsState& state)
 {
     for (auto& atlas : state.updateAtlasesToCreate)
-        createUpdateAtlas(atlas.first, atlas.second);
+        createUpdateAtlas(atlas.first, atlas.second.copyRef());
 }
 
-void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface> surface)
+void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& surface)
 {
     ASSERT(!m_surfaces.contains(atlasID));
-    m_surfaces.add(atlasID, surface);
+    m_surfaces.add(atlasID, WTFMove(surface));
 }
 
 void CoordinatedGraphicsScene::removeUpdateAtlas(uint32_t atlasID)
@@ -466,7 +466,7 @@ void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState&
         createImageBacking(image);
 
     for (auto& image : state.imagesToUpdate)
-        updateImageBacking(image.first, image.second);
+        updateImageBacking(image.first, image.second.copyRef());
 
     for (auto& image : state.imagesToClear)
         clearImageBackingContents(image);
@@ -475,11 +475,10 @@ void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState&
 void CoordinatedGraphicsScene::createImageBacking(CoordinatedImageBackingID imageID)
 {
     ASSERT(!m_imageBackings.contains(imageID));
-    RefPtr<CoordinatedBackingStore> backingStore(CoordinatedBackingStore::create());
-    m_imageBackings.add(imageID, backingStore.release());
+    m_imageBackings.add(imageID, CoordinatedBackingStore::create());
 }
 
-void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imageID, PassRefPtr<CoordinatedSurface> surface)
+void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& surface)
 {
     ASSERT(m_imageBackings.contains(imageID));
     ImageBackingMap::iterator it = m_imageBackings.find(imageID);
@@ -491,7 +490,7 @@ void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imag
     // See CoordinatedGraphicsLayer::shouldDirectlyCompositeImage()
     ASSERT(2000 >= std::max(rect.width(), rect.height()));
     backingStore->setSize(rect.size());
-    backingStore->updateTile(1 /* id */, rect, rect, surface, rect.location());
+    backingStore->updateTile(1 /* id */, rect, rect, WTFMove(surface), rect.location());
 
     m_backingStoresWithPendingBuffers.add(backingStore);
 }

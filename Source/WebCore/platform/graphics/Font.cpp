@@ -55,15 +55,16 @@ unsigned GlyphPage::s_count = 0;
 const float smallCapsFontSizeMultiplier = 0.7f;
 const float emphasisMarkFontSizeMultiplier = 0.5f;
 
-Font::Font(const FontPlatformData& platformData, bool isCustomFont, bool isLoading, bool isTextOrientationFallback)
+Font::Font(const FontPlatformData& platformData, Origin origin, Interstitial interstitial, Visibility visibility, OrientationFallback orientationFallback)
     : m_maxCharWidth(-1)
     , m_avgCharWidth(-1)
     , m_platformData(platformData)
     , m_mathData(nullptr)
+    , m_origin(origin)
+    , m_visibility(visibility)
     , m_treatAsFixedPitch(false)
-    , m_isCustomFont(isCustomFont)
-    , m_isLoading(isLoading)
-    , m_isTextOrientationFallback(isTextOrientationFallback)
+    , m_isInterstitial(interstitial == Interstitial::Yes)
+    , m_isTextOrientationFallback(orientationFallback == OrientationFallback::Yes)
     , m_isBrokenIdeographFallback(false)
     , m_hasVerticalGlyphs(false)
     , m_isUsedInSystemFallbackCache(false)
@@ -75,7 +76,7 @@ Font::Font(const FontPlatformData& platformData, bool isCustomFont, bool isLoadi
     platformGlyphInit();
     platformCharWidthInit();
 #if ENABLE(OPENTYPE_VERTICAL)
-    if (platformData.orientation() == Vertical && !isTextOrientationFallback) {
+    if (platformData.orientation() == Vertical && orientationFallback == OrientationFallback::No) {
         m_verticalData = FontCache::singleton().verticalData(platformData);
         m_hasVerticalGlyphs = m_verticalData.get() && m_verticalData->hasVerticalMetrics();
     }
@@ -263,10 +264,10 @@ GlyphData Font::glyphDataForCharacter(UChar32 character) const
 const Font& Font::verticalRightOrientationFont() const
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->verticalRightOrientation) {
         auto verticalRightPlatformData = FontPlatformData::cloneWithOrientation(m_platformData, Horizontal);
-        m_derivedFontData->verticalRightOrientation = create(verticalRightPlatformData, isCustomFont(), false, true);
+        m_derivedFontData->verticalRightOrientation = create(verticalRightPlatformData, origin(), Interstitial::No, Visibility::Visible, OrientationFallback::Yes);
     }
     ASSERT(m_derivedFontData->verticalRightOrientation != this);
     return *m_derivedFontData->verticalRightOrientation;
@@ -275,9 +276,9 @@ const Font& Font::verticalRightOrientationFont() const
 const Font& Font::uprightOrientationFont() const
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->uprightOrientation)
-        m_derivedFontData->uprightOrientation = create(m_platformData, isCustomFont(), false, true);
+        m_derivedFontData->uprightOrientation = create(m_platformData, origin(), Interstitial::No, Visibility::Visible, OrientationFallback::Yes);
     ASSERT(m_derivedFontData->uprightOrientation != this);
     return *m_derivedFontData->uprightOrientation;
 }
@@ -285,7 +286,7 @@ const Font& Font::uprightOrientationFont() const
 const Font* Font::smallCapsFont(const FontDescription& fontDescription) const
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->smallCaps)
         m_derivedFontData->smallCaps = createScaledFont(fontDescription, smallCapsFontSizeMultiplier);
     ASSERT(m_derivedFontData->smallCaps != this);
@@ -296,7 +297,7 @@ const Font& Font::noSynthesizableFeaturesFont() const
 {
 #if PLATFORM(COCOA)
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->noSynthesizableFeatures)
         m_derivedFontData->noSynthesizableFeatures = createFontWithoutSynthesizableFeatures();
     ASSERT(m_derivedFontData->noSynthesizableFeatures != this);
@@ -309,7 +310,7 @@ const Font& Font::noSynthesizableFeaturesFont() const
 const Font* Font::emphasisMarkFont(const FontDescription& fontDescription) const
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->emphasisMark)
         m_derivedFontData->emphasisMark = createScaledFont(fontDescription, emphasisMarkFontSizeMultiplier);
     ASSERT(m_derivedFontData->emphasisMark != this);
@@ -319,9 +320,9 @@ const Font* Font::emphasisMarkFont(const FontDescription& fontDescription) const
 const Font& Font::brokenIdeographFont() const
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFonts>(isCustomFont());
+        m_derivedFontData = std::make_unique<DerivedFonts>();
     if (!m_derivedFontData->brokenIdeograph) {
-        m_derivedFontData->brokenIdeograph = create(m_platformData, isCustomFont(), false);
+        m_derivedFontData->brokenIdeograph = create(m_platformData, origin(), Interstitial::No);
         m_derivedFontData->brokenIdeograph->m_isBrokenIdeographFallback = true;
     }
     ASSERT(m_derivedFontData->brokenIdeograph != this);
@@ -331,7 +332,7 @@ const Font& Font::brokenIdeographFont() const
 #ifndef NDEBUG
 String Font::description() const
 {
-    if (isCustomFont())
+    if (origin() == Origin::Remote)
         return "[custom font]";
 
     return platformData().description();
@@ -340,7 +341,7 @@ String Font::description() const
 
 const OpenTypeMathData* Font::mathData() const
 {
-    if (m_isLoading)
+    if (isInterstitial())
         return nullptr;
     if (!m_mathData) {
         m_mathData = OpenTypeMathData::create(m_platformData);
@@ -348,10 +349,6 @@ const OpenTypeMathData* Font::mathData() const
             m_mathData = nullptr;
     }
     return m_mathData.get();
-}
-
-Font::DerivedFonts::~DerivedFonts()
-{
 }
 
 RefPtr<Font> Font::createScaledFont(const FontDescription& fontDescription, float scaleFactor) const

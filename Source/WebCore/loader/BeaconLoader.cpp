@@ -128,7 +128,7 @@ bool Beacon::serialize(Blob* data, ResourceRequest& request, int, int&)
     else
         entityBody->appendBlob(data->url());
 
-    request.setHTTPBody(entityBody.release());
+    request.setHTTPBody(WTFMove(entityBody));
     const String& blobType = data->type();
     if (!blobType.isEmpty() && Blob::isValidContentType(blobType))
         request.setHTTPContentType(AtomicString(blobType));
@@ -145,7 +145,7 @@ bool Beacon::serialize(ArrayBufferView* data, ResourceRequest& request, int, int
     ASSERT(data);
     RefPtr<FormData> entityBody = FormData::create(data->baseAddress(), data->byteLength());
 
-    request.setHTTPBody(entityBody.release());
+    request.setHTTPBody(WTFMove(entityBody));
     // FIXME: a reasonable choice, but not in the spec; should it give a default?
     AtomicString contentType = AtomicString("application/octet-stream");
     request.setHTTPContentType(contentType);
@@ -169,7 +169,7 @@ bool Beacon::serialize(DOMFormData* data, ResourceRequest& request, int allowanc
         return false;
 
     AtomicString contentType = AtomicString("multipart/form-data; boundary=", AtomicString::ConstructFromLiteral) + entityBody->boundary().data();
-    request.setHTTPBody(entityBody.release());
+    request.setHTTPBody(WTFMove(entityBody));
     request.setHTTPContentType(contentType);
 
     payloadLength = entitySize;

@@ -623,7 +623,7 @@ void CoordinatedGraphicsLayer::syncImageBacking()
             releaseImageBackingIfNeeded();
 
         if (!m_coordinatedImageBacking) {
-            m_coordinatedImageBacking = m_coordinator->createImageBackingIfNeeded(m_compositedImage.get());
+            m_coordinatedImageBacking = m_coordinator->createImageBackingIfNeeded(*m_compositedImage);
             m_coordinatedImageBacking->addHost(this);
             m_layerState.imageID = m_coordinatedImageBacking->id();
         }
@@ -632,9 +632,6 @@ void CoordinatedGraphicsLayer::syncImageBacking()
         m_layerState.imageChanged = true;
     } else
         releaseImageBackingIfNeeded();
-
-    // syncImageBacking() changed m_layerState.imageID.
-    didChangeLayerState();
 }
 
 void CoordinatedGraphicsLayer::syncLayerState()

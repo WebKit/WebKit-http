@@ -35,7 +35,7 @@
 
 #include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceCenter.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -50,11 +50,8 @@ private:
     RealtimeMediaSourceCenterMac();
     ~RealtimeMediaSourceCenterMac();
 
-    void validateRequestConstraints(ValidConstraintsHandler&& validHandler, InvalidConstraintsHandler&& invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
     void createMediaStream(NewMediaStreamHandler&&, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints) final;
     Vector<CaptureDevice> getMediaStreamDevices() final;
-
-    Vector<String> bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type, const MediaConstraints&, String& invalidConstraint);
 
     RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() final;
     RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() final;

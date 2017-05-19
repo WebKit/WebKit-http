@@ -55,6 +55,7 @@ set(JavaScriptCore_SOURCES
     API/JSCallbackObject.cpp
     API/JSClassRef.cpp
     API/JSContextRef.cpp
+    API/JSHeapFinalizerPrivate.cpp
     API/JSMarkingConstraintPrivate.cpp
     API/JSObjectRef.cpp
     API/JSTypedArray.cpp
@@ -357,7 +358,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLazyJSValue.cpp
     dfg/DFGLazyNode.cpp
     dfg/DFGLivenessAnalysisPhase.cpp
-    dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
@@ -507,6 +507,7 @@ set(JavaScriptCore_SOURCES
     heap/HandleStack.cpp
     heap/Heap.cpp
     heap/HeapCell.cpp
+    heap/HeapFinalizerCallback.cpp
     heap/HeapHelperPool.cpp
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
@@ -694,6 +695,7 @@ set(JavaScriptCore_SOURCES
     runtime/BooleanPrototype.cpp
     runtime/CallData.cpp
     runtime/CatchScope.cpp
+    runtime/ClassInfo.cpp
     runtime/ClonedArguments.cpp
     runtime/CodeCache.cpp
     runtime/CodeSpecializationKind.cpp
@@ -951,12 +953,14 @@ set(JavaScriptCore_SOURCES
     wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
+    wasm/WasmIndexOrName.cpp
     wasm/WasmMachineThreads.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
     wasm/WasmModule.cpp
     wasm/WasmModuleInformation.cpp
     wasm/WasmModuleParser.cpp
+    wasm/WasmNameSectionParser.cpp
     wasm/WasmOMGPlan.cpp
     wasm/WasmOpcodeOrigin.cpp
     wasm/WasmPageCount.cpp
@@ -978,6 +982,7 @@ set(JavaScriptCore_SOURCES
     wasm/js/WebAssemblyCompileErrorConstructor.cpp
     wasm/js/WebAssemblyCompileErrorPrototype.cpp
     wasm/js/WebAssemblyFunction.cpp
+    wasm/js/WebAssemblyFunctionBase.cpp
     wasm/js/WebAssemblyInstanceConstructor.cpp
     wasm/js/WebAssemblyInstancePrototype.cpp
     wasm/js/WebAssemblyLinkErrorConstructor.cpp

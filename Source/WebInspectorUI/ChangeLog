@@ -1,3 +1,197 @@
+2017-05-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for Search icon of Quick Open dialog
+        https://bugs.webkit.org/show_bug.cgi?id=172110
+
+        Reviewed by Michael Catanzaro.
+
+        Add a free icon for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/Search.svg: Added.
+
+2017-05-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for Worker Scripts / Web Sockets
+        https://bugs.webkit.org/show_bug.cgi?id=164138
+
+        Reviewed by Michael Catanzaro.
+
+        Add more free icons for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/WorkerScript.png: Added.
+        * UserInterface/Images/gtk/WorkerScript@2x.png: Added.
+        * UserInterface/Images/gtk/WorkerScriptLarge.png: Added.
+        * UserInterface/Images/gtk/WorkerScriptLarge@2x.png: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.script.worker-icon .icon):
+        (.large .script.worker-icon .icon):
+        (body:matches(.mac-platform, .windows-platform) .script.worker-icon .icon): Deleted.
+        (body:matches(.mac-platform, .windows-platform) .large .script.worker-icon .icon): Deleted.
+
+2017-05-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: RTL: "Elements > Styles - Rules" rule and media query headers should be left aligned
+        https://bugs.webkit.org/show_bug.cgi?id=171954
+        <rdar://problem/31961976>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header):
+        (.style-declaration-section.locked > .header > .locked-icon):
+        (.style-declaration-section > .header > .icon):
+        (.style-declaration-section > .header > textarea):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+        (body[dir=ltr] .style-declaration-section > .header): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header): Deleted.
+        (body[dir=ltr] .style-declaration-section.locked > .header > .locked-icon): Deleted.
+        (body[dir=rtl] .style-declaration-section.locked > .header > .locked-icon): Deleted.
+        (body[dir=ltr] .style-declaration-section > .header > .icon): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header > .icon): Deleted.
+        (body[dir=ltr] .style-declaration-section > .header > textarea): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header > textarea): Deleted.
+        Remove RTL rules.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        Set dir="ltr" so selector's textareas work correctly.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules):
+
+2017-05-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Error trying to delete DOM breakpoints from the Debugger tab
+        https://bugs.webkit.org/show_bug.cgi?id=171970
+        <rdar://problem/32129262>
+
+        Reviewed by Brian Burg.
+
+        In the Debugger sidebar, DOM breakpoints can be cleared from a DOM node
+        in two ways: by using the DOM node tree element's context menu, or by
+        pressing the delete key while the element is selected. Each method used
+        a different code path, and the latter had an error which caused it to fail.
+
+        Add a `removeDOMBreakpointsForNode` method to DOMDebuggerManager to make
+        the operation convenient, and call it from both event handlers.
+
+        * UserInterface/Controllers/DOMBreakpointTreeController.js:
+        (WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems):
+        Use convenience method.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.removeDOMBreakpointsForNode):
+        Helper function for removing all of a node's breakpoints.
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WebInspector.DOMNodeTreeElement.prototype.ondelete):
+        Use convenience method.
+
+2017-05-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for resources in large sizes (32px @ 1x/2x)
+        https://bugs.webkit.org/show_bug.cgi?id=155802
+        <rdar://problem/25320686>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add more free icons for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/ClippingCSSLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingCSSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/ClippingGenericLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingGenericLarge@2x.png: Added.
+        * UserInterface/Images/gtk/ClippingJSLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingJSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentCSSLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentCSSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentFontLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentFontLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentGenericLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentGenericLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentImageLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentImageLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentJSLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentJSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkupLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkupLarge@2x.png: Added.
+
+2017-05-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: in Timelines > JavaScript & Events, digits for timer and animation frame number are not localized
+        https://bugs.webkit.org/show_bug.cgi?id=171818
+
+        Reviewed by Joseph Pecoraro.
+
+        These numbers need to be formatted with %d, not %s.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+
+2017-05-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove dead code for switching Toolbar display options
+        https://bugs.webkit.org/show_bug.cgi?id=170738
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button > .glyph):
+        (.toolbar .item.button > .label):
+        (.toolbar.icon-and-label-vertical .item.button): Deleted.
+        (.toolbar.icon-and-label-horizontal .item.button): Deleted.
+        (.toolbar.small-size .item.button > .glyph): Deleted.
+        (.toolbar.label-only .item.button > .glyph): Deleted.
+        (.toolbar.label-only .item.activate.button.activated > .label): Deleted.
+        (.toolbar.icon-and-label-horizontal .item.button > .label): Deleted.
+        (.toolbar.icon-only .item.button > .label): Deleted.
+        * UserInterface/Views/ControlToolbarItem.css:
+        (.toolbar .item.control):
+        (.toolbar:matches(.icon-and-label-horizontal, .icon-only) .item.control): Deleted.
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard-container):
+        (.toolbar.icon-and-label-vertical:matches(.small-size, .normal-size) .dashboard-container): Deleted.
+        (.toolbar.label-only .dashboard-container,): Deleted.
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard-container): Deleted.
+        (.toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        (body[dir=ltr] .toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        (body[dir=rtl] .toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item):
+        (.toolbar.label-only .dashboard.default > .item,): Deleted.
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard.default > .item): Deleted.
+        * UserInterface/Views/ReplayDashboardView.css:
+        (.toolbar .dashboard.replay .item.button > .glyph):
+        (.toolbar.label-only .dashboard.replay .item.button > .glyph): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .control-section):
+        (.toolbar:matches(.icon-and-label-horizontal.small-size, .icon-only.small-size, .label-only) .control-section): Deleted.
+        * UserInterface/Views/Toolbar.js:
+        (WebInspector.Toolbar):
+        (WebInspector.Toolbar.prototype.layout):
+        (WebInspector.Toolbar.prototype.get displayMode): Deleted.
+        (WebInspector.Toolbar.prototype.set displayMode): Deleted.
+        (WebInspector.Toolbar.prototype.get sizeMode): Deleted.
+        (WebInspector.Toolbar.prototype.set sizeMode): Deleted.
+        (WebInspector.Toolbar.prototype._handleContextMenuEvent): Deleted.
+        (WebInspector.Toolbar.prototype._changeDisplayMode): Deleted.
+        (WebInspector.Toolbar.prototype._toggleSmallIcons): Deleted.
+
+2017-05-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Copy to clipboard fails via InspectorFrontendHostStub
+        https://bugs.webkit.org/show_bug.cgi?id=171907
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/InspectorFrontendHostStub.js:
+        (WebInspector.InspectorFrontendHostStub.prototype.copyText):
+        Actually make a text selection before attempting to copy to clipboard.
+
 2017-05-09  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Provide resource load error reason text in details sidebar

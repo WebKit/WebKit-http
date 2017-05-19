@@ -25,11 +25,12 @@
 
 #import <WebKit/WKBackForwardList.h>
 #import <WebKit/WKBackForwardListItem.h>
-#import <WebKit/WKContentExtension.h>
-#import <WebKit/WKContentExtensionStore.h>
+#import <WebKit/WKContentRuleList.h>
+#import <WebKit/WKContentRuleListStore.h>
 #import <WebKit/WKError.h>
 #import <WebKit/WKFoundation.h>
 #import <WebKit/WKFrameInfo.h>
+#import <WebKit/WKHTTPCookieStore.h>
 #import <WebKit/WKNavigation.h>
 #import <WebKit/WKNavigationAction.h>
 #import <WebKit/WKNavigationDelegate.h>
@@ -44,6 +45,8 @@
 #import <WebKit/WKScriptMessageHandler.h>
 #import <WebKit/WKSecurityOrigin.h>
 #import <WebKit/WKUIDelegate.h>
+#import <WebKit/WKURLSchemeHandler.h>
+#import <WebKit/WKURLSchemeTask.h>
 #import <WebKit/WKUserContentController.h>
 #import <WebKit/WKUserScript.h>
 #import <WebKit/WKWebView.h>

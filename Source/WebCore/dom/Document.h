@@ -464,9 +464,10 @@ public:
     WEBCORE_EXPORT Ref<HTMLCollection> anchors();
     WEBCORE_EXPORT Ref<HTMLCollection> scripts();
     Ref<HTMLCollection> all();
+    Ref<HTMLCollection> allFilteredByName(const AtomicString&);
 
-    Ref<HTMLCollection> windowNamedItems(const AtomicString& name);
-    Ref<HTMLCollection> documentNamedItems(const AtomicString& name);
+    Ref<HTMLCollection> windowNamedItems(const AtomicString&);
+    Ref<HTMLCollection> documentNamedItems(const AtomicString&);
 
     // Other methods (not part of DOM)
     bool isSynthesized() const { return m_isSynthesized; }
@@ -726,8 +727,11 @@ public:
     void unregisterCollection(HTMLCollection&);
     void collectionCachedIdNameMap(const HTMLCollection&);
     void collectionWillClearIdNameMap(const HTMLCollection&);
-    bool shouldInvalidateNodeListAndCollectionCaches(const QualifiedName* attrName = nullptr) const;
-    void invalidateNodeListAndCollectionCaches(const QualifiedName* attrName);
+    bool shouldInvalidateNodeListAndCollectionCaches() const;
+    bool shouldInvalidateNodeListAndCollectionCachesForAttribute(const QualifiedName& attrName) const;
+
+    template <typename InvalidationFunction>
+    void invalidateNodeListAndCollectionCaches(InvalidationFunction);
 
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
@@ -1145,6 +1149,7 @@ public:
     MonotonicTime lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
     bool hasHadUserInteraction() const { return static_cast<bool>(m_lastHandledUserGestureTimestamp); }
     void updateLastHandledUserGestureTimestamp(MonotonicTime);
+    bool processingUserGestureForMedia() const;
 
     void setUserDidInteractWithPage(bool userDidInteractWithPage) { ASSERT(&topDocument() == this); m_userDidInteractWithPage = userDidInteractWithPage; }
     bool userDidInteractWithPage() const { ASSERT(&topDocument() == this); return m_userDidInteractWithPage; }
@@ -1196,8 +1201,8 @@ public:
     IntSize initialViewportSize() const;
 #endif
 
-    void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, const RenderStyle&);
-    void adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect&, const RenderStyle&);
+    void convertAbsoluteToClientQuads(Vector<FloatQuad>&, const RenderStyle&);
+    void convertAbsoluteToClientRect(FloatRect&, const RenderStyle&);
 
     bool hasActiveParser();
     void incrementActiveParserCount() { ++m_activeParserCount; }
@@ -1593,6 +1598,8 @@ private:
 
     void clearScriptedAnimationController();
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
+
+    void notifyVisibilityChangedToMediaCapture();
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;

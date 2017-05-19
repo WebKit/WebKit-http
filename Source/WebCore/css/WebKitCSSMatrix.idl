@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+// FIXME: This should be removed and made an alias to DOMRect.
 [
     Constructor(optional DOMString cssValue),
     ConstructorMayThrowException,
@@ -91,5 +92,5 @@
     // Passing a NaN will use a value of 0.
     WebKitCSSMatrix skewY(optional unrestricted double angle = NaN);
 
-    [NotEnumerable] DOMString toString();
+    [MayThrowException] DOMString toString(); // FIXME: Should be stringifier; once we support it.
 };

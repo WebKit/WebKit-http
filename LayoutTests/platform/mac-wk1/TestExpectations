@@ -60,6 +60,8 @@ webkit.org/b/153143 [ Yosemite ] media/track/track-in-band-style.html [ Pass Cra
 
 webkit.org/b/155067 storage/indexeddb/transaction-abort-private.html [ Pass Crash ]
 
+webkit.org/b/172092 [ Debug ] fast/parser/adoption-agency-unload-iframe-4.html [ Pass Timeout ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -215,6 +217,9 @@ fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 # This hit-test test doesn't work on DRT
 webkit.org/b/156084 accessibility/mac/video-tag-hit-test.html [ Skip ]
 
+# This newly imported test times out on WK1 but passes on WK2.
+webkit.org/b/172222 imported/w3c/web-platform-tests/notifications/event-onclose.html [ Skip ]
+
 # <a download> is not supported in WK1 yet.
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
@@ -295,8 +300,6 @@ webkit.org/b/165934 [ ElCapitan Yosemite ] js/dom/global-constructors-attributes
 
 webkit.org/b/161056 gamepad [ Skip ]
 
-webkit.org/b/161191 imported/w3c/web-platform-tests/url/url-setters.html [ Skip ]
-
 webkit.org/b/162592 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection.html [ Pass ImageOnlyFailure ]
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop.html [ Pass ImageOnlyFailure ]
 webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-value-change.html [ Pass ImageOnlyFailure ]
@@ -359,13 +362,6 @@ http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 
 webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [ Pass Failure ]
 
-# selectors4
-webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-001.html [ ImageOnlyFailure ]
-webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-002.html [ ImageOnlyFailure ]
-webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-003.html [ ImageOnlyFailure ]
-webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-004.html [ ImageOnlyFailure ]
-webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-005.html [ ImageOnlyFailure ]
-
 # auto-sizing produces inconsistent image results
 css3/viewport-percentage-lengths/vh-auto-size.html [ Skip ]
 
@@ -373,3 +369,11 @@ webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-rese
 
 # This was a WK2-only fix.
 http/tests/css/filters-on-iframes.html [ Skip ]
+
+webkit.org/b/171937 imported/w3c/web-platform-tests/dom/nodes/ParentNode-querySelector-All-xht.xht [ Pass Failure ]
+webkit.org/b/171937 imported/w3c/web-platform-tests/dom/nodes/ParentNode-querySelector-All.html [ Pass Failure ]
+
+webkit.org/b/171814 http/tests/media/hls/video-controls-live-stream.html [ Failure ]
+webkit.org/b/171814 http/tests/media/hls/video-duration-accessibility.html [ Failure ]
+
+webkit.org/b/172241 http/tests/appcache/404-resource-with-slow-main-resource.php [ Pass Failure ]

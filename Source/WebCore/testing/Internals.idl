@@ -103,6 +103,7 @@ enum EventThrottlingBehavior {
     boolean isStyleSheetLoadingSubresources(HTMLLinkElement link);
     void clearMemoryCache();
     void pruneMemoryCacheToSize(long size);
+    void destroyDecodedDataForAllImages();
     long memoryCacheSize();
     void setOverrideCachePolicy(CachePolicy policy);
     void setOverrideResourceLoadPriority(ResourceLoadPriority priority);
@@ -425,10 +426,6 @@ enum EventThrottlingBehavior {
 
     boolean isSelectPopupVisible(HTMLSelectElement element);
 
-#if defined(ENABLE_VIBRATION) && ENABLE_VIBRATION
-    boolean isVibrating();
-#endif
-
     [MayThrowException] boolean isPluginUnavailabilityIndicatorObscured(Element element);
     boolean isPluginSnapshotted(Element element);
 
@@ -530,11 +527,14 @@ enum EventThrottlingBehavior {
     void disableTileSizeUpdateDelay();
     void setSpeculativeTilingDelayDisabledForTesting(boolean disabled);
 
-    [Conditional=WEBGL] void simulateWebGLContextChanged(WebGLRenderingContextBase context);
+    [Conditional=WEBGL] void simulateWebGLContextChanged(WebGLRenderingContext context);
+
+    void setPageVisibility(boolean isVisible);
 
     [Conditional=MEDIA_STREAM] void observeMediaStreamTrack(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] Promise<ImageData> grabNextMediaStreamTrackFrame();
     [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackAudioSampleCount;
     [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackVideoSampleCount;
     [Conditional=MEDIA_STREAM, MayThrowException] void setMediaDeviceState(DOMString deviceID, DOMString property, boolean value);
+    [Conditional=MEDIA_STREAM] void delayMediaStreamTrackSamples(MediaStreamTrack track, float delay);
 };

@@ -311,6 +311,15 @@ void MachineThreads::tryCopyOtherThreadStack(MachineThread* thread, void* buffer
 {
     MachineThread::Registers registers;
     size_t registersSize = thread->getRegisters(registers);
+
+    // This is a workaround for <rdar://problem/27607384>. libdispatch recycles work
+    // queue threads without running pthread exit destructors. This can cause us to scan a
+    // thread during work queue initialization, when the stack pointer is null.
+    if (UNLIKELY(!registers.stackPointer())) {
+        *size = 0;
+        return;
+    }
+
     std::pair<void*, size_t> stack = thread->captureStack(registers.stackPointer());
 
     bool canCopy = *size + registersSize + stack.second <= capacity;

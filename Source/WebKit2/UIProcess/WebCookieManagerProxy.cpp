@@ -331,7 +331,7 @@ void WebCookieManagerProxy::getCookies2(WebCore::SessionID sessionID, Function<v
 {
     RefPtr<ArrayCallback> callback = ArrayCallback::create(WTFMove(callbackFunction));
     uint64_t callbackID = callback->callbackID();
-    m_arrayCallbacks.set(callbackID, callback.release());
+    m_arrayCallbacks.set(callbackID, WTFMove(callback));
 
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies2(sessionID, callbackID));
 }

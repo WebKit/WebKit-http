@@ -30,6 +30,7 @@
 #include "B3Compilation.h"
 #include "RegisterAtOffsetList.h"
 #include "WasmFormat.h"
+#include "WasmIndexOrName.h"
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC { namespace Wasm {
@@ -37,31 +38,29 @@ namespace JSC { namespace Wasm {
 class Callee : public ThreadSafeRefCounted<Callee> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-
-    // We use this when we're the JS entrypoint, we don't ascribe an index to those.
-    static constexpr unsigned invalidCalleeIndex = UINT_MAX;
-
-    static Ref<Callee> create(Wasm::Entrypoint&& entrypoint, unsigned index = invalidCalleeIndex)
+    static Ref<Callee> create(Wasm::Entrypoint&& entrypoint)
     {
-        Callee* callee = new Callee(WTFMove(entrypoint), index);
+        Callee* callee = new Callee(WTFMove(entrypoint));
+        return adoptRef(*callee);
+    }
+
+    static Ref<Callee> create(Wasm::Entrypoint&& entrypoint, size_t index, const Name* name)
+    {
+        Callee* callee = new Callee(WTFMove(entrypoint), index, name);
         return adoptRef(*callee);
     }
 
     void* entrypoint() const { return m_entrypoint.compilation->code().executableAddress(); }
 
     RegisterAtOffsetList* calleeSaveRegisters() { return &m_entrypoint.calleeSaveRegisters; }
-    std::optional<unsigned> index() const
-    {
-        if (m_index == invalidCalleeIndex)
-            return std::nullopt;
-        return m_index;
-    }
+    IndexOrName indexOrName() const { return m_indexOrName; }
 
 private:
-    JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&, unsigned index);
+    JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&);
+    JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&, size_t, const Name*);
 
     Wasm::Entrypoint m_entrypoint;
-    unsigned m_index;
+    IndexOrName m_indexOrName;
 };
 
 } } // namespace JSC::Wasm

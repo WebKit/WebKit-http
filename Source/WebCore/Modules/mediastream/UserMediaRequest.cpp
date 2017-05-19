@@ -42,20 +42,20 @@
 #include "JSMediaStream.h"
 #include "JSOverconstrainedError.h"
 #include "MainFrame.h"
-#include "MediaConstraintsImpl.h"
+#include "MediaConstraints.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "Settings.h"
 #include "UserMediaController.h"
 
 namespace WebCore {
 
-ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
+ExceptionOr<void> UserMediaRequest::start(Document& document, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
 {
     auto* userMedia = UserMediaController::from(document.page());
     if (!userMedia)
         return Exception { NOT_SUPPORTED_ERR }; // FIXME: Why is it better to return an exception here instead of rejecting the promise as we do just below?
 
-    if (!audioConstraints->isValid() && !videoConstraints->isValid()) {
+    if (!audioConstraints.isValid && !videoConstraints.isValid) {
         promise.reject(TypeError);
         return { };
     }
@@ -64,7 +64,7 @@ ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstrain
     return { };
 }
 
-UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
+UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
     : ContextDestructionObserver(&document)
     , m_audioConstraints(WTFMove(audioConstraints))
     , m_videoConstraints(WTFMove(videoConstraints))
@@ -153,10 +153,10 @@ void UserMediaRequest::start()
     m_controller->requestUserMediaAccess(*this);
 }
 
-void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDeviceUID, const String& deviceIdentifierHashSalt)
+void UserMediaRequest::allow(String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt)
 {
-    m_allowedAudioDeviceUID = audioDeviceUID;
-    m_allowedVideoDeviceUID = videoDeviceUID;
+    m_allowedAudioDeviceUID = WTFMove(audioDeviceUID);
+    m_allowedVideoDeviceUID = WTFMove(videoDeviceUID);
 
     RefPtr<UserMediaRequest> protectedThis = this;
     RealtimeMediaSourceCenter::NewMediaStreamHandler callback = [this, protectedThis = WTFMove(protectedThis)](RefPtr<MediaStreamPrivate>&& privateStream) mutable {
@@ -180,10 +180,10 @@ void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDe
         m_promise.resolve(stream);
     };
 
-    m_audioConstraints->setDeviceIDHashSalt(deviceIdentifierHashSalt);
-    m_videoConstraints->setDeviceIDHashSalt(deviceIdentifierHashSalt);
+    m_audioConstraints.deviceIDHashSalt = deviceIdentifierHashSalt;
+    m_videoConstraints.deviceIDHashSalt = WTFMove(deviceIdentifierHashSalt);
 
-    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints.get(), &m_videoConstraints.get());
+    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints, &m_videoConstraints);
 }
 
 void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invalidConstraint)

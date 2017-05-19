@@ -144,10 +144,6 @@
 #include "RemoteScrollingCoordinatorProxy.h"
 #endif
 
-#if ENABLE(VIBRATION)
-#include "WebVibrationProxy.h"
-#endif
-
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
 #endif
@@ -187,7 +183,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-#include <WebCore/MediaConstraintsImpl.h>
+#include <WebCore/MediaConstraints.h>
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -228,7 +224,7 @@ public:
     std::unique_ptr<Record> createRecord(uint64_t frameID, String originIdentifier,
         String databaseName, String displayName, uint64_t currentQuota,
         uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, 
-        PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>);
+        Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&&);
 
     void add(std::unique_ptr<Record>);
     bool areBeingProcessed() const { return !!m_currentRecord; }
@@ -251,7 +247,7 @@ ExceededDatabaseQuotaRecords& ExceededDatabaseQuotaRecords::singleton()
 std::unique_ptr<ExceededDatabaseQuotaRecords::Record> ExceededDatabaseQuotaRecords::createRecord(
     uint64_t frameID, String originIdentifier, String databaseName, String displayName,
     uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage,
-    uint64_t expectedUsage, PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply> reply)
+    uint64_t expectedUsage, Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&& reply)
 {
     auto record = std::make_unique<Record>();
     record->frameID = frameID;
@@ -262,7 +258,7 @@ std::unique_ptr<ExceededDatabaseQuotaRecords::Record> ExceededDatabaseQuotaRecor
     record->currentOriginUsage = currentOriginUsage;
     record->currentDatabaseUsage = currentDatabaseUsage;
     record->expectedUsage = expectedUsage;
-    record->reply = reply;
+    record->reply = WTFMove(reply);
     return record;
 }
 
@@ -480,9 +476,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_playbackSessionManager = WebPlaybackSessionManagerProxy::create(*this);
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this, *m_playbackSessionManager);
-#endif
-#if ENABLE(VIBRATION)
-    m_vibration = WebVibrationProxy::create(this);
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -4779,9 +4772,9 @@ void WebPageProxy::changeSpellingToWord(const String& word)
     m_process->send(Messages::WebPage::ChangeSpellingToWord(word), m_pageID);
 }
 
-void WebPageProxy::registerEditCommand(PassRefPtr<WebEditCommandProxy> commandProxy, UndoOrRedo undoOrRedo)
+void WebPageProxy::registerEditCommand(Ref<WebEditCommandProxy>&& commandProxy, UndoOrRedo undoOrRedo)
 {
-    m_pageClient.registerEditCommand(commandProxy, undoOrRedo);
+    m_pageClient.registerEditCommand(WTFMove(commandProxy), undoOrRedo);
 }
 
 void WebPageProxy::addEditCommand(WebEditCommandProxy* command)
@@ -5400,10 +5393,6 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     }
 #endif
 
-#if ENABLE(VIBRATION)
-    m_vibration->invalidate();
-#endif
-
     if (m_openPanelResultListener) {
         m_openPanelResultListener->invalidate();
         m_openPanelResultListener = nullptr;
@@ -5612,6 +5601,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
+    parameters.allowsBlockSelection = m_pageClient.allowsBlockSelection();
 #endif
 
 #if PLATFORM(MAC)
@@ -5700,26 +5690,23 @@ void WebPageProxy::didReceiveAuthenticationChallenge(uint64_t frameID, const Aut
     didReceiveAuthenticationChallengeProxy(frameID, AuthenticationChallengeProxy::create(coreChallenge, challengeID, m_process->connection()));
 }
 
-void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, PassRefPtr<AuthenticationChallengeProxy> prpAuthenticationChallenge)
+void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<AuthenticationChallengeProxy>&& authenticationChallenge)
 {
-    ASSERT(prpAuthenticationChallenge);
-
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    RefPtr<AuthenticationChallengeProxy> authenticationChallenge = prpAuthenticationChallenge;
     if (m_navigationClient)
-        m_navigationClient->didReceiveAuthenticationChallenge(*this, authenticationChallenge.get());
+        m_navigationClient->didReceiveAuthenticationChallenge(*this, authenticationChallenge.ptr());
     else
-        m_loaderClient->didReceiveAuthenticationChallengeInFrame(*this, *frame, authenticationChallenge.get());
+        m_loaderClient->didReceiveAuthenticationChallengeInFrame(*this, *frame, authenticationChallenge.ptr());
 }
 
-void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply> reply)
+void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&& reply)
 {
     ExceededDatabaseQuotaRecords& records = ExceededDatabaseQuotaRecords::singleton();
     std::unique_ptr<ExceededDatabaseQuotaRecords::Record> newRecord = records.createRecord(frameID,
         originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage,
-        currentDatabaseUsage, expectedUsage, reply);
+        currentDatabaseUsage, expectedUsage, WTFMove(reply));
     records.add(WTFMove(newRecord));
 
     if (records.areBeingProcessed())
@@ -5741,10 +5728,10 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
     }
 }
 
-void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply> reply)
+void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, Ref<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>&& reply)
 {
     Ref<SecurityOrigin> securityOrigin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier)->securityOrigin();
-    m_uiClient->reachedApplicationCacheOriginQuota(this, securityOrigin.get(), currentQuota, totalBytesNeeded, [reply](unsigned long long newQuota) { reply->send(newQuota); });
+    m_uiClient->reachedApplicationCacheOriginQuota(this, securityOrigin.get(), currentQuota, totalBytesNeeded, [reply = WTFMove(reply)](unsigned long long newQuota) { reply->send(newQuota); });
 }
 
 void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)
@@ -5776,34 +5763,34 @@ UserMediaPermissionRequestManagerProxy& WebPageProxy::userMediaPermissionRequest
 }
 #endif
 
-void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, const WebCore::MediaConstraintsData& audioConstraintsData, const WebCore::MediaConstraintsData& videoConstraintsData)
+    void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, const WebCore::SecurityOriginData&  userMediaDocumentOriginData, const WebCore::SecurityOriginData& topLevelDocumentOriginData, const WebCore::MediaConstraints& audioConstraints, const WebCore::MediaConstraints& videoConstraints)
 {
 #if ENABLE(MEDIA_STREAM)
     MESSAGE_CHECK(m_process->webFrame(frameID));
 
-    userMediaPermissionRequestManager().requestUserMediaPermissionForFrame(userMediaID, frameID, userMediaDocumentOriginIdentifier, topLevelDocumentOriginIdentifier, audioConstraintsData, videoConstraintsData);
+    userMediaPermissionRequestManager().requestUserMediaPermissionForFrame(userMediaID, frameID, userMediaDocumentOriginData.securityOrigin(), topLevelDocumentOriginData.securityOrigin(), audioConstraints, videoConstraints);
 #else
     UNUSED_PARAM(userMediaID);
     UNUSED_PARAM(frameID);
-    UNUSED_PARAM(userMediaDocumentOriginIdentifier);
-    UNUSED_PARAM(topLevelDocumentOriginIdentifier);
-    UNUSED_PARAM(audioConstraintsData);
-    UNUSED_PARAM(videoConstraintsData);
+    UNUSED_PARAM(userMediaDocumentOriginData);
+    UNUSED_PARAM(topLevelDocumentOriginData);
+    UNUSED_PARAM(audioConstraints);
+    UNUSED_PARAM(videoConstraints);
 #endif
 }
 
-void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier)
+void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t frameID, const WebCore::SecurityOriginData& userMediaDocumentOriginData, const WebCore::SecurityOriginData& topLevelDocumentOriginData)
 {
 #if ENABLE(MEDIA_STREAM)
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    userMediaPermissionRequestManager().enumerateMediaDevicesForFrame(userMediaID, frameID, WTFMove(userMediaDocumentOriginIdentifier), WTFMove(topLevelDocumentOriginIdentifier));
+    userMediaPermissionRequestManager().enumerateMediaDevicesForFrame(userMediaID, frameID, userMediaDocumentOriginData.securityOrigin(), topLevelDocumentOriginData.securityOrigin());
 #else
     UNUSED_PARAM(userMediaID);
     UNUSED_PARAM(frameID);
-    UNUSED_PARAM(userMediaDocumentOriginIdentifier);
-    UNUSED_PARAM(topLevelDocumentOriginIdentifier);
+    UNUSED_PARAM(userMediaDocumentOriginData);
+    UNUSED_PARAM(topLevelDocumentOriginData);
 #endif
 }
 
@@ -5819,14 +5806,14 @@ void WebPageProxy::requestNotificationPermission(uint64_t requestID, const Strin
     if (!isRequestIDValid(requestID))
         return;
 
-    RefPtr<API::SecurityOrigin> origin = API::SecurityOrigin::createFromString(originString);
-    RefPtr<NotificationPermissionRequest> request = m_notificationPermissionRequestManager.createRequest(requestID);
+    auto origin = API::SecurityOrigin::createFromString(originString);
+    auto request = m_notificationPermissionRequestManager.createRequest(requestID);
     
-    if (!m_uiClient->decidePolicyForNotificationPermissionRequest(this, origin.get(), request.get()))
+    if (!m_uiClient->decidePolicyForNotificationPermissionRequest(this, origin.ptr(), request.ptr()))
         request->deny();
 }
 
-void WebPageProxy::showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID)
+void WebPageProxy::showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, WebCore::NotificationDirection dir, const String& originString, uint64_t notificationID)
 {
     m_process->processPool().supplement<WebNotificationManagerProxy>()->show(this, title, body, iconURL, tag, lang, dir, originString, notificationID);
 }
@@ -6214,7 +6201,7 @@ void WebPageProxy::setEditableElementIsFocused(bool editableElementIsFocused)
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(COCOA)
-PassRefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
+RefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
 {
     return m_pageClient.takeViewSnapshot();
 }

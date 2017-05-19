@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,6 +74,7 @@
 #import <WebCore/MainFrame.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NetworkingContext.h>
+#import <WebCore/NodeRenderStyle.h>
 #import <WebCore/Page.h>
 #import <WebCore/PageOverlayController.h>
 #import <WebCore/PlatformKeyboardEvent.h>
@@ -83,6 +84,7 @@
 #import <WebCore/RenderStyle.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/ResourceHandle.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScrollView.h>
 #import <WebCore/StyleInheritedData.h>
 #import <WebCore/TextIterator.h>
@@ -92,8 +94,8 @@
 #import <wtf/SetForScope.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include <WebCore/MediaPlaybackTargetMac.h>
-#include <WebCore/MediaPlaybackTargetMock.h>
+#import <WebCore/MediaPlaybackTargetMac.h>
+#import <WebCore/MediaPlaybackTargetMock.h>
 #endif
 
 using namespace WebCore;
@@ -105,7 +107,7 @@ void WebPage::platformInitialize()
     WKAccessibilityWebPageObject* mockAccessibilityElement = [[[WKAccessibilityWebPageObject alloc] init] autorelease];
 
     // Get the pid for the starting process.
-    pid_t pid = WebProcess::singleton().presenterApplicationPid();
+    pid_t pid = WebCore::presentingApplicationPID();
     WKAXInitializeElementWithPresenterPid(mockAccessibilityElement, pid);
     [mockAccessibilityElement setWebPage:this];
     
@@ -434,9 +436,6 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& ra
         editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
     }
-    
-    RenderObject* renderer = range.startContainer().renderer();
-    const RenderStyle& style = renderer->style();
 
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
@@ -447,7 +446,9 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& ra
 
     IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
-    dictionaryPopupInfo.origin = FloatPoint(rangeRect.x(), rangeRect.y() + (style.fontMetrics().ascent() * pageScaleFactor()));
+    const RenderStyle* style = range.startContainer().renderStyle();
+    float scaledAscent = style ? style->fontMetrics().ascent() * pageScaleFactor() : 0;
+    dictionaryPopupInfo.origin = FloatPoint(rangeRect.x(), rangeRect.y() + scaledAscent);
     dictionaryPopupInfo.options = *options;
 
     NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);

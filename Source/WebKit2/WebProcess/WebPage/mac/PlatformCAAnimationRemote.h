@@ -53,7 +53,7 @@ public:
 
     bool isPlatformCAAnimationRemote() const override { return true; }
 
-    PassRefPtr<PlatformCAAnimation> copy() const override;
+    Ref<PlatformCAAnimation> copy() const override;
 
     String keyPath() const override;
 
@@ -163,9 +163,9 @@ public:
         {
         }
 
-        KeyframeValue(PassRefPtr<WebCore::FilterOperation> value)
+        KeyframeValue(RefPtr<WebCore::FilterOperation>&& value)
             : keyType(FilterKeyType)
-            , filter(value)
+            , filter(WTFMove(value))
         {
         }
 

@@ -242,7 +242,7 @@ static EncodedJSValue JSC_HOST_CALL hasOwnLengthProperty(ExecState* exec)
 
 namespace JSC {
 
-const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &Base::s_info, &globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
+const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &Base::s_info, &globalObjectTable, nullptr, CREATE_METHOD_TABLE(JSGlobalObject) };
 
 const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = {
     &supportsRichSourceInfo,
@@ -1431,11 +1431,11 @@ const HashSet<String>& JSGlobalObject::intlNumberFormatAvailableLocales()
 void JSGlobalObject::queueMicrotask(Ref<Microtask>&& task)
 {
     if (globalObjectMethodTable()->queueTaskToEventLoop) {
-        globalObjectMethodTable()->queueTaskToEventLoop(this, WTFMove(task));
+        globalObjectMethodTable()->queueTaskToEventLoop(*this, WTFMove(task));
         return;
     }
 
-    vm().queueMicrotask(this, WTFMove(task));
+    vm().queueMicrotask(*this, WTFMove(task));
 }
 
 bool JSGlobalObject::hasDebugger() const

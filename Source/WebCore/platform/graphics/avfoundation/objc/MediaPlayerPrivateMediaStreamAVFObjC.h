@@ -120,7 +120,7 @@ private:
     bool hasVideo() const override;
     bool hasAudio() const override;
 
-    void setVisible(bool) override { /* No-op */ }
+    void setVisible(bool) final;
 
     MediaTime durationMediaTime() const override;
     MediaTime currentMediaTime() const override;
@@ -247,7 +247,6 @@ private:
 
     MediaPlayer::NetworkState m_networkState { MediaPlayer::Empty };
     MediaPlayer::ReadyState m_readyState { MediaPlayer::HaveNothing };
-    MediaPlayer::ReadyState m_previousReadyState { MediaPlayer::HaveNothing };
     FloatSize m_intrinsicSize;
     float m_volume { 1 };
     DisplayMode m_displayMode { None };
@@ -262,6 +261,8 @@ private:
     bool m_pendingSelectedTrackCheck { false };
     bool m_shouldDisplayFirstVideoFrame { false };
     bool m_transformIsValid { false };
+    bool m_visible { false };
+    bool m_haveSeenMetadata { false };
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     std::unique_ptr<VideoFullscreenLayerManager> m_videoFullscreenLayerManager;

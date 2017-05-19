@@ -410,7 +410,12 @@ AccessibilityObject* AccessibilityRenderObject::nextSibling() const
     if (!nextSibling)
         return nullptr;
     
-    return axObjectCache()->getOrCreate(nextSibling);
+    // Make sure next sibling has the same parent.
+    AccessibilityObject* nextObj = axObjectCache()->getOrCreate(nextSibling);
+    if (nextObj && nextObj->parentObject() != this->parentObject())
+        return nullptr;
+    
+    return nextObj;
 }
 
 static RenderBoxModelObject* nextContinuation(RenderObject& renderer)
@@ -624,15 +629,12 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     if (m_renderer->isBR())
         return ASCIILiteral("\n");
 
-    bool isRenderText = is<RenderText>(*m_renderer);
-
     if (shouldGetTextFromNode(mode))
         return AccessibilityNodeObject::textUnderElement(mode);
 
     // We use a text iterator for text objects AND for those cases where we are
     // explicitly asking for the full text under a given element.
-    bool shouldIncludeAllChildren = mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren;
-    if (isRenderText || shouldIncludeAllChildren) {
+    if (is<RenderText>(*m_renderer) || mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren) {
         // If possible, use a text iterator to get the text, so that whitespace
         // is handled consistently.
         Document* nodeDocument = nullptr;
@@ -666,11 +668,10 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
                 if (frame->document() != nodeDocument)
                     return String();
 
-                // The tree should be stable before looking through the children of a non-Render Text object.
-                // Otherwise, further uses of TextIterator will force a layout update, potentially altering
-                // the accessibility tree and causing crashes in the loop that computes the result text.
-                ASSERT((isRenderText || !shouldIncludeAllChildren) || (!nodeDocument->renderView()->layoutState() && !nodeDocument->childNeedsStyleRecalc()));
-
+                // Renders referenced by accessibility objects could get destroyed, if TextIterator ends up triggering
+                // style update/layout here. See also AXObjectCache::deferTextChangedIfNeeded().
+                ASSERT_WITH_SECURITY_IMPLICATION(!nodeDocument->childNeedsStyleRecalc());
+                ASSERT_WITH_SECURITY_IMPLICATION(!nodeDocument->view()->isInRenderTreeLayout());
                 return plainText(textRange.get(), textIteratorBehaviorForTextRange());
             }
         }

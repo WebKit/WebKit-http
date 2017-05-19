@@ -1335,7 +1335,7 @@ CachedResourceLoader* MediaPlayer::cachedResourceLoader()
     return client().mediaPlayerCachedResourceLoader();
 }
 
-PassRefPtr<PlatformMediaResourceLoader> MediaPlayer::createResourceLoader()
+RefPtr<PlatformMediaResourceLoader> MediaPlayer::createResourceLoader()
 {
     return client().mediaPlayerCreateResourceLoader();
 }

@@ -28,7 +28,7 @@
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
 #include "SessionState.h"
-#include "WebCompiledContentExtensionData.h"
+#include "WebCompiledContentRuleListData.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPageGroupData.h"
 #include "WebPreferencesStore.h"
@@ -136,6 +136,7 @@ struct WebPageCreationParameters {
     WebCore::FloatSize availableScreenSize;
     float textAutosizingWidth;
     bool ignoresViewportScaleLimits;
+    bool allowsBlockSelection;
 #endif
 #if PLATFORM(COCOA)
     bool smartInsertDeleteEnabled;
@@ -164,7 +165,7 @@ struct WebPageCreationParameters {
     Vector<WebUserStyleSheetData> userStyleSheets;
     Vector<WebScriptMessageHandlerData> messageHandlers;
 #if ENABLE(CONTENT_EXTENSIONS)
-    Vector<std::pair<String, WebCompiledContentExtensionData>> contentExtensions;
+    Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
 #endif
 };
 

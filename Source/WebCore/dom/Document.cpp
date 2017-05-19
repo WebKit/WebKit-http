@@ -137,6 +137,7 @@
 #include "PointerLockController.h"
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
+#include "RealtimeMediaSourceCenter.h"
 #include "RenderChildIterator.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTreeUpdater.h"
@@ -1545,6 +1546,8 @@ void Document::visibilityStateChanged()
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
     for (auto* client : m_visibilityStateCallbackClients)
         client->visibilityStateChanged();
+
+    notifyVisibilityChangedToMediaCapture();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -4979,6 +4982,11 @@ Ref<HTMLCollection> Document::all()
     return ensureRareData().ensureNodeLists().addCachedCollection<HTMLAllCollection>(*this, DocAll);
 }
 
+Ref<HTMLCollection> Document::allFilteredByName(const AtomicString& name)
+{
+    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLAllNamedSubCollection>(*this, DocumentAllNamedItems, name);
+}
+
 Ref<HTMLCollection> Document::windowNamedItems(const AtomicString& name)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<WindowNameCollection>(*this, WindowNamedItems, name);
@@ -6359,6 +6367,17 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
         element->document().updateLastHandledUserGestureTimestamp(time);
 }
 
+bool Document::processingUserGestureForMedia() const
+{
+    if (ScriptController::processingUserGestureForMedia())
+        return true;
+
+    if (!settings().mediaUserGestureInheritsFromDocument())
+        return false;
+
+    return topDocument().hasHadUserInteraction();
+}
+
 void Document::startTrackingStyleRecalcs()
 {
     m_styleRecalcCount = 0;
@@ -6409,42 +6428,31 @@ Element* eventTargetElementForDocument(Document* document)
     return element;
 }
 
-void Document::adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>& quads, const RenderStyle& style)
+void Document::convertAbsoluteToClientQuads(Vector<FloatQuad>& quads, const RenderStyle& style)
 {
     if (!view())
         return;
 
-    float zoom = style.effectiveZoom();
-    float inverseFrameScale = 1;
-    if (frame())
-        inverseFrameScale = 1 / frame()->frameScaleFactor();
+    const auto& frameView = *view();
+    float inverseFrameScale = frameView.absoluteToDocumentScaleFactor(style.effectiveZoom());
+    auto documentToClientOffset = frameView.documentToClientOffset();
 
-    LayoutRect visibleContentRect = view()->visibleContentRect();
     for (auto& quad : quads) {
-        quad.move(-visibleContentRect.x(), -visibleContentRect.y());
-        if (zoom != 1)
-            quad.scale(1 / zoom);
         if (inverseFrameScale != 1)
             quad.scale(inverseFrameScale);
+
+        quad.move(documentToClientOffset);
     }
 }
 
-void Document::adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect& rect, const RenderStyle& style)
+void Document::convertAbsoluteToClientRect(FloatRect& rect, const RenderStyle& style)
 {
     if (!view())
         return;
 
-    float zoom = style.effectiveZoom();
-    float inverseFrameScale = 1;
-    if (frame())
-        inverseFrameScale = 1 / frame()->frameScaleFactor();
-
-    LayoutRect visibleContentRect = view()->visibleContentRect();
-    rect.move(-visibleContentRect.x(), -visibleContentRect.y());
-    if (zoom != 1)
-        rect.scale(1 / zoom);
-    if (inverseFrameScale != 1)
-        rect.scale(inverseFrameScale);
+    const auto& frameView = *view();
+    rect = frameView.absoluteToDocumentRect(rect, style.effectiveZoom()); 
+    rect = frameView.documentToClientRect(rect);
 }
 
 bool Document::hasActiveParser()
@@ -6970,8 +6978,16 @@ void Document::didRemoveInDocumentShadowRoot(ShadowRoot& shadowRoot)
 
 void Document::orientationChanged(int orientation)
 {
+    LOG(Events, "Document %p orientationChanged - orientation %d", this, orientation);
     dispatchWindowEvent(Event::create(eventNames().orientationchangeEvent, false, false));
     m_orientationNotifier.orientationChanged(orientation);
+}
+
+void Document::notifyVisibilityChangedToMediaCapture()
+{
+#if ENABLE(MEDIA_STREAM)
+    RealtimeMediaSourceCenter::singleton().setVisibility(!hidden());
+#endif
 }
 
 #if ENABLE(MEDIA_STREAM)

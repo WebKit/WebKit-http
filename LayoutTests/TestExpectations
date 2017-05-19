@@ -287,7 +287,6 @@ webkit.org/b/149891 imported/w3c/web-platform-tests/css/css-grid-1/grid-layout-p
 webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
 # selectors4
-webkit.org/b/170900 imported/w3c/web-platform-tests/css/selectors4/focus-within-006.html [ ImageOnlyFailure ]
 webkit.org/b/64861 imported/w3c/web-platform-tests/css/selectors4/selectors-dir-selector-ltr-001.html [ ImageOnlyFailure ]
 webkit.org/b/64861 imported/w3c/web-platform-tests/css/selectors4/selectors-dir-selector-rtl-001.html [ ImageOnlyFailure ]
 
@@ -364,9 +363,6 @@ webkit.org/b/171511 imported/w3c/web-platform-tests/resource-timing/rt-revalidat
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
-
-# rdar://problem/30975761
-[ Debug ] http/tests/fetch/fetch-in-worker-crash.html [ Skip ]
 
 imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional-cors.htm [ Failure ]
 imported/w3c/web-platform-tests/fetch/http-cache/partial.html [ Failure ]
@@ -1061,6 +1057,8 @@ webkit.org/b/159755 fast/text/emoji-gender.html [ ImageOnlyFailure ]
 
 webkit.org/b/160017 js/regress-139548.html [ Slow ]
 
+webkit.org/b/172056 fast/text/multiglyph-characters.html [ Failure ]
+
 # Only iOS has implemented lettepress.
 fast/text/letterpress-different.html [ ImageOnlyFailure ]
 
@@ -1222,10 +1220,6 @@ fast/events/destroyed-atomic-string.html [ Skip ]
 # Test disabled in r12843
 fast/loader/form-events-back-forward.html [ Skip ]
 
-# Tests landed disabled in r47056 for webkit.org/b/25463; never enabled
-fast/notifications/notifications-event-stop-propagation.html [ Skip ]
-fast/notifications/notifications-multi-events.html [ Skip ]
-
 # Test disabled in r42628
 http/tests/navigation/post-goback-repost-policy.html [ Skip ]
 
@@ -1270,6 +1264,9 @@ fast/forms/range/range-remove-on-drag.html [ Skip ]
 # CSSOM View module
 webkit.org/b/153137 imported/w3c/web-platform-tests/cssom-view/elementsFromPoint.html [ Skip ]
 webkit.org/b/5991 imported/w3c/web-platform-tests/cssom-view/scrollingElement.html [ Skip ]
+
+# FileAPI
+webkit.org/b/172099 imported/w3c/web-platform-tests/FileAPI/url/url_xmlhttprequest_img.html [ ImageOnlyFailure ]
 
 ### END OF -disabled tests
 ########################################

@@ -167,16 +167,16 @@ void CachedImage::allClientsRemoved()
 std::pair<Image*, float> CachedImage::brokenImage(float deviceScaleFactor) const
 {
     if (deviceScaleFactor >= 3) {
-        static NeverDestroyed<Image*> brokenImageVeryHiRes(Image::loadPlatformResource("missingImage@3x").leakRef());
+        static NeverDestroyed<Image*> brokenImageVeryHiRes(&Image::loadPlatformResource("missingImage@3x").leakRef());
         return std::make_pair(brokenImageVeryHiRes, 3);
     }
 
     if (deviceScaleFactor >= 2) {
-        static NeverDestroyed<Image*> brokenImageHiRes(Image::loadPlatformResource("missingImage@2x").leakRef());
+        static NeverDestroyed<Image*> brokenImageHiRes(&Image::loadPlatformResource("missingImage@2x").leakRef());
         return std::make_pair(brokenImageHiRes, 2);
     }
 
-    static NeverDestroyed<Image*> brokenImageLoRes(Image::loadPlatformResource("missingImage").leakRef());
+    static NeverDestroyed<Image*> brokenImageLoRes(&Image::loadPlatformResource("missingImage").leakRef());
     return std::make_pair(brokenImageLoRes, 1);
 }
 
@@ -197,7 +197,7 @@ Image* CachedImage::image()
     if (m_image)
         return m_image.get();
 
-    return Image::nullImage();
+    return &Image::nullImage();
 }
 
 Image* CachedImage::imageForRenderer(const RenderObject* renderer)
@@ -210,11 +210,11 @@ Image* CachedImage::imageForRenderer(const RenderObject* renderer)
     }
 
     if (!m_image)
-        return Image::nullImage();
+        return &Image::nullImage();
 
     if (m_image->isSVGImage()) {
         Image* image = m_svgImageCache->imageForRenderer(renderer);
-        if (image != Image::nullImage())
+        if (image != &Image::nullImage())
             return image;
     }
     return m_image.get();
@@ -330,25 +330,36 @@ CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
     m_cachedImages.append(&image);
 }
 
-void CachedImage::CachedImageObserver::decodedSizeChanged(const Image* image, long long delta)
+void CachedImage::CachedImageObserver::decodedSizeChanged(const Image& image, long long delta)
 {
     for (auto cachedImage : m_cachedImages)
         cachedImage->decodedSizeChanged(image, delta);
 }
 
-void CachedImage::CachedImageObserver::didDraw(const Image* image)
+void CachedImage::CachedImageObserver::didDraw(const Image& image)
 {
     for (auto cachedImage : m_cachedImages)
         cachedImage->didDraw(image);
 }
 
-void CachedImage::CachedImageObserver::imageFrameAvailable(const Image* image, ImageAnimatingState animatingState, const IntRect* changeRect)
+bool CachedImage::CachedImageObserver::canDestroyDecodedData(const Image& image)
+{
+    for (auto cachedImage : m_cachedImages) {
+        if (&image != cachedImage->image())
+            continue;
+        if (!cachedImage->canDestroyDecodedData(image))
+            return false;
+    }
+    return true;
+}
+
+void CachedImage::CachedImageObserver::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
 {
     for (auto cachedImage : m_cachedImages)
         cachedImage->imageFrameAvailable(image, animatingState, changeRect);
 }
 
-void CachedImage::CachedImageObserver::changedInRect(const Image* image, const IntRect* rect)
+void CachedImage::CachedImageObserver::changedInRect(const Image& image, const IntRect* rect)
 {
     for (auto cachedImage : m_cachedImages)
         cachedImage->changedInRect(image, rect);
@@ -476,18 +487,18 @@ void CachedImage::destroyDecodedData()
         m_image->destroyDecodedData();
 }
 
-void CachedImage::decodedSizeChanged(const Image* image, long long delta)
+void CachedImage::decodedSizeChanged(const Image& image, long long delta)
 {
-    if (!image || image != m_image)
+    if (&image != m_image)
         return;
 
     ASSERT(delta >= 0 || decodedSize() + delta >= 0);
     setDecodedSize(static_cast<unsigned>(decodedSize() + delta));
 }
 
-void CachedImage::didDraw(const Image* image)
+void CachedImage::didDraw(const Image& image)
 {
-    if (!image || image != m_image)
+    if (&image != m_image)
         return;
     
     double timeStamp = FrameView::currentPaintTimeStamp();
@@ -497,9 +508,23 @@ void CachedImage::didDraw(const Image* image)
     CachedResource::didAccessDecodedData(timeStamp);
 }
 
-void CachedImage::imageFrameAvailable(const Image* image, ImageAnimatingState animatingState, const IntRect* changeRect)
+bool CachedImage::canDestroyDecodedData(const Image& image)
 {
-    if (!image || image != m_image)
+    if (&image != m_image)
+        return false;
+
+    CachedResourceClientWalker<CachedImageClient> clientWalker(m_clients);
+    while (CachedImageClient* client = clientWalker.next()) {
+        if (!client->canDestroyDecodedData())
+            return false;
+    }
+
+    return true;
+}
+
+void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+{
+    if (&image != m_image)
         return;
 
     CachedResourceClientWalker<CachedImageClient> clientWalker(m_clients);
@@ -514,9 +539,9 @@ void CachedImage::imageFrameAvailable(const Image* image, ImageAnimatingState an
         m_image->stopAnimation();
 }
 
-void CachedImage::changedInRect(const Image* image, const IntRect* rect)
+void CachedImage::changedInRect(const Image& image, const IntRect* rect)
 {
-    if (!image || image != m_image)
+    if (&image != m_image)
         return;
     notifyObservers(rect);
 }

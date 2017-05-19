@@ -156,7 +156,7 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
     // We assume that all lines have metrics based purely on the primary font.
     const auto& style = flow.style();
     auto& fontCascade = style.fontCascade();
-    if (fontCascade.primaryFont().isLoading())
+    if (fontCascade.primaryFont().isInterstitial())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsMissingPrimaryFont, reasons, includeReasons);
     std::optional<float> lineHeightConstraint;
     if (style.lineBoxContain() & LineBoxContainGlyphs)
@@ -608,7 +608,7 @@ static void updateLineConstrains(const RenderBlockFlow& flow, LineState& line, c
     numberOfPrecedingLinesWithHyphen = (previousLine.isEmpty() || !previousLine.lastFragment().hasHyphen()) ? 0 : numberOfPrecedingLinesWithHyphen + 1;
     if (style.hyphenLimitLines && numberOfPrecedingLinesWithHyphen >= *style.hyphenLimitLines)
         line.setHyphenationDisabled();
-
+    line.setCollapedWhitespaceWidth(style.font.spaceWidth() + style.wordSpacing);
 }
 
 struct SplitFragmentData {
@@ -696,8 +696,8 @@ static TextFragmentIterator::TextFragment splitFragmentToFitLine(TextFragmentIte
     auto rightSideWidth = fragmentToSplit.width() - splitFragmentData.width;
     if (rightSideWidth < 2 * availableWidth)
         rightSideWidth = textFragmentIterator.textWidth(splitFragmentData.position, fragmentToSplit.end(), 0);
-    return hyphenPosition ? fragmentToSplit.splitWithHyphen(splitFragmentData.position, splitFragmentData.width, rightSideWidth, textFragmentIterator) :
-        fragmentToSplit.split(splitFragmentData.position, splitFragmentData.width, rightSideWidth, textFragmentIterator);
+    return hyphenPosition ? fragmentToSplit.splitWithHyphen(splitFragmentData.position, textFragmentIterator.style().hyphenStringWidth,
+        splitFragmentData.width, rightSideWidth) : fragmentToSplit.split(splitFragmentData.position, splitFragmentData.width, rightSideWidth);
 }
 
 enum PreWrapLineBreakRule { Preserve, Ignore };
@@ -708,12 +708,16 @@ static TextFragmentIterator::TextFragment consumeLineBreakIfNeeded(const TextFra
     if (!fragment.isLineBreak())
         return fragment;
 
-    if (preWrap(textFragmentIterator.style()) && preWrapLineBreakRule != PreWrapLineBreakRule::Ignore)
-        return fragment;
-
+    bool isHardLinebreak = fragment.type() == TextFragmentIterator::TextFragment::HardLineBreak;
     // <br> always produces a run. (required by testing output)
-    if (fragment.type() == TextFragmentIterator::TextFragment::HardLineBreak)
+    if (isHardLinebreak)
         line.appendFragmentAndCreateRunIfNeeded(fragment, runs);
+
+    auto& style = textFragmentIterator.style();
+    if (style.preserveNewline && preWrapLineBreakRule == PreWrapLineBreakRule::Preserve) {
+        if (!isHardLinebreak)
+            return fragment;
+    }
     return textFragmentIterator.nextTextFragment();
 }
 
@@ -730,18 +734,26 @@ static TextFragmentIterator::TextFragment skipWhitespaceIfNeeded(const TextFragm
 
 static TextFragmentIterator::TextFragment firstFragment(TextFragmentIterator& textFragmentIterator, LineState& currentLine, const LineState& previousLine, Layout::RunVector& runs)
 {
-    // Handle overflowed fragment from previous line.
-    TextFragmentIterator::TextFragment firstFragment(previousLine.overflowedFragment());
+    // Handle overflow fragment from previous line.
+    auto overflowedFragment = previousLine.overflowedFragment();
+    if (overflowedFragment.isEmpty())
+        return skipWhitespaceIfNeeded(textFragmentIterator.nextTextFragment(), textFragmentIterator);
 
-    if (firstFragment.isEmpty())
-        firstFragment = textFragmentIterator.nextTextFragment();
-    else if (firstFragment.type() == TextFragmentIterator::TextFragment::Whitespace && preWrap(textFragmentIterator.style()) && previousLine.firstCharacterFits()) {
-        // Special overflow pre-wrap whitespace handling: skip the overflowed whitespace (even when style says not-collapsible) if we managed to fit at least one character on the previous line.
-        firstFragment = textFragmentIterator.nextTextFragment();
+    if (overflowedFragment.type() != TextFragmentIterator::TextFragment::Whitespace)
+        return overflowedFragment;
+
+    // Leading whitespace handling.
+    auto& style = textFragmentIterator.style();
+    // Special overflow pre-wrap whitespace handling: skip the overflowed whitespace (even when style says not-collapsible)
+    // if we manage to fit at least one character on the previous line.
+    auto preWrapIsOn = preWrap(style);
+    if ((style.collapseWhitespace || preWrapIsOn) && previousLine.firstCharacterFits()) {
         // If skipping the whitespace puts us on a newline, skip the newline too as we already wrapped the line.
-        firstFragment = consumeLineBreakIfNeeded(firstFragment, textFragmentIterator, currentLine, runs, PreWrapLineBreakRule::Ignore);
+        auto firstFragmentCandidate = consumeLineBreakIfNeeded(textFragmentIterator.nextTextFragment(), textFragmentIterator, currentLine, runs,
+            preWrapIsOn ? PreWrapLineBreakRule::Ignore : PreWrapLineBreakRule::Preserve);
+        return skipWhitespaceIfNeeded(firstFragmentCandidate, textFragmentIterator);
     }
-    return skipWhitespaceIfNeeded(firstFragment, textFragmentIterator);
+    return skipWhitespaceIfNeeded(overflowedFragment, textFragmentIterator);
 }
 
 static void forceFragmentToLine(LineState& line, TextFragmentIterator& textFragmentIterator, Layout::RunVector& runs, const TextFragmentIterator::TextFragment& fragment)
@@ -769,11 +781,10 @@ static void forceFragmentToLine(LineState& line, TextFragmentIterator& textFragm
 static bool createLineRuns(LineState& line, const LineState& previousLine, Layout::RunVector& runs, TextFragmentIterator& textFragmentIterator)
 {
     const auto& style = textFragmentIterator.style();
-    line.setCollapedWhitespaceWidth(style.font.spaceWidth() + style.wordSpacing);
     bool lineCanBeWrapped = style.wrapLines || style.breakFirstWordOnOverflow || style.breakAnyWordOnOverflow;
     auto fragment = firstFragment(textFragmentIterator, line, previousLine, runs);
     while (fragment.type() != TextFragmentIterator::TextFragment::ContentEnd) {
-        // Hard linebreak.
+        // Hard and soft linebreaks.
         if (fragment.isLineBreak()) {
             // Add the new line fragment only if there's nothing on the line. (otherwise the extra new line character would show up at the end of the content.)
             if (line.isEmpty() || fragment.type() == TextFragmentIterator::TextFragment::HardLineBreak) {
@@ -793,12 +804,14 @@ static bool createLineRuns(LineState& line, const LineState& previousLine, Layou
             bool emptyLine = line.isEmpty();
             // Whitespace fragment.
             if (fragment.type() == TextFragmentIterator::TextFragment::Whitespace) {
-                if (!style.collapseWhitespace) {
-                    // Split the fragment; (modified)fragment stays on this line, overflowedFragment is pushed to next line.
-                    line.setOverflowedFragment(splitFragmentToFitLine(fragment, line, textFragmentIterator));
-                    line.appendFragmentAndCreateRunIfNeeded(fragment, runs);
+                if (style.collapseWhitespace) {
+                    // Push collapased whitespace to the next line.
+                    line.setOverflowedFragment(fragment);
+                    break;
                 }
-                // When whitespace collapse is on, whitespace that doesn't fit is simply skipped.
+                // Split the whitespace; left part stays on this line, right is pushed to next line.
+                line.setOverflowedFragment(splitFragmentToFitLine(fragment, line, textFragmentIterator));
+                line.appendFragmentAndCreateRunIfNeeded(fragment, runs);
                 break;
             }
             // Non-whitespace fragment. (!style.wrapLines: bug138102(preserve existing behavior)

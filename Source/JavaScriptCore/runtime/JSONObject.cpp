@@ -580,7 +580,7 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
 
 // ------------------------------ JSONObject --------------------------------
 
-const ClassInfo JSONObject::s_info = { "JSON", &JSNonFinalObject::s_info, &jsonTable, CREATE_METHOD_TABLE(JSONObject) };
+const ClassInfo JSONObject::s_info = { "JSON", &JSNonFinalObject::s_info, &jsonTable, nullptr, CREATE_METHOD_TABLE(JSONObject) };
 
 /* Source for JSONObject.lut.h
 @begin jsonTable
@@ -785,7 +785,7 @@ EncodedJSValue JSC_HOST_CALL JSONProtoFuncParse(ExecState* exec)
 
     if (!exec->argumentCount())
         return throwVMError(exec, scope, createError(exec, ASCIILiteral("JSON.parse requires at least one parameter")));
-    auto viewWithString = exec->uncheckedArgument(0).toString(exec)->viewWithUnderlyingString(*exec);
+    auto viewWithString = exec->uncheckedArgument(0).toString(exec)->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, { });
     StringView view = viewWithString.view;
 

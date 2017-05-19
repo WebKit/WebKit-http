@@ -137,6 +137,7 @@ class HTMLMediaElement
 #endif
 {
 public:
+    WeakPtr<HTMLMediaElement> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
     MediaPlayer* player() const { return m_player.get(); }
 
     virtual bool isVideo() const { return false; }
@@ -643,10 +644,11 @@ private:
     bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) override;
     void cdmClientAttemptToResumePlaybackIfNecessary() override;
     void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
+    void attemptToDecrypt();
+
 #if USE(OCDM)
     void emitSession(String&);
 #endif
-    void attemptToDecrypt();
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -844,6 +846,7 @@ private:
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
+    bool processingUserGestureForMedia() const final;
 
     void pageMutedStateDidChange() override;
 
@@ -885,6 +888,7 @@ private:
     void handleSeekToPlaybackPosition(double);
     void seekToPlaybackPositionEndedTimerFired();
 
+    WeakPtrFactory<HTMLMediaElement> m_weakFactory;
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
@@ -1050,7 +1054,7 @@ private:
     bool m_haveVisibleTextTrack : 1;
     bool m_processingPreferenceChange : 1;
 
-    PlaybackWithoutUserGesture m_playbackWithoutUserGesture;
+    PlaybackWithoutUserGesture m_playbackWithoutUserGesture { PlaybackWithoutUserGesture::None };
     std::optional<MediaTime> m_playbackWithoutUserGestureStartedTime;
 
     String m_subtitleTrackLanguage;

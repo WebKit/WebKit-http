@@ -202,11 +202,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCSignalingState.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
     $(WebCore)/Modules/mediastream/RTCTrackEvent.idl \
-    $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \
     $(WebCore)/Modules/notifications/Notification.idl \
-    $(WebCore)/Modules/notifications/NotificationCenter.idl \
+    $(WebCore)/Modules/notifications/NotificationPermission.idl \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
-    $(WebCore)/Modules/notifications/WorkerGlobalScopeNotifications.idl \
     $(WebCore)/Modules/plugins/QuickTimePluginReplacement.idl \
     $(WebCore)/Modules/quota/DOMWindowQuota.idl \
     $(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
@@ -317,6 +315,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/CSSStyleSheet.idl \
     $(WebCore)/css/CSSSupportsRule.idl \
     $(WebCore)/css/CSSUnknownRule.idl \
+    $(WebCore)/css/DOMMatrix.idl \
+    $(WebCore)/css/DOMMatrixInit.idl \
+    $(WebCore)/css/DOMMatrixReadOnly.idl \
     $(WebCore)/css/DeprecatedCSSOMCounter.idl \
 	$(WebCore)/css/DeprecatedCSSOMPrimitiveValue.idl \
 	$(WebCore)/css/DeprecatedCSSOMRGBColor.idl \
