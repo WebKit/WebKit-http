@@ -51,7 +51,7 @@
 namespace WebCore {
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, QOpenGLContext* compatibleContext, bool& success)
+ImageBuffer::ImageBuffer(const IntSize& size, ColorSpace, QOpenGLContext* compatibleContext, bool& success)
     : m_data(size, compatibleContext)
     , m_size(size)
     , m_logicalSize(size)
@@ -81,10 +81,10 @@ ImageBuffer::~ImageBuffer()
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, ColorSpace colorSpace, QOpenGLContext* context)
 {
     bool success = false;
-    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
+    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, colorSpace, context, success));
     if (!success)
         return nullptr;
     return buf;
