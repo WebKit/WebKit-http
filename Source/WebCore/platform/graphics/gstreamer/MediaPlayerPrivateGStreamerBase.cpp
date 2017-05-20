@@ -275,6 +275,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     , m_cdmSession(0)
 #endif
+    , m_weakPtrFactory(this)
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -521,16 +522,23 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 sessionId = prSession->sessionId();
 #endif
 
-            RunLoop::main().dispatch([this, eventKeySystemIdString, sessionId, initData = WTFMove(concatenatedInitDataChunks)] {
+            WeakPtr<MediaPlayerPrivateGStreamerBase> weakThis = createWeakPtr();
+
+            RunLoop::main().dispatch([weakThis, eventKeySystemIdString, sessionId, initData = WTFMove(concatenatedInitDataChunks)] {
+                if (!weakThis) {
+                    GST_DEBUG("the player private has been destroyed, returning");
+                    return;
+                }
+
                 GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
                 GST_MEMDUMP("init datas", initData.data(), initData.size());
 
                 // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-                needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", initData.data(), initData.size());
+                weakThis->needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", initData.data(), initData.size());
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
                 RefPtr<Uint8Array> initDataArray = Uint8Array::create(initData.data(), initData.size());
-                needKey(initDataArray);
+                weakThis->needKey(initDataArray);
 #else
                 ASSERT_NOT_REACHED();
 #endif

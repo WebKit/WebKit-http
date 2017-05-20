@@ -271,6 +271,7 @@ protected:
 #endif
 
 private:
+    WeakPtr<MediaPlayerPrivateGStreamerBase> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 #if USE(HOLE_PUNCH_GSTREAMER)
     void updateVideoRectangle();
@@ -315,6 +316,8 @@ private:
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
+
+    WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 };
 
 }
