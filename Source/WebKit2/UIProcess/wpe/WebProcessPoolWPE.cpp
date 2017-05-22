@@ -60,13 +60,12 @@ static void initInspectorServer()
         String bindAddress = "127.0.0.1";
         unsigned short port = 2999;
 
-        Vector<String> result;
-        serverAddress.split(':', result);
+        size_t ColonIndex = serverAddress.reverseFind(':');
 
-        if (result.size() == 2) {
-            bindAddress = result[0];
+        if (ColonIndex != notFound) {
+            bindAddress = serverAddress.substring(0,ColonIndex);
             bool ok = false;
-            port = result[1].toInt(&ok);
+            port = (serverAddress.substring(ColonIndex+1)).toInt(&ok);
             if (!ok) {
                 port = 2999;
                 LOG_ERROR("Couldn't parse the port. Use 2999 instead.");
