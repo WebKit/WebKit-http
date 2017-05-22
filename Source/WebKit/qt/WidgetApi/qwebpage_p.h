@@ -194,7 +194,6 @@ public:
     QWebPage::LinkDelegationPolicy linkPolicy;
 
     QSize m_viewportSize;
-    qreal m_devicePixelRatio;
     QSize fixedLayoutSize;
 
     QWebHitTestResult hitTestResult;
@@ -214,6 +213,7 @@ public:
     Qt::DropAction m_lastDropAction;
 
     QMetaMethod m_fullScreenRequested;
+    bool m_customDevicePixelRatioIsSet { false };
 };
 
 #endif
