@@ -40,7 +40,6 @@
 #include "ShadowBlur.h"
 #include "StillImageQt.h"
 #include "Timer.h"
-#include <wtf/text/WTFString.h>
 
 #include <QCoreApplication>
 #include <QImage>
@@ -51,8 +50,8 @@
 #include <QPixmapCache>
 #include <QTransform>
 #include <private/qhexstring_p.h>
-
-#include <math.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/WTFString.h>
 
 #if OS(WINDOWS)
 QT_BEGIN_NAMESPACE
@@ -60,40 +59,68 @@ Q_GUI_EXPORT QPixmap qt_pixmapFromWinHBITMAP(HBITMAP, int hbitmapFormat = 0);
 QT_END_NAMESPACE
 #endif
 
-typedef QHash<QByteArray, QPixmap> WebGraphicHash;
-Q_GLOBAL_STATIC(WebGraphicHash, _graphics)
+typedef Vector<QPixmap, 3> WebGraphicVector;
+typedef HashMap<CString, WebGraphicVector> WebGraphicHash;
 
-static void earlyClearGraphics()
+static WebGraphicHash& graphics()
 {
-    _graphics()->clear();
-}
+    static NeverDestroyed<WebGraphicHash> hash;
 
-static WebGraphicHash* graphics()
-{
-    WebGraphicHash* hash = _graphics();
-
-    if (hash->isEmpty()) {
-
-        // prevent ~QPixmap running after ~QApplication (leaks native pixmaps)
-        qAddPostRoutine(earlyClearGraphics);
-
+    if (hash.get().isEmpty()) {
         // QWebSettings::MissingImageGraphic
-        hash->insert("missingImage", QPixmap(QStringLiteral(":webkit/resources/missingImage.png")));
+        hash.get().add("missingImage", WebGraphicVector { {
+            QPixmap(QStringLiteral(":webkit/resources/missingImage.png")),
+            QPixmap(QStringLiteral(":webkit/resources/missingImage@2x.png")),
+            QPixmap(QStringLiteral(":webkit/resources/missingImage@3x.png"))
+        } });
+
         // QWebSettings::MissingPluginGraphic
-        hash->insert("nullPlugin", QPixmap(QStringLiteral(":webkit/resources/nullPlugin.png")));
+        hash.get().add("nullPlugin", WebGraphicVector { {
+            QPixmap(QStringLiteral(":webkit/resources/nullPlugin.png")),
+            QPixmap(QStringLiteral(":webkit/resources/nullPlugin@2x.png"))
+        } });
+
         // QWebSettings::DefaultFrameIconGraphic
-        hash->insert("urlIcon", QPixmap(QStringLiteral(":webkit/resources/urlIcon.png")));
+        hash.get().add("urlIcon", WebGraphicVector { {
+            QPixmap(QStringLiteral(":webkit/resources/urlIcon.png"))
+        } });
+
         // QWebSettings::TextAreaSizeGripCornerGraphic
-        hash->insert("textAreaResizeCorner", QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner.png")));
+        hash.get().add("textAreaResizeCorner", WebGraphicVector { {
+            QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner.png")),
+            QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner@2x.png"))
+        } });
     }
 
     return hash;
 }
 
-// This function loads resources into WebKit
-static QPixmap loadResourcePixmap(const char *name)
+static QPixmap loadResourcePixmapForScale(const CString& name, size_t scale)
 {
-    return graphics()->value(name);
+    const auto& iterator = graphics().find(name);
+    if (iterator == graphics().end())
+        return QPixmap();
+
+    WebGraphicVector v = iterator->value;
+    if (scale <= v.size())
+        return v[scale - 1];
+
+    return v.last();
+}
+
+static QPixmap loadResourcePixmap(const char* name)
+{
+    int length = strlen(name);
+
+    // Handle "name@2x" and "name@3x"
+    if (length > 3 && name[length - 1] == 'x' && name[length - 3] == '@' && isASCIIDigit(name[length - 2])) {
+        CString nameWithoutScale(name, length - 3);
+        char digit = name[length - 2];
+        size_t scale = digit - '0';
+        return loadResourcePixmapForScale(nameWithoutScale, scale);
+    }
+
+    return loadResourcePixmapForScale(CString(name, length), 1);
 }
 
 namespace WebCore {
@@ -126,11 +153,10 @@ PassRefPtr<Image> Image::loadPlatformResource(const char* name)
 
 void Image::setPlatformResource(const char* name, const QPixmap& pixmap)
 {
-    WebGraphicHash* h = graphics();
     if (pixmap.isNull())
-        h->remove(name);
+        graphics().remove(name);
     else
-        h->insert(name, pixmap);
+        graphics().add(name, WebGraphicVector { pixmap });
 }
 
 void Image::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const AffineTransform& patternTransform,

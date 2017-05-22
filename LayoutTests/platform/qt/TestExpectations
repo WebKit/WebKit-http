@@ -733,9 +733,6 @@ fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ Ima
 fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html [ ImageOnlyFailure ]
 fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
 
-#206
-fast/hidpi/resize-corner-hidpi.html [ Pass ]
-
 #546
 fast/hidpi/video-controls-in-hidpi.html [ ImageOnlyFailure ]
 
