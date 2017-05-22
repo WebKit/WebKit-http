@@ -476,6 +476,9 @@ QMenu *createContextMenu(QWebPage* page, const QList<MenuItem>& items, QBitArray
     for (int i = 0; i < items.count(); ++i) {
         const MenuItem &item = items.at(i);
         switch (item.type) {
+        case MenuItem::NoType:
+            Q_UNREACHABLE();
+            break;
         case MenuItem::Action: {
             QAction* a = nullptr;
             if (item.action < QWebPageAdapter::ActionCount) {
