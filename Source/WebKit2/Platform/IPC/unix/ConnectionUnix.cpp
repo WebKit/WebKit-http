@@ -261,7 +261,7 @@ bool Connection::processMessage()
     if (messageInfo.isMessageBodyIsOutOfLine()) {
         ASSERT(messageInfo.bodySize());
 
-        if (attachmentInfo[attachmentCount].isNull()) {
+        if (attachmentInfo[attachmentCount].isNull() || attachmentInfo[attachmentCount].getSize() != messageInfo.bodySize()) {
             ASSERT_NOT_REACHED();
             return false;
         }
