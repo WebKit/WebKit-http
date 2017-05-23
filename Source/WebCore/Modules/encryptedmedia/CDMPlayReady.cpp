@@ -6,6 +6,7 @@
 #include "CDMInstancePlayReady.h"
 #include "CDMPrivate.h"
 #include <wtf/UUID.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -172,20 +173,71 @@ CDMInstance::SuccessValue CDMInstancePlayReady::setServerCertificate(Ref<SharedB
     return Failed;
 }
 
+static void trimInitData(String keySystemUuid, const unsigned char*& initDataPtr, unsigned &initDataLength)
+{
+    if (initDataLength < 8 || keySystemUuid.length() < 16)
+        return;
+
+    // "pssh" box format (simplified) as described by ISO/IEC 14496-12:2012(E) and ISO/IEC 23001-7.
+    // - Atom length (4 bytes).
+    // - Atom name ("pssh", 4 bytes).
+    // - Version (1 byte).
+    // - Flags (3 bytes).
+    // - Encryption system id (16 bytes).
+    // - ...
+
+    const unsigned char* chunkBase = initDataPtr;
+
+    // Big/little-endian independent way to convert 4 bytes into a 32-bit word.
+    uint32_t chunkSize = 0x1000000 * chunkBase[0] + 0x10000 * chunkBase[1] + 0x100 * chunkBase[2] + chunkBase[3];
+
+    while (chunkBase + chunkSize <= initDataPtr + initDataLength) {
+        StringBuilder parsedKeySystemBuilder;
+        for (unsigned char i = 0; i < 16; i++) {
+            if (i == 4 || i == 6 || i == 8 || i == 10)
+                parsedKeySystemBuilder.append("-");
+            parsedKeySystemBuilder.append(String::format("%02hhx", chunkBase[12+i]));
+        }
+
+        String parsedKeySystem = parsedKeySystemBuilder.toString();
+
+        if (chunkBase[4] != 'p' || chunkBase[5] != 's' || chunkBase[6] != 's' || chunkBase[7] != 'h') {
+            return;
+        }
+
+        if (parsedKeySystem == keySystemUuid) {
+            initDataPtr = chunkBase;
+            initDataLength = chunkSize;
+            return;
+        }
+
+        chunkBase += chunkSize;
+        chunkSize = 0x1000000 * chunkBase[0] + 0x10000 * chunkBase[1] + 0x100 * chunkBase[2] + chunkBase[3];
+    }
+}
+
 void CDMInstancePlayReady::requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {
     fprintf(stderr, "NotImplemented: CDMInstancePlayReady::%s()\n", __func__);
 
+    auto* data = reinterpret_cast<const unsigned char*>(initData->data());
+    unsigned size = initData->size();
+    trimInitData(ASCIILiteral("9a04f079-9840-4286-ab92-e65be0885f95"), data, size);
+
     String destinationURL;
     unsigned short errorCode = 0;
     uint32_t systemCode = 0;
-    RefPtr<Uint8Array> initDataArray = Uint8Array::create(reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
+    RefPtr<Uint8Array> initDataArray = Uint8Array::create(reinterpret_cast<const uint8_t*>(data), size);
     auto result = m_prSession->playreadyGenerateKeyRequest(initDataArray.get(), String(), destinationURL, errorCode, systemCode);
+    fprintf(stderr, "    requestLicense(): playreadyGenerateKeyRequest() return %p, destinationURL '%s' errorCode %u systemCode %u\n",
+        result.get(), destinationURL.utf8().data(), errorCode, systemCode);
 
     if (!result) {
         callback(SharedBuffer::create(), String(), false, Failed);
         return;
     }
+
+    fprintf(stderr, "    data:\n%s\n", CString(reinterpret_cast<char*>(result->data()), result->byteLength()).data());
 
     callback(SharedBuffer::create(result->data(), result->byteLength()), createCanonicalUUIDString(), false, Succeeded);
 }
