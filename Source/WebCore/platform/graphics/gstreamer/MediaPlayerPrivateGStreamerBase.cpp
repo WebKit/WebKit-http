@@ -176,6 +176,7 @@ void registerWebKitGStreamerElements()
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 static AtomicString keySystemIdToUuid(const AtomicString&);
+static AtomicString keySystemUuidToId(const AtomicString&);
 #endif
 
 static int greatestCommonDivisor(int a, int b)
