@@ -2254,7 +2254,7 @@ private:
                 return jsNull();
             }
             IntSize imageSize(width, height);
-            RELEASE_ASSERT(!length || (imageSize.area() * 4).unsafeGet() <= length);
+            RELEASE_ASSERT(!length || imageSize.area() * 4 <= length);
             RefPtr<ImageData> result = ImageData::create(imageSize);
             if (!result) {
                 fail();
