@@ -458,7 +458,10 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     putDirectWithoutTransition(vm, vm.propertyNames->TypeError, m_typeErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->URIError, m_URIErrorConstructor.get(), DontEnum);
 
+#if !PLATFORM(QT)
+    // Disable ES6 Proxy because our implementation is not compliant with what real world code expects
     putDirectWithoutTransition(vm, vm.propertyNames->Proxy, ProxyConstructor::create(vm, ProxyConstructor::createStructure(vm, this, m_functionPrototype.get())), DontEnum);
+#endif
     
     
 #define PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
