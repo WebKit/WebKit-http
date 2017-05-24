@@ -195,6 +195,8 @@ public:
 
         RequestClose,
 
+        Unselect,
+
         WebActionCount
     };
 

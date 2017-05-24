@@ -176,6 +176,7 @@ protected Q_SLOTS:
 #endif
 
     void clearMemoryCaches();
+    void clearPageSelection();
 
 public Q_SLOTS:
     LauncherWindow* newWindow();
