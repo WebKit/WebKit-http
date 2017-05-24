@@ -59,4 +59,6 @@ private:
 
 }; // namespace JSC
 
+using JSC::SetForScope;
+
 #endif // SetForScope_h
