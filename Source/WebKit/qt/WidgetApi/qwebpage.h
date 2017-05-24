@@ -336,6 +336,7 @@ public:
 
     void setDevicePixelRatio(qreal ratio);
     qreal devicePixelRatio() const;
+    void resetDevicePixelRatio();
 
     QSize viewportSize() const;
     void setViewportSize(const QSize &size) const;

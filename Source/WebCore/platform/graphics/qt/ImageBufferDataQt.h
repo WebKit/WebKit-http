@@ -65,9 +65,9 @@ struct ImageBufferDataPrivate {
 
 class ImageBufferData {
 public:
-    ImageBufferData(const IntSize&);
+    ImageBufferData(const FloatSize&, float resolutionScale);
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    ImageBufferData(const IntSize&, QOpenGLContext*);
+    ImageBufferData(const FloatSize&, QOpenGLContext*);
 #endif
     ~ImageBufferData();
     QPainter* m_painter;

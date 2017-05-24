@@ -500,7 +500,6 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     m_data->p()->drawEllipse(rect);
 }
 
-
 void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform,
     const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect &destRect, BlendMode blendMode)
 {
@@ -541,13 +540,17 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
     QPainter* p = platformContext();
     QTransform transform(patternTransform);
 
+    QTransform combinedTransform = p->combinedTransform();
+    QTransform targetScaleTransform = QTransform::fromScale(combinedTransform.m11(), combinedTransform.m22());
+    QTransform transformWithTargetScale = transform * targetScaleTransform;
+
     // If this would draw more than one scaled tile, we scale the pixmap first and then use the result to draw.
-    if (transform.type() == QTransform::TxScale && p->transform().type() < QTransform::TxScale) {
-        QRectF tileRectInTargetCoords = (transform * QTransform().translate(phase.x(), phase.y())).mapRect(tr);
+    if (transformWithTargetScale.type() == QTransform::TxScale) {
+        QRectF tileRectInTargetCoords = (transformWithTargetScale * QTransform().translate(phase.x(), phase.y())).mapRect(tr);
 
         bool tileWillBePaintedOnlyOnce = tileRectInTargetCoords.contains(dr);
         if (!tileWillBePaintedOnlyOnce) {
-            QSizeF scaledSize(float(pixmap.width()) * transform.m11(), float(pixmap.height()) * transform.m22());
+            QSizeF scaledSize(qreal(pixmap.width()) * transformWithTargetScale.m11(), qreal(pixmap.height()) * transformWithTargetScale.m22());
             QPixmap scaledPixmap(scaledSize.toSize());
             if (pixmap.hasAlpha())
                 scaledPixmap.fill(Qt::transparent);
@@ -558,8 +561,8 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
                 painter.drawPixmap(QRect(0, 0, scaledPixmap.width(), scaledPixmap.height()), pixmap);
             }
             pixmap = scaledPixmap;
-            trTopLeft = transform.map(trTopLeft);
-            transform = QTransform::fromTranslate(transform.dx(), transform.dy());
+            trTopLeft = transformWithTargetScale.map(trTopLeft);
+            transform = targetScaleTransform.inverted().translate(transform.dx(), transform.dy());
         }
     }
 
@@ -746,16 +749,14 @@ void GraphicsContext::strokePath(const Path& path)
         fillPathStroke(p, platformPath, pen);
 }
 
-static inline void drawRepeatPattern(QPainter* p, PassRefPtr<Pattern> pattern, const FloatRect& rect)
+static inline void drawRepeatPattern(QPainter* p, Pattern& pattern, const FloatRect& rect)
 {
-    ASSERT(pattern);
-
-    const QBrush brush = pattern->createPlatformPattern();
+    const QBrush brush = pattern.createPlatformPattern();
     if (brush.style() != Qt::TexturePattern)
         return;
 
-    const bool repeatX = pattern->repeatX();
-    const bool repeatY = pattern->repeatY();
+    const bool repeatX = pattern.repeatX();
+    const bool repeatY = pattern.repeatY();
     // Patterns must be painted so that the top left of the first image is anchored at
     // the origin of the coordinate space
 
@@ -803,11 +804,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
             GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
-                drawRepeatPattern(shadowPainter, m_state.fillPattern, normalizedRect);
+                drawRepeatPattern(shadowPainter, *m_state.fillPattern, normalizedRect);
                 shadow.endShadowLayer(*this);
             }
         }
-        drawRepeatPattern(p, m_state.fillPattern, normalizedRect);
+        drawRepeatPattern(p, *m_state.fillPattern, normalizedRect);
     } else if (m_state.fillGradient) {
         QBrush brush(*m_state.fillGradient->platformGradient());
         brush.setTransform(m_state.fillGradient->gradientSpaceTransform());

@@ -39,6 +39,7 @@
 # - Missing features in our DumpRenderTree implementation
 # - Failing SVG tests
 # - Failing CSS Tests
+# - Failing hidpi Tests
 # - failing fast tests
 # - failing fonts tests
 # - failing fullscreen tests
@@ -593,69 +594,6 @@ fast/forms/input-readonly-autoscroll.html [ Missing ]
 fast/forms/input-text-drag-down.html [ Missing ]
 
 
-#201 - Support testRunner.setBackingScaleFactor() in DRT
-fast/hidpi
-fast/backgrounds/gradient-background-leakage-hidpi.html
-fast/canvas/2d.backingStorePixelRatio.html
-fast/canvas/2d.imageDataHD.html
-fast/canvas/canvas-as-image-hidpi.html
-fast/canvas/canvas-resize-reset-pixelRatio.html
-imported/blink/fast/hidpi/border-background-align.html
-imported/blink/svg/zoom/text/lowdpi-zoom-text.html
-svg/as-image/animated-svg-repaints-completely-in-hidpi.html
-svg/as-image/image-respects-deviceScaleFactor.html
-svg/as-image/svg-as-image-canvas.html
-# All hidpi-* tests should activate HiDPI, but our DRT doesn't support it
-fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html
-fast/backgrounds/hidpi-bitmap-background-origin-on-subpixel-position.html
-fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html
-fast/borders/hidpi-border-image-gradient-on-subpixels.html
-fast/borders/hidpi-border-radius-outer-border-goes-rectangle.html
-fast/borders/hidpi-border-width-flooring.html
-fast/borders/hidpi-outline-on-subpixel-position.html
-fast/borders/hidpi-rounded-border-on-subpixel-position.html
-fast/box-shadow/hidpi-webkit-box-shadow-subpixel-position.html
-fast/canvas/hidpi-repaint-on-retina-leaves-bits-behind.html
-fast/flexbox/hidpi-simple-line-layout-with-flexbox-and-transition.html
-fast/forms/hidpi-fieldset-on-subpixel-position-when-legend-is-present.html
-fast/forms/hidpi-textarea-on-subpixel-position.html
-fast/frames/hidpi-position-iframe-on-device-pixel.html
-fast/images/hidpi-directly-composited-image-on-subpixel-position.html
-fast/images/hidpi-image-position-on-device-pixels.html
-fast/inline/hidpi-rtl-text-does-not-fit-line-and-gets-cut-off.html
-fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html
-fast/inline/hidpi-selection-gap-on-subpixel-position.html
-fast/inline/hidpi-selection-gap-overlaps-inline-selection.html
-fast/inline/hidpi-slow-path-text-on-subpixel-position.html
-fast/layers/hidpi-floor-negative-coordinate-values-to-maintain-rounding-direction.html
-fast/layers/hidpi-nested-layers-with-subpixel-accumulation.html
-fast/layers/hidpi-transform-on-child-content-is-mispositioned.html
-fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html
-fast/repaint/hidpi-block-width-change-leaves-cruft.html
-fast/repaint/hidpi-box-with-subpixel-height-inflates.html
-fast/repaint/hidpi-content-inside-iframe-leaves-trails.html
-fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html
-fast/repaint/hidpi-transform-on-subpixel-repaintrect.html
-fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html
-fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
-fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
-fast/borders/hidpi-border-clipping-right-after-move.html [ ImageOnlyFailure ]
-fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
-fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
-fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
-fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
-fast/borders/hidpi-outline-hairline-painting.html [ ImageOnlyFailure ]
-fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
-fast/forms/hidpi-textfield-background-bleeding.html [ ImageOnlyFailure ]
-fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
-fast/inline/hidpi-inline-selection-leaves-gap.html [ ImageOnlyFailure ]
-fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html [ ImageOnlyFailure ]
-fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
-fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
-fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
-fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html [ ImageOnlyFailure ]
-fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
-
 # ============================================================================= #
 # Fluctuating/flakey tests
 # ============================================================================= #
@@ -762,6 +700,41 @@ svg/animations/animate-elem-08-t-drt.html [ Failure ]
 
 # Changed pixel result suddenly, but behaivior seems to be correct
 [ Debug ] svg/custom/mask-invalidation.svg [ ImageOnlyFailure ]
+
+
+# ============================================================================= #
+# Failing hidpi Tests
+# ============================================================================= #
+
+fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
+fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html [ ImageOnlyFailure ]
+
+fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html [ Failure ]
+fast/repaint/hidpi-box-with-subpixel-height-inflates.html [ Failure ]
+fast/repaint/hidpi-content-inside-iframe-leaves-trails.html [ Failure ]
+fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
+fast/repaint/hidpi-transform-on-subpixel-repaintrect.html [ Failure ]
+fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
+
+fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
+fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-clipping-right-after-move.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
+fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
+fast/borders/hidpi-outline-hairline-painting.html [ ImageOnlyFailure ]
+fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
+fast/forms/hidpi-textfield-background-bleeding.html [ ImageOnlyFailure ]
+fast/inline/hidpi-inline-selection-leaves-gap.html [ ImageOnlyFailure ]
+fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
+fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
+fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
+
+#546
+fast/hidpi/video-controls-in-hidpi.html [ ImageOnlyFailure ]
 
 # ============================================================================= #
 # Failing fast Tests
@@ -2586,7 +2559,6 @@ js/date-constructor.html [ Failure ]
   http/tests/loading/main-resource-delegates-on-back-navigation.html [ Failure ]
   http/tests/loading/promote-img-preload-priority.html [ Failure ]
   http/tests/loading/redirect-methods.html [ Failure ]
-  http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
   http/tests/local/drag-over-remote-content.html [ Failure ]
   http/tests/local/fileapi/file-last-modified-after-delete.html [ Failure ]
   http/tests/local/fileapi/file-last-modified.html [ Failure ]
@@ -3169,7 +3141,6 @@ js/date-constructor.html [ Failure ]
   svg/clip-path/mask-objectboundingbox-content-clip.svg [ ImageOnlyFailure ]
   svg/clip-path/mask-userspaceonuse-content-clip-transform.svg [ ImageOnlyFailure ]
   svg/clip-path/mask-userspaceonuse-content-clip.svg [ ImageOnlyFailure ]
-  svg/css/svg-resource-fragment-identifier-img-src.html [ ImageOnlyFailure ]
   svg/custom/anchor-on-use.svg [ ImageOnlyFailure ]
   svg/custom/filter-update-different-root.html [ ImageOnlyFailure ]
   svg/custom/hidpi-masking-clipping.svg [ ImageOnlyFailure ]

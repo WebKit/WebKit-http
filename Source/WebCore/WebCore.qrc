@@ -1,8 +1,12 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/webkit/resources">
     <file alias="missingImage.png">Resources/missingImage.png</file>
+    <file alias="missingImage@2x.png">Resources/missingImage@2x.png</file>
+    <file alias="missingImage@3x.png">Resources/missingImage@3x.png</file>
     <file alias="nullPlugin.png">Resources/nullPlugin.png</file>
+    <file alias="nullPlugin@2x.png">Resources/nullPlugin@2x.png</file>
     <file alias="textAreaResizeCorner.png">Resources/textAreaResizeCorner.png</file>
+    <file alias="textAreaResizeCorner@2x.png">Resources/textAreaResizeCorner@2x.png</file>
     <file alias="urlIcon.png">Resources/urlIcon.png</file>
     <file alias="zoomInCursor.png">Resources/zoomInCursor.png</file>
     <file alias="zoomOutCursor.png">Resources/zoomOutCursor.png</file>

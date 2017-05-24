@@ -51,10 +51,11 @@
 namespace WebCore {
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, QOpenGLContext* compatibleContext, bool& success)
+ImageBuffer::ImageBuffer(const IntSize& size, ColorSpace, QOpenGLContext* compatibleContext, bool& success)
     : m_data(size, compatibleContext)
     , m_size(size)
     , m_logicalSize(size)
+    , m_resolutionScale(1.0)
 {
     success = m_data.m_painter && m_data.m_painter->isActive();
     if (!success)
@@ -64,10 +65,11 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
 }
 #endif
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode /*renderingMode*/, bool& success)
-    : m_data(IntSize(size))
-    , m_size(size)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode /*renderingMode*/, bool& success)
+    : m_data(size, resolutionScale)
+    , m_size(size * resolutionScale)
     , m_logicalSize(size)
+    , m_resolutionScale(resolutionScale)
 {
     success = m_data.m_painter && m_data.m_painter->isActive();
     if (!success)
@@ -81,10 +83,10 @@ ImageBuffer::~ImageBuffer()
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, ColorSpace colorSpace, QOpenGLContext* context)
 {
     bool success = false;
-    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
+    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, colorSpace, context, success));
     if (!success)
         return nullptr;
     return buf;
@@ -139,8 +141,14 @@ void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 }
 
 template <Multiply multiplied>
-PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size)
+PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale, const ImageBufferData& imageData, const IntSize& size,
+    ImageBuffer::CoordinateSystem coordinateSystem)
 {
+    IntRect rect(unscaledRect);
+
+    if (coordinateSystem == ImageBuffer::LogicalCoordinateSystem)
+        rect.scale(scale);
+
     float area = 4.0f * rect.width() * rect.height();
     if (area > static_cast<float>(std::numeric_limits<int>::max()))
         return 0;
@@ -149,6 +157,8 @@ PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBuffe
 
     QImage::Format format = (multiplied == Unmultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
     QImage image(result->data(), rect.width(), rect.height(), format);
+    if (coordinateSystem == ImageBuffer::LogicalCoordinateSystem)
+        image.setDevicePixelRatio(scale);
     if (rect.x() < 0 || rect.y() < 0 || rect.maxX() > size.width() || rect.maxY() > size.height())
         image.fill(0);
 
@@ -162,17 +172,17 @@ PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBuffe
     return result.release();
 }
 
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
+PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
-    return getImageData<Unmultiplied>(rect, m_data, m_size);
+    return getImageData<Unmultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
+PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
-    return getImageData<Premultiplied>(rect, m_data, m_size);
+    return getImageData<Premultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
-void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
+void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
 {
     ASSERT(sourceRect.width() > 0);
     ASSERT(sourceRect.height() > 0);
@@ -189,12 +199,21 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
         m_data.m_painter->setClipping(false);
     }
 
+    // source rect & size need scaling from the device coords to image coords
+    IntSize scaledSourceSize(sourceSize);
+    IntRect scaledSourceRect(sourceRect);
+    if (coordinateSystem == LogicalCoordinateSystem) {
+        scaledSourceSize.scale(m_resolutionScale);
+        scaledSourceRect.scale(m_resolutionScale);
+    }
+
     // Let drawImage deal with the conversion.
     QImage::Format format = (multiplied == Unmultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
-    QImage image(source->data(), sourceSize.width(), sourceSize.height(), format);
+    QImage image(source->data(), scaledSourceSize.width(), scaledSourceSize.height(), format);
+    image.setDevicePixelRatio(m_resolutionScale);
 
     m_data.m_painter->setCompositionMode(QPainter::CompositionMode_Source);
-    m_data.m_painter->drawImage(destPoint + sourceRect.location(), image, sourceRect);
+    m_data.m_painter->drawImage(destPoint + sourceRect.location(), image, scaledSourceRect);
 
     if (!isPainting)
         m_data.m_painter->end();
