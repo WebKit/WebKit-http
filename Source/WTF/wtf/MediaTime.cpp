@@ -500,7 +500,10 @@ void MediaTime::setTimeScale(int32_t timeScale)
 
 void MediaTime::dump(PrintStream &out) const
 {
-    out.print("{", m_timeValue, "/", m_timeScale, ", ", toDouble(), "}");
+    out.print("{");
+    if (!hasDoubleValue())
+        out.print(m_timeValue, "/", m_timeScale, " = ");
+    out.print(toDouble(), "}");
 }
 
 MediaTime abs(const MediaTime& rhs)
