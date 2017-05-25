@@ -49,6 +49,7 @@ public:
         ClearKey,
         Mock,
         PlayReady,
+        OpenCDM,
     };
 
     virtual ImplementationType implementationType() const = 0;

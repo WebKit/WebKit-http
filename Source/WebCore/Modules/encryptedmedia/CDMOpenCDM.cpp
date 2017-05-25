@@ -69,6 +69,7 @@ public:
     CDMInstanceOpenCDM(media::OpenCdm*, const String&);
     virtual ~CDMInstanceOpenCDM();
 
+    ImplementationType implementationType() const final { return  ImplementationType::OpenCDM; }
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
     SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
     SuccessValue setPersistentStateAllowed(bool) override;
@@ -188,7 +189,6 @@ std::optional<String> CDMPrivateOpenCDM::sanitizeSessionId(const String& session
 }
 
 CDMFactoryOpenCDM::CDMFactoryOpenCDM() = default;
-
 CDMFactoryOpenCDM::~CDMFactoryOpenCDM() = default;
 
 std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(CDM&, const String& keySystem)
