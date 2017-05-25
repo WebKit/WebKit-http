@@ -557,7 +557,10 @@ void MediaTime::setTimeScale(uint32_t timeScale, RoundingFlags flags)
 
 void MediaTime::dump(PrintStream &out) const
 {
-    out.print("{", m_timeValue, "/", m_timeScale, ", ", toDouble(), "}");
+    out.print("{");
+    if (!hasDoubleValue())
+        out.print(m_timeValue, "/", m_timeScale, " = ");
+    out.print(toDouble(), "}");
 }
 
 MediaTime abs(const MediaTime& rhs)
