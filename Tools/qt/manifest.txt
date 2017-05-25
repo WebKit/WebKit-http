@@ -111,8 +111,12 @@ file Source/WebCore/Resources/plugIns.js
 
 # WebCore.qrc
 file Source/WebCore/Resources/missingImage.png
+file Source/WebCore/Resources/missingImage@2x.png
+file Source/WebCore/Resources/missingImage@3x.png
 file Source/WebCore/Resources/nullPlugin.png
+file Source/WebCore/Resources/nullPlugin@2x.png
 file Source/WebCore/Resources/textAreaResizeCorner.png
+file Source/WebCore/Resources/textAreaResizeCorner@2x.png
 file Source/WebCore/Resources/urlIcon.png
 file Source/WebCore/Resources/zoomInCursor.png
 file Source/WebCore/Resources/zoomOutCursor.png
