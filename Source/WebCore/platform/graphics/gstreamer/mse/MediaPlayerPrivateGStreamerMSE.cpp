@@ -787,6 +787,17 @@ bool MediaPlayerPrivateGStreamerMSE::supportsCodecs(const String& codecs)
     return true;
 }
 
+FloatSize MediaPlayerPrivateGStreamerMSE::naturalSize() const
+{
+    if (!hasVideo())
+        return FloatSize();
+
+    if (!m_videoSize.isEmpty())
+        return m_videoSize;
+
+    return MediaPlayerPrivateGStreamerBase::naturalSize();
+}
+
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const MediaEngineSupportParameters& parameters)
 {
     MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
