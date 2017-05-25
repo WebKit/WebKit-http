@@ -164,7 +164,7 @@ void CDMPrivateOpenCDM::loadAndInitialize()
 
 bool CDMPrivateOpenCDM::supportsServerCertificates() const
 {
-    return false;
+    return true;
 }
 
 bool CDMPrivateOpenCDM::supportsSessions() const
@@ -225,9 +225,12 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setPersistentStateAllowed(bool)
     return Succeeded;
 }
 
-CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&&)
+CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&& certificate)
 {
-    return Failed;
+    CDMInstance::SuccessValue ret = WebCore::CDMInstance::SuccessValue::Failed;
+    if (m_openCdmSession->SetServerCertificate(reinterpret_cast<unsigned char*>(const_cast<char*>(certificate->data())), certificate->size()))
+        ret = WebCore::CDMInstance::SuccessValue::Succeeded;
+    return ret;
 }
 
 void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
@@ -258,8 +261,14 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<Sh
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }
-    Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), messageLength);
-    callback(WTFMove(licenseRequestMessage), sessionIdValue, false, Succeeded);
+    bool needIndividualization = false;
+    std::string delimiter = ":";
+    std::string requestType = message.substr(0, message.find(delimiter));
+    message.erase(0, message.find(delimiter) + delimiter.length());
+    if ((WebCore::MediaKeyMessageType)std::stoi(requestType) == CDMInstance::MessageType::IndividualizationRequest)
+        needIndividualization = true;
+    Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), message.size());
+    callback(WTFMove(licenseRequestMessage), sessionIdValue, needIndividualization, Succeeded);
     sessionIdMap.add(sessionIdValue, WTFMove(initData));
 }
 
@@ -268,8 +277,9 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
     std::string responseMessage;
     int ret = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
     if (ret) {
-        if (!responseMessage.compare(0, 8, "request:")) {
-            Ref<SharedBuffer> nextMessage = SharedBuffer::create(responseMessage.c_str()+8, responseMessage.length()-8);
+        std::string request = "request:";
+        if (!responseMessage.compare(0, request.length(), request.c_str())) {
+            Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + request.length()), (responseMessage.length() - request.length()));
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
             callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
             return;
