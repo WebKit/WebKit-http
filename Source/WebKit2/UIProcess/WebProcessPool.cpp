@@ -97,10 +97,27 @@
 #include <wtf/RefCountedLeakCounter.h>
 #endif
 
+#if PLATFORM(QT)
+#include <QProcess>
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
 namespace WebKit {
+
+#if PLATFORM(QT)
+static int qProcessId(QProcess* process)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 3, 0)
+    return static_cast<int>(process->processId());
+#elif OS(WINDOWS)
+    return static_cast<int>(process->pid()->dwProcessId);
+#else
+    return static_cast<int>(process->pid());
+#endif
+}
+#endif
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, processPoolCounter, ("WebProcessPool"));
 
@@ -699,7 +716,11 @@ void WebProcessPool::processDidFinishLaunching(WebProcessProxy* process)
     if (m_memorySamplerEnabled) {
         SandboxExtension::Handle sampleLogSandboxHandle;        
         double now = WTF::currentTime();
+#if PLATFORM(QT)
+        String sampleLogFilePath = String::format("WebProcess%llupid%d", static_cast<unsigned long long>(now), qProcessId(process->processIdentifier()));
+#else
         String sampleLogFilePath = String::format("WebProcess%llupid%d", static_cast<unsigned long long>(now), process->processIdentifier());
+#endif
         sampleLogFilePath = SandboxExtension::createHandleForTemporaryFile(sampleLogFilePath, SandboxExtension::ReadWrite, sampleLogSandboxHandle);
         
         process->send(Messages::WebProcess::StartMemorySampler(sampleLogSandboxHandle, sampleLogFilePath, m_memorySamplerInterval), 0);
