@@ -11,6 +11,8 @@ else ()
     set(WebKit2_LIBRARY_TYPE STATIC)
 endif ()
 
+add_definitions(-DBUILDING_WEBKIT)
+
 if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
