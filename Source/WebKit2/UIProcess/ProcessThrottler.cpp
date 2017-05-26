@@ -87,7 +87,7 @@ void ProcessThrottler::updateAssertion()
     updateAssertionNow();
 }
 
-void ProcessThrottler::didConnectToProcess(pid_t pid)
+void ProcessThrottler::didConnectToProcess(PlatformProcessIdentifier pid)
 {
     m_suspendTimer.stop();
     m_assertion = std::make_unique<ProcessAndUIAssertion>(pid, assertionState());

@@ -26,6 +26,8 @@
 #ifndef ProcessAssertion_h
 #define ProcessAssertion_h
 
+#include "PlatformProcessIdentifier.h"
+
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS BKSProcessAssertion;
@@ -47,7 +49,7 @@ public:
 
 class ProcessAssertion {
 public:
-    ProcessAssertion(pid_t, AssertionState);
+    ProcessAssertion(PlatformProcessIdentifier, AssertionState);
     ~ProcessAssertion();
 
     void setClient(ProcessAssertionClient& client) { m_client = &client; }
@@ -66,7 +68,7 @@ private:
     
 class ProcessAndUIAssertion : public ProcessAssertion {
 public:
-    ProcessAndUIAssertion(pid_t, AssertionState);
+    ProcessAndUIAssertion(PlatformProcessIdentifier, AssertionState);
     ~ProcessAndUIAssertion();
 
     void setClient(ProcessAssertionClient&);
