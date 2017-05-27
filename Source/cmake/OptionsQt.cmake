@@ -431,6 +431,10 @@ if (ENABLE_WEBKIT2)
     )
     SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
     SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS_MULTIPROCESS TRUE)
+
+    if (ENABLE_INDEXED_DATABASE AND NOT ENABLE_DATABASE_PROCESS)
+        message(FATAL_ERROR "Using IndexedDB with WebKit2 requires ENABLE_DATABASE_PROCESS")
+    endif ()
 endif ()
 
 # Mach ports and Unix sockets are currently used by WK2, but their USE() values
