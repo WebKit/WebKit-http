@@ -81,6 +81,7 @@ public:
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+    void unmarkEndOfStream();
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchDecryptionKey(GstBuffer*) override;

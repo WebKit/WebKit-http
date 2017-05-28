@@ -502,15 +502,16 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
     if (newDuration == m_duration)
         return { };
 
-#if 1
+#if defined(METROLOGICAL)
     // Implementation to pass the YouTube MSE Conformance Tests 2016, conforming to the old MSE spec:
     // https://www.w3.org/TR/2016/CR-media-source-20160503/#duration-change-algorithm
 
     // 4. If the new duration is less than old duration, then call remove(new duration, old duration)
     // on all objects in sourceBuffers.
-    if (m_duration.isValid() && newDuration < m_duration) {
-        for (auto& sourceBuffer : *m_sourceBuffers)
-            sourceBuffer->rangeRemoval(newDuration, m_duration);
+    for (auto& sourceBuffer : *m_sourceBuffers) {
+        auto length = sourceBuffer->bufferedInternal().length();
+        if (length && newDuration < sourceBuffer->bufferedInternal().ranges().end(length - 1))
+            sourceBuffer->rangeRemoval(newDuration, sourceBuffer->bufferedInternal().ranges().end(length - 1));
     }
 #else
     // Upstream implementation, conforming to the latest MSE spec.

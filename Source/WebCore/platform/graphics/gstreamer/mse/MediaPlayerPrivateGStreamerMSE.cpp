@@ -871,11 +871,19 @@ void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfSt
     updateStates();
 }
 
+void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
+{
+    GST_DEBUG("Unmarking end of stream");
+    m_eosPending = false;
+}
+
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
+    MediaTime cachedPosition = MediaTime::createWithFloat(m_cachedPosition);
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
+    MediaTime playbackProgress = abs(position - cachedPosition);
 
-    if (m_eosPending && (paused() || (position >= durationMediaTime()))) {
+    if (m_eosPending && (paused() || (abs(position - durationMediaTime()) <= MediaTime::createWithDouble(1) && !playbackProgress))) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();
@@ -883,7 +891,8 @@ MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 
         m_eosPending = false;
         m_isEndReached = true;
-        m_cachedPosition = m_mediaTimeDuration.toFloat();
+        position = m_mediaTimeDuration;
+        m_cachedPosition = position.toFloat();
         m_durationAtEOS = m_mediaTimeDuration.toFloat();
         m_player->timeChanged();
     }
