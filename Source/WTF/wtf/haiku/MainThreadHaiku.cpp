@@ -41,7 +41,6 @@ namespace WTF {
 class MainThreadHandler : public BHandler {
 public:
     static const uint32 kDispatchCommand = 'dpch';
-    static const uint32 kWorkQueueDispatch = 'wqdp';
 
     MainThreadHandler()
         : BHandler("WebCore main thread handler")
@@ -52,16 +51,12 @@ public:
     {
         if (message->what == kDispatchCommand)
             dispatchFunctionsFromMainThread();
-        else if (message->what == kWorkQueueDispatch) {
-            WorkQueue* wq = nullptr;
-            message->FindPointer("queue", (void**)&wq);
-            wq->performWork(message);
-        } else
+        else
             BHandler::MessageReceived(message);
     }
 };
 
-static MainThreadHandler* mainThreadHandler;
+MainThreadHandler* mainThreadHandler;
 static BLooper* mainThreadLooper;
 
 void initializeMainThreadPlatform()

@@ -51,6 +51,8 @@
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/win/WorkItemWin.h>
+#elif OS(HAIKU)
+#include <Looper.h>
 #endif
 
 namespace WTF {
@@ -134,6 +136,8 @@ private:
 #elif OS(HAIKU)
     struct WorkItemHaiku;
     std::set<WorkItemHaiku*> m_workItems;
+
+    BLooper* m_looper;
 #endif
 };
 

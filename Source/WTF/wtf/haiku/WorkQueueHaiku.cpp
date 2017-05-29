@@ -45,7 +45,6 @@ struct WorkQueue::WorkItemHaiku
     BMessageRunner* runner;
 };
 
-
 void WorkQueue::dispatch(std::function<void ()> function)
 {
     ref();
@@ -55,8 +54,32 @@ void WorkQueue::dispatch(std::function<void ()> function)
     message.AddPointer("function", storage);
     message.AddPointer("queue", this);
 
-    be_app->PostMessage(&message);
+    m_looper->PostMessage(&message);
 }
+
+
+class WorkQueueLooper: public BLooper
+{
+public:
+    WorkQueueLooper(const char* name)
+        : BLooper(name)
+    {
+        Run();
+    }
+
+protected:
+    void MessageReceived(BMessage* message)
+    {
+        if (message->what == kWorkQueueDispatch) {
+            WorkQueue* wq = nullptr;
+            message->FindPointer("queue", (void**)&wq);
+            wq->performWork(message);
+            return;
+        }
+
+        BLooper::MessageReceived(message);
+    }
+};
 
 
 void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration,
@@ -73,19 +96,29 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration,
     message.AddPointer("item", item);
     m_workItems.insert(item);
 
-    item->runner = new BMessageRunner(be_app, message,
+    item->runner = new BMessageRunner(m_looper, message,
         std::chrono::duration_cast<std::chrono::milliseconds>(duration).count(),
         1);
 }
 
 
-void WorkQueue::platformInitialize(const char* /*name*/, Type, QOS)
+void WorkQueue::platformInitialize(const char* name, Type, QOS)
 {
+    m_looper = new WorkQueueLooper(name);
 }
 
 
 void WorkQueue::platformInvalidate()
 {
+    thread_id thread = m_looper->Thread();
+    status_t ret;
+
+    m_looper->PostMessage(B_QUIT_REQUESTED);
+
+    // Wait for the pending BMessages to be handled
+    wait_for_thread(thread, &ret);
+
+    // Delete all remaining work items
     for (auto item: m_workItems)
     {
         delete item;
@@ -97,13 +130,13 @@ void WorkQueue::platformInvalidate()
 void WorkQueue::performWork(BMessage* message)
 {
     std::function<void ()>* function = nullptr;
-    if (message->FindPointer("function", (void**)&function)) {
+    if (message->FindPointer("function", (void**)&function) == B_OK) {
         (*function)();
         delete function;
     }
 
     WorkItemHaiku* item = nullptr;
-    if (message->FindPointer("item", (void**)&item)) {
+    if (message->FindPointer("item", (void**)&item) == B_OK) {
         m_workItems.erase(item);
         delete item;
     }
