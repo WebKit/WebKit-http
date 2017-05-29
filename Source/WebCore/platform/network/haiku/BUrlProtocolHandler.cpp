@@ -483,8 +483,8 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
-    WTF::String contentType = m_request->Result().ContentType();
-    int contentLength = m_request->Result().Length();
+    WTF::String contentType = result.ContentType();
+    int contentLength = result.Length();
     URL url(m_request->Url());
 
     WTF::String encoding = extractCharsetFromMediaType(contentType);
