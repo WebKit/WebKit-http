@@ -63,14 +63,6 @@ void StillImage::destroyDecodedData(bool destroyAll)
     // It appears it would not apply to StillImage.
 }
 
-unsigned StillImage::decodedSize() const
-{
-    // FIXME: It could be wise to return 0 here, since we don't want WebCore
-    // to think we eat up memory, since we are not freeing any in
-    // destroyDecodedData() either.
-    return m_bitmap->BitsLength();
-}
-
 FloatSize StillImage::size() const
 {
     return FloatSize(m_bitmap->Bounds().Width() + 1., m_bitmap->Bounds().Height() + 1.);

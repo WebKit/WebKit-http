@@ -45,13 +45,12 @@ public:
         return adoptRef(new StillImage(bitmap));
     }
 
-    virtual bool currentFrameKnownToBeOpaque();
+    virtual bool currentFrameKnownToBeOpaque() override;
 
-    virtual void destroyDecodedData(bool = true);
-    virtual unsigned decodedSize() const;
+    virtual void destroyDecodedData(bool = true) override;
 
-    virtual FloatSize size() const;
-    virtual NativeImagePtr nativeImageForCurrentFrame();
+    virtual FloatSize size() const override;
+    virtual NativeImagePtr nativeImageForCurrentFrame() override;
     virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
 private:
