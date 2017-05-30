@@ -56,6 +56,7 @@ my $minimal = 0;
 my $installHeaders;
 my $installLibs;
 my $prefixPath;
+my $shouldInstall = 0;
 my $makeArgs = "";
 my $cmakeArgs = "";
 my $onlyWebKitProject = 0;
@@ -100,14 +101,14 @@ Usage: $programName [options] [options to pass to build system]
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
 
-  --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl only)
+  --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl/Qt only)
+  --install                         Install into given prefix after compilation
   --makeargs=<arguments>            Optional Makefile flags
   --cmakeargs=<arguments>           Optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
 
   --only-webkit                     Build only the WebKit project
-
 EOF
 
 my %options = (
@@ -116,6 +117,7 @@ my %options = (
     'install-headers=s' => \$installHeaders,
     'install-libs=s' => \$installLibs,
     'prefix=s' => \$prefixPath,
+    'install' => \$shouldInstall,
     'makeargs=s' => \$makeArgs,
     'cmakeargs=s' => \$cmakeArgs,
     'minimal' => \$minimal,
@@ -238,6 +240,9 @@ if (isInspectorFrontend()) {
 }
 
 if (isCMakeBuild() && (!isAnyWindows() || isQt())) {
+    if ($shouldInstall) {
+        $makeArgs .= ($makeArgs ? " " : "") . "install";
+    }
 
     # Visual Studio generator doesn't support -j switch
     if (canUseNinja() || !isAnyWindows()) {
