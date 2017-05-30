@@ -8,6 +8,14 @@ macro(generate_header _file _var _content)
     set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
 endmacro()
 
+macro(generate_version_header _file _var _prefix)
+    set(HEADER_PREFIX ${_prefix})
+    configure_file(VersionHeader.h.in ${_file} @ONLY)
+    unset(HEADER_PREFIX)
+    list(APPEND ${_var} ${_file})
+    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
+endmacro()
+
 if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
@@ -372,16 +380,10 @@ set(WebKit_PUBLIC_HEADERS
     ${QtWebKit_FORWARDING_HEADERS}
 )
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
+generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
     WebKit_PUBLIC_HEADERS
-    "#ifndef QT_QTWEBKIT_VERSION_H
-#define QT_QTWEBKIT_VERSION_H
-
-#define QTWEBKIT_VERSION_STR \"${PROJECT_VERSION_STRING}\"
-#define QTWEBKIT_VERSION 0x05f00${PROJECT_VERSION_MICRO}
-
-#endif
-")
+    QTWEBKIT
+)
 
 generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitVersion"
     WebKit_PUBLIC_HEADERS
@@ -627,16 +629,10 @@ set(WebKitWidgets_PUBLIC_HEADERS
     ${QtWebKitWidgets_FORWARDING_HEADERS}
 )
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/qtwebkitwidgetsversion.h"
+generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/qtwebkitwidgetsversion.h"
     WebKitWidgets_PUBLIC_HEADERS
-    "#ifndef QT_QTWEBKITWIDGETS_VERSION_H
-#define QT_QTWEBKITWIDGETS_VERSION_H
-
-#define QTWEBKITWIDGETS_VERSION_STR \"${PROJECT_VERSION_STRING}\"
-#define QTWEBKITWIDGETS_VERSION 0x05f00${PROJECT_VERSION_MICRO}
-
-#endif
-")
+    QTWEBKITWIDGETS
+)
 
 generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/QtWebKitWidgetsVersion"
     WebKitWidgets_PUBLIC_HEADERS
