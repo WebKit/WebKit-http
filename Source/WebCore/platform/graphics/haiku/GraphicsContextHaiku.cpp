@@ -845,6 +845,9 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color)
 
 void GraphicsContext::setPlatformStrokeStyle(StrokeStyle strokeStyle)
 {
+    if (paintingDisabled())
+        return;
+
     switch (strokeStyle) {
     case SolidStroke:
     case DoubleStroke:
