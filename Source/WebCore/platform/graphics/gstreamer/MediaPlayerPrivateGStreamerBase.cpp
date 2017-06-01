@@ -2035,7 +2035,6 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event, Gst
 
 void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& keySystem)
 {
-    printf("%s:%s:%d keySystem = %s\n", __FILE__, __func__, __LINE__, keySystem.utf8().data());
     GST_DEBUG("received generate key request for %s", keySystem.utf8().data());
     m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem);
     m_protectionCondition.notifyOne();
