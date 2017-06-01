@@ -144,6 +144,7 @@ protected Q_SLOTS:
     void toggleJavascriptCanOpenWindows(bool enable);
     void toggleAutoLoadImages(bool enable);
     void togglePrivateBrowsing(bool enable);
+    void toggleWebSecurity(bool enable);
     void setUseDiskCookies(bool enable);
     void clearCookies();
     void togglePlugins(bool enable);
