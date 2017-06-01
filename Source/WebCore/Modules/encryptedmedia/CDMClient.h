@@ -18,6 +18,7 @@ public:
     virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
 
 #if USE(OCDM)
+    virtual void receivedGenerateKeyRequest(String&) = 0;
     virtual void emitSession(String&) = 0;
 #endif
 };

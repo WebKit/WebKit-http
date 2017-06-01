@@ -242,6 +242,7 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
 #if USE(OCDM)
+    virtual void receivedGenerateKeyRequest(String&) { }
     virtual void emitSession(String&) { }
 #endif
 #endif

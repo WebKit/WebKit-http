@@ -135,6 +135,12 @@ void MediaKeys::attemptToResumePlaybackOnClients()
 }
 
 #if USE(OCDM)
+void MediaKeys::receivedGenerateKeyRequest(String& keySystem)
+{
+    for (auto* cdmClient : m_cdmClients)
+        cdmClient->receivedGenerateKeyRequest(keySystem);
+}
+
 void MediaKeys::decryptWithSession(String& sessionId)
 {
     for (auto* cdmClient : m_cdmClients)

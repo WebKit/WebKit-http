@@ -2745,6 +2745,12 @@ void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& 
 }
 
 #if USE(OCDM)
+void HTMLMediaElement::receivedGenerateKeyRequest(String& keySystem)
+{
+    if (m_player)
+        m_player->receivedGenerateKeyRequest(keySystem);
+}
+
 void HTMLMediaElement::emitSession(String& sessionId)
 {
     if (m_player)

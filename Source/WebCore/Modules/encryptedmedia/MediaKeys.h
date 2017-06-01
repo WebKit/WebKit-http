@@ -66,6 +66,7 @@ public:
     void attemptToDecrypt(CDMClient&);
 
 #if USE(OCDM)
+    void receivedGenerateKeyRequest(String&);
     void decryptWithSession(String&);
 #endif
 

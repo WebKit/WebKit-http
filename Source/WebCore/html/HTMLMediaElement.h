@@ -647,6 +647,7 @@ private:
     void attemptToDecrypt();
 
 #if USE(OCDM)
+    void receivedGenerateKeyRequest(String&);
     void emitSession(String&);
 #endif
 #endif

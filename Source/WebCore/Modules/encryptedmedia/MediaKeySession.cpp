@@ -115,6 +115,7 @@ Ref<MediaKeyStatusMap> MediaKeySession::keyStatuses() const
 
 void MediaKeySession::generateRequest(const AtomicString& initDataType, const BufferSource& initData, Ref<DeferredPromise>&& promise)
 {
+    printf("Haseena %s:%s:%d\n", __FILE__, __func__, __LINE__);
     // https://w3c.github.io/encrypted-media/#dom-mediakeysession-generaterequest
     // W3C Editor's Draft 09 November 2016
 
@@ -195,6 +196,11 @@ void MediaKeySession::generateRequest(const AtomicString& initDataType, const Bu
             m_latestDecryptTime = 0;
         }
 
+#if USE(OCDM)
+        printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
+        String keySystem = m_implementation->keySystem();
+        m_keys->receivedGenerateKeyRequest(keySystem);
+#endif
         m_instance->requestLicense(m_sessionType, initDataType, WTFMove(initData), [this, weakThis = m_weakPtrFactory.createWeakPtr(), promise = WTFMove(promise)] (Ref<SharedBuffer>&& message, const String& sessionId, bool needsIndividualization, CDMInstance::SuccessValue succeeded) mutable {
             if (!weakThis)
                 return;
@@ -469,9 +475,12 @@ void MediaKeySession::update(const BufferSource& response, Ref<DeferredPromise>&
                     }
                 }
 #if USE(OCDM)
+                printf("%s:%s%d\n", __FILE__, __func__, __LINE__);
                 CDMInstance::KeyStatusVector&& keyStatuses = WTFMove(*changedKeys);
-                if (!message && (keyStatuses[0].second == CDMInstance::KeyStatus::Usable))
+                if (!message && (keyStatuses[0].second == CDMInstance::KeyStatus::Usable)) {
+                    printf("%s:%s%d\n", __FILE__, __func__, __LINE__);
                     m_keys->decryptWithSession(m_sessionId);
+                }
 #endif
                 // 6.8.2. Resolve promise.
                 promise->resolve();
