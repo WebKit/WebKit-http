@@ -14,6 +14,7 @@ isPlatformSupported() {
 
     SUBDIRS += \
         $$PROJECTS_DIR/generate_cmake_toolchain_file.pro \
+        $$PROJECTS_DIR/generate_forwarding_pris.pro \
         $$PROJECTS_DIR/run_cmake.pro
 } else {
     !build_pass: log("$${EOL}The WebKit build was disabled for the following reasons: $$skipBuildReason $${EOL}$${EOL}")
