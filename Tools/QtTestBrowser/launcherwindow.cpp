@@ -353,6 +353,10 @@ void LauncherWindow::createChrome()
     touchMockAction->setCheckable(true);
     touchMockAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_T));
 
+    QAction* toggleWebSecurity = toolsMenu->addAction("Disable Web Security", this, SLOT(toggleWebSecurity(bool)));
+    toggleWebSecurity->setCheckable(true);
+    toggleWebSecurity->setChecked(false);
+
     toolsMenu->addSeparator();
 
     QAction* toggleLocalStorage = toolsMenu->addAction("Enable Local Storage", this, SLOT(toggleLocalStorage(bool)));
@@ -999,6 +1003,11 @@ void LauncherWindow::toggleJavascriptCanOpenWindows(bool enable)
 void LauncherWindow::togglePrivateBrowsing(bool enable)
 {
     page()->settings()->setAttribute(QWebSettings::PrivateBrowsingEnabled, enable);
+}
+
+void LauncherWindow::toggleWebSecurity(bool enable)
+{
+    page()->settings()->setAttribute(QWebSettings::WebSecurityEnabled, !enable);
 }
 
 void LauncherWindow::setUseDiskCookies(bool enable)
