@@ -1,3 +1,257 @@
+2016-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Crash beneath SlotVisitor::drain @ cooksillustrated.com
+        https://bugs.webkit.org/show_bug.cgi?id=164304
+
+        Reviewed by Mark Lam.
+
+        Added back write barrier for the base cell of put-by_id in the LLInt when the structure is
+        changed.  Also removed the unused macro "storeStructureWithTypeInfo".
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Invalid assertion in arguments elimination
+        https://bugs.webkit.org/show_bug.cgi?id=163740
+        <rdar://problem/27911462>
+
+        Reviewed by Michael Saboff.
+
+        The DFGFTL's arguments elimination phase incorrectly asserted that a GetFromArguments' first
+        child would always be a CreateDirectArguments.  While we only create the
+        op_get_from_arguments bytecode pointing to a create_direct_arguments, its possible for a
+        number of reasons that a DFG GetFromArguments may not point to a CreateDirectArguments. For
+        example, if we are OSR entering in some function with direct arguments the
+        CreateDirectArguments node might become ExtractOSREntryLocals.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2016-10-08  Saam Barati  <sbarati@apple.com>
+
+        HasIndexedProperty clobberize rule is wrong for Array::ForceOSRExit
+        https://bugs.webkit.org/show_bug.cgi?id=159942
+        <rdar://problem/27328836>
+
+        Reviewed by Filip Pizlo.
+
+        When HasIndexedProperty has a ForceOSRExit array mode, it should
+        report to write to side state, like the ForceOSRExit node, and the
+        other nodes with ForceOSRExit array mode.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2016-09-27  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::lowerMacros forgets to before->updatePredecessorsAfter() when lowering ChillMod on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=162644
+
+        Reviewed by Keith Miller.
+
+        If you forget to update the predecessors of your successors, then bad things will happen if you
+        do something that requires accurate predecessors for correctness. lowerMacros() uses
+        BlockInsertionSet, which relies on accurate predecessors.
+
+        * b3/B3LowerMacros.cpp:
+
+2016-08-18  Mark Lam  <mark.lam@apple.com>
+
+        ScopedArguments is using the wrong owner object for a write barrier.
+        https://bugs.webkit.org/show_bug.cgi?id=160976
+        <rdar://problem/27328506>
+
+        Reviewed by Keith Miller.
+
+        * runtime/ScopedArguments.h:
+        (JSC::ScopedArguments::setIndexQuickly):
+
+2016-08-17  Mark Lam  <mark.lam@apple.com>
+
+        Remove an invalid assertion in the DFG backend's GetById emitter.
+        https://bugs.webkit.org/show_bug.cgi?id=160925
+        <rdar://problem/27248961>
+
+        Reviewed by Filip Pizlo.
+
+        The DFG backend's GetById assertion that the node's prediction not be SpecNone
+        is just plain wrong.  It assumes that we can never have a GetById node without a
+        type prediction, but this is not true.  The following test case proves otherwise:
+
+            function foo() {
+                "use strict";
+                return --arguments["callee"];
+            }
+
+        Will remove the assertion.  Nothing else needs to change as the DFG is working
+        correctly without the assertion.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2016-03-09  Michael Saboff  <msaboff@apple.com>
+
+        Harden JSC Root element functions from bad values
+        https://bugs.webkit.org/show_bug.cgi?id=155234
+
+        Reviewed by Saam Barati.
+
+        Changed jsCast() to jsDynamicCast() in Root related function to protect against being
+        called with non-Root arguments.
+
+        * jsc.cpp:
+        (functionCreateElement):
+        (functionGetElement):
+        (functionSetElementRoot):
+
+2016-08-10  Michael Saboff  <msaboff@apple.com>
+
+        Baseline GetByVal and PutByVal for cache ID stubs need to handle exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=160749
+
+        Reviewed by Filip Pizlo.
+
+        We were emitting "callOperation()" calls in emitGetByValWithCachedId() and
+        emitPutByValWithCachedId() without linking the exception checks created by the
+        code emitted.  This manifested itself in various ways depending on the processor.
+        This is due to what the destination is for an unlinked branch.  On X86, an unlinked
+        branch goes tot he next instructions.  On ARM64, we end up with an infinite loop
+        as we branch to the same instruction.  On ARM we branch to 0 as the branch is to
+        an absolute address of 0.
+
+        Now we save the exception handler address for the original generated function and
+        link the exception cases for these by-val stubs to this handler.
+
+        * bytecode/ByValInfo.h:
+        (JSC::ByValInfo::ByValInfo): Added the address of the exception handler we should
+        link to.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::link): Compute the linked exception handler address and pass it to
+        the ByValInfo constructor.
+        (JSC::JIT::privateCompileExceptionHandlers): Make sure that we generate the
+        exception handler if we have any by-val handlers.
+
+        * jit/JIT.h:
+        Added a label for the exception handler.  We'll link this later for the
+        by value handlers.
+
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::privateCompileGetByValWithCachedId):
+        (JSC::JIT::privateCompilePutByValWithCachedId):
+        Link exception branches to the exception handler for the main function.
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        The jsc shell's Element host constructor should throw if it fails to construct an object.
+        https://bugs.webkit.org/show_bug.cgi?id=160773
+        <rdar://problem/27328608>
+
+        Reviewed by Saam Barati.
+
+        The Element object is a test object provided in the jsc shell for testing use only.
+        JavaScriptCore expects host constructors to either throw an error or return a
+        constructed object.  Element has a host constructor that did not obey this contract.
+        As a result, the following statement will fail a RELEASE_ASSERT:
+
+            new (Element.bind())
+
+        This is now fixed.
+
+        * jsc.cpp:
+        (functionCreateElement):
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        DFG's flushForTerminal() needs to add PhantomLocals for bytecode live locals.
+        https://bugs.webkit.org/show_bug.cgi?id=160755
+        <rdar://problem/27488507>
+
+        Reviewed by Filip Pizlo.
+
+        If the DFG sees that an inlined function will result in an OSR exit every time,
+        it will treat all downstream blocks as dead.  However, it still needs to keep
+        locals that are alive in the bytecode alive for the compiled function so that
+        those locals are properly written to the stack by the OSR exit ramp.
+
+        The existing code neglected to do this.  This patch remedies this issue.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::flushDirect):
+        (JSC::DFG::ByteCodeParser::addFlushOrPhantomLocal):
+        (JSC::DFG::ByteCodeParser::phantomLocalDirect):
+        (JSC::DFG::ByteCodeParser::flushForTerminal):
+
+2016-07-28  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED in errorProtoFuncToString() when Error name is a single char string.
+        https://bugs.webkit.org/show_bug.cgi?id=160324
+        <rdar://problem/27389572>
+
+        Reviewed by Keith Miller.
+
+        The issue is that errorProtoFuncToString() was using jsNontrivialString() to
+        generate the error string even when the name string can be a single character
+        string.  This is incorrect.  We should be using jsString() instead.
+
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * tests/stress/errors-with-simple-names-or-messages-should-not-crash-toString.js: Added.
+
+2016-07-28  Michael Saboff  <msaboff@apple.com>
+
+        ARM64: Fused left shift with a right shift can create NaNs from integers
+        https://bugs.webkit.org/show_bug.cgi?id=160329
+
+        Reviewed by Geoffrey Garen.
+
+        When we fuse a left shift and a right shift of integers where the shift amounts
+        are the same and the size of the quantity being shifted is 8 bits, we rightly
+        generate a sign extend byte instruction.  On ARM64, we were sign extending
+        to a 64 bit quantity, when we really wanted to sign extend to a 32 bit quantity.
+
+        Checking the ARM64 marco assembler and we were extending to 64 bits for all
+        four combinations of zero / sign and 8 / 16 bits.
+        
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::zeroExtend16To32):
+        (JSC::MacroAssemblerARM64::signExtend16To32):
+        (JSC::MacroAssemblerARM64::zeroExtend8To32):
+        (JSC::MacroAssemblerARM64::signExtend8To32):
+        * tests/stress/regress-160329.js: New test added.
+        (narrow):
+
+2016-08-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Fixed a potential bug in MarkedArgumentBuffer.
+        https://bugs.webkit.org/show_bug.cgi?id=160948
+        <rdar://problem/27889416>
+
+        Reviewed by Oliver Hunt.
+
+        I haven't been able to produce an observable test case after some trying.
+
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::addMarkSet): New helper function -- I broke
+        this out from existing code for clarity, but the behavior is the same.
+
+        (JSC::MarkedArgumentBuffer::expandCapacity): Ditto.
+
+        (JSC::MarkedArgumentBuffer::slowAppend): Always addMarkSet() on the slow
+        path. This is faster than the old linear scan, and I think it might
+        avoid cases the old scan could miss.
+
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::append): Account for the case where someone
+        has called clear() or removeLast().
+
+        (JSC::MarkedArgumentBuffer::mallocBase): No behavior change -- but it's
+        clearer to test the buffers directly instead of inferring what they
+        might be based on capacity.
+
 2016-07-16  Filip Pizlo  <fpizlo@apple.com>
 
         DFG CSE is broken for MultiGetByOffset

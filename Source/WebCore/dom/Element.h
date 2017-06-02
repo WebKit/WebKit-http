@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -70,6 +70,7 @@ public:
     void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     bool removeAttribute(const QualifiedName&);
+    Vector<String> getAttributeNames() const;
 
     // Typed getters and setters for language bindings.
     int getIntegralAttribute(const QualifiedName& attributeName) const;
@@ -139,6 +140,8 @@ public:
     // FIXME: Replace uses of offsetParent in the platform with calls
     // to the render layer and merge bindingsOffsetParent and offsetParent.
     Element* bindingsOffsetParent();
+
+    const Element* rootElement() const;
 
     Element* offsetParent();
     double clientLeft();
@@ -629,6 +632,17 @@ inline Element* Node::parentElement() const
 {
     ContainerNode* parent = parentNode();
     return is<Element>(parent) ? downcast<Element>(parent) : nullptr;
+}
+
+inline const Element* Element::rootElement() const
+{
+    if (inDocument())
+        return document().documentElement();
+
+    const Element* highest = this;
+    while (highest->parentElement())
+        highest = highest->parentElement();
+    return highest;
 }
 
 inline bool Element::fastHasAttribute(const QualifiedName& name) const

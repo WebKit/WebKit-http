@@ -1,3 +1,33 @@
+2016-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        Use of uninitialised memory in TransformationMatrx::blend4()
+        https://bugs.webkit.org/show_bug.cgi?id=134621
+        <rdar://problem/27337539>
+
+        Reviewed by Dean Jackson.
+
+        Change is based on the Blink change (patch by <alancutter@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?revision=177453&view=revision>
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/TransformationMatrix.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2016-07-21  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        WebBackForwardList's currentIndex could get out of bounds when filtering items.
+        https://bugs.webkit.org/show_bug.cgi?id=159986
+
+        Add a test to verify filtering out 2 items from a 3-item list will set the currentIndex
+        to 0.
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKBackForwardList.mm: Added.
+        (-[WKBackForwardListTestNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+
 2016-02-20  Olivier Blin  <olivier.blin@softathome.com>
 
         [cmake] Use ICU include dirs in WebKit2 and WebKitTestRunner

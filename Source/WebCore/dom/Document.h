@@ -995,8 +995,13 @@ public:
 
     void finishedParsing();
 
-    bool inPageCache() const { return m_inPageCache; }
-    void setInPageCache(bool flag);
+    enum PageCacheState { NotInPageCache, AboutToEnterPageCache, InPageCache };
+
+    PageCacheState pageCacheState() const { return m_pageCacheState; }
+    void setPageCacheState(PageCacheState);
+
+    // FIXME: Update callers to use pageCacheState() instead.
+    bool inPageCache() const { return m_pageCacheState != NotInPageCache; }
 
     // Elements can register themselves for the "suspend()" and
     // "resume()" callbacks
@@ -1566,10 +1571,6 @@ private:
 
     HashSet<LiveNodeList*> m_listsInvalidatedAtDocument;
     HashSet<HTMLCollection*> m_collectionsInvalidatedAtDocument;
-#if !ASSERT_DISABLED
-    bool m_inInvalidateNodeListAndCollectionCaches;
-#endif
-
     unsigned m_nodeListAndCollectionCounts[numNodeListInvalidationTypes];
 
     RefPtr<XPathEvaluator> m_xpathEvaluator;
@@ -1585,7 +1586,7 @@ private:
     HashMap<String, RefPtr<HTMLCanvasElement>> m_cssCanvasElements;
 
     bool m_createRenderers;
-    bool m_inPageCache;
+    PageCacheState m_pageCacheState { NotInPageCache };
 
     HashSet<Element*> m_documentSuspensionCallbackElements;
     HashSet<Element*> m_mediaVolumeCallbackElements;

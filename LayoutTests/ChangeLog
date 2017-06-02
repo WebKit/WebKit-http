@@ -1,3 +1,320 @@
+2016-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Side effects while restting form elements
+        https://bugs.webkit.org/show_bug.cgi?id=165959
+        <rdar://problem/29705967>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/html/form-mutate-expected.txt: Added.
+        * fast/html/form-mutate.html: Added.
+
+2016-11-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Clear track client when removing a track
+        https://bugs.webkit.org/show_bug.cgi?id=164842
+        <rdar://problem/29213621>
+
+        Reviewed by Eric Carlson.
+
+        * media/track/audio-track-add-remove-expected.txt: Added.
+        * media/track/audio-track-add-remove.html: Added.
+        * media/track/video-track-add-remove-expected.txt: Added.
+        * media/track/video-track-add-remove.html: Added.
+
+2016-11-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Neutered ArrayBuffers are not properly serialized
+        https://bugs.webkit.org/show_bug.cgi?id=164647
+        <rdar://problem/29213490>
+
+        Reviewed by David Kilzer.
+
+        * fast/canvas/neutered-imagedata-expected.txt: Added.
+        * fast/canvas/neutered-imagedata.html: Added.
+
+2016-10-25  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r178265): XSS Auditor fails to block document.write() of incomplete tag
+        https://bugs.webkit.org/show_bug.cgi?id=163978
+        <rdar://problem/25962131>
+
+        Reviewed by Darin Adler.
+
+        Add tests to ensure that the XSS Auditor blocks a document.write() of an incomplete HTML image tag.
+
+        * http/tests/security/xssAuditor/dom-write-location-dom-write-open-img-onerror-expected.txt: Added.
+        * http/tests/security/xssAuditor/dom-write-location-dom-write-open-img-onerror.html: Added.
+        * http/tests/security/xssAuditor/dom-write-location-open-img-onerror-expected.txt: Added.
+        * http/tests/security/xssAuditor/dom-write-location-open-img-onerror.html: Added.
+        * http/tests/security/xssAuditor/nested-dom-write-location-open-img-onerror-expected.txt: Added.
+        * http/tests/security/xssAuditor/nested-dom-write-location-open-img-onerror.html: Added.
+        * http/tests/security/xssAuditor/resources/echo-nested-dom-write-location.html: Added.
+
+2016-10-26  Zalan Bujtas  <zalan@apple.com>
+
+        Ignore out-of-flow siblings when searching for a spanner candidate.
+        https://bugs.webkit.org/show_bug.cgi?id=164042.
+        <rdar://problem/28758456>
+
+        Reviewed by Simon Fraser.
+
+        * fast/multicol/crash-when-spanner-candidate-is-out-of-flow-expected.txt: Added.
+        * fast/multicol/crash-when-spanner-candidate-is-out-of-flow.html: Added.
+
+2016-10-19  Zalan Bujtas  <zalan@apple.com>
+
+        Use anonymous table row for new child at RenderTableRow::addChild() if available.
+        https://bugs.webkit.org/show_bug.cgi?id=163651
+        <rdar://problem/28705022>
+
+        Reviewed by David Hyatt.
+
+        * fast/table/crash-when-table-has-continuation-and-content-inserted-expected.txt: Added.
+        * fast/table/crash-when-table-has-continuation-and-content-inserted.html: Added.
+
+2016-10-20  Dean Jackson  <dino@apple.com>
+
+        SVG should not paint selection within a mask
+        https://bugs.webkit.org/show_bug.cgi?id=163772
+        <rdar://problem/28705129>
+
+        Reviewed by Simon Fraser.
+
+        * svg/masking/mask-should-not-paint-selection-expected.html: Added.
+        * svg/masking/mask-should-not-paint-selection.html: Added.
+
+2016-10-21  Zalan Bujtas  <zalan@apple.com>
+
+        Do not mutate the render tree while collecting selection repaint rects.
+        https://bugs.webkit.org/show_bug.cgi?id=163800
+        <rdar://problem/28806886>
+
+        Reviewed by David Hyatt.
+
+        * fast/lists/crash-when-list-marker-is-moved-during-selection-expected.txt: Added.
+        * fast/lists/crash-when-list-marker-is-moved-during-selection.html: Added.
+
+2016-10-21  Jer Noble  <jer.noble@apple.com>
+
+        CRASH in SourceBuffer::sourceBufferPrivateDidReceiveSample + 2169
+        https://bugs.webkit.org/show_bug.cgi?id=163735
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-sample-wrong-track-id-expected.txt: Added.
+        * media/media-source/media-source-sample-wrong-track-id.html: Added.
+
+2016-10-20  Zalan Bujtas  <zalan@apple.com>
+
+        Stop searching for first-letter containers at multi-column boundary.
+        https://bugs.webkit.org/show_bug.cgi?id=163739
+        <rdar://problem/28810750>
+
+        Reviewed by David Hyatt.
+
+        * fast/css-generated-content/first-letter-move-to-multicolumn-crash-expected.txt: Added.
+        * fast/css-generated-content/first-letter-move-to-multicolumn-crash.html: Added.
+
+2016-10-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Bad cast when CSS position programmatically changed from -webkit-sticky to fixed
+        https://bugs.webkit.org/show_bug.cgi?id=160826
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/scrolling/sticky-to-fixed-expected.txt: Added.
+        * fast/scrolling/sticky-to-fixed.html: Added.
+
+2016-10-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r165103): labels list doesn't get invalidated when other lists are invalidated at document level
+        https://bugs.webkit.org/show_bug.cgi?id=163145
+
+        Reviewed by Darin Adler.
+
+        Added a regression test.
+
+        * fast/dom/NodeList/form-labels-length-expected.txt: Added.
+        * fast/dom/NodeList/form-labels-length.html: Added.
+
+2016-09-22  Brady Eidson  <beidson@apple.com>
+
+        IDBIndex.openCursor() matches indices on multiple object stores.
+        <rdar://problem/28434463> and https://bugs.webkit.org/show_bug.cgi?id=158833
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/multiple-objectstore-index-cursor-collision-expected.txt: Added.
+        * storage/indexeddb/modern/multiple-objectstore-index-cursor-collision-private-expected.txt: Added.
+        * storage/indexeddb/modern/multiple-objectstore-index-cursor-collision-private.html: Added.
+        * storage/indexeddb/modern/multiple-objectstore-index-cursor-collision.html: Added.
+        * storage/indexeddb/modern/resources/multiple-objectstore-index-cursor-collision.js: Added.
+
+2016-09-12  Zalan Bujtas  <zalan@apple.com>
+
+        Input type object and the associated render can go out of sync.
+        https://bugs.webkit.org/show_bug.cgi?id=161871
+        <rdar://problem/28178094>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/forms/assert-on-input-type-change-expected.txt: Added.
+        * fast/forms/assert-on-input-type-change.html: Added.
+
+2016-09-10  Chris Dumez  <cdumez@apple.com>
+
+        It is possible for Document::m_frame pointer to become stale
+        https://bugs.webkit.org/show_bug.cgi?id=161812
+        <rdar://problem/27745023>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test that crashes on both Mac and iOS due to using a stale
+        Document::m_frame pointer.
+
+        * fast/history/pagehide-remove-iframe-crash-expected.txt: Added.
+        * fast/history/pagehide-remove-iframe-crash.html: Added.
+
+2016-08-08  John Wilander  <wilander@apple.com>
+
+        Popups opened from a sandboxed iframe should themselves be sandboxed
+        https://bugs.webkit.org/show_bug.cgi?id=134850
+        <rdar://problem/27375388>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/resources/anchor-tag-with-blank-target.html: Added.
+        * http/tests/security/resources/page-executing-javascript.html: Added.
+        * http/tests/security/window-opened-from-sandboxed-iframe-should-inherit-sandbox-expected.txt: Added.
+        * http/tests/security/window-opened-from-sandboxed-iframe-should-inherit-sandbox.html: Added.
+
+2016-07-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Don't associate form-associated elements with forms in other trees.
+        https://bugs.webkit.org/show_bug.cgi?id=119451
+        <rdar://problem/27382946>
+
+        Change is based on the Blink change (patch by <adamk@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/0b33128be67e7845d495d5219614c02ccfe7a414>
+
+        Reviewed by Chris Dumez.
+
+        * fast/forms/image-disconnected-during-parse-expected.txt: Added.
+        * fast/forms/image-disconnected-during-parse.html: Added.
+        * fast/forms/input-disconnected-during-parse-expected.txt: Added.
+        * fast/forms/input-disconnected-during-parse.html: Added.
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Element.getAttributeNames()
+        https://bugs.webkit.org/show_bug.cgi?id=160327
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage. I have verified that this test is passing in
+        Firefox 47.
+
+        * fast/dom/Element/getAttributeNames-expected.txt: Added.
+        * fast/dom/Element/getAttributeNames.html: Added.
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Test insecure-xhr-sync-in-main-frame.html fails with CORS error if run before r203542
+        https://bugs.webkit.org/show_bug.cgi?id=165407
+
+        Reviewed by Alexey Proskuryakov.
+
+        Make the test insecure-xhr-sync-in-main-frame.html demonstrate a mixed content failure
+        instead of a CORS failure when run before r203542.
+
+        In r203542 the test http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame.html
+        was added to ensure that we block loading insecure data via XHR from an HTTPS page. When
+        this test is run prior to r203542 it fails due to a CORS errors as opposed to showing
+        the intended JavaScript alert failure message. The CORS error is due to loading a
+        cross-origin resource that did not return an appropriate Access-Control-Allow-Origin header
+        to allow reading of the response.
+
+        * http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame-expected.txt: Update expected result
+        based on the change below.
+        * http/tests/security/mixedContent/resources/insecure-xhr-sync-in-main-frame-window.html:
+        Load a resource that returns "Access-Control-Allow-Origin: *" so that origin (http, 127.0.0.1, 8000)
+        can read the response returned from origin (https, 127.0.0.1, 8443).
+
+2016-07-21  John Wilander  <wilander@apple.com>
+
+        Block mixed content synchronous XHR
+        https://bugs.webkit.org/show_bug.cgi?id=105462
+        <rdar://problem/13666424>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame-expected.txt: Added.
+        * http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame.html: Added.
+        * http/tests/security/mixedContent/resources/insecure-xhr-sync-in-main-frame-window.html: Added.
+
+2016-08-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Work around broken <Files> directive in some Apache versions
+        https://bugs.webkit.org/show_bug.cgi?id=160610
+
+        Reviewed by Daniel Bates.
+
+        The problem is tracked as rdar://problem/27725655
+
+        * http/tests/misc/.htaccess:
+
+2016-12-22  Zalan Bujtas  <zalan@apple.com>
+
+        Do not destroy the RenderNamedFlowFragment as leftover anonymous block.
+        https://bugs.webkit.org/show_bug.cgi?id=166436
+        rdar://problem/29772233
+
+        Reviewed by Simon Fraser.
+
+        * fast/regions/flow-fragment-as-anonymous-block-crash-expected.txt: Added.
+        * fast/regions/flow-fragment-as-anonymous-block-crash.html: Added.
+
+2016-12-22  Daniel Bates  <dabates@apple.com>
+
+        Bypass pop-up blocker from cross-origin or sandboxed frame
+        https://bugs.webkit.org/show_bug.cgi?id=166290
+        <rdar://problem/29742039>
+
+        Reviewed by Darin Adler.
+
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame-expected.txt: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame.html: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame2-expected.txt: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame2.html: Added.
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame-expected.txt: Added.
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame.html: Added.
+
+2016-07-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Bubbles appear split for a brief moment in Messages
+        https://bugs.webkit.org/show_bug.cgi?id=159915
+        rdar://problem/27182267
+
+        Reviewed by David Hyatt.
+
+        * fast/repaint/scrolled-view-full-repaint-expected.txt: Added.
+        * fast/repaint/scrolled-view-full-repaint.html: Added.
+        * platform/ios-simulator-wk1/fast/repaint/scrolled-view-full-repaint-expected.txt: Added.
+        * platform/mac-wk1/fast/repaint/scrolled-view-full-repaint-expected.txt: Added.
+
+2016-03-25  Brady Eidson  <beidson@apple.com>
+
+        Soften push/replaceState frequency restrictions.
+        <rdar://problem/25228439> and https://bugs.webkit.org/show_bug.cgi?id=155901
+
+        Rubber-stamped by Timothy Hatcher.
+
+        * fast/loader/stateobjects/pushstate-frequency-with-user-gesture-expected.txt: Removed.
+        * fast/loader/stateobjects/pushstate-frequency-with-user-gesture.html: Removed.
+        * fast/loader/stateobjects/replacestate-frequency-with-user-gesture-expected.txt: Removed.
+        * fast/loader/stateobjects/replacestate-frequency-with-user-gesture.html: Removed.
+
 2017-02-02  Alexey Proskuryakov  <ap@apple.com>
 
         Multiple HTTP tests fail with Apache 2.4.25

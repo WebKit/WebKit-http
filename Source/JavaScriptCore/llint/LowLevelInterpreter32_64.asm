@@ -1514,6 +1514,12 @@ _llint_op_put_by_id:
 
 .opPutByIdTransitionDirect:
     storei t1, JSCell::m_structureID[t0]
+    loadi 12[PC], t1
+    loadConstantOrVariable(t1, t2, t3)
+    loadi 20[PC], t1
+    storePropertyAtVariableOffset(t1, t0, t2, t3)
+    writeBarrierOnOperand(1)
+    dispatch(9)
 
 .opPutByIdNotTransition:
     # The only thing live right now is t0, which holds the base.
