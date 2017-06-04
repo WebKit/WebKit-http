@@ -69,6 +69,7 @@ exclude Source/WebKit2/Resources
 file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
 
 # Windows-specific code
+file Source/WTF/wtf/text/win
 file Source/WTF/wtf/threads/win/BinarySemaphoreWin.cpp
 file Source/WTF/wtf/win
 file Source/WebCore/platform/graphics/win/LocalWindowsContext.h
