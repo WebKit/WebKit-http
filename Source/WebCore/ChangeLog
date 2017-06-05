@@ -1,5 +1,12 @@
 2017-06-05  Konstantin Tokarev  <annulen@yandex.ru>
 
+        Unreviewed, fix missing semicolon in r217795
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::calculateNaturalSize):
+
+2017-06-05  Konstantin Tokarev  <annulen@yandex.ru>
+
         Fix MediaPlayerPrivateMediaFoundation::naturalSize
         https://bugs.webkit.org/show_bug.cgi?id=172908
 
