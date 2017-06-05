@@ -30,6 +30,7 @@
 #include <chrono>
 #include <cstring>
 #include <memory>
+#include <functional>
 #include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/Compiler.h>
