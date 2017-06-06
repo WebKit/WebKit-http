@@ -32,11 +32,11 @@
 
 #include "CDM.h"
 #include "MediaPlayerPrivateGStreamerBase.h"
-#include "UUID.h"
 #include "WebKitMediaKeyError.h"
 
 #include <gst/gst.h>
 #include <wtf/text/CString.h>
+#include <wtf/UUID.h>
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category

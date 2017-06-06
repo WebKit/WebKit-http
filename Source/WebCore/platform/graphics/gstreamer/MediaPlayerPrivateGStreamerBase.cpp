@@ -176,6 +176,8 @@ void registerWebKitGStreamerElements()
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 static AtomicString keySystemIdToUuid(const AtomicString&);
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 static AtomicString keySystemUuidToId(const AtomicString&);
 #endif
 
