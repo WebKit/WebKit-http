@@ -1655,6 +1655,8 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInst
     if (prSession.ready())
         gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
             gst_structure_new("playready-session", "session", G_TYPE_POINTER, &prSession, nullptr)));
+#else
+    UNUSED_PARAM(baseInstance);
 #endif
 }
 #endif

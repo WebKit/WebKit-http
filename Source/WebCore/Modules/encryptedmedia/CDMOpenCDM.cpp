@@ -348,7 +348,7 @@ int CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string& re
     return length;
 }
 
-void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const String&, LoadSessionCallback callback)
+void CDMInstanceOpenCDM::loadSession(LicenseType, const String&, const String&, LoadSessionCallback callback)
 {
     std::string responseMessage;
     SessionLoadFailure sessionFailure = SessionLoadFailure::None;
@@ -382,7 +382,7 @@ void CDMInstanceOpenCDM::closeSession(const String&, CloseSessionCallback callba
     callback();
 }
 
-void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback callback)
+void CDMInstanceOpenCDM::removeSessionData(const String&, LicenseType, RemoveSessionDataCallback callback)
 {
     std::string responseMessage;
     KeyStatusVector keys;
