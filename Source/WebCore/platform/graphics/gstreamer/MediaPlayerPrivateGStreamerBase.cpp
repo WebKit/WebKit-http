@@ -1826,6 +1826,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         m_player->keyMessage(keySystem, prSession->sessionId(), result->data(), result->length(), url);
         return MediaPlayer::NoError;
     }
+#else
+    UNUSED_PARAM(customData);
 #endif
 #if USE(OCDM)
     if (CDMPrivateOpenCDM::supportsKeySystem(keySystem)) {
