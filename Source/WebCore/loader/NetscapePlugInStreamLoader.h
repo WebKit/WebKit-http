@@ -31,6 +31,7 @@
 
 #include "ResourceLoader.h"
 #include <wtf/Forward.h>
+#include <functional>
 
 namespace WebCore {
 

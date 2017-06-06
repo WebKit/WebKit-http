@@ -35,6 +35,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include <wtf/Forward.h>
+#include <functional>
 
 namespace WTF {
 class SchedulePair;
