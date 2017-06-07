@@ -498,7 +498,7 @@ void MediaTime::setTimeScale(int32_t timeScale)
     m_timeScale = timeScale;
 }
 
-void MediaTime::dump(PrintStream &out) const
+void MediaTime::dump(PrintStream& out) const
 {
     out.print("{");
     if (!hasDoubleValue())
