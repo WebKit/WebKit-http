@@ -59,7 +59,7 @@ typedef (
     readonly attribute TimeRanges buffered;
     void load();
 
-#if (defined(ENABLE_LEGACY_ENCRYPTED_MEDIA_V1) && ENABLE_LEGACY_ENCRYPTED_MEDIA_V1) || (defined(ENABLE_LEGACY_ENCRYPTED_MEDIA) && ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#if (defined(ENABLE_LEGACY_ENCRYPTED_MEDIA) && ENABLE_LEGACY_ENCRYPTED_MEDIA)
     DOMString canPlayType(DOMString type, optional DOMString? keySystem = null);
 #else
     DOMString canPlayType(DOMString type);
@@ -105,10 +105,6 @@ typedef (
     // The number of bytes consumed by the media decoder.
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitAudioDecodedByteCount;
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitVideoDecodedByteCount;
-
-    [Conditional=LEGACY_ENCRYPTED_MEDIA_V1, MayThrowException] void webkitGenerateKeyRequest(DOMString? keySystem, optional Uint8Array? initData = null, optional DOMString customData);
-    [Conditional=LEGACY_ENCRYPTED_MEDIA_V1, MayThrowException] void webkitAddKey(DOMString? keySystem, Uint8Array key, optional Uint8Array? initData = null, optional DOMString sessionId);
-    [Conditional=LEGACY_ENCRYPTED_MEDIA_V1, MayThrowException] void webkitCancelKeyRequest(DOMString? keySystem, optional DOMString sessionId);
 
     [Conditional=LEGACY_ENCRYPTED_MEDIA] readonly attribute WebKitMediaKeys webkitKeys;
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void webkitSetMediaKeys(WebKitMediaKeys? mediaKeys);

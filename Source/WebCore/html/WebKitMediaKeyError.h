@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include <runtime/Uint8Array.h>
 #include <wtf/RefCounted.h>

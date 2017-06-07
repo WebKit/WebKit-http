@@ -27,27 +27,19 @@
 
 #pragma once
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "LegacyCDMPrivate.h"
-#else
-#include "LegacyCDMSession.h"
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include <open_cdm.h>
 
 namespace WebCore {
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 class CDM;
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 class MediaPlayerPrivateGStreamerBase;
 
 class CDMPrivateOpenCDM : public RefCounted<CDMPrivateOpenCDM> {
 public:
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     explicit CDMPrivateOpenCDM(CDM*);
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
     explicit CDMPrivateOpenCDM() = default;
 
     static bool supportsKeySystem(const String&);
@@ -60,12 +52,10 @@ private:
     static String s_openCdmKeySystem;
     static std::unique_ptr<media::OpenCdm> s_openCdm;
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 protected:
     CDM* m_cdm;
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 };
 
 } // namespace WebCore
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)

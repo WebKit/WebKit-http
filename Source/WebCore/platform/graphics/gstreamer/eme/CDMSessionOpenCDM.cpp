@@ -28,7 +28,7 @@
 #include "config.h"
 #include "CDMSessionOpenCDM.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDM.h"
 #include "MediaPlayerPrivateGStreamerBase.h"
@@ -104,4 +104,4 @@ bool CDMSessionOpenCDM::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage,
 
 } // namespace WebCore
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)

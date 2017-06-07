@@ -1051,7 +1051,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     GST_TRACE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
     switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_ERROR:
-#if USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+#if USE(OCDM) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
         resetOpenCDMSession();
 #endif
 #if USE(OCDM) && ENABLE(ENCRYPTED_MEDIA)
@@ -1089,7 +1089,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             loadingFailed(error);
         break;
     case GST_MESSAGE_EOS:
-#if USE(OCDM) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
+#if USE(OCDM) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
         resetOpenCDMSession();
 #endif
 #if USE(OCDM) && ENABLE(ENCRYPTED_MEDIA)
@@ -1202,12 +1202,12 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 m_downloadFinished = true;
                 m_buffering = false;
                 updateStates();
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
             } else if (gst_structure_has_name(structure, "drm-key-needed")) {
                 GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
                 GRefPtr<GstEvent> event;
                 gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-                handleProtectionEvent(event.get(), GST_ELEMENT(message->src));
+                handleProtectionEvent(event.get());
 #endif
             }
         }

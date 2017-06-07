@@ -227,12 +227,6 @@ public:
     virtual AudioSourceProvider* audioSourceProvider() { return 0; }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
-    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
-    virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) { return MediaPlayer::KeySystemNotSupported; }
-#endif
-
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     virtual std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) { return nullptr; }
     virtual void setCDMSession(CDMSession*) { }

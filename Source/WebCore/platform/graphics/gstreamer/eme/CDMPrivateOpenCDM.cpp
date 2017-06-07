@@ -28,12 +28,10 @@
 #include "config.h"
 #include "CDMPrivateOpenCDM.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM) 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDM.h"
 #include "LegacyCDMSession.h"
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include "CDMSessionOpenCDM.h"
 
@@ -47,12 +45,10 @@ namespace WebCore {
 String CDMPrivateOpenCDM::s_openCdmKeySystem;
 std::unique_ptr<media::OpenCdm> CDMPrivateOpenCDM::s_openCdm;
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 CDMPrivateOpenCDM::CDMPrivateOpenCDM(CDM* cdm)
     : m_cdm(cdm)
 {
 }
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 bool CDMPrivateOpenCDM::supportsKeySystem(const String& keySystem)
 {
@@ -84,4 +80,4 @@ media::OpenCdm* CDMPrivateOpenCDM::getOpenCdmInstance()
 
 } // namespace WebCore
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)

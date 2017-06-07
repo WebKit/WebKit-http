@@ -163,12 +163,6 @@ public:
     void setPoster(const String&) override { }
 
     bool hasSingleSecurityOrigin() const override { return true; }
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override { return MediaPlayer::InvalidPlayerState; }
-    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override { return MediaPlayer::InvalidPlayerState; }
-    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override { return MediaPlayer::InvalidPlayerState; }
-#endif
 };
 
 static MediaPlayerClient& nullMediaPlayerClient()
@@ -461,9 +455,6 @@ const MediaPlayerFactory* MediaPlayer::nextBestMediaEngine(const MediaPlayerFact
     parameters.type = m_contentMIMEType;
     parameters.codecs = m_contentTypeCodecs;
     parameters.url = m_url;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    parameters.keySystem = m_keySystem;
-#endif
 #if ENABLE(MEDIA_SOURCE)
     parameters.isMediaSource = !!m_mediaSource;
 #endif
@@ -582,23 +573,6 @@ void MediaPlayer::setShouldBufferData(bool shouldBuffer)
 {
     m_private->setShouldBufferData(shouldBuffer);
 }
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-MediaPlayer::MediaKeyException MediaPlayer::generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength, const String& customData)
-{
-    return m_private->generateKeyRequest(keySystem.convertToASCIILowercase(), initData, initDataLength, customData);
-}
-
-MediaPlayer::MediaKeyException MediaPlayer::addKey(const String& keySystem, const unsigned char* key, unsigned keyLength, const unsigned char* initData, unsigned initDataLength, const String& sessionId)
-{
-    return m_private->addKey(keySystem.convertToASCIILowercase(), key, keyLength, initData, initDataLength, sessionId);
-}
-
-MediaPlayer::MediaKeyException MediaPlayer::cancelKeyRequest(const String& keySystem, const String& sessionId)
-{
-    return m_private->cancelKeyRequest(keySystem.convertToASCIILowercase(), sessionId);
-}
-#endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 std::unique_ptr<CDMSession> MediaPlayer::createSession(const String& keySystem, CDMSessionClient* client)
@@ -1255,28 +1229,6 @@ AudioSourceProvider* MediaPlayer::audioSourceProvider()
     return m_private->audioSourceProvider();
 }
 #endif // WEB_AUDIO
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-void MediaPlayer::keyAdded(const String& keySystem, const String& sessionId)
-{
-    client().mediaPlayerKeyAdded(this, keySystem, sessionId);
-}
-
-void MediaPlayer::keyError(const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode errorCode, unsigned short systemCode)
-{
-    client().mediaPlayerKeyError(this, keySystem, sessionId, errorCode, systemCode);
-}
-
-void MediaPlayer::keyMessage(const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL)
-{
-    client().mediaPlayerKeyMessage(this, keySystem, sessionId, message, messageLength, defaultURL);
-}
-
-bool MediaPlayer::keyNeeded(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
-{
-    return client().mediaPlayerKeyNeeded(this, keySystem, sessionId, initData, initDataLength);
-}
-#endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 RefPtr<ArrayBuffer> MediaPlayer::cachedKeyForKeyId(const String& keyId) const

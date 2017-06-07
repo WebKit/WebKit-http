@@ -93,7 +93,7 @@ static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* messag
     appendPipeline->handleApplicationMessage(message);
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
 {
     appendPipeline->handleElementMessage(message);
@@ -126,7 +126,7 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
 
     g_signal_connect(m_bus.get(), "sync-message::need-context", G_CALLBACK(appendPipelineNeedContextMessageCallback), this);
     g_signal_connect(m_bus.get(), "message::application", G_CALLBACK(appendPipelineApplicationMessageCallback), this);
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     g_signal_connect(m_bus.get(), "message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
 #endif
 
@@ -229,7 +229,7 @@ AppendPipeline::~AppendPipeline()
     m_demuxerSrcPadCaps = nullptr;
 };
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 void AppendPipeline::dispatchPendingDecryptionKey()
 {
     ASSERT(m_decryptor);
@@ -342,7 +342,7 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
     ASSERT_NOT_REACHED();
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void AppendPipeline::handleElementMessage(GstMessage* message)
 {
     ASSERT(WTF::isMainThread());
@@ -356,7 +356,7 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
         gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-        m_playerPrivate->handleProtectionEvent(event.get(), getPipeline(GST_ELEMENT(message->src)));
+        m_playerPrivate->handleProtectionEvent(event.get());
     }
 }
 #endif
@@ -588,7 +588,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
     GstStructure* structure = gst_caps_get_structure(m_demuxerSrcPadCaps.get(), 0);
     bool sizeConfigured = false;
 
-#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA))
+#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA))
     if (gst_structure_has_name(structure, "application/x-cenc")) {
         // Any previous decryptor should have been removed from the pipeline by disconnectFromAppSinkFromStreamingThread()
         ASSERT(!m_decryptor);
@@ -999,7 +999,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         if (!parent)
             gst_bin_add(GST_BIN(m_pipeline.get()), m_appsink.get());
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
         if (m_decryptor) {
             gst_object_ref(m_decryptor.get());
             gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
@@ -1021,7 +1021,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 #endif
             gst_pad_link(demuxerSrcPad, appsinkSinkPad.get());
             gst_element_sync_state_with_parent(m_appsink.get());
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
         }
 #endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
@@ -1111,7 +1111,7 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad* dem
 
     GST_DEBUG("Disconnecting appsink");
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (m_decryptor) {
         gst_element_unlink(m_decryptor.get(), m_appsink.get());
         gst_element_unlink(m_demux.get(), m_decryptor.get());

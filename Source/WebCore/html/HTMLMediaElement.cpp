@@ -64,7 +64,6 @@
 #include "MediaDocument.h"
 #include "MediaError.h"
 #include "MediaFragmentURIParser.h"
-#include "MediaKeyEvent.h"
 #include "MediaList.h"
 #include "MediaPlayer.h"
 #include "MediaQueryEvaluator.h"
@@ -271,23 +270,6 @@ static void removeElementFromDocumentMap(HTMLMediaElement& element, Document& do
     if (!set.isEmpty())
         map.add(&document, set);
 }
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-static ExceptionCode exceptionCodeForMediaKeyException(MediaPlayer::MediaKeyException exception)
-{
-    switch (exception) {
-    case MediaPlayer::NoError:
-        return 0;
-    case MediaPlayer::InvalidPlayerState:
-        return INVALID_STATE_ERR;
-    case MediaPlayer::KeySystemNotSupported:
-        return NOT_SUPPORTED_ERR;
-    }
-
-    ASSERT_NOT_REACHED();
-    return INVALID_STATE_ERR;
-}
-#endif
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -1152,11 +1134,7 @@ String HTMLMediaElement::canPlayType(const String& mimeType, const String& keySy
     parameters.type = contentType.type().convertToASCIILowercase();
     parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
     parameters.url = url;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    parameters.keySystem = keySystem;
-#else
     UNUSED_PARAM(keySystem);
-#endif
     MediaPlayer::SupportsType support = MediaPlayer::supportsType(parameters, this);
     String canPlay;
 
@@ -2514,65 +2492,6 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
 #endif
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-void HTMLMediaElement::mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId)
-{
-    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeyaddedEvent, keySystem, sessionId, nullptr, nullptr, emptyString(), nullptr, 0);
-    event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(WTFMove(event));
-}
-
-void HTMLMediaElement::mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode errorCode, unsigned short systemCode)
-{
-    WebKitMediaKeyError::Code mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
-    switch (errorCode) {
-    case MediaPlayerClient::UnknownError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
-        break;
-    case MediaPlayerClient::ClientError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
-        break;
-    case MediaPlayerClient::ServiceError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_SERVICE;
-        break;
-    case MediaPlayerClient::OutputError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_OUTPUT;
-        break;
-    case MediaPlayerClient::HardwareChangeError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_HARDWARECHANGE;
-        break;
-    case MediaPlayerClient::DomainError:
-        mediaKeyErrorCode = WebKitMediaKeyError::MEDIA_KEYERR_DOMAIN;
-        break;
-    }
-
-    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeyerrorEvent, keySystem, sessionId, nullptr, nullptr, emptyString(), WebKitMediaKeyError::create(mediaKeyErrorCode), systemCode);
-    event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(WTFMove(event));
-}
-
-void HTMLMediaElement::mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL)
-{
-    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeymessageEvent, keySystem, sessionId, nullptr, Uint8Array::create(message, messageLength), defaultURL, nullptr, 0);
-    event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(WTFMove(event));
-}
-
-bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
-{
-    if (!hasEventListeners(eventNames().webkitneedkeyEvent)) {
-        m_error = MediaError::create(MediaError::MEDIA_ERR_ENCRYPTED);
-        scheduleEvent(eventNames().errorEvent);
-        return false;
-    }
-
-    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitneedkeyEvent, keySystem, sessionId, Uint8Array::create(initData, initDataLength), nullptr, emptyString(), nullptr, 0);
-    event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(WTFMove(event));
-    return true;
-}
-#endif
-
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 RefPtr<ArrayBuffer> HTMLMediaElement::mediaPlayerCachedKeyForKeyId(const String& keyId) const
 {
@@ -3560,88 +3479,6 @@ void HTMLMediaElement::detachMediaSource()
 
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-ExceptionOr<void> HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, const String& customData)
-{
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    static bool firstTime = true;
-    if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitGenerateKeyRequest()' is deprecated.  Use 'MediaKeys.createSession()' instead."));
-        firstTime = false;
-    }
-#endif
-
-    if (keySystem.isEmpty())
-        return Exception { SYNTAX_ERR };
-
-    if (!m_player)
-        return Exception { INVALID_STATE_ERR };
-
-    const unsigned char* initDataPointer = nullptr;
-    unsigned initDataLength = 0;
-    if (initData) {
-        initDataPointer = initData->data();
-        initDataLength = initData->length();
-    }
-
-    MediaPlayer::MediaKeyException result = m_player->generateKeyRequest(keySystem, initDataPointer, initDataLength, customData);
-    fprintf(stderr, "HTMLMediaElement::webkitGenerateKeyRequest() result %d\n", result);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
-}
-
-ExceptionOr<void> HTMLMediaElement::webkitAddKey(const String& keySystem, Uint8Array& key, const RefPtr<Uint8Array>& initData, const String& sessionId)
-{
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    static bool firstTime = true;
-    if (firstTime && scriptExecutionContext()) {
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("'HTMLMediaElement.webkitAddKey()' is deprecated.  Use 'MediaKeySession.update()' instead."));
-        firstTime = false;
-    }
-#endif
-
-    if (keySystem.isEmpty())
-        return Exception { SYNTAX_ERR };
-
-    if (!key.length())
-        return Exception { TYPE_MISMATCH_ERR };
-
-    if (!m_player)
-        return Exception { INVALID_STATE_ERR };
-
-    const unsigned char* initDataPointer = nullptr;
-    unsigned initDataLength = 0;
-    if (initData) {
-        initDataPointer = initData->data();
-        initDataLength = initData->length();
-    }
-
-    MediaPlayer::MediaKeyException result = m_player->addKey(keySystem, key.data(), key.length(), initDataPointer, initDataLength, sessionId);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
-}
-
-ExceptionOr<void> HTMLMediaElement::webkitCancelKeyRequest(const String& keySystem, const String& sessionId)
-{
-    if (keySystem.isEmpty())
-        return Exception { SYNTAX_ERR };
-
-    if (!m_player)
-        return Exception { INVALID_STATE_ERR };
-
-    MediaPlayer::MediaKeyException result = m_player->cancelKeyRequest(keySystem, sessionId);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
-}
-
-#endif
-
 bool HTMLMediaElement::loop() const
 {
     return hasAttributeWithoutSynchronization(loopAttr);
@@ -4623,9 +4460,6 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
             parameters.type = contentType.type().convertToASCIILowercase();
             parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
             parameters.url = mediaURL;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-            parameters.keySystem = system;
-#endif
 #if ENABLE(MEDIA_SOURCE)
             parameters.isMediaSource = mediaURL.protocolIs(mediaSourceBlobProtocol);
 #endif

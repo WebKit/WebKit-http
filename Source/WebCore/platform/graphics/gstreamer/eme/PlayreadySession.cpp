@@ -26,7 +26,7 @@
 #include "MediaPlayerPrivateGStreamer.h"
 #include <wtf/UUID.h>
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "WebKitMediaKeyError.h"
 #endif
 
@@ -223,7 +223,7 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
 ErrorExit:
     if (DRM_FAILED(dr)) {
         GST_DEBUG("DRM key generation failed");
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
 #elif ENABLE(ENCRYPTED_MEDIA)
         systemCode = dr;
@@ -275,7 +275,7 @@ bool PlayreadySession::playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>&,
 ErrorExit:
     if (DRM_FAILED(dr)) {
         GST_ERROR("failed processing license response");
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
 #endif
         m_eKeyState = KEY_ERROR;

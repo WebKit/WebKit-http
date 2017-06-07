@@ -22,7 +22,7 @@
 
 #pragma once
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>

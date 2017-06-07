@@ -22,7 +22,7 @@
 #ifndef WebKitPlayReadyDecryptorGStreamer_h
 #define WebKitPlayReadyDecryptorGStreamer_h
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(PLAYREADY)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
