@@ -555,7 +555,7 @@ void MediaTime::setTimeScale(uint32_t timeScale, RoundingFlags flags)
     }
 }
 
-void MediaTime::dump(PrintStream &out) const
+void MediaTime::dump(PrintStream& out) const
 {
     out.print("{");
     if (!hasDoubleValue())
