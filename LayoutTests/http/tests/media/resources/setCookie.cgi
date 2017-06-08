@@ -9,4 +9,5 @@ print "Cache-Control: no-store\n";
 print 'Cache-Control: no-cache="set-cookie"' . "\n";
 
 # We only map the SET_COOKIE request header to "Set-Cookie"
+print "Set-Cookie: TEST_HTTP_ONLY=${name}; HttpOnly\n";
 print "Set-Cookie: TEST=${name}\n\n";

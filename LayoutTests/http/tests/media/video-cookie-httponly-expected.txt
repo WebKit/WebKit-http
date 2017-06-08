@@ -1,0 +1,2 @@
+EVENT(canplay)
+Tests that the media player will send the relevant httponly cookies when requesting the media file.
