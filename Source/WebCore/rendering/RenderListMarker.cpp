@@ -1389,9 +1389,12 @@ void RenderListMarker::layout()
         m_lineOffsetForListItem = m_listItem.logicalRightOffsetForLine(blockOffset, DoNotIndentText, LayoutUnit());
  
     if (isImage()) {
-        updateMarginsAndContent();
-        setWidth(m_image->imageSize(this, style().effectiveZoom()).width());
-        setHeight(m_image->imageSize(this, style().effectiveZoom()).height());
+        int bulletWidth = style()->fontMetrics().ascent() / 2;
+        IntSize defaultBulletSize(bulletWidth, bulletWidth);
+        IntSize imageSize = calculateImageIntrinsicDimensions(m_image.get(), defaultBulletSize, DoNotScaleByEffectiveZoom);
+        setWidth(m_image->setContainerSizeForLayoutObject(this, imageSize, style()->effectiveZoom()).width());
+        setHeight(m_image->setContainerSizeForLayoutObject(this, imageSize, style()->effectiveZoom()).height());
+        return;
     } else {
         setLogicalWidth(minPreferredLogicalWidth());
         setLogicalHeight(style().fontMetrics().height());
