@@ -116,7 +116,7 @@ void WebUserContentControllerProxy::addUserScript(API::UserScript& userScript)
 void WebUserContentControllerProxy::removeUserScript(const API::UserScript& userScript)
 {
     for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::RemoveUserScript({ userScript.userScript().url().string() }), m_identifier);
+        process->connection()->send(Messages::WebUserContentController::RemoveUserScript(userScript.userScript().url().string()), m_identifier);
 
     m_userScripts->elements().removeAll(&userScript);
 }
@@ -140,7 +140,7 @@ void WebUserContentControllerProxy::addUserStyleSheet(API::UserStyleSheet& userS
 void WebUserContentControllerProxy::removeUserStyleSheet(const API::UserStyleSheet& userStyleSheet)
 {
     for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::RemoveUserStyleSheet({ userStyleSheet.userStyleSheet().url().string() }), m_identifier);
+        process->connection()->send(Messages::WebUserContentController::RemoveUserStyleSheet(userStyleSheet.userStyleSheet().url().string()), m_identifier);
 
     m_userStyleSheets->elements().removeAll(&userStyleSheet);
 }
