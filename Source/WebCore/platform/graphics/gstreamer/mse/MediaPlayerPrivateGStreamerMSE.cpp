@@ -815,30 +815,6 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
     return extendedSupportsType(parameters, result);
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
-{
-    for (auto it : m_appendPipelinesMap)
-        it.value->dispatchDecryptionKey(buffer);
-}
-
-#if USE(PLAYREADY)
-void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* session)
-{
-    GST_TRACE("emitting session");
-    if (!session->ready())
-        return;
-
-    for (auto it : m_appendPipelinesMap)
-        if (session->hasPipeline(it.value->pipeline())) {
-            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-                gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
-            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
-        }
-}
-#endif
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance&)
 {

@@ -136,7 +136,7 @@ if (ENABLE_WEB_AUDIO)
     )
 endif ()
 
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA)
+if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
@@ -145,7 +145,6 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA)
     )
 
     list(APPEND WebCore_SOURCES
-        platform/graphics/gstreamer/eme/CDMPRSessionGStreamer.cpp
         platform/graphics/gstreamer/eme/WebKitPlayReadyDecryptorGStreamer.cpp
     )
 
@@ -169,8 +168,6 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA)
 
     if (ENABLE_OCDM)
         list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/eme/CDMPrivateOpenCDM.cpp
-            platform/graphics/gstreamer/eme/CDMSessionOpenCDM.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMPlayReadyDecryptorGStreamer.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp

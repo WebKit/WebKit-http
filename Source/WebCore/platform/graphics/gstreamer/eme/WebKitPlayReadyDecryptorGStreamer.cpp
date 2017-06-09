@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(PLAYREADY)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(PLAYREADY)
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 #include "PlayreadySession.h"
 #include <gst/base/gstbytereader.h>

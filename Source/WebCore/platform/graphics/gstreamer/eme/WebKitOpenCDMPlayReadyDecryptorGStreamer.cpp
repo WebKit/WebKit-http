@@ -23,7 +23,7 @@
 #include "config.h"
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 
 static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject*);
 
@@ -76,4 +76,4 @@ static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(OCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)

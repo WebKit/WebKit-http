@@ -130,13 +130,7 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void needKey(RefPtr<Uint8Array>);
-    void setCDMSession(CDMSession*) override;
-    void keyAdded() override;
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*);
     void receivedGenerateKeyRequest(const String&);
@@ -145,11 +139,6 @@ public:
     PlayreadySession* prSession() const;
     virtual void emitPlayReadySession(PlayreadySession*);
 #endif
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    virtual void emitOpenCDMSession();
-    virtual void resetOpenCDMSession();
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
@@ -282,12 +271,8 @@ private:
     Lock m_protectInitDataProcessing;
     bool m_initDataProcessed;
 #endif
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) override;
-    CDMSession* m_cdmSession;
-#endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     String m_lastGenerateKeyRequestKeySystemUuid;

@@ -80,13 +80,6 @@ public:
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void dispatchDecryptionKey(GstBuffer*) override;
-#if USE(PLAYREADY)
-    void emitPlayReadySession(PlayreadySession*) override;
-#endif
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #endif
