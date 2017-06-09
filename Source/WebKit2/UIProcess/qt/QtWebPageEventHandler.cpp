@@ -184,16 +184,21 @@ void QtWebPageEventHandler::handleHoverMoveEvent(QHoverEvent* ev)
 
 void QtWebPageEventHandler::handleDragEnterEvent(QDragEnterEvent* ev)
 {
+#if ENABLE(DRAG_SUPPORT)
     m_webPageProxy->resetCurrentDragInformation();
     QTransform fromItemTransform = m_webPage->transformFromItem();
     // FIXME: Should not use QCursor::pos()
     DragData dragData(ev->mimeData(), fromItemTransform.map(ev->pos()), QCursor::pos(), dropActionToDragOperation(ev->possibleActions()));
     m_webPageProxy->dragEntered(dragData);
     ev->acceptProposedAction();
+#else
+    Q_UNUSED(ev);
+#endif
 }
 
 void QtWebPageEventHandler::handleDragLeaveEvent(QDragLeaveEvent* ev)
 {
+#if ENABLE(DRAG_SUPPORT)
     bool accepted = ev->isAccepted();
 
     // FIXME: Should not use QCursor::pos()
@@ -202,10 +207,14 @@ void QtWebPageEventHandler::handleDragLeaveEvent(QDragLeaveEvent* ev)
     m_webPageProxy->resetCurrentDragInformation();
 
     ev->setAccepted(accepted);
+#else
+    Q_UNUSED(ev);
+#endif
 }
 
 void QtWebPageEventHandler::handleDragMoveEvent(QDragMoveEvent* ev)
 {
+#if ENABLE(DRAG_SUPPORT)
     bool accepted = ev->isAccepted();
 
     QTransform fromItemTransform = m_webPage->transformFromItem();
@@ -217,10 +226,14 @@ void QtWebPageEventHandler::handleDragMoveEvent(QDragMoveEvent* ev)
         ev->accept();
 
     ev->setAccepted(accepted);
+#else
+    Q_UNUSED(ev);
+#endif
 }
 
 void QtWebPageEventHandler::handleDropEvent(QDropEvent* ev)
 {
+#if ENABLE(DRAG_SUPPORT)
     bool accepted = ev->isAccepted();
     QTransform fromItemTransform = m_webPage->transformFromItem();
     // FIXME: Should not use QCursor::pos()
@@ -232,6 +245,9 @@ void QtWebPageEventHandler::handleDropEvent(QDropEvent* ev)
     ev->accept();
 
     ev->setAccepted(accepted);
+#else
+    Q_UNUSED(ev);
+#endif
 }
 
 void QtWebPageEventHandler::activateTapHighlight(const QTouchEvent::TouchPoint& point)
@@ -615,6 +631,7 @@ void QtWebPageEventHandler::didFindZoomableArea(const IntPoint& target, const In
 
 void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
 {
+#if ENABLE(DRAG_SUPPORT)
     QImage dragQImage;
     if (dragImage)
         dragQImage = dragImage->createQImage();
@@ -639,6 +656,10 @@ void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, PassRef
     }
 
     m_webPageProxy->dragEnded(clientPosition, globalPosition, dropActionToDragOperation(actualDropAction));
+#else
+    Q_UNUSED(dragData);
+    Q_UNUSED(dragImage);
+#endif
 }
 
 } // namespace WebKit
