@@ -435,7 +435,9 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
             // FIXME: ClearKey BestKey
             LockHolder lock(m_protectionMutex);
+#if USE(OCDM)
             m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
+#endif
             m_protectionCondition.notifyOne();
         });
 
@@ -1473,6 +1475,8 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
 
     if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
         return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
+#else
+    UNUSED_PARAM(id);
 #endif
 
     return { };
