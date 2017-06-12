@@ -46,6 +46,8 @@ WK_EXPORT WKURLRequestRef WKURLRequestCopySettingHTTPBody(WKURLRequestRef, WKDat
 
 WK_EXPORT void WKURLRequestSetDefaultTimeoutInterval(double);
 
+WK_EXPORT void WKURLRequestSetHTTPHeaderField(WKURLRequestRef, WKStringRef, WKStringRef);
+
 #ifdef __cplusplus
 }
 #endif

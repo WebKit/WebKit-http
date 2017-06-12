@@ -45,6 +45,7 @@ public:
     }
 
     const WebCore::ResourceRequest& resourceRequest() const { return m_request; }
+    void setHTTPHeaderField(const WTF::String&, const WTF::String&);
 
     static double defaultTimeoutInterval(); // May return 0 when using platform default.
     static void setDefaultTimeoutInterval(double);

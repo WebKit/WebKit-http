@@ -70,3 +70,8 @@ void WKURLRequestSetDefaultTimeoutInterval(double timeoutInterval)
 {
     API::URLRequest::setDefaultTimeoutInterval(timeoutInterval);
 }
+
+void WKURLRequestSetHTTPHeaderField(WKURLRequestRef requestRef, WKStringRef key, WKStringRef value)
+{
+	toImpl(requestRef)->setHTTPHeaderField(toImpl(key)->string(), toImpl(value)->string());
+}

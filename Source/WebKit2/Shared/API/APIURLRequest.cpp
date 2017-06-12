@@ -68,4 +68,9 @@ bool URLRequest::decode(IPC::Decoder& decoder, RefPtr<Object>& result)
     return true;
 }
 
+void URLRequest::setHTTPHeaderField(const WTF::String& key, const WTF::String& value)
+{
+    m_request.setHTTPHeaderField(key, value);
+}
+
 } // namespace API
