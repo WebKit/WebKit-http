@@ -50,10 +50,6 @@
 #include <wtf/Condition.h>
 #include <wtf/NeverDestroyed.h>
 
-#if USE(PLAYREADY)
-#include "PlayreadySession.h"
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "SharedBuffer.h"
 #endif

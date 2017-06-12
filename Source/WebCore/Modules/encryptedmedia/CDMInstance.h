@@ -48,7 +48,6 @@ public:
     enum class ImplementationType {
         ClearKey,
         Mock,
-        PlayReady,
         OpenCDM,
     };
 

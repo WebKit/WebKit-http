@@ -55,10 +55,6 @@ class IntSize;
 class IntRect;
 class VideoTextureCopierGStreamer;
 
-#if USE(PLAYREADY)
-class PlayreadySession;
-#endif
-
 void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
@@ -134,11 +130,6 @@ public:
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*);
     void receivedGenerateKeyRequest(const String&);
-
-#if USE(PLAYREADY)
-    PlayreadySession* prSession() const;
-    virtual void emitPlayReadySession(PlayreadySession*);
-#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)

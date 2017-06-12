@@ -27,7 +27,6 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
-#include "CDMInstancePlayReady.h"
 #include "GStreamerUtilities.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
@@ -98,15 +97,9 @@
 #define WL_EGL_PLATFORM
 #include <EGL/egl.h>
 
-#if ENABLE(ENCRYPTED_MEDIA)
-#if USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
-#endif // USE(OCDM)
-#if USE(PLAYREADY)
-#include "PlayreadySession.h"
-#endif
-#include "WebKitPlayReadyDecryptorGStreamer.h"
 #endif
 
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
@@ -134,12 +127,6 @@ void registerWebKitGStreamerElements()
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = gst_element_factory_find("webkitclearkey");
     if (!clearKeyDecryptorFactory)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
-
-#if USE(PLAYREADY)
-    GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
-    if (!playReadyDecryptorFactory)
-        gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT);
-#endif
 
 #if USE(OCDM)
     GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
@@ -1419,23 +1406,6 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(PLAYREADY)
-PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
-{
-    return nullptr;
-}
-
-void MediaPlayerPrivateGStreamerBase::emitPlayReadySession(PlayreadySession* session)
-{
-    if (!session->ready())
-        return;
-
-    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
-    GST_TRACE("emitted PR session on pipeline, event handled %s", eventHandled ? "yes" : "no");
-}
-#endif
-
 #if USE(OCDM)
 void MediaPlayerPrivateGStreamerBase::emitSession(String& sessionId)
 {
@@ -1452,18 +1422,8 @@ void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
 }
 #endif
 
-void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& baseInstance)
+void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance&)
 {
-#if USE(PLAYREADY)
-    auto& instance = reinterpret_cast<const CDMInstancePlayReady&>(baseInstance);
-    auto& prSession = instance.prSession();
-
-    if (prSession.ready())
-        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-            gst_structure_new("playready-session", "session", G_TYPE_POINTER, &prSession, nullptr)));
-#else
-    UNUSED_PARAM(baseInstance);
-#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
@@ -1492,23 +1452,6 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         return;
     }
 
-#if USE(PLAYREADY)
-    PlayreadySession* prSession = nullptr;
-    if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
-        Vector<uint8_t> initDataVector;
-        initDataVector.append(reinterpret_cast<uint8_t*>(mapInfo.data), mapInfo.size);
-        bool prSessionAlreadyExisted = false;
-
-        if (prSessionAlreadyExisted) {
-            if (prSession->keyRequested() || prSession->ready()) {
-                if (prSession->ready())
-                    emitPlayReadySession(prSession);
-                return;
-            }
-        }
-    }
-#endif // USE(PLAYREADY)
-
     GST_DEBUG("scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
     ASSERT_NOT_REACHED();
     gst_buffer_unmap(data, &mapInfo);
@@ -1523,13 +1466,11 @@ void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& k
 
 static AtomicString keySystemIdToUuid(const AtomicString& id)
 {
-#if USE(PLAYREADY) || USE(OCDM)
+#if USE(OCDM)
     if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
-#endif
 
-#if USE(OCDM)
     if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
         return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
 #endif
@@ -1545,13 +1486,6 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 #if ENABLE(ENCRYPTED_MEDIA)
     if (equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         result = true;
-
-#if USE(PLAYREADY)
-    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
-        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
-        result = true;
-    }
-#endif
 #endif
 
     GST_INFO("Checking for KeySystem support with '%s' and type '%s': %s.", keySystem.utf8().data(), mimeType.utf8().data(), result ? "true" : "false");

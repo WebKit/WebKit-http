@@ -144,28 +144,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
         ${LIBGCRYPT_LIBRARIES} -lgpg-error
     )
 
-    list(APPEND WebCore_SOURCES
-        platform/graphics/gstreamer/eme/WebKitPlayReadyDecryptorGStreamer.cpp
-    )
-
-    if (ENABLE_PLAYREADY)
-        list(APPEND WebCore_LIBRARIES
-            ${PLAYREADY_LIBRARIES}
-        )
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
-            ${PLAYREADY_INCLUDE_DIRS}
-        )
-        add_definitions(${PLAYREADY_CFLAGS_OTHER})
-        foreach(p ${PLAYREADY_INCLUDE_DIRS})
-            if (EXISTS "${p}/playready.cmake")
-                include("${p}/playready.cmake")
-            endif()
-        endforeach()
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/eme/PlayreadySession.cpp
-        )
-    endif ()
-
     if (ENABLE_OCDM)
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
