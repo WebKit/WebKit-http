@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(WebKit)
 
+add_definitions(-DMETROLOGICAL=1)
+
 # This should be removed once we require CMake 3.3.
 if (POLICY CMP0058)
     cmake_policy(SET CMP0058 NEW)
