@@ -57,7 +57,7 @@ foreach (testName ${QtWK1ApiTests})
     add_executable(tst_${testName} ${tst_${testName}_SOURCES})
     target_include_directories(tst_${testName} PRIVATE ${testName})
     target_link_libraries(tst_${testName} ${QtWK1ApiTests_LIBRARIES})
-    set_target_properties(tst_${testName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY})
+    set_target_properties(tst_${testName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY} AUTOMOC ON)
 
     add_test(${testName} "${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY}/tst_${testName}")
     set_tests_properties(${testName} PROPERTIES TIMEOUT 60)

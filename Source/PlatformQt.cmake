@@ -1,3 +1,17 @@
+# Automoc
+
+set(TARGETS_WITH_AUTOMOC
+    WebKit
+    WebKitWidgets
+)
+if (ENABLE_WEBKIT2)
+    list(APPEND TARGETS_WITH_AUTOMOC
+        WebKit2
+    )
+endif ()
+set_property(TARGET ${TARGETS_WITH_AUTOMOC} PROPERTY AUTOMOC ON)
+
+
 # Minimal debug
 
 # Builds with debug flags result in a huge amount of symbols with the GNU toolchain,

@@ -127,3 +127,7 @@ endif ()
 if (WIN32)
     add_dependencies(DumpRenderTree DumpRenderTreeLib)
 endif ()
+
+if (${PORT} STREQUAL "Qt")
+    set_target_properties(DumpRenderTree PROPERTIES AUTOMOC ON)
+endif ()

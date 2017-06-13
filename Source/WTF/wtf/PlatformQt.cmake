@@ -4,6 +4,7 @@ list(APPEND WTF_SOURCES
 
     text/qt/StringQt.cpp
 )
+QTWEBKIT_GENERATE_MOC_FILES_CPP(qt/MainThreadQt.cpp qt/RunLoopQt.cpp)
 
 list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Core_INCLUDE_DIRS}
@@ -32,6 +33,7 @@ if (UNIX AND NOT APPLE)
 
         qt/WorkQueueQt.cpp
     )
+    QTWEBKIT_GENERATE_MOC_FILES_CPP(qt/WorkQueueQt.cpp)
 endif ()
 
 if (USE_GLIB)
