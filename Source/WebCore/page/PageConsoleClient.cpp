@@ -141,7 +141,7 @@ void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, con
     if (source == MessageSource::CSS)
         return;
 
-    if (m_page.usesEphemeralSession())
+    if (m_page.usesEphemeralSession() && !m_page.settings().consoleLogWithPrivateBrowsingEnabled())
         return;
 
     m_page.chrome().client().addMessageToConsole(source, level, messageText, lineNumber, columnNumber, url);
@@ -166,7 +166,7 @@ void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel l
 
     InspectorInstrumentation::addMessageToConsole(m_page, WTFMove(message));
 
-    if (m_page.usesEphemeralSession())
+    if (m_page.usesEphemeralSession() && !m_page.settings().consoleLogWithPrivateBrowsingEnabled())
         return;
 
     if (gotMessage)

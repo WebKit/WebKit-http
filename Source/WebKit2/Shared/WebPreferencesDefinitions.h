@@ -114,6 +114,7 @@
     macro(XSSAuditorEnabled, xssAuditorEnabled, Bool, bool, true, "", "") \
     macro(FrameFlatteningEnabled, frameFlatteningEnabled, Bool, bool, DEFAULT_FRAME_FLATTENING_ENABLED, "", "") \
     macro(PrivateBrowsingEnabled, privateBrowsingEnabled, Bool, bool, false, "", "") \
+    macro(ConsoleLogWithPrivateBrowsingEnabled, consoleLogWithPrivateBrowsingEnabled, Bool, bool, false, "", "") \
     macro(TextAreasAreResizable, textAreasAreResizable, Bool, bool, DEFAULT_TEXT_AREAS_ARE_RESIZABLE, "", "") \
     macro(JavaScriptCanOpenWindowsAutomatically, javaScriptCanOpenWindowsAutomatically, Bool, bool, DEFAULT_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY, "", "") \
     macro(HyperlinkAuditingEnabled, hyperlinkAuditingEnabled, Bool, bool, true, "", "") \

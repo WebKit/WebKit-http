@@ -343,6 +343,16 @@ bool WKPreferencesGetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->privateBrowsingEnabled();
 }
 
+void WKPreferencesSetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setConsoleLogWithPrivateBrowsingEnabled(enabled);
+}
+
+bool WKPreferencesGetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->consoleLogWithPrivateBrowsingEnabled();
+}
+
 void WKPreferencesSetDeveloperExtrasEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setDeveloperExtrasEnabled(enabled);

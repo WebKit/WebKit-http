@@ -2968,6 +2968,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
         setSessionID(SessionID::legacyPrivateSessionID());
     else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
         setSessionID(SessionID::defaultSessionID());
+    settings.setConsoleLogWithPrivateBrowsingEnabled(store.getBoolValueForKey(WebPreferencesKey::consoleLogWithPrivateBrowsingEnabledKey()));
     settings.setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
     settings.setJavaScriptRuntimeFlags(RuntimeFlags(store.getUInt32ValueForKey(WebPreferencesKey::javaScriptRuntimeFlagsKey())));
     settings.setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
