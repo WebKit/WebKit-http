@@ -399,34 +399,29 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     if (paintingDisabled())
         return;
 
-    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
-    BBitmap* surface = image->nativeImageForCurrentFrame();
-    if (surface)
-    {
-        BPicture picture;
-        BView* view = platformContext();
+    BBitmap* surface = &buffer.m_data.m_bitmap;
+    BPicture picture;
+    BView* view = platformContext();
 
-        if (!view)
-            return;
+    if (!view)
+        return;
 
-        view->LockLooper();
-        view->BeginPicture(&picture);
-        view->PushState();
+    view->LockLooper();
+    view->BeginPicture(&picture);
+    view->PushState();
 
-        view->SetLowColor(make_color(255, 255, 255, 0));
-        view->SetViewColor(make_color(255, 255, 255, 0));
-        view->SetHighColor(make_color(0, 0, 0, 255));
-        view->SetDrawingMode(B_OP_ALPHA);
-        view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+    view->SetLowColor(make_color(255, 255, 255, 0));
+    view->SetViewColor(make_color(255, 255, 255, 0));
+    view->SetHighColor(make_color(0, 0, 0, 255));
+    view->SetDrawingMode(B_OP_ALPHA);
+    view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
 
-        view->DrawBitmap(surface, destRect);
+    view->DrawBitmap(surface, destRect);
 
-        view->PopState();
-        view->EndPicture();
-        view->ClipToPicture(&picture);
-        view->UnlockLooper();
-    }
-    delete surface;
+    view->PopState();
+    view->EndPicture();
+    view->ClipToPicture(&picture);
+    view->UnlockLooper();
 }
 
 
