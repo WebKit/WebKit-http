@@ -127,13 +127,13 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
     // TODO handle the case where there is a video, but no audio track.
     player->m_currentTime = player->m_audioTrack->CurrentTime() / 1000000.f;
 
-	int64 size64;
-	if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
+    int64 size64;
+    if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
     {
         // Notify that we're done playing...
         player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
         player->m_soundPlayer->Stop();
-        player->m_player->timeChanged();
+        callOnMainThread([player] {player->m_player->timeChanged();});
     }
 
     if (player->m_videoTrack) {
@@ -145,7 +145,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
                 &count);
 
-            player->m_player->repaint();
+            callOnMainThread([player] { player->m_player->repaint(); });
         }
     }
 }
@@ -288,6 +288,9 @@ void MediaPlayerPrivate::paint(GraphicsContext& context, const FloatRect& r)
 
 void MediaPlayerPrivate::IdentifyTracks(const String& url)
 {
+    // TODO something here is blocking inside the Media Kit. We should rework
+    // things so that this is run in a separate thread (Media Thread?). This
+    // would avoid the annoying freeze whenever a media is being loaded.
     m_mediaFile = new BMediaFile(BUrl(url.utf8().data()));
 
     if (m_mediaFile->InitCheck() == B_OK) {
