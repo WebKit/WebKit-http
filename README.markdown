@@ -22,11 +22,11 @@ can also use github for that, or download parts of the history later.
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ pkgman install cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd
+    $ pkgman install cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd pkgconfig_x86
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddHaikuImagePackages cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd ;
+    AddHaikuImagePackages cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd pkgconfig_x86 ;
 
 Packages for other flavors of Haiku may or may not be available. Use [haikuporter](http://haikuports.org) to build them if needed.
 

@@ -159,6 +159,8 @@ void BWebFrame::Reload()
 
 BString BWebFrame::URL() const
 {
+    if (fData->frame->document() == NULL)
+        return "";
     return fData->frame->document()->url().string();
 }
 
