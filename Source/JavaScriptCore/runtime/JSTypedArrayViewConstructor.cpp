@@ -35,6 +35,7 @@
 #include "JSObject.h"
 #include "JSTypedArrayViewPrototype.h"
 #include "JSTypedArrays.h"
+#include "TypedArrayInlines.h"
 
 namespace JSC {
 
