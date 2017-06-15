@@ -26,6 +26,8 @@
 #include "config.h"
 #include "NativeWebTouchEvent.h"
 
+#if ENABLE(TOUCH_EVENTS)
+
 #include "WebEventFactory.h"
 
 namespace WebKit {
@@ -37,3 +39,5 @@ NativeWebTouchEvent::NativeWebTouchEvent(const QTouchEvent* event, const QTransf
 }
 
 } // namespace WebKit
+
+#endif // ENABLE(TOUCH_EVENTS)

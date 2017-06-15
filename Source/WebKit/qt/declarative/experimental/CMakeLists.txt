@@ -15,6 +15,8 @@ set_target_properties(qmlwebkitexperimentalplugin PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${qmlwebkitexperimental_output_dir}
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${qmlwebkitexperimental_output_dir}
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${qmlwebkitexperimental_output_dir}
+
+    AUTOMOC ON
 )
 
 add_custom_target(

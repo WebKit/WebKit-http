@@ -110,10 +110,12 @@ void QtPageClient::didChangeViewportProperties(const WebCore::ViewportAttributes
     QQuickWebViewPrivate::get(m_webView)->didChangeViewportProperties(attr);
 }
 
+#if ENABLE(DRAG_SUPPORT)
 void QtPageClient::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
 {
     m_eventHandler->startDrag(dragData, dragImage);
 }
+#endif
 
 void QtPageClient::handleDownloadRequest(DownloadProxy* download)
 {

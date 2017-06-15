@@ -73,7 +73,9 @@ public:
     void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
     void pageClosed() override { }
     void preferencesDidChange() override { }
+#if ENABLE(DRAG_SUPPORT)
     void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) override;
+#endif
     void setCursor(const WebCore::Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
     void toolTipChanged(const String&, const String&) override;

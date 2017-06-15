@@ -124,14 +124,17 @@
 
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
-             autogen-sh="./autogen.sh; ./configure --with-python=no">
+             autogen-sh="./autogen.sh; ./configure --without-python --without-valid --without-xinclude --without-xptr --without-c14n --without-catalog --without-regexps --without-zlib --without-lzma --without-schemas --without-schematron --without-threads --without-legacy --without-http --without-iconv --with-icu">
+    <dependencies>
+      <dep package="icu"/>
+    </dependencies>
     <branch module="/sources/libxml2-2.9.1.tar.gz" version="2.9.1"
             repo="xmlsoft.org"
             hash="sha256:fd3c64cb66f2c4ea27e934d275904d92cec494a8e8405613780cbc8a71680fdb"
             md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
   </autotools>
 
-  <autotools id="libxslt">
+  <autotools id="libxslt" autogenargs="--without-python">
     <branch module="/sources/libxslt-${version}.tar.gz" version="1.1.29"
             repo="xmlsoft.org"
             hash="sha256:b5976e3857837e7617b29f2249ebb5eeac34e249208d31f1fbf7a6ba7a4090ce"/>

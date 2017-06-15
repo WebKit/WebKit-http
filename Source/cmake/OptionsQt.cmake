@@ -59,6 +59,40 @@ macro(QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT target)
     endif ()
 endmacro()
 
+macro(QTWEBKIT_GENERATE_MOC_FILES_CPP)
+    foreach (_file ${ARGN})
+        get_filename_component(_ext ${_file} EXT)
+        if (NOT _ext STREQUAL ".cpp")
+            message(FATAL_ERROR "QTWEBKIT_GENERATE_MOC_FILES_CPP must be used for .cpp files only")
+        endif ()
+        get_filename_component(_name_we ${_file} NAME_WE)
+        set(_moc_name "${CMAKE_CURRENT_BINARY_DIR}/${_name_we}.moc")
+        qt5_generate_moc(${_file} ${_moc_name})
+        ADD_SOURCE_DEPENDENCIES(${_file} ${_moc_name})
+    endforeach ()
+endmacro()
+
+macro(QTWEBKIT_GENERATE_MOC_FILE_H _header _source)
+    get_filename_component(_header_ext ${_header} EXT)
+    get_filename_component(_source_ext ${_source} EXT)
+    if ((NOT _header_ext STREQUAL ".h") OR (NOT _source_ext STREQUAL ".cpp"))
+        message(FATAL_ERROR "QTWEBKIT_GENERATE_MOC_FILE_H must be called with arguments being .h and .cpp files")
+    endif ()
+    get_filename_component(_name_we ${_header} NAME_WE)
+    set(_moc_name "${CMAKE_CURRENT_BINARY_DIR}/moc_${_name_we}.cpp")
+    qt5_generate_moc(${_header} ${_moc_name})
+    ADD_SOURCE_DEPENDENCIES(${_source} ${_moc_name})
+endmacro()
+
+macro(QTWEBKIT_GENERATE_MOC_FILES_H)
+    foreach (_header ${ARGN})
+        get_filename_component(_header_dir ${_header} DIRECTORY)
+        get_filename_component(_name_we ${_header} NAME_WE)
+        set(_source "${_header_dir}/${_name_we}.cpp")
+        QTWEBKIT_GENERATE_MOC_FILE_H(${_header} ${_source})
+    endforeach ()
+endmacro()
+
 set(CMAKE_MACOSX_RPATH ON)
 
 add_definitions(-DBUILDING_QT__=1)
@@ -98,6 +132,13 @@ else ()
     set(USE_QT_MULTIMEDIA_DEFAULT OFF)
 endif ()
 
+if (MSVC)
+    set(USE_QT_MULTIMEDIA_DEFAULT OFF)
+    set(USE_MEDIA_FOUNDATION_DEFAULT ON)
+else ()
+    set(USE_MEDIA_FOUNDATION_DEFAULT OFF)
+endif ()
+
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(ENABLE_GAMEPAD_DEPRECATED_DEFAULT ON)
 else ()
@@ -130,7 +171,7 @@ endif ()
 # and the option is not relevant to any other WebKit ports.
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER "Use GStreamer implementation of MediaPlayer" PUBLIC ${USE_GSTREAMER_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Use automatic hyphenation with LibHyphen" PUBLIC ${USE_LIBHYPHEN_DEFAULT})
-WEBKIT_OPTION_DEFINE(USE_MEDIA_FOUNDATION "Use MediaFoundation implementation of MediaPlayer" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_MEDIA_FOUNDATION "Use MediaFoundation implementation of MediaPlayer" PUBLIC ${USE_MEDIA_FOUNDATION_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_QT_MULTIMEDIA "Use Qt Multimedia implementation of MediaPlayer" PUBLIC ${USE_QT_MULTIMEDIA_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_WOFF2 "Include support of WOFF2 fonts format" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" PUBLIC ON)
@@ -490,8 +531,6 @@ option(USE_LINKER_VERSION_SCRIPT "Use linker script for ABI compatibility with Q
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-# Instruct CMake to run moc automatically when needed.
-set(CMAKE_AUTOMOC ON)
 
 # TODO: figure out if we can run automoc only on Qt sources
 

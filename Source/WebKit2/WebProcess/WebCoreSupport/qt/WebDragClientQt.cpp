@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebDragClient.h"
 
+#if ENABLE(DRAG_SUPPORT)
+
 #include "DataTransfer.h"
 #include "DragData.h"
 #include "GraphicsContext.h"
@@ -67,3 +69,5 @@ void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosi
 }
 
 }
+
+#endif // ENABLE(DRAG_SUPPORT)

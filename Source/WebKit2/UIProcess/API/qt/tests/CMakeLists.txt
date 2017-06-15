@@ -87,7 +87,9 @@ set(qmltests_LIBRARIES
 add_executable(tst_qmltests_WebView ${qmltests_SOURCES})
 target_compile_definitions(tst_qmltests_WebView PRIVATE ${tst_qmltests_WebView_DEFINITIONS})
 target_link_libraries(tst_qmltests_WebView ${qmltests_LIBRARIES})
+set_target_properties(tst_qmltests_WebView PROPERTIES AUTOMOC ON)
 
 add_executable(tst_qmltests_DesktopBehavior ${qmltests_SOURCES})
 target_compile_definitions(tst_qmltests_DesktopBehavior PRIVATE ${tst_qmltests_DesktopBehavior_DEFINITIONS})
 target_link_libraries(tst_qmltests_DesktopBehavior ${qmltests_LIBRARIES})
+set_target_properties(tst_qmltests_DesktopBehavior PROPERTIES AUTOMOC ON)
