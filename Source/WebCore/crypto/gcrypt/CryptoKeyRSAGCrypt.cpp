@@ -33,6 +33,7 @@
 #include "CryptoKeyPair.h"
 #include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
+#include <array>
 #include <pal/crypto/gcrypt/ASN1.h>
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
