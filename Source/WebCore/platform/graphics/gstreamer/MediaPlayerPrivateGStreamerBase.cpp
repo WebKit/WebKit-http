@@ -757,8 +757,10 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfVolumeChange()
 
 void MediaPlayerPrivateGStreamerBase::volumeChangedCallback(MediaPlayerPrivateGStreamerBase* player)
 {
+#if PLATFORM(WPE)
     // This is called when m_volumeElement receives the notify::volume signal.
     GST_DEBUG("Volume changed to: %f", player->volume());
+#endif
 
     player->m_notifier.notify(MainThreadNotification::VolumeChanged, [player] { player->notifyPlayerOfVolumeChange(); });
 }
@@ -1380,7 +1382,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
         player->clearCurrentBuffer();
         return GST_PAD_PROBE_OK;
      }, this, nullptr);
- 
+
      g_object_set_data(G_OBJECT(appsink), "player", (gpointer) this);
      gst_pad_set_query_function(pad.get(), appSinkSinkQuery);
 
