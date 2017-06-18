@@ -24,7 +24,7 @@
 */
 
 #ifndef WebProxy_h
-#define WeProxy_h
+#define WebProxy_h
 
 #include "APIObject.h"
 #include <WebCore/Proxy.h>
