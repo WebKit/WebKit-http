@@ -60,7 +60,7 @@ if (${PORT} STREQUAL "Qt")
             DESTINATION "${LIB_INSTALL_DIR}"
             RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
     )
-    if (MSVC)
+    if (MSVC AND NOT QT_STATIC_BUILD)
         install(FILES $<TARGET_PDB_FILE:WebKit> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
     endif ()
 
