@@ -23,6 +23,8 @@
 
 #include "MediaPlayerPrivate.h"
 
+#include <wtf/WeakPtr.h>
+
 #include <ObjectList.h>
 #include <UrlProtocolAsynchronousListener.h>
 
@@ -36,7 +38,7 @@ struct media_raw_audio_format;
 
 namespace WebCore {
 
-class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BHandler {
+class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
@@ -96,6 +98,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BHandler {
         BMediaTrack* m_videoTrack;
         BSoundPlayer* m_soundPlayer;
         BBitmap* m_frameBuffer;
+        WeakPtrFactory<MediaPlayerPrivate> m_holder;
 
         MediaPlayer* m_player;
         MediaPlayer::NetworkState m_networkState;

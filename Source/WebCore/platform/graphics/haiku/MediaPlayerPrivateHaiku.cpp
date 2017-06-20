@@ -52,6 +52,7 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     , m_videoTrack(nullptr)
     , m_soundPlayer(nullptr)
     , m_frameBuffer(nullptr)
+    , m_holder(this)
     , m_player(player)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
@@ -133,7 +134,14 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
         // Notify that we're done playing...
         player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
         player->m_soundPlayer->Stop();
-        callOnMainThread([player] {player->m_player->timeChanged();});
+
+        WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr();
+        callOnMainThread([p] {
+            MediaPlayerPrivate* player = p.get();
+            if (player == NULL)
+                return;
+            player->m_player->timeChanged();
+        });
     }
 
     if (player->m_videoTrack) {
@@ -145,7 +153,13 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
                 &count);
 
-            callOnMainThread([player] { player->m_player->repaint(); });
+            WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr();
+            callOnMainThread([p] {
+                MediaPlayerPrivate* player = p.get();
+                if (player == NULL)
+                    return;
+                player->m_player->repaint();
+            });
         }
     }
 }
