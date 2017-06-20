@@ -542,7 +542,7 @@ bool RenderThemeQt::supportsFocus(ControlPart appearance) const
 #if ENABLE(VIDEO)
 String RenderThemeQt::mediaControlsStyleSheet()
 {
-    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+    return String(mediaControlsBaseUserAgentStyleSheet, sizeof(mediaControlsBaseUserAgentStyleSheet));
 }
 
 String RenderThemeQt::mediaControlsScript()
