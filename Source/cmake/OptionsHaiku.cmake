@@ -17,7 +17,19 @@ endif ()
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "debug" AND NOT SHARED_CORE)
     message(FATAL_ERROR "Turn on the SHARED_CORE flag to make a debug build - e.g.\n build-webkit --haiku --debug --cmakeargs=\"-DSHARED_CORE=ON\".\n")
 endif ()
-#ADD_DEFINITIONS(-UNDEBUG) # Uncomment this to get assertions in release mode.
+
+# To get assertions in release mode, we replace all -DNDEBUG with -UNDEBUG
+# (they are automatically added by CMake and there is no "release with asserts"
+# build available in WebKit)
+#foreach(flag_var
+#		CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+#		CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+#	if(${flag_var} MATCHES "-DNDEBUG")
+#		string(REGEX REPLACE "-DNDEBUG" "-UNDEBUG" ${flag_var} "${${flag_var}}")
+#	endif(${flag_var} MATCHES "-DNDEBUG")
+#endforeach(flag_var)
+#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility-inlines-hidden")
+
 
 FIND_PACKAGE(Sqlite REQUIRED)
 FIND_PACKAGE(LibXml2 2.8.0 REQUIRED)
