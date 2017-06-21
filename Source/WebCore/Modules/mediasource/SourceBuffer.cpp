@@ -923,12 +923,22 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     // currenTime whichever we hit first.
     auto buffered = m_buffered->ranges();
     size_t currentTimeRange = buffered.find(currentTime);
+
+#if defined(METROLOGICAL)
+    MediaTime minimumRangeStart = currentTime + thirtySeconds;
+
+    if (currentTimeRange == buffered.length() - 1) {
+        LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes from the beginning but failed to free enough.", this, initialBufferedSize - extraMemoryCost());
+        minimumRangeStart = m_groupEndTimestamp;
+    }
+#else
     if (currentTimeRange == buffered.length() - 1) {
         LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes but FAILED to free enough", this, initialBufferedSize - extraMemoryCost());
         return;
     }
 
     MediaTime minimumRangeStart = currentTime + thirtySeconds;
+#endif
     LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - minimumRangeStart: %f, duration: %f", this, minimumRangeStart.toDouble(), m_source->duration().toDouble());
 
     rangeEnd = m_source->duration();
