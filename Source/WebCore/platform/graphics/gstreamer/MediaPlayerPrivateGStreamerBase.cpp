@@ -437,7 +437,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             // FIXME: ClearKey BestKey
             LockHolder lock(m_protectionMutex);
 #if USE(OCDM)
-            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
+            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
             GST_DEBUG("forcing playready %s\n", m_lastGenerateKeyRequestKeySystemUuid.utf8().data());
 #endif
             m_protectionCondition.notifyOne();
