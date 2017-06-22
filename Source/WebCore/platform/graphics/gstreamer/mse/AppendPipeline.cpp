@@ -737,7 +737,7 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 
         // If we're beyond the duration, ignore this sample and the remaining ones.
         MediaTime duration = m_mediaSourceClient->duration();
-        if (duration.isValid() && !duration.indefiniteTime() && mediaSample->presentationTime() > duration) {
+        if (duration.isValid() && !duration.isIndefinite() && mediaSample->presentationTime() > duration) {
             GST_DEBUG("Detected sample (%f) beyond the duration (%f), declaring LastSample", mediaSample->presentationTime().toFloat(), duration.toFloat());
             setAppendState(AppendState::LastSample);
             m_flowReturn = GST_FLOW_OK;
