@@ -400,9 +400,10 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
 #if USE(OCDM)
             LockHolder locker(m_protectInitDataProcessing);
-            if (m_initDataProcessed)
+            if (m_initDataProcessed) {
+                GST_DEBUG("init data already processed, bailing out");
                 return false;
-            else
+            } else
                 m_initDataProcessed = true;
 #endif
             GST_TRACE("appending init data for %s of size %" G_GSIZE_FORMAT, eventKeySystemId, mapInfo.size);
@@ -437,6 +438,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             LockHolder lock(m_protectionMutex);
 #if USE(OCDM)
             m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
+            GST_DEBUG("forcing playready %s\n", m_lastGenerateKeyRequestKeySystemUuid.utf8().data());
 #endif
             m_protectionCondition.notifyOne();
         });

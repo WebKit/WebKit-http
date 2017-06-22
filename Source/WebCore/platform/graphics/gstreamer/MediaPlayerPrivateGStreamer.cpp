@@ -2282,6 +2282,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         auto& player = *static_cast<MediaPlayerPrivateGStreamer*>(userData);
 
         if (player.handleSyncMessage(message)) {
+            GST_TRACE("dropping buffer");
             gst_message_unref(message);
             return GST_BUS_DROP;
         }
