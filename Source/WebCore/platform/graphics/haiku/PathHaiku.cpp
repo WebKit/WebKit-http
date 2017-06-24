@@ -410,18 +410,20 @@ void Path::closeSubpath()
 }
 
 void Path::addArc(const FloatPoint& center, float radius,
-	float startAnglgeRadiants, float endAngleRadiants, bool anticlockwise)
+	float startAngleRadiants, float endAngleRadiants, bool anticlockwise)
 {
-	if (endAngleRadiants - startAnglgeRadiants + 0.000001 >= M_PI * 2) {
-		addEllipse(FloatRect(center.x() - radius, center.y() - radius,
-		    radius * 2, radius * 2));
-		return;
-	}
-    m_path->MoveTo(BPoint(center.x() + radius * cos(startAnglgeRadiants),
-                          center.y() + radius * sin(startAnglgeRadiants)));
-    m_path->ArcTo(radius, radius, 0, false, anticlockwise,
-    	          BPoint(center.x() + radius * cos(endAngleRadiants),
-                         center.y() + radius * sin(endAngleRadiants)));
+	float startX = center.x() + radius * cos(startAngleRadiants);
+	float startY = center.y() + radius * sin(startAngleRadiants);
+	float endX   = center.x() + radius * cos(endAngleRadiants);
+	float endY   = center.y() + radius * sin(endAngleRadiants);
+
+	bool large = false;
+	if (fabsf(endAngleRadiants - startAngleRadiants) >= M_PI)
+		large = true;
+
+	m_path->MoveTo(BPoint(startX, startY));
+	m_path->ArcTo(radius, radius, startAngleRadiants, large, anticlockwise,
+		BPoint(endX, endY));
 }
 
 void Path::addRect(const FloatRect& r)
