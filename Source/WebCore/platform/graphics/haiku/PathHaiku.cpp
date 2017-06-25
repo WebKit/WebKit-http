@@ -412,16 +412,36 @@ void Path::closeSubpath()
 void Path::addArc(const FloatPoint& center, float radius,
 	float startAngleRadiants, float endAngleRadiants, bool anticlockwise)
 {
+	// Compute start and end positions
 	float startX = center.x() + radius * cos(startAngleRadiants);
 	float startY = center.y() + radius * sin(startAngleRadiants);
 	float endX   = center.x() + radius * cos(endAngleRadiants);
 	float endY   = center.y() + radius * sin(endAngleRadiants);
 
-	bool large = false;
-	if (fabsf(endAngleRadiants - startAngleRadiants) >= M_PI)
-		large = true;
+	// Handle special case of ellipse (the code below isn't stable in that case it seems ?)
+	if ((int)startX == (int)endX && (int)startY == (int)endY)
+	{
+		addEllipse(FloatRect(center.x() - radius, center.y() - radius,
+			radius * 2, radius * 2));
+		return;
+	}
 
-	m_path->MoveTo(BPoint(startX, startY));
+	// Decide if we are drawing a "large" arc (more than PI rad)
+	bool large = anticlockwise;
+	float coverage = fmodf(endAngleRadiants - startAngleRadiants, 2 * M_PI);
+	if (coverage < 0)
+		coverage += 2 * M_PI;
+	if (coverage >= M_PI)
+		large = !anticlockwise;
+
+	// Draw the radius or whatever line is needed to get to the start point
+	// (or teleport there if there was no previous position)
+	if (hasCurrentPoint())
+		m_path->LineTo(BPoint(startX, startY));
+	else
+		m_path->MoveTo(BPoint(startX, startY));
+
+	// And finally, draw the arc itself
 	m_path->ArcTo(radius, radius, startAngleRadiants, large, anticlockwise,
 		BPoint(endX, endY));
 }
