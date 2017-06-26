@@ -931,6 +931,13 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
         LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes from the beginning but failed to free enough.", this, initialBufferedSize - extraMemoryCost());
         minimumRangeStart = m_groupEndTimestamp;
     }
+
+    if (m_source->duration().isPositiveInfinite()) {
+        if (!buffered.length())
+            return;
+        rangeEnd = buffered.end(buffered.length() - 1);
+    } else
+        rangeEnd = m_source->duration();
 #else
     if (currentTimeRange == buffered.length() - 1) {
         LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes but FAILED to free enough", this, initialBufferedSize - extraMemoryCost());
@@ -938,11 +945,12 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     }
 
     MediaTime minimumRangeStart = currentTime + thirtySeconds;
-#endif
-    LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - minimumRangeStart: %f, duration: %f", this, minimumRangeStart.toDouble(), m_source->duration().toDouble());
 
     rangeEnd = m_source->duration();
+#endif
     rangeStart = rangeEnd - thirtySeconds;
+
+    LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - minimumRangeStart: %f, duration: %f", this, minimumRangeStart.toDouble(), m_source->duration().toDouble());
 
     auto removeFramesWhileFull = [&] (PlatformTimeRanges& ranges) {
         for (int i = ranges.length()-1; i >= 0; --i)
