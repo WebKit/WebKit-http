@@ -1,4 +1,5 @@
 include(FeatureSummary)
+include(ECMEnableSanitizers)
 include(ECMPackageConfigHelpers)
 
 set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
