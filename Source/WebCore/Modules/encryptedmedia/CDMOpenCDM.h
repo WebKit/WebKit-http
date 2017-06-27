@@ -22,7 +22,7 @@
 
 #pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDM.h"
 
@@ -39,4 +39,4 @@ public:
 
 } // namespace WebCore
 
-#endif // ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)

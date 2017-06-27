@@ -65,7 +65,7 @@ public:
     void attemptToResumePlaybackOnClients();
     void attemptToDecrypt(CDMClient&);
 
-#if USE(OCDM)
+#if USE(OPENCDM)
     void receivedGenerateKeyRequest(String&);
     void decryptWithSession(String&);
 #endif

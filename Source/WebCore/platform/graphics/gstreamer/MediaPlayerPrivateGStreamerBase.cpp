@@ -97,7 +97,7 @@
 #define WL_EGL_PLATFORM
 #include <EGL/egl.h>
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 #endif
@@ -128,7 +128,7 @@ void registerWebKitGStreamerElements()
     if (!clearKeyDecryptorFactory)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 
-#if USE(OCDM)
+#if USE(OPENCDM)
     GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
     if (!widevineDecryptorFactory)
         gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
@@ -230,7 +230,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_repaintHandler(0)
     , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
     , m_initDataProcessed(false)
 #endif
 {
@@ -398,7 +398,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 break;
             }
 
-#if USE(OCDM)
+#if USE(OPENCDM)
             LockHolder locker(m_protectInitDataProcessing);
             if (m_initDataProcessed) {
                 GST_DEBUG("init data already processed, bailing out");
@@ -436,7 +436,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
             // FIXME: ClearKey BestKey
             LockHolder lock(m_protectionMutex);
-#if USE(OCDM)
+#if USE(OPENCDM)
             m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
             GST_DEBUG("forcing playready %s\n", m_lastGenerateKeyRequestKeySystemUuid.utf8().data());
 #endif
@@ -1410,14 +1410,14 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(OCDM)
+#if USE(OPENCDM)
 void MediaPlayerPrivateGStreamerBase::emitSession(String& sessionId)
 {
     if (sessionId.isEmpty())
         return;
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
-    GST_TRACE("emitted OCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
+    GST_TRACE("emitted OPENCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
 }
 
 void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
@@ -1470,7 +1470,7 @@ void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& k
 
 static AtomicString keySystemIdToUuid(const AtomicString& id)
 {
-#if USE(OCDM)
+#if USE(OPENCDM)
     if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);

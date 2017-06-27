@@ -134,7 +134,7 @@ void MediaKeys::attemptToResumePlaybackOnClients()
         cdmClient->cdmClientAttemptToResumePlaybackIfNecessary();
 }
 
-#if USE(OCDM)
+#if USE(OPENCDM)
 void MediaKeys::receivedGenerateKeyRequest(String& keySystem)
 {
     for (auto* cdmClient : m_cdmClients)

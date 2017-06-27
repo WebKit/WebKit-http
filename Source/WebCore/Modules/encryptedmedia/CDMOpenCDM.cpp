@@ -23,7 +23,7 @@
 #include "config.h"
 #include "CDMOpenCDM.h"
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
@@ -417,4 +417,4 @@ void CDMInstanceOpenCDM::gatherAvailableKeys(AvailableKeysCallback)
 
 } // namespace WebCore
 
-#endif // ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)

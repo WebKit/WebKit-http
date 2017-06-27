@@ -633,7 +633,7 @@ private:
     void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
     void attemptToDecrypt();
 
-#if USE(OCDM)
+#if USE(OPENCDM)
     void receivedGenerateKeyRequest(String&);
     void emitSession(String&);
 #endif

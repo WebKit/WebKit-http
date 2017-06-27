@@ -597,7 +597,7 @@ void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
     m_private->attemptToDecryptWithInstance(instance);
 }
 
-#if USE(OCDM)
+#if USE(OPENCDM)
 void MediaPlayer::receivedGenerateKeyRequest(String& keySystem)
 {
     m_private->receivedGenerateKeyRequest(keySystem);

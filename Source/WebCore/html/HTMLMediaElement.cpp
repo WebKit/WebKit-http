@@ -2663,7 +2663,7 @@ void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& 
         m_player->attemptToDecryptWithInstance(instance);
 }
 
-#if USE(OCDM)
+#if USE(OPENCDM)
 void HTMLMediaElement::receivedGenerateKeyRequest(String& keySystem)
 {
     if (m_player)

@@ -376,7 +376,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&);
-#if USE(OCDM)
+#if USE(OPENCDM)
     void receivedGenerateKeyRequest(String&);
     void emitSession(String&);
 #endif

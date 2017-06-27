@@ -195,7 +195,7 @@ void MediaKeySession::generateRequest(const AtomicString& initDataType, const Bu
             m_latestDecryptTime = 0;
         }
 
-#if USE(OCDM)
+#if USE(OPENCDM)
         String keySystem = m_implementation->keySystem();
         m_keys->receivedGenerateKeyRequest(keySystem);
 #endif
@@ -472,7 +472,7 @@ void MediaKeySession::update(const BufferSource& response, Ref<DeferredPromise>&
                         enqueueMessage(messageType, WTFMove(message->second));
                     }
                 }
-#if USE(OCDM)
+#if USE(OPENCDM)
                 CDMInstance::KeyStatusVector&& keyStatuses = WTFMove(*changedKeys);
                 if (!message && (keyStatuses[0].second == CDMInstance::KeyStatus::Usable)) {
                     m_keys->decryptWithSession(m_sessionId);

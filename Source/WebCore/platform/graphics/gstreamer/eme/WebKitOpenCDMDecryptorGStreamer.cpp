@@ -23,7 +23,7 @@
 #include "config.h"
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
 #include "GUniquePtrGStreamer.h"
 
@@ -195,4 +195,4 @@ beach:
     return returnValue;
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

@@ -132,7 +132,7 @@ public:
     void receivedGenerateKeyRequest(const String&);
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
     virtual void emitSession(String&);
     virtual void resetOpenCDMFlag();
 #endif
@@ -258,7 +258,7 @@ private:
     void updateVideoRectangle();
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
     Lock m_protectInitDataProcessing;
     bool m_initDataProcessed;
 #endif
