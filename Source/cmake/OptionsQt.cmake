@@ -152,7 +152,8 @@ else ()
 endif ()
 
 # FIXME: Move Qt handling here
-find_package(Qt5Gui QUIET)
+set(REQUIRED_QT_VERSION 5.2.0)
+find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Gui QUIET)
 
 if (UNIX AND TARGET Qt5::QXcbIntegrationPlugin AND NOT APPLE)
     set(ENABLE_X11_TARGET_DEFAULT ON)
@@ -431,7 +432,6 @@ if (WEBP_FOUND)
     SET_AND_EXPOSE_TO_BUILD(USE_WEBP 1)
 endif ()
 
-set(REQUIRED_QT_VERSION 5.2.0)
 set(QT_REQUIRED_COMPONENTS Core Gui Network)
 
 # FIXME: Allow building w/o these components
