@@ -28,7 +28,6 @@
 
 #if ENABLE(QT_GESTURE_EVENTS)
 
-#include "FloatPoint.h"
 #include "IntPoint.h"
 #include "IntSize.h"
 #include "PlatformEvent.h"

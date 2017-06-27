@@ -28,7 +28,6 @@
 
 #include "WKBackForwardListRef.h"
 #include "WKStringQt.h"
-#include "WKURL.h"
 #include "WKURLQt.h"
 
 #include "qwebnavigationhistory_p_p.h"

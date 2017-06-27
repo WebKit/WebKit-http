@@ -25,7 +25,6 @@
 #include "WebContext.h"
 #include "WebFullScreenManagerMessages.h"
 #include "WebFullScreenManagerProxyMessages.h"
-#include "WebProcess.h"
 #include <WebCore/NotImplemented.h>
 
 #if HAVE(QTQUICK)

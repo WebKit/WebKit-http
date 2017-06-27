@@ -22,9 +22,7 @@
 #include "qquickwebpage_p.h"
 
 #include "CoordinatedGraphicsScene.h"
-#include "QtWebPageEventHandler.h"
 #include "QtWebPageSGNode.h"
-#include "TransformationMatrix.h"
 #include "qquickwebpage_p_p.h"
 #include "qquickwebview_p.h"
 #include "qquickwebview_p_p.h"

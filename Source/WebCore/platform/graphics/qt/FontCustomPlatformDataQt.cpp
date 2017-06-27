@@ -24,7 +24,6 @@
 
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
-#include "WOFFFileFormat.h"
 #include <QStringList>
 
 namespace WebCore {

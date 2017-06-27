@@ -27,8 +27,6 @@
 #include "AffineTransform.h"
 #include "TransformationMatrix.h"
 
-#include "FloatRect.h"
-#include "IntRect.h"
 
 namespace WebCore {
 

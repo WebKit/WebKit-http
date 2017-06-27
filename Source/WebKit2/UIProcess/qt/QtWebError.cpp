@@ -25,10 +25,7 @@
 
 #include <QtCore/QUrl>
 #include <WKSharedAPICast.h>
-#include <WKString.h>
 #include <WKStringQt.h>
-#include <WKType.h>
-#include <WKURL.h>
 #include <WKURLQt.h>
 
 namespace WebKit {

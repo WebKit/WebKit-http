@@ -23,7 +23,6 @@
 
 #include "DefaultUndoController.h"
 #include "PageViewportController.h"
-#include "PageViewportControllerClient.h"
 #include "QtPageClient.h"
 #include "QtWebPageUIClient.h"
 

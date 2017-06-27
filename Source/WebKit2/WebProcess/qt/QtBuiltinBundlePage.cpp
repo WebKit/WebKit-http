@@ -35,8 +35,6 @@
 #include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WKStringPrivate.h"
-#include "WKStringQt.h"
-#include <JavaScript.h>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <QDebug>

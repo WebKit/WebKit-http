@@ -27,7 +27,6 @@
 #include "NetworkProcess.h"
 
 #include "NetworkProcessCreationParameters.h"
-#include "QtNetworkAccessManager.h"
 
 #include <QNetworkDiskCache>
 #include <WebCore/CertificateInfo.h>

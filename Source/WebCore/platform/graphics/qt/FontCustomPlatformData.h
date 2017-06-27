@@ -22,7 +22,6 @@
 #ifndef FontCustomPlatformData_h
 #define FontCustomPlatformData_h
 
-#include "TextFlags.h"
 #include <QRawFont>
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>

@@ -33,7 +33,6 @@
 #include "GraphicsContext.h"
 #include "Pasteboard.h"
 #include "ShareableBitmap.h"
-#include "WebCoreArgumentCoders.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 

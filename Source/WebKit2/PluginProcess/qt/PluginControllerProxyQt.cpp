@@ -28,7 +28,6 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
-#include "PluginProcess.h"
 #include <WebCore/NotImplemented.h>
 
 using namespace WebCore;

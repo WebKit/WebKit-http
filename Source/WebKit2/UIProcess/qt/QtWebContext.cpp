@@ -28,7 +28,6 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QStringBuilder>
-#include <WKAPICast.h>
 #include <WKArray.h>
 #include <WKContextPrivate.h>
 #include <WKData.h>

@@ -23,7 +23,6 @@
 
 #include "DeviceMotionProviderQt.h"
 
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 

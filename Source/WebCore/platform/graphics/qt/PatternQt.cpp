@@ -26,8 +26,7 @@
 #include "config.h"
 #include "Pattern.h"
 
-#include "AffineTransform.h"
-#include "GraphicsContext.h"
+#include "Image.h"
 
 namespace WebCore {
 

@@ -30,7 +30,6 @@
 #include <QPointF>
 #include <QTransform>
 #include <QtQuick/qquickitem.h>
-#include <WKAPICast.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FloatSize.h>
 

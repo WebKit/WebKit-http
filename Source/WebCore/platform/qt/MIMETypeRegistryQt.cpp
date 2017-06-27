@@ -31,7 +31,6 @@
 
 #include <QMimeDatabase>
 #include <wtf/Assertions.h>
-#include <wtf/MainThread.h>
 
 namespace WebCore {
 

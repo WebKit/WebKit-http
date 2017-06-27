@@ -24,9 +24,7 @@
 #include <QtCore/QString>
 #include <QtCore/QUrl>
 #include <WKFrame.h>
-#include <WKGeolocationPermissionRequest.h>
 #include <WKPage.h>
-#include <WKSecurityOriginRef.h>
 
 class QQuickWebView;
 class QWebPermissionRequest;

@@ -29,7 +29,6 @@
 #include "StillImageQt.h"
 
 #include "GraphicsContext.h"
-#include "IntSize.h"
 #include "ShadowBlur.h"
 
 #include <QPainter>

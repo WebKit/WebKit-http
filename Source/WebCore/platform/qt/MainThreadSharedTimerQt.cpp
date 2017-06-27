@@ -34,7 +34,6 @@
 #include <QBasicTimer>
 #include <QCoreApplication>
 #include <QPointer>
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 

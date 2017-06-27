@@ -32,7 +32,6 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
-#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 

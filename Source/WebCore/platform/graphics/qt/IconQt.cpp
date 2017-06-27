@@ -23,7 +23,6 @@
 
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "NotImplemented.h"
 #include <QMimeDatabase>
 #include <wtf/text/WTFString.h>
 

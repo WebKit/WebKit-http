@@ -30,7 +30,6 @@
 #include "NetworkProcessCreationParameters.h"
 #include "QtWebContext.h"
 #include "WKSharedAPICast.h"
-#include "WebCookieManagerProxy.h"
 #include "WebProcessCreationParameters.h"
 #include <QProcess>
 #include <WebCore/ApplicationCacheStorage.h>

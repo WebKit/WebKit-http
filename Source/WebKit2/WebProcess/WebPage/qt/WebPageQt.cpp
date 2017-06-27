@@ -29,11 +29,9 @@
 
 #include "NotImplemented.h"
 #include "PopupMenuClient.h"
-#include "WebEditorClient.h"
 #include "WebEvent.h"
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenu.h"
-#include "WebProcess.h"
 #include <QClipboard>
 #include <QGuiApplication>
 #include <WebCore/EventHandler.h>

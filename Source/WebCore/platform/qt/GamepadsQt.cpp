@@ -37,7 +37,6 @@
 #include <unistd.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
 // Forward declarations for libudev, they are all used opaque so we don't need the definitions.

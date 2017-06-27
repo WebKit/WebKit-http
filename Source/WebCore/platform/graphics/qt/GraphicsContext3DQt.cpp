@@ -24,16 +24,13 @@
 #include "GraphicsSurface.h"
 #include "HostWindow.h"
 #include "ImageBuffer.h"
-#include "ImageData.h"
 #include "NativeImageQt.h"
-#include "NotImplemented.h"
 #include "QWebPageClient.h"
 #include "SharedBuffer.h"
 #include "TextureMapperPlatformLayer.h"
 #include <QOffscreenSurface>
 #include <private/qopenglextensions_p.h>
 #include <qpa/qplatformpixmap.h>
-#include <wtf/text/CString.h>
 
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>

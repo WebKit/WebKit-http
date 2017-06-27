@@ -31,7 +31,6 @@
 #include <QObject>
 #include <WebKit/WKBase.h>
 #include <WebKit/WKRetainPtr.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebKit {
 class WebBackForwardList;

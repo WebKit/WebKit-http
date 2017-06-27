@@ -30,7 +30,6 @@
 #include <QObject>
 #include <QProcess>
 #include <QThread>
-#include <wtf/Threading.h>
 
 namespace WTF {
 
