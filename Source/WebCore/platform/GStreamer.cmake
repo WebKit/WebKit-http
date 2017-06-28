@@ -166,7 +166,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA OR ENABLE_
         )
     endif ()
 
-    if (ENABLE_OCDM)
+    if (ENABLE_OPENCDM)
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/eme/CDMPrivateOpenCDM.cpp
             platform/graphics/gstreamer/eme/CDMSessionOpenCDM.cpp

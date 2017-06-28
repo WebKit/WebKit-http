@@ -162,9 +162,9 @@ endif ()
 
 if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
     find_package(LibGcrypt REQUIRED)
-    if (ENABLE_OCDM)
-        find_package(OCDM REQUIRED)
-        add_definitions(-DUSE_OCDM=1)
+    if (ENABLE_OPENCDM)
+        find_package(OpenCDM REQUIRED)
+        add_definitions(-DUSE_OPENCDM=1)
     endif()
 endif ()
 

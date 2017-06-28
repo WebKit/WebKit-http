@@ -155,7 +155,7 @@ public:
 #endif
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
     virtual void emitOpenCDMSession();
     virtual void resetOpenCDMSession();
 #endif
@@ -291,7 +291,7 @@ private:
     mutable Lock m_prSessionsMutex;
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OPENCDM)
     std::unique_ptr<CDMSession> m_cdmSession;
     Lock m_cdmSessionMutex;
 #endif
