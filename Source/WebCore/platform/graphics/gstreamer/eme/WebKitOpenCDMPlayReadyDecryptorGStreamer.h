@@ -49,6 +49,8 @@ struct _WebKitOpenCDMPlayReadyDecryptClass {
     WebKitOpenCDMDecryptClass parentClass;
 };
 
+bool canWebKitMediaOpenCDMPlayReadyDecryptorAcceptUuid(const char* uuid);
+
 G_END_DECLS
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

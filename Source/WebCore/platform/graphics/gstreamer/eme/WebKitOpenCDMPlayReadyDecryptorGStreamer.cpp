@@ -76,4 +76,9 @@ static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
+bool canWebKitMediaOpenCDMPlayReadyDecryptorAcceptUuid(const char* uuid)
+{
+    return g_strcmp0(uuid, PLAYREADY_PROTECTION_SYSTEM_UUID) == 0;
+}
+
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

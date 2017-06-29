@@ -379,27 +379,23 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GstBuffer* data = nullptr;
             gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
-            // Here we receive the DRM init data from the pipeline: we will emit
-            // the needkey event with that data and the browser might create a
-            // CDMSession from this event handler. If such a session was created
-            // We will emit the message event from the session to provide the
-            // DRM challenge to the browser and wait for an update. If on the
-            // contrary no session was created we won't wait and let the pipeline
-            // error out by itself.
+#if USE(OPENCDM)
+            if (canWebKitMediaOpenCDMPlayReadyDecryptorAcceptUuid(eventKeySystemId)) {
+                LockHolder locker(m_protectInitDataProcessing);
+                if (m_initDataProcessed) {
+                    GST_DEBUG("init data already processed already for %s, bailing out", eventKeySystemId);
+                    m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
+                    return false;
+                } else
+                    m_initDataProcessed = true;
+            }
+#endif
+
             GstMapInfo mapInfo;
             if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
                 GST_WARNING("cannot map %s protection data", eventKeySystemId);
                 break;
             }
-
-#if USE(OPENCDM)
-            LockHolder locker(m_protectInitDataProcessing);
-            if (m_initDataProcessed) {
-                GST_DEBUG("init data already processed, bailing out");
-                return false;
-            } else
-                m_initDataProcessed = true;
-#endif
             GST_TRACE("appending init data for %s of size %" G_GSIZE_FORMAT, eventKeySystemId, mapInfo.size);
             GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
             concatenatedInitDataChunks.append(mapInfo.data, mapInfo.size);
@@ -424,8 +420,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
             GST_MEMDUMP("init datas", initData.data(), initData.size());
 
-            // FIXME: Provide a somehow valid sessionId.
-            fprintf(stderr, "MediaPlayerPrivateGStreamerBase: got init data of size %zu\n", initData.size());
             m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));
 
             // FIXME: ClearKey BestKey
