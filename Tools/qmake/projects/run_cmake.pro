@@ -12,6 +12,8 @@ CONFIG(debug, debug|release) {
     configuration = Release
 }
 
+programExistsInPath(ninja): use_ninja = 1
+
 cmake_build_dir = $$system_quote($$system_path($$ROOT_BUILD_DIR/$$lower($$configuration)))
 toolchain_file = $$system_quote($$system_path($$ROOT_BUILD_DIR/qmake_toolchain.cmake))
 
@@ -82,6 +84,8 @@ build_pass|!debug_and_release {
         }
     }
 
+    !isEmpty(use_ninja): cmake_args += "-G Ninja"
+
     equals(QMAKE_HOST.os, Windows) {
         if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
             cmake_generator = "NMake Makefiles JOM"
@@ -93,10 +97,15 @@ build_pass|!debug_and_release {
             cmake_generator = "Unix Makefiles"
             make_command_name = make
         }
-        cmake_args += "-G \"$$cmake_generator\""
+        isEmpty(use_ninja): cmake_args += "-G \"$$cmake_generator\""
+    } else {
+        make_command_name = make
     }
 
-    !silent: make_args += "VERBOSE=1"
+    !silent {
+        make_args += "VERBOSE=1"
+        ninja_args += "-v"
+    }
 
     # Append additional platform options defined in CMAKE_CONFIG
     for (config, CMAKE_CONFIG): cmake_args += "-D$$config"
@@ -115,7 +124,12 @@ build_pass|!debug_and_release {
 
     build_pass:build_all: default_target.target = all
     else: default_target.target = first
-    default_target.commands = cd $$cmake_build_dir && $(MAKE) $$make_args
+
+    isEmpty(use_ninja) {
+        default_target.commands = cd $$cmake_build_dir && $(MAKE) $$make_args
+    } else {
+        default_target.commands = cd $$cmake_build_dir && ninja $$ninja_args
+    }
     QMAKE_EXTRA_TARGETS += default_target
 
     # When debug and release are built at the same time, don't install data files twice
@@ -128,4 +142,11 @@ build_pass|!debug_and_release {
     install_target.target = install
     install_target.commands = $(MAKE) -f $(MAKEFILE) install_impl $$make_args DESTDIR=$(INSTALL_ROOT)
     QMAKE_EXTRA_TARGETS += install_target
+}
+
+!build_pass:debug_and_release:!isEmpty(use_ninja) {
+    # Special GNU make target for the meta Makefile that ensures that our
+    # debug_and_release Makefiles won't both run ninja in parallel.
+    notParallel.target = .NOTPARALLEL
+    QMAKE_EXTRA_TARGETS += notParallel
 }
