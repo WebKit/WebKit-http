@@ -827,6 +827,15 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
     GST_WARNING("FIXME");
 #endif
 }
+
+#if USE(OPENCDM)
+void MediaPlayerPrivateGStreamerMSE::emitSession(String& sessionId)
+{
+    GST_WARNING("FIXME: emitting session %s", sessionId.utf8().data());
+    ASSERT_NOT_REACHED();
+}
+#endif
+
 #endif
 
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
