@@ -1444,7 +1444,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         return;
     }
 
-    GST_DEBUG("scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
+    GST_WARNING("FIXME: scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
     ASSERT_NOT_REACHED();
     gst_buffer_unmap(data, &mapInfo);
 }
