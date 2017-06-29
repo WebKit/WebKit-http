@@ -275,9 +275,9 @@ WEBKIT_OPTION_END()
 # FTL JIT and IndexedDB support require GCC 4.9
 # TODO: Patch code to avoid variadic lambdas
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (ENABLE_FTL_JIT OR ENABLE_INDEXED_DATABASE)
+    if (ENABLE_FTL_JIT OR ENABLE_INDEXED_DATABASE OR (ENABLE_WEBKIT2 AND ENABLE_DATABASE_PROCESS))
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
-            message(FATAL_ERROR "GCC 4.9.0 is required to build QtWebKit with FTL JIT and Indexed Database, use a newer GCC version or clang, or disable these features")
+            message(FATAL_ERROR "GCC 4.9.0 is required to build QtWebKit with FTL JIT, Indexed Database, and Database Process (WebKit 2). Use a newer GCC version or clang, or disable these features")
         endif ()
     else ()
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.0")
