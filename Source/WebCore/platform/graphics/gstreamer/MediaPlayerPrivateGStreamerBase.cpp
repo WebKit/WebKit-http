@@ -338,12 +338,6 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSyst
     for (i = 0; i < streamEncryptionEventsListSize; ++i)
         streamEncryptionEventsVector.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
 
-    std::sort(streamEncryptionEventsVector.begin(), streamEncryptionEventsVector.end(),
-        [](const auto& a, const auto& b)
-        {
-            return gst_event_get_seqnum(a.get()) < gst_event_get_seqnum(b.get());
-        });
-
     return std::make_pair(streamEncryptionEventsVector, streamEncryptionAllowedSystemsVector);
 }
 #endif
