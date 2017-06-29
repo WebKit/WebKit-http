@@ -823,6 +823,8 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
 
     for (auto iterator : m_appendPipelinesMap)
         iterator.value->dispatchDecryptionKey(buffer.get());
+#else
+    GST_WARNING("FIXME");
 #endif
 }
 #endif
