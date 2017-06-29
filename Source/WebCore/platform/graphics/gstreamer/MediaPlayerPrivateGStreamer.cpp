@@ -1196,6 +1196,13 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 m_downloadFinished = true;
                 m_buffering = false;
                 updateStates();
+#if ENABLE(ENCRYPTED_MEDIA)
+            } else if (gst_structure_has_name(structure, "drm-key-needed")) {
+                GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
+                GRefPtr<GstEvent> event;
+                gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
+                handleProtectionEvent(event.get());
+#endif
             }
         }
         break;
