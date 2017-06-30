@@ -83,7 +83,7 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #if USE(OPENCDM)
-    void emitSession(String&) override;
+    void emitSession(const String&) override;
 #endif
 #endif
 

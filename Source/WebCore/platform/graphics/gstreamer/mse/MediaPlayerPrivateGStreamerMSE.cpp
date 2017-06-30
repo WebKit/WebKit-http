@@ -829,7 +829,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
 }
 
 #if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerMSE::emitSession(String& sessionId)
+void MediaPlayerPrivateGStreamerMSE::emitSession(const String& sessionId)
 {
     GST_WARNING("FIXME: emitting session %s", sessionId.utf8().data());
     ASSERT_NOT_REACHED();

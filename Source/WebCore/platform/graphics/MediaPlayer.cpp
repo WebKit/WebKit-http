@@ -598,12 +598,12 @@ void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
 }
 
 #if USE(OPENCDM)
-void MediaPlayer::receivedGenerateKeyRequest(String& keySystem)
+void MediaPlayer::receivedGenerateKeyRequest(const String& keySystem)
 {
     m_private->receivedGenerateKeyRequest(keySystem);
 }
 
-void MediaPlayer::emitSession(String& sessionId)
+void MediaPlayer::emitSession(const String& sessionId)
 {
     m_private->emitSession(sessionId);
 }

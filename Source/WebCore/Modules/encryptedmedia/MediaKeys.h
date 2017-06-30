@@ -66,8 +66,8 @@ public:
     void attemptToDecrypt(CDMClient&);
 
 #if USE(OPENCDM)
-    void receivedGenerateKeyRequest(String&);
-    void decryptWithSession(String&);
+    void receivedGenerateKeyRequest(const String&);
+    void decryptWithSession(const String&);
 #endif
 
 protected:

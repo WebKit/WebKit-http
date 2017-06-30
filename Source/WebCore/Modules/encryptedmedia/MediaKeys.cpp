@@ -135,13 +135,13 @@ void MediaKeys::attemptToResumePlaybackOnClients()
 }
 
 #if USE(OPENCDM)
-void MediaKeys::receivedGenerateKeyRequest(String& keySystem)
+void MediaKeys::receivedGenerateKeyRequest(const String& keySystem)
 {
     for (auto* cdmClient : m_cdmClients)
         cdmClient->receivedGenerateKeyRequest(keySystem);
 }
 
-void MediaKeys::decryptWithSession(String& sessionId)
+void MediaKeys::decryptWithSession(const String& sessionId)
 {
     for (auto* cdmClient : m_cdmClients)
         cdmClient->emitSession(sessionId);

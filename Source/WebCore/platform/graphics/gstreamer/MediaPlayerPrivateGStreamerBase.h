@@ -133,7 +133,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
-    virtual void emitSession(String&);
+    virtual void emitSession(const String&);
     virtual void resetOpenCDMFlag();
 #endif
 

@@ -634,8 +634,8 @@ private:
     void attemptToDecrypt();
 
 #if USE(OPENCDM)
-    void receivedGenerateKeyRequest(String&);
-    void emitSession(String&);
+    void receivedGenerateKeyRequest(const String&);
+    void emitSession(const String&);
 #endif
 #endif
     

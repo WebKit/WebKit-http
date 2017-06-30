@@ -1399,7 +1399,7 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerBase::emitSession(String& sessionId)
+void MediaPlayerPrivateGStreamerBase::emitSession(const String& sessionId)
 {
     if (sessionId.isEmpty())
         return;
