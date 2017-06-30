@@ -22,13 +22,15 @@
 #include "QtWebPagePolicyClient.h"
 
 #include "WKFrame.h"
+#include "WKPagePolicyClient.h"
+#include "WKSharedAPICast.h"
 #include "WKURLQt.h"
-#include "qquickwebview_p_p.h"
 #include "qwebnavigationrequest_p.h"
 #include <QtCore/QObject>
 #include <WKFramePolicyListener.h>
 #include <WKRetainPtr.h>
 #include <WKURLRequest.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebKit {
 

@@ -20,10 +20,8 @@
 #include "config.h"
 #include "URL.h"
 
-#include "NotImplemented.h"
 #include "TextEncoding.h"
 #include "qurl.h"
-#include <wtf/text/CString.h>
 
 namespace WebCore {
 

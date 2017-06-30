@@ -1,4 +1,5 @@
 include(FeatureSummary)
+include(ECMEnableSanitizers)
 include(ECMPackageConfigHelpers)
 
 set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
@@ -152,7 +153,21 @@ else ()
 endif ()
 
 # FIXME: Move Qt handling here
-find_package(Qt5Gui QUIET)
+set(REQUIRED_QT_VERSION 5.2.0)
+find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Gui QUIET)
+
+get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
+if (QT_CORE_TYPE MATCHES STATIC)
+    set(QT_STATIC_BUILD ON)
+    set(SHARED_CORE OFF)
+    set(MACOS_BUILD_FRAMEWORKS OFF)
+endif ()
+
+if (QT_STATIC_BUILD)
+    set(ENABLE_WEBKIT2_DEFAULT OFF)
+else ()
+    set(ENABLE_WEBKIT2_DEFAULT ON)
+endif ()
 
 if (UNIX AND TARGET Qt5::QXcbIntegrationPlugin AND NOT APPLE)
     set(ENABLE_X11_TARGET_DEFAULT ON)
@@ -179,7 +194,7 @@ WEBKIT_OPTION_DEFINE(ENABLE_OPENGL "Whether to use OpenGL." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_QT_GESTURE_EVENTS "Enable support for gesture events (required for mouse in WK2)" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_QT_WEBCHANNEL "Enable support for Qt WebChannel" PUBLIC ON)
-WEBKIT_OPTION_DEFINE(ENABLE_WEBKIT2 "Enable WebKit2 (QML API)" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_WEBKIT2 "Enable WebKit2 (QML API)" PUBLIC ${ENABLE_WEBKIT2_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC ${ENABLE_X11_TARGET_DEFAULT})
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
@@ -249,6 +264,8 @@ if (MINGW AND CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif ()
 
 WEBKIT_OPTION_CONFLICT(USE_GSTREAMER USE_QT_MULTIMEDIA)
+WEBKIT_OPTION_CONFLICT(USE_GSTREAMER USE_MEDIA_FOUNDATION)
+WEBKIT_OPTION_CONFLICT(USE_QT_MULTIMEDIA USE_MEDIA_FOUNDATION)
 
 WEBKIT_OPTION_DEPEND(ENABLE_3D_TRANSFORMS ENABLE_OPENGL)
 WEBKIT_OPTION_DEPEND(ENABLE_ACCELERATED_2D_CANVAS ENABLE_OPENGL)
@@ -271,9 +288,9 @@ WEBKIT_OPTION_END()
 # FTL JIT and IndexedDB support require GCC 4.9
 # TODO: Patch code to avoid variadic lambdas
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (ENABLE_FTL_JIT OR ENABLE_INDEXED_DATABASE)
+    if (ENABLE_FTL_JIT OR ENABLE_INDEXED_DATABASE OR (ENABLE_WEBKIT2 AND ENABLE_DATABASE_PROCESS))
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
-            message(FATAL_ERROR "GCC 4.9.0 is required to build QtWebKit with FTL JIT and Indexed Database, use a newer GCC version or clang, or disable these features")
+            message(FATAL_ERROR "GCC 4.9.0 is required to build QtWebKit with FTL JIT, Indexed Database, and Database Process (WebKit 2). Use a newer GCC version or clang, or disable these features")
         endif ()
     else ()
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.0")
@@ -290,13 +307,6 @@ endif ()
 
 set(ENABLE_WEBKIT ON)
 set(WTF_USE_UDIS86 1)
-
-get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
-if (QT_CORE_TYPE MATCHES STATIC)
-    set(QT_STATIC_BUILD ON)
-    set(SHARED_CORE OFF)
-    set(MACOS_BUILD_FRAMEWORKS OFF)
-endif ()
 
 if (SHARED_CORE)
     set(WebCoreTestSupport_LIBRARY_TYPE SHARED)
@@ -431,7 +441,6 @@ if (WEBP_FOUND)
     SET_AND_EXPOSE_TO_BUILD(USE_WEBP 1)
 endif ()
 
-set(REQUIRED_QT_VERSION 5.2.0)
 set(QT_REQUIRED_COMPONENTS Core Gui Network)
 
 # FIXME: Allow building w/o these components
@@ -613,6 +622,7 @@ if (ENABLE_OPENGL)
 endif ()
 
 if (NOT ENABLE_VIDEO)
+    set(USE_MEDIA_FOUNDATION OFF)
     set(USE_QT_MULTIMEDIA OFF)
 
     if (NOT ENABLE_WEB_AUDIO)

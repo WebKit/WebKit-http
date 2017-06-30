@@ -20,7 +20,6 @@
 #include "config.h"
 #include "ArgumentCodersQt.h"
 
-#include "ArgumentCoders.h"
 #include "WebCoreArgumentCoders.h"
 #include <QMimeData>
 #include <QStringList>

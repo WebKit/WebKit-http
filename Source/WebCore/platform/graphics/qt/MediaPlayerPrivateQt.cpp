@@ -25,13 +25,10 @@
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "HTMLMediaElement.h"
-#include "HTMLVideoElement.h"
 #include "Logging.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "RenderVideo.h"
-#include "TimeRanges.h"
-#include "Widget.h"
 
 #include <QMediaPlayerControl>
 #include <QMediaService>

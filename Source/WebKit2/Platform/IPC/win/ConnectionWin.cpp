@@ -29,6 +29,7 @@
 #include "DataReference.h"
 #include <wtf/RandomNumber.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/text/win/WCharStringExtras.h>
 #include <wtf/threads/BinarySemaphore.h>
 
 using namespace std;
@@ -46,7 +47,7 @@ bool Connection::createServerAndClientIdentifiers(HANDLE& serverIdentifier, HAND
         unsigned uniqueID = randomNumber() * std::numeric_limits<unsigned>::max();
         pipeName = String::format("\\\\.\\pipe\\com.apple.WebKit.%x", uniqueID);
 
-        serverIdentifier = ::CreateNamedPipe(pipeName.charactersWithNullTermination().data(),
+        serverIdentifier = ::CreateNamedPipe(stringToNullTerminatedWChar(pipeName).data(),
             PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE, 1, inlineMessageMaxSize, inlineMessageMaxSize,
             0, 0);
@@ -61,7 +62,7 @@ bool Connection::createServerAndClientIdentifiers(HANDLE& serverIdentifier, HAND
     if (!serverIdentifier)
         return false;
 
-    clientIdentifier = ::CreateFileW(pipeName.charactersWithNullTermination().data(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
+    clientIdentifier = ::CreateFileW(stringToNullTerminatedWChar(pipeName).data(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
     if (!clientIdentifier) {
         ::CloseHandle(serverIdentifier);
         return false;

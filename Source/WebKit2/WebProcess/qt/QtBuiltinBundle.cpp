@@ -28,11 +28,9 @@
 #include "QtBuiltinBundle.h"
 
 #include "QtBuiltinBundlePage.h"
-#include "WKBundlePage.h"
 #include "WKData.h"
 #include "WKNumber.h"
 #include "WKString.h"
-#include "WKStringQt.h"
 #include "WKType.h"
 
 namespace WebKit {

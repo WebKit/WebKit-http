@@ -30,10 +30,6 @@
 #include "config.h"
 #include "ResourceHandle.h"
 
-#include "CachedResourceLoader.h"
-#include "Frame.h"
-#include "FrameNetworkingContext.h"
-#include "NotImplemented.h"
 #include "Page.h"
 #include "QNetworkReplyHandler.h"
 #include "ResourceHandleClient.h"

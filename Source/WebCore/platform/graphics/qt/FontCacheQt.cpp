@@ -29,7 +29,6 @@
 #include "FontDescription.h"
 #include "FontPlatformData.h"
 #include <utility>
-#include <wtf/ListHashSet.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>

@@ -24,7 +24,6 @@
 #include "WKAPICast.h"
 #include "WKRetainPtr.h"
 #include <QString>
-#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebKit;

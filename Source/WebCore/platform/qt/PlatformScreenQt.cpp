@@ -32,7 +32,6 @@
 #include "PlatformScreen.h"
 
 #include "FloatRect.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "HostWindow.h"
 #include "NotImplemented.h"

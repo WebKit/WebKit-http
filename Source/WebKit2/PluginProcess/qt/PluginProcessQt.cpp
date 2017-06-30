@@ -28,7 +28,6 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
-#include "NetscapePlugin.h"
 #include "PluginProcessCreationParameters.h"
 #include <WebCore/NotImplemented.h>
 

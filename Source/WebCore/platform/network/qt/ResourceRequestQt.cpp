@@ -101,6 +101,12 @@ QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) co
     request.setUrl(newurl);
     request.setOriginatingObject(context ? context->originatingObject() : 0);
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+    // HTTP2AllowedAttribute enforces HTTP/2 instead of negotiating, see QTBUG-61397
+    if (newurl.scheme().toLower() == QLatin1String("https"))
+        request.setAttribute(QNetworkRequest::HTTP2AllowedAttribute, true);
+#endif
+
     const HTTPHeaderMap &headers = httpHeaderFields();
     for (HTTPHeaderMap::const_iterator it = headers.begin(), end = headers.end();
          it != end; ++it) {

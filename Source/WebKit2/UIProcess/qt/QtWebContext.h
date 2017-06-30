@@ -23,7 +23,6 @@
 
 #include <QScopedPointer>
 #include <QtGlobal>
-#include <WKContext.h>
 #include <WKRetainPtr.h>
 
 namespace WebKit {

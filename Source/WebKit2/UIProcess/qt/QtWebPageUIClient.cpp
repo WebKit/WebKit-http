@@ -29,7 +29,6 @@
 #include <WKArray.h>
 #include <WKHitTestResult.h>
 #include <WKOpenPanelParameters.h>
-#include <WKOpenPanelResultListener.h>
 #include <WKRetainPtr.h>
 
 namespace WebKit {

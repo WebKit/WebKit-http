@@ -24,9 +24,7 @@
 
 #include "Font.h"
 
-#include "AffineTransform.h"
 #include "FontDescription.h"
-#include "FontSelector.h"
 #include "GlyphBuffer.h"
 #include "Gradient.h"
 #include "GraphicsContext.h"
@@ -264,8 +262,13 @@ void FontCascade::initFormatForTextLayout(QTextLayout* layout, const TextRun& ru
     if (isSmallCaps())
         range.format.setFontCapitalization(QFont::SmallCaps);
 
-    if (range.format.propertyCount() && range.length)
+    if (range.format.propertyCount() && range.length) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+        layout->setFormats(QVector<QTextLayout::FormatRange>() << range);
+#else
         layout->setAdditionalFormats(QList<QTextLayout::FormatRange>() << range);
+#endif
+    }
 }
 
 bool FontCascade::canReturnFallbackFontsForComplexText()

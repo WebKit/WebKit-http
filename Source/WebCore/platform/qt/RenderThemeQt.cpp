@@ -31,21 +31,15 @@
 #include "RenderThemeQt.h"
 
 #include "CSSValueKeywords.h"
-#include "Chrome.h"
 #include "ChromeClient.h"
 #include "Color.h"
 #include "ExceptionCodePlaceholder.h"
 #include "FileList.h"
-#include "Font.h"
-#include "FontSelector.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
 #include "LocalizedStrings.h"
-#if ENABLE(VIDEO)
-#include "MediaControlElements.h"
-#endif
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PaintInfo.h"
@@ -56,9 +50,6 @@
 #include "ScrollbarTheme.h"
 #include "StyleResolver.h"
 #include "TimeRanges.h"
-#if ENABLE(VIDEO)
-#include "UserAgentScripts.h"
-#endif
 #include "UserAgentStyleSheets.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -68,6 +59,10 @@
 #include <QGuiApplication>
 
 #include <QStyleHints>
+
+#if ENABLE(VIDEO)
+#include "UserAgentScripts.h"
+#endif
 
 namespace WebCore {
 
@@ -542,7 +537,7 @@ bool RenderThemeQt::supportsFocus(ControlPart appearance) const
 #if ENABLE(VIDEO)
 String RenderThemeQt::mediaControlsStyleSheet()
 {
-    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+    return String(mediaControlsBaseUserAgentStyleSheet, sizeof(mediaControlsBaseUserAgentStyleSheet));
 }
 
 String RenderThemeQt::mediaControlsScript()

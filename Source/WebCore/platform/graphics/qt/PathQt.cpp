@@ -34,7 +34,6 @@
 #include "AffineTransform.h"
 #include "FloatRect.h"
 #include "GraphicsContext.h"
-#include "ImageBuffer.h"
 #include "NativeImageQt.h"
 #include "StrokeStyleApplier.h"
 #include <QPainterPath>

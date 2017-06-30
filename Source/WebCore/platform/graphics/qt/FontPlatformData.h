@@ -29,7 +29,6 @@
 #include <QFont>
 #include <QHash>
 #include <QRawFont>
-#include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {

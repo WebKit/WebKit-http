@@ -32,41 +32,16 @@
 
 #include "config.h"
 
-#include "AXObjectCache.h"
-#include "CachedResource.h"
-#include "CookieJar.h"
 #include "CookieStorage.h"
-#include "Cursor.h"
-#include "DNS.h"
-#include "FTPDirectoryDocument.h"
-#include "FileSystem.h"
-#include "Font.h"
-#include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameView.h"
-#include "GraphicsContext.h"
-#include "IconLoader.h"
-#include "IntPoint.h"
-#include "URL.h"
-#include "Language.h"
-#include "LocalizedStrings.h"
-#include "Node.h"
 #include "NotImplemented.h"
-#include "Path.h"
-#include "PlatformMouseEvent.h"
-#include "RenderTheme.h"
-#include "SharedBuffer.h"
-#include "TextBoundaries.h"
-#include "Widget.h"
-
-#include <float.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <wtf/text/CString.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
 namespace WebCore {
+
+class URL;
 
 void getSupportedKeySizes(Vector<String>&)
 {

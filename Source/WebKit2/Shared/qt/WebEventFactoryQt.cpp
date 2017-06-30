@@ -34,7 +34,6 @@
 #include <WebCore/FloatSize.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/PlatformKeyboardEvent.h>
-#include <wtf/ASCIICType.h>
 #include <wtf/CurrentTime.h>
 
 using namespace WebCore;

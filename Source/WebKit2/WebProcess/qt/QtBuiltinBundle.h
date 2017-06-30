@@ -28,7 +28,6 @@
 #define QtBuiltinBundle_h
 
 #include "WKBundle.h"
-#include "WKBundlePage.h"
 #include <wtf/HashMap.h>
 
 namespace WebKit {

@@ -20,8 +20,6 @@
 #include "config.h"
 #include "ThirdPartyCookiesQt.h"
 
-#include "Cookie.h"
-#include "CookieJar.h"
 #include "Document.h"
 #include "NetworkingContext.h"
 
