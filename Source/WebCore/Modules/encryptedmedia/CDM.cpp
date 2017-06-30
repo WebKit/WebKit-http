@@ -40,21 +40,13 @@
 #include "SecurityOrigin.h"
 #include <wtf/NeverDestroyed.h>
 
-#if USE(OPENCDM)
-#include "CDMOpenCDM.h"
-#endif
-
 namespace WebCore {
 
 static Vector<CDMFactory*>& cdmFactories()
 {
     static NeverDestroyed<Vector<CDMFactory*>> factories;
-    if (factories.get().isEmpty()) {
+    if (factories.get().isEmpty())
         factories.get().append(new CDMFactoryClearKey);
-#if USE(OPENCDM)
-        factories.get().append(new CDMFactoryOpenCDM);
-#endif
-    }
 
     return factories;
 }

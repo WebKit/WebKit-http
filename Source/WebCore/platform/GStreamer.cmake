@@ -146,6 +146,7 @@ if (ENABLE_ENCRYPTED_MEDIA)
 
     if (ENABLE_OPENCDM)
         list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/eme/CDMOpenCDM.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMPlayReadyDecryptorGStreamer.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp
