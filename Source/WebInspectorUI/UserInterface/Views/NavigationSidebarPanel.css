@@ -65,10 +65,8 @@
 }
 
 .sidebar > .panel.navigation > .content > .empty-content-placeholder {
-    position: absolute;
     top: 0;
     bottom: 0;
-    padding: 0;
 }
 
 .sidebar > .panel.navigation > .content .empty-content-placeholder > .message {

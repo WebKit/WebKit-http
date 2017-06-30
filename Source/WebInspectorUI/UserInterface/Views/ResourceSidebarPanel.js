@@ -34,7 +34,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         this.filterBar.placeholder = WebInspector.UIString("Filter Resource List");
 
         this._navigationBar = new WebInspector.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         this._targetTreeElementMap = new Map;
 
