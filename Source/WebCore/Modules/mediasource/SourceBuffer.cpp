@@ -883,6 +883,12 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 
     size_t maximumBufferSize = this->maximumBufferSize();
 
+    // Check if app has removed enough already
+    if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+        m_bufferFull = false;
+        return;
+    }
+
     // 3. Let removal ranges equal a list of presentation time ranges that can be evicted from
     // the presentation to make room for the new data.
 
@@ -891,6 +897,15 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     MediaTime thirtySeconds = MediaTime(30, 1);
     MediaTime currentTime = m_source->currentTime();
     MediaTime maximumRangeEnd = currentTime - thirtySeconds;
+
+#if defined(METROLOGICAL)
+    for (auto& trackBuffer : m_trackBufferMap.values()) {
+        auto prevSync =
+            trackBuffer.samples.decodeOrder().findSyncSamplePriorToPresentationTime(currentTime);
+        if (prevSync != trackBuffer.samples.decodeOrder().rend())
+            maximumRangeEnd = prevSync->second->presentationTime();
+    }
+#endif
 
 #if !LOG_DISABLED
     LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - currentTime = %lf, require %zu bytes, maximum buffer size is %zu", this, m_source->currentTime().toDouble(), extraMemoryCost() + newDataSize, maximumBufferSize);
