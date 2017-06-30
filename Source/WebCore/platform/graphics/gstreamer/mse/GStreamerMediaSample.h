@@ -27,6 +27,7 @@
 #include "MediaSample.h"
 #include <gst/gst.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/PrintStream.h>
 
 namespace WebCore {
 
@@ -55,7 +56,7 @@ public:
     Ref<MediaSample> createNonDisplayingCopy() const override;
     SampleFlags flags() const override { return m_flags; }
     PlatformSample platformSample() override  { return PlatformSample(); }
-    void dump(PrintStream&) const override { }
+    void dump(PrintStream& out) const override { out.print("{PTS(", presentationTime(), "), DTS(", decodeTime(), "), duration(", duration(), ")}"); }
 
 private:
     GStreamerMediaSample(GstSample*, const FloatSize& presentationSize, const AtomicString& trackId);

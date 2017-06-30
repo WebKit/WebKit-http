@@ -68,6 +68,8 @@ public:
     void flush(AtomicString);
     void enqueueSample(RefPtr<MediaSample>);
 
+    bool hasFutureData(const MediaTime& start);
+
     GstElement* pipeline();
 private:
     PlaybackPipeline() = default;

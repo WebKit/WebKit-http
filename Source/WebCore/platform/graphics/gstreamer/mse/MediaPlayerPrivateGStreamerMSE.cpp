@@ -441,7 +441,7 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
     GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), &pipelineState, nullptr, 250 * GST_NSECOND);
     bool isPlaying = (getStateResult == GST_STATE_CHANGE_SUCCESS && pipelineState == GST_STATE_PLAYING);
 
-    if (m_readyState == MediaPlayer::HaveMetadata && oldReadyState > MediaPlayer::HaveMetadata && isPlaying) {
+    if (m_readyState == MediaPlayer::HaveMetadata && oldReadyState > MediaPlayer::HaveMetadata && isPlaying && !playbackPipelineHasFutureData()) {
         GST_TRACE("Changing pipeline to PAUSED...");
         bool ok = changePipelineState(GST_STATE_PAUSED);
         GST_TRACE("Changed pipeline to PAUSED: %s", ok ? "Success" : "Error");
@@ -577,7 +577,7 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
         }
 #if PLATFORM(BROADCOM)
         // this code path needs a proper review in case it can be generalized to all platforms.
-        bool buffering = !isTimeBuffered(currentMediaTime());
+        bool buffering = !isTimeBuffered(currentMediaTime()) && !playbackPipelineHasFutureData();
 #else
         bool buffering = m_buffering;
 #endif
@@ -679,6 +679,15 @@ bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
     bool result = m_mediaSource && m_mediaSource->buffered()->contain(time);
     GST_DEBUG("Time %f buffered? %s", time.toDouble(), result ? "Yes" : "No");
     return result;
+}
+
+bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
+{
+    if (!m_playbackPipeline || m_isEndReached || m_errorOccured)
+        return false;
+
+    MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
+    return m_playbackPipeline->hasFutureData(position);
 }
 
 void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)

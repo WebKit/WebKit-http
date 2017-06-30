@@ -116,6 +116,7 @@ private:
     unsigned long corruptedVideoFrames() override { return 0; }
     MediaTime totalFrameDelay() override { return MediaTime::zeroTime(); }
     bool isTimeBuffered(const MediaTime&) const;
+    bool playbackPipelineHasFutureData() const;
 
     bool isMediaSource() const override { return true; }
 
