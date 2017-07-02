@@ -53,6 +53,12 @@ set(MiniBrowser_LIBRARIES
     ${Qt5Quick_LIBRARIES}
 )
 
+if (SHARED_CORE)
+    list(APPEND MiniBrowser_LIBRARIES
+        WebKit2
+    )
+endif ()
+
 if (ENABLE_TEST_SUPPORT)
     add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()

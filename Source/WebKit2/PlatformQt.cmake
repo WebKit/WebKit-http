@@ -280,23 +280,25 @@ list(APPEND WebProcess_SOURCES
     qt/MainQt.cpp
 )
 
+if (NOT SHARED_CORE)
+    set(WebProcess_LIBRARIES
+        WebKit
+    )
+    set(NetworkProcess_LIBRARIES
+        WebKit
+    )
+    set(DatabaseProcess_LIBRARIES
+        WebKit
+    )
+    set(PluginProcess_LIBRARIES
+        WebKit
+    )
+endif ()
+
 # FIXME: Allow building without widgets
-set(WebProcess_LIBRARIES
-    WebKit
+list(APPEND WebProcess_LIBRARIES
     Qt5::Widgets
     WebKitWidgets
-)
-
-set(NetworkProcess_LIBRARIES
-    WebKit
-)
-
-set(DatabaseProcess_LIBRARIES
-    WebKit
-)
-
-set(PluginProcess_LIBRARIES
-    WebKit
 )
 
 list(APPEND NetworkProcess_SOURCES

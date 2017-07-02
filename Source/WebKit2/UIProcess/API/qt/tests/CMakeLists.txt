@@ -84,6 +84,12 @@ set(qmltests_LIBRARIES
     ${Qt5Test_LIBRARIES}
 )
 
+if (SHARED_CORE)
+    list(APPEND qmltests_LIBRARIES
+        WebKit2
+    )
+endif ()
+
 add_executable(tst_qmltests_WebView ${qmltests_SOURCES})
 target_compile_definitions(tst_qmltests_WebView PRIVATE ${tst_qmltests_WebView_DEFINITIONS})
 target_link_libraries(tst_qmltests_WebView ${qmltests_LIBRARIES})
