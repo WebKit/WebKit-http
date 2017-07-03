@@ -129,11 +129,11 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*);
-    void receivedGenerateKeyRequest(const String&);
+    void receivedGenerateKeyRequest(const String&) override;
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
-    virtual void emitSession(const String&);
+    virtual void emitSession(const String&) override;
     virtual void resetOpenCDMFlag();
 #endif
 
