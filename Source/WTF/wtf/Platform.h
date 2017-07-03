@@ -1058,6 +1058,9 @@
 #if PLATFORM(QT)
 #ifdef __cplusplus
 #include <qglobal.h>
+#if QT_VERSION >= QT_VERSION_CHECK(5,8,0)
+#include <QtGui/qtguiglobal.h>
+#endif
 #endif
 #if defined(QT_OPENGL_ES_2) && !defined(USE_OPENGL_ES_2)
 #define USE_OPENGL_ES_2 1
