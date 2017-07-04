@@ -183,6 +183,13 @@ if (QT_CORE_TYPE MATCHES STATIC)
     set(MACOS_BUILD_FRAMEWORKS OFF)
 endif ()
 
+# static icu libraries on windows are build with 's' prefix
+if (QT_STATIC_BUILD AND MSVC)
+    set(ICU_LIBRARY_PREFIX "s")
+else ()
+    set(ICU_LIBRARY_PREFIX "")
+endif ()
+
 if (QT_STATIC_BUILD)
     set(ENABLE_WEBKIT2_DEFAULT OFF)
 else ()
@@ -849,7 +856,7 @@ if (MSVC)
     endif ()
 
     if (NOT QT_CONAN_DIR)
-        set(ICU_LIBRARIES icuuc${CMAKE_DEBUG_POSTFIX} icuin${CMAKE_DEBUG_POSTFIX} icudt${CMAKE_DEBUG_POSTFIX})
+        set(ICU_LIBRARIES ${ICU_LIBRARY_PREFIX}icuuc${CMAKE_DEBUG_POSTFIX} ${ICU_LIBRARY_PREFIX}icuin${CMAKE_DEBUG_POSTFIX} ${ICU_LIBRARY_PREFIX}icudt${CMAKE_DEBUG_POSTFIX})
     endif ()
 endif ()
 

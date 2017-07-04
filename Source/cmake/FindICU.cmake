@@ -24,7 +24,7 @@ mark_as_advanced(ICU_INCLUDE_DIR)
 # Look for the library.
 find_library(
     ICU_LIBRARY
-    NAMES icuuc cygicuuc cygicuuc32
+    NAMES sicuuc icuuc cygicuuc cygicuuc32
     HINTS ${PC_ICU_LIBRARY_DIRS}
           ${PC_ICU_LIBDIR}
     DOC "Libraries to link against for the common parts of ICU")
@@ -49,7 +49,7 @@ if (ICU_INCLUDE_DIR AND ICU_LIBRARY)
     pkg_check_modules(PC_ICU_I18N icu-i18n)
     find_library(
         ICU_I18N_LIBRARY
-        NAMES icui18n icuin cygicuin cygicuin32
+        NAMES sicui18n sicuin icui18n icuin cygicuin cygicuin32
         HINTS ${PC_ICU_I18N_LIBRARY_DIRS}
               ${PC_ICU_I18N_LIBDIR}
         DOC "Libraries to link against for ICU internationalization")
