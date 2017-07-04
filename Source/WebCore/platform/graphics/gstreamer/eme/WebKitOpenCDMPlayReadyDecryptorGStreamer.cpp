@@ -30,8 +30,6 @@ static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject*);
 GST_DEBUG_CATEGORY(webkit_media_opencdm_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_playready_decrypt_debug_category
 
-#define PLAYREADY_PROTECTION_SYSTEM_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
-
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
