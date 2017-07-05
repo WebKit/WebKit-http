@@ -508,10 +508,12 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
 
     // 4. If the new duration is less than old duration, then call remove(new duration, old duration)
     // on all objects in sourceBuffers.
-    for (auto& sourceBuffer : *m_sourceBuffers) {
-        auto length = sourceBuffer->bufferedInternal().length();
-        if (length && newDuration < sourceBuffer->bufferedInternal().ranges().end(length - 1))
-            sourceBuffer->rangeRemoval(newDuration, sourceBuffer->bufferedInternal().ranges().end(length - 1));
+    if (m_duration.isValid() && newDuration < m_duration) {
+        for (auto& sourceBuffer : *m_sourceBuffers) {
+            auto length = sourceBuffer->bufferedInternal().length();
+            if (length && newDuration < sourceBuffer->bufferedInternal().ranges().end(length - 1))
+                sourceBuffer->rangeRemoval(newDuration, sourceBuffer->bufferedInternal().ranges().end(length - 1));
+        }
     }
 #else
     // Upstream implementation, conforming to the latest MSE spec.
