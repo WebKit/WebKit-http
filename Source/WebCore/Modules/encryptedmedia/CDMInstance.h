@@ -48,7 +48,9 @@ public:
     enum class ImplementationType {
         ClearKey,
         Mock,
+#if USE(OPENCDM)
         OpenCDM,
+#endif
     };
 
     virtual ImplementationType implementationType() const = 0;
