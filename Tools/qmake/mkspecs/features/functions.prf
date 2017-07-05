@@ -66,9 +66,6 @@ defineTest(isPlatformSupported) {
     }
 
     win32 {
-        qtConfig(opengles2):!qtConfig(dynamicgl) {
-            skipBuild("QtWebKit supports only dynamic GL Qt builds on Windows at the moment.")
-        }
         winrt {
             skipBuild("WinRT is not supported.")
         }

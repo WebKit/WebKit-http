@@ -29,7 +29,11 @@
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 #include "TemporaryOpenGLSetting.h"
 
-#if USE(OPENGL_ES_2)
+#if PLATFORM(QT)
+#define FUNCTIONS m_functions
+#include "OpenGLShimsQt.h"
+#define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
+#elif USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
 #include "OpenGLESShims.h"
 #elif PLATFORM(IOS)
@@ -38,10 +42,6 @@
 #include <OpenGL/gl.h>
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
-#elif PLATFORM(QT)
-#define FUNCTIONS m_functions
-#include "OpenGLShimsQt.h"
-#define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
 #endif
 
 namespace WebCore {
