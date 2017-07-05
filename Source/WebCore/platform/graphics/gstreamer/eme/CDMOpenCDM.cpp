@@ -27,6 +27,9 @@
 
 #include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
+#include "WebKitClearKeyDecryptorGStreamer.h"
+#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
+#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 #include <open_cdm.h>
 #include <wtf/text/Base64.h>
 
@@ -200,9 +203,9 @@ std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(CDM&, const String& key
 
 bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
 {
-    return equalLettersIgnoringASCIICase(keySystem, "com.microsoft.playready") 
-    || equalLettersIgnoringASCIICase(keySystem, "com.youtube.playready")
-    || equalLettersIgnoringASCIICase(keySystem, "com.widevine.alpha");
+    return equalLettersIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+    || equalLettersIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)
+    || equalLettersIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID);
 }
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm* session, const String& keySystem)
