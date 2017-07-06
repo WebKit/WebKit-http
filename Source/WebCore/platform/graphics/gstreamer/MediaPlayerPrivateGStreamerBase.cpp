@@ -1409,7 +1409,7 @@ void MediaPlayerPrivateGStreamerBase::emitSession(const String& sessionId)
         return;
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
-    GST_TRACE("emitted OPENCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
+    GST_TRACE("emitted OpenCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
 }
 
 void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
