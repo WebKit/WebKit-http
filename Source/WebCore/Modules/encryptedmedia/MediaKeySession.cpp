@@ -195,10 +195,6 @@ void MediaKeySession::generateRequest(const AtomicString& initDataType, const Bu
             m_latestDecryptTime = 0;
         }
 
-#if USE(OPENCDM)
-        String keySystem = m_implementation->keySystem();
-        m_keys->receivedGenerateKeyRequest(keySystem);
-#endif
         m_instance->requestLicense(m_sessionType, initDataType, WTFMove(initData), [this, weakThis = m_weakPtrFactory.createWeakPtr(), promise = WTFMove(promise)] (Ref<SharedBuffer>&& message, const String& sessionId, bool needsIndividualization, CDMInstance::SuccessValue succeeded) mutable {
             if (!weakThis)
                 return;

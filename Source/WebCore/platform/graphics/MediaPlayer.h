@@ -376,8 +376,9 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&);
+    // If we need more stuff from the CDM, we might want to add a CDM reference here in the future.
+    void setKeySystem(const String& keySystem);
 #if USE(OPENCDM)
-    void receivedGenerateKeyRequest(const String&);
     void emitSession(const String&);
 #endif
 #endif

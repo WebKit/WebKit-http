@@ -425,27 +425,20 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GST_MEMDUMP("init datas", initData.data(), initData.size());
 
             m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));
-
-            // FIXME: ClearKey BestKey
-            LockHolder lock(m_protectionMutex);
-#if USE(OPENCDM)
-            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
-            GST_DEBUG("forcing playready %s\n", m_lastGenerateKeyRequestKeySystemUuid.utf8().data());
-#endif
-            m_protectionCondition.notifyOne();
         });
 
         GST_INFO("waiting for a key request to arrive");
         LockHolder lock(m_protectionMutex);
         m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
-            return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty();
+            return !this->m_keySystem.isEmpty();
         });
-        if (!m_lastGenerateKeyRequestKeySystemUuid.isEmpty()) {
-            GST_INFO("got a key request, continuing with %s on %s", m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), GST_MESSAGE_SRC_NAME(message));
+        if (!m_keySystem.isEmpty()) {
+            const char* preferredKeySystemUuid = keySystemIdToUuid(m_keySystem).string().utf8().data();
+            GST_INFO("working with %s, continuing with %s on %s", m_keySystem.utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
             GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
             GstStructure* contextStructure = gst_context_writable_structure(context.get());
-            gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), nullptr);
+            gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, preferredKeySystemUuid, nullptr);
             gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
         } else
             GST_WARNING("did not get a proper key request");
@@ -1453,10 +1446,10 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
     gst_buffer_unmap(data, &mapInfo);
 }
 
-void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& keySystem)
+void MediaPlayerPrivateGStreamerBase::setKeySystem(const String& keySystem)
 {
-    GST_DEBUG("received generate key request for %s", keySystem.utf8().data());
-    m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem);
+    m_keySystem = keySystem;
+    GST_DEBUG("key system set to %s", m_keySystem.utf8().data());
     m_protectionCondition.notifyOne();
 }
 
