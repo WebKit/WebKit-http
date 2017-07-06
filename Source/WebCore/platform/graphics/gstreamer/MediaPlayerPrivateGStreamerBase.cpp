@@ -1462,6 +1462,9 @@ void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& k
 
 static AtomicString keySystemIdToUuid(const AtomicString& id)
 {
+    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
+        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+
 #if USE(OPENCDM)
     if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
@@ -1469,8 +1472,6 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
 
     if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
         return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
-#else
-    UNUSED_PARAM(id);
 #endif
 
     return { };
