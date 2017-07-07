@@ -409,6 +409,11 @@ void PlaybackPipeline::flush(AtomicString trackId)
     GstElement* appsrc = stream->appsrc;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
+    if (trackId.startsWith("A")) {
+        GST_DEBUG("flush: refusing to flush audio stream");
+        return;
+    }
+
     if (!appsrc)
         return;
 
