@@ -80,7 +80,8 @@ static void webkit_media_opencdm_decrypt_init(WebKitOpenCDMDecrypt* self)
 static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(object));
-    priv->m_openCdm->ReleaseMem();
+    if (priv->m_openCdm)
+        priv->m_openCdm->ReleaseMem();
     priv->~WebKitOpenCDMDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
