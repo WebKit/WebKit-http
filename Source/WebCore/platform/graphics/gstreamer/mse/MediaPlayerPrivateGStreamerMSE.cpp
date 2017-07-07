@@ -317,7 +317,9 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     }
 
     // Check if MSE has samples for requested time and defer actual seek if needed.
-    if (!isTimeBuffered(seekTime)) {
+    // This condition on m_readyState must match the conditions which trigger completeSeek() in
+    // MediaSource::monitorSourceBuffers().
+    if (!isTimeBuffered(seekTime) || m_readyState < MediaPlayer::HaveCurrentData) {
         GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
         GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
         if (setStateResult == GST_STATE_CHANGE_FAILURE) {
@@ -421,15 +423,15 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
     if (readyState == m_readyState)
         return;
 
-    if (seeking()) {
-        GST_DEBUG("Skip ready state change(%s -> %s) due to seek\n", dumpReadyState(m_readyState), dumpReadyState(readyState));
-        return;
-    }
-
     GST_DEBUG("Ready State Changed manually from %u to %u", m_readyState, readyState);
     MediaPlayer::ReadyState oldReadyState = m_readyState;
     m_readyState = readyState;
     GST_DEBUG("m_readyState: %s -> %s", dumpReadyState(oldReadyState), dumpReadyState(m_readyState));
+
+    if (seeking()) {
+        GST_DEBUG("Skip reaction to ready state change due to seek");
+        return;
+    }
 
     if (oldReadyState < MediaPlayer::HaveCurrentData && m_readyState >= MediaPlayer::HaveCurrentData) {
         GST_DEBUG("[Seek] Reporting load state changed to trigger seek continuation");
