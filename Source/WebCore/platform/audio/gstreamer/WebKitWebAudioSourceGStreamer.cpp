@@ -372,7 +372,8 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
         gst_buffer_unmap(channelBuffer, &buffer->info);
         g_free(buffer);
 
-        if (ret == GST_FLOW_OK) {
+        // FIXME: Properly handle silence (NULL) data (without hogging the cpu)
+        if ((ret == GST_FLOW_OK) && (!priv->bus->isSilent())) {
             ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), channelBuffer);
             if (ret != GST_FLOW_OK) {
                 // FLUSHING and EOS are not errors.
@@ -380,8 +381,10 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
                     GST_ELEMENT_ERROR(src, CORE, PAD, ("Internal WebAudioSrc error"), ("Failed to push buffer on %s flow: %s", GST_OBJECT_NAME(appsrc), gst_flow_get_name(ret)));
                 gst_task_stop(src->priv->task.get());
             }
-        } else
+        } else {
             gst_buffer_unref(channelBuffer);
+            g_usleep(1000);
+        }
     }
 
     g_slist_free(channelBufferList);
