@@ -221,7 +221,7 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
             platform/win/WebCoreInstanceHandle.cpp
         )
         list(APPEND WebCore_LIBRARIES
-            Shlwapi
+            shlwapi
             version
         )
     elseif (PLUGIN_BACKEND_XLIB)
