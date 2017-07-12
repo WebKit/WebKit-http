@@ -33,6 +33,9 @@
 #include <open_cdm.h>
 #include <wtf/text/Base64.h>
 
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
+
 using namespace Inspector;
 
 namespace WebCore {
@@ -90,7 +93,7 @@ public:
 private:
     MediaKeyStatus getKeyStatus(std::string &);
     SessionLoadFailure getSessionLoadStatus(std::string &);
-    int checkMessageLength(std::string &, std::string &);
+    size_t checkMessageLength(std::string &, std::string &);
     media::OpenCdm* m_openCdmSession;
     HashMap<String, Ref<SharedBuffer>> sessionIdMap;
     String m_keySystem;
@@ -269,12 +272,10 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<Sh
     bool needIndividualization = false;
     std::string delimiter = ":Type:";
     std::string requestType = message.substr(0, message.find(delimiter));
-    printf("\nmessage.size before erase = %d\n", message.size());
+    size_t previousMessageSize = message.size();
     if (requestType.size() && (requestType.size() !=  message.size()))
         message.erase(0, message.find(delimiter) + delimiter.length());
-    printf("\nmessage.size after erase = %d\n", message.size());
-    printf("\ndelimeter.size = %d, delimiter = %s\n",delimiter.size(), delimiter.c_str());
-    printf("\nrequestType.size = %d, requestType = %s\n", requestType.size(), requestType.c_str());
+    GST_TRACE("message.size before erase = %u, message.size after erase = %u, delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s", previousMessageSize, message.size(), delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str());
     if ((requestType.size() == 1) && ((WebCore::MediaKeyMessageType)std::stoi(requestType) == CDMInstance::MessageType::IndividualizationRequest))
         needIndividualization = true;
 
@@ -287,18 +288,18 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
 {
     std::string responseMessage;
     int ret = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
+    GST_DEBUG("session id %s, calling callback %s message", sessionId.utf8().data(), ret ? "with" : "without");
     if (ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            int length = checkMessageLength(responseMessage, request);
-            printf("\n%s:%s:%d\n", __FILE__, __func__, __LINE__);
+            size_t length = checkMessageLength(responseMessage, request);
+            GST_TRACE("message length %u", length);
             Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
             callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
             return;
         }
     }
-    printf("\n%s:%s:%d\n", __FILE__, __func__, __LINE__);
     SharedBuffer* initData = sessionIdMap.get(sessionId);
     KeyStatusVector changedKeys;
     MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
@@ -338,16 +339,15 @@ MediaKeyStatus CDMInstanceOpenCDM::getKeyStatus(std::string& keyStatus)
         return MediaKeyStatus::InternalError;
 }
 
-int CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string& request) {
-    int length = 0;
+size_t CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string& request) {
+    size_t length = 0;
     std::string delimiter = ":Type:";
     std::string requestType = message.substr(0, message.find(delimiter));
     if (requestType.size() && (requestType.size() == (request.size() + 1)))
        length = requestType.size() + delimiter.size();
     else
        length = request.length();
-    printf("\n%s:%s:%d delimeter.size = %d, delimiter = %s\n", __FILE__, __func__, __LINE__, delimiter.size(), delimiter.c_str());
-    printf("\nrequestType.size = %d, requestType = %s\n", requestType.size(), requestType.c_str());
+    GST_TRACE("delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s", delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str());
     return length;
 }
 
@@ -359,8 +359,8 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String&, const String&, 
     if (ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            int length = checkMessageLength(responseMessage, request);
-            printf("\n%s:%s:%d\n", __FILE__, __func__, __LINE__);
+            size_t length = checkMessageLength(responseMessage, request);
+            GST_TRACE("message length %u", length);
 
             Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
@@ -393,8 +393,8 @@ void CDMInstanceOpenCDM::removeSessionData(const String&, LicenseType, RemoveSes
     if (ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            int length = checkMessageLength(responseMessage, request);
-            printf("\n%s:%s:%d\n", __FILE__, __func__, __LINE__);
+            size_t length = checkMessageLength(responseMessage, request);
+            GST_TRACE("message length %u", length);
 
             auto message = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             callback(WTFMove(keys), std::move(WTFMove(message)), SuccessValue::Succeeded);
