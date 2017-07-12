@@ -120,7 +120,8 @@
 || defined(__ARM_ARCH_7S__)
 #define BARM_ARCH_VERSION 7
 
-#elif defined(__ARM_ARCH_8__)
+#elif defined(__ARM_ARCH_8__) \
+|| defined(__ARM_ARCH_8A__)
 #define BARM_ARCH_VERSION 8
 
 /* MSVC sets _M_ARM */
