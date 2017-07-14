@@ -34,42 +34,6 @@ public:
     std::optional<String> sanitizeSessionId(const String&) const override;
 };
 
-class CDMInstanceClearKey : public CDMInstance {
-public:
-    CDMInstanceClearKey();
-    virtual ~CDMInstanceClearKey();
-
-    ImplementationType implementationType() const { return ImplementationType::ClearKey; }
-
-    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
-    SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
-    SuccessValue setPersistentStateAllowed(bool) override;
-    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
-
-    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) override;
-    void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) override;
-    void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) override;
-    void closeSession(const String&, CloseSessionCallback) override;
-    void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
-    void storeRecordOfKeyUsage(const String&) override;
-
-    void gatherAvailableKeys(AvailableKeysCallback) override;
-
-private:
-    struct Key {
-        Key() = default;
-        Key(Key&&) = default;
-        Key& operator=(Key&&) = default;
-        String keyID;
-        KeyStatus status;
-        RefPtr<SharedBuffer> keyIDData;
-        RefPtr<SharedBuffer> keyValueData;
-    };
-
-    // HashMap<String, Key> m_keys;
-    HashMap<String, Vector<Key>> m_what;
-};
-
 CDMPrivateClearKey::CDMPrivateClearKey() = default;
 
 CDMPrivateClearKey::~CDMPrivateClearKey() = default;
@@ -276,7 +240,7 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
     // FIXME: Check that session type is valid.
 #endif
 
-    auto& keyVector = m_what.ensure(sessionId, [] { return Vector<Key>{ }; }).iterator->value;
+    auto& keyVector = m_keys.ensure(sessionId, [] { return Vector<Key>{ }; }).iterator->value;
 
     bool keysChanged = false;
     for (auto& key : updatedKeys) {
@@ -344,7 +308,7 @@ void CDMInstanceClearKey::storeRecordOfKeyUsage(const String&)
 void CDMInstanceClearKey::gatherAvailableKeys(AvailableKeysCallback callback)
 {
     KeyVector vector;
-    for (auto& it : m_what) {
+    for (auto& it : m_keys) {
         for (auto& key : it.value) {
             if (key.status == KeyStatus::Usable)
                 vector.append({ key.keyIDData->copy(), key.keyValueData->copy() });

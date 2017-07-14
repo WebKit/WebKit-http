@@ -51,6 +51,7 @@
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMClearKey.h"
 #include "SharedBuffer.h"
 #endif
 
@@ -812,20 +813,33 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance&)
+void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
-#if 0
-    if (keys.isEmpty())
-        return;
+    fprintf(stderr, "MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance() instance %p\n", &instance);
 
-    auto& keyValue = keys.first().second;
-    GRefPtr<GstBuffer> buffer(gst_buffer_new_wrapped(g_memdup(keyValue->data(), keyValue->size()), keyValue->size()));
+    GRefPtr<GstBuffer> keyBuffer;
 
-    for (auto iterator : m_appendPipelinesMap)
-        iterator.value->dispatchDecryptionKey(buffer.get());
-#else
-    GST_WARNING("FIXME");
-#endif
+    if (is<CDMInstanceClearKey>(instance)) {
+        auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
+        for (auto& entry : ckInstance.keys()) {
+            for (auto& key : entry.value) {
+                if (key.keyValueData) {
+                    keyBuffer = GRefPtr<GstBuffer>(gst_buffer_new_wrapped(
+                        g_memdup(key.keyValueData->data(), key.keyValueData->size()),
+                        key.keyValueData->size()));
+                    break;
+                }
+            }
+
+            if (keyBuffer)
+                break;
+        }
+    }
+
+    if (keyBuffer) {
+        for (auto it : m_appendPipelinesMap)
+            it.value->dispatchDecryptionKey(keyBuffer.get());
+    }
 }
 
 #if USE(OPENCDM)
