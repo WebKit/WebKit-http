@@ -2640,6 +2640,18 @@ bool HTMLMediaElement::mediaPlayerInitializationDataEncountered(const String& in
     return true;
 }
 
+void HTMLMediaElement::cdmClientInstanceAttached(const CDMInstance& instance)
+{
+    if (m_player)
+        m_player->cdmInstanceAttached(instance);
+}
+
+void HTMLMediaElement::cdmClientInstanceDetached(const CDMInstance& instance)
+{
+    if (m_player)
+        m_player->cdmInstanceDetached(instance);
+}
+
 void HTMLMediaElement::cdmClientAttemptToResumePlaybackIfNecessary()
 {
     // https://w3c.github.io/encrypted-media/#resume-playback

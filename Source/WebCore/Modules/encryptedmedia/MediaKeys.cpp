@@ -120,12 +120,16 @@ void MediaKeys::attachCDMClient(CDMClient& client)
 {
     ASSERT(!m_cdmClients.contains(&client));
     m_cdmClients.append(&client);
+
+    client.cdmClientInstanceAttached(m_instance);
 }
 
 void MediaKeys::detachCDMClient(CDMClient& client)
 {
     ASSERT(m_cdmClients.contains(&client));
     m_cdmClients.removeFirst(&client);
+
+    client.cdmClientInstanceDetached(m_instance);
 }
 
 void MediaKeys::attemptToResumePlaybackOnClients()

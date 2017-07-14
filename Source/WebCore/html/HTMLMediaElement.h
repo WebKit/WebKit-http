@@ -629,9 +629,13 @@ private:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) override;
+    void attemptToDecrypt();
+
+    // CDMClient
+    void cdmClientInstanceAttached(const CDMInstance&) override;
+    void cdmClientInstanceDetached(const CDMInstance&) override;
     void cdmClientAttemptToResumePlaybackIfNecessary() override;
     void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
-    void attemptToDecrypt();
 
 #if USE(OPENCDM)
     void emitSession(const String&) override;
