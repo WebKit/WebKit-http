@@ -144,6 +144,13 @@ namespace WebCore {
 static const String ABORT_ENCRYPTION_SETUP_PROTECTION_SYSTEM_UUID = "abort";
 #endif
 
+#if ENABLE(NATIVE_AUDIO)
+static const GstStreamVolumeFormat VOLUME_FORMAT = GST_STREAM_VOLUME_FORMAT_LINEAR;
+#else
+static const GstStreamVolumeFormat VOLUME_FORMAT = GST_STREAM_VOLUME_FORMAT_CUBIC;
+#endif
+
+
 void registerWebKitGStreamerElements()
 {
     if (!webkitGstCheckVersion(1, 6, 1))
@@ -729,7 +736,7 @@ void MediaPlayerPrivateGStreamerBase::setVolume(float volume)
         return;
 
     GST_DEBUG("Setting volume: %f", volume);
-    gst_stream_volume_set_volume(m_volumeElement.get(), GST_STREAM_VOLUME_FORMAT_CUBIC, static_cast<double>(volume));
+    gst_stream_volume_set_volume(m_volumeElement.get(), VOLUME_FORMAT, static_cast<double>(volume));
 }
 
 #if PLATFORM(WPE)
@@ -738,7 +745,7 @@ float MediaPlayerPrivateGStreamerBase::volume() const
     if (!m_volumeElement)
         return 0;
 
-    return gst_stream_volume_get_volume(m_volumeElement.get(), GST_STREAM_VOLUME_FORMAT_CUBIC);
+    return gst_stream_volume_get_volume(m_volumeElement.get(), VOLUME_FORMAT);
 }
 #endif
 
@@ -747,7 +754,7 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfVolumeChange()
     if (!m_player || !m_volumeElement)
         return;
     double volume;
-    volume = gst_stream_volume_get_volume(m_volumeElement.get(), GST_STREAM_VOLUME_FORMAT_CUBIC);
+    volume = gst_stream_volume_get_volume(m_volumeElement.get(), VOLUME_FORMAT);
     // get_volume() can return values superior to 1.0 if the user
     // applies software user gain via third party application (GNOME
     // volume control for instance).
@@ -1446,7 +1453,7 @@ void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* vo
     // https://bugs.webkit.org/show_bug.cgi?id=118974 for more information.
     if (!m_player->platformVolumeConfigurationRequired()) {
         GST_DEBUG("Setting stream volume to %f", m_player->volume());
-        g_object_set(m_volumeElement.get(), "volume", m_player->volume(), NULL);
+        setVolume(m_player->volume());
     } else
         GST_DEBUG("Not setting stream volume, trusting system one");
 
