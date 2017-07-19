@@ -431,18 +431,18 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         GST_INFO("waiting for a key request to arrive");
         LockHolder lock(m_protectionMutex);
         m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
-            return !this->m_keySystem.isEmpty();
+            return this->m_cdmInstance;
         });
-        if (!m_keySystem.isEmpty()) {
-            const char* preferredKeySystemUuid = keySystemIdToUuid(m_keySystem).string().utf8().data();
-            GST_INFO("working with %s, continuing with %s on %s", m_keySystem.utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
+        if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
+            const char* preferredKeySystemUuid = keySystemIdToUuid(m_cdmInstance->keySystem()).string().utf8().data();
+            GST_INFO("working with %s, continuing with %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
             GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
             GstStructure* contextStructure = gst_context_writable_structure(context.get());
             gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, preferredKeySystemUuid, nullptr);
             gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
         } else
-            GST_WARNING("did not get a proper key request");
+            GST_WARNING("no proper CDM instance attached");
 
         return true;
     }
@@ -1417,6 +1417,7 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& ins
     ASSERT(!m_cdmInstance);
     m_cdmInstance = &instance;
     GST_DEBUG("CDM instance %p set", m_cdmInstance.get());
+    m_protectionCondition.notifyOne();
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
@@ -1427,6 +1428,7 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& ins
     ASSERT(m_cdmInstance.get() == &instance);
     GST_DEBUG("detaching CDM instance %p", m_cdmInstance.get());
     m_cdmInstance = nullptr;
+    m_protectionCondition.notifyOne();
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance&)
