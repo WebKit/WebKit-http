@@ -126,6 +126,7 @@ bool CDMFactoryClearKey::supportsKeySystem(const String& keySystem)
     return equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey");
 }
 
+const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
 CDMInstanceClearKey::CDMInstanceClearKey() = default;
 CDMInstanceClearKey::~CDMInstanceClearKey() = default;
 
@@ -316,6 +317,11 @@ void CDMInstanceClearKey::gatherAvailableKeys(AvailableKeysCallback callback)
     }
     if (!vector.isEmpty())
         callback(WTFMove(vector));
+}
+
+const String& CDMInstanceClearKey::keySystem() const
+{
+    return s_keySystem;
 }
 
 } // namespace WebCore

@@ -90,6 +90,8 @@ public:
 
     void gatherAvailableKeys(AvailableKeysCallback) override;
 
+    const String& keySystem() const override { return m_keySystem; }
+
 private:
     MediaKeyStatus getKeyStatus(std::string &);
     SessionLoadFailure getSessionLoadStatus(std::string &);

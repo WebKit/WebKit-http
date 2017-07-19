@@ -38,6 +38,8 @@ public:
 
     void gatherAvailableKeys(AvailableKeysCallback) override;
 
+    const String& keySystem() const override;
+
     struct Key {
         Key() = default;
         Key(Key&&) = default;
@@ -49,6 +51,8 @@ public:
     };
 
     const HashMap<String, Vector<Key>>& keys() const { return m_keys; }
+
+    static const String s_keySystem;
 
 private:
     HashMap<String, Vector<Key>> m_keys;
