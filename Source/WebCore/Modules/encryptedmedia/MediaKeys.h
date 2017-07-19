@@ -64,7 +64,6 @@ public:
     void detachCDMClient(CDMClient&);
     void attemptToResumePlaybackOnClients();
     void attemptToDecrypt(CDMClient&);
-    const String& keySystem();
 
 #if USE(OPENCDM)
     void decryptWithSession(const String&);

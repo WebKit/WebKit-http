@@ -2607,8 +2607,6 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
         // 5.5. Let this object's attaching media keys value be false.
         // 5.6. Resolve promise.
         m_mediaKeys = WTFMove(mediaKeys);
-        if (m_player)
-            m_player->setKeySystem(m_mediaKeys->keySystem());
         m_attachingMediaKeys = false;
         promise->resolve();
     });

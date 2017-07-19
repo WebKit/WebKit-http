@@ -607,11 +607,6 @@ void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
     m_private->attemptToDecryptWithInstance(instance);
 }
 
-void MediaPlayer::setKeySystem(const String& keySystem)
-{
-    m_private->setKeySystem(keySystem);
-}
-
 #if USE(OPENCDM)
 void MediaPlayer::emitSession(const String& sessionId)
 {

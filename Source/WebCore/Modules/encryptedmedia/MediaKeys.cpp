@@ -138,11 +138,6 @@ void MediaKeys::attemptToResumePlaybackOnClients()
         cdmClient->cdmClientAttemptToResumePlaybackIfNecessary();
 }
 
-const String& MediaKeys::keySystem()
-{
-    return m_implementation->keySystem();
-}
-
 #if USE(OPENCDM)
 void MediaKeys::decryptWithSession(const String& sessionId)
 {

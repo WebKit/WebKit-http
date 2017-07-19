@@ -129,7 +129,6 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*);
-    void setKeySystem(const String& keySystem) override;
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
@@ -268,7 +267,6 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     Lock m_protectionMutex;
     Condition m_protectionCondition;
-    String m_keySystem;
     RefPtr<const CDMInstance> m_cdmInstance;
     HashSet<uint32_t> m_handledProtectionEvents;
 #endif

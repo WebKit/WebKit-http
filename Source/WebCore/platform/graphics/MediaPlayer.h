@@ -378,8 +378,6 @@ public:
     void cdmInstanceAttached(const CDMInstance&);
     void cdmInstanceDetached(const CDMInstance&);
     void attemptToDecryptWithInstance(const CDMInstance&);
-    // If we need more stuff from the CDM, we might want to add a CDM reference here in the future.
-    void setKeySystem(const String& keySystem);
 #if USE(OPENCDM)
     void emitSession(const String&);
 #endif

@@ -1466,13 +1466,6 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
     gst_buffer_unmap(data, &mapInfo);
 }
 
-void MediaPlayerPrivateGStreamerBase::setKeySystem(const String& keySystem)
-{
-    m_keySystem = keySystem;
-    GST_DEBUG("key system set to %s", m_keySystem.utf8().data());
-    m_protectionCondition.notifyOne();
-}
-
 static AtomicString keySystemIdToUuid(const AtomicString& id)
 {
     if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
