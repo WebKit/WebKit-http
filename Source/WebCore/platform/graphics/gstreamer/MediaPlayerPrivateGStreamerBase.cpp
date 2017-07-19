@@ -108,6 +108,7 @@
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMInstance.h"
 #include "SharedBuffer.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 #endif
@@ -1410,6 +1411,23 @@ void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
     m_initDataProcessed = false;
 }
 #endif
+
+void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& instance)
+{
+    ASSERT(!m_cdmInstance);
+    m_cdmInstance = &instance;
+    GST_DEBUG("CDM instance %p set", m_cdmInstance.get());
+}
+
+void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
+{
+#ifdef NDEBUG
+    UNUSED_PARAM(instance);
+#endif
+    ASSERT(m_cdmInstance.get() == &instance);
+    GST_DEBUG("detaching CDM instance %p", m_cdmInstance.get());
+    m_cdmInstance = nullptr;
+}
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance&)
 {

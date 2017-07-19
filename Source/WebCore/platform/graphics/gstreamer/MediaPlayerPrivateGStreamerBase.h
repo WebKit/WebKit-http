@@ -139,6 +139,8 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&) override;
+    void cdmInstanceAttached(const CDMInstance&) override;
+    void cdmInstanceDetached(const CDMInstance&) override;
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -267,6 +269,7 @@ private:
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     String m_keySystem;
+    RefPtr<const CDMInstance> m_cdmInstance;
     HashSet<uint32_t> m_handledProtectionEvents;
 #endif
 
