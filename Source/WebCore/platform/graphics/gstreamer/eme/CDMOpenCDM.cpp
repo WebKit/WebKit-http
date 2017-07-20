@@ -27,6 +27,9 @@
 
 #include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
+#include "MediaKeyMessageType.h"
+#include "MediaKeyStatus.h"
+#include "MediaKeysRequirement.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"

@@ -5,6 +5,7 @@
 
 #include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
+#include "MediaKeysRequirement.h"
 #include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
 
