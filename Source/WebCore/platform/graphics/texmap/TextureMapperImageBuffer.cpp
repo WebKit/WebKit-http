@@ -114,14 +114,70 @@ void TextureMapperImageBuffer::drawSolidColor(const FloatRect& rect, const Trans
     context->restore();
 }
 
-void TextureMapperImageBuffer::drawBorder(const Color&, float /* borderWidth */, const FloatRect&, const TransformationMatrix&)
+void TextureMapperImageBuffer::drawBorder(const Color& color, float borderWidth , const FloatRect& rect, const TransformationMatrix& matrix)
 {
-    notImplemented();
+#if PLATFORM(QT)
+    GraphicsContext* context = currentContext();
+    if (!context)
+        return;
+
+    context->save();
+    context->setCompositeOperation(isInMaskMode() ? CompositeDestinationIn : CompositeSourceOver);
+#if ENABLE(3D_TRANSFORMS)
+    context->concat3DTransform(matrix);
+#else
+    context->concatCTM(matrix.toAffineTransform());
+#endif
+
+    QPainter& painter = *context->platformContext();
+    painter.setBrush(Qt::NoBrush);
+    QPen newPen(color);
+    newPen.setWidthF(borderWidth);
+    painter.setPen(newPen);
+    painter.drawRect(rect);
+
+    context->restore();
+#endif
 }
 
-void TextureMapperImageBuffer::drawNumber(int /* number */, const Color&, const FloatPoint&, const TransformationMatrix&)
+void TextureMapperImageBuffer::drawNumber(int number, const Color& color, const FloatPoint& targetPoint, const TransformationMatrix& matrix)
 {
-    notImplemented();
+#if PLATFORM(QT)
+    GraphicsContext* context = currentContext();
+    if (!context)
+        return;
+
+    context->save();
+    context->setCompositeOperation(isInMaskMode() ? CompositeDestinationIn : CompositeSourceOver);
+#if ENABLE(3D_TRANSFORMS)
+    context->concat3DTransform(matrix);
+#else
+    context->concatCTM(matrix.toAffineTransform());
+#endif
+
+    // Partially duplicates TextureMapperGL::drawNumber
+    int pointSize = 8;
+    QString counterString = QString::number(number);
+
+    QFont font(QString::fromLatin1("Monospace"), pointSize, QFont::Bold);
+    font.setStyleHint(QFont::TypeWriter);
+
+    QFontMetrics fontMetrics(font);
+    int width = fontMetrics.width(counterString) + 4;
+    int height = fontMetrics.height();
+
+    IntSize size(width, height);
+    IntRect sourceRect(IntPoint::zero(), size);
+
+    QPainter& painter = *context->platformContext();
+    painter.translate(targetPoint);
+    painter.fillRect(sourceRect, color);
+    painter.setFont(font);
+    painter.setPen(Qt::white);
+    painter.drawText(2, height * 0.85, counterString);
+
+    context->restore();
+#endif
 }
 
 PassRefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper&, const FilterOperations& filters)
