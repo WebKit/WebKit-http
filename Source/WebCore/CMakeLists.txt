@@ -3117,7 +3117,6 @@ endif ()
 if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/CDM.cpp
-        Modules/encryptedmedia/CDMClearKey.cpp
         Modules/encryptedmedia/InitDataRegistry.cpp
         Modules/encryptedmedia/MediaKeyMessageEvent.cpp
         Modules/encryptedmedia/MediaKeySession.cpp
@@ -3127,6 +3126,8 @@ if (ENABLE_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/NavigatorEME.cpp
 
         html/MediaEncryptedEvent.cpp
+
+        platform/encryptedmedia/CDMClearKey.cpp
     )
     list(APPEND WebCore_IDL_FILES
     )
