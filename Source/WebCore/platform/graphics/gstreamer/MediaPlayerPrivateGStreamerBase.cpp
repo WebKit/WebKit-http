@@ -428,7 +428,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));
         });
 
-        GST_INFO("waiting for a key request to arrive");
+        GST_INFO("waiting for a CDM instance");
         LockHolder lock(m_protectionMutex);
         m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
             return this->m_cdmInstance;
