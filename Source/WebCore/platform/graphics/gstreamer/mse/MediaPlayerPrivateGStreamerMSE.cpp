@@ -121,6 +121,9 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 {
     GST_TRACE("destroying the player (%p)", this);
 
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
+
     for (auto iterator : m_appendPipelinesMap)
         iterator.value->clearPlayerPrivate();
 
@@ -325,12 +328,13 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     // This condition on m_readyState must match the conditions which trigger completeSeek() in
     // MediaSource::monitorSourceBuffers().
     if (!isTimeBuffered(seekTime) || m_readyState < MediaPlayer::HaveCurrentData) {
+        m_mediaSourceClient->setStartupBufferingComplete(false);
+
         // Media source may trigger seek completion even when the target time is not yet buffered,
         // in this case it is better continue the seek and wait for the app to provide media data.
         m_mseSeekCompleted=true;
         m_mediaSource->seekToTime(seekTime);
-        if (m_mseSeekCompleted == false)
-        {
+        if (!m_mseSeekCompleted) {
             GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
             m_readyState = MediaPlayer::HaveMetadata;
             GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
@@ -341,9 +345,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
                 return false;
             }
             return true;
-        }
-        else
-        {
+        } else {
             GST_DEBUG("[Seek] The target seek time is not buffered yet,"
                       " but media source says OK to continue the seek,"
                       " seekTime=%f", seekTime.toDouble());
@@ -465,6 +467,9 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
         bool ok = changePipelineState(GST_STATE_PAUSED);
         GST_TRACE("Changed pipeline to PAUSED: %s", ok ? "Success" : "Error");
     }
+
+    if (m_readyState == MediaPlayer::HaveEnoughData && m_mediaSourceClient)
+        m_mediaSourceClient->setStartupBufferingComplete(true);
 }
 
 void MediaPlayerPrivateGStreamerMSE::waitForSeekCompleted()
@@ -711,6 +716,9 @@ bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
 
 void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)
 {
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
+
     m_mediaSourceClient = client.ptr();
 }
 

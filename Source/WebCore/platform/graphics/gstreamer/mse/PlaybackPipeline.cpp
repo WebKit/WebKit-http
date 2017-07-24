@@ -291,6 +291,16 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
     if (signal != -1)
         g_signal_emit(G_OBJECT(stream->parent), webKitMediaSrcSignals[signal], 0, nullptr);
+
+    if (caps) {
+        // Set caps to trigger early pipeline initialization
+        gst_app_src_set_caps(GST_APP_SRC(stream->appsrc), caps);
+
+        // Change the 'max_bytes' to signal internal condition and send caps down the stream
+        guint64 maxBytes = gst_app_src_get_max_bytes (GST_APP_SRC(stream->appsrc));
+        gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), maxBytes + 1);
+        gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), maxBytes);
+    }
 }
 
 void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate)

@@ -222,6 +222,30 @@ void MediaSourceClientGStreamerMSE::clearPlayerPrivate()
     m_playerPrivate = nullptr;
 }
 
+void MediaSourceClientGStreamerMSE::flushStartupBuffers()
+{
+    ASSERT(WTF::isMainThread());
+
+    if (!m_playerPrivate)
+        return;
+
+    for (auto it : m_playerPrivate->m_appendPipelinesMap)
+        it.value->flushStartupSamples();
+}
+
+void MediaSourceClientGStreamerMSE::setStartupBufferingComplete(bool complete)
+{
+    ASSERT(WTF::isMainThread());
+
+    if (!m_playerPrivate)
+        return;
+
+    for (auto it : m_playerPrivate->m_appendPipelinesMap)
+        it.value->setStartupBufferingComplete(complete);
+
+    m_startupBufferingComplete = complete;
+}
+
 } // namespace WebCore.
 
 #endif // USE(GSTREAMER)
