@@ -1020,7 +1020,15 @@ GstFlowReturn MediaPlayerPrivateGStreamerBase::newPrerollCallback(GstElement* si
 void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
 {
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_sample.clear();
+
+    // Replace by a new sample having only the caps, so this dummy sample is still useful to get the dimensions.
+    // This prevents resizing problems when the video changes its quality and a DRAIN is performed.
+    const GstStructure* info = gst_sample_get_info(m_sample.get());
+    GstStructure* infoCopy = nullptr;
+    if (info)
+        infoCopy = gst_structure_copy(info);
+    m_sample = adoptGRef(gst_sample_new(nullptr, gst_sample_get_caps(m_sample.get()),
+        gst_sample_get_segment(m_sample.get()), infoCopy));
 
     {
         LockHolder locker(m_platformLayerProxy->lock());
