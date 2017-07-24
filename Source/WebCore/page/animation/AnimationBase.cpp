@@ -643,6 +643,9 @@ double AnimationBase::progress(double scale, double offset, const TimingFunction
     if (fillingForwards())
         elapsedTime = duration;
 
+    if (elapsedTime > duration && std::abs(m_animation->iterationCount() - 1.0) < 0.0001)
+        elapsedTime = duration;
+
     double fractionalTime = this->fractionalTime(scale, elapsedTime, offset);
 
     if (m_animation->iterationCount() > 0 && elapsedTime >= duration) {
