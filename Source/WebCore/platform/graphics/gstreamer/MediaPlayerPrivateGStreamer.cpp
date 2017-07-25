@@ -494,6 +494,9 @@ void MediaPlayerPrivateGStreamer::play()
         m_isEndReached = false;
         m_delayingLoad = false;
         m_preload = MediaPlayer::Auto;
+        // Make sure we properly detect live stream on play.
+        if(!isMediaSource())
+            totalBytes();
         setDownloadBuffering();
         GST_DEBUG("Play");
     } else {
@@ -2054,7 +2057,7 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
     unsigned flagDownload = getGstPlayFlag("download");
 
     // We don't want to stop downloading if we already started it.
-    if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_resetPipeline)
+    if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_resetPipeline && !isLiveStream())
         return;
 
     bool shouldDownload = !isLiveStream() && m_preload == MediaPlayer::Auto && !isMediaDiskCacheDisabled();
