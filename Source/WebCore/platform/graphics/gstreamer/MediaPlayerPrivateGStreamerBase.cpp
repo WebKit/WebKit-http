@@ -1443,17 +1443,6 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
-    const gchar* eventKeySystemId = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, &data, nullptr);
-
-    GstMapInfo mapInfo;
-    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemId);
-        return;
-    }
-
-    GST_MEMDUMP("init datas", mapInfo.data, mapInfo.size);
 
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
         GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
@@ -1461,9 +1450,10 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         return;
     }
 
-    GST_WARNING("FIXME: scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
+    const gchar* eventKeySystemId = nullptr;
+    gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
+    GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
     ASSERT_NOT_REACHED();
-    gst_buffer_unmap(data, &mapInfo);
 }
 
 static AtomicString keySystemIdToUuid(const AtomicString& id)
