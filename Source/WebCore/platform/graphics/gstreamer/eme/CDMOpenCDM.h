@@ -25,6 +25,13 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDM.h"
+#include "CDMInstance.h"
+#include "MediaKeyStatus.h"
+#include <wtf/HashMap.h>
+
+namespace media {
+class OpenCdm;
+};
 
 namespace WebCore {
 
@@ -37,6 +44,40 @@ public:
     bool supportsKeySystem(const String&) override;
 };
 
+class CDMInstanceOpenCDM : public CDMInstance {
+public:
+    CDMInstanceOpenCDM(media::OpenCdm*, const String&);
+    virtual ~CDMInstanceOpenCDM();
+
+    ImplementationType implementationType() const final { return  ImplementationType::OpenCDM; }
+    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
+    SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
+    SuccessValue setPersistentStateAllowed(bool) override;
+    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
+
+    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) override;
+    void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) override;
+    void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) override;
+    void closeSession(const String&, CloseSessionCallback) override;
+    void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
+    void storeRecordOfKeyUsage(const String&) override;
+
+    void gatherAvailableKeys(AvailableKeysCallback) override;
+
+    const String& keySystem() const override { return m_keySystem; }
+
+private:
+    MediaKeyStatus getKeyStatus(std::string &);
+    SessionLoadFailure getSessionLoadStatus(std::string &);
+    size_t checkMessageLength(std::string &, std::string &);
+
+    media::OpenCdm* m_openCdmSession;
+    HashMap<String, Ref<SharedBuffer>> sessionIdMap;
+    String m_keySystem;
+};
+
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_CDM_INSTANCE(WebCore::CDMInstanceOpenCDM, WebCore::CDMInstance::ImplementationType::OpenCDM);
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
