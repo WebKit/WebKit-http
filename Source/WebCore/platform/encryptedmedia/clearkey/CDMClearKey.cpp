@@ -1,11 +1,37 @@
+/*
+ * Copyright (C) 2016 Metrological Group B.V.
+ * Copyright (C) 2016 Igalia S.L.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "config.h"
 #include "CDMClearKey.h"
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
-#include "MediaKeysRequirement.h"
 #include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
 
@@ -13,30 +39,21 @@ using namespace Inspector;
 
 namespace WebCore {
 
-class CDMPrivateClearKey : public CDMPrivate {
-public:
-    CDMPrivateClearKey();
-    virtual ~CDMPrivateClearKey();
+const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
+CDMFactoryClearKey::CDMFactoryClearKey() = default;
+CDMFactoryClearKey::~CDMFactoryClearKey() = default;
 
-    bool supportsInitDataType(const AtomicString&) const override;
-    bool supportsConfiguration(const MediaKeySystemConfiguration&) const override;
-    bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const override;
-    bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) const override;
-    bool supportsRobustness(const String&) const override;
-    MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const override;
-    MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const override;
-    bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) const override;
-    RefPtr<CDMInstance> createInstance() override;
-    void loadAndInitialize() override;
-    bool supportsServerCertificates() const override;
-    bool supportsSessions() const override;
-    bool supportsInitData(const AtomicString&, const SharedBuffer&) const override;
-    RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const override;
-    std::optional<String> sanitizeSessionId(const String&) const override;
-};
+std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(CDM&, const String&)
+{
+    return std::unique_ptr<CDMPrivate>(new CDMPrivateClearKey);
+}
+
+bool CDMFactoryClearKey::supportsKeySystem(const String& keySystem)
+{
+    return equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey");
+}
 
 CDMPrivateClearKey::CDMPrivateClearKey() = default;
-
 CDMPrivateClearKey::~CDMPrivateClearKey() = default;
 
 bool CDMPrivateClearKey::supportsInitDataType(const AtomicString& initDataType) const
@@ -44,17 +61,17 @@ bool CDMPrivateClearKey::supportsInitDataType(const AtomicString& initDataType) 
     return equalLettersIgnoringASCIICase(initDataType, "keyids");
 }
 
-bool CDMPrivateClearKey::supportsConfiguration(const MediaKeySystemConfiguration&) const
+bool CDMPrivateClearKey::supportsConfiguration(const CDMKeySystemConfiguration&) const
 {
     return true;
 }
 
-bool CDMPrivateClearKey::supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const
+bool CDMPrivateClearKey::supportsConfigurationWithRestrictions(const CDMKeySystemConfiguration&, const CDMRestrictions&) const
 {
     return true;
 }
 
-bool CDMPrivateClearKey::supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) const
+bool CDMPrivateClearKey::supportsSessionTypeWithConfiguration(CDMSessionType&, const CDMKeySystemConfiguration&) const
 {
     return true;
 }
@@ -64,17 +81,17 @@ bool CDMPrivateClearKey::supportsRobustness(const String&) const
     return false;
 }
 
-MediaKeysRequirement CDMPrivateClearKey::distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const
+CDMRequirement CDMPrivateClearKey::distinctiveIdentifiersRequirement(const CDMKeySystemConfiguration&, const CDMRestrictions&) const
 {
-    return MediaKeysRequirement::Optional;
+    return CDMRequirement::Optional;
 }
 
-MediaKeysRequirement CDMPrivateClearKey::persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const
+CDMRequirement CDMPrivateClearKey::persistentStateRequirement(const CDMKeySystemConfiguration&, const CDMRestrictions&) const
 {
-    return MediaKeysRequirement::Optional;
+    return CDMRequirement::Optional;
 }
 
-bool CDMPrivateClearKey::distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) const
+bool CDMPrivateClearKey::distinctiveIdentifiersAreUniquePerOriginAndClearable(const CDMKeySystemConfiguration&) const
 {
     return false;
 }
@@ -113,25 +130,10 @@ std::optional<String> CDMPrivateClearKey::sanitizeSessionId(const String& sessio
     return sessionId;
 }
 
-CDMFactoryClearKey::CDMFactoryClearKey() = default;
-
-CDMFactoryClearKey::~CDMFactoryClearKey() = default;
-
-std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(CDM&, const String&)
-{
-    return std::unique_ptr<CDMPrivate>(new CDMPrivateClearKey);
-}
-
-bool CDMFactoryClearKey::supportsKeySystem(const String& keySystem)
-{
-    return equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey");
-}
-
-const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
 CDMInstanceClearKey::CDMInstanceClearKey() = default;
 CDMInstanceClearKey::~CDMInstanceClearKey() = default;
 
-CDMInstance::SuccessValue CDMInstanceClearKey::initializeWithConfiguration(const MediaKeySystemConfiguration&)
+CDMInstance::SuccessValue CDMInstanceClearKey::initializeWithConfiguration(const CDMKeySystemConfiguration&)
 {
     return Succeeded;
 }

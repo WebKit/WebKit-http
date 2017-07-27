@@ -48,8 +48,8 @@ public:
     virtual ~CDMInstance() { }
 
     enum class ImplementationType {
-        ClearKey,
         Mock,
+        ClearKey,
 #if USE(OPENCDM)
         OpenCDM,
 #endif
