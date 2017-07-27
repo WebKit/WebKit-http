@@ -80,11 +80,8 @@ MediaKeySession::MediaKeySession(ScriptExecutionContext& context, WeakPtr<MediaK
     // 3.9. Let the cdm implementation value be this object's cdm implementation.
     // 3.10. Let the cdm instance value be this object's cdm instance.
 
-    UNUSED_PARAM(m_callable);
     UNUSED_PARAM(m_sessionType);
     UNUSED_PARAM(m_useDistinctiveIdentifier);
-    UNUSED_PARAM(m_closed);
-    UNUSED_PARAM(m_uninitialized);
 }
 
 MediaKeySession::~MediaKeySession()
@@ -502,6 +499,7 @@ void MediaKeySession::close(Ref<DeferredPromise>&& promise)
             m_taskQueue.enqueueTask([this, promise = WTFMove(promise)] () mutable {
                 // 5.3.1. Run the Session Closed algorithm on the session.
                 sessionClosed();
+                m_closed = true;
 
                 // 5.3.2. Resolve promise.
                 promise->resolve();
