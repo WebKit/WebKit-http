@@ -220,11 +220,6 @@ MockCDMInstance::MockCDMInstance(WeakPtr<MockCDM> cdm)
 {
 }
 
-CDMInstance::ImplementationType MockCDMInstance::implementationType() const
-{
-    return ImplementationType::Mock;
-}
-
 CDMInstance::SuccessValue MockCDMInstance::initializeWithConfiguration(const MediaKeySystemConfiguration& configuration)
 {
     if (!m_cdm || !m_cdm->supportsConfiguration(configuration))

@@ -127,7 +127,7 @@ public:
     MockCDMInstance(WeakPtr<MockCDM>);
 
 private:
-    ImplementationType implementationType() const final;
+    ImplementationType implementationType() const final { return ImplementationType::Mock; }
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) final;
     SuccessValue setDistinctiveIdentifiersAllowed(bool) final;
     SuccessValue setPersistentStateAllowed(bool) final;
