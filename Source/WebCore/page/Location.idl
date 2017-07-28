@@ -28,34 +28,34 @@
 
 [
     CheckSecurity,
+    CustomDefineOwnProperty,
+    CustomDefineOwnPropertyOnPrototype,
     CustomDeleteProperty,
-    CustomEnumerateProperty,
+    CustomGetOwnPropertyNames,
+    CustomGetOwnPropertySlot,
     CustomGetPrototype,
-    CustomNamedSetter,
     CustomPreventExtensions,
+    CustomPut,
+    CustomPutOnPrototype,
     CustomToStringName,
     GenerateIsReachable=ImplFrame,
     IsImmutablePrototypeExoticObject,
-    JSCustomDefineOwnProperty,
-    JSCustomDefineOwnPropertyOnPrototype,
-    JSCustomGetOwnPropertySlotAndDescriptor,
-    JSCustomNamedGetterOnPrototype,
-    Unforgeable,
+    Unforgeable
 ] interface Location {
-    [SetterCallWith=ActiveWindow&FirstWindow, DoNotCheckSecurityOnSetter] stringifier attribute USVString href;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException, DoNotCheckSecurityOnSetter] stringifier attribute USVString href;
 
-    [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void assign(USVString url);
+    [CallWith=ActiveWindow&FirstWindow, MayThrowException, ForwardDeclareInHeader] void assign(USVString url);
     [DoNotCheckSecurity, CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
     [CallWith=ActiveWindow, ForwardDeclareInHeader] void reload();
 
     // URI decomposition attributes
     [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString protocol;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString host;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString hostname;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString port;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString pathname;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString search;
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString hash;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString host;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString hostname;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString port;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString pathname;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString search;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString hash;
 
     readonly attribute USVString origin;
 

@@ -21,12 +21,14 @@
 #include "config.h"
 #include "JSTestSerializationInheritFinal.h"
 
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertNumbers.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
+#include <runtime/JSCInlines.h>
 #include <runtime/ObjectConstructor.h>
 #include <wtf/GetPtr.h>
 
@@ -40,12 +42,12 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestSerializationInheritFinalPrototypeFuncti
 
 // Attributes
 
+JSC::EncodedJSValue jsTestSerializationInheritFinalConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestSerializationInheritFinalConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeFoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestSerializationInheritFinalFinalLongAttributeFoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeBar(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestSerializationInheritFinalFinalLongAttributeBar(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestSerializationInheritFinalConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-bool setJSTestSerializationInheritFinalConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestSerializationInheritFinalPrototype : public JSC::JSNonFinalObject {
 public:
@@ -93,8 +95,8 @@ template<> const ClassInfo JSTestSerializationInheritFinalConstructor::s_info = 
 static const HashTableValue JSTestSerializationInheritFinalPrototypeTableValues[] =
 {
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationInheritFinalConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationInheritFinalConstructor) } },
-    { "finalLongAttributeFoo", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationInheritFinalFinalLongAttributeFoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationInheritFinalFinalLongAttributeFoo) } },
-    { "finalLongAttributeBar", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationInheritFinalFinalLongAttributeBar), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationInheritFinalFinalLongAttributeBar) } },
+    { "finalLongAttributeFoo", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationInheritFinalFinalLongAttributeFoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationInheritFinalFinalLongAttributeFoo) } },
+    { "finalLongAttributeBar", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestSerializationInheritFinalFinalLongAttributeBar), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestSerializationInheritFinalFinalLongAttributeBar) } },
     { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestSerializationInheritFinalPrototypeFunctionToJSON), (intptr_t) (0) } },
 };
 
@@ -103,7 +105,7 @@ const ClassInfo JSTestSerializationInheritFinalPrototype::s_info = { "TestSerial
 void JSTestSerializationInheritFinalPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestSerializationInheritFinalPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestSerializationInheritFinal::info(), JSTestSerializationInheritFinalPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestSerializationInheritFinal::s_info = { "TestSerializationInheritFinal", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestSerializationInheritFinal) };
@@ -130,21 +132,42 @@ JSObject* JSTestSerializationInheritFinal::prototype(VM& vm, JSDOMGlobalObject& 
     return getDOMPrototype<JSTestSerializationInheritFinal>(vm, globalObject);
 }
 
-template<> inline JSTestSerializationInheritFinal* BindingCaller<JSTestSerializationInheritFinal>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+JSValue JSTestSerializationInheritFinal::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSTestSerializationInheritFinalConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+}
+
+template<> inline JSTestSerializationInheritFinal* IDLAttribute<JSTestSerializationInheritFinal>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestSerializationInheritFinal*>(state.vm(), JSValue::decode(thisValue));
 }
 
-template<> inline JSTestSerializationInheritFinal* BindingCaller<JSTestSerializationInheritFinal>::castForOperation(ExecState& state)
+template<> inline JSTestSerializationInheritFinal* IDLOperation<JSTestSerializationInheritFinal>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestSerializationInheritFinal*>(state.vm(), state.thisValue());
 }
 
-static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeFooGetter(ExecState&, JSTestSerializationInheritFinal&, ThrowScope& throwScope);
-
-EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeFoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializationInheritFinalConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestSerializationInheritFinal>::attribute<jsTestSerializationInheritFinalFinalLongAttributeFooGetter>(state, thisValue, "finalLongAttributeFoo");
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto* prototype = jsDynamicDowncast<JSTestSerializationInheritFinalPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
+        return throwVMTypeError(state, throwScope);
+    return JSValue::encode(JSTestSerializationInheritFinal::getConstructor(state->vm(), prototype->globalObject()));
+}
+
+bool setJSTestSerializationInheritFinalConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto* prototype = jsDynamicDowncast<JSTestSerializationInheritFinalPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
+        throwVMTypeError(state, throwScope);
+        return false;
+    }
+    // Shadowing a built-in constructor
+    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
 }
 
 static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeFooGetter(ExecState& state, JSTestSerializationInheritFinal& thisObject, ThrowScope& throwScope)
@@ -156,11 +179,25 @@ static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeFooGetter
     return result;
 }
 
-static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeBarGetter(ExecState&, JSTestSerializationInheritFinal&, ThrowScope& throwScope);
-
-EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeBar(ExecState* state, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeFoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestSerializationInheritFinal>::attribute<jsTestSerializationInheritFinalFinalLongAttributeBarGetter>(state, thisValue, "finalLongAttributeBar");
+    return IDLAttribute<JSTestSerializationInheritFinal>::get<jsTestSerializationInheritFinalFinalLongAttributeFooGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "finalLongAttributeFoo");
+}
+
+static inline bool setJSTestSerializationInheritFinalFinalLongAttributeFooSetter(ExecState& state, JSTestSerializationInheritFinal& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setFinalLongAttributeFoo(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestSerializationInheritFinalFinalLongAttributeFoo(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestSerializationInheritFinal>::set<setJSTestSerializationInheritFinalFinalLongAttributeFooSetter>(*state, thisValue, encodedValue, "finalLongAttributeFoo");
 }
 
 static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeBarGetter(ExecState& state, JSTestSerializationInheritFinal& thisObject, ThrowScope& throwScope)
@@ -172,57 +209,12 @@ static inline JSValue jsTestSerializationInheritFinalFinalLongAttributeBarGetter
     return result;
 }
 
-EncodedJSValue jsTestSerializationInheritFinalConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestSerializationInheritFinalFinalLongAttributeBar(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestSerializationInheritFinalPrototype* domObject = jsDynamicDowncast<JSTestSerializationInheritFinalPrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject))
-        return throwVMTypeError(state, throwScope);
-    return JSValue::encode(JSTestSerializationInheritFinal::getConstructor(state->vm(), domObject->globalObject()));
+    return IDLAttribute<JSTestSerializationInheritFinal>::get<jsTestSerializationInheritFinalFinalLongAttributeBarGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "finalLongAttributeBar");
 }
 
-bool setJSTestSerializationInheritFinalConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = JSValue::decode(encodedValue);
-    JSTestSerializationInheritFinalPrototype* domObject = jsDynamicDowncast<JSTestSerializationInheritFinalPrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state, throwScope);
-        return false;
-    }
-    // Shadowing a built-in constructor
-    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
-}
-
-static inline bool setJSTestSerializationInheritFinalFinalLongAttributeFooFunction(ExecState&, JSTestSerializationInheritFinal&, JSValue, ThrowScope&);
-
-bool setJSTestSerializationInheritFinalFinalLongAttributeFoo(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    return BindingCaller<JSTestSerializationInheritFinal>::setAttribute<setJSTestSerializationInheritFinalFinalLongAttributeFooFunction>(state, thisValue, encodedValue, "finalLongAttributeFoo");
-}
-
-static inline bool setJSTestSerializationInheritFinalFinalLongAttributeFooFunction(ExecState& state, JSTestSerializationInheritFinal& thisObject, JSValue value, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(throwScope);
-    auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLLong>(state, value);
-    RETURN_IF_EXCEPTION(throwScope, false);
-    impl.setFinalLongAttributeFoo(WTFMove(nativeValue));
-    return true;
-}
-
-
-static inline bool setJSTestSerializationInheritFinalFinalLongAttributeBarFunction(ExecState&, JSTestSerializationInheritFinal&, JSValue, ThrowScope&);
-
-bool setJSTestSerializationInheritFinalFinalLongAttributeBar(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    return BindingCaller<JSTestSerializationInheritFinal>::setAttribute<setJSTestSerializationInheritFinalFinalLongAttributeBarFunction>(state, thisValue, encodedValue, "finalLongAttributeBar");
-}
-
-static inline bool setJSTestSerializationInheritFinalFinalLongAttributeBarFunction(ExecState& state, JSTestSerializationInheritFinal& thisObject, JSValue value, ThrowScope& throwScope)
+static inline bool setJSTestSerializationInheritFinalFinalLongAttributeBarSetter(ExecState& state, JSTestSerializationInheritFinal& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -233,32 +225,31 @@ static inline bool setJSTestSerializationInheritFinalFinalLongAttributeBarFuncti
     return true;
 }
 
-
-JSValue JSTestSerializationInheritFinal::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+bool setJSTestSerializationInheritFinalFinalLongAttributeBar(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    return getDOMConstructor<JSTestSerializationInheritFinalConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+    return IDLAttribute<JSTestSerializationInheritFinal>::set<setJSTestSerializationInheritFinalFinalLongAttributeBarSetter>(*state, thisValue, encodedValue, "finalLongAttributeBar");
 }
 
-JSC::JSObject* JSTestSerializationInheritFinal::serialize(ExecState* state, JSTestSerializationInheritFinal* thisObject, ThrowScope& throwScope)
+JSC::JSObject* JSTestSerializationInheritFinal::serialize(ExecState& state, JSTestSerializationInheritFinal& thisObject, JSDOMGlobalObject& globalObject, ThrowScope& throwScope)
 {
-    auto& vm = state->vm();
-    auto* result = JSTestSerializationInherit::serialize(state, thisObject, throwScope);
+    auto& vm = state.vm();
+    auto* result = JSTestSerializationInherit::serialize(state, thisObject, globalObject, throwScope);
 
-    auto finalLongAttributeBarValue = jsTestSerializationInheritFinalFinalLongAttributeBarGetter(*state, *thisObject, throwScope);
+    auto finalLongAttributeBarValue = jsTestSerializationInheritFinalFinalLongAttributeBarGetter(state, thisObject, throwScope);
     throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "finalLongAttributeBar"), finalLongAttributeBarValue);
 
     return result;
 }
 
-static inline EncodedJSValue jsTestSerializationInheritFinalPrototypeFunctionToJSONCaller(ExecState* state, JSTestSerializationInheritFinal* thisObject, JSC::ThrowScope& throwScope)
+static inline EncodedJSValue jsTestSerializationInheritFinalPrototypeFunctionToJSONBody(ExecState* state, JSTestSerializationInheritFinal* thisObject, JSC::ThrowScope& throwScope)
 {
-    return JSValue::encode(JSTestSerializationInheritFinal::serialize(state, thisObject, throwScope));
+    return JSValue::encode(JSTestSerializationInheritFinal::serialize(*state, *thisObject, *thisObject->globalObject(), throwScope));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestSerializationInheritFinalPrototypeFunctionToJSON(ExecState* state)
 {
-    return BindingCaller<JSTestSerializationInheritFinal>::callOperation<jsTestSerializationInheritFinalPrototypeFunctionToJSONCaller>(state, "toJSON");
+    return IDLOperation<JSTestSerializationInheritFinal>::call<jsTestSerializationInheritFinalPrototypeFunctionToJSONBody>(*state, "toJSON");
 }
 
 

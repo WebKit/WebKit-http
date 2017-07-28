@@ -100,16 +100,15 @@ void ResourceUsageThread::createThreadIfNeeded()
         return;
 
     m_vm = &commonVM();
-    m_thread = Thread::create(threadCallback, this, "WebCore: ResourceUsage");
-}
-
-void ResourceUsageThread::threadCallback(void* resourceUsageThread)
-{
-    static_cast<ResourceUsageThread*>(resourceUsageThread)->threadBody();
+    m_thread = Thread::create("WebCore: ResourceUsage", [this] {
+        threadBody();
+    });
 }
 
 NO_RETURN void ResourceUsageThread::threadBody()
 {
+    using namespace std::literals::chrono_literals;
+
     while (true) {
         // Only do work if we have observers.
         waitUntilObservers();

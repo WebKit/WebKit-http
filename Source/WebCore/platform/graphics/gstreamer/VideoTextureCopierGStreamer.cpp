@@ -29,7 +29,7 @@
 
 namespace WebCore {
 
-VideoTextureCopierGStreamer::VideoTextureCopierGStreamer()
+VideoTextureCopierGStreamer::VideoTextureCopierGStreamer(ColorConversion colorConversion)
 {
     GLContext* previousContext = GLContext::current();
     ASSERT(previousContext);
@@ -41,11 +41,14 @@ VideoTextureCopierGStreamer::VideoTextureCopierGStreamer()
 
     m_framebuffer = m_context3D->createFramebuffer();
 
+    m_resultTexture = m_context3D->createTexture();
+
     static const GLfloat vertices[] = { 0, 0, 1, 0, 1, 1, 0, 1 };
     m_vbo = m_context3D->createBuffer();
     m_context3D->bindBuffer(GraphicsContext3D::ARRAY_BUFFER, m_vbo);
     m_context3D->bufferData(GraphicsContext3D::ARRAY_BUFFER, sizeof(GC3Dfloat) * 8, vertices, GraphicsContext3D::STATIC_DRAW);
 
+    updateColorConversionMatrix(colorConversion);
     updateTextureSpaceMatrix();
 
     previousContext->makeContextCurrent();
@@ -54,15 +57,30 @@ VideoTextureCopierGStreamer::VideoTextureCopierGStreamer()
 VideoTextureCopierGStreamer::~VideoTextureCopierGStreamer()
 {
     GLContext* previousContext = GLContext::current();
-    ASSERT(previousContext);
     PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
 
     m_context3D->deleteFramebuffer(m_framebuffer);
     m_context3D->deleteBuffer(m_vbo);
+    m_context3D->deleteTexture(m_resultTexture);
     m_shaderProgram = nullptr;
     m_context3D = nullptr;
 
-    previousContext->makeContextCurrent();
+    if (previousContext)
+        previousContext->makeContextCurrent();
+}
+
+void VideoTextureCopierGStreamer::updateColorConversionMatrix(ColorConversion colorConversion)
+{
+    switch (colorConversion) {
+    case ColorConversion::ConvertBGRAToRGBA:
+        m_colorConversionMatrix.setMatrix(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        break;
+    case ColorConversion::ConvertARGBToRGBA:
+        m_colorConversionMatrix.setMatrix(0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
 }
 
 void VideoTextureCopierGStreamer::updateTextureSpaceMatrix()
@@ -70,6 +88,8 @@ void VideoTextureCopierGStreamer::updateTextureSpaceMatrix()
     m_textureSpaceMatrix.makeIdentity();
 
     switch (m_orientation) {
+    case DefaultImageOrientation:
+        break;
     case OriginRightTop:
         m_textureSpaceMatrix.rotate(-90);
         m_textureSpaceMatrix.translate(-1, 0);
@@ -137,6 +157,10 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(Platform3DOb
     m_context3D->getIntegerv(GraphicsContext3D::TEXTURE_BINDING_2D, &boundTexture);
     m_context3D->getIntegerv(GraphicsContext3D::VIEWPORT, previousViewport);
 
+    // Use our own output texture if we are not given one.
+    if (!outputTexture)
+        outputTexture = m_resultTexture;
+
     // Set proper parameters to the output texture and allocate uninitialized memory for it.
     m_context3D->bindTexture(outputTarget, outputTexture);
     m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MIN_FILTER, GraphicsContext3D::LINEAR);
@@ -163,6 +187,7 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(Platform3DOb
     m_shaderProgram->setMatrix(m_shaderProgram->modelViewMatrixLocation(), m_modelViewMatrix);
     m_shaderProgram->setMatrix(m_shaderProgram->projectionMatrixLocation(), m_projectionMatrix);
     m_shaderProgram->setMatrix(m_shaderProgram->textureSpaceMatrixLocation(), m_textureSpaceMatrix);
+    m_shaderProgram->setMatrix(m_shaderProgram->textureColorSpaceMatrixLocation(), m_colorConversionMatrix);
 
     // Perform the copy.
     m_context3D->enableVertexAttribArray(m_shaderProgram->vertexLocation());

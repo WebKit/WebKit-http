@@ -31,10 +31,11 @@
 
 #if USE(LIBWEBRTC)
 
+#include "Logging.h"
 #include <webrtc/api/video/i420_buffer.h>
-#include <webrtc/common_video/include/corevideo_frame_buffer.h>
 #include <webrtc/common_video/libyuv/include/webrtc_libyuv.h>
-#include <webrtc/media/base/videoframe.h>
+#include <webrtc/sdk/objc/Framework/Classes/Video/corevideo_frame_buffer.h>
+#include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 
 #include "CoreMediaSoftLink.h"
@@ -42,31 +43,24 @@
 
 namespace WebCore {
 
-RealtimeOutgoingVideoSource::RealtimeOutgoingVideoSource(Ref<RealtimeMediaSource>&& videoSource)
+RealtimeOutgoingVideoSource::RealtimeOutgoingVideoSource(Ref<MediaStreamTrackPrivate>&& videoSource)
     : m_videoSource(WTFMove(videoSource))
     , m_blackFrameTimer(*this, &RealtimeOutgoingVideoSource::sendOneBlackFrame)
 {
     m_videoSource->addObserver(*this);
-    setSizeFromSource();
+    initializeFromSource();
 }
 
-bool RealtimeOutgoingVideoSource::setSource(Ref<RealtimeMediaSource>&& newSource)
+bool RealtimeOutgoingVideoSource::setSource(Ref<MediaStreamTrackPrivate>&& newSource)
 {
     if (!m_initialSettings)
-        m_initialSettings = m_videoSource->settings();
-
-    auto newSettings = newSource->settings();
-
-    if (m_initialSettings->width() < newSettings.width() || m_initialSettings->height() < newSettings.height())
-        return false;
+        m_initialSettings = m_videoSource->source().settings();
 
     m_videoSource->removeObserver(*this);
     m_videoSource = WTFMove(newSource);
     m_videoSource->addObserver(*this);
 
-    setSizeFromSource();
-    m_muted = m_videoSource->muted();
-    m_enabled = m_videoSource->enabled();
+    initializeFromSource();
 
     return true;
 }
@@ -78,18 +72,24 @@ void RealtimeOutgoingVideoSource::stop()
     m_isStopped = true;
 }
 
+void RealtimeOutgoingVideoSource::updateBlackFramesSending()
+{
+    if (!m_muted && m_enabled) {
+        if (m_blackFrameTimer.isActive())
+            m_blackFrameTimer.stop();
+        return;
+    }
+
+    sendBlackFramesIfNeeded();
+}
+
 void RealtimeOutgoingVideoSource::sourceMutedChanged()
 {
     ASSERT(m_muted != m_videoSource->muted());
 
     m_muted = m_videoSource->muted();
 
-    if (m_muted && m_sinks.size() && m_enabled) {
-        sendBlackFrames();
-        return;
-    }
-    if (m_blackFrameTimer.isActive())
-        m_blackFrameTimer.stop();
+    updateBlackFramesSending();
 }
 
 void RealtimeOutgoingVideoSource::sourceEnabledChanged()
@@ -98,19 +98,19 @@ void RealtimeOutgoingVideoSource::sourceEnabledChanged()
 
     m_enabled = m_videoSource->enabled();
 
-    if (!m_enabled && m_sinks.size() && !m_muted) {
-        sendBlackFrames();
-        return;
-    }
-    if (m_blackFrameTimer.isActive())
-        m_blackFrameTimer.stop();
+    updateBlackFramesSending();
 }
 
-void RealtimeOutgoingVideoSource::setSizeFromSource()
+void RealtimeOutgoingVideoSource::initializeFromSource()
 {
-    const auto& settings = m_videoSource->settings();
+    const auto& settings = m_videoSource->source().settings();
     m_width = settings.width();
     m_height = settings.height();
+
+    m_muted = m_videoSource->muted();
+    m_enabled = m_videoSource->enabled();
+
+    updateBlackFramesSending();
 }
 
 bool RealtimeOutgoingVideoSource::GetStats(Stats*)
@@ -127,18 +127,51 @@ void RealtimeOutgoingVideoSource::AddOrUpdateSink(rtc::VideoSinkInterface<webrtc
 
     if (!m_sinks.contains(sink))
         m_sinks.append(sink);
+
+    callOnMainThread([protectedThis = makeRef(*this)]() {
+        protectedThis->sendBlackFramesIfNeeded();
+    });
 }
 
 void RealtimeOutgoingVideoSource::RemoveSink(rtc::VideoSinkInterface<webrtc::VideoFrame>* sink)
 {
     m_sinks.removeFirst(sink);
+
+    if (m_sinks.size())
+        return;
+
+    callOnMainThread([protectedThis = makeRef(*this)]() {
+        if (protectedThis->m_blackFrameTimer.isActive())
+            protectedThis->m_blackFrameTimer.stop();
+    });
 }
 
-void RealtimeOutgoingVideoSource::sendBlackFrames()
+void RealtimeOutgoingVideoSource::sendBlackFramesIfNeeded()
 {
+    if (m_blackFrameTimer.isActive())
+        return;
+
+    if (!m_sinks.size())
+        return;
+
+    if (!m_muted && m_enabled)
+        return;
+
+    if (!m_width || !m_height)
+        return;
+
     if (!m_blackFrame) {
-        auto frame = m_bufferPool.CreateBuffer(m_width, m_height);
-        frame->SetToBlack();
+        auto width = m_width;
+        auto height = m_height;
+        if (m_shouldApplyRotation && (m_currentRotation == webrtc::kVideoRotation_0 || m_currentRotation == webrtc::kVideoRotation_90))
+            std::swap(width, height);
+        auto frame = m_bufferPool.CreateBuffer(width, height);
+        ASSERT(frame);
+        if (!frame) {
+            RELEASE_LOG(WebRTC, "RealtimeOutgoingVideoSource::sendBlackFramesIfNeeded unable to send black frames");
+            return;
+        }
+        webrtc::I420Buffer::SetBlack(frame.get());
         m_blackFrame = WTFMove(frame);
     }
     sendOneBlackFrame();
@@ -147,18 +180,14 @@ void RealtimeOutgoingVideoSource::sendBlackFrames()
 
 void RealtimeOutgoingVideoSource::sendOneBlackFrame()
 {
+    RELEASE_LOG(MediaStream, "RealtimeOutgoingVideoSource::sendOneBlackFrame");
     sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>(m_blackFrame));
 }
 
 void RealtimeOutgoingVideoSource::sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&& buffer)
 {
-    // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
-    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
-        // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
-        buffer = buffer->NativeToI420Buffer();
-        buffer = webrtc::I420Buffer::Rotate(*buffer, m_currentRotation);
-    }
-    webrtc::VideoFrame frame(buffer, 0, 0, m_currentRotation);
+    int64_t timestampMicroSeconds = monotonicallyIncreasingTimeMS() * 1000;
+    webrtc::VideoFrame frame(buffer, m_shouldApplyRotation ? webrtc::kVideoRotation_0 : m_currentRotation, timestampMicroSeconds);
     for (auto* sink : m_sinks)
         sink->OnFrame(frame);
 }
@@ -170,6 +199,11 @@ void RealtimeOutgoingVideoSource::videoSampleAvailable(MediaSample& sample)
 
     if (m_muted || !m_enabled)
         return;
+
+#if !RELEASE_LOG_DISABLED
+    if (!(++m_numberOfFrames % 30))
+        RELEASE_LOG(MediaStream, "RealtimeOutgoingVideoSource::sendFrame %zu frame", m_numberOfFrames);
+#endif
 
     switch (sample.videoRotation()) {
     case MediaSample::VideoRotation::None:
@@ -191,21 +225,39 @@ void RealtimeOutgoingVideoSource::videoSampleAvailable(MediaSample& sample)
     auto pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
 
     if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar || pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
-        sendFrame(new rtc::RefCountedObject<webrtc::CoreVideoFrameBuffer>(pixelBuffer));
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer = new rtc::RefCountedObject<webrtc::CoreVideoFrameBuffer>(pixelBuffer);
+        if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
+            // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
+            // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
+            auto rotatedBuffer = buffer->ToI420();
+            ASSERT(rotatedBuffer);
+            buffer = webrtc::I420Buffer::Rotate(*rotatedBuffer, m_currentRotation);
+        }
+        sendFrame(WTFMove(buffer));
         return;
     }
 
     CVPixelBufferLockBaseAddress(pixelBuffer, 0);
     auto* source = reinterpret_cast<uint8_t*>(CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0));
 
+    ASSERT(m_width);
+    ASSERT(m_height);
+
     auto newBuffer = m_bufferPool.CreateBuffer(m_width, m_height);
+    ASSERT(newBuffer);
+    if (!newBuffer) {
+        RELEASE_LOG(WebRTC, "RealtimeOutgoingVideoSource::videoSampleAvailable unable to allocate buffer for conversion to YUV");
+        return;
+    }
     if (pixelFormatType == kCVPixelFormatType_32BGRA)
-        webrtc::ConvertToI420(webrtc::kARGB, source, 0, 0, m_width, m_height, 0, webrtc::kVideoRotation_0, newBuffer);
+        webrtc::ConvertToI420(webrtc::VideoType::kARGB, source, 0, 0, m_width, m_height, 0, webrtc::kVideoRotation_0, newBuffer);
     else {
         ASSERT(pixelFormatType == kCVPixelFormatType_32ARGB);
-        webrtc::ConvertToI420(webrtc::kBGRA, source, 0, 0, m_width, m_height, 0, webrtc::kVideoRotation_0, newBuffer);
+        webrtc::ConvertToI420(webrtc::VideoType::kBGRA, source, 0, 0, m_width, m_height, 0, webrtc::kVideoRotation_0, newBuffer);
     }
     CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0)
+        newBuffer = webrtc::I420Buffer::Rotate(*newBuffer, m_currentRotation);
     sendFrame(WTFMove(newBuffer));
 }
 

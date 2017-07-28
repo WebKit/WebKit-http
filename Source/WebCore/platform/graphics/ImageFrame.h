@@ -32,7 +32,6 @@
 #include "ImageTypes.h"
 #include "IntSize.h"
 #include "NativeImage.h"
-#include <wtf/Deque.h>
 
 namespace WebCore {
 
@@ -40,7 +39,6 @@ class ImageFrame {
     friend class ImageFrameCache;
 public:
     enum class Caching { Metadata, MetadataAndImage };
-    enum class DecodingStatus { Invalid, Partial, Complete, Decoding };
 
     ImageFrame();
     ImageFrame(const ImageFrame& other) { operator=(other); }

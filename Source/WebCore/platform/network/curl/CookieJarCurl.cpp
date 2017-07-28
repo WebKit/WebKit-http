@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2011 Apple Inc. All rights reserved.
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
@@ -20,9 +22,9 @@
 #if USE(CURL)
 
 #include "Cookie.h"
+#include "CurlContext.h"
 #include "NotImplemented.h"
 #include "URL.h"
-#include "ResourceHandleManager.h"
 
 #include <wtf/DateMath.h>
 #include <wtf/HashMap.h>
@@ -93,8 +95,6 @@ static void addMatchingCurlCookie(const char* cookie, const String& domain, cons
 
     String cookieDomain;
     readCurlCookieToken(cookie, cookieDomain);
-
-    bool subDomain = false;
 
     // HttpOnly cookie entries begin with "#HttpOnly_".
     if (cookieDomain.startsWith("#HttpOnly_")) {
@@ -242,16 +242,10 @@ static String getNetscapeCookieFormat(const URL& url, const String& value)
 
 void setCookiesFromDOM(const NetworkStorageSession&, const URL&, const URL& url, const String& value)
 {
-    CURL* curl = curl_easy_init();
+    CurlHandle curlHandle;
 
-    if (!curl)
-        return;
-
-    const char* cookieJarFileName = ResourceHandleManager::sharedInstance()->getCookieJarFileName();
-    CURLSH* curlsh = ResourceHandleManager::sharedInstance()->getCurlShareHandle();
-
-    curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookieJarFileName);
-    curl_easy_setopt(curl, CURLOPT_SHARE, curlsh);
+    curlHandle.enableShareHandle();
+    curlHandle.enableCookieJarIfExists();
 
     // CURL accepts cookies in either Set-Cookie or Netscape file format.
     // However with Set-Cookie format, there is no way to specify that we
@@ -264,43 +258,32 @@ void setCookiesFromDOM(const NetworkStorageSession&, const URL&, const URL& url,
 
     CString strCookie(reinterpret_cast<const char*>(cookie.characters8()), cookie.length());
 
-    curl_easy_setopt(curl, CURLOPT_COOKIELIST, strCookie.data());
-
-    curl_easy_cleanup(curl);
+    curlHandle.setCookieList(strCookie.data());
 }
 
 static String cookiesForSession(const NetworkStorageSession&, const URL&, const URL& url, bool httponly)
 {
     String cookies;
-    CURL* curl = curl_easy_init();
 
-    if (!curl)
-        return cookies;
+    CurlHandle curlHandle;
+    curlHandle.enableShareHandle();
 
-    CURLSH* curlsh = ResourceHandleManager::sharedInstance()->getCurlShareHandle();
-
-    curl_easy_setopt(curl, CURLOPT_SHARE, curlsh);
-
-    struct curl_slist* list = 0;
-    curl_easy_getinfo(curl, CURLINFO_COOKIELIST, &list);
-
+    CurlSList cookieList;
+    curlHandle.fetchCookieList(cookieList);
+    const struct curl_slist* list = cookieList.head();
     if (list) {
         String domain = url.host();
         String path = url.path();
         StringBuilder cookiesBuilder;
 
-        struct curl_slist* item = list;
-        while (item) {
-            const char* cookie = item->data;
+        while (list) {
+            const char* cookie = list->data;
             addMatchingCurlCookie(cookie, domain, path, cookiesBuilder, httponly);
-            item = item->next;
+            list = list->next;
         }
 
         cookies = cookiesBuilder.toString();
-        curl_slist_free_all(list);
     }
-
-    curl_easy_cleanup(curl);
 
     return cookies;
 }
@@ -332,12 +315,12 @@ void deleteCookie(const NetworkStorageSession&, const URL&, const String&)
     // FIXME: Not yet implemented
 }
 
-void getHostnamesWithCookies(const NetworkStorageSession&, HashSet<String>& hostnames)
+void getHostnamesWithCookies(const NetworkStorageSession&, HashSet<String>&)
 {
     // FIXME: Not yet implemented
 }
 
-void deleteCookiesForHostname(const NetworkStorageSession&, const String& hostname)
+void deleteCookiesForHostnames(const NetworkStorageSession&, const Vector<String>&)
 {
     // FIXME: Not yet implemented
 }

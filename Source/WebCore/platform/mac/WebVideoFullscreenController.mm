@@ -33,11 +33,11 @@
 #import "WebWindowAnimation.h"
 #import <AVFoundation/AVPlayerLayer.h>
 #import <Carbon/Carbon.h>
-#import <WebCore/DisplaySleepDisabler.h>
 #import <WebCore/HTMLVideoElement.h>
-#import <WebCore/SoftLinking.h>
+#import <WebCore/SleepDisabler.h>
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 #if USE(QTKIT)
 #import "QTKitSPI.h"
@@ -362,7 +362,7 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
     
     if (rate && !_isEndingFullscreen) {
         if (!_displaySleepDisabler)
-            _displaySleepDisabler = DisplaySleepDisabler::create("com.apple.WebCore - Fullscreen video");
+            _displaySleepDisabler = SleepDisabler::create("com.apple.WebCore - Fullscreen video", SleepDisabler::Type::Display);
     } else
 #endif
         _displaySleepDisabler = nullptr;

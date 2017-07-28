@@ -157,7 +157,7 @@ inline FunctionPtr appropriateGenericGetByIdFunction(GetByIDKind kind)
     return operationTryGetById;
 }
 
-static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
+static InlineCacheAction tryCacheGetByID(const GCSafeConcurrentJSLocker& locker, ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
     if (forceICFailure(exec))
         return GiveUpOnCache;
@@ -277,9 +277,9 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         if (slot.isCacheableGetter())
             getter = jsDynamicCast<JSFunction*>(vm, slot.getterSetter()->getter());
 
-        DOMJIT::GetterSetter* domJIT = nullptr;
-        if (slot.isCacheableCustom() && slot.domJIT())
-            domJIT = slot.domJIT();
+        std::optional<DOMAttributeAnnotation> domAttribute;
+        if (slot.isCacheableCustom() && slot.domAttribute())
+            domAttribute = slot.domAttribute();
 
         if (kind == GetByIDKind::Try) {
             AccessCase::AccessType type;
@@ -308,22 +308,21 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
                 else
                     type = AccessCase::CustomValueGetter;
 
-                // we don't emit IC for DOMJIT when op is get_by_id_with_this
-                if (Options::useDOMJIT() && kind == GetByIDKind::WithThis && type == AccessCase::CustomAccessorGetter && domJIT)
+                if (kind == GetByIDKind::WithThis && type == AccessCase::CustomAccessorGetter && domAttribute)
                     return GiveUpOnCache;
 
                 newCase = GetterSetterAccessCase::create(
                     vm, codeBlock, type, offset, structure, conditionSet, loadTargetFromProxy,
                     slot.watchpointSet(), slot.isCacheableCustom() ? slot.customGetter() : nullptr,
                     slot.isCacheableCustom() ? slot.slotBase() : nullptr,
-                    domJIT);
+                    domAttribute);
             }
         }
     }
 
     LOG_IC((ICEvent::GetByIdAddAccessCase, baseValue.classInfoOrNull(vm), propertyName));
 
-    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, propertyName, WTFMove(newCase));
+    AccessGenerationResult result = stubInfo.addAccessCase(locker, codeBlock, propertyName, WTFMove(newCase));
 
     if (result.generatedSomeCode()) {
         LOG_IC((ICEvent::GetByIdReplaceWithJump, baseValue.classInfoOrNull(vm), propertyName));
@@ -340,7 +339,7 @@ void repatchGetByID(ExecState* exec, JSValue baseValue, const Identifier& proper
     SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJSLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
-    if (tryCacheGetByID(exec, baseValue, propertyName, slot, stubInfo, kind) == GiveUpOnCache)
+    if (tryCacheGetByID(locker, exec, baseValue, propertyName, slot, stubInfo, kind) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), appropriateGenericGetByIdFunction(kind));
 }
 
@@ -368,7 +367,7 @@ static V_JITOperation_ESsiJJI appropriateOptimizingPutByIdFunction(const PutProp
     return operationPutByIdNonStrictOptimize;
 }
 
-static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& ident, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
+static InlineCacheAction tryCachePutByID(const GCSafeConcurrentJSLocker& locker, ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& ident, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
 {
     if (forceICFailure(exec))
         return GiveUpOnCache;
@@ -476,7 +475,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
 
     LOG_IC((ICEvent::PutByIdAddAccessCase, structure->classInfo(), ident));
     
-    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
+    AccessGenerationResult result = stubInfo.addAccessCase(locker, codeBlock, ident, WTFMove(newCase));
     
     if (result.generatedSomeCode()) {
         LOG_IC((ICEvent::PutByIdReplaceWithJump, structure->classInfo(), ident));
@@ -494,13 +493,13 @@ void repatchPutByID(ExecState* exec, JSValue baseValue, Structure* structure, co
     SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJSLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
-    if (tryCachePutByID(exec, baseValue, structure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
+    if (tryCachePutByID(locker, exec, baseValue, structure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), appropriateGenericPutByIdFunction(slot, putKind));
 }
 
 static InlineCacheAction tryRepatchIn(
-    ExecState* exec, JSCell* base, const Identifier& ident, bool wasFound,
-    const PropertySlot& slot, StructureStubInfo& stubInfo)
+    const GCSafeConcurrentJSLocker& locker, ExecState* exec, JSCell* base, const Identifier& ident,
+    bool wasFound, const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
     if (forceICFailure(exec))
         return GiveUpOnCache;
@@ -535,7 +534,7 @@ static InlineCacheAction tryRepatchIn(
     std::unique_ptr<AccessCase> newCase = AccessCase::create(
         vm, codeBlock, wasFound ? AccessCase::InHit : AccessCase::InMiss, invalidOffset, structure, conditionSet);
 
-    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
+    AccessGenerationResult result = stubInfo.addAccessCase(locker, codeBlock, ident, WTFMove(newCase));
     
     if (result.generatedSomeCode()) {
         LOG_IC((ICEvent::InReplaceWithJump, structure->classInfo(), ident));
@@ -555,7 +554,8 @@ void repatchIn(
     const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
     SuperSamplerScope superSamplerScope(false);
-    if (tryRepatchIn(exec, base, ident, wasFound, slot, stubInfo) == GiveUpOnCache)
+    GCSafeConcurrentJSLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
+    if (tryRepatchIn(locker, exec, base, ident, wasFound, slot, stubInfo) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), operationIn);
 }
 

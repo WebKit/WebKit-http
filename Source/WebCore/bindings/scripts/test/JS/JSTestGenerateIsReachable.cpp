@@ -21,12 +21,16 @@
 #include "config.h"
 #include "JSTestGenerateIsReachable.h"
 
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
+#include "RuntimeEnabledFeatures.h"
+#include "ScriptExecutionContext.h"
 #include <runtime/FunctionPrototype.h>
+#include <runtime/JSCInlines.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -37,6 +41,7 @@ namespace WebCore {
 
 JSC::EncodedJSValue jsTestGenerateIsReachableConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestGenerateIsReachableConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestGenerateIsReachableASecretAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 
 class JSTestGenerateIsReachablePrototype : public JSC::JSNonFinalObject {
 public:
@@ -85,6 +90,7 @@ template<> const ClassInfo JSTestGenerateIsReachableConstructor::s_info = { "Tes
 static const HashTableValue JSTestGenerateIsReachablePrototypeTableValues[] =
 {
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGenerateIsReachableConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestGenerateIsReachableConstructor) } },
+    { "aSecretAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestGenerateIsReachableASecretAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
 const ClassInfo JSTestGenerateIsReachablePrototype::s_info = { "TestGenerateIsReachablePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestGenerateIsReachablePrototype) };
@@ -92,7 +98,12 @@ const ClassInfo JSTestGenerateIsReachablePrototype::s_info = { "TestGenerateIsRe
 void JSTestGenerateIsReachablePrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestGenerateIsReachablePrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestGenerateIsReachable::info(), JSTestGenerateIsReachablePrototypeTableValues, *this);
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("aSecretAttribute"), strlen("aSecretAttribute"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
 }
 
 const ClassInfo JSTestGenerateIsReachable::s_info = { "TestGenerateIsReachable", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestGenerateIsReachable) };
@@ -119,39 +130,57 @@ JSObject* JSTestGenerateIsReachable::prototype(VM& vm, JSDOMGlobalObject& global
     return getDOMPrototype<JSTestGenerateIsReachable>(vm, globalObject);
 }
 
+JSValue JSTestGenerateIsReachable::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSTestGenerateIsReachableConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+}
+
 void JSTestGenerateIsReachable::destroy(JSC::JSCell* cell)
 {
     JSTestGenerateIsReachable* thisObject = static_cast<JSTestGenerateIsReachable*>(cell);
     thisObject->JSTestGenerateIsReachable::~JSTestGenerateIsReachable();
 }
 
+template<> inline JSTestGenerateIsReachable* IDLAttribute<JSTestGenerateIsReachable>::cast(ExecState& state, EncodedJSValue thisValue)
+{
+    return jsDynamicDowncast<JSTestGenerateIsReachable*>(state.vm(), JSValue::decode(thisValue));
+}
+
 EncodedJSValue jsTestGenerateIsReachableConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestGenerateIsReachablePrototype* domObject = jsDynamicDowncast<JSTestGenerateIsReachablePrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject))
+    auto* prototype = jsDynamicDowncast<JSTestGenerateIsReachablePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
-    return JSValue::encode(JSTestGenerateIsReachable::getConstructor(state->vm(), domObject->globalObject()));
+    return JSValue::encode(JSTestGenerateIsReachable::getConstructor(state->vm(), prototype->globalObject()));
 }
 
 bool setJSTestGenerateIsReachableConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = JSValue::decode(encodedValue);
-    JSTestGenerateIsReachablePrototype* domObject = jsDynamicDowncast<JSTestGenerateIsReachablePrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
+    auto* prototype = jsDynamicDowncast<JSTestGenerateIsReachablePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
+    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
 }
 
-JSValue JSTestGenerateIsReachable::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+static inline JSValue jsTestGenerateIsReachableASecretAttributeGetter(ExecState& state, JSTestGenerateIsReachable& thisObject, ThrowScope& throwScope)
 {
-    return getDOMConstructor<JSTestGenerateIsReachableConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.aSecretAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestGenerateIsReachableASecretAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestGenerateIsReachable>::get<jsTestGenerateIsReachableASecretAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "aSecretAttribute");
 }
 
 bool JSTestGenerateIsReachableOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
@@ -186,12 +215,12 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestGenerateIsReachable@WebCore@@6B@"));
 #else
     void* expectedVTablePointer = &_ZTVN7WebCore23TestGenerateIsReachableE[2];
-#if COMPILER(CLANG)
+#endif
+
     // If this fails TestGenerateIsReachable does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    static_assert(__is_polymorphic(TestGenerateIsReachable), "TestGenerateIsReachable is not polymorphic");
-#endif
-#endif
+    static_assert(std::is_polymorphic<TestGenerateIsReachable>::value, "TestGenerateIsReachable is not polymorphic");
+
     // If you hit this assertion you either have a use after free bug, or
     // TestGenerateIsReachable has subclasses. If TestGenerateIsReachable has subclasses that get passed
     // to toJS() we currently require TestGenerateIsReachable you to opt out of binding hardening

@@ -69,6 +69,7 @@ interface AccessibilityUIElement {
     boolean isPressActionSupported();
     boolean isIncrementActionSupported();
     boolean isDecrementActionSupported();
+    void setValue(DOMString value);
 
     readonly attribute DOMString stringValue;
     readonly attribute long intValue;
@@ -150,8 +151,19 @@ interface AccessibilityUIElement {
     object rowHeaders();
 
     AccessibilityUIElement ariaOwnsElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaOwnsReferencingElementAtIndex(unsigned long index);
     AccessibilityUIElement ariaFlowToElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaFlowToReferencingElementAtIndex(unsigned long index);
     AccessibilityUIElement ariaControlsElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaControlsReferencingElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaLabelledByElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaLabelledByReferencingElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaDescribedByElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaDescribedByReferencingElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaDetailsElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaDetailsReferencingElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaErrorMessageElementAtIndex(unsigned long index);
+    AccessibilityUIElement ariaErrorMessageReferencingElementAtIndex(unsigned long index);
 
     // Paramaterized attributes.
     DOMString parameterizedAttributeNames();
@@ -214,6 +226,7 @@ interface AccessibilityUIElement {
     AccessibilityTextMarkerRange sentenceTextMarkerRangeForTextMarker(AccessibilityTextMarker textMarker);
     AccessibilityTextMarker previousSentenceStartTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
     AccessibilityTextMarker nextSentenceEndTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarkerRange textMarkerRangeMatchesTextNearMarkers(DOMString text, AccessibilityTextMarker startMarker, AccessibilityTextMarker endMarker);
 
     // Returns an ordered list of supported actions for an element.
     readonly attribute DOMString supportedActions;

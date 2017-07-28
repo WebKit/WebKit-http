@@ -65,6 +65,7 @@
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "RuntimeApplicationChecks.h"
 #include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
 #include "StyleScrollSnapPoints.h"
@@ -102,8 +103,6 @@ static OverrideSizeMap* gOverrideWidthMap = nullptr;
 typedef WTF::HashMap<const RenderBox*, std::optional<LayoutUnit>> OverrideOptionalSizeMap;
 static OverrideOptionalSizeMap* gOverrideContainingBlockLogicalHeightMap = nullptr;
 static OverrideOptionalSizeMap* gOverrideContainingBlockLogicalWidthMap = nullptr;
-static OverrideSizeMap* gExtraInlineOffsetMap = nullptr;
-static OverrideSizeMap* gExtraBlockOffsetMap = nullptr;
 
 // Size of border belt for autoscroll. When mouse pointer in border belt,
 // autoscroll is started.
@@ -155,7 +154,6 @@ void RenderBox::willBeDestroyed()
 
     clearOverrideSize();
     clearContainingBlockOverrideSize();
-    clearExtraInlineAndBlockOffests();
 
     RenderBlock::removePercentHeightDescendantIfNeeded(*this);
 
@@ -1187,38 +1185,6 @@ void RenderBox::clearOverrideContainingBlockContentLogicalHeight()
         gOverrideContainingBlockLogicalHeightMap->remove(this);
 }
 
-LayoutUnit RenderBox::extraInlineOffset() const
-{
-    return gExtraInlineOffsetMap ? gExtraInlineOffsetMap->get(this) : LayoutUnit();
-}
-
-LayoutUnit RenderBox::extraBlockOffset() const
-{
-    return gExtraBlockOffsetMap ? gExtraBlockOffsetMap->get(this) : LayoutUnit();
-}
-
-void RenderBox::setExtraInlineOffset(LayoutUnit inlineOffest)
-{
-    if (!gExtraInlineOffsetMap)
-        gExtraInlineOffsetMap = new OverrideSizeMap;
-    gExtraInlineOffsetMap->set(this, inlineOffest);
-}
-
-void RenderBox::setExtraBlockOffset(LayoutUnit blockOffest)
-{
-    if (!gExtraBlockOffsetMap)
-        gExtraBlockOffsetMap = new OverrideSizeMap;
-    gExtraBlockOffsetMap->set(this, blockOffest);
-}
-
-void RenderBox::clearExtraInlineAndBlockOffests()
-{
-    if (gExtraInlineOffsetMap)
-        gExtraInlineOffsetMap->remove(this);
-    if (gExtraBlockOffsetMap)
-        gExtraBlockOffsetMap->remove(this);
-}
-
 LayoutUnit RenderBox::adjustBorderBoxLogicalWidthForBoxSizing(LayoutUnit width) const
 {
     LayoutUnit bordersPlusPadding = borderAndPaddingLogicalWidth();
@@ -1278,7 +1244,7 @@ bool RenderBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
     boundsRect.moveBy(adjustedLocation);
     if (visibleToHitTesting() && action == HitTestForeground && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, locationInContainer.point() - toLayoutSize(adjustedLocation));
-        if (!result.addNodeToRectBasedTestResult(element(), request, locationInContainer, boundsRect))
+        if (result.addNodeToListBasedTestResult(element(), request, locationInContainer, boundsRect) == HitTestProgress::Stop)
             return true;
     }
 
@@ -1612,7 +1578,7 @@ void RenderBox::paintMaskImages(const PaintInfo& paintInfo, const LayoutRect& pa
     // Figure out if we need to push a transparency layer to render our mask.
     bool pushTransparencyLayer = false;
     bool compositedMask = hasLayer() && layer()->hasCompositedMask();
-    bool flattenCompositingLayers = view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers;
+    bool flattenCompositingLayers = paintInfo.paintBehavior & PaintBehaviorFlattenCompositingLayers;
     CompositeOperator compositeOp = CompositeSourceOver;
 
     bool allMaskImagesLoaded = true;
@@ -2562,7 +2528,7 @@ bool RenderBox::columnFlexItemHasStretchAlignment() const
     ASSERT(parentStyle.isColumnFlexDirection());
     if (style().marginStart().isAuto() || style().marginEnd().isAuto())
         return false;
-    return style().resolvedAlignSelf(isAnonymous() ? &parentStyle : nullptr, containingBlock()->selfAlignmentNormalBehavior()).position() == ItemPositionStretch;
+    return style().resolvedAlignSelf(&parentStyle, containingBlock()->selfAlignmentNormalBehavior()).position() == ItemPositionStretch;
 }
 
 bool RenderBox::isStretchingColumnFlexItem() const
@@ -2588,10 +2554,9 @@ bool RenderBox::hasStretchedLogicalWidth() const
         // The 'normal' value behaves like 'start' except for Flexbox Items, which obviously should have a container.
         return false;
     }
-    const auto* parentStyle = isAnonymous() ? &containingBlock->style() : nullptr;
     if (containingBlock->isHorizontalWritingMode() != isHorizontalWritingMode())
-        return style.resolvedAlignSelf(parentStyle, containingBlock->selfAlignmentNormalBehavior(this)).position() == ItemPositionStretch;
-    return style.resolvedJustifySelf(parentStyle, containingBlock->selfAlignmentNormalBehavior(this)).position() == ItemPositionStretch;
+        return style.resolvedAlignSelf(&containingBlock->style(), containingBlock->selfAlignmentNormalBehavior(this)).position() == ItemPositionStretch;
+    return style.resolvedJustifySelf(&containingBlock->style(), containingBlock->selfAlignmentNormalBehavior(this)).position() == ItemPositionStretch;
 }
 
 bool RenderBox::sizesLogicalWidthToFitContent(SizeType widthType) const
@@ -3161,10 +3126,44 @@ LayoutUnit RenderBox::computeReplacedLogicalHeight(std::optional<LayoutUnit>) co
     return computeReplacedLogicalHeightRespectingMinMaxHeight(computeReplacedLogicalHeightUsing(MainOrPreferredSize, style().logicalHeight()));
 }
 
+static bool allowMinMaxPercentagesInAutoHeightBlocksQuirk()
+{
+#if PLATFORM(MAC)
+    return MacApplication::isIBooks();
+#elif PLATFORM(IOS)
+    return IOSApplication::isIBooks();
+#endif
+    return false;
+}
+
+bool RenderBox::replacedMinMaxLogicalHeightComputesAsNone(SizeType sizeType) const
+{
+    ASSERT(sizeType == MinSize || sizeType == MaxSize);
+    
+    auto logicalHeight = sizeType == MinSize ? style().logicalMinHeight() : style().logicalMaxHeight();
+    auto initialLogicalHeight = sizeType == MinSize ? RenderStyle::initialMinSize() : RenderStyle::initialMaxSize();
+    
+    if (logicalHeight == initialLogicalHeight)
+        return true;
+    
+    // Make sure % min-height and % max-height resolve to none if the containing block has auto height.
+    // Note that the "height" case for replaced elements was handled by hasReplacedLogicalHeight, which is why
+    // min and max-height are the only ones handled here.
+    // FIXME: For now we put in a quirk for iBooks until we can move them to viewport units.
+    if (auto* cb = containingBlockForAutoHeightDetection(logicalHeight))
+        return allowMinMaxPercentagesInAutoHeightBlocksQuirk() ? false : cb->hasAutoHeightOrContainingBlockWithAutoHeight();
+
+    return false;
+}
+
 LayoutUnit RenderBox::computeReplacedLogicalHeightRespectingMinMaxHeight(LayoutUnit logicalHeight) const
 {
-    LayoutUnit minLogicalHeight = computeReplacedLogicalHeightUsing(MinSize, style().logicalMinHeight());
-    LayoutUnit maxLogicalHeight = style().logicalMaxHeight().isUndefined() ? logicalHeight : computeReplacedLogicalHeightUsing(MaxSize, style().logicalMaxHeight());
+    LayoutUnit minLogicalHeight;
+    if (!replacedMinMaxLogicalHeightComputesAsNone(MinSize))
+        minLogicalHeight = computeReplacedLogicalHeightUsing(MinSize, style().logicalMinHeight());
+    LayoutUnit maxLogicalHeight = logicalHeight;
+    if (!replacedMinMaxLogicalHeightComputesAsNone(MaxSize))
+        maxLogicalHeight = computeReplacedLogicalHeightUsing(MaxSize, style().logicalMaxHeight());
     return std::max(minLogicalHeight, std::min(logicalHeight, maxLogicalHeight));
 }
 
@@ -3446,10 +3445,25 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
     if (!logicalLeft.isAuto() || !logicalRight.isAuto())
         return;
 
+    RenderObject* parent = child->parent();
+    TextDirection parentDirection = parent->style().direction();
+
+    // This method is using enclosingBox() which is wrong for absolutely
+    // positioned grid items, as they rely on the grid area. So for grid items if
+    // both "left" and "right" properties are "auto", we can consider that one of
+    // them (depending on the direction) is simply "0".
+    if (parent->isRenderGrid() && parent == child->containingBlock()) {
+        if (parentDirection == LTR)
+            logicalLeft.setValue(Fixed, 0);
+        else
+            logicalRight.setValue(Fixed, 0);
+        return;
+    }
+
     // FIXME: The static distance computation has not been patched for mixed writing modes yet.
-    if (child->parent()->style().direction() == LTR) {
+    if (parentDirection == LTR) {
         LayoutUnit staticPosition = child->layer()->staticInlinePosition() - containerBlock.borderLogicalLeft();
-        for (auto* current = child->parent(); current && current != &containerBlock; current = current->container()) {
+        for (auto* current = parent; current && current != &containerBlock; current = current->container()) {
             if (!is<RenderBox>(*current))
                 continue;
             const auto& renderBox = downcast<RenderBox>(*current);
@@ -3467,7 +3481,7 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
         logicalLeft.setValue(Fixed, staticPosition);
     } else {
         LayoutUnit staticPosition = child->layer()->staticInlinePosition() + containerLogicalWidth + containerBlock.borderLogicalLeft();
-        auto& enclosingBox = child->parent()->enclosingBox();
+        auto& enclosingBox = parent->enclosingBox();
         if (&enclosingBox != &containerBlock && containerBlock.isDescendantOf(&enclosingBox)) {
             logicalRight.setValue(Fixed, staticPosition);
             return;
@@ -3613,9 +3627,6 @@ void RenderBox::computePositionedLogicalWidth(LogicalExtentComputedValues& compu
             computedValues.m_margins.m_end = minValues.m_margins.m_end;
         }
     }
-
-    if (!style().hasStaticInlinePosition(isHorizontal))
-        computedValues.m_position += extraInlineOffset();
 
     computedValues.m_extent += bordersPlusPadding;
     if (is<RenderBox>(containerBlock)) {
@@ -3945,9 +3956,6 @@ void RenderBox::computePositionedLogicalHeight(LogicalExtentComputedValues& comp
             computedValues.m_margins.m_after = minValues.m_margins.m_after;
         }
     }
-
-    if (!style().hasStaticBlockPosition(isHorizontalWritingMode()))
-        computedValues.m_position += extraBlockOffset();
 
     // Set final height value.
     computedValues.m_extent += bordersPlusPadding;
@@ -4832,11 +4840,7 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(const RenderStyle* parent
         rect.unite(layoutOverflowRect());
 
     bool hasTransform = this->hasTransform();
-#if PLATFORM(IOS)
-    if (isInFlowPositioned() || (hasTransform && settings().shouldTransformsAffectOverflow())) {
-#else
     if (isInFlowPositioned() || hasTransform) {
-#endif
         // If we are relatively positioned or if we have a transform, then we have to convert
         // this rectangle into physical coordinates, apply relative positioning and transforms
         // to it, and then convert it back.

@@ -27,20 +27,26 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 {
     constructor()
     {
-        super("css-style", WebInspector.UIString("Styles"), WebInspector.UIString("Style"), null, true);
+        const dontCreateNavigationItem = true;
+        super("css-style", WebInspector.UIString("Styles"), dontCreateNavigationItem);
 
         this._selectedPanel = null;
         this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel(this);
         this._rulesStyleDetailsPanel = new WebInspector.RulesStyleDetailsPanel(this);
         this._visualStyleDetailsPanel = new WebInspector.VisualStyleDetailsPanel(this);
 
-        this._panels = [this._computedStyleDetailsPanel, this._rulesStyleDetailsPanel, this._visualStyleDetailsPanel];
-        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._rulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
+        if (WebInspector.settings.experimentalSpreadsheetStyleEditor.value)
+            this._activeRulesStyleDetailsPanel = new WebInspector.RulesStyleSpreadsheetDetailsPanel(this);
+        else
+            this._activeRulesStyleDetailsPanel = this._rulesStyleDetailsPanel;
 
-        this._lastSelectedPanelSetting = new WebInspector.Setting("last-selected-style-details-panel", this._rulesStyleDetailsPanel.navigationInfo.identifier);
+        this._panels = [this._computedStyleDetailsPanel, this._activeRulesStyleDetailsPanel, this._visualStyleDetailsPanel];
+        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._activeRulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
+
+        this._lastSelectedPanelSetting = new WebInspector.Setting("last-selected-style-details-panel", this._activeRulesStyleDetailsPanel.navigationInfo.identifier);
         this._classListContainerToggledSetting = new WebInspector.Setting("class-list-container-toggled", false);
 
-        this._initiallySelectedPanel = this._panelMatchingIdentifier(this._lastSelectedPanelSetting.value) || this._rulesStyleDetailsPanel;
+        this._initiallySelectedPanel = this._panelMatchingIdentifier(this._lastSelectedPanelSetting.value) || this._activeRulesStyleDetailsPanel;
 
         this._navigationItem = new WebInspector.ScopeRadioButtonNavigationItem(this.identifier, this.displayName, this._panelNavigationInfo, this._initiallySelectedPanel.navigationInfo);
         this._navigationItem.addEventListener(WebInspector.ScopeRadioButtonNavigationItem.Event.SelectedItemChanged, this._handleSelectedItemChanged, this);
@@ -75,8 +81,8 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     computedStyleDetailsPanelShowProperty(property)
     {
-        this._rulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
-        this._switchPanels(this._rulesStyleDetailsPanel);
+        this._activeRulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
+        this._switchPanels(this._activeRulesStyleDetailsPanel);
 
         this._navigationItem.selectedItemIdentifier = this._lastSelectedPanelSetting.value;
     }
@@ -170,6 +176,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         let newRuleButton = optionsContainer.createChild("img", "new-rule");
         newRuleButton.title = WebInspector.UIString("Add new rule");
         newRuleButton.addEventListener("click", this._newRuleButtonClicked.bind(this));
+        newRuleButton.addEventListener("contextmenu", this._newRuleButtonContextMenu.bind(this));
 
         this._filterBar = new WebInspector.FilterBar;
         this._filterBar.placeholder = WebInspector.UIString("Filter Styles");
@@ -320,6 +327,12 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
     {
         if (this._selectedPanel && typeof this._selectedPanel.newRuleButtonClicked === "function")
             this._selectedPanel.newRuleButtonClicked();
+    }
+
+    _newRuleButtonContextMenu(event)
+    {
+        if (this._selectedPanel && typeof this._selectedPanel.newRuleButtonContextMenu === "function")
+            this._selectedPanel.newRuleButtonContextMenu(event);
     }
 
     _classToggleButtonClicked(event)

@@ -31,7 +31,6 @@
 #include "ImplicitAnimation.h"
 #include "KeyframeAnimation.h"
 #include <wtf/HashMap.h>
-#include <wtf/Noncopyable.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -84,6 +83,8 @@ public:
     bool hasScrollTriggeredAnimation() const { return m_hasScrollTriggeredAnimation; }
 #endif
 
+    bool hasAnimationThatDependsOnLayout() const { return m_hasAnimationThatDependsOnLayout; }
+
 private:
     CompositeAnimation(CSSAnimationControllerPrivate&);
 
@@ -98,6 +99,7 @@ private:
     AnimationNameMap m_keyframeAnimations;
     Vector<AtomicStringImpl*> m_keyframeAnimationOrderMap;
     bool m_suspended;
+    bool m_hasAnimationThatDependsOnLayout { false };
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     bool m_hasScrollTriggeredAnimation { false };
 #endif

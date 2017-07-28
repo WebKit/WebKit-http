@@ -1,3 +1,531 @@
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Update boringssl to c8ff30cbe716c72279a6f6a9d7d7d0d4091220fa
+        https://bugs.webkit.org/show_bug.cgi?id=173676
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/boringssl.xcconfig: Enabling ASM.
+        * Source/third_party/boringssl/BUILD.generated.gni:
+        * Source/third_party/boringssl: Updated folder according new revision.
+        * WebKit/patch-boringssl: Added, needed to fix some files to disable warnings.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Refresh usrsctp to Source/ThirdParty/libwebrtc/WebKit/patch-usrsctp and libsrtp to ccf84786f8ef803cb9c75e919e5a3976b9f5a67
+        https://bugs.webkit.org/show_bug.cgi?id=173673
+
+        Reviewed by Sam Weinig.
+
+        * Source/third_party/libsrtp/README.chromium:
+        * Source/third_party/libsrtp/srtp/srtp.c:
+        (srtp_stream_init_keys):
+        (srtp_calc_aead_iv_srtcp):
+        (srtp_protect_rtcp_aead):
+        (srtp_unprotect_rtcp_aead):
+        * Source/third_party/libsrtp/test/srtp_driver.c:
+        (srtp_validate_encrypted_extensions_headers_gcm):
+        * Source/third_party/usrsctp/usrsctplib/.gitignore: Added.
+        * Source/third_party/usrsctp/usrsctplib/CMakeLists.txt:
+        * Source/third_party/usrsctp/usrsctplib/Makefile.am:
+        * Source/third_party/usrsctp/usrsctplib/README.md:
+        * Source/third_party/usrsctp/usrsctplib/configure.ac:
+        * Source/third_party/usrsctp/usrsctplib/programs/CMakeLists.txt:
+        * Source/third_party/usrsctp/usrsctplib/programs/Makefile.am:
+        * Source/third_party/usrsctp/usrsctplib/programs/client.c:
+        (main):
+        * Source/third_party/usrsctp/usrsctplib/programs/datachan_serv.c:
+        (main):
+        * Source/third_party/usrsctp/usrsctplib/programs/ekr_loop_offload.c: Added.
+        (handle_packets):
+        * Source/third_party/usrsctp/usrsctplib/programs/test_timer.c: Added.
+        (main):
+        * Source/third_party/usrsctp/usrsctplib/usrsctp.pc.in: Added.
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/CMakeLists.txt:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_asconf.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_asconf.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_auth.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_auth.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_bsd_addr.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_bsd_addr.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_cc_functions.c:
+        (sctp_cwnd_update_after_fr):
+        (sctp_hs_cwnd_update_after_fr):
+        (sctp_htcp_cwnd_update_after_fr):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_constants.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_crc32.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_crc32.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_header.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_indata.c:
+        (sctp_build_readq_entry):
+        (sctp_place_control_in_stream):
+        (sctp_abort_in_reasm):
+        (sctp_queue_data_to_stream):
+        (sctp_build_readq_entry_from_ctl):
+        (sctp_handle_old_unordered_data):
+        (sctp_inject_old_unordered_data):
+        (sctp_deliver_reasm_check):
+        (sctp_add_chk_to_control):
+        (sctp_queue_data_for_reasm):
+        (sctp_find_reasm_entry):
+        (sctp_process_a_data_chunk):
+        (sctp_sack_check):
+        (sctp_process_segment_range):
+        (sctp_check_for_revoked):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_indata.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_input.c:
+        (sctp_process_init):
+        (sctp_process_cookie_existing):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_input.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_output.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_output.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_pcb.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_pcb.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_peeloff.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_ss_functions.c:
+        (sctp_ss_rr_add):
+        (sctp_ss_fcfs_select):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_structs.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_sysctl.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_timer.c:
+        (sctp_recover_sent_list):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_uio.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_usrreq.c:
+        (sctp_init):
+        (sctp_pathmtu_adjustment):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_var.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctputil.c:
+        (sctp_log_strm_del):
+        (sctp_init_asoc):
+        (sctp_notify_send_failed):
+        (sctp_notify_send_failed2):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctputil.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet6/sctp6_usrreq.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet6/sctp6_var.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/user_mbuf.c:
+        (m_get):
+        (mbuf_initialize):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/user_mbuf.h:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/user_socket.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/usrsctp.h:
+        * WebKit/patch-usrsctp: Added.
+
+2017-06-22  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Prevent capturing at unconventional resolutions when using the SW encoder on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        <rdar://problem/32407693>
+
+        Reviewed by Eric Carlson.
+
+        Adding a parameter to disable hardware encoder.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/encoder.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/encoder.mm:
+        (webrtc::H264VideoToolboxEncoder::CreateCompressionSession):
+
+2017-06-21  Youenn Fablet  <youenn@apple.com>
+
+        Update libyuv to 8cab2e31d76246263206318f3568d452e7f3ff3e
+        https://bugs.webkit.org/show_bug.cgi?id=173675
+
+        Reviewed by Sam Weinig.
+
+        * Source/third_party/libyuv/.clang-format: Added.
+        * Source/third_party/libyuv/.gitignore: Added.
+        * Source/third_party/libyuv/Android.mk:
+        * Source/third_party/libyuv/BUILD.gn:
+        * Source/third_party/libyuv/CM_linux_packages.cmake: Added.
+        * Source/third_party/libyuv/CMakeLists.txt:
+        * Source/third_party/libyuv/DEPS:
+        * Source/third_party/libyuv/PRESUBMIT.py:
+        (_RunPythonTests):
+        (_RunPythonTests.join):
+        (_CommonChecks):
+        (CheckChangeOnUpload):
+        (CheckChangeOnCommit):
+        * Source/third_party/libyuv/README.chromium:
+        * Source/third_party/libyuv/build_overrides/build.gni:
+        * Source/third_party/libyuv/chromium/.gclient: Removed.
+        * Source/third_party/libyuv/chromium/README: Removed.
+        * Source/third_party/libyuv/cleanup_links.py: Added.
+        (WebRTCLinkSetup):
+        (WebRTCLinkSetup.__init__):
+        (WebRTCLinkSetup.CleanupLinks):
+        (_initialize_database):
+        (main):
+        * Source/third_party/libyuv/codereview.settings:
+        * Source/third_party/libyuv/docs/deprecated_builds.md:
+        * Source/third_party/libyuv/docs/getting_started.md:
+        * Source/third_party/libyuv/gyp_libyuv.py:
+        * Source/third_party/libyuv/include/libyuv/basic_types.h:
+        * Source/third_party/libyuv/include/libyuv/compare.h:
+        * Source/third_party/libyuv/include/libyuv/compare_row.h:
+        * Source/third_party/libyuv/include/libyuv/convert.h:
+        * Source/third_party/libyuv/include/libyuv/convert_argb.h:
+        * Source/third_party/libyuv/include/libyuv/convert_from.h:
+        * Source/third_party/libyuv/include/libyuv/convert_from_argb.h:
+        * Source/third_party/libyuv/include/libyuv/cpu_id.h:
+        * Source/third_party/libyuv/include/libyuv/macros_msa.h:
+        * Source/third_party/libyuv/include/libyuv/mjpeg_decoder.h:
+        * Source/third_party/libyuv/include/libyuv/planar_functions.h:
+        * Source/third_party/libyuv/include/libyuv/rotate.h:
+        * Source/third_party/libyuv/include/libyuv/rotate_argb.h:
+        * Source/third_party/libyuv/include/libyuv/rotate_row.h:
+        * Source/third_party/libyuv/include/libyuv/row.h:
+        * Source/third_party/libyuv/include/libyuv/scale.h:
+        * Source/third_party/libyuv/include/libyuv/scale_argb.h:
+        * Source/third_party/libyuv/include/libyuv/scale_row.h:
+        * Source/third_party/libyuv/include/libyuv/version.h:
+        * Source/third_party/libyuv/include/libyuv/video_common.h:
+        * Source/third_party/libyuv/infra/config/OWNERS: Added.
+        * Source/third_party/libyuv/infra/config/README.md: Added.
+        * Source/third_party/libyuv/infra/config/cq.cfg: Added.
+        * Source/third_party/libyuv/libyuv.gyp:
+        * Source/third_party/libyuv/libyuv.gypi:
+        * Source/third_party/libyuv/libyuv_test.gyp:
+        * Source/third_party/libyuv/linux.mk:
+        * Source/third_party/libyuv/pylintrc: Added.
+        * Source/third_party/libyuv/setup_links.py: Removed.
+        * Source/third_party/libyuv/source/compare.cc:
+        * Source/third_party/libyuv/source/compare_common.cc:
+        * Source/third_party/libyuv/source/compare_gcc.cc:
+        * Source/third_party/libyuv/source/compare_neon.cc:
+        * Source/third_party/libyuv/source/compare_neon64.cc:
+        * Source/third_party/libyuv/source/compare_win.cc:
+        * Source/third_party/libyuv/source/convert.cc:
+        * Source/third_party/libyuv/source/convert_argb.cc:
+        * Source/third_party/libyuv/source/convert_from.cc:
+        * Source/third_party/libyuv/source/convert_from_argb.cc:
+        * Source/third_party/libyuv/source/convert_jpeg.cc:
+        * Source/third_party/libyuv/source/convert_to_argb.cc:
+        * Source/third_party/libyuv/source/convert_to_i420.cc:
+        * Source/third_party/libyuv/source/cpu_id.cc:
+        * Source/third_party/libyuv/source/mjpeg_decoder.cc:
+        * Source/third_party/libyuv/source/mjpeg_validate.cc:
+        * Source/third_party/libyuv/source/planar_functions.cc:
+        * Source/third_party/libyuv/source/rotate.cc:
+        * Source/third_party/libyuv/source/rotate_any.cc:
+        * Source/third_party/libyuv/source/rotate_argb.cc:
+        * Source/third_party/libyuv/source/rotate_common.cc:
+        * Source/third_party/libyuv/source/rotate_dspr2.cc: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/source/rotate_mips.cc.
+        * Source/third_party/libyuv/source/rotate_gcc.cc:
+        * Source/third_party/libyuv/source/rotate_msa.cc: Added.
+        * Source/third_party/libyuv/source/rotate_neon.cc:
+        * Source/third_party/libyuv/source/rotate_neon64.cc:
+        * Source/third_party/libyuv/source/rotate_win.cc:
+        * Source/third_party/libyuv/source/row_any.cc:
+        * Source/third_party/libyuv/source/row_common.cc:
+        * Source/third_party/libyuv/source/row_dspr2.cc: Added.
+        * Source/third_party/libyuv/source/row_gcc.cc:
+        * Source/third_party/libyuv/source/row_mips.cc: Removed.
+        * Source/third_party/libyuv/source/row_msa.cc:
+        * Source/third_party/libyuv/source/row_neon.cc:
+        * Source/third_party/libyuv/source/row_neon64.cc:
+        * Source/third_party/libyuv/source/row_win.cc:
+        * Source/third_party/libyuv/source/scale.cc:
+        * Source/third_party/libyuv/source/scale_any.cc:
+        * Source/third_party/libyuv/source/scale_argb.cc:
+        * Source/third_party/libyuv/source/scale_common.cc:
+        * Source/third_party/libyuv/source/scale_dspr2.cc: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/source/scale_mips.cc.
+        * Source/third_party/libyuv/source/scale_gcc.cc:
+        * Source/third_party/libyuv/source/scale_msa.cc: Added.
+        * Source/third_party/libyuv/source/scale_neon.cc:
+        * Source/third_party/libyuv/source/scale_neon64.cc:
+        * Source/third_party/libyuv/source/scale_win.cc:
+        * Source/third_party/libyuv/source/video_common.cc:
+        * Source/third_party/libyuv/sync_chromium.py: Removed.
+        * Source/third_party/libyuv/third_party/gflags/BUILD.gn: Removed.
+        * Source/third_party/libyuv/third_party/gflags/LICENSE: Removed.
+        * Source/third_party/libyuv/third_party/gflags/README.libyuv: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/posix/include/gflags/gflags.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/posix/include/gflags/gflags_completions.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/posix/include/gflags/gflags_declare.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/posix/include/gflags/gflags_gflags.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/posix/include/private/config.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/win/include/gflags/gflags.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/win/include/gflags/gflags_completions.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/win/include/gflags/gflags_declare.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/win/include/gflags/gflags_gflags.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gen/win/include/private/config.h: Removed.
+        * Source/third_party/libyuv/third_party/gflags/gflags.gyp: Removed.
+        * Source/third_party/libyuv/tools/gritsettings/README: Removed.
+        * Source/third_party/libyuv/tools/gritsettings/resource_ids: Removed.
+        * Source/third_party/libyuv/tools/valgrind-libyuv/tsan/OWNERS: Removed.
+        * Source/third_party/libyuv/tools/valgrind-libyuv/tsan/PRESUBMIT.py: Removed.
+        * Source/third_party/libyuv/tools/valgrind-libyuv/tsan/suppressions.txt: Removed.
+        * Source/third_party/libyuv/tools/valgrind-libyuv/tsan/suppressions_mac.txt: Removed.
+        * Source/third_party/libyuv/tools/valgrind-libyuv/tsan/suppressions_win32.txt: Removed.
+        * Source/third_party/libyuv/tools_libyuv/OWNERS: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/OWNERS.
+        * Source/third_party/libyuv/tools_libyuv/autoroller/roll_deps.py: Added.
+        (RollError):
+        (ParseDepsDict):
+        (ParseLocalDepsFile):
+        (ParseRemoteCrDepsFile):
+        (ParseCommitPosition):
+        (_RunCommand):
+        (_GetBranches):
+        (_ReadGitilesContent):
+        (ReadRemoteCrFile):
+        (ReadRemoteCrCommit):
+        (ReadUrlContent):
+        (GetMatchingDepsEntries):
+        (BuildDepsentryDict):
+        (BuildDepsentryDict.AddDepsEntries):
+        (CalculateChangedDeps):
+        (CalculateChangedClang):
+        (CalculateChangedClang.GetClangRev):
+        (GenerateCommitMessage):
+        (UpdateDepsFile):
+        (_IsTreeClean):
+        (_EnsureUpdatedMasterBranch):
+        (_CreateRollBranch):
+        (_RemovePreviousRollBranch):
+        (_LocalCommit):
+        (_UploadCL):
+        (_SendToCQ):
+        (main):
+        * Source/third_party/libyuv/tools_libyuv/autoroller/unittests/roll_deps_test.py: Added.
+        (TestError):
+        (FakeCmd):
+        (FakeCmd.__init__):
+        (FakeCmd.add_expectation):
+        (FakeCmd.__call__):
+        (TestRollChromiumRevision):
+        (TestRollChromiumRevision.setUp):
+        (TestRollChromiumRevision.tearDown):
+        (TestRollChromiumRevision.testUpdateDepsFile):
+        (TestRollChromiumRevision.testParseDepsDict):
+        (TestRollChromiumRevision.testParseDepsDict.assertVar):
+        (TestRollChromiumRevision.testGetMatchingDepsEntriesReturnsPathInSimpleCase):
+        (TestRollChromiumRevision.testGetMatchingDepsEntriesHandlesSimilarStartingPaths):
+        (TestRollChromiumRevision.testGetMatchingDepsEntriesHandlesTwoPathsWithIdenticalFirstParts):
+        (TestRollChromiumRevision.testCalculateChangedDeps):
+        (_SetupGitLsRemoteCall):
+        * Source/third_party/libyuv/tools_libyuv/autoroller/unittests/testdata/DEPS: Added.
+        * Source/third_party/libyuv/tools_libyuv/autoroller/unittests/testdata/DEPS.chromium.new: Added.
+        * Source/third_party/libyuv/tools_libyuv/autoroller/unittests/testdata/DEPS.chromium.old: Added.
+        * Source/third_party/libyuv/tools_libyuv/get_landmines.py: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/get_landmines.py.
+        * Source/third_party/libyuv/tools_libyuv/msan/OWNERS: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/msan/OWNERS.
+        * Source/third_party/libyuv/tools_libyuv/msan/blacklist.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/msan/blacklist.txt.
+        * Source/third_party/libyuv/tools_libyuv/ubsan/OWNERS: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/ubsan/OWNERS.
+        * Source/third_party/libyuv/tools_libyuv/ubsan/blacklist.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/ubsan/blacklist.txt.
+        * Source/third_party/libyuv/tools_libyuv/ubsan/vptr_blacklist.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/ubsan/vptr_blacklist.txt.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/libyuv_tests.bat: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/libyuv_tests.bat.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/libyuv_tests.py: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/libyuv_tests.py.
+        (LibyuvTest._DefaultCommand):
+        * Source/third_party/libyuv/tools_libyuv/valgrind/libyuv_tests.sh: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/libyuv_tests.sh.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/memcheck/OWNERS: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/memcheck/OWNERS.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/memcheck/PRESUBMIT.py: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/memcheck/PRESUBMIT.py.
+        (CheckChange):
+        * Source/third_party/libyuv/tools_libyuv/valgrind/memcheck/suppressions.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/memcheck/suppressions.txt.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/memcheck/suppressions_mac.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/memcheck/suppressions_mac.txt.
+        * Source/third_party/libyuv/tools_libyuv/valgrind/memcheck/suppressions_win32.txt: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/tools/valgrind-libyuv/memcheck/suppressions_win32.txt.
+        * Source/third_party/libyuv/unit_test/color_test.cc:
+        * Source/third_party/libyuv/unit_test/compare_test.cc:
+        * Source/third_party/libyuv/unit_test/convert_test.cc:
+        * Source/third_party/libyuv/unit_test/cpu_test.cc:
+        * Source/third_party/libyuv/unit_test/cpu_thread_test.cc: Added.
+        * Source/third_party/libyuv/unit_test/math_test.cc:
+        * Source/third_party/libyuv/unit_test/planar_test.cc:
+        * Source/third_party/libyuv/unit_test/rotate_argb_test.cc:
+        * Source/third_party/libyuv/unit_test/rotate_test.cc:
+        * Source/third_party/libyuv/unit_test/scale_argb_test.cc:
+        * Source/third_party/libyuv/unit_test/scale_test.cc:
+        * Source/third_party/libyuv/unit_test/unit_test.cc:
+        * Source/third_party/libyuv/unit_test/unit_test.h:
+        (SizeValid):
+        * Source/third_party/libyuv/unit_test/video_common_test.cc:
+        * Source/third_party/libyuv/util/compare.cc:
+        * Source/third_party/libyuv/util/cpuid.c:
+        (main):
+        * Source/third_party/libyuv/util/psnr.cc:
+        * Source/third_party/libyuv/util/psnr_main.cc:
+        * Source/third_party/libyuv/util/ssim.cc:
+        * Source/third_party/libyuv/util/ssim.h:
+        * Source/third_party/libyuv/util/yuvconvert.cc: Renamed from Source/ThirdParty/libwebrtc/Source/third_party/libyuv/util/convert.cc.
+
+2017-06-21  Youenn Fablet  <youenn@apple.com>
+
+        Fix build after r218645
+        https://bugs.webkit.org/show_bug.cgi?id=173668
+
+        Unreviewed.
+
+        * Source/webrtc/base/sigslottester.h: Removing executable right.
+        * Source/webrtc/modules/video_coding/codecs/vp8/temporal_layers.h:
+        (webrtc::TemporalLayersFactory::Create): Inline a default implementation.
+        * Source/webrtc/modules/video_processing/util/skin_detection.h: Removing executable right.
+
+2017-06-21  Youenn Fablet  <youenn@apple.com>
+
+        Remove expat source code from Source/ThirdParty/libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=173656
+
+        Reviewed by Brent Fulgham.
+
+        * Source/third_party/expat/BUILD.gn: Removed.
+        * Source/third_party/expat/OWNERS: Removed.
+        * Source/third_party/expat/README.chromium: Removed.
+        * Source/third_party/expat/files/COPYING: Removed.
+        * Source/third_party/expat/files/Changes: Removed.
+        * Source/third_party/expat/files/MANIFEST: Removed.
+        * Source/third_party/expat/files/README: Removed.
+        * Source/third_party/expat/files/lib/amigaconfig.h: Removed.
+        * Source/third_party/expat/files/lib/ascii.h: Removed.
+        * Source/third_party/expat/files/lib/asciitab.h: Removed.
+        * Source/third_party/expat/files/lib/expat.h: Removed.
+        * Source/third_party/expat/files/lib/expat_config.h: Removed.
+        * Source/third_party/expat/files/lib/expat_external.h: Removed.
+        * Source/third_party/expat/files/lib/iasciitab.h: Removed.
+        * Source/third_party/expat/files/lib/internal.h: Removed.
+        * Source/third_party/expat/files/lib/latin1tab.h: Removed.
+        * Source/third_party/expat/files/lib/libexpat.def: Removed.
+        * Source/third_party/expat/files/lib/libexpatw.def: Removed.
+        * Source/third_party/expat/files/lib/macconfig.h: Removed.
+        * Source/third_party/expat/files/lib/nametab.h: Removed.
+        * Source/third_party/expat/files/lib/utf8tab.h: Removed.
+        * Source/third_party/expat/files/lib/winconfig.h: Removed.
+        * Source/third_party/expat/files/lib/winconfig.h.original: Removed.
+        * Source/third_party/expat/files/lib/xmlparse.c: Removed.
+        * Source/third_party/expat/files/lib/xmlparse.c.original: Removed.
+        * Source/third_party/expat/files/lib/xmlrole.c: Removed.
+        * Source/third_party/expat/files/lib/xmlrole.h: Removed.
+        * Source/third_party/expat/files/lib/xmltok.c: Removed.
+        * Source/third_party/expat/files/lib/xmltok.h: Removed.
+        * Source/third_party/expat/files/lib/xmltok_impl.c: Removed.
+        * Source/third_party/expat/files/lib/xmltok_impl.c.original: Removed.
+        * Source/third_party/expat/files/lib/xmltok_impl.h: Removed.
+        * Source/third_party/expat/files/lib/xmltok_ns.c: Removed.
+        * Source/third_party/expat/fuzz/OWNERS: Removed.
+        * Source/third_party/expat/fuzz/expat_xml_parse_fuzzer.cc: Removed.
+
+2017-06-21  Youenn Fablet  <youenn@apple.com>
+
+        Refresh libwebrtc code up to a87675d4a160e2c49c3e754cd9ca291d6c8f36ae
+        https://bugs.webkit.org/show_bug.cgi?id=173602
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source: Updated to a87675d4a160e2c49c3e754cd9ca291d6c8f36ae and reapplied WebKit specific changes.
+        * WebKit/patch-libwebrtc:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-06-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218505.
+        https://bugs.webkit.org/show_bug.cgi?id=173563
+
+        "It would break internal builds" (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[WebRTC] Prevent capturing at unconventional resolutions when
+        using the SW encoder on Mac"
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        http://trac.webkit.org/changeset/218505
+
+2017-06-19  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Prevent capturing at unconventional resolutions when using the SW encoder on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        <rdar://problem/32407693>
+
+        Reviewed by Eric Carlson.
+
+        Adding a parameter to disable hardware encoder.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.mm:
+        (webrtc::H264VideoToolboxEncoder::CreateCompressionSession):
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-07  Youenn Fablet  <youenn@apple.com>
+
+        Add WebRTC stats logging
+        https://bugs.webkit.org/show_bug.cgi?id=173045
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/api/stats/rtcstats.h: Exporting RTCStats ToString.
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
 2017-05-16  Youenn Fablet  <youenn@apple.com>
 
         RealtimeOutgoingVideoSource should support sinkWants for rotation

@@ -26,136 +26,27 @@
 #include "config.h"
 #include "ThreadMessage.h"
 
-#if USE(PTHREADS)
-
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <wtf/DataLog.h>
 #include <wtf/Lock.h>
 #include <wtf/Locker.h>
-#include <wtf/threads/Signals.h>
-
 
 namespace WTF {
 
-using Node = LocklessBag<ThreadMessageData*>::Node;
-
-class ThreadMessageData {
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    ThreadMessageData(const ThreadMessage& m)
-        : ran(nullptr)
-        , message(m)
-    {
-    }
-
-    Atomic<Node*> ran;
-    const ThreadMessage& message;
-};
-
-enum FileDescriptor {
-    Read,
-    Write,
-    NumberOfFileDescriptors,
-};
-
-static int fileDescriptors[NumberOfFileDescriptors];
-static const char* const magicByte = "d";
-
-
-void initializeThreadMessages()
-{
-    int result = pipe(fileDescriptors);
-    RELEASE_ASSERT(!result);
-
-    int flags = fcntl(fileDescriptors[Write], F_GETFL);
-    result = fcntl(fileDescriptors[Write], F_SETFL, flags | O_NONBLOCK | O_APPEND);
-    flags = fcntl(fileDescriptors[Write], F_GETFL);
-    RELEASE_ASSERT(result != -1);
-    RELEASE_ASSERT((flags & O_NONBLOCK) && (flags & O_APPEND));
-
-    flags = fcntl(fileDescriptors[Read], F_GETFL);
-    result = fcntl(fileDescriptors[Read], F_SETFL, flags & ~O_NONBLOCK);
-    flags = fcntl(fileDescriptors[Read], F_GETFL);
-    RELEASE_ASSERT(result != -1);
-    RELEASE_ASSERT(!(flags & O_NONBLOCK));
-}
-
-SUPPRESS_ASAN
 MessageStatus sendMessageScoped(Thread& thread, const ThreadMessage& message)
 {
-    constexpr Signal signal = Signal::Usr;
-    static std::once_flag once;
-    std::call_once(once, [] {
-        installSignalHandler(signal, [] (int, siginfo_t* info, void* uap) {
-            Thread* thread = Thread::currentMayBeNull();
+    static StaticLock messageLock;
+    auto lockholder = holdLock(messageLock);
 
-            if (!thread) {
-                dataLogLn("We somehow got a message on a thread that didn't have a WTF::Thread initialized, we probably deadlocked, halp.");
-                return SignalAction::NotHandled;
-            }
-
-            // Node should be deleted in the sender thread. Deleting Nodes in signal handler causes dead lock.
-            thread->threadMessages().consumeAllWithNode([&] (ThreadMessageData* data, Node* node) {
-                data->message(info, static_cast<ucontext_t*>(uap));
-                // By setting ran variable, (1) the sender acknowledges the completion and
-                // (2) gets the Node to be deleted.
-                data->ran.store(node);
-            });
-
-            while (write(fileDescriptors[Write], magicByte, 1) == -1)
-                ASSERT(errno == EAGAIN);
-
-            return SignalAction::Handled;
-        });
-    });
-
-
-    // Since we are guarenteed not to return until we get a response from the other thread this is ok.
-    ThreadMessageData data(message);
-
-    thread.threadMessages().add(&data);
-    bool result = thread.signal(toSystemSignal(signal));
+    auto result = thread.suspend();
     if (!result)
         return MessageStatus::ThreadExited;
-    RELEASE_ASSERT(result);
 
-    static StaticLock readLock;
-    while (true) {
-        LockHolder locker(readLock);
-        constexpr size_t bufferSize = 16;
-        char buffer[bufferSize];
+    PlatformRegisters registers;
+    thread.getRegisters(registers);
 
-        // It's always safe to clear the pipe because only one thread can ever block trying to read
-        // from the pipe. Thus, each byte we clear from the pipe actually just corresponds to some task
-        // that has already finished. We actively want to ensure that the pipe does not overfill because
-        // otherwise our writers might spin trying to write.
-        auto clearPipe = [&] {
-            int flags = fcntl(fileDescriptors[Read], F_GETFL);
-            ASSERT(!(flags & O_NONBLOCK));
-            fcntl(fileDescriptors[Read], F_SETFL, flags | O_NONBLOCK);
+    message(registers);
 
-            while (read(fileDescriptors[Read], buffer, bufferSize) != -1) { }
-            ASSERT(errno == EAGAIN);
-
-            fcntl(fileDescriptors[Read], F_SETFL, flags);
-        };
-
-        if (Node* node = data.ran.load()) {
-            clearPipe();
-            delete node;
-            return MessageStatus::MessageRan;
-        }
-
-        int ret = read(fileDescriptors[Read], buffer, 1);
-        UNUSED_PARAM(ret);
-        ASSERT(buffer[0] == magicByte[0]);
-        clearPipe();
-    }
-    RELEASE_ASSERT_NOT_REACHED();
+    thread.resume();
+    return MessageStatus::MessageRan;
 }
 
 } // namespace WTF
-
-#endif // USE(PTHREADS)

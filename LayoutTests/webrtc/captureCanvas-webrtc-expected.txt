@@ -1,4 +1,8 @@
-   
+ 
 
-PASS captureStream with webrtc 
+PASS Setting up the connection 
+PASS Checking canvas is green 
+PASS Checking canvas is red 
+PASS Checking canvas is green again 
+PASS Checking canvas size change 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #include "CredentialStorage.h"
 #include "SessionID.h"
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,6 +46,10 @@ typedef struct _SoupCookieJar SoupCookieJar;
 #include <objc/objc.h>
 #endif
 
+#if PLATFORM(COCOA)
+#include "CookieStorageObserver.h"
+#endif
+
 namespace WebCore {
 
 class NetworkingContext;
@@ -61,7 +66,7 @@ public:
     WEBCORE_EXPORT static void ensurePrivateBrowsingSession(SessionID, const String& identifierBase = String());
     WEBCORE_EXPORT static void ensureSession(SessionID, const String& identifierBase = String());
     WEBCORE_EXPORT static void destroySession(SessionID);
-    WEBCORE_EXPORT static void forEach(std::function<void(const WebCore::NetworkStorageSession&)>);
+    WEBCORE_EXPORT static void forEach(const WTF::Function<void(const WebCore::NetworkStorageSession&)>&);
 
     WEBCORE_EXPORT static void switchToNewTestingSession();
 
@@ -91,6 +96,7 @@ public:
 
     SoupNetworkSession* soupNetworkSession() const { return m_session.get(); };
     SoupNetworkSession& getOrCreateSoupNetworkSession() const;
+    void clearSoupNetworkSessionAndCookieStorage();
     SoupCookieJar* cookieStorage() const;
     void setCookieStorage(SoupCookieJar*);
     void setCookieObserverHandler(Function<void ()>&&);
@@ -136,6 +142,14 @@ private:
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     bool shouldPartitionCookies(const String& topPrivatelyControlledDomain) const;
     HashSet<String> m_topPrivatelyControlledDomainsForCookiePartitioning;
+#endif
+
+#if PLATFORM(COCOA)
+public:
+    CookieStorageObserver& cookieStorageObserver() const;
+
+private:
+    mutable RefPtr<CookieStorageObserver> m_cookieStorageObserver;
 #endif
 };
 

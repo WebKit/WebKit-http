@@ -27,6 +27,7 @@
 #include "RenderBlockFlow.h"
 #include "RenderLineBreak.h"
 #include "RootInlineBox.h"
+#include "TextStream.h"
 
 #if ENABLE(TREE_DEBUGGING)
 #include <stdio.h>
@@ -39,10 +40,11 @@ struct SameSizeAsInlineBox {
     void* a[4];
     FloatPoint b;
     float c[2];
-    unsigned d : 20;
+    unsigned d : 23;
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     unsigned s;
     bool f;
+    bool i;
 #endif
 };
 
@@ -70,7 +72,7 @@ void InlineBox::setHasBadParent()
 void InlineBox::invalidateParentChildList()
 {
     assertNotDeleted();
-    if (!m_hasBadParent && m_parent)
+    if (!m_hasBadParent && m_parent && m_isEverInChildList)
         m_parent->setHasBadChildList();
 }
 
@@ -99,22 +101,23 @@ void InlineBox::showLineTreeForThis() const
     m_renderer.containingBlock()->showLineTreeForThis();
 }
 
-void InlineBox::showLineTreeAndMark(const InlineBox* markedBox, int depth) const
+void InlineBox::outputLineTreeAndMark(TextStream& stream, const InlineBox* markedBox, int depth) const
 {
-    showLineBox(markedBox == this, depth);
+    outputLineBox(stream, markedBox == this, depth);
 }
 
-void InlineBox::showLineBox(bool mark, int depth) const
+void InlineBox::outputLineBox(TextStream& stream, bool mark, int depth) const
 {
-    fprintf(stderr, "-------- %c-", isDirty() ? 'D' : '-');
+    stream << "-------- " << (isDirty() ? "D" : "-") << "-";
     int printedCharacters = 0;
     if (mark) {
-        fprintf(stderr, "*");
+        stream << "*";
         ++printedCharacters;
     }
     while (++printedCharacters <= depth * 2)
-        fputc(' ', stderr);
-    fprintf(stderr, "%s  (%.2f, %.2f) (%.2f, %.2f) (%p) renderer->(%p)\n", boxName(), x(), y(), width(), height(), this, &renderer());
+        stream << " ";
+    stream << boxName() << " " << FloatRect(x(), y(), width(), height()) << " (" << this << ") renderer->(" << &renderer() << ")";
+    stream.nextLine();
 }
 
 #endif // ENABLE(TREE_DEBUGGING)

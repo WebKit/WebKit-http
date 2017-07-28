@@ -65,6 +65,8 @@ void ScrollingStateFixedNode::updateConstraints(const FixedPositionViewportConst
     if (m_constraints == constraints)
         return;
 
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateFixedNode " << scrollingNodeID() << " updateConstraints with viewport rect " << constraints.viewportRectAtLastLayout() << " layer pos at last layout " << constraints.layerPositionAtLastLayout() << " offset from top " << (constraints.layerPositionAtLastLayout().y() - constraints.viewportRectAtLastLayout().y()));
+
     m_constraints = constraints;
     setPropertyChanged(ViewportConstraints);
 }
@@ -75,7 +77,7 @@ void ScrollingStateFixedNode::reconcileLayerPositionForViewportRect(const Layout
     if (layer().representsGraphicsLayer()) {
         GraphicsLayer* graphicsLayer = static_cast<GraphicsLayer*>(layer());
 
-        LOG_WITH_STREAM(Compositing, stream << "ScrollingStateFixedNode::reconcileLayerPositionForViewportRect setting position of layer " << graphicsLayer->primaryLayerID() << " to " << position);
+        LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateFixedNode " << scrollingNodeID() <<" reconcileLayerPositionForViewportRect " << action << " position of layer " << graphicsLayer->primaryLayerID() << " to " << position);
         
         switch (action) {
         case ScrollingLayerPositionAction::Set:

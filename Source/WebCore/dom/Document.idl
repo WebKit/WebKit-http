@@ -18,6 +18,18 @@
  * Boston, MA 02110-1301, USA.
  */
 
+typedef (
+#if defined(ENABLE_WEBGL) && ENABLE_WEBGL
+    WebGLRenderingContext or
+#endif
+#if defined(ENABLE_WEBGL2) && ENABLE_WEBGL2
+    WebGL2RenderingContext or
+#endif
+#if defined(ENABLE_WEBGPU) && ENABLE_WEBGPU
+    WebGPURenderingContext or
+#endif
+    CanvasRenderingContext2D) RenderingContext;
+
 [
     Constructor,
     ConstructorCallWith=Document,
@@ -89,6 +101,16 @@
     NodeList getElementsByName([AtomicString] DOMString elementName);
     readonly attribute HTMLScriptElement? currentScript; // FIXME: Should return a HTMLOrSVGScriptElement.
 
+    // dynamic markup insertion
+    // FIXME: The HTML spec says this should consult the "responsible document". We should ensure
+    // that the caller document matches those semantics. It is possible we should replace it with
+    // the existing 'incumbent document' concept.
+    [CEReactions, CallWith=ResponsibleDocument, ImplementedAs=openForBindings, MayThrowException] Document open(optional DOMString type = "text/html", optional DOMString replace = "");
+    [CallWith=ActiveWindow&FirstWindow, ImplementedAs=openForBindings, MayThrowException] DOMWindow open(USVString url, DOMString name, DOMString features);
+    [CEReactions, ImplementedAs=closeForBindings, MayThrowException] void close();
+    [CEReactions, CallWith=ResponsibleDocument, MayThrowException] void write(DOMString... text);
+    [CEReactions, CallWith=ResponsibleDocument, MayThrowException] void writeln(DOMString... text);
+
     // User interaction.
     readonly attribute DOMWindow? defaultView;
     boolean hasFocus();
@@ -145,10 +167,6 @@
     readonly attribute VisibilityState visibilityState;
     attribute EventHandler onvisibilitychange;
 
-    // FIXME: Those have been dropped from the HTML specification.
-    readonly attribute HTMLCollection applets;
-    readonly attribute HTMLCollection anchors;
-
     // FIXME: Those were dropped from the CSSOM specification.
     readonly attribute DOMString? preferredStylesheetSet;
     attribute DOMString? selectedStylesheetSet;
@@ -169,22 +187,28 @@
     Range caretRangeFromPoint(optional long x = 0, optional long y = 0);
 
     // FIXME: This is not standard and has been dropped from Blink already.
-    [Custom] (CanvasRenderingContext2D or WebGLRenderingContextBase) getCSSCanvasContext(DOMString contextId, DOMString name, long width, long height);
+    RenderingContext? getCSSCanvasContext(DOMString contextId, DOMString name, long width, long height);
 
     // Non standard (https://developer.apple.com/reference/webkitjs/document/1633863-webkitgetnamedflows).
     [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
-    // FIXME: This has been dropped from the standard now that Touch has a constructor.
-#if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
-#include <WebKitAdditions/DocumentIOS.idl>
-#elif defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
-    [NewObject] Touch createTouch(optional DOMWindow? window = null, optional EventTarget? target = null,
-        optional long identifier = 0,
-        optional long pageX = 0, optional long pageY = 0, optional long screenX = 0, optional long screenY = 0,
-        optional long webkitRadiusX = 0, optional long webkitRadiusY = 0,
-        optional unrestricted float webkitRotationAngle = NaN, optional unrestricted float webkitForce = NaN);
-    [NewObject, Custom] TouchList createTouchList(Touch... touches);
-#endif
+
+    // Obsolete features from https://html.spec.whatwg.org/multipage/obsolete.html
+
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString fgColor;
+    [CEReactions, ImplementedAs=linkColorForBindings] attribute [TreatNullAs=EmptyString] DOMString linkColor;
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString vlinkColor;
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString alinkColor;
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString bgColor;
+
+    readonly attribute HTMLCollection anchors; /* [SameObject] */
+    readonly attribute HTMLCollection applets; /* [SameObject] */
+
+    void clear();
+    void captureEvents();
+    void releaseEvents();
+
+    [Replaceable] readonly attribute HTMLAllCollection all; /* [SameObject] */
 };
 
 // FIXME: Missing "unloaded" value (https://www.w3.org/TR/page-visibility/#sec-document-interface).

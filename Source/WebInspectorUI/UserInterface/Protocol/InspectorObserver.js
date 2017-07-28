@@ -39,10 +39,23 @@ WebInspector.InspectorObserver = class InspectorObserver
 
     inspect(payload, hints)
     {
-        var remoteObject = WebInspector.RemoteObject.fromPayload(payload, WebInspector.mainTarget);
+        let remoteObject = WebInspector.RemoteObject.fromPayload(payload, WebInspector.mainTarget);
         if (remoteObject.subtype === "node") {
             WebInspector.domTreeManager.inspectNodeObject(remoteObject);
             return;
+        }
+
+        if (remoteObject.type === "function") {
+            remoteObject.findFunctionSourceCodeLocation().then((sourceCodeLocation) => {
+                if (sourceCodeLocation instanceof WebInspector.SourceCodeLocation) {
+                    WebInspector.showSourceCodeLocation(sourceCodeLocation, {
+                        ignoreNetworkTab: true,
+                        ignoreSearchTab: true,
+                    });
+                }
+            });
+            remoteObject.release();
+            return;            
         }
 
         if (hints.databaseId)
@@ -51,11 +64,6 @@ WebInspector.InspectorObserver = class InspectorObserver
             WebInspector.storageManager.inspectDOMStorage(hints.domStorageId);
 
         remoteObject.release();
-    }
-
-    detached(reason)
-    {
-        // FIXME: Not implemented.
     }
 
     activateExtraDomains(domains)

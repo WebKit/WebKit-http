@@ -37,7 +37,7 @@ function checkInstaller {
         exit 0
     fi
 
-    if [ `uname` -eq "Darwin" ]; then
+    if [ `uname` = "Darwin" ]; then
        installDependenciesWithBrew
        exit 0
     fi
@@ -65,6 +65,7 @@ function installDependenciesWithBrew {
          libcroco \
          libgcrypt \
          libgpg-error \
+         libtasn1 \
          libtiff \
          libtool \
          ninja \
@@ -106,6 +107,7 @@ function installDependenciesWithApt {
         libedit-dev \
         libenchant-dev \
         libfaad-dev \
+        libffi-dev \
         $(aptIfElse libgcrypt20-dev libgcrypt11-dev) \
         $(aptIfElse libgeoclue-2-dev libgeoclue-dev) \
         libgirepository1.0-dev \
@@ -130,6 +132,7 @@ function installDependenciesWithApt {
         libsoup2.4-dev \
         libsqlite3-dev \
         libsrtp0-dev \
+        libtasn1-6-dev \
         libtheora-dev \
         libtool \
         libvorbis-dev \
@@ -195,6 +198,7 @@ function installDependenciesWithApt {
         libxcb-xfixes0-dev \
         $(aptIfElse libxfont1-dev libxfont-dev) \
         libxkbfile-dev \
+        libxkbcommon-x11-dev \
         libtool-bin \
         libudev-dev \
         python-dev \
@@ -230,6 +234,7 @@ function installDependenciesWithPacman {
         bison \
         cmake \
         libedit \
+        libffi \
         file \
         findutils \
         flex \
@@ -279,6 +284,7 @@ function installDependenciesWithPacman {
         libsoup \
         libsrtp \
         sqlite \
+        libtasn1 \
         libtheora \
         libtool \
         libvorbis \
@@ -337,6 +343,7 @@ function installDependenciesWithPacman {
         libxfont \
         libxcb \
         libxkbfile \
+        libxkbcommon-x11 \
         mtdev \
         orc \
         python2 \
@@ -396,6 +403,7 @@ function installDependenciesWithDnf {
         libXtst-devel \
         libxslt-devel \
         libedit-devel \
+        libffi-devel \
         libgcrypt-devel \
         libgudev1-devel \
         libjpeg-turbo-devel \
@@ -405,6 +413,7 @@ function installDependenciesWithDnf {
         libsecret-devel \
         libsoup-devel \
         libsrtp-devel \
+        libtasn1-devel \
         libtheora-devel \
         libv4l-devel \
         libvorbis-devel \
@@ -418,7 +427,9 @@ function installDependenciesWithDnf {
         opus-devel \
         patch \
         pcre-devel \
+        perl-JSON-PP \
         perl-Switch \
+        perl-Time-HiRes \
         perl-version \
         pulseaudio-libs-devel \
         python-devel \
@@ -472,6 +483,7 @@ function installDependenciesWithDnf {
         libtiff-devel \
         libxcb-devel \
         libxkbfile-devel \
+        libxkbcommon-x11-devel \
         mesa-libEGL-devel \
         mtdev-devel \
         orc-devel \

@@ -28,14 +28,12 @@
 
 #include "CSSFontFaceSource.h"
 #include "CSSFontFamily.h"
-#include "CSSFontSelector.h"
 #include "CSSFontStyleValue.h"
 #include "CSSParser.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSSegmentedFontFace.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
-#include "ExceptionCode.h"
 #include "FontCache.h"
 #include "StyleBuilderConverter.h"
 #include "StyleProperties.h"
@@ -269,6 +267,11 @@ void CSSFontFaceSet::purge()
         remove(item.get());
 }
 
+void CSSFontFaceSet::emptyCaches()
+{
+    m_cache.clear();
+}
+
 void CSSFontFaceSet::clear()
 {
     for (auto& face : m_faces)
@@ -330,13 +333,13 @@ ExceptionOr<Vector<std::reference_wrapper<CSSFontFace>>> CSSFontFaceSet::matchin
     auto style = MutableStyleProperties::create();
     auto parseResult = CSSParser::parseValue(style, CSSPropertyFont, font, true, HTMLStandardMode);
     if (parseResult == CSSParser::ParseResult::Error)
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     FontSelectionRequest request = computeFontSelectionRequest(style.get());
 
     auto family = style->getPropertyCSSValue(CSSPropertyFontFamily);
     if (!is<CSSValueList>(family.get()))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     CSSValueList& familyList = downcast<CSSValueList>(*family);
 
     HashSet<AtomicString> uniqueFamilies;

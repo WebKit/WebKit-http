@@ -41,12 +41,12 @@
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
 
-#if PLATFORM(MAC) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)
+#if PLATFORM(COCOA)
 #define HAVE_REMAP_JIT 1
 #endif
 
 #if HAVE(REMAP_JIT)
-#if CPU(ARM64) && PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+#if CPU(ARM64) && PLATFORM(IOS)
 #define USE_EXECUTE_ONLY_JIT_WRITE_FUNCTION 1
 #endif
 #endif
@@ -81,6 +81,24 @@ extern "C" {
 using namespace WTF;
 
 namespace JSC {
+
+#if defined(FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB) && FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB > 0
+static const size_t fixedExecutableMemoryPoolSize = FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB * 1024 * 1024;
+#elif CPU(ARM)
+static const size_t fixedExecutableMemoryPoolSize = 16 * 1024 * 1024;
+#elif CPU(ARM64)
+static const size_t fixedExecutableMemoryPoolSize = 64 * 1024 * 1024;
+#elif CPU(X86_64)
+static const size_t fixedExecutableMemoryPoolSize = 1024 * 1024 * 1024;
+#else
+static const size_t fixedExecutableMemoryPoolSize = 32 * 1024 * 1024;
+#endif
+
+#if CPU(ARM)
+static const double executablePoolReservationFraction = 0.15;
+#else
+static const double executablePoolReservationFraction = 0.25;
+#endif
 
 JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
 JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;
@@ -194,16 +212,16 @@ private:
 
 #if USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION)
         // Prevent reading the write thunk code.
-        result = mprotect(stubBase, stubSize, VM_PROT_EXECUTE_ONLY);
+        result = vm_protect(mach_task_self(), reinterpret_cast<vm_address_t>(stubBase), stubSize, true, VM_PROT_EXECUTE);
         RELEASE_ASSERT(!result);
 #endif
 
         // Prevent writing into the executable JIT mapping.
-        result = mprotect(jitBase, jitSize, VM_PROT_READ | VM_PROT_EXECUTE);
+        result = vm_protect(mach_task_self(), reinterpret_cast<vm_address_t>(jitBase), jitSize, true, VM_PROT_READ | VM_PROT_EXECUTE);
         RELEASE_ASSERT(!result);
 
         // Prevent execution in the writable JIT mapping.
-        result = mprotect((void*)writableAddr, jitSize, VM_PROT_READ | VM_PROT_WRITE);
+        result = vm_protect(mach_task_self(), static_cast<vm_address_t>(writableAddr), jitSize, true, VM_PROT_READ | VM_PROT_WRITE);
         RELEASE_ASSERT(!result);
 
         // Zero out writableAddr to avoid leaking the address of the writable mapping.
@@ -378,26 +396,29 @@ RefPtr<ExecutableMemoryHandle> ExecutableAllocator::allocate(size_t sizeInBytes,
         MetaAllocator::Statistics stats = allocator->currentStatistics();
         dataLog("Allocating ", sizeInBytes, " bytes of executable memory with ", stats.bytesAllocated, " bytes allocated, ", stats.bytesReserved, " bytes reserved, and ", stats.bytesCommitted, " committed.\n");
     }
-    
+
     if (effort != JITCompilationCanFail && Options::reportMustSucceedExecutableAllocations()) {
         dataLog("Allocating ", sizeInBytes, " bytes of executable memory with JITCompilationMustSucceed.\n");
         WTFReportBacktrace();
     }
-    
+
     if (effort == JITCompilationCanFail
         && doExecutableAllocationFuzzingIfEnabled() == PretendToFailExecutableAllocation)
         return nullptr;
-    
+
     if (effort == JITCompilationCanFail) {
         // Don't allow allocations if we are down to reserve.
         MetaAllocator::Statistics statistics = allocator->currentStatistics();
         size_t bytesAllocated = statistics.bytesAllocated + sizeInBytes;
         size_t bytesAvailable = static_cast<size_t>(
             statistics.bytesReserved * (1 - executablePoolReservationFraction));
-        if (bytesAllocated > bytesAvailable)
+        if (bytesAllocated > bytesAvailable) {
+            if (Options::logExecutableAllocation())
+                dataLog("Allocation failed because bytes allocated ", bytesAllocated,  " > ", bytesAvailable, " bytes available.\n");
             return nullptr;
+        }
     }
-    
+
     RefPtr<ExecutableMemoryHandle> result = allocator->allocate(sizeInBytes, ownerUID);
     if (!result) {
         if (effort != JITCompilationCanFail) {
@@ -430,7 +451,7 @@ void ExecutableAllocator::dumpProfile()
     allocator->dumpProfile();
 }
 #endif
-    
+
 }
 
 #endif // ENABLE(ASSEMBLER)

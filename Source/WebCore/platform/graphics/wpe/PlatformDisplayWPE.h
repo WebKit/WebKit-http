@@ -29,19 +29,9 @@
 
 #include "PlatformDisplay.h"
 
-// FIXME: For now default to the GBM EGL platform, but this should really be
-// somehow deducible from the build configuration.
-#define __GBM__ 1
-#include <EGL/eglplatform.h>
-
 struct wpe_renderer_backend_egl;
-struct wpe_renderer_backend_egl_target;
-struct wpe_renderer_backend_egl_offscreen_target;
 
 namespace WebCore {
-
-class GLContext;
-class IntSize;
 
 class PlatformDisplayWPE final : public PlatformDisplay {
 public:
@@ -50,43 +40,7 @@ public:
 
     void initialize(int);
 
-    class EGLTarget {
-    public:
-        class Client {
-        public:
-            virtual void frameComplete() = 0;
-        };
-
-        EGLTarget(const PlatformDisplayWPE&, Client&, int);
-        ~EGLTarget();
-
-        void initialize(const IntSize&);
-        EGLNativeWindowType nativeWindow() const;
-
-        void resize(const IntSize&);
-
-        void frameWillRender();
-        void frameRendered();
-
-    private:
-        const PlatformDisplayWPE& m_display;
-        Client& m_client;
-        struct wpe_renderer_backend_egl_target* m_backend;
-    };
-
-    class EGLOffscreenTarget {
-    public:
-        EGLOffscreenTarget(const PlatformDisplayWPE&);
-        ~EGLOffscreenTarget();
-
-        EGLNativeWindowType nativeWindow() const;
-
-    private:
-        struct wpe_renderer_backend_egl_offscreen_target* m_target;
-    };
-
-    std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
-    std::unique_ptr<EGLOffscreenTarget> createEGLOffscreenTarget();
+    struct wpe_renderer_backend_egl* backend() const { return m_backend; }
 
 private:
     Type type() const override { return PlatformDisplay::Type::WPE; }

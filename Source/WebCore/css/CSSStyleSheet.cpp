@@ -21,23 +21,17 @@
 #include "config.h"
 #include "CSSStyleSheet.h"
 
-#include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
 #include "CSSKeyframesRule.h"
 #include "CSSParser.h"
 #include "CSSRuleList.h"
-#include "CSSStyleRule.h"
-#include "CachedCSSStyleSheet.h"
 #include "Document.h"
-#include "ExceptionCode.h"
-#include "ExtensionStyleSheets.h"
 #include "HTMLLinkElement.h"
 #include "HTMLStyleElement.h"
 #include "MediaList.h"
 #include "Node.h"
 #include "SVGStyleElement.h"
 #include "SecurityOrigin.h"
-#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
 #include "StyleScope.h"
@@ -272,30 +266,22 @@ RefPtr<CSSRuleList> CSSStyleSheet::rules()
     return ruleList;
 }
 
-ExceptionOr<unsigned> CSSStyleSheet::deprecatedInsertRule(const String& ruleString)
-{
-    if (auto* document = ownerDocument())
-        document->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Calling CSSStyleSheet.insertRule() with one argument is deprecated. Please pass the index argument as well: insertRule(x, 0)."));
-
-    return insertRule(ruleString, 0);
-}
-
 ExceptionOr<unsigned> CSSStyleSheet::insertRule(const String& ruleString, unsigned index)
 {
     ASSERT(m_childRuleCSSOMWrappers.isEmpty() || m_childRuleCSSOMWrappers.size() == m_contents->ruleCount());
 
     if (index > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     RefPtr<StyleRuleBase> rule = CSSParser::parseRule(m_contents.get().parserContext(), m_contents.ptr(), ruleString);
 
     if (!rule)
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     RuleMutationScope mutationScope(this, RuleInsertion, is<StyleRuleKeyframes>(*rule) ? downcast<StyleRuleKeyframes>(rule.get()) : nullptr);
 
     bool success = m_contents.get().wrapperInsertRule(rule.releaseNonNull(), index);
     if (!success)
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
     if (!m_childRuleCSSOMWrappers.isEmpty())
         m_childRuleCSSOMWrappers.insert(index, RefPtr<CSSRule>());
 
@@ -307,7 +293,7 @@ ExceptionOr<void> CSSStyleSheet::deleteRule(unsigned index)
     ASSERT(m_childRuleCSSOMWrappers.isEmpty() || m_childRuleCSSOMWrappers.size() == m_contents->ruleCount());
 
     if (index >= length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     RuleMutationScope mutationScope(this);
 
     m_contents->wrapperDeleteRule(index);

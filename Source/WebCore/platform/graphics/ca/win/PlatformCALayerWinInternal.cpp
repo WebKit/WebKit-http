@@ -34,8 +34,8 @@
 #include "PlatformCALayer.h"
 #include "TileController.h"
 #include "TiledBacking.h"
-#include "WebCoreHeaderDetection.h"
 #include <QuartzCore/CACFLayer.h>
+#include <wtf/AVFoundationHeaderDetection.h>
 #include <wtf/MainThread.h>
 
 using namespace std;
@@ -104,7 +104,7 @@ void PlatformCALayerWinInternal::displayCallback(CACFLayerRef caLayer, CGContext
     // smaller than the layer bounds (e.g. tiled layers)
     CGRect clipBounds = CGContextGetClipBoundingBox(context);
     IntRect clip(enclosingIntRect(clipBounds));
-    client->platformCALayerPaintContents(owner(), graphicsContext, clip);
+    client->platformCALayerPaintContents(owner(), graphicsContext, clip, GraphicsLayerPaintNormal);
 
     if (client->platformCALayerShowRepaintCounter(owner())
         && !repaintCountersAreDrawnByGridController(layerType)) {

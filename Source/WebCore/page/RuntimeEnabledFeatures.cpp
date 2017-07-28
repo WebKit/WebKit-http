@@ -34,6 +34,7 @@
 
 #include "MediaPlayer.h"
 #include "WebSocket.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -53,41 +54,6 @@ RuntimeEnabledFeatures& RuntimeEnabledFeatures::sharedFeatures()
 
 #if ENABLE(VIDEO)
 bool RuntimeEnabledFeatures::audioEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::htmlMediaElementEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::htmlAudioElementEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::htmlVideoElementEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::htmlSourceElementEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::mediaControllerEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::mediaErrorEnabled() const
-{
-    return MediaPlayer::isAvailable();
-}
-
-bool RuntimeEnabledFeatures::timeRangesEnabled() const
 {
     return MediaPlayer::isAvailable();
 }

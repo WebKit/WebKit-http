@@ -31,6 +31,7 @@
 #include "CachedScript.h"
 #include "CommonVM.h"
 #include "DOMTimer.h"
+#include "DOMWindow.h"
 #include "DatabaseContext.h"
 #include "Document.h"
 #include "ErrorEvent.h"
@@ -47,6 +48,7 @@
 #include "WorkerThread.h"
 #include <heap/StrongInlines.h>
 #include <inspector/ScriptCallStack.h>
+#include <runtime/CatchScope.h>
 #include <runtime/Exception.h>
 #include <runtime/JSPromise.h>
 #include <wtf/MainThread.h>
@@ -415,13 +417,6 @@ bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int 
     EventTarget* target = errorEventTarget();
     if (!target)
         return false;
-
-#if PLATFORM(IOS)
-    if (target->toDOMWindow() && is<Document>(*this)) {
-        if (!downcast<Document>(*this).settings().shouldDispatchJavaScriptWindowOnErrorEvents())
-            return false;
-    }
-#endif
 
     String message = errorMessage;
     int line = lineNumber;

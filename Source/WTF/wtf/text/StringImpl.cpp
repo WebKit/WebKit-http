@@ -111,14 +111,15 @@ StringImpl::~StringImpl()
 
     STRING_STATS_REMOVE_STRING(*this);
 
-    if (isAtomic() && length() && !isSymbol())
-        AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
-
-    if (isSymbol()) {
+    if (isAtomic()) {
+        ASSERT(!isSymbol());
+        if (length())
+            AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
+    } else if (isSymbol()) {
         auto& symbol = static_cast<SymbolImpl&>(*this);
         auto* symbolRegistry = symbol.symbolRegistry();
         if (symbolRegistry)
-            symbolRegistry->remove(symbol);
+            symbolRegistry->remove(*symbol.asRegisteredSymbolImpl());
     }
 
     BufferOwnership ownership = bufferOwnership();
@@ -2137,6 +2138,26 @@ CString StringImpl::utf8ForRange(unsigned offset, unsigned length, ConversionMod
 CString StringImpl::utf8(ConversionMode mode) const
 {
     return utf8ForRange(0, length(), mode);
+}
+
+NEVER_INLINE unsigned StringImpl::hashSlowCase() const
+{
+    if (is8Bit())
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length));
+    else
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length));
+    return existingHash();
+}
+
+unsigned StringImpl::concurrentHash() const
+{
+    unsigned hash;
+    if (is8Bit())
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length);
+    else
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length);
+    ASSERT(((hash << s_flagCount) >> s_flagCount) == hash);
+    return hash;
 }
 
 bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)

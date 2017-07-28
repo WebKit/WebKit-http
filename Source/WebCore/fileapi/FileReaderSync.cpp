@@ -34,7 +34,6 @@
 
 #include "Blob.h"
 #include "BlobURL.h"
-#include "FileException.h"
 #include "FileReaderLoader.h"
 #include <runtime/ArrayBuffer.h>
 
@@ -73,12 +72,43 @@ ExceptionOr<String> FileReaderSync::readAsDataURL(ScriptExecutionContext& script
     return startLoadingString(scriptExecutionContext, loader, blob);
 }
 
+static ExceptionOr<void> errorCodeToException(FileError::ErrorCode errorCode)
+{
+    switch (errorCode) {
+    case FileError::OK:
+        return { };
+    case FileError::NOT_FOUND_ERR:
+        return Exception { NotFoundError };
+    case FileError::SECURITY_ERR:
+        return Exception { SecurityError };
+    case FileError::ABORT_ERR:
+        return Exception { AbortError };
+    case FileError::NOT_READABLE_ERR:
+        return Exception { NotReadableError };
+    case FileError::ENCODING_ERR:
+        return Exception { EncodingError };
+    case FileError::NO_MODIFICATION_ALLOWED_ERR:
+        return Exception { NoModificationAllowedError };
+    case FileError::INVALID_STATE_ERR:
+        return Exception { InvalidStateError };
+    case FileError::SYNTAX_ERR:
+        return Exception { SyntaxError };
+    case FileError::INVALID_MODIFICATION_ERR:
+        return Exception { InvalidModificationError };
+    case FileError::QUOTA_EXCEEDED_ERR:
+        return Exception { QuotaExceededError };
+    case FileError::TYPE_MISMATCH_ERR:
+        return Exception { TypeMismatchError };
+    case FileError::PATH_EXISTS_ERR:
+        return Exception { NoModificationAllowedError };
+    }
+    return Exception { UnknownError };
+}
+
 ExceptionOr<void> FileReaderSync::startLoading(ScriptExecutionContext& scriptExecutionContext, FileReaderLoader& loader, Blob& blob)
 {
     loader.start(&scriptExecutionContext, blob);
-    if (ExceptionCode code = FileException::ErrorCodeToExceptionCode(loader.errorCode()))
-        return Exception { code };
-    return { };
+    return errorCodeToException(loader.errorCode());
 }
 
 ExceptionOr<String> FileReaderSync::startLoadingString(ScriptExecutionContext& scriptExecutionContext, FileReaderLoader& loader, Blob& blob)

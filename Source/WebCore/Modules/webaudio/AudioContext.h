@@ -29,7 +29,6 @@
 #include "AsyncAudioDecoder.h"
 #include "AudioBus.h"
 #include "AudioDestinationNode.h"
-#include "EventListener.h"
 #include "EventTarget.h"
 #include "JSDOMPromiseDeferred.h"
 #include "MediaCanStartListener.h"
@@ -319,6 +318,7 @@ private:
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override { return false; }
     String sourceApplicationIdentifier() const override;
     bool canProduceAudio() const final { return true; }
+    bool isSuspended() const final;
     bool processingUserGestureForMedia() const final;
 
     void visibilityStateChanged() final;

@@ -110,16 +110,16 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
     ::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_compositorTexture) {
         ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
         ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
         ::glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-        ::glBindTexture(GL_TEXTURE_2D, m_intermediateTexture);
-        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
-        ::glBindTexture(GL_TEXTURE_2D, 0);
+    ::glBindTexture(GL_TEXTURE_2D, m_intermediateTexture);
+    ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+    ::glBindTexture(GL_TEXTURE_2D, 0);
 #endif
 
     Extensions3DOpenGLES& extensions = static_cast<Extensions3DOpenGLES&>(getExtensions());
@@ -275,16 +275,8 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
 }
 
 GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
-    : m_currentWidth(0)
-    , m_currentHeight(0)
+    : m_attrs(attributes)
     , m_compiler(isGLES2Compliant() ? SH_ESSL_OUTPUT : SH_GLSL_COMPATIBILITY_OUTPUT)
-    , m_attrs(attributes)
-    , m_texture(0)
-    , m_fbo(0)
-    , m_depthStencilBuffer(0)
-    , m_multisampleFBO(0)
-    , m_multisampleDepthStencilBuffer(0)
-    , m_multisampleColorBuffer(0)
     , m_private(std::make_unique<GraphicsContext3DPrivate>(this, renderStyle))
 {
     makeContextCurrent();
@@ -380,7 +372,7 @@ bool GraphicsContext3D::makeContextCurrent()
     return m_private->makeContextCurrent();
 }
 
-void GraphicsContext3D::checkGPUStatusIfNecessary()
+void GraphicsContext3D::checkGPUStatus()
 {
 }
 

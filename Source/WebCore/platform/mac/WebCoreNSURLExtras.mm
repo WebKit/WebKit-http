@@ -32,7 +32,7 @@
 #import "WebCoreNSStringExtras.h"
 #import "WebCoreNSURLExtras.h"
 #import "WebCoreSystemInterface.h"
-#import <functional>
+#import <wtf/Function.h>
 #import <wtf/HexNumber.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
@@ -58,7 +58,7 @@ static uint32_t IDNScriptWhiteList[(USCRIPT_CODE_LIMIT + 31) / 32];
 
 namespace WebCore {
 
-static BOOL isLookalikeCharacter(UChar32 charCode)
+static BOOL isLookalikeCharacter(std::optional<UChar32> previousCodePoint, UChar32 charCode)
 {
     // This function treats the following as unsafe, lookalike characters:
     // any non-printable character, any character considered as whitespace,
@@ -93,6 +93,7 @@ static BOOL isLookalikeCharacter(UChar32 charCode)
         case 0x05F4: /* HEBREW PUNCTUATION GERSHAYIM */
         case 0x0609: /* ARABIC-INDIC PER MILLE SIGN */
         case 0x060A: /* ARABIC-INDIC PER TEN THOUSAND SIGN */
+        case 0x0650: /* ARABIC KASRA */
         case 0x0660: /* ARABIC INDIC DIGIT ZERO */
         case 0x066A: /* ARABIC PERCENT SIGN */
         case 0x06D4: /* ARABIC FULL STOP */
@@ -102,6 +103,12 @@ static BOOL isLookalikeCharacter(UChar32 charCode)
         case 0x0703: /* SYRIAC SUPRALINEAR COLON */
         case 0x0704: /* SYRIAC SUBLINEAR COLON */
         case 0x1735: /* PHILIPPINE SINGLE PUNCTUATION */
+        case 0x1D04: /* LATIN LETTER SMALL CAPITAL C */
+        case 0x1D0F: /* LATIN LETTER SMALL CAPITAL O */
+        case 0x1D1C: /* LATIN LETTER SMALL CAPITAL U */
+        case 0x1D20: /* LATIN LETTER SMALL CAPITAL V */
+        case 0x1D21: /* LATIN LETTER SMALL CAPITAL W */
+        case 0x1D22: /* LATIN LETTER SMALL CAPITAL Z */
         case 0x2024: /* ONE DOT LEADER */
         case 0x2027: /* HYPHENATION POINT */
         case 0x2039: /* SINGLE LEFT-POINTING ANGLE QUOTATION MARK */
@@ -158,6 +165,7 @@ static BOOL isLookalikeCharacter(UChar32 charCode)
         case 0x33AF: /* SQUARE RAD OVER S SQUARED */
         case 0x33C6: /* SQUARE C OVER KG */
         case 0x33DF: /* SQUARE A OVER M */
+        case 0xA731: /* LATIN LETTER SMALL CAPITAL S */
         case 0xA789: /* MODIFIER LETTER COLON */
         case 0xFE14: /* PRESENTATION FORM FOR VERTICAL SEMICOLON */
         case 0xFE15: /* PRESENTATION FORM FOR VERTICAL EXCLAMATION MARK */
@@ -175,6 +183,9 @@ static BOOL isLookalikeCharacter(UChar32 charCode)
         case 0x1F512: /* LOCK */
         case 0x1F513: /* OPEN LOCK */
             return YES;
+        case 0x0307: /* COMBINING DOT ABOVE */
+            return previousCodePoint == 0x0237 /* LATIN SMALL LETTER DOTLESS J */
+                || previousCodePoint == 0x0131; /* LATIN SMALL LETTER DOTLESS I */
         default:
             return NO;
     }
@@ -238,6 +249,7 @@ static BOOL allCharactersInIDNScriptWhiteList(const UChar *buffer, int32_t lengt
     pthread_once(&IDNScriptWhiteListFileRead, readIDNScriptWhiteList);
     
     int32_t i = 0;
+    std::optional<UChar32> previousCodePoint;
     while (i < length) {
         UChar32 c;
         U16_NEXT(buffer, i, length, c)
@@ -259,13 +271,14 @@ static BOOL allCharactersInIDNScriptWhiteList(const UChar *buffer, int32_t lengt
         if (!(IDNScriptWhiteList[index] & mask))
             return NO;
         
-        if (isLookalikeCharacter(c))
+        if (isLookalikeCharacter(previousCodePoint, c))
             return NO;
+        previousCodePoint = c;
     }
     return YES;
 }
 
-static bool isSecondLevelDomainNameAllowedByTLDRules(const UChar* buffer, int32_t length, const std::function<bool(UChar)>& characterIsAllowed)
+static bool isSecondLevelDomainNameAllowedByTLDRules(const UChar* buffer, int32_t length, const WTF::Function<bool(UChar)>& characterIsAllowed)
 {
     ASSERT(length > 0);
 
@@ -1002,12 +1015,13 @@ static CFStringRef createStringWithEscapedUnsafeCharacters(CFStringRef string)
     
     Vector<UChar, 2048> outBuffer;
     
+    std::optional<UChar32> previousCodePoint;
     CFIndex i = 0;
     while (i < length) {
         UChar32 c;
         U16_NEXT(sourceBuffer, i, length, c)
         
-        if (isLookalikeCharacter(c)) {
+        if (isLookalikeCharacter(previousCodePoint, c)) {
             uint8_t utf8Buffer[4];
             CFIndex offset = 0;
             UBool failure = false;
@@ -1028,6 +1042,7 @@ static CFStringRef createStringWithEscapedUnsafeCharacters(CFStringRef string)
             for (CFIndex j = 0; j < offset; ++j)
                 outBuffer.append(utf16Buffer[j]);
         }
+        previousCodePoint = c;
     }
     
     return CFStringCreateWithCharacters(NULL, outBuffer.data(), outBuffer.size());

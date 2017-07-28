@@ -34,6 +34,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "Logging.h"
 #include "MediaStreamRegistry.h"
 #include "MediaStreamTrackEvent.h"
@@ -74,7 +75,7 @@ static inline MediaStreamTrackPrivateVector createTrackPrivateVector(const Media
 }
 
 MediaStream::MediaStream(ScriptExecutionContext& context, const MediaStreamTrackVector& tracks)
-    : ContextDestructionObserver(&context)
+    : ActiveDOMObject(&context)
     , m_private(MediaStreamPrivate::create(createTrackPrivateVector(tracks)))
     , m_activityEventTimer(*this, &MediaStream::activityEventTimerFired)
     , m_mediaSession(PlatformMediaSession::create(*this))
@@ -90,11 +91,11 @@ MediaStream::MediaStream(ScriptExecutionContext& context, const MediaStreamTrack
     setIsActive(m_private->active());
     m_private->addObserver(*this);
     MediaStreamRegistry::shared().registerStream(*this);
-    document()->addAudioProducer(this);
+    suspendIfNeeded();
 }
 
 MediaStream::MediaStream(ScriptExecutionContext& context, Ref<MediaStreamPrivate>&& streamPrivate)
-    : ContextDestructionObserver(&context)
+    : ActiveDOMObject(&context)
     , m_private(WTFMove(streamPrivate))
     , m_activityEventTimer(*this, &MediaStream::activityEventTimerFired)
     , m_mediaSession(PlatformMediaSession::create(*this))
@@ -110,7 +111,7 @@ MediaStream::MediaStream(ScriptExecutionContext& context, Ref<MediaStreamPrivate
         track->addObserver(*this);
         m_trackSet.add(track->id(), WTFMove(track));
     }
-    document()->addAudioProducer(this);
+    suspendIfNeeded();
 }
 
 MediaStream::~MediaStream()
@@ -123,7 +124,6 @@ MediaStream::~MediaStream()
     for (auto& track : m_trackSet.values())
         track->removeObserver(*this);
     if (Document* document = this->document()) {
-        document->removeAudioProducer(this);
         if (m_isWaitingUntilMediaCanStart)
             document->removeMediaCanStartListener(this);
     }
@@ -186,11 +186,6 @@ MediaStreamTrackVector MediaStream::getTracks() const
     return tracks;
 }
 
-void MediaStream::contextDestroyed()
-{
-    ContextDestructionObserver::contextDestroyed();
-}
-
 void MediaStream::trackDidEnd()
 {
     m_private->updateActiveState(MediaStreamPrivate::NotifyClientOption::Notify);
@@ -220,8 +215,9 @@ void MediaStream::didRemoveTrack(MediaStreamTrackPrivate& trackPrivate)
 
 void MediaStream::addTrackFromPlatform(Ref<MediaStreamTrack>&& track)
 {
-    m_private->addTrack(&track->privateTrack(), MediaStreamPrivate::NotifyClientOption::Notify);
+    auto* privateTrack = &track->privateTrack();
     internalAddTrack(WTFMove(track), StreamModifier::Platform);
+    m_private->addTrack(privateTrack, MediaStreamPrivate::NotifyClientOption::Notify);
 }
 
 bool MediaStream::internalAddTrack(Ref<MediaStreamTrack>&& trackToAdd, StreamModifier streamModifier)
@@ -299,8 +295,10 @@ void MediaStream::startProducingData()
     m_isProducingData = true;
 
     m_mediaSession->canProduceAudioChanged();
-
     m_private->startProducingData();
+
+    if (document->page()->isMediaCaptureMuted())
+        m_private->setCaptureTracksMuted(true);
 }
 
 void MediaStream::stopProducingData()
@@ -322,44 +320,15 @@ void MediaStream::endCaptureTracks()
     }
 }
 
-void MediaStream::pageMutedStateDidChange()
-{
-    if (!m_isActive)
-        return;
-
-    Document* document = this->document();
-    if (!document)
-        return;
-
-    m_private->setCaptureTracksMuted(document->page()->isMediaCaptureMuted());
-}
-
 MediaProducer::MediaStateFlags MediaStream::mediaState() const
 {
-    MediaStateFlags state = IsNotPlaying;
+    MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
 
-    if (!m_isActive)
+    if (!m_isActive || !document() || !document()->page())
         return state;
 
-    if (m_private->hasAudio()) {
-        state |= HasAudioOrVideo;
-        if (m_private->hasCaptureAudioSource()) {
-            if (m_private->muted())
-                state |= HasMutedAudioCaptureDevice;
-            else if (m_isProducingData && m_private->isProducingData())
-                state |= HasActiveAudioCaptureDevice;
-        }
-    }
-
-    if (m_private->hasVideo()) {
-        state |= HasAudioOrVideo;
-        if (m_private->hasCaptureVideoSource()) {
-            if (m_private->muted())
-                state |= HasMutedVideoCaptureDevice;
-            else if (m_isProducingData && m_private->isProducingData())
-                state |= HasActiveVideoCaptureDevice;
-        }
-    }
+    for (const auto& track : m_trackSet.values())
+        state |= track->mediaState();
 
     return state;
 }
@@ -371,15 +340,14 @@ void MediaStream::statusDidChange()
     if (Document* document = this->document()) {
         if (m_isActive)
             document->setHasActiveMediaStreamTrack();
-        document->updateIsPlayingMedia();
     }
 }
 
 void MediaStream::characteristicsChanged()
 {
-    bool muted = m_private->muted();
-    if (m_isMuted != muted) {
-        m_isMuted = muted;
+    auto state = mediaState();
+    if (m_state != state) {
+        m_state = state;
         statusDidChange();
     }
 }
@@ -509,6 +477,27 @@ bool MediaStream::canProduceAudio() const
 bool MediaStream::processingUserGestureForMedia() const
 {
     return document() ? document()->processingUserGestureForMedia() : false;
+}
+
+void MediaStream::stop()
+{
+    m_isActive = false;
+    endCaptureTracks();
+}
+
+const char* MediaStream::activeDOMObjectName() const
+{
+    return "MediaStream";
+}
+
+bool MediaStream::canSuspendForDocumentSuspension() const
+{
+    return !hasPendingActivity();
+}
+
+bool MediaStream::hasPendingActivity() const
+{
+    return m_isActive || !m_scheduledActivityEvents.isEmpty();
 }
 
 } // namespace WebCore

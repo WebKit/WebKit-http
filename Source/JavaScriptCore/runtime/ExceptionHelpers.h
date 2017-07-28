@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "CatchScope.h"
 #include "ErrorInstance.h"
 #include "JSObject.h"
 #include "ThrowScope.h"
@@ -43,6 +42,7 @@ JSObject* createTerminatedExecutionException(VM*);
 JS_EXPORT_PRIVATE bool isTerminatedExecutionException(VM&, Exception*);
 JS_EXPORT_PRIVATE JSObject* createError(ExecState*, JSValue, const String&, ErrorInstance::SourceAppender);
 JS_EXPORT_PRIVATE JSObject* createStackOverflowError(ExecState*);
+JSObject* createStackOverflowError(ExecState*, JSGlobalObject*);
 JSObject* createUndefinedVariableError(ExecState*, const Identifier&);
 JSObject* createTDZError(ExecState*);
 JSObject* createNotAnObjectError(ExecState*, JSValue);

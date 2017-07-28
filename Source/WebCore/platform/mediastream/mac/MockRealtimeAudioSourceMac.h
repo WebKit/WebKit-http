@@ -32,7 +32,6 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "FontCascade.h"
 #include "MockRealtimeAudioSource.h"
 #include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/Vector.h>
@@ -49,8 +48,7 @@ class WebAudioSourceProviderAVFObjC;
 class MockRealtimeAudioSourceMac final : public MockRealtimeAudioSource {
 private:
     friend class MockRealtimeAudioSource;
-    MockRealtimeAudioSourceMac(const String&);
-    ~MockRealtimeAudioSourceMac();
+    explicit MockRealtimeAudioSourceMac(const String&);
 
     bool applySampleRate(int) final;
     bool applySampleSize(int) final { return false; }
@@ -58,8 +56,6 @@ private:
     void emitSampleBuffers(uint32_t);
     void render(double) final;
     void reconfigure();
-
-    AudioSourceProvider* audioSourceProvider() final;
 
     std::unique_ptr<WebAudioBufferList> m_audioBufferList;
 
@@ -69,7 +65,6 @@ private:
 
     RetainPtr<CMFormatDescriptionRef> m_formatDescription;
     AudioStreamBasicDescription m_streamFormat;
-    RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;
 
     Vector<float> m_bipBopBuffer;
 };

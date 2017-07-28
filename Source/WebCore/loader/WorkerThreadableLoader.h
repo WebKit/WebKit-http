@@ -33,7 +33,6 @@
 #include "ThreadableLoader.h"
 #include "ThreadableLoaderClient.h"
 #include "ThreadableLoaderClientWrapper.h"
-#include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -103,10 +102,7 @@ namespace WebCore {
             void didReceiveData(const char*, int dataLength) override;
             void didFinishLoading(unsigned long identifier) override;
             void didFail(const ResourceError&) override;
-
-#if ENABLE(WEB_TIMING)
             void didFinishTiming(const ResourceTiming&) override;
-#endif
 
             // Only to be used on the main thread.
             RefPtr<ThreadableLoader> m_mainThreadLoader;

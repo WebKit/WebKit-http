@@ -33,8 +33,25 @@
 #include <unicode/uscript.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RefCountedArray.h>
+#include <wtf/Variant.h>
+
+#if PLATFORM(COCOA)
+#include "FontFamilySpecificationCoreText.h"
+#else
+#include "FontFamilySpecificationNull.h"
+#endif
 
 namespace WebCore {
+
+#if PLATFORM(COCOA)
+typedef FontFamilySpecificationCoreText FontFamilyPlatformSpecification;
+#else
+typedef FontFamilySpecificationNull FontFamilyPlatformSpecification;
+#endif
+
+#define USE_PLATFORM_SYSTEM_FALLBACK_LIST ((PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300))
+
+typedef Variant<AtomicString, FontFamilyPlatformSpecification> FontFamilySpecification;
 
 using namespace WebKitFontFamilyNames;
 
@@ -46,11 +63,11 @@ public:
     bool operator!=(const FontDescription& other) const { return !(*this == other); }
 
     float computedSize() const { return m_computedSize; }
+    unsigned computedPixelSize() const { return unsigned(m_computedSize + 0.5f); }
     FontSelectionValue italic() const { return m_fontSelectionRequest.slope; }
     FontSelectionValue stretch() const { return m_fontSelectionRequest.width; }
     FontSelectionValue weight() const { return m_fontSelectionRequest.weight; }
     FontSelectionRequest fontSelectionRequest() const { return m_fontSelectionRequest; }
-    int computedPixelSize() const { return int(m_computedSize + 0.5f); }
     FontRenderingMode renderingMode() const { return static_cast<FontRenderingMode>(m_renderingMode); }
     TextRenderingMode textRenderingMode() const { return static_cast<TextRenderingMode>(m_textRendering); }
     UScriptCode script() const { return static_cast<UScriptCode>(m_script); }
@@ -96,6 +113,7 @@ public:
             variantEastAsianRuby() };
     }
     FontOpticalSizing opticalSizing() const { return static_cast<FontOpticalSizing>(m_opticalSizing); }
+    FontStyleAxis fontStyleAxis() const { return m_fontStyleAxis ? FontStyleAxis::ital : FontStyleAxis::slnt; }
 
     void setComputedSize(float s) { m_computedSize = clampToFloat(s); }
     void setItalic(FontSelectionValue italic) { m_fontSelectionRequest.slope = italic; }
@@ -129,6 +147,9 @@ public:
     void setVariantEastAsianWidth(FontVariantEastAsianWidth variant) { m_variantEastAsianWidth = static_cast<unsigned>(variant); }
     void setVariantEastAsianRuby(FontVariantEastAsianRuby variant) { m_variantEastAsianRuby = static_cast<unsigned>(variant); }
     void setOpticalSizing(FontOpticalSizing sizing) { m_opticalSizing = static_cast<unsigned>(sizing); }
+    void setFontStyleAxis(FontStyleAxis axis) { m_fontStyleAxis = axis == FontStyleAxis::ital; }
+
+    static void invalidateCaches();
 
 private:
     // FIXME: Investigate moving these into their own object on the heap (to save memory).
@@ -161,6 +182,7 @@ private:
     unsigned m_variantEastAsianWidth : 2; // FontVariantEastAsianWidth
     unsigned m_variantEastAsianRuby : 1; // FontVariantEastAsianRuby
     unsigned m_opticalSizing : 1; // FontOpticalSizing
+    unsigned m_fontStyleAxis : 1; // Whether "font-style: italic" or "font-style: oblique 20deg" was specified
 };
 
 inline bool FontDescription::operator==(const FontDescription& other) const
@@ -193,7 +215,8 @@ inline bool FontDescription::operator==(const FontDescription& other) const
         && m_variantEastAsianVariant == other.m_variantEastAsianVariant
         && m_variantEastAsianWidth == other.m_variantEastAsianWidth
         && m_variantEastAsianRuby == other.m_variantEastAsianRuby
-        && m_opticalSizing == other.m_opticalSizing;
+        && m_opticalSizing == other.m_opticalSizing
+        && m_fontStyleAxis == other.m_fontStyleAxis;
 }
 
 // FIXME: Move to a file of its own.
@@ -208,6 +231,9 @@ public:
     const AtomicString& firstFamily() const { return familyAt(0); }
     const AtomicString& familyAt(unsigned i) const { return m_families[i]; }
     const RefCountedArray<AtomicString>& families() const { return m_families; }
+
+    unsigned effectiveFamilyCount() const;
+    FontFamilySpecification effectiveFamilyAt(unsigned) const;
 
     float specifiedSize() const { return m_specifiedSize; }
     bool isAbsoluteSize() const { return m_isAbsoluteSize; }
@@ -265,6 +291,7 @@ public:
 
     // Initial values for font properties.
     static FontSelectionValue initialItalic() { return normalItalicValue(); }
+    static FontStyleAxis initialFontStyleAxis() { return FontStyleAxis::slnt; }
     static FontSelectionValue initialWeight() { return normalWeightValue(); }
     static FontSelectionValue initialStretch() { return normalStretchValue(); }
     static FontSmallCaps initialSmallCaps() { return FontSmallCapsOff; }
@@ -276,7 +303,7 @@ public:
     static FontVariantCaps initialVariantCaps() { return FontVariantCaps::Normal; }
     static FontVariantAlternates initialVariantAlternates() { return FontVariantAlternates::Normal; }
     static FontOpticalSizing initialOpticalSizing() { return FontOpticalSizing::Enabled; }
-    static const AtomicString& initialLocale() { return nullAtom; }
+    static const AtomicString& initialLocale() { return nullAtom(); }
 
 private:
     RefCountedArray<AtomicString> m_families { 1 };

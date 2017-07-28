@@ -22,11 +22,11 @@
 #include "JSInterfaceName.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
 #include <runtime/FunctionPrototype.h>
+#include <runtime/JSCInlines.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -92,7 +92,7 @@ const ClassInfo JSInterfaceNamePrototype::s_info = { "InterfaceNamePrototype", &
 void JSInterfaceNamePrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSInterfaceNamePrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSInterfaceName::info(), JSInterfaceNamePrototypeTableValues, *this);
 }
 
 const ClassInfo JSInterfaceName::s_info = { "InterfaceName", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceName) };
@@ -119,6 +119,11 @@ JSObject* JSInterfaceName::prototype(VM& vm, JSDOMGlobalObject& globalObject)
     return getDOMPrototype<JSInterfaceName>(vm, globalObject);
 }
 
+JSValue JSInterfaceName::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSInterfaceNameConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+}
+
 void JSInterfaceName::destroy(JSC::JSCell* cell)
 {
     JSInterfaceName* thisObject = static_cast<JSInterfaceName*>(cell);
@@ -129,29 +134,23 @@ EncodedJSValue jsInterfaceNameConstructor(ExecState* state, EncodedJSValue thisV
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject))
+    auto* prototype = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
-    return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), domObject->globalObject()));
+    return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), prototype->globalObject()));
 }
 
 bool setJSInterfaceNameConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = JSValue::decode(encodedValue);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
+    auto* prototype = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
-}
-
-JSValue JSInterfaceName::getConstructor(VM& vm, const JSGlobalObject* globalObject)
-{
-    return getDOMConstructor<JSInterfaceNameConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
 }
 
 void JSInterfaceName::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -200,12 +199,12 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7InterfaceName@WebCore@@6B@"));
 #else
     void* expectedVTablePointer = &_ZTVN7WebCore13InterfaceNameE[2];
-#if COMPILER(CLANG)
+#endif
+
     // If this fails InterfaceName does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    static_assert(__is_polymorphic(InterfaceName), "InterfaceName is not polymorphic");
-#endif
-#endif
+    static_assert(std::is_polymorphic<InterfaceName>::value, "InterfaceName is not polymorphic");
+
     // If you hit this assertion you either have a use after free bug, or
     // InterfaceName has subclasses. If InterfaceName has subclasses that get passed
     // to toJS() we currently require InterfaceName you to opt out of binding hardening

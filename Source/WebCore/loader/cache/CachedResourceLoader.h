@@ -30,10 +30,8 @@
 #include "CachedResourceHandle.h"
 #include "CachedResourceRequest.h"
 #include "ContentSecurityPolicy.h"
-#include "ResourceLoadPriority.h"
 #include "ResourceTimingInformation.h"
 #include "Timer.h"
-#include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
@@ -79,6 +77,7 @@ public:
     CachedResourceHandle<CachedScript> requestScript(CachedResourceRequest&&);
     CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&&, bool isSVG);
     CachedResourceHandle<CachedRawResource> requestMedia(CachedResourceRequest&&);
+    CachedResourceHandle<CachedRawResource> requestIcon(CachedResourceRequest&&);
     CachedResourceHandle<CachedRawResource> requestRawResource(CachedResourceRequest&&);
     CachedResourceHandle<CachedRawResource> requestMainResource(CachedResourceRequest&&);
     CachedResourceHandle<CachedSVGDocument> requestSVGDocument(CachedResourceRequest&&);
@@ -142,9 +141,7 @@ public:
 
     void documentDidFinishLoadEvent();
 
-#if ENABLE(WEB_TIMING)
     ResourceTimingInformation& resourceTimingInformation() { return m_resourceTimingInfo; }
-#endif
 
     bool isAlwaysOnLoggingAllowed() const;
 
@@ -186,17 +183,15 @@ private:
     mutable DocumentResourceMap m_documentResources;
     Document* m_document;
     DocumentLoader* m_documentLoader;
-    
+
     int m_requestCount;
-    
+
     std::unique_ptr<ListHashSet<CachedResource*>> m_preloads;
     Timer m_unusedPreloadsTimer;
 
     Timer m_garbageCollectDocumentResourcesTimer;
 
-#if ENABLE(WEB_TIMING)
     ResourceTimingInformation m_resourceTimingInfo;
-#endif
 
     // 29 bits left
     bool m_autoLoadImages : 1;

@@ -345,24 +345,24 @@ const SlowPutArrayStorageShape = 0x0C
 # Type constants.
 const StringType = 6
 const SymbolType = 7
-const ObjectType = 24
-const FinalObjectType = 25
-const JSFunctionType = 27
-const ArrayType = 35
-const DerivedArrayType = 36
-const ProxyObjectType = 54
+const ObjectType = 23
+const FinalObjectType = 24
+const JSFunctionType = 26
+const ArrayType = 34
+const DerivedArrayType = 35
+const ProxyObjectType = 53
 
 # The typed array types need to be numbered in a particular order because of the manually written
 # switch statement in get_by_val and put_by_val.
-const Int8ArrayType = 37
-const Int16ArrayType = 38
-const Int32ArrayType = 39
-const Uint8ArrayType = 40
-const Uint8ClampedArrayType = 41
-const Uint16ArrayType = 42
-const Uint32ArrayType = 43
-const Float32ArrayType = 44
-const Float64ArrayType = 45
+const Int8ArrayType = 36
+const Int16ArrayType = 37
+const Int32ArrayType = 38
+const Uint8ArrayType = 39
+const Uint8ClampedArrayType = 40
+const Uint16ArrayType = 41
+const Uint32ArrayType = 42
+const Float32ArrayType = 43
+const Float64ArrayType = 44
 
 const FirstArrayType = Int8ArrayType
 const LastArrayType = Float64ArrayType
@@ -994,6 +994,7 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
     # Get new sp in t0 and check stack height.
     getFrameRegisterSizeForCodeBlock(t1, t0)
     subp cfr, t0, t0
+    bpa t0, cfr, .needStackCheck
     loadp CodeBlock::m_vm[t1], t2
     if C_LOOP
         bpbeq VM::m_cloopStackLimit[t2], t0, .stackHeightOK
@@ -1001,6 +1002,7 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
         bpbeq VM::m_softStackLimit[t2], t0, .stackHeightOK
     end
 
+.needStackCheck:
     # Stack height check failed - need to call a slow_path.
     # Set up temporary stack pointer for call including callee saves
     subp maxFrameExtentForSlowPathCall, sp
@@ -1571,6 +1573,10 @@ macro acquireShadowChickenPacket(slow)
 end
 
 
+_llint_op_nop:
+    dispatch(1)
+
+
 _llint_op_switch_string:
     traceExecution()
     callOpcodeSlowPath(_llint_slow_path_switch_string)
@@ -1715,6 +1721,12 @@ _llint_op_assert:
     traceExecution()
     callOpcodeSlowPath(_slow_path_assert)
     dispatch(3)
+
+
+_llint_op_unreachable:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_unreachable)
+    dispatch(1)
 
 
 _llint_op_yield:

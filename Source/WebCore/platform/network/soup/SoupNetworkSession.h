@@ -26,10 +26,9 @@
 #ifndef SoupNetworkSession_h
 #define SoupNetworkSession_h
 
-#include <functional>
 #include <glib-object.h>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/Vector.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
 #include "Proxy.h"
@@ -73,7 +72,7 @@ public:
     void setAcceptLanguages(const CString&);
 
     static void setShouldIgnoreTLSErrors(bool);
-    static void checkTLSErrors(SoupRequest*, SoupMessage*, std::function<void (const ResourceError&)>&&);
+    static void checkTLSErrors(SoupRequest*, SoupMessage*, WTF::Function<void (const ResourceError&)>&&);
     static void allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String& host);
 
     static void setCustomProtocolRequestType(GType);

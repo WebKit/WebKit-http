@@ -34,10 +34,10 @@
 #import "MediaPlayerPrivateAVFoundationObjC.h"
 #import "ResourceLoaderOptions.h"
 #import "SharedBuffer.h"
-#import "SoftLinking.h"
 #import "UTIUtilities.h"
 #import <AVFoundation/AVAssetResourceLoader.h>
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/CString.h>
 
 namespace WebCore {
@@ -71,7 +71,7 @@ void WebCoreAVFResourceLoader::startLoading()
     resourceRequest.setPriority(ResourceLoadPriority::Low);
 
     // FIXME: Skip Content Security Policy check if the element that inititated this request
-    // is in a user-agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=155505>.
+    // is in a user-agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=173498>.
     CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
     if (auto* loader = m_parent->player()->cachedResourceLoader())
         m_resource = loader->requestMedia(WTFMove(request));
@@ -199,9 +199,12 @@ void WebCoreAVFResourceLoader::fulfillRequestWithResource(CachedResource& resour
         }
         [dataRequest respondWithData:[segment subdataWithRange:NSMakeRange(0, remainingLength)]];
         remainingLength = 0;
-        if (!remainingLength)
-            break;
+        break;
     }
+
+    // There was not enough data in the buffer to satisfy the data request.
+    if (remainingLength)
+        return;
 
     if (dataRequest.currentOffset + dataRequest.requestedLength >= dataRequest.requestedOffset) {
         [m_avRequest.get() finishLoading];

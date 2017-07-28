@@ -38,7 +38,6 @@
 #include "CSSValueKeywords.h"
 #include "DocumentFragment.h"
 #include "Event.h"
-#include "ExceptionCode.h"
 #include "HTMLDivElement.h"
 #include "HTMLSpanElement.h"
 #include "Logging.h"
@@ -347,7 +346,7 @@ ExceptionOr<void> VTTCue::setVertical(const String& value)
     else if (value == verticalGrowingRightKeyword())
         direction = VerticalGrowingRight;
     else
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     
     if (direction == m_writingDirection)
         return { };
@@ -375,7 +374,7 @@ ExceptionOr<void> VTTCue::setLine(double position)
     // On setting, if the text track cue snap-to-lines flag is not set, and the new
     // value is negative or greater than 100, then throw an IndexSizeError exception.
     if (!m_snapToLines && !(position >= 0 && position <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     // Otherwise, set the text track cue line position to the new value.
     if (m_linePosition == position)
@@ -395,7 +394,7 @@ ExceptionOr<void> VTTCue::setPosition(double position)
     // On setting, if the new value is negative or greater than 100, then throw an IndexSizeError exception.
     // Otherwise, set the text track cue text position to the new value.
     if (!(position >= 0 && position <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     // Otherwise, set the text track cue line position to the new value.
     if (m_textPosition == position)
@@ -414,7 +413,7 @@ ExceptionOr<void> VTTCue::setSize(int size)
     // On setting, if the new value is negative or greater than 100, then throw an IndexSizeError
     // exception. Otherwise, set the text track cue size to the new value.
     if (!(size >= 0 && size <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     // Otherwise, set the text track cue line position to the new value.
     if (m_cueSize == size)
@@ -466,7 +465,7 @@ ExceptionOr<void> VTTCue::setAlign(const String& value)
     else if (value == rightKeyword())
         alignment = Right;
     else
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     
     if (alignment == m_cueAlignment)
         return { };

@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DataDetectorsSPI_h
-#define DataDetectorsSPI_h
+#pragma once
 
 #import <wtf/Platform.h>
 
+#if ENABLE(DATA_DETECTION)
+
 #import <WebCore/DataDetectorsCoreSPI.h>
-#import <WebCore/SoftLinking.h>
+#import <wtf/SoftLinking.h>
 
 #if PLATFORM(MAC)
 
@@ -113,4 +114,5 @@ SOFT_LINK(DataDetectors, DDHighlightPointIsOnHighlight, Boolean, (DDHighlightRef
 
 #endif
 
-#endif // DataDetectorsSPI_h
+#endif
+

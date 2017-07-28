@@ -336,7 +336,8 @@ inline void JSCell::callDestructor(VM& vm)
 inline void JSCell::lock()
 {
     Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
-    IndexingTypeLockAlgorithm::lock(*lock);
+    if (UNLIKELY(!IndexingTypeLockAlgorithm::lockFast(*lock)))
+        lockSlow();
 }
 
 inline bool JSCell::tryLock()
@@ -348,7 +349,8 @@ inline bool JSCell::tryLock()
 inline void JSCell::unlock()
 {
     Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
-    IndexingTypeLockAlgorithm::unlock(*lock);
+    if (UNLIKELY(!IndexingTypeLockAlgorithm::unlockFast(*lock)))
+        unlockSlow();
 }
 
 inline bool JSCell::isLocked() const
@@ -362,6 +364,14 @@ inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject)
     if (isObject())
         return jsCast<JSObject*>(const_cast<JSCell*>(this));
     return toObjectSlow(exec, globalObject);
+}
+
+ALWAYS_INLINE bool JSCell::putInline(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+{
+    auto putMethod = methodTable(exec->vm())->put;
+    if (LIKELY(putMethod == JSObject::put))
+        return JSObject::putInlineForJSObject(asObject(this), exec, propertyName, value, slot);
+    return putMethod(this, exec, propertyName, value, slot);
 }
 
 inline bool isWebAssemblyToJSCallee(const JSCell* cell)

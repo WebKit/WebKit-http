@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2009, 2010, 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
@@ -32,6 +32,7 @@
 #include "IntSize.h"
 #include <memory>
 #include <wtf/Forward.h>
+#include <wtf/HashSet.h>
 
 #if ENABLE(WEBGL)
 #include "WebGLContextAttributes.h"
@@ -40,6 +41,7 @@
 namespace WebCore {
 
 class BlobCallback;
+class CanvasRenderingContext2D;
 class CanvasRenderingContext;
 class GraphicsContext;
 class GraphicsContextStateSaver;
@@ -49,6 +51,9 @@ class ImageBuffer;
 class ImageData;
 class MediaSample;
 class MediaStream;
+class WebGLRenderingContextBase;
+class WebGPURenderingContext;
+struct UncachedString;
 
 namespace DisplayList {
 using AsTextFlags = unsigned;
@@ -57,6 +62,8 @@ using AsTextFlags = unsigned;
 class CanvasObserver {
 public:
     virtual ~CanvasObserver() { }
+
+    virtual bool isCanvasObserverProxy() const { return false; }
 
     virtual void canvasChanged(HTMLCanvasElement&, const FloatRect& changedRect) = 0;
     virtual void canvasResized(HTMLCanvasElement&) = 0;
@@ -71,6 +78,7 @@ public:
 
     void addObserver(CanvasObserver&);
     void removeObserver(CanvasObserver&);
+    HashSet<Element*> cssCanvasClients() const;
 
     unsigned width() const { return size().width(); }
     unsigned height() const { return size().height(); }
@@ -91,24 +99,25 @@ public:
         reset();
     }
 
+    ExceptionOr<std::optional<RenderingContext>> getContext(JSC::ExecState&, const String& contextId, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
+
     CanvasRenderingContext* getContext(const String&);
 
     static bool is2dType(const String&);
-    CanvasRenderingContext* getContext2d(const String&);
+    CanvasRenderingContext2D* getContext2d(const String&);
 
 #if ENABLE(WEBGL)
     static bool is3dType(const String&);
-    CanvasRenderingContext* getContextWebGL(const String&, WebGLContextAttributes&& = { });
+    WebGLRenderingContextBase* getContextWebGL(const String&, WebGLContextAttributes&& = { });
 #endif
 #if ENABLE(WEBGPU)
     static bool isWebGPUType(const String&);
-    CanvasRenderingContext* getContextWebGPU(const String&);
+    WebGPURenderingContext* getContextWebGPU(const String&);
 #endif
 
-    static String toEncodingMimeType(const String& mimeType);
-    WEBCORE_EXPORT ExceptionOr<String> toDataURL(const String& mimeType, std::optional<double> quality);
-    ExceptionOr<String> toDataURL(const String& mimeType) { return toDataURL(mimeType, std::nullopt); }
-    ExceptionOr<void> toBlob(ScriptExecutionContext&, Ref<BlobCallback>&&, const String& mimeType, JSC::JSValue qualityValue);
+    WEBCORE_EXPORT ExceptionOr<UncachedString> toDataURL(const String& mimeType, JSC::JSValue quality);
+    WEBCORE_EXPORT ExceptionOr<UncachedString> toDataURL(const String& mimeType);
+    ExceptionOr<void> toBlob(ScriptExecutionContext&, Ref<BlobCallback>&&, const String& mimeType, JSC::JSValue quality);
 
     // Used for rendering
     void didDraw(const FloatRect&);
@@ -132,11 +141,6 @@ public:
     RefPtr<ImageData> getImageData();
     void makePresentationCopy();
     void clearPresentationCopy();
-
-    FloatRect convertLogicalToDevice(const FloatRect&) const;
-    FloatSize convertLogicalToDevice(const FloatSize&) const;
-
-    FloatSize convertDeviceToLogical(const FloatSize&) const;
 
     SecurityOrigin* securityOrigin() const;
     void setOriginTainted() { m_originClean = false; }
@@ -191,6 +195,8 @@ private:
     bool m_usesDisplayListDrawing { false };
     bool m_tracksDisplayListReplay { false };
 
+    mutable Lock m_imageBufferAssignmentLock;
+    
     // m_createdImageBuffer means we tried to malloc the buffer.  We didn't necessarily get it.
     mutable bool m_hasCreatedImageBuffer { false };
     mutable bool m_didClearImageBuffer { false };

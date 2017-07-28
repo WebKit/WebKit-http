@@ -55,9 +55,6 @@ WebInspector.LayoutDirection = {
 
 WebInspector.loaded = function()
 {
-    // Initialize WebSocket to communication.
-    this._initializeWebSocketIfNeeded();
-
     this.debuggableType = InspectorFrontendHost.debuggableType() === "web" ? WebInspector.DebuggableType.Web : WebInspector.DebuggableType.JavaScript;
     this.hasExtraDomains = false;
 
@@ -96,8 +93,8 @@ WebInspector.loaded = function()
         InspectorBackend.registerRuntimeDispatcher(new WebInspector.RuntimeObserver);
     if (InspectorBackend.registerWorkerDispatcher)
         InspectorBackend.registerWorkerDispatcher(new WebInspector.WorkerObserver);
-    if (InspectorBackend.registerReplayDispatcher)
-        InspectorBackend.registerReplayDispatcher(new WebInspector.ReplayObserver);
+    if (InspectorBackend.registerCanvasDispatcher)
+        InspectorBackend.registerCanvasDispatcher(new WebInspector.CanvasObserver);
 
     // Main backend target.
     WebInspector.mainTarget = new WebInspector.MainTarget;
@@ -137,8 +134,8 @@ WebInspector.loaded = function()
     this.dashboardManager = new WebInspector.DashboardManager;
     this.probeManager = new WebInspector.ProbeManager;
     this.workerManager = new WebInspector.WorkerManager;
-    this.replayManager = new WebInspector.ReplayManager;
     this.domDebuggerManager = new WebInspector.DOMDebuggerManager;
+    this.canvasManager = new WebInspector.CanvasManager;
 
     // Enable the Console Agent after creating the singleton managers.
     ConsoleAgent.enable();
@@ -151,7 +148,6 @@ WebInspector.loaded = function()
     }, 0);
 
     // Register for events.
-    this.replayManager.addEventListener(WebInspector.ReplayManager.Event.CaptureStarted, this._captureDidStart, this);
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Paused, this._debuggerDidPause, this);
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Resumed, this._debuggerDidResume, this);
     this.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.InspectModeStateChanged, this._inspectModeStateChanged, this);
@@ -167,13 +163,11 @@ WebInspector.loaded = function()
 
     // Create settings.
     this._showingSplitConsoleSetting = new WebInspector.Setting("showing-split-console", false);
-    this._splitConsoleHeightSetting = new WebInspector.Setting("split-console-height", 150);
 
     this._openTabsSetting = new WebInspector.Setting("open-tab-types", ["elements", "network", "resources", "timeline", "debugger", "storage", "console"]);
     this._selectedTabIndexSetting = new WebInspector.Setting("selected-tab-index", 0);
 
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", false);
-    this.showReplayInterfaceSetting = new WebInspector.Setting("show-web-replay", false);
 
     // COMPATIBILITY (iOS 8): Page.enableTypeProfiler did not exist.
     this.showJavaScriptTypeInformationSetting = new WebInspector.Setting("show-javascript-type-information", false);
@@ -288,19 +282,16 @@ WebInspector.contentLoaded = function()
     this._contentElement.setAttribute("role", "main");
     this._contentElement.setAttribute("aria-label", WebInspector.UIString("Content"));
 
-    const disableBackForward = true;
-    const disableFindBanner = false;
-    this.splitContentBrowser = new WebInspector.ContentBrowser(document.getElementById("split-content-browser"), this, disableBackForward, disableFindBanner);
-    this.splitContentBrowser.navigationBar.element.addEventListener("mousedown", this._consoleResizerMouseDown.bind(this));
+    this.consoleDrawer = new WebInspector.ConsoleDrawer(document.getElementById("console-drawer"));
+    this.consoleDrawer.addEventListener(WebInspector.ConsoleDrawer.Event.CollapsedStateChanged, this._consoleDrawerCollapsedStateDidChange, this);
+    this.consoleDrawer.addEventListener(WebInspector.ConsoleDrawer.Event.Resized, this._consoleDrawerDidResize, this);
 
     this.clearKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "K", this._clear.bind(this));
 
     this.quickConsole = new WebInspector.QuickConsole(document.getElementById("quick-console"));
-    this.quickConsole.addEventListener(WebInspector.QuickConsole.Event.DidResize, this._quickConsoleDidResize, this);
 
     this._consoleRepresentedObject = new WebInspector.LogObject;
-    this._consoleTreeElement = new WebInspector.LogTreeElement(this._consoleRepresentedObject);
-    this.consoleContentView = WebInspector.splitContentBrowser.contentViewForRepresentedObject(this._consoleRepresentedObject);
+    this.consoleContentView = this.consoleDrawer.contentViewForRepresentedObject(this._consoleRepresentedObject);
     this.consoleLogViewController = this.consoleContentView.logViewController;
     this.breakpointPopoverController = new WebInspector.BreakpointPopoverController;
 
@@ -425,17 +416,6 @@ WebInspector.contentLoaded = function()
 
     this.toolbar.addToolbarItem(this._searchToolbarItem, WebInspector.Toolbar.Section.Right);
 
-    this.resourceDetailsSidebarPanel = new WebInspector.ResourceDetailsSidebarPanel;
-    this.domNodeDetailsSidebarPanel = new WebInspector.DOMNodeDetailsSidebarPanel;
-    this.cssStyleDetailsSidebarPanel = new WebInspector.CSSStyleDetailsSidebarPanel;
-    this.applicationCacheDetailsSidebarPanel = new WebInspector.ApplicationCacheDetailsSidebarPanel;
-    this.indexedDatabaseDetailsSidebarPanel = new WebInspector.IndexedDatabaseDetailsSidebarPanel;
-    this.scopeChainDetailsSidebarPanel = new WebInspector.ScopeChainDetailsSidebarPanel;
-    this.probeDetailsSidebarPanel = new WebInspector.ProbeDetailsSidebarPanel;
-
-    if (window.LayerTreeAgent)
-        this.layerTreeDetailsSidebarPanel = new WebInspector.LayerTreeDetailsSidebarPanel;
-
     this.modifierKeys = {altKey: false, metaKey: false, shiftKey: false};
 
     let dockedResizerElement = document.getElementById("docked-resizer");
@@ -489,7 +469,7 @@ WebInspector.contentLoaded = function()
         let tabContentView = this._createTabContentViewForType(tabType);
         if (!tabContentView)
             continue;
-        this.tabBrowser.addTabForContentView(tabContentView, true);
+        this.tabBrowser.addTabForContentView(tabContentView, {suppressAnimations: true});
     }
 
     this._restoreCookieForOpenTabs(WebInspector.StateRestorationType.Load);
@@ -500,7 +480,7 @@ WebInspector.contentLoaded = function()
         this.tabBar.selectedTabBarItem = 0;
 
     if (!this.tabBar.normalTabCount)
-        this.showNewTabTab();
+        this.showNewTabTab({suppressAnimations: true});
 
     // Listen to the events after restoring the saved tabs to avoid recursion.
     this.tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemAdded, this._rememberOpenTabs, this);
@@ -514,8 +494,6 @@ WebInspector.contentLoaded = function()
     // and pending InspectorFrontendAPI commands to be sent.
     InspectorFrontendHost.loaded();
 
-    this._updateSplitConsoleHeight(this._splitConsoleHeightSetting.value);
-
     if (this._showingSplitConsoleSetting.value)
         this.showSplitConsole();
 
@@ -524,6 +502,20 @@ WebInspector.contentLoaded = function()
 
     if (this.runBootstrapOperations)
         this.runBootstrapOperations();
+};
+
+// This function returns a lazily constructed instance of a class scoped to this WebInspector
+// instance. In the unlikely event that we ever need to construct multiple WebInspector instances
+// this allows us to scope objects within the WebInspector.
+// Currently it is only used for sidebars.
+WebInspector.instanceForClass = function(constructor)
+{
+    console.assert(typeof constructor === "function");
+
+    let key = `__${constructor.name}`;
+    if (!WebInspector[key])
+        WebInspector[key] = new constructor;
+    return WebInspector[key];
 };
 
 WebInspector.isTabTypeAllowed = function(tabType)
@@ -592,7 +584,7 @@ WebInspector._rememberOpenTabs = function()
 
 WebInspector._openDefaultTab = function(event)
 {
-    this.showNewTabTab();
+    this.showNewTabTab({suppressAnimations: true});
 };
 
 WebInspector._showSettingsTab = function(event)
@@ -613,7 +605,10 @@ WebInspector._tryToRestorePendingTabs = function()
         if (!tabContentView)
             continue;
 
-        this.tabBrowser.addTabForContentView(tabContentView, true, index);
+        this.tabBrowser.addTabForContentView(tabContentView, {
+            suppressAnimations: true,
+            insertionIndex: index,
+        });
 
         tabContentView.restoreStateFromCookie(WebInspector.StateRestorationType.Load);
     }
@@ -623,7 +618,7 @@ WebInspector._tryToRestorePendingTabs = function()
     this.tabBrowser.tabBar.updateNewTabTabBarItemState();
 };
 
-WebInspector.showNewTabTab = function(shouldAnimate)
+WebInspector.showNewTabTab = function(options)
 {
     if (!this.isNewTabWithTypeAllowed(WebInspector.NewTabContentView.Type))
         return;
@@ -631,7 +626,7 @@ WebInspector.showNewTabTab = function(shouldAnimate)
     let tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.NewTabContentView);
     if (!tabContentView)
         tabContentView = new WebInspector.NewTabContentView;
-    this.tabBrowser.showTabForContentView(tabContentView, !shouldAnimate);
+    this.tabBrowser.showTabForContentView(tabContentView, options);
 };
 
 WebInspector.isNewTabWithTypeAllowed = function(tabType)
@@ -669,11 +664,13 @@ WebInspector.createNewTabWithType = function(tabType, options = {})
 
     let tabContentView = this._createTabContentViewForType(tabType);
     const suppressAnimations = true;
-    let insertionIndex = referencedView ? this.tabBar.tabBarItems.indexOf(referencedView.tabBarItem) : undefined;
-    this.tabBrowser.addTabForContentView(tabContentView, suppressAnimations, insertionIndex);
+    this.tabBrowser.addTabForContentView(tabContentView, {
+        suppressAnimations,
+        insertionIndex: referencedView ? this.tabBar.tabBarItems.indexOf(referencedView.tabBarItem) : undefined,
+    });
 
     if (shouldReplaceTab)
-        this.tabBrowser.closeTabForContentView(referencedView, suppressAnimations);
+        this.tabBrowser.closeTabForContentView(referencedView, {suppressAnimations});
 
     if (shouldShowNewTab)
         this.tabBrowser.showTabForContentView(tabContentView);
@@ -711,14 +708,6 @@ WebInspector.activateExtraDomains = function(domains)
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
     this._tryToRestorePendingTabs();
-};
-
-WebInspector.contentBrowserTreeElementForRepresentedObject = function(contentBrowser, representedObject)
-{
-    // The console does not have a sidebar, so return a tree element here so something is shown.
-    if (representedObject === this._consoleRepresentedObject)
-        return this._consoleTreeElement;
-    return null;
 };
 
 WebInspector.updateWindowTitle = function()
@@ -896,7 +885,7 @@ WebInspector.saveDataToFile = function(saveData, forceSaveAs)
     }
 
     if (typeof saveData.content === "string") {
-        const base64Encoded = false;
+        const base64Encoded = saveData.base64Encoded || false;
         InspectorFrontendHost.save(suggestedName, saveData.content, base64Encoded, forceSaveAs || saveData.forceSaveAs);
         return;
     }
@@ -918,7 +907,7 @@ WebInspector.isConsoleFocused = function()
 
 WebInspector.isShowingSplitConsole = function()
 {
-    return !this.splitContentBrowser.element.classList.contains("hidden");
+    return !this.consoleDrawer.collapsed;
 };
 
 WebInspector.dockedConfigurationSupportsSplitContentBrowser = function()
@@ -952,22 +941,16 @@ WebInspector.showSplitConsole = function()
         return;
     }
 
-    this.splitContentBrowser.element.classList.remove("hidden");
+    this.consoleDrawer.collapsed = false;
 
-    this._showingSplitConsoleSetting.value = true;
+    if (this.consoleDrawer.currentContentView === this.consoleContentView)
+        return;
 
-    if (this.splitContentBrowser.currentContentView !== this.consoleContentView) {
-        // Be sure to close the view in the tab content browser before showing it in the
-        // split content browser. We can only show a content view in one browser at a time.
-        if (this.consoleContentView.parentContainer)
-            this.consoleContentView.parentContainer.closeContentView(this.consoleContentView);
-        this.splitContentBrowser.showContentView(this.consoleContentView);
-    } else {
-        // This causes the view to know it was shown and focus the prompt.
-        this.splitContentBrowser.shown();
-    }
-
-    this.quickConsole.consoleLogVisibilityChanged(true);
+    // Be sure to close the view in the tab content browser before showing it in the
+    // split content browser. We can only show a content view in one browser at a time.
+    if (this.consoleContentView.parentContainer)
+        this.consoleContentView.parentContainer.closeContentView(this.consoleContentView);
+    this.consoleDrawer.showContentView(this.consoleContentView);
 };
 
 WebInspector.hideSplitConsole = function()
@@ -975,14 +958,7 @@ WebInspector.hideSplitConsole = function()
     if (!this.isShowingSplitConsole())
         return;
 
-    this.splitContentBrowser.element.classList.add("hidden");
-
-    this._showingSplitConsoleSetting.value = false;
-
-    // This causes the view to know it was hidden.
-    this.splitContentBrowser.hidden();
-
-    this.quickConsole.consoleLogVisibilityChanged(false);
+    this.consoleDrawer.collapsed = true;
 };
 
 WebInspector.showConsoleTab = function(requestedScope)
@@ -1125,7 +1101,11 @@ WebInspector.tabContentViewClassForRepresentedObject = function(representedObjec
             return WebInspector.DebuggerTabContentView;
     }
 
-    if (representedObject instanceof WebInspector.Frame || representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Script)
+    if (representedObject instanceof WebInspector.Frame
+        || representedObject instanceof WebInspector.Resource
+        || representedObject instanceof WebInspector.Script
+        || representedObject instanceof WebInspector.CSSStyleSheet
+        || representedObject instanceof WebInspector.Canvas)
         return WebInspector.ResourcesTabContentView;
 
     // FIXME: Move Content Flows to the Elements tab?
@@ -1138,9 +1118,6 @@ WebInspector.tabContentViewClassForRepresentedObject = function(representedObjec
         representedObject instanceof WebInspector.ApplicationCacheFrame || representedObject instanceof WebInspector.IndexedDatabaseObjectStore ||
         representedObject instanceof WebInspector.IndexedDatabaseObjectStoreIndex)
         return WebInspector.ResourcesTabContentView;
-
-    if (representedObject instanceof WebInspector.Collection)
-        return WebInspector.CollectionContentView;
 
     return null;
 };
@@ -1171,7 +1148,7 @@ WebInspector.showRepresentedObject = function(representedObject, cookie, options
     if (!tabContentView)
         return;
 
-    this.tabBrowser.showTabForContentView(tabContentView);
+    this.tabBrowser.showTabForContentView(tabContentView, options);
     tabContentView.showRepresentedObject(representedObject, cookie);
 };
 
@@ -1362,11 +1339,6 @@ WebInspector._dragOver = function(event)
     // Prevent the drop from being accepted.
     event.dataTransfer.dropEffect = "none";
     event.preventDefault();
-};
-
-WebInspector._captureDidStart = function(event)
-{
-    this._dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.replay);
 };
 
 WebInspector._debuggerDidPause = function(event)
@@ -1609,11 +1581,18 @@ WebInspector._updateDockNavigationItems = function()
 WebInspector._tabBrowserSizeDidChange = function()
 {
     this.tabBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
-    this.splitContentBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
+    this.consoleDrawer.updateLayout(WebInspector.View.LayoutReason.Resize);
     this.quickConsole.updateLayout(WebInspector.View.LayoutReason.Resize);
 };
 
-WebInspector._quickConsoleDidResize = function(event)
+WebInspector._consoleDrawerCollapsedStateDidChange = function(event)
+{
+    this._showingSplitConsoleSetting.value = WebInspector.isShowingSplitConsole();
+
+    WebInspector._consoleDrawerDidResize();
+};
+
+WebInspector._consoleDrawerDidResize = function(event)
 {
     this.tabBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
 };
@@ -1630,7 +1609,7 @@ WebInspector._setupViewHierarchy = function()
     rootView.addSubview(this.tabBar);
     rootView.addSubview(this.navigationSidebar);
     rootView.addSubview(this.tabBrowser);
-    rootView.addSubview(this.splitContentBrowser);
+    rootView.addSubview(this.consoleDrawer);
     rootView.addSubview(this.quickConsole);
     rootView.addSubview(this.detailsSidebar);
 };
@@ -1640,79 +1619,16 @@ WebInspector._tabBrowserSelectedTabContentViewDidChange = function(event)
     if (this.tabBar.selectedTabBarItem && this.tabBar.selectedTabBarItem.representedObject.constructor.shouldSaveTab())
         this._selectedTabIndexSetting.value = this.tabBar.tabBarItems.indexOf(this.tabBar.selectedTabBarItem);
 
-    if (!this.doesCurrentTabSupportSplitContentBrowser())
-        this.hideSplitConsole();
-
-    if (!this.isShowingSplitConsole())
-        this.quickConsole.consoleLogVisibilityChanged(this.isShowingConsoleTab());
-};
-
-WebInspector._initializeWebSocketIfNeeded = function()
-{
-    if (!InspectorFrontendHost.initializeWebSocket)
+    if (this.doesCurrentTabSupportSplitContentBrowser()) {
+        if (this._shouldRevealSpitConsoleIfSupported) {
+            this._shouldRevealSpitConsoleIfSupported = false;
+            this.showSplitConsole();
+        }
         return;
-
-    var queryParams = parseLocationQueryParameters();
-
-    if ("ws" in queryParams)
-        var url = "ws://" + queryParams.ws;
-    else if ("page" in queryParams) {
-        var page = queryParams.page;
-        var host = "host" in queryParams ? queryParams.host : window.location.host;
-        var url = "ws://" + host + "/devtools/page/" + page;
     }
 
-    if (!url)
-        return;
-
-    InspectorFrontendHost.initializeWebSocket(url);
-};
-
-WebInspector._updateSplitConsoleHeight = function(height)
-{
-    const minimumHeight = 64;
-    const maximumHeight = window.innerHeight * 0.55;
-
-    height = Math.max(minimumHeight, Math.min(height, maximumHeight));
-
-    this.splitContentBrowser.element.style.height = height + "px";
-};
-
-WebInspector._consoleResizerMouseDown = function(event)
-{
-    if (event.button !== 0 || event.ctrlKey)
-        return;
-
-    // Only start dragging if the target is one of the elements that we expect.
-    if (!event.target.classList.contains("navigation-bar") && !event.target.classList.contains("flexible-space"))
-        return;
-
-    var resizerElement = event.target;
-    var mouseOffset = resizerElement.offsetHeight - (event.pageY - resizerElement.totalOffsetTop);
-
-    function dockedResizerDrag(event)
-    {
-        if (event.button !== 0)
-            return;
-
-        var height = window.innerHeight - event.pageY - mouseOffset;
-
-        this._splitConsoleHeightSetting.value = height;
-
-        this._updateSplitConsoleHeight(height);
-
-        this.quickConsole.dispatchEventToListeners(WebInspector.QuickConsole.Event.DidResize);
-    }
-
-    function dockedResizerDragEnd(event)
-    {
-        if (event.button !== 0)
-            return;
-
-        this.elementDragEnd(event);
-    }
-
-    this.elementDragStart(resizerElement, dockedResizerDrag.bind(this), dockedResizerDragEnd.bind(this), event, "row-resize");
+    this._shouldRevealSpitConsoleIfSupported = this.isShowingSplitConsole();
+    this.hideSplitConsole();
 };
 
 WebInspector._toolbarMouseDown = function(event)
@@ -1909,7 +1825,7 @@ WebInspector._reloadPage = function(event)
 WebInspector._reloadPageClicked = function(event)
 {
     // Ignore cache when the shift key is pressed.
-    PageAgent.reload(window.event ? window.event.shiftKey : false);
+    PageAgent.reload.invoke({shouldIgnoreCache: window.event ? window.event.shiftKey : false});
 };
 
 WebInspector._reloadPageIgnoringCache = function(event)
@@ -1971,9 +1887,9 @@ WebInspector._focusedContentBrowser = function()
         return null;
     }
 
-    if (this.splitContentBrowser.element.isSelfOrAncestor(this.currentFocusElement)
+    if (this.consoleDrawer.element.isSelfOrAncestor(this.currentFocusElement)
         || (WebInspector.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
-        return this.splitContentBrowser;
+        return this.consoleDrawer;
 
     return null;
 };
@@ -1987,9 +1903,9 @@ WebInspector._focusedContentView = function()
         return tabContentView;
     }
 
-    if (this.splitContentBrowser.element.isSelfOrAncestor(this.currentFocusElement)
+    if (this.consoleDrawer.element.isSelfOrAncestor(this.currentFocusElement)
         || (WebInspector.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
-        return this.splitContentBrowser.currentContentView;
+        return this.consoleDrawer.currentContentView;
 
     return null;
 };
@@ -2313,7 +2229,7 @@ WebInspector.createSourceCodeLocationLink = function(sourceCodeLocation, options
     if (options.useGoToArrowButton)
         linkElement.appendChild(WebInspector.createGoToArrowButton());
     else
-        sourceCodeLocation.populateLiveDisplayLocationString(linkElement, "textContent");
+        sourceCodeLocation.populateLiveDisplayLocationString(linkElement, "textContent", options.columnStyle, options.nameStyle, options.prefix);
 
     if (options.dontFloat)
         linkElement.classList.add("dont-float");

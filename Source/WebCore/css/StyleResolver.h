@@ -28,15 +28,11 @@
 #include "InspectorCSSOMWrappers.h"
 #include "MediaQueryEvaluator.h"
 #include "RenderStyle.h"
-#include "RuleFeature.h"
 #include "RuleSet.h"
 #include "SelectorChecker.h"
-#include "StylePendingResources.h"
-#include "StyleScope.h"
 #include <bitset>
 #include <memory>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -160,6 +156,8 @@ public:
     const MediaQueryEvaluator& mediaQueryEvaluator() const { return m_mediaQueryEvaluator; }
 
     void setOverrideDocumentElementStyle(RenderStyle* style) { m_overrideDocumentElementStyle = style; }
+
+    void addCurrentSVGFontFaceRules();
 
 private:
     std::unique_ptr<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleRuleKeyframe*, KeyframeValue&);
@@ -307,10 +305,6 @@ public:
         TextDirection m_direction;
         WritingMode m_writingMode;
     };
-
-    // FIXME: Should make a StyleAdjuster class (like Blink has) that handles all RenderStyle
-    // adjustments. For now put this function on StyleResolver, since adjustRenderStyle is here.
-    static void adjustStyleForAlignment(RenderStyle&, const RenderStyle& parentStyle);
     
 private:
     // This function fixes up the default font size if it detects that the current generic font family has changed. -dwh
@@ -333,10 +327,6 @@ private:
     void applyCascadedProperties(CascadedProperties&, int firstProperty, int lastProperty, const MatchResult*);
     void cascadeMatches(CascadedProperties&, const MatchResult&, bool important, int startIndex, int endIndex, bool inheritedOnly);
 
-    static bool isValidRegionStyleProperty(CSSPropertyID);
-#if ENABLE(VIDEO_TRACK)
-    static bool isValidCueStyleProperty(CSSPropertyID);
-#endif
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
     void matchPageRulesForList(Vector<StyleRulePage*>& matchedRules, const Vector<StyleRulePage*>&, bool isLeftPage, bool isFirstPage, const String& pageName);
 

@@ -48,6 +48,7 @@
 #include "MediaQueryEvaluator.h"
 #include "MouseEvent.h"
 #include "RenderStyle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "StyleInheritedData.h"
@@ -219,6 +220,29 @@ String HTMLLinkElement::crossOrigin() const
     return parseCORSSettingsAttribute(attributeWithoutSynchronization(crossoriginAttr));
 }
 
+void HTMLLinkElement::setAs(const AtomicString& value)
+{
+    setAttributeWithoutSynchronization(asAttr, value);
+}
+
+String HTMLLinkElement::as() const
+{
+    String as = attributeWithoutSynchronization(asAttr);
+    if (equalLettersIgnoringASCIICase(as, "fetch")
+        || equalLettersIgnoringASCIICase(as, "image")
+        || equalLettersIgnoringASCIICase(as, "script")
+        || equalLettersIgnoringASCIICase(as, "style")
+        || (RuntimeEnabledFeatures::sharedFeatures().mediaPreloadingEnabled()
+            && (equalLettersIgnoringASCIICase(as, "video")
+                || equalLettersIgnoringASCIICase(as, "audio")))
+#if ENABLE(VIDEO_TRACK)
+        || equalLettersIgnoringASCIICase(as, "track")
+#endif
+        || equalLettersIgnoringASCIICase(as, "font"))
+        return as;
+    return String();
+}
+
 void HTMLLinkElement::process()
 {
     if (!isConnected()) {
@@ -232,7 +256,7 @@ void HTMLLinkElement::process()
 
     URL url = getNonEmptyURLAttribute(hrefAttr);
 
-    if (!m_linkLoader.loadLink(m_relAttribute, url, attributeWithoutSynchronization(asAttr), attributeWithoutSynchronization(crossoriginAttr), document()))
+    if (!m_linkLoader.loadLink(m_relAttribute, url, attributeWithoutSynchronization(asAttr), attributeWithoutSynchronization(mediaAttr), attributeWithoutSynchronization(typeAttr), attributeWithoutSynchronization(crossoriginAttr), document()))
         return;
 
     bool treatAsStyleSheet = m_relAttribute.isStyleSheet
@@ -395,7 +419,7 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
     CSSParserContext parserContext(document(), baseURL, charset);
     auto cachePolicy = frame->loader().subresourceCachePolicy(baseURL);
 
-    if (auto restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext, cachePolicy)) {
+    if (auto restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext, cachePolicy, frame->loader())) {
         ASSERT(restoredSheet->isCacheable());
         ASSERT(!restoredSheet->isLoading());
         initializeStyleSheet(restoredSheet.releaseNonNull(), *cachedStyleSheet);

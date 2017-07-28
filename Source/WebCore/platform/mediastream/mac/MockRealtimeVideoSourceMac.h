@@ -32,9 +32,8 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "FontCascade.h"
 #include "MockRealtimeVideoSource.h"
-#include "OrientationNotifer.h"
+#include "OrientationNotifier.h"
 
 typedef struct __CVBuffer *CVBufferRef;
 typedef CVBufferRef CVImageBufferRef;
@@ -59,6 +58,7 @@ private:
     bool applySize(const IntSize&) final;
 
     void orientationChanged(int orientation) final;
+    void monitorOrientation(OrientationNotifier&) final;
 
     mutable RetainPtr<CGImageRef> m_previewImage;
     mutable RetainPtr<PlatformLayer> m_previewLayer;

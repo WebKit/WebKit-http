@@ -42,7 +42,6 @@
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 
-
 namespace WebCore {
 
 static const ULONGLONG kSecondsFromFileTimeToTimet = 11644473600;
@@ -177,6 +176,13 @@ bool deleteEmptyDirectory(const String& path)
     return !!RemoveDirectoryW(filename.charactersWithNullTermination().data());
 }
 
+bool moveFile(const String& oldPath, const String& newPath)
+{
+    String oldFilename = oldPath;
+    String newFilename = newPath;
+    return !!::MoveFileEx(oldFilename.charactersWithNullTermination().data(), newFilename.charactersWithNullTermination().data(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+}
+
 String pathByAppendingComponent(const String& path, const String& component)
 {
     Vector<UChar> buffer(MAX_PATH);
@@ -250,20 +256,20 @@ String directoryName(const String& path)
 
 static String bundleName()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, name, (ASCIILiteral("WebKit")));
+    static const NeverDestroyed<String> name = [] {
+        String name { ASCIILiteral { "WebKit" } };
 
 #if USE(CF)
-    static bool initialized;
-
-    if (!initialized) {
-        initialized = true;
-
-        if (CFBundleRef bundle = CFBundleGetMainBundle())
-            if (CFTypeRef bundleExecutable = CFBundleGetValueForInfoDictionaryKey(bundle, kCFBundleExecutableKey))
+        if (CFBundleRef bundle = CFBundleGetMainBundle()) {
+            if (CFTypeRef bundleExecutable = CFBundleGetValueForInfoDictionaryKey(bundle, kCFBundleExecutableKey)) {
                 if (CFGetTypeID(bundleExecutable) == CFStringGetTypeID())
                     name = reinterpret_cast<CFStringRef>(bundleExecutable);
-    }
+            }
+        }
 #endif
+
+        return name;
+    }();
 
     return name;
 }
@@ -276,8 +282,7 @@ static String storageDirectory(DWORD pathIdentifier)
     buffer.resize(wcslen(buffer.data()));
     String directory = String::adopt(WTFMove(buffer));
 
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, companyNameDirectory, (ASCIILiteral("Apple Computer\\")));
-    directory = pathByAppendingComponent(directory, companyNameDirectory + bundleName());
+    directory = pathByAppendingComponent(directory, "Apple Computer\\" + bundleName());
     if (!makeAllDirectories(directory))
         return String();
 
@@ -339,10 +344,12 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
     DWORD desiredAccess = 0;
     DWORD creationDisposition = 0;
+    DWORD shareMode = 0;
     switch (mode) {
     case OpenForRead:
         desiredAccess = GENERIC_READ;
         creationDisposition = OPEN_EXISTING;
+        shareMode = FILE_SHARE_READ;
         break;
     case OpenForWrite:
         desiredAccess = GENERIC_WRITE;
@@ -353,7 +360,7 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     }
 
     String destination = path;
-    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, 0, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, shareMode, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 }
 
 void closeFile(PlatformFileHandle& handle)
@@ -413,11 +420,6 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
 bool hardLinkOrCopyFile(const String& source, const String& destination)
 {
     return !!::CopyFile(source.charactersWithNullTermination().data(), destination.charactersWithNullTermination().data(), TRUE);
-}
-
-bool unloadModule(PlatformModule module)
-{
-    return ::FreeLibrary(module);
 }
 
 String localUserSpecificStorageDirectory()

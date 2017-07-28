@@ -69,8 +69,8 @@ class PerfTestsRunner(object):
         # Timeouts are controlled by the Python Driver, so DRT/WTR runs with no-timeout.
         self._options.additional_drt_flag.append('--no-timeout')
 
-        # The GTK+ and EFL ports only supports WebKit2, so they always use WKTR.
-        if self._port.name().startswith("gtk") or self._port.name().startswith("efl"):
+        # The GTK+ port only supports WebKit2, so it always uses WKTR.
+        if self._port.name().startswith("gtk"):
             self._options.webkit_test_runner = True
 
         self._host.initialize_scm()
@@ -179,6 +179,8 @@ class PerfTestsRunner(object):
             relative_path = filesystem.relpath(path, self._base_path).replace('\\', '/')
             if self._options.use_skipped_list and self._port.skips_perf_test(relative_path) and filesystem.normpath(relative_path) not in paths:
                 continue
+            if relative_path.endswith('/index.html'):
+                relative_path = relative_path[0:-len('/index.html')]
             test = PerfTestFactory.create_perf_test(self._port, relative_path, path, test_runner_count=test_runner_count)
             tests.append(test)
 
@@ -293,10 +295,6 @@ class PerfTestsRunner(object):
                 is_last_token = i + 1 == len(path)
                 url = view_source_url('PerformanceTests/' + '/'.join(path[0:i + 1]))
                 test_name = path[i]
-
-                # FIXME: This is a temporary workaround for the fact perf dashboard doesn't support renaming tests.
-                if test_name == 'Speedometer':
-                    test_name = 'DoYouEvenBench'
 
                 tests.setdefault(test_name, {'url': url})
                 current_test = tests[test_name]

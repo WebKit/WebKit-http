@@ -36,7 +36,7 @@
 namespace WebCore {
 namespace ContentExtensions {
 
-RefPtr<ContentExtension> ContentExtension::create(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension)
+Ref<ContentExtension> ContentExtension::create(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension)
 {
     return adoptRef(*new ContentExtension(identifier, WTFMove(compiledExtension)));
 }
@@ -103,9 +103,9 @@ void ContentExtension::compileGlobalDisplayNoneStyleSheet()
     }
     if (css.isEmpty())
         return;
-    css.append("{");
+    css.append('{');
     css.append(ContentExtensionsBackend::displayNoneCSSRule());
-    css.append("}");
+    css.append('}');
 
     m_globalDisplayNoneStyleSheet = StyleSheetContents::create();
     m_globalDisplayNoneStyleSheet->setIsUserStyleSheet(true);

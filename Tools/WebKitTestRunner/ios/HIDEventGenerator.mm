@@ -27,12 +27,12 @@
 #import "HIDEventGenerator.h"
 
 #import "IOKitSPI.h"
-#import "UIKitSPI.h"
-#import <WebCore/SoftLinking.h>
+#import "UIKitTestSPI.h"
 #import <mach/mach_time.h>
 #import <wtf/Assertions.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(BackBoardServices)
 SOFT_LINK(BackBoardServices, BKSHIDEventSetDigitizerInfo, void, (IOHIDEventRef digitizerEvent, uint32_t contextID, uint8_t systemGestureisPossible, uint8_t isSystemGestureStateChangeEvent, CFStringRef displayUUID, CFTimeInterval initialTouchTimestamp, float maxForce), (digitizerEvent, contextID, systemGestureisPossible, isSystemGestureStateChangeEvent, displayUUID, initialTouchTimestamp, maxForce));
@@ -393,15 +393,9 @@ static InterpolationType interpolationFromString(NSString *string)
         RetainPtr<IOHIDEventRef> subEvent;
         if (pointInfo->isStylus) {
             if (eventType == StylusEventTouched) {
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
                 eventMask |= kIOHIDDigitizerEventEstimatedAltitude;
                 eventMask |= kIOHIDDigitizerEventEstimatedAzimuth;
                 eventMask |= kIOHIDDigitizerEventEstimatedPressure;
-#else
-                eventMask |= kIOHIDDigitizerEventUpdateAltitudeMask;
-                eventMask |= kIOHIDDigitizerEventUpdateAzimuthMask;
-                eventMask |= kIOHIDDigitizerEventUpdatePressureMask;
-#endif
             } else if (eventType == StylusEventMoved)
                 eventMask = kIOHIDDigitizerEventPosition;
 

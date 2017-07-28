@@ -51,8 +51,6 @@
 #include "CSSGridAutoRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
-#include "CSSInheritedValue.h"
-#include "CSSInitialValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSParserFastPaths.h"
 #include "CSSParserIdioms.h"
@@ -60,11 +58,9 @@
 #include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyParserHelpers.h"
 #include "CSSReflectValue.h"
-#include "CSSRevertValue.h"
 #include "CSSShadowValue.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSUnicodeRangeValue.h"
-#include "CSSUnsetValue.h"
 #include "CSSVariableParser.h"
 #include "CSSVariableReferenceValue.h"
 #include "Counter.h"
@@ -479,13 +475,14 @@ static RefPtr<CSSFontFeatureValue> consumeFontFeatureTag(CSSParserTokenRange& ra
     }
 
     int tagValue = 1;
-    // Feature tag values could follow: <integer> | on | off
-    if (range.peek().type() == NumberToken && range.peek().numericValueType() == IntegerValueType && range.peek().numericValue() >= 0) {
-        tagValue = clampTo<int>(range.consumeIncludingWhitespace().numericValue());
-        if (tagValue < 0)
+    if (!range.atEnd() && range.peek().type() != CommaToken) {
+        // Feature tag values could follow: <integer> | on | off
+        if (auto primitiveValue = consumeInteger(range, 0))
+            tagValue = primitiveValue->intValue();
+        else if (range.peek().id() == CSSValueOn || range.peek().id() == CSSValueOff)
+            tagValue = range.consumeIncludingWhitespace().id() == CSSValueOn;
+        else
             return nullptr;
-    } else if (range.peek().id() == CSSValueOn || range.peek().id() == CSSValueOff) {
-        tagValue = range.consumeIncludingWhitespace().id() == CSSValueOn;
     }
     return CSSFontFeatureValue::create(WTFMove(tag), tagValue);
 }
@@ -523,10 +520,13 @@ static RefPtr<CSSValue> consumeFontVariationTag(CSSParserTokenRange& range)
         tag[i] = character;
     }
     
-    if (range.atEnd() || range.peek().type() != NumberToken)
+    if (range.atEnd())
         return nullptr;
 
-    float tagValue = range.consumeIncludingWhitespace().numericValue();
+    double tagValue = 0;
+    auto success = consumeNumberRaw(range, tagValue);
+    if (!success)
+        return nullptr;
     
     return CSSFontVariationValue::create(tag, tagValue);
 }
@@ -1603,7 +1603,7 @@ static RefPtr<CSSValue> consumeAnimationValue(CSSPropertyID property, CSSParserT
         return consumeIdent<CSSValueNormal, CSSValueAlternate, CSSValueReverse, CSSValueAlternateReverse>(range);
     case CSSPropertyAnimationDuration:
     case CSSPropertyTransitionDuration:
-        return consumeTime(range, context.mode, ValueRangeNonNegative, UnitlessQuirk::Allow);
+        return consumeTime(range, context.mode, ValueRangeNonNegative, UnitlessQuirk::Forbid);
     case CSSPropertyAnimationFillMode:
         return consumeIdent<CSSValueNone, CSSValueForwards, CSSValueBackwards, CSSValueBoth>(range);
     case CSSPropertyAnimationIterationCount:
@@ -4071,6 +4071,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeLineWidth(m_range, m_context.mode, UnitlessQuirk::Forbid);
     case CSSPropertyTransform:
         return consumeTransform(m_range, m_context.mode);
+    case CSSPropertyTransformBox:
+        return consumeIdent<CSSValueBorderBox, CSSValueViewBox, CSSValueFillBox>(m_range);
     case CSSPropertyTransformOriginX:
     case CSSPropertyPerspectiveOriginX:
         return consumePositionX(m_range, m_context.mode);

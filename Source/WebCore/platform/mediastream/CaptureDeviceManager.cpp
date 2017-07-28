@@ -34,7 +34,6 @@
 #include "RealtimeMediaSourceCenter.h"
 #include "RealtimeMediaSourceSettings.h"
 #include <wtf/MainThread.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>
 
 using namespace WebCore;
@@ -113,7 +112,7 @@ static CaptureDeviceManager::ObserverToken nextObserverToken()
     return ++nextToken;
 }
 
-CaptureDeviceManager::ObserverToken CaptureDeviceManager::addCaptureDeviceChangedObserver(CaptureDeviceChangedCallback observer)
+CaptureDeviceManager::ObserverToken CaptureDeviceManager::addCaptureDeviceChangedObserver(CaptureDeviceChangedCallback&& observer)
 {
     auto token = nextObserverToken();
     m_observers.set(token, WTFMove(observer));

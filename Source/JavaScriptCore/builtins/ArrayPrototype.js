@@ -268,7 +268,6 @@ function map(callback /*, thisArg */)
     else
         result = new constructor(length);
 
-    var nextIndex = 0;
     for (var i = 0; i < length; i++) {
         if (!(i in array))
             continue;
@@ -654,6 +653,7 @@ function sort(comparator)
     return array;
 }
 
+@globalPrivate
 function concatSlowPath()
 {
     "use strict";

@@ -25,12 +25,11 @@
 
 #pragma once
 
+#include "CSSStyleDeclaration.h"
 #include "CSSValue.h"
 #include "ExceptionOr.h"
-#include <wtf/HashMap.h>
-#include <wtf/ListHashSet.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
@@ -65,7 +64,9 @@ public:
     bool isComplexValue() const { return m_classType == DeprecatedComplexValueClass; }
     bool isPrimitiveValue() const { return m_classType == DeprecatedPrimitiveValueClass; }
     bool isValueList() const { return m_classType == DeprecatedValueListClass; }
-    
+
+    CSSStyleDeclaration& owner() const { return m_owner; }
+
 protected:
     static const size_t ClassTypeBits = 2;
     enum DeprecatedClassType {
@@ -76,8 +77,9 @@ protected:
 
     DeprecatedClassType classType() const { return static_cast<DeprecatedClassType>(m_classType); }
 
-    DeprecatedCSSOMValue(DeprecatedClassType classType)
+    DeprecatedCSSOMValue(DeprecatedClassType classType, CSSStyleDeclaration& owner)
         : m_classType(classType)
+        , m_owner(owner)
     {
     }
 
@@ -90,16 +92,16 @@ private:
 
 protected:
     unsigned m_valueListSeparator : CSSValue::ValueListSeparatorBits;
-
-private:
     unsigned m_classType : ClassTypeBits; // ClassType
+    
+    Ref<CSSStyleDeclaration> m_owner;
 };
 
 class DeprecatedCSSOMComplexValue : public DeprecatedCSSOMValue {
 public:
-    static Ref<DeprecatedCSSOMComplexValue> create(const CSSValue& value)
+    static Ref<DeprecatedCSSOMComplexValue> create(const CSSValue& value, CSSStyleDeclaration& owner)
     {
-        return adoptRef(*new DeprecatedCSSOMComplexValue(value));
+        return adoptRef(*new DeprecatedCSSOMComplexValue(value, owner));
     }
 
     bool equals(const DeprecatedCSSOMComplexValue& other) const { return m_value->equals(other.m_value); }
@@ -108,8 +110,8 @@ public:
     unsigned cssValueType() const { return m_value->cssValueType(); }
 
 protected:
-    DeprecatedCSSOMComplexValue(const CSSValue& value)
-        : DeprecatedCSSOMValue(DeprecatedComplexValueClass)
+    DeprecatedCSSOMComplexValue(const CSSValue& value, CSSStyleDeclaration& owner)
+        : DeprecatedCSSOMValue(DeprecatedComplexValueClass, owner)
         , m_value(const_cast<CSSValue&>(value))
     {
     }

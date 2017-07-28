@@ -38,6 +38,7 @@
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -133,6 +134,7 @@ enum AccessibilityRole {
     FeedRole,
     FigureRole,
     FooterRole,
+    FootnoteRole,
     FormRole,
     GridRole,
     GridCellRole,
@@ -478,7 +480,9 @@ enum AccessibilityMathScriptObjectType { Subscript, Superscript };
 enum AccessibilityMathMultiscriptObjectType { PreSubscript, PreSuperscript, PostSubscript, PostSuperscript };
 
 enum AccessibilityARIACurrentState { ARIACurrentFalse, ARIACurrentTrue, ARIACurrentPage, ARIACurrentStep, ARIACurrentLocation, ARIACurrentDate, ARIACurrentTime };
-
+    
+bool nodeHasPresentationRole(Node*);
+    
 class AccessibilityObject : public RefCounted<AccessibilityObject> {
 protected:
     AccessibilityObject();
@@ -644,6 +648,9 @@ public:
     virtual AccessibilityObjectInclusion defaultObjectInclusion() const;
     bool accessibilityIsIgnoredByDefault() const;
     
+    bool isShowingValidationMessage() const;
+    String validationMessage() const;
+    
     unsigned blockquoteLevel() const;
     virtual int headingLevel() const { return 0; }
     virtual int tableLevel() const { return 0; }
@@ -662,10 +669,19 @@ public:
 
     virtual bool supportsARIAOwns() const { return false; }
     void ariaControlsElements(AccessibilityChildrenVector&) const;
+    void ariaControlsReferencingElements(AccessibilityChildrenVector&) const;
     void ariaDescribedByElements(AccessibilityChildrenVector&) const;
+    void ariaDescribedByReferencingElements(AccessibilityChildrenVector&) const;
+    void ariaDetailsElements(AccessibilityChildrenVector&) const;
+    void ariaDetailsReferencingElements(AccessibilityChildrenVector&) const;
+    void ariaErrorMessageElements(AccessibilityChildrenVector&) const;
+    void ariaErrorMessageReferencingElements(AccessibilityChildrenVector&) const;
     void ariaFlowToElements(AccessibilityChildrenVector&) const;
+    void ariaFlowToReferencingElements(AccessibilityChildrenVector&) const;
     void ariaLabelledByElements(AccessibilityChildrenVector&) const;
+    void ariaLabelledByReferencingElements(AccessibilityChildrenVector&) const;
     void ariaOwnsElements(AccessibilityChildrenVector&) const;
+    void ariaOwnsReferencingElements(AccessibilityChildrenVector&) const;
 
     virtual bool ariaHasPopup() const { return false; }
     String ariaPopupValue() const;
@@ -679,7 +695,7 @@ public:
     AccessibilitySortDirection sortDirection() const;
     virtual bool canvasHasFallbackContent() const { return false; }
     bool supportsRangeValue() const;
-    String identifierAttribute() const;
+    const AtomicString& identifierAttribute() const;
     void classList(Vector<String>&) const;
     virtual String roleDescription() const;
     AccessibilityARIACurrentState ariaCurrentState() const;
@@ -803,7 +819,7 @@ public:
     virtual URL url() const { return URL(); }
     virtual VisibleSelection selection() const { return VisibleSelection(); }
     virtual String selectedText() const { return String(); }
-    virtual const AtomicString& accessKey() const { return nullAtom; }
+    virtual const AtomicString& accessKey() const { return nullAtom(); }
     const String& actionVerb() const;
     virtual Widget* widget() const { return nullptr; }
     virtual Widget* widgetForAttachmentView() const { return nullptr; }
@@ -839,8 +855,8 @@ public:
     virtual void updateAccessibilityRole() { }
     const AccessibilityChildrenVector& children(bool updateChildrenIfNeeded = true);
     virtual void addChildren() { }
-    virtual void addChild(AccessibilityObject*) { }
-    virtual void insertChild(AccessibilityObject*, unsigned) { }
+    virtual void addChild(AccessibilityObject*);
+    virtual void insertChild(AccessibilityObject*, unsigned);
 
     virtual bool shouldIgnoreAttributeRole() const { return false; }
     
@@ -960,7 +976,7 @@ public:
     bool supportsARIALiveRegion() const;
     bool isInsideARIALiveRegion() const;
     virtual const String ariaLiveRegionStatus() const { return String(); }
-    virtual const AtomicString& ariaLiveRegionRelevant() const { return nullAtom; }
+    virtual const AtomicString& ariaLiveRegionRelevant() const { return nullAtom(); }
     virtual bool ariaLiveRegionAtomic() const { return false; }
     virtual bool isBusy() const { return false; }
     static const String defaultLiveRegionStatusForRole(AccessibilityRole);
@@ -1107,7 +1123,7 @@ public:
     AccessibilityObject* editableAncestor();
     AccessibilityObject* highestEditableAncestor();
     
-    static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const std::function<bool(const AccessibilityObject&)>&);
+    static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const WTF::Function<bool(const AccessibilityObject&)>&);
     
     void clearIsIgnoredFromParentData() { m_isIgnoredFromParentData = AccessibilityIsIgnoredFromParentData(); }
     void setIsIgnoredFromParentDataForChild(AccessibilityObject*);
@@ -1119,7 +1135,9 @@ protected:
     AccessibilityRole m_role;
     AccessibilityObjectInclusion m_lastKnownIsIgnoredValue;
     AccessibilityIsIgnoredFromParentData m_isIgnoredFromParentData;
-    
+    bool m_childrenDirty;
+    bool m_subtreeDirty;
+
     void setIsIgnoredFromParentData(AccessibilityIsIgnoredFromParentData& data) { m_isIgnoredFromParentData = data; }
 
     virtual bool computeAccessibilityIsIgnored() const { return true; }
@@ -1139,6 +1157,7 @@ protected:
     bool dispatchTouchEvent();
 
     void ariaElementsFromAttribute(AccessibilityChildrenVector&, const QualifiedName&) const;
+    void ariaElementsReferencedByAttribute(AccessibilityChildrenVector&, const QualifiedName&) const;
 
 #if PLATFORM(GTK) && HAVE(ACCESSIBILITY)
     bool allowsTextRanges() const;

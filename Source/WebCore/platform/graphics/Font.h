@@ -25,7 +25,6 @@
 #define Font_h
 
 #include "FloatRect.h"
-#include "FontBaseline.h"
 #include "FontMetrics.h"
 #include "FontPlatformData.h"
 #include "GlyphBuffer.h"
@@ -37,7 +36,6 @@
 #endif
 #include <wtf/BitVector.h>
 #include <wtf/Optional.h>
-#include <wtf/TypeCasts.h>
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(COCOA)
@@ -136,6 +134,7 @@ public:
 
     const Font& verticalRightOrientationFont() const;
     const Font& uprightOrientationFont() const;
+    const Font& invisibleFont() const;
 
     bool hasVerticalGlyphs() const { return m_hasVerticalGlyphs; }
     bool isTextOrientationFallback() const { return m_isTextOrientationFallback; }
@@ -239,6 +238,9 @@ private:
     RefPtr<Font> platformCreateScaledFont(const FontDescription&, float scaleFactor) const;
 
     void removeFromSystemFallbackCache();
+    
+    struct DerivedFonts;
+    DerivedFonts& ensureDerivedFontData() const;
 
 #if PLATFORM(WIN)
     void initGDIFont();
@@ -276,12 +278,13 @@ private:
 #endif
     public:
 
-        RefPtr<Font> smallCaps;
-        RefPtr<Font> noSynthesizableFeatures;
-        RefPtr<Font> emphasisMark;
-        RefPtr<Font> brokenIdeograph;
-        RefPtr<Font> verticalRightOrientation;
-        RefPtr<Font> uprightOrientation;
+        RefPtr<Font> smallCapsFont;
+        RefPtr<Font> noSynthesizableFeaturesFont;
+        RefPtr<Font> emphasisMarkFont;
+        RefPtr<Font> brokenIdeographFont;
+        RefPtr<Font> verticalRightOrientationFont;
+        RefPtr<Font> uprightOrientationFont;
+        RefPtr<Font> invisibleFont;
     };
 
     mutable std::unique_ptr<DerivedFonts> m_derivedFontData;

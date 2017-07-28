@@ -105,6 +105,7 @@ static CachedResource* createResource(CachedResource::Type type, CachedResourceR
         return new CachedFont(WTFMove(request), sessionID);
     case CachedResource::MediaResource:
     case CachedResource::RawResource:
+    case CachedResource::Icon:
     case CachedResource::MainResource:
         return new CachedRawResource(WTFMove(request), type, sessionID);
 #if ENABLE(XSLT)
@@ -276,6 +277,11 @@ CachedResourceHandle<CachedRawResource> CachedResourceLoader::requestMedia(Cache
     return downcast<CachedRawResource>(requestResource(CachedResource::MediaResource, WTFMove(request)).get());
 }
 
+CachedResourceHandle<CachedRawResource> CachedResourceLoader::requestIcon(CachedResourceRequest&& request)
+{
+    return downcast<CachedRawResource>(requestResource(CachedResource::Icon, WTFMove(request)).get());
+}
+
 CachedResourceHandle<CachedRawResource> CachedResourceLoader::requestRawResource(CachedResourceRequest&& request)
 {
     return downcast<CachedRawResource>(requestResource(CachedResource::RawResource, WTFMove(request)).get());
@@ -307,6 +313,7 @@ static MixedContentChecker::ContentType contentTypeFromResourceType(CachedResour
 #endif
 
     case CachedResource::RawResource:
+    case CachedResource::Icon:
     case CachedResource::SVGDocumentResource:
         return MixedContentChecker::ContentType::Active;
 #if ENABLE(XSLT)
@@ -357,6 +364,7 @@ bool CachedResourceLoader::checkInsecureContent(CachedResource::Type type, const
 #endif
     case CachedResource::MediaResource:
     case CachedResource::RawResource:
+    case CachedResource::Icon:
     case CachedResource::ImageResource:
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
@@ -404,6 +412,7 @@ bool CachedResourceLoader::allowedByContentSecurityPolicy(CachedResource::Type t
             return false;
         break;
     case CachedResource::SVGDocumentResource:
+    case CachedResource::Icon:
     case CachedResource::ImageResource:
         if (!m_document->contentSecurityPolicy()->allowImageFromSource(url, redirectResponseReceived))
             return false;
@@ -716,11 +725,9 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     }
 #endif
 
-#if ENABLE(WEB_TIMING)
     LoadTiming loadTiming;
     loadTiming.markStartTimeAndFetchStart();
     InitiatorContext initiatorContext = request.options().initiatorContext;
-#endif
 
     if (request.resourceRequest().url().protocolIsInHTTPFamily())
         updateHTTPRequestHeaders(type, request);
@@ -772,9 +779,9 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
             if (!shouldContinueAfterNotifyingLoadedFromMemoryCache(request, resource.get()))
                 return nullptr;
             logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::memoryCacheEntryDecisionKey(), DiagnosticLoggingKeys::usedKey());
-            memoryCache.resourceAccessed(*resource);
-#if ENABLE(WEB_TIMING)
             loadTiming.setResponseEnd(MonotonicTime::now());
+
+            memoryCache.resourceAccessed(*resource);
 
             if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled() && document() && !resource->isLoading()) {
                 auto resourceTiming = ResourceTiming::fromCache(url, request.initiatorName(), loadTiming, resource->response(), *request.origin());
@@ -787,7 +794,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
                     m_resourceTimingInfo.addResourceTiming(*resource.get(), *document(), WTFMove(resourceTiming));
                 }
             }
-#endif
+
             if (forPreload == ForPreload::No)
                 resource->setLoadPriority(request.priority());
         }
@@ -853,10 +860,10 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(Ca
 
     memoryCache.remove(resource);
     memoryCache.add(*newResource);
-#if ENABLE(WEB_TIMING)
+
     if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
         m_resourceTimingInfo.storeResourceTimingInitiatorInformation(newResource, newResource->initiatorName(), frame());
-#endif
+
     return newResource;
 }
 
@@ -872,10 +879,10 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedRe
 
     if (resource->allowsCaching() && !memoryCache.add(*resource))
         resource->setOwningCachedResourceLoader(this);
-#if ENABLE(WEB_TIMING)
+
     if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
         m_resourceTimingInfo.storeResourceTimingInitiatorInformation(resource, resource->initiatorName(), frame());
-#endif
+
     return resource;
 }
 
@@ -935,12 +942,16 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
 
     auto* textDecoder = existingResource->textResourceDecoder();
-    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset()) && !textDecoder->encodingSet())
+    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset())) {
+        if (!existingResource->hasUnknownEncoding())
+            return Reload;
+        existingResource->setHasUnknownEncoding(false);
         existingResource->setEncoding(cachedResourceRequest.charset());
+    }
 
     // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
     //        while the normal subresource policy is too loose.
-    if (existingResource->isMainOrMediaOrRawResource() && frame()) {
+    if (existingResource->isMainOrMediaOrIconOrRawResource() && frame()) {
         bool strictPolicyDisabled = frame()->loader().isStrictRawResourceValidationPolicyDisabledForTesting();
         bool canReuseRawResource = strictPolicyDisabled || downcast<CachedRawResource>(*existingResource).canReuse(request);
         if (!canReuseRawResource)

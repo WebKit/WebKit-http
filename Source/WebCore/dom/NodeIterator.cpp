@@ -27,7 +27,6 @@
 
 #include "Document.h"
 #include "NodeTraversal.h"
-#include <runtime/JSCJSValueInlines.h>
 
 namespace WebCore {
 
@@ -87,7 +86,7 @@ NodeIterator::~NodeIterator()
     root().document().detachNodeIterator(this);
 }
 
-RefPtr<Node> NodeIterator::nextNode()
+ExceptionOr<RefPtr<Node>> NodeIterator::nextNode()
 {
     RefPtr<Node> result;
 
@@ -97,7 +96,14 @@ RefPtr<Node> NodeIterator::nextNode()
         // In other words, FILTER_REJECT does not pass over descendants
         // of the rejected node. Hence, FILTER_REJECT is the same as FILTER_SKIP.
         RefPtr<Node> provisionalResult = m_candidateNode.node;
-        bool nodeWasAccepted = acceptNode(provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
+
+        auto callbackResult = acceptNode(*provisionalResult);
+        if (callbackResult.type() == CallbackResultType::ExceptionThrown)
+            return Exception { ExistingExceptionError };
+
+        ASSERT(callbackResult.type() == CallbackResultType::Success);
+
+        bool nodeWasAccepted = callbackResult.releaseReturnValue() == NodeFilter::FILTER_ACCEPT;
         if (nodeWasAccepted) {
             m_referenceNode = m_candidateNode;
             result = WTFMove(provisionalResult);
@@ -106,10 +112,10 @@ RefPtr<Node> NodeIterator::nextNode()
     }
 
     m_candidateNode.clear();
-    return result;
+    return WTFMove(result);
 }
 
-RefPtr<Node> NodeIterator::previousNode()
+ExceptionOr<RefPtr<Node>> NodeIterator::previousNode()
 {
     RefPtr<Node> result;
 
@@ -119,7 +125,14 @@ RefPtr<Node> NodeIterator::previousNode()
         // In other words, FILTER_REJECT does not pass over descendants
         // of the rejected node. Hence, FILTER_REJECT is the same as FILTER_SKIP.
         RefPtr<Node> provisionalResult = m_candidateNode.node;
-        bool nodeWasAccepted = acceptNode(provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
+
+        auto callbackResult = acceptNode(*provisionalResult);
+        if (callbackResult.type() == CallbackResultType::ExceptionThrown)
+            return Exception { ExistingExceptionError };
+
+        ASSERT(callbackResult.type() == CallbackResultType::Success);
+
+        bool nodeWasAccepted = callbackResult.releaseReturnValue() == NodeFilter::FILTER_ACCEPT;
         if (nodeWasAccepted) {
             m_referenceNode = m_candidateNode;
             result = WTFMove(provisionalResult);
@@ -128,7 +141,7 @@ RefPtr<Node> NodeIterator::previousNode()
     }
 
     m_candidateNode.clear();
-    return result;
+    return WTFMove(result);
 }
 
 void NodeIterator::nodeWillBeRemoved(Node& removedNode)

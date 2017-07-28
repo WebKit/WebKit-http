@@ -23,8 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DataDetectorsCoreSPI_h
-#define DataDetectorsCoreSPI_h
+#pragma once
+
+#if ENABLE(DATA_DETECTION)
 
 typedef struct __DDResult *DDResultRef;
 
@@ -35,9 +36,7 @@ typedef struct __DDResult *DDResultRef;
 #import <DataDetectorsCore/DataDetectorsCore.h>
 
 #if PLATFORM(IOS)
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
 #import <DataDetectorsCore/DDOptionalSource.h>
-#endif
 #import <DataDetectorsCore/DDURLifier.h>
 #endif // PLATFORM(IOS)
 
@@ -163,4 +162,5 @@ DDQueryRange DDResultGetQueryRangeForURLification(DDResultRef);
 
 WTF_EXTERN_C_END
 
-#endif // DataDetectorsCoreSPI_h
+#endif
+

@@ -165,7 +165,7 @@ void CDM::doSupportedConfigurationStep(MediaKeySystemConfiguration&& candidateCo
         // 23. Return accumulated configuration.
         callback(WTFMove(configuration));
     };
-    getConsentStatus(WTFMove(optionalConfiguration.value()), WTFMove(restrictions), consentCallback);
+    getConsentStatus(WTFMove(optionalConfiguration.value()), WTFMove(restrictions), WTFMove(consentCallback));
 }
 
 bool CDM::isPersistentType(MediaKeySessionType sessionType)
@@ -497,8 +497,7 @@ std::optional<Vector<MediaKeySystemMediaCapability>> CDM::getSupportedCapabiliti
         // FIXME: Re-enable.
 #if 0
         MediaEngineSupportParameters parameters;
-        parameters.type = contentType.mimeType();
-        parameters.codecs = codecs;
+        parameters.type = ContentType(contentType.mimeType());
         if (true /* !MediaPlayer::supportsType(parameters, nullptr) */) {
             // Try with Media Source:
             parameters.isMediaSource = true;

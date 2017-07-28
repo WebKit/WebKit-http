@@ -780,6 +780,8 @@ public:
 
     void checkConsistency();
 
+    template<typename MapFunction, typename R = typename std::result_of<MapFunction(const T&)>::type> Vector<R> map(MapFunction) const;
+
 private:
     void expandCapacity(size_t newMinCapacity);
     T* expandCapacity(size_t newMinCapacity, T*);
@@ -1457,6 +1459,16 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::reverse()
         std::swap(at(i), at(m_size - 1 - i));
 }
 
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename MapFunction, typename R>
+inline Vector<R> Vector<T, inlineCapacity, OverflowHandler, minCapacity>::map(MapFunction mapFunction) const
+{
+    Vector<R> result;
+    result.reserveInitialCapacity(size());
+    for (size_t i = 0; i < size(); ++i)
+        result.uncheckedAppend(mapFunction(at(i)));
+    return result;
+}
+
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
 inline MallocPtr<T> Vector<T, inlineCapacity, OverflowHandler, minCapacity>::releaseBuffer()
 {
@@ -1524,7 +1536,7 @@ size_t removeRepeatedElements(VectorType& vector, const Func& func)
 {
     auto end = std::unique(vector.begin(), vector.end(), func);
     size_t newSize = end - vector.begin();
-    vector.resize(newSize);
+    vector.shrink(newSize);
     return newSize;
 }
 

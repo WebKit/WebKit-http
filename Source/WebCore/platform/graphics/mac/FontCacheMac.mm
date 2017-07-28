@@ -48,12 +48,7 @@
 #import <wtf/text/AtomicStringHash.h>
 #endif
 
-#import "SoftLinking.h"
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-SOFT_LINK_FRAMEWORK(CoreText);
-SOFT_LINK_MAY_FAIL(CoreText, CTFontDescriptorCreateLastResort, CTFontDescriptorRef, (), ());
-#endif
+#import <wtf/SoftLinking.h>
 
 namespace WebCore {
 
@@ -82,6 +77,7 @@ static CGFloat toNSFontWeight(FontSelectionValue fontWeight)
 
 RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest request, float size)
 {
+    // FIXME: See comment in FontCascadeDescription::effectiveFamilyAt() in FontDescriptionCocoa.cpp
     if (equalLettersIgnoringASCIICase(family, "-webkit-system-font") || equalLettersIgnoringASCIICase(family, "-apple-system") || equalLettersIgnoringASCIICase(family, "-apple-system-font") || equalLettersIgnoringASCIICase(family, "system-ui")) {
         RetainPtr<CTFontRef> result = toCTFont([NSFont systemFontOfSize:size weight:toNSFontWeight(request.weight)]);
         if (isItalic(request.slope)) {
@@ -120,14 +116,13 @@ RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& famil
 
     if (equalLettersIgnoringASCIICase(family, "lastresort")) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-        if (canLoadCTFontDescriptorCreateLastResort()) {
-            static NeverDestroyed<RetainPtr<CTFontDescriptorRef>> lastResort = adoptCF(CTFontDescriptorCreateLastResort());
-            return adoptCF(CTFontCreateWithFontDescriptor(lastResort.get().get(), size, nullptr));
-        }
-#endif
+        static const CTFontDescriptorRef lastResort = CTFontDescriptorCreateLastResort();
+        return adoptCF(CTFontCreateWithFontDescriptor(lastResort, size, nullptr));
+#else
         // LastResort is special, so it's important to look this exact string up, and not some case-folded version.
         // We handle this here so any caching and case folding we do in our general text codepath is bypassed.
         return adoptCF(CTFontCreateWithName(CFSTR("LastResort"), size, nullptr));
+#endif
     }
 
     return nullptr;

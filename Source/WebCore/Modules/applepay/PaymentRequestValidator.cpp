@@ -28,7 +28,6 @@
 
 #if ENABLE(APPLE_PAY)
 
-#include "ExceptionCode.h"
 #include "PaymentRequest.h"
 #include <unicode/ucurr.h>
 #include <unicode/uloc.h>
@@ -68,6 +67,12 @@ ExceptionOr<void> PaymentRequestValidator::validate(const PaymentRequest& paymen
     auto validatedShippingMethods = validateShippingMethods(paymentRequest.shippingMethods());
     if (validatedShippingMethods.hasException())
         return validatedShippingMethods.releaseException();
+
+    for (auto& countryCode : paymentRequest.supportedCountries()) {
+        auto validatedCountryCode = validateCountryCode(countryCode);
+        if (validatedCountryCode.hasException())
+            return validatedCountryCode.releaseException();
+    }
 
     return { };
 }

@@ -32,6 +32,7 @@ import os
 import time
 import re
 
+from webkitpy.common.memoized import memoized
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.port.darwin import DarwinPort
 
@@ -41,7 +42,7 @@ _log = logging.getLogger(__name__)
 class MacPort(DarwinPort):
     port_name = "mac"
 
-    VERSION_FALLBACK_ORDER = ['mac-snowleopard', 'mac-lion', 'mac-mountainlion', 'mac-mavericks', 'mac-yosemite', 'mac-elcapitan', 'mac-sierra']
+    VERSION_FALLBACK_ORDER = ['mac-snowleopard', 'mac-lion', 'mac-mountainlion', 'mac-mavericks', 'mac-yosemite', 'mac-elcapitan', 'mac-sierra', 'mac-highsierra']
     SDK = 'macosx'
 
     ARCHITECTURES = ['x86_64', 'x86']
@@ -50,28 +51,33 @@ class MacPort(DarwinPort):
 
     def __init__(self, host, port_name, **kwargs):
         DarwinPort.__init__(self, host, port_name, **kwargs)
+        self._os_version = port_name.split('-')[1] if port_name.split('-') > 1 else self.host.platform.os_version
 
     def _build_driver_flags(self):
         return ['ARCHS=i386'] if self.architecture() == 'x86' else []
 
+    @memoized
     def default_baseline_search_path(self):
-        name = self._name.replace('-wk2', '')
-        wk_version = [] if self.get_option('webkit_test_runner') else ['mac-wk1']
-        if name.endswith(self.FUTURE_VERSION):
-            fallback_names = wk_version + [self.port_name]
-        else:
-            fallback_names = self.VERSION_FALLBACK_ORDER[self.VERSION_FALLBACK_ORDER.index(name):-1] + wk_version + [self.port_name]
-        # FIXME: mac-wk2 should appear at the same place as mac-wk1.
+        wk_string = 'wk1'
         if self.get_option('webkit_test_runner'):
-            fallback_names = [self._wk2_port_name(), 'wk2'] + fallback_names
+            wk_string = 'wk2'
+        fallback_names = [
+            '{}-{}-{}'.format(self.port_name, self._os_version, wk_string),
+            '{}-{}'.format(self.port_name, self._os_version),
+            '{}-{}'.format(self.port_name, wk_string),
+            self.port_name,
+        ]
+        if self.get_option('webkit_test_runner'):
+            fallback_names.append('wk2')
+
         return map(self._webkit_baseline_path, fallback_names)
 
     def configuration_specifier_macros(self):
         return {
-            "sierra+": ["sierra", "future"],
-            "elcapitan+": ["elcapitan", "sierra", "future"],
-            "mavericks+": ["mavericks", "yosemite", "elcapitan", "sierra", "future"],
-            "yosemite+": ["yosemite", "elcapitan", "sierra", "future"],
+            "highsierra+": ["highsierra", "future"],
+            "sierra+": ["sierra", "highsierra", "future"],
+            "elcapitan+": ["elcapitan", "sierra", "highsierra", "future"],
+            "yosemite+": ["yosemite", "elcapitan", "sierra", "highsierra", "future"],
         }
 
     def setup_environ_for_server(self, server_name=None):

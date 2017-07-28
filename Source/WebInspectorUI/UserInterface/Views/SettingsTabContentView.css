@@ -29,6 +29,13 @@
     overflow-y: auto;
 }
 
+.content-view.settings .navigation-bar {
+    position: -webkit-sticky;
+    top: 0;
+    z-index: 1;
+    background-color: white;
+}
+
 .content-view.settings .navigation-bar.invisible {
     visibility: hidden;
 }
@@ -50,6 +57,19 @@
     display: flex;
     margin-top: 1em;
     font-size: 13px;
+}
+
+.content-view.settings > .settings-view > .container.hidden {
+    display: none;
+}
+
+.content-view.settings > .settings-view > .container-centered {
+    display: block;
+    text-align: center;
+}
+
+.content-view.settings > .settings-view > .container button {
+    font-size: inherit;
 }
 
 .content-view.settings > .settings-view > .container > .title {

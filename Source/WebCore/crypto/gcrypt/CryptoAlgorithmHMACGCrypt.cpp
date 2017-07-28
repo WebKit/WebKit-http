@@ -33,7 +33,6 @@
 
 #include "CryptoAlgorithmHmacParamsDeprecated.h"
 #include "CryptoKeyHMAC.h"
-#include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
 #include <pal/crypto/gcrypt/Handle.h>
 #include <wtf/CryptographicUtilities.h>
@@ -146,7 +145,7 @@ ExceptionOr<void> CryptoAlgorithmHMAC::platformSign(const CryptoAlgorithmHmacPar
 {
     int algorithm = getGCryptDigestAlgorithm(parameters.hash);
     if (algorithm == GCRY_MAC_NONE)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     auto signature = calculateSignature(algorithm, key.key(), data);
     if (signature)
@@ -160,7 +159,7 @@ ExceptionOr<void> CryptoAlgorithmHMAC::platformVerify(const CryptoAlgorithmHmacP
 {
     int algorithm = getGCryptDigestAlgorithm(parameters.hash);
     if (algorithm == GCRY_MAC_NONE)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     auto signature = calculateSignature(algorithm, key.key(), data);
     if (!signature) {

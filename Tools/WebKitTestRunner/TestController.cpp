@@ -54,7 +54,6 @@
 #include <WebKit/WKPluginInformation.h>
 #include <WebKit/WKPreferencesRefPrivate.h>
 #include <WebKit/WKProtectionSpace.h>
-#include <WebKit/WKResourceLoadStatisticsManager.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
 #include <WebKit/WKTextChecker.h>
@@ -388,6 +387,7 @@ void TestController::initialize(int argc, const char* argv[])
 #if PLATFORM(MAC)
     WebCoreTestSupport::installMockGamepadProvider();
 #endif
+
     WKRetainPtr<WKStringRef> pageGroupIdentifier(AdoptWK, WKStringCreateWithUTF8CString("WebKitTestRunnerPageGroup"));
     m_pageGroup.adopt(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 }
@@ -409,6 +409,7 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
         WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
+        WKContextConfigurationSetResourceLoadStatisticsDirectory(configuration.get(), toWK(temporaryFolder + separator + "ResourceLoadStatistics").get());
     }
     return configuration;
 }
@@ -674,12 +675,14 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
     WKPreferencesSetTabToLinksEnabled(preferences, false);
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
+    WKPreferencesSetDisplayContentsEnabled(preferences, true);
 
     WKPreferencesSetMockScrollbarsEnabled(preferences, options.useMockScrollbars);
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
     WKPreferencesSetIntersectionObserverEnabled(preferences, options.enableIntersectionObserver);
     WKPreferencesSetModernMediaControlsEnabled(preferences, options.enableModernMediaControls);
     WKPreferencesSetCredentialManagementEnabled(preferences, options.enableCredentialManagement);
+    WKPreferencesSetIsSecureContextAttributeEnabled(preferences, options.enableIsSecureContextAttribute);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -713,7 +716,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
 
     WKPreferencesSetResourceTimingEnabled(preferences, true);
-
+    WKPreferencesSetUserTimingEnabled(preferences, true);
+    WKPreferencesSetMediaPreloadingEnabled(preferences, true);
     WKPreferencesSetMediaPlaybackAllowsInline(preferences, true);
     WKPreferencesSetInlineMediaPlaybackRequiresPlaysInlineAttribute(preferences, false);
 
@@ -799,8 +803,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     // Reset UserMedia permissions.
     m_userMediaPermissionRequests.clear();
     m_cachedUserMediaPermissions.clear();
-    m_isUserMediaPermissionSet = false;
-    m_isUserMediaPermissionAllowed = false;
+    setUserMediaPermission(true);
 
     // Reset Custom Policy Delegate.
     setCustomPolicyDelegate(false, false);
@@ -833,6 +836,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     m_openPanelFileURLs = nullptr;
+    
+    statisticsResetToConsistentState();
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
@@ -855,7 +860,9 @@ void TestController::reattachPageToWebProcess()
 const char* TestController::webProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(COCOA)
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    return "com.apple.WebKit.WebContent";
+#elif PLATFORM(COCOA)
     return "com.apple.WebKit.WebContent.Development";
 #else
     return "WebProcess";
@@ -865,7 +872,9 @@ const char* TestController::webProcessName()
 const char* TestController::networkProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(COCOA)
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    return "com.apple.WebKit.Networking";
+#elif PLATFORM(COCOA)
     return "com.apple.WebKit.Networking.Development";
 #else
     return "NetworkProcess";
@@ -875,7 +884,9 @@ const char* TestController::networkProcessName()
 const char* TestController::databaseProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(COCOA)
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    return "com.apple.WebKit.Databases";
+#elif PLATFORM(COCOA)
     return "com.apple.WebKit.Databases.Development";
 #else
     return "DatabaseProcess";
@@ -1007,6 +1018,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enablePointerLock = parseBooleanTestHeaderValue(value);
         if (key == "enableCredentialManagement")
             testOptions.enableCredentialManagement = parseBooleanTestHeaderValue(value);
+        if (key == "enableIsSecureContextAttribute")
+            testOptions.enableIsSecureContextAttribute = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1878,6 +1891,11 @@ void TestController::setUserMediaPermission(bool enabled)
     decidePolicyForUserMediaPermissionRequestIfPossible();
 }
 
+void TestController::resetUserMediaPermission()
+{
+    m_isUserMediaPermissionSet = false;
+}
+
 class OriginSettings : public RefCounted<OriginSettings> {
 public:
     explicit OriginSettings()
@@ -2188,96 +2206,6 @@ void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimi
     WKPageSetIgnoresViewportScaleLimits(m_mainWebView->page(), ignoresViewportScaleLimits);
 }
 
-void TestController::setStatisticsPrevalentResource(WKStringRef hostName, bool value)
-{
-    WKResourceLoadStatisticsManagerSetPrevalentResource(hostName, value);
-}
-
-bool TestController::isStatisticsPrevalentResource(WKStringRef hostName)
-{
-    return WKResourceLoadStatisticsManagerIsPrevalentResource(hostName);
-}
-
-void TestController::setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value)
-{
-    WKResourceLoadStatisticsManagerSetHasHadUserInteraction(hostName, value);
-}
-
-bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
-{
-    return WKResourceLoadStatisticsManagerIsHasHadUserInteraction(hostName);
-}
-
-void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
-{
-    WKResourceLoadStatisticsManagerSetSubframeUnderTopFrameOrigin(hostName, topFrameHostName);
-}
-
-void TestController::setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
-{
-    WKResourceLoadStatisticsManagerSetSubresourceUnderTopFrameOrigin(hostName, topFrameHostName);
-}
-    
-void TestController::setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo)
-{
-    WKResourceLoadStatisticsManagerSetSubresourceUniqueRedirectTo(hostName, hostNameRedirectedTo);
-}
-
-void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
-{
-    WKResourceLoadStatisticsManagerSetTimeToLiveUserInteraction(seconds);
-}
-
-void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
-{
-    WKResourceLoadStatisticsManagerSetTimeToLiveCookiePartitionFree(seconds);
-}
-
-void TestController::statisticsFireDataModificationHandler()
-{
-    WKResourceLoadStatisticsManagerFireDataModificationHandler();
-}
-    
-void TestController::statisticsFireShouldPartitionCookiesHandler()
-{
-    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler();
-}
-
-void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value)
-{
-    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandlerForOneDomain(hostName, value);
-}
-
-void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
-{
-    WKResourceLoadStatisticsManagerSetNotifyPagesWhenDataRecordsWereScanned(value);
-}
-    
-void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
-{
-    WKResourceLoadStatisticsManagerSetShouldClassifyResourcesBeforeDataRecordsRemoval(value);
-}
-
-void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds)
-{
-    WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);
-}
-
-void TestController::statisticsClearInMemoryAndPersistentStore()
-{
-    WKResourceLoadStatisticsManagerClearInMemoryAndPersistentStore();
-}
-
-void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
-{
-    WKResourceLoadStatisticsManagerClearInMemoryAndPersistentStoreModifiedSinceHours(hours);
-}
-    
-void TestController::statisticsResetToConsistentState()
-{
-    WKResourceLoadStatisticsManagerResetToConsistentState();
-}
-
 void TestController::terminateNetworkProcess()
 {
     WKContextTerminateNetworkProcess(platformContext());
@@ -2311,6 +2239,121 @@ void TestController::platformResetStateToConsistentValues()
 unsigned TestController::imageCountInGeneralPasteboard() const
 {
     return 0;
+}
+
+void TestController::removeAllSessionCredentials()
+{
+}
+
+#endif
+
+#if !PLATFORM(COCOA) || !WK_API_ENABLED
+
+void TestController::setStatisticsLastSeen(WKStringRef, double)
+{
+}
+    
+void TestController::setStatisticsPrevalentResource(WKStringRef, bool)
+{
+}
+
+bool TestController::isStatisticsPrevalentResource(WKStringRef)
+{
+    return false;
+}
+
+void TestController::setStatisticsHasHadUserInteraction(WKStringRef, bool)
+{
+}
+
+bool TestController::isStatisticsHasHadUserInteraction(WKStringRef)
+{
+    return false;
+}
+
+void TestController::setStatisticsGrandfathered(WKStringRef, bool)
+{
+}
+
+bool TestController::isStatisticsGrandfathered(WKStringRef)
+{
+    return false;
+}
+
+void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef, WKStringRef)
+{
+}
+
+void TestController::setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef, WKStringRef)
+{
+}
+
+void TestController::setStatisticsSubresourceUniqueRedirectTo(WKStringRef, WKStringRef)
+{
+}
+
+void TestController::setStatisticsTimeToLiveUserInteraction(double)
+{
+}
+
+void TestController::setStatisticsTimeToLiveCookiePartitionFree(double)
+{
+}
+
+void TestController::statisticsProcessStatisticsAndDataRecords()
+{
+}
+
+void TestController::statisticsUpdateCookiePartitioning()
+{
+}
+
+void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef, bool)
+{
+}
+
+void TestController::statisticsSubmitTelemetry()
+{
+}
+
+void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool)
+{
+}
+
+void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool)
+{
+}
+
+void TestController::setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool)
+{
+}
+
+void TestController::setStatisticsMinimumTimeBetweenDataRecordsRemoval(double)
+{
+}
+
+void TestController::setStatisticsGrandfatheringTime(double)
+{
+}
+
+void TestController::setStatisticsMaxStatisticsEntries(unsigned)
+{
+}
+    
+void TestController::setStatisticsPruneEntriesDownTo(unsigned)
+{
+}
+    
+void TestController::statisticsClearInMemoryAndPersistentStore()
+{
+}
+
+void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned)
+{
+}
+
+void TestController::statisticsResetToConsistentState()
+{
 }
 
 #endif

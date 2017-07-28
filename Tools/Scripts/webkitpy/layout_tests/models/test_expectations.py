@@ -61,6 +61,20 @@ class ParseError(Exception):
         return 'ParseError(warnings=%s)' % self.warnings
 
 
+class TestExpectationWarning(object):
+    def __init__(self, filename, line_number, line, error, test=None):
+        self.filename = filename
+        self.line_number = line_number
+        self.line = line
+        self.error = error
+        self.test = test
+
+        self.related_files = {}
+
+    def __str__(self):
+        return '{}:{} {} {}'.format(self.filename, self.line_number, self.error, self.test if self.test else self.line)
+
+
 class TestExpectationParser(object):
     """Provides parsing facilities for lines in the test_expectation.txt file."""
 
@@ -78,7 +92,7 @@ class TestExpectationParser(object):
 
     MISSING_BUG_WARNING = 'Test lacks BUG modifier.'
 
-    def __init__(self, port, full_test_list, allow_rebaseline_modifier):
+    def __init__(self, port, full_test_list, allow_rebaseline_modifier, shorten_filename=lambda x: x):
         self._port = port
         self._test_configuration_converter = TestConfigurationConverter(set(port.all_test_configurations()), port.configuration_specifier_macros())
         if full_test_list is None:
@@ -86,6 +100,7 @@ class TestExpectationParser(object):
         else:
             self._full_test_list = set(full_test_list)
         self._allow_rebaseline_modifier = allow_rebaseline_modifier
+        self._shorten_filename = shorten_filename
 
     def parse(self, filename, expectations_string):
         expectation_lines = []
@@ -186,6 +201,8 @@ class TestExpectationParser(object):
             # time you update TestExpectations without syncing
             # the LayoutTests directory
             expectation_line.warnings.append('Path does not exist.')
+            expected_path = self._shorten_filename(self._port.abspath_for_test(expectation_line.name))
+            expectation_line.related_files[expected_path] = None
             return False
         return True
 
@@ -209,7 +226,7 @@ class TestExpectationParser(object):
 
     # FIXME: Update the original modifiers and remove this once the old syntax is gone.
     _configuration_tokens_list = [
-        'Mac', 'SnowLeopard', 'Lion', 'MountainLion', 'Mavericks', 'Yosemite', 'ElCapitan', 'Sierra',
+        'Mac', 'SnowLeopard', 'Lion', 'MountainLion', 'Mavericks', 'Yosemite', 'ElCapitan', 'Sierra', 'HighSierra',
         'Win', 'XP', 'Vista', 'Win7',
         'Linux',
         'Android',
@@ -381,6 +398,7 @@ class TestExpectationLine(object):
         self.comment = None
         self.matching_tests = []
         self.warnings = []
+        self.related_files = {}  # Dictionary of files to lines number in that file which may have caused the list of warnings.
         self.not_applicable_to_current_platform = False
 
     def is_invalid(self):
@@ -494,7 +512,7 @@ class TestExpectationLine(object):
 class TestExpectationsModel(object):
     """Represents relational store of all expectations and provides CRUD semantics to manage it."""
 
-    def __init__(self, shorten_filename=None):
+    def __init__(self, shorten_filename=lambda x: x):
         # Maps a test to its list of expectations.
         self._test_to_expectations = {}
 
@@ -509,7 +527,7 @@ class TestExpectationsModel(object):
         self._timeline_to_tests = self._dict_of_sets(TestExpectations.TIMELINES)
         self._result_type_to_tests = self._dict_of_sets(TestExpectations.RESULT_TYPES)
 
-        self._shorten_filename = shorten_filename or (lambda x: x)
+        self._shorten_filename = shorten_filename
 
     def _dict_of_sets(self, strings_to_constants):
         """Takes a dict of strings->constants and returns a dict mapping
@@ -696,34 +714,44 @@ class TestExpectationsModel(object):
         #
         # To use the "more modifiers wins" policy, change the errors for overrides
         # to be warnings and return False".
+        shortened_expectation_filename = self._shorten_filename(expectation_line.filename)
+        shortened_previous_expectation_filename = self._shorten_filename(prev_expectation_line.filename)
 
         if prev_expectation_line.matching_configurations == expectation_line.matching_configurations:
             expectation_line.warnings.append('Duplicate or ambiguous entry lines %s:%d and %s:%d.' % (
-                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
-                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
-            return True
+                shortened_previous_expectation_filename, prev_expectation_line.line_number,
+                shortened_expectation_filename, expectation_line.line_number))
 
-        if prev_expectation_line.matching_configurations >= expectation_line.matching_configurations:
+        elif prev_expectation_line.matching_configurations >= expectation_line.matching_configurations:
             expectation_line.warnings.append('More specific entry for %s on line %s:%d overrides line %s:%d.' % (expectation_line.name,
-                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
-                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
+                shortened_previous_expectation_filename, prev_expectation_line.line_number,
+                shortened_expectation_filename, expectation_line.line_number))
             # FIXME: return False if we want more specific to win.
-            return True
 
-        if prev_expectation_line.matching_configurations <= expectation_line.matching_configurations:
+        elif prev_expectation_line.matching_configurations <= expectation_line.matching_configurations:
             expectation_line.warnings.append('More specific entry for %s on line %s:%d overrides line %s:%d.' % (expectation_line.name,
-                self._shorten_filename(expectation_line.filename), expectation_line.line_number,
-                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number))
-            return True
+                shortened_expectation_filename, expectation_line.line_number,
+                shortened_previous_expectation_filename, prev_expectation_line.line_number))
 
-        if prev_expectation_line.matching_configurations & expectation_line.matching_configurations:
+        elif prev_expectation_line.matching_configurations & expectation_line.matching_configurations:
             expectation_line.warnings.append('Entries for %s on lines %s:%d and %s:%d match overlapping sets of configurations.' % (expectation_line.name,
-                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
-                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
-            return True
+                shortened_previous_expectation_filename, prev_expectation_line.line_number,
+                shortened_expectation_filename, expectation_line.line_number))
 
-        # Configuration sets are disjoint, then.
-        return False
+        else:
+            # Configuration sets are disjoint.
+            return False
+
+        # Missing files will be 'None'. It should be impossible to have a missing file which also has a line associated with it.
+        assert shortened_previous_expectation_filename not in expectation_line.related_files or expectation_line.related_files[shortened_previous_expectation_filename] is not None
+        expectation_line.related_files[shortened_previous_expectation_filename] = expectation_line.related_files.get(shortened_previous_expectation_filename, [])
+        expectation_line.related_files[shortened_previous_expectation_filename].append(prev_expectation_line.line_number)
+
+        assert shortened_expectation_filename not in prev_expectation_line.related_files or prev_expectation_line.related_files[shortened_expectation_filename] is not None
+        prev_expectation_line.related_files[shortened_expectation_filename] = prev_expectation_line.related_files.get(shortened_expectation_filename, [])
+        prev_expectation_line.related_files[shortened_expectation_filename].append(expectation_line.line_number)
+
+        return True
 
 
 class TestExpectations(object):
@@ -853,7 +881,7 @@ class TestExpectations(object):
         self._test_config = port.test_configuration()
         self._is_lint_mode = expectations_to_lint is not None
         self._model = TestExpectationsModel(self._shorten_filename)
-        self._parser = TestExpectationParser(port, tests, self._is_lint_mode)
+        self._parser = TestExpectationParser(port, tests, self._is_lint_mode, self._shorten_filename)
         self._port = port
         self._skipped_tests_warnings = []
         self._expectations = []
@@ -938,8 +966,11 @@ class TestExpectations(object):
         warnings = []
         for expectation in self._expectations:
             for warning in expectation.warnings:
-                warnings.append('%s:%d %s %s' % (self._shorten_filename(expectation.filename), expectation.line_number,
-                                warning, expectation.name if expectation.expectations else expectation.original_string))
+                warning = TestExpectationWarning(
+                    self._shorten_filename(expectation.filename), expectation.line_number,
+                    expectation.original_string, warning, expectation.name if expectation.expectations else None)
+                warning.related_files = expectation.related_files
+                warnings.append(warning)
 
         if warnings:
             self._has_warnings = True

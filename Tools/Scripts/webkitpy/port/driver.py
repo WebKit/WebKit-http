@@ -241,7 +241,7 @@ class Driver(object):
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
     def _get_crash_log(self, stdout, stderr, newer_than):
-        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than)
+        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than, target_host=self._target_host)
 
     def _command_wrapper(self):
         # Hook for injecting valgrind or other runtime instrumentation, used by e.g. tools/valgrind/valgrind_tests.py.
@@ -312,7 +312,7 @@ class Driver(object):
         if self._crashed_process_name:
             return True
         if self._server_process.has_crashed():
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         return False
@@ -353,8 +353,6 @@ class Driver(object):
         environment['LOCAL_RESOURCE_ROOT'] = str(self._port.layout_tests_dir())
         environment['ASAN_OPTIONS'] = "allocator_may_return_null=1"
         environment['__XPC_ASAN_OPTIONS'] = environment['ASAN_OPTIONS']
-        if 'WEBKIT_OUTPUTDIR' in os.environ:
-            environment['WEBKIT_OUTPUTDIR'] = os.environ['WEBKIT_OUTPUTDIR']
         if self._profiler:
             environment = self._profiler.adjusted_environment(environment)
         return environment
@@ -453,7 +451,7 @@ class Driver(object):
     def _check_for_driver_crash_or_unresponsiveness(self, error_line):
         crashed_check = error_line.rstrip('\r\n')
         if crashed_check == "#CRASHED":
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         elif error_line.startswith("#CRASHED - "):
@@ -552,7 +550,7 @@ class Driver(object):
         out_seen_eof = False
         asan_violation_detected = False
 
-        while not self.has_crashed():
+        while True:
             if out_seen_eof and (self.err_seen_eof or not wait_for_stderr_eof):
                 break
 
@@ -565,7 +563,8 @@ class Driver(object):
             else:
                 out_line, err_line = self._server_process.read_either_stdout_or_stderr_line(deadline)
 
-            if self._server_process.timed_out or self.has_crashed():
+            # ServerProcess returns None for time outs and crashes.
+            if out_line is None and err_line is None:
                 break
 
             if out_line:
@@ -607,7 +606,7 @@ class Driver(object):
                     self.error_from_test += err_line
 
         if asan_violation_detected and not self._crashed_process_name:
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
 
         block.decode_content()
@@ -660,6 +659,12 @@ class DriverProxy(object):
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def is_http_test(self, test_name):
         return self._driver.is_http_test(test_name)
+
+    def is_web_platform_test(self, test_name):
+        return self._driver.is_web_platform_test(test_name)
+
+    def is_webkit_specific_web_platform_test(self, test_name):
+        return self._driver.is_webkit_specific_web_platform_test(test_name)
 
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def test_to_uri(self, test_name):

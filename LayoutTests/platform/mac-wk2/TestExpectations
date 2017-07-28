@@ -23,9 +23,13 @@ fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
 [ Sierra+ ] http/tests/ssl/applepay/ [ Pass ]
+http/tests/ssl/applepay/ApplePayError.html [ Skip ]
+http/tests/ssl/applepay/ApplePaySessionV3.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
+
+http/tests/loading/basic-auth-remove-credentials.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -323,8 +327,7 @@ webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Pass Failure ]
 
 # Video fullscreen is not implemented for mac wk2 in webkittestrunner
 media/media-fullscreen-loop-inline.html [ Skip ]
-
-webkit.org/b/172094 [ Debug ] imported/w3c/web-platform-tests/webrtc/interfaces.html [ Pass Crash ]
+media/media-fullscreen-pause-inline.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -404,6 +407,37 @@ webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 ########################################
 ### START OF (4) Features that are not supported in WebKit2 and likely never will be
+
+# WebKitTestRunner needs textInputController
+# <https://bugs.webkit.org/show_bug.cgi?id=42337>
+editing/mac/input/5576619.html
+editing/mac/input/bold-node.html
+editing/mac/input/caret-primary-bidi.html
+editing/mac/input/firstrectforcharacterrange-caret-in-br.html
+editing/mac/input/firstrectforcharacterrange-plain.html
+editing/mac/input/firstrectforcharacterrange-styled.html
+editing/mac/input/firstrectforcharacterrange-vertical.html
+editing/mac/input/hangul-enter-confirms-and-sends-keypress.html
+editing/mac/input/insert-delete-smp-symbol.html
+editing/mac/input/kotoeri-enter-to-confirm-and-newline.html
+editing/mac/input/range-for-empty-document.html
+editing/mac/input/replace-invalid-range.html
+editing/mac/input/secure-input.html
+editing/mac/input/text-input-controller.html
+editing/mac/input/text-input-controller-no-editable-no-crash.html
+editing/mac/input/wrapped-line-char-rect.html
+editing/mac/input/NSBackgroundColor-transparent.html
+editing/mac/pasteboard/paste-and-match-style-selector-event.html
+editing/mac/selection/25228.html
+
+# WebKitTestRunner needs testRunner.setCallCloseOnWebViews
+# http://webkit.org/b/46714
+accessibility/mac/search-predicate.html
+
+# AX tests that require hit testing do not work in WK2.
+webkit.org/b/71298 accessibility/mac/html-slider-indicator.html
+webkit.org/b/71298 accessibility/mac/listbox-hit-test.html
+webkit.org/b/71298 accessibility/mac/iframe-with-title-correct-hierarchy.html
 
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################
@@ -495,7 +529,7 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] media/controls/picture-in-picture.html [ Pass ]
 [ Sierra+ ] media/controls/pip-placeholder-without-video-controls.html [ Pass ]
 [ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass Timeout ]
-[ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Pass ]
+webkit.org/b/172998 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Failure ]
 [ Sierra+ ] media/fullscreen-video-going-into-pip.html [ Pass ]
 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass ]
 [ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
@@ -564,8 +598,6 @@ webkit.org/b/161539 [ Release ] http/tests/security/cross-origin-plugin-allowed.
 webkit.org/b/161742 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/keyorder.htm [ Pass Failure ]
 
 webkit.org/b/161547 [ Debug ] tiled-drawing/scrolling/fixed/four-bars-zoomed.html [ Pass Failure ]
-
-webkit.org/b/161549 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
 
 webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
@@ -636,48 +668,26 @@ webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event
 
 webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html [ Failure ]
 
-webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]
-
-webkit.org/b/170203 fast/images/animated-image-different-dest-size.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failure ]
-
 # Media loading via network cache requires Sierra or newer.
 [ ElCapitan ] http/tests/cache/disk-cache/disk-cache-media-small.html [ Failure ]
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
 
-webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
-
 webkit.org/b/170629 [ Sierra Debug ] memory/memory-pressure-simulation.html [ Pass Failure ]
 
 webkit.org/b/170484 swipe/main-frame-pinning-requirement.html [ Pass Failure ]
 
-webkit.org/b/170960 [ Sierra ] fast/mediastream/getUserMedia-webaudio.html [ Pass Timeout ]
-
-webkit.org/b/170818 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Pass Failure ]
-
-webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Pass Failure ]
-
-webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/promises-call.html [ Pass Failure ]
-
-webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Pass Failure ]
+webkit.org/b/170960 fast/mediastream/getUserMedia-webaudio.html [ Pass Timeout ]
 
 webkit.org/b/171553 [ Release ] http/tests/websocket/tests/hybi/inspector/binary.html [ Pass Failure ]
 
-webkit.org/b/172703 [ Sierra Debug ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
+webkit.org/b/172703  webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
 
 webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
 
 webkit.org/b/171862 [ Sierra Debug ] storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
-
-webkit.org/b/170870 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
-
-webkit.org/b/171895 webrtc/audio-replace-track.html [ Pass Failure Timeout ]
-
-webkit.org/b/171930 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html [ Pass Failure ]
 
 webkit.org/b/171935 [ Sierra ] tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html [ Pass Failure ]
 
@@ -687,6 +697,33 @@ webkit.org/b/171947 [ Sierra Release ] transitions/extra-transition.html [ Pass 
 
 webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
 
-webkit.org/b/168937 [ Debug ] tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html [ Pass Failure ]
+webkit.org/b/168937  tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html [ Pass Failure ]
 
-webkit.org/b/172034 [ Sierra Release ] webrtc/closing-peerconnection.html [ Pass Timeout ]
+webkit.org/b/172054 [ Sierra Debug ] loader/stateobjects/replacestate-size-iframe.html [ Pass Timeout ]
+
+webkit.org/b/172454 http/tests/navigation/statistics.html [ Pass Failure ]
+
+webkit.org/b/172666 [ Debug ] fast/images/slower-decoding-than-animation-image.html [ Pass Failure ]
+
+webkit.org/b/173188 fast/mediastream/getUserMedia-grant-persistency3.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbindex_getAll.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAllKeys.html [ Pass Failure ]
+
+webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass Timeout ]
+
+webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
+
+webkit.org/b/172397 [ Sierra Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
+
+# Currently only tests with click, not tap.
+http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
+
+webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Pass Timeout ]
+webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Pass Timeout ]
+
+webkit.org/b/172148 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html [ Pass Failure ]
+

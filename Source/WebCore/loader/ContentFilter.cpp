@@ -253,14 +253,10 @@ void ContentFilter::deliverResourceData(CachedResource& resource)
 
 static const URL& blockedPageURL()
 {
-    static LazyNeverDestroyed<URL> blockedPageURL;
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, [] {
+    static const auto blockedPageURL = makeNeverDestroyed([] () -> URL {
         auto webCoreBundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebCore"));
-        auto blockedPageCFURL = adoptCF(CFBundleCopyResourceURL(webCoreBundle, CFSTR("ContentFilterBlockedPage"), CFSTR("html"), nullptr));
-        blockedPageURL.construct(blockedPageCFURL.get());
-    });
-
+        return adoptCF(CFBundleCopyResourceURL(webCoreBundle, CFSTR("ContentFilterBlockedPage"), CFSTR("html"), nullptr)).get();
+    }());
     return blockedPageURL;
 }
 
@@ -290,10 +286,10 @@ void ContentFilter::handleProvisionalLoadFailure(const ResourceError& error)
     ASSERT(m_blockedError.failingURL() == error.failingURL());
 
     RefPtr<SharedBuffer> replacementData { m_blockingContentFilter->replacementData() };
-    ResourceResponse response { URL(), ASCIILiteral("text/html"), replacementData->size(), ASCIILiteral("UTF-8") };
+    ResourceResponse response { URL(), ASCIILiteral("text/html"), static_cast<long long>(replacementData->size()), ASCIILiteral("UTF-8") };
     SubstituteData substituteData { WTFMove(replacementData), error.failingURL(), response, SubstituteData::SessionHistoryVisibility::Hidden };
     SetForScope<bool> loadingBlockedPage { m_isLoadingBlockedPage, true };
-    m_documentLoader.frameLoader()->load(FrameLoadRequest(m_documentLoader.frame(), blockedPageURL(), ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+    m_documentLoader.frameLoader()->load(FrameLoadRequest(*m_documentLoader.frame(), blockedPageURL(), ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }
 
 } // namespace WebCore

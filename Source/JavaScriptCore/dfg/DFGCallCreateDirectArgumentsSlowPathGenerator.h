@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGCommon.h"
 #include "DFGOperations.h"
 #include "DFGSlowPathGenerator.h"
 #include "DFGSpeculativeJIT.h"
@@ -58,9 +57,8 @@ protected:
             jit->silentSpill(m_plans[i]);
         jit->callOperation(
             operationCreateDirectArguments, m_resultGPR, m_structure, m_lengthGPR, m_minCapacity);
-        GPRReg canTrample = SpeculativeJIT::pickCanTrample(m_resultGPR);
         for (unsigned i = m_plans.size(); i--;)
-            jit->silentFill(m_plans[i], canTrample);
+            jit->silentFill(m_plans[i]);
         jit->m_jit.exceptionCheck();
         jit->m_jit.loadPtr(
             MacroAssembler::Address(m_resultGPR, DirectArguments::offsetOfLength()), m_lengthGPR);

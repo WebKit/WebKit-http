@@ -38,17 +38,15 @@
 #endif
 
 
-extern "C" void _sqlite3_purgeEligiblePagerCacheMemory(void);
-
 namespace WebCore {
 
 void platformReleaseMemory(Critical)
 {
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    // FIXME: Remove this call to GSFontInitialize() once <rdar://problem/32886715> is fixed.
+    GSFontInitialize();
     GSFontPurgeFontCache();
 #endif
-
-    _sqlite3_purgeEligiblePagerCacheMemory();
 
     for (auto& pool : LayerPool::allLayerPools())
         pool->drain();
@@ -66,6 +64,8 @@ void platformReleaseMemory(Critical)
 void jettisonExpensiveObjectsOnTopLevelNavigation()
 {
 #if PLATFORM(IOS)
+    using namespace std::literals::chrono_literals;
+
     // Protect against doing excessive jettisoning during repeated navigations.
     const auto minimumTimeSinceNavigation = 2s;
 

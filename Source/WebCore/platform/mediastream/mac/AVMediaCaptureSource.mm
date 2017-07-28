@@ -168,9 +168,11 @@ AVMediaCaptureSource::~AVMediaCaptureSource()
 
 void AVMediaCaptureSource::startProducingData()
 {
-    if (!m_session)
-        setupSession();
-    
+    if (!m_session) {
+        if (!setupSession())
+            return;
+    }
+
     if ([m_session isRunning])
         return;
 
@@ -188,10 +190,10 @@ void AVMediaCaptureSource::stopProducingData()
     if ([m_session isRunning])
         [m_session stopRunning];
 
+    m_interruption = InterruptionReason::None;
 #if PLATFORM(IOS)
     m_session = nullptr;
 #endif
-
 }
 
 void AVMediaCaptureSource::beginConfiguration()
@@ -247,24 +249,29 @@ const RealtimeMediaSourceCapabilities& AVMediaCaptureSource::capabilities() cons
     return *m_capabilities;
 }
 
-void AVMediaCaptureSource::setupSession()
+bool AVMediaCaptureSource::setupSession()
 {
     if (m_session)
-        return;
+        return true;
 
     m_session = adoptNS([allocAVCaptureSessionInstance() init]);
     for (NSString* keyName in sessionKVOProperties())
         [m_session addObserver:m_objcObserver.get() forKeyPath:keyName options:NSKeyValueObservingOptionNew context:(void *)nil];
 
     [m_session beginConfiguration];
-    setupCaptureSession();
+    bool success = setupCaptureSession();
     [m_session commitConfiguration];
+
+    if (!success)
+        captureFailed();
+
+    return success;
 }
 
 void AVMediaCaptureSource::captureSessionIsRunningDidChange(bool state)
 {
     scheduleDeferredTask([this, state] {
-        if (state == m_isRunning)
+        if ((state == m_isRunning) && (state == !muted()))
             return;
 
         m_isRunning = state;
@@ -293,7 +300,7 @@ void AVMediaCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
     InterruptionReason reason = m_interruption;
 
     m_interruption = InterruptionReason::None;
-    if (reason != InterruptionReason::VideoNotAllowedInSideBySide || m_isRunning)
+    if (reason != InterruptionReason::VideoNotAllowedInSideBySide || m_isRunning || !m_session)
         return;
 
     [m_session startRunning];
@@ -311,10 +318,12 @@ void AVMediaCaptureSource::setAudioSampleBufferDelegate(AVCaptureAudioDataOutput
     [audioOutput setSampleBufferDelegate:m_objcObserver.get() queue:globaAudioCaptureSerialQueue()];
 }
 
-AudioSourceProvider* AVMediaCaptureSource::audioSourceProvider()
+bool AVMediaCaptureSource::interrupted() const
 {
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    if (m_interruption != InterruptionReason::None)
+        return true;
+
+    return RealtimeMediaSource::interrupted();
 }
 
 NSArray<NSString*>* sessionKVOProperties()

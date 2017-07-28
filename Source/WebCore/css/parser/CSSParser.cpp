@@ -40,7 +40,6 @@
 #include "CSSVariableReferenceValue.h"
 #include "Document.h"
 #include "Element.h"
-#include "Page.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
@@ -146,7 +145,7 @@ RefPtr<StyleRuleKeyframe> CSSParser::parseKeyframeRule(const String& string)
 bool CSSParser::parseSupportsCondition(const String& condition)
 {
     CSSParserImpl parser(m_context, condition);
-    return CSSSupportsParser::supportsCondition(parser.tokenizer()->tokenRange(), parser) == CSSSupportsParser::Supported;
+    return CSSSupportsParser::supportsCondition(parser.tokenizer()->tokenRange(), parser, CSSSupportsParser::ForWindowCSS) == CSSSupportsParser::Supported;
 }
 
 Color CSSParser::parseColor(const String& string, bool strict)
@@ -288,11 +287,11 @@ std::unique_ptr<Vector<double>> CSSParser::parseKeyframeKeyList(const String& se
 RefPtr<CSSValue> CSSParser::parseFontFaceDescriptor(CSSPropertyID propertyID, const String& propertyValue, const CSSParserContext& context)
 {
     StringBuilder builder;
-    builder.append("@font-face { ");
+    builder.appendLiteral("@font-face { ");
     builder.append(getPropertyNameString(propertyID));
-    builder.append(" : ");
+    builder.appendLiteral(" : ");
     builder.append(propertyValue);
-    builder.append("; }");
+    builder.appendLiteral("; }");
     RefPtr<StyleRuleBase> rule = parseRule(context, nullptr, builder.toString());
     if (!rule || !rule->isFontFaceRule())
         return nullptr;

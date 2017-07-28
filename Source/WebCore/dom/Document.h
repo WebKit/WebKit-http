@@ -38,7 +38,7 @@
 #include "FrameDestructionObserver.h"
 #include "MediaProducer.h"
 #include "MutationObserver.h"
-#include "OrientationNotifer.h"
+#include "OrientationNotifier.h"
 #include "PageVisibilityState.h"
 #include "PlatformEvent.h"
 #include "ReferrerPolicy.h"
@@ -52,16 +52,21 @@
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
-#include <chrono>
 #include <memory>
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
+#include <wtf/Optional.h>
+#include <wtf/Variant.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
 #if PLATFORM(IOS)
 #include "EventTrackingRegions.h"
+#endif
+
+#if ENABLE(IOS_TOUCH_EVENTS)
+#include <wtf/ThreadingPrimitives.h>
 #endif
 
 namespace JSC {
@@ -82,7 +87,7 @@ class CachedCSSStyleSheet;
 class CachedFrameBase;
 class CachedResourceLoader;
 class CachedScript;
-class CanvasRenderingContext;
+class CanvasRenderingContext2D;
 class CharacterData;
 class Comment;
 class ConstantPropertyMap;
@@ -168,6 +173,9 @@ class TextResourceDecoder;
 class TreeWalker;
 class VisibilityChangeClient;
 class VisitedLinkState;
+class WebGL2RenderingContext;
+class WebGLRenderingContext;
+class WebGPURenderingContext;
 class XPathEvaluator;
 class XPathExpression;
 class XPathNSResolver;
@@ -183,10 +191,6 @@ class TransformSource;
 
 #if ENABLE(DASHBOARD_SUPPORT)
 struct AnnotatedRegionValue;
-#endif
-
-#if ENABLE(IOS_TOUCH_EVENTS)
-#include <WebKitAdditions/DocumentIOSForward.h>
 #endif
 
 #if ENABLE(TOUCH_EVENTS) || ENABLE(IOS_TOUCH_EVENTS)
@@ -276,7 +280,26 @@ enum class HttpEquivPolicy {
     DisabledByContentDispositionAttachmentSandbox
 };
 
-enum class CustomElementNameValidationStatus { Valid, ConflictsWithBuiltinNames, NoHyphen, ContainsUpperCase };
+enum class CustomElementNameValidationStatus {
+    Valid,
+    FirstCharacterIsNotLowercaseASCIILetter,
+    ContainsNoHyphen,
+    ContainsUppercaseASCIILetter,
+    ContainsDisallowedCharacter,
+    ConflictsWithStandardElementName
+};
+
+using RenderingContext = Variant<
+#if ENABLE(WEBGL)
+    RefPtr<WebGLRenderingContext>,
+#endif
+#if ENABLE(WEBGL2)
+    RefPtr<WebGL2RenderingContext>,
+#endif
+#if ENABLE(WEBGPU)
+    RefPtr<WebGPURenderingContext>,
+#endif
+    RefPtr<CanvasRenderingContext2D>>;
 
 class Document
     : public ContainerNode
@@ -440,11 +463,6 @@ public:
     String documentURI() const { return m_documentURI; }
     WEBCORE_EXPORT void setDocumentURI(const String&);
 
-#if ENABLE(WEB_REPLAY)
-    JSC::InputCursor& inputCursor();
-    void setInputCursor(Ref<JSC::InputCursor>&&);
-#endif
-
     using VisibilityState = PageVisibilityState;
     WEBCORE_EXPORT VisibilityState visibilityState() const;
     void visibilityStateChanged();
@@ -590,10 +608,16 @@ public:
     
     WEBCORE_EXPORT DocumentLoader* loader() const;
 
-    WEBCORE_EXPORT void open(Document* ownerDocument = nullptr);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<DOMWindow>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url, const AtomicString& name, const String& features);
+    WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String& type, const String& replace);
+
+    // FIXME: We should rename this at some point and give back the name 'open' to the HTML specified ones.
+    WEBCORE_EXPORT void open(Document* responsibleDocument = nullptr);
     void implicitOpen();
 
-    // close() is the DOM API document.close()
+    WEBCORE_EXPORT ExceptionOr<void> closeForBindings();
+
+    // FIXME: We should rename this at some point and give back the name 'close' to the HTML specified one.
     WEBCORE_EXPORT void close();
     // In some situations (see the code), we ignore document.close().
     // explicitClose() bypass these checks and actually tries to close the
@@ -604,9 +628,9 @@ public:
 
     void cancelParsing();
 
-    void write(SegmentedString&& text, Document* ownerDocument = nullptr);
-    WEBCORE_EXPORT void write(const String& text, Document* ownerDocument = nullptr);
-    WEBCORE_EXPORT void writeln(const String& text, Document* ownerDocument = nullptr);
+    void write(Document* responsibleDocument, SegmentedString&&);
+    WEBCORE_EXPORT ExceptionOr<void> write(Document* responsibleDocument, Vector<String>&&);
+    WEBCORE_EXPORT ExceptionOr<void> writeln(Document* responsibleDocument, Vector<String>&&);
 
     bool wellFormed() const { return m_wellFormed; }
 
@@ -629,6 +653,7 @@ public:
     String userAgent(const URL&) const final;
 
     void disableEval(const String& errorMessage) final;
+    void disableWebAssembly(const String& errorMessage) final;
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
@@ -953,7 +978,7 @@ public:
     void cancelFocusAppearanceUpdate();
 
     // Extension for manipulating canvas drawing contexts for use in CSS
-    CanvasRenderingContext* getCSSCanvasContext(const String& type, const String& name, int width, int height);
+    std::optional<RenderingContext> getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
 
     bool isDNSPrefetchEnabled() const { return m_isDNSPrefetchEnabled; }
@@ -1055,6 +1080,7 @@ public:
     bool loadEventFinished() const { return m_loadEventFinished; }
 
     bool isContextThread() const final;
+    bool isSecureContext() const final;
     bool isJSExecutionForbidden() const final { return false; }
 
     void enqueueWindowEvent(Ref<Event>&&);
@@ -1117,8 +1143,6 @@ public:
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/DocumentIOS.h>
-#elif ENABLE(TOUCH_EVENTS)
-    Ref<Touch> createTouch(DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force) const;
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
@@ -1126,17 +1150,13 @@ public:
     DeviceOrientationController* deviceOrientationController() const;
 #endif
 
-#if ENABLE(WEB_TIMING)
     const DocumentTiming& timing() const { return m_documentTiming; }
-#endif
 
     double monotonicTimestamp() const;
 
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);
     void serviceScriptedAnimations(double timestamp);
-
-    void sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition, const IntRect& visibleRect, const IntSize& contentsSize, Element* target = nullptr);
 
     EventTarget* errorEventTarget() final;
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) final;
@@ -1202,6 +1222,7 @@ public:
 #endif
 
     void convertAbsoluteToClientQuads(Vector<FloatQuad>&, const RenderStyle&);
+    void convertAbsoluteToClientRects(Vector<FloatRect>&, const RenderStyle&);
     void convertAbsoluteToClientRect(FloatRect&, const RenderStyle&);
 
     bool hasActiveParser();
@@ -1219,7 +1240,7 @@ public:
     bool inRenderTreeUpdate() const { return m_inRenderTreeUpdate; }
 
     // Return a Locale for the default locale if the argument is null or empty.
-    Locale& getCachedLocale(const AtomicString& locale = nullAtom);
+    Locale& getCachedLocale(const AtomicString& locale = nullAtom());
 
     const Document* templateDocument() const;
     Document& ensureTemplateDocument();
@@ -1231,6 +1252,10 @@ public:
     void addDisabledFieldsetElement() { m_disabledFieldsetElementsCount++; }
     void removeDisabledFieldsetElement() { ASSERT(m_disabledFieldsetElementsCount); m_disabledFieldsetElementsCount--; }
 
+    WEBCORE_EXPORT void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
+
+    // The following addConsoleMessage function is deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     WEBCORE_EXPORT void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) final;
 
     SecurityOrigin& securityOrigin() const { return *SecurityContext::securityOrigin(); }
@@ -1283,6 +1308,9 @@ public:
     void setDeviceIDHashSalt(const String& salt) { m_idHashSalt = salt; }
     String deviceIDHashSalt() const { return m_idHashSalt; }
     void stopMediaCapture();
+    void registerForMediaStreamStateChangeCallbacks(HTMLMediaElement&);
+    void unregisterForMediaStreamStateChangeCallbacks(HTMLMediaElement&);
+    void mediaStreamCaptureStateChanged();
 #endif
 
 // FIXME: Find a better place for this functionality.
@@ -1313,6 +1341,24 @@ public:
     void orientationChanged(int orientation);
     OrientationNotifier& orientationNotifier() { return m_orientationNotifier; }
 
+    WEBCORE_EXPORT const AtomicString& bgColor() const;
+    WEBCORE_EXPORT void setBgColor(const String&);
+    WEBCORE_EXPORT const AtomicString& fgColor() const;
+    WEBCORE_EXPORT void setFgColor(const String&);
+    WEBCORE_EXPORT const AtomicString& alinkColor() const;
+    WEBCORE_EXPORT void setAlinkColor(const String&);
+    WEBCORE_EXPORT const AtomicString& linkColorForBindings() const;
+    WEBCORE_EXPORT void setLinkColorForBindings(const String&);
+    WEBCORE_EXPORT const AtomicString& vlinkColor() const;
+    WEBCORE_EXPORT void setVlinkColor(const String&);
+
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-clear, this method does nothing.
+    void clear() { }
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-captureevents, this method does nothing.
+    void captureEvents() { }
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-releaseevents, this method does nothing.
+    void releaseEvents() { }
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1325,6 +1371,8 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
     friend class IgnoreOpensDuringUnloadCountIncrementer;
+
+    bool shouldInheritContentSecurityPolicyFromOwner() const;
 
     void detachFromFrame() { observeFrame(nullptr); }
 
@@ -1355,6 +1403,8 @@ private:
     void refScriptExecutionContext() final { ref(); }
     void derefScriptExecutionContext() final { deref(); }
 
+    // The following addMessage function is deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) final;
 
     Seconds minimumDOMTimerInterval() const final;
@@ -1583,9 +1633,7 @@ private:
 
     ViewportArguments m_viewportArguments;
 
-#if ENABLE(WEB_TIMING)
     DocumentTiming m_documentTiming;
-#endif
 
     RefPtr<MediaQueryMatcher> m_mediaQueryMatcher;
     
@@ -1599,7 +1647,7 @@ private:
     void clearScriptedAnimationController();
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
 
-    void notifyVisibilityChangedToMediaCapture();
+    void notifyMediaCaptureOfVisibilityChanged();
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;
@@ -1638,10 +1686,6 @@ private:
     Document* m_templateDocumentHost { nullptr }; // Manually managed weakref (backpointer from m_templateDocument).
 
     Ref<CSSFontSelector> m_fontSelector;
-
-#if ENABLE(WEB_REPLAY)
-    Ref<JSC::InputCursor> m_inputCursor;
-#endif
 
     HashSet<MediaProducer*> m_audioProducers;
 
@@ -1763,6 +1807,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    HashSet<HTMLMediaElement*> m_mediaStreamStateChangeElements;
     String m_idHashSalt;
     bool m_hasHadActiveMediaStreamTrack { false };
 #endif
@@ -1798,11 +1843,6 @@ inline AXObjectCache* Document::existingAXObjectCache() const
 }
 
 // These functions are here because they require the Document class definition and we want to inline them.
-
-inline bool Node::isDocumentNode() const
-{
-    return this == &document();
-}
 
 inline ScriptExecutionContext* Node::scriptExecutionContext() const
 {

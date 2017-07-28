@@ -166,8 +166,6 @@ PASS Interfaces for marquee
 PASS Interfaces for MARQUEE 
 PASS Interfaces for menu 
 PASS Interfaces for MENU 
-FAIL Interfaces for menuitem assert_equals: Element menuitem should have HTMLMenuItemElement as its primary interface. expected "[object HTMLMenuItemElement]" but got "[object HTMLUnknownElement]"
-FAIL Interfaces for MENUITEM assert_equals: Element MENUITEM should have HTMLMenuItemElement as its primary interface. expected "[object HTMLMenuItemElement]" but got "[object HTMLUnknownElement]"
 PASS Interfaces for meta 
 PASS Interfaces for META 
 PASS Interfaces for meter 
@@ -292,6 +290,6 @@ PASS Interfaces for wbr
 PASS Interfaces for WBR 
 PASS Interfaces for xmp 
 PASS Interfaces for XMP 
-FAIL Interfaces for å-bar assert_equals: Element å-bar should have HTMLUnknownElement as its primary interface. expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
-FAIL Interfaces for Å-BAR assert_equals: Element Å-BAR should have HTMLUnknownElement as its primary interface. expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
+PASS Interfaces for å-bar 
+PASS Interfaces for Å-BAR 
 

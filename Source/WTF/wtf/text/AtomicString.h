@@ -22,6 +22,7 @@
 #define AtomicString_h
 
 #include <utility>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/AtomicStringImpl.h>
 #include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/WTFString.h>
@@ -47,7 +48,6 @@ public:
     AtomicString(const char*);
     AtomicString(const LChar*, unsigned length);
     AtomicString(const UChar*, unsigned length);
-    AtomicString(const UChar*, unsigned length, unsigned existingHash);
     AtomicString(const UChar*);
 
     template<size_t inlineCapacity>
@@ -71,12 +71,12 @@ public:
     {
     }
 
-    template<unsigned charactersCount>
-    ALWAYS_INLINE AtomicString(const char (&characters)[charactersCount], ConstructFromLiteralTag)
-        : m_string(AtomicStringImpl::addLiteral(characters, charactersCount - 1))
+    template<unsigned characterCount>
+    ALWAYS_INLINE AtomicString(const char (&characters)[characterCount], ConstructFromLiteralTag)
+        : m_string(AtomicStringImpl::addLiteral(characters, characterCount - 1))
     {
-        COMPILE_ASSERT(charactersCount > 1, AtomicStringFromLiteralNotEmpty);
-        COMPILE_ASSERT((charactersCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), AtomicStringFromLiteralCannotOverflow);
+        COMPILE_ASSERT(characterCount > 1, AtomicStringFromLiteralNotEmpty);
+        COMPILE_ASSERT((characterCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), AtomicStringFromLiteralCannotOverflow);
     }
 
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
@@ -248,11 +248,6 @@ inline AtomicString::AtomicString(const UChar* s, unsigned length)
 {
 }
 
-inline AtomicString::AtomicString(const UChar* s, unsigned length, unsigned existingHash)
-    : m_string(AtomicStringImpl::add(s, length, existingHash))
-{
-}
-
 inline AtomicString::AtomicString(const UChar* s)
     : m_string(AtomicStringImpl::add(s))
 {
@@ -304,31 +299,35 @@ inline AtomicString::AtomicString(NSString* s)
 
 // Define external global variables for the commonly used atomic strings.
 // These are only usable from the main thread.
-#ifndef ATOMICSTRING_HIDE_GLOBALS
-extern const WTF_EXPORTDATA AtomicString nullAtom;
-extern const WTF_EXPORTDATA AtomicString emptyAtom;
-extern const WTF_EXPORTDATA AtomicString starAtom;
-extern const WTF_EXPORTDATA AtomicString xmlAtom;
-extern const WTF_EXPORTDATA AtomicString xmlnsAtom;
+extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> nullAtomData;
+extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> emptyAtomData;
+extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> starAtomData;
+extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlAtomData;
+extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlnsAtomData;
+
+inline const AtomicString& nullAtom() { return nullAtomData.get(); }
+inline const AtomicString& emptyAtom() { return emptyAtomData.get(); }
+inline const AtomicString& starAtom() { return starAtomData.get(); }
+inline const AtomicString& xmlAtom() { return xmlAtomData.get(); }
+inline const AtomicString& xmlnsAtom() { return xmlnsAtomData.get(); }
 
 inline AtomicString AtomicString::fromUTF8(const char* characters, size_t length)
 {
     if (!characters)
-        return nullAtom;
+        return nullAtom();
     if (!length)
-        return emptyAtom;
+        return emptyAtom();
     return fromUTF8Internal(characters, characters + length);
 }
 
 inline AtomicString AtomicString::fromUTF8(const char* characters)
 {
     if (!characters)
-        return nullAtom;
+        return nullAtom();
     if (!*characters)
-        return emptyAtom;
+        return emptyAtom();
     return fromUTF8Internal(characters, nullptr);
 }
-#endif
 
 // AtomicStringHash is the default hash for AtomicString
 template<typename T> struct DefaultHash;

@@ -243,19 +243,15 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         let commentNode = event.target.enclosingNodeOrSelfWithClass("html-comment");
         let pseudoElement = event.target.enclosingNodeOrSelfWithClass("html-pseudo-element");
 
-        if (tag && treeElement._populateTagContextMenu) {
-            contextMenu.appendSeparator();
-
+        if (tag && treeElement._populateTagContextMenu)
             treeElement._populateTagContextMenu(contextMenu, event);
-        } else if (textNode && treeElement._populateTextContextMenu) {
-            contextMenu.appendSeparator();
-
+        else if (textNode && treeElement._populateTextContextMenu)
             treeElement._populateTextContextMenu(contextMenu, textNode);
-        } else if ((commentNode || pseudoElement) && treeElement._populateNodeContextMenu) {
-            contextMenu.appendSeparator();
-
+        else if ((commentNode || pseudoElement) && treeElement._populateNodeContextMenu)
             treeElement._populateNodeContextMenu(contextMenu);
-        }
+
+        const options = {excludeRevealElement: this._excludeRevealElementContextMenu};
+        WebInspector.appendContextMenuItemsForDOMNode(contextMenu, treeElement.representedObject, options);
 
         super.populateContextMenu(contextMenu, event, treeElement);
     }
@@ -468,32 +464,6 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
     {
         if (this._elementsTreeUpdater)
             this._elementsTreeUpdater._updateModifiedNodes();
-    }
-
-    _populateContextMenu(contextMenu, domNode)
-    {
-        function revealElement()
-        {
-            WebInspector.domTreeManager.inspectElement(domNode.id);
-        }
-
-        function logElement()
-        {
-            WebInspector.RemoteObject.resolveNode(domNode, WebInspector.RuntimeManager.ConsoleObjectGroup, function(remoteObject) {
-                if (!remoteObject)
-                    return;
-                let text = WebInspector.UIString("Selected Element");
-                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, true);
-            });
-        }
-
-        contextMenu.appendSeparator();
-
-        if (!this._excludeRevealElementContextMenu)
-            contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), revealElement);
-
-        if (!domNode.isInUserAgentShadowTree())
-            contextMenu.appendItem(WebInspector.UIString("Log Element"), logElement);
     }
 
     _showShadowDOMSettingChanged(event)

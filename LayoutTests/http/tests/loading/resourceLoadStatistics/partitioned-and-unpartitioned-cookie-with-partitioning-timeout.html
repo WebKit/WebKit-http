@@ -18,9 +18,9 @@
     const subPathToGetCookies = "/get-cookies.php?name1=" + firstPartyCookieName + "&name2=" + thirdPartyCookieName;
 
     function setEnableFeature(enable) {
-        if (!enable) {
+        if (!enable)
             testRunner.statisticsResetToConsistentState();
-        }
+        testRunner.setStatisticsNotifyPagesWhenDataRecordsWereScanned(enable);
         internals.setResourceLoadStatisticsEnabled(enable);
         testRunner.setCookieStoragePartitioningEnabled(enable);
     }
@@ -40,7 +40,7 @@
     }
 
     function fireShouldPartitionCookiesHandlerAndContinue() {
-        testRunner.statisticsFireShouldPartitionCookiesHandler();
+        testRunner.statisticsUpdateCookiePartitioning();
         runTest();
     }
 
@@ -115,7 +115,7 @@
         if (!testRunner.isStatisticsPrevalentResource("http://localhost"))
             testFailed("Host did not get set as prevalent resource.");
 
-        testRunner.statisticsFireShouldPartitionCookiesHandler();
+        testRunner.statisticsUpdateCookiePartitioning();
 
         testRunner.waitUntilDone();
         testRunner.dumpChildFramesAsText();

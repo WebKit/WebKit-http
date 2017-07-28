@@ -67,7 +67,6 @@
 #define WTF_COMPILER_SUPPORTS_BLOCKS COMPILER_HAS_CLANG_FEATURE(blocks)
 #define WTF_COMPILER_SUPPORTS_C_STATIC_ASSERT COMPILER_HAS_CLANG_FEATURE(c_static_assert)
 #define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS COMPILER_HAS_CLANG_FEATURE(cxx_reference_qualified_functions)
-#define WTF_COMPILER_SUPPORTS_FALLTHROUGH_WARNINGS COMPILER_HAS_CLANG_FEATURE(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
 #define WTF_COMPILER_SUPPORTS_CXX_EXCEPTIONS COMPILER_HAS_CLANG_FEATURE(cxx_exceptions)
 #define WTF_COMPILER_SUPPORTS_BUILTIN_IS_TRIVIALLY_COPYABLE COMPILER_HAS_CLANG_FEATURE(is_trivially_copyable)
 
@@ -95,8 +94,8 @@
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #define GCC_VERSION_AT_LEAST(major, minor, patch) (GCC_VERSION >= (major * 10000 + minor * 100 + patch))
 
-#if !GCC_VERSION_AT_LEAST(4, 8, 0)
-#error "Please use a newer version of GCC. WebKit requires GCC 4.8.0 or newer to compile."
+#if !GCC_VERSION_AT_LEAST(5, 0, 0)
+#error "Please use a newer version of GCC. WebKit requires GCC 5.0.0 or newer to compile."
 #endif
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
@@ -203,9 +202,25 @@
 
 /* FALLTHROUGH */
 
-#if !defined(FALLTHROUGH) && COMPILER_SUPPORTS(FALLTHROUGH_WARNINGS) && COMPILER(CLANG)
+#if !defined(FALLTHROUGH) && defined(__cplusplus) && defined(__has_cpp_attribute)
+
+#if __has_cpp_attribute(fallthrough)
+#define FALLTHROUGH [[fallthrough]]
+#elif __has_cpp_attribute(clang::fallthrough)
 #define FALLTHROUGH [[clang::fallthrough]]
+#elif __has_cpp_attribute(gnu::fallthrough)
+#define FALLTHROUGH [[gnu::fallthrough]]
 #endif
+
+#elif !defined(FALLTHROUGH) && !defined(__cplusplus)
+
+#if COMPILER(GCC)
+#if GCC_VERSION_AT_LEAST(7, 0, 0)
+#define FALLTHROUGH __attribute__ ((fallthrough))
+#endif
+#endif
+
+#endif // !defined(FALLTHROUGH) && defined(__cplusplus) && defined(__has_cpp_attribute)
 
 #if !defined(FALLTHROUGH)
 #define FALLTHROUGH
@@ -247,6 +262,18 @@
 
 #if !defined(NO_RETURN)
 #define NO_RETURN
+#endif
+
+/* NOT_TAIL_CALLED */
+
+#if !defined(NOT_TAIL_CALLED) && defined(__has_attribute)
+#if __has_attribute(not_tail_called)
+#define NOT_TAIL_CALLED __attribute__((not_tail_called))
+#endif
+#endif
+
+#if !defined(NOT_TAIL_CALLED)
+#define NOT_TAIL_CALLED
 #endif
 
 /* RETURNS_NONNULL */

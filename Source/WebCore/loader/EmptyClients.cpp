@@ -112,8 +112,8 @@ class EmptyDatabaseProvider final : public DatabaseProvider {
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const SessionID&) final
     {
-        static NeverDestroyed<Ref<InProcessIDBServer>> sharedConnection(InProcessIDBServer::create());
-        return sharedConnection.get()->connectionToServer();
+        static auto& sharedConnection = InProcessIDBServer::create().leakRef();
+        return sharedConnection.connectionToServer();
     }
 #endif
 };
@@ -131,7 +131,7 @@ class EmptyDragClient final : public DragClient {
     void willPerformDragDestinationAction(DragDestinationAction, const DragData&) final { }
     void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&) final { }
     DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) final { return DragSourceActionNone; }
-    void startDrag(DragImage, const IntPoint&, const IntPoint&, const FloatPoint&, DataTransfer&, Frame&, DragSourceAction) final { }
+    void startDrag(DragItem, DataTransfer&, Frame&) final { }
     void dragControllerDestroyed() final { }
 };
 
@@ -212,6 +212,8 @@ private:
     bool performsTwoStepPaste(DocumentFragment*) final { return false; }
     int pasteboardChangeCount() final { return 0; }
 #endif
+
+    bool performTwoStepDrop(DocumentFragment&, Range&, bool) final { return false; }
 
 #if PLATFORM(COCOA)
     NSString *userVisibleString(NSURL *) final { return nullptr; }
@@ -323,7 +325,6 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void dispatchDidReplaceStateWithinPage() final { }
     void dispatchDidPopStateWithinPage() final { }
     void dispatchWillClose() final { }
-    void dispatchDidReceiveIcon() final { }
     void dispatchDidStartProvisionalLoad() final { }
     void dispatchDidReceiveTitle(const StringWithDirection&) final { }
     void dispatchDidCommitLoad(std::optional<HasInsecureContent>) final { }
@@ -336,15 +337,15 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     Frame* dispatchCreatePage(const NavigationAction&) final { return nullptr; }
     void dispatchShow() final { }
 
-    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) final { }
-    void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, FramePolicyFunction) final;
-    void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction) final;
+    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) final { }
+    void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction&&) final;
     void cancelPolicyCheck() final { }
 
     void dispatchUnableToImplementPolicy(const ResourceError&) final { }
 
     void dispatchWillSendSubmitEvent(Ref<FormState>&&) final;
-    void dispatchWillSubmitForm(FormState&, FramePolicyFunction) final;
+    void dispatchWillSubmitForm(FormState&, FramePolicyFunction&&) final;
 
     void revertToProvisionalState(DocumentLoader*) final { }
     void setMainDocumentError(DocumentLoader*, const ResourceError&) final { }
@@ -427,8 +428,6 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void redirectDataToPlugin(Widget&) final { }
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) final { }
 
-    void registerForIconNotification(bool) final { }
-
 #if PLATFORM(COCOA)
     RemoteAXObjectRef accessibilityRemoteObject() final { return nullptr; }
     NSCachedURLResponse *willCacheResponse(DocumentLoader*, unsigned long, NSCachedURLResponse *response) const final { return response; }
@@ -486,8 +485,8 @@ class EmptyInspectorClient final : public InspectorClient {
 class EmptyPaymentCoordinatorClient final : public PaymentCoordinatorClient {
     bool supportsVersion(unsigned) final { return false; }
     bool canMakePayments() final { return false; }
-    void canMakePaymentsWithActiveCard(const String&, const String&, std::function<void(bool)> completionHandler) final { callOnMainThread([completionHandler] { completionHandler(false); }); }
-    void openPaymentSetup(const String&, const String&, std::function<void(bool)> completionHandler) final { callOnMainThread([completionHandler] { completionHandler(false); }); }
+    void canMakePaymentsWithActiveCard(const String&, const String&, WTF::Function<void(bool)>&& completionHandler) final { callOnMainThread([completionHandler = WTFMove(completionHandler)] { completionHandler(false); }); }
+    void openPaymentSetup(const String&, const String&, WTF::Function<void(bool)>&& completionHandler) final { callOnMainThread([completionHandler = WTFMove(completionHandler)] { completionHandler(false); }); }
     bool showPaymentUI(const URL&, const Vector<URL>&, const PaymentRequest&) final { return false; }
     void completeMerchantValidation(const PaymentMerchantSession&) final { }
     void completeShippingMethodSelection(std::optional<ShippingMethodUpdate>&&) final { }
@@ -606,11 +605,11 @@ void EmptyChromeClient::runOpenPanel(Frame&, FileChooser&)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, FramePolicyFunction)
+void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction)
+void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction&&)
 {
 }
 
@@ -618,7 +617,7 @@ void EmptyFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<FormState>&&)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, FramePolicyFunction)
+void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, FramePolicyFunction&&)
 {
 }
 

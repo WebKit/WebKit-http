@@ -60,6 +60,7 @@ set(WTF_HEADERS
     ListHashSet.h
     Liveness.h
     Lock.h
+    LockAlgorithmInlines.h
     LockAlgorithm.h
     LockedPrintStream.h
     Locker.h
@@ -78,6 +79,7 @@ set(WTF_HEADERS
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
+    NaturalLoops.h
     MonotonicTime.h
     Noncopyable.h
     NumberOfCores.h
@@ -132,6 +134,7 @@ set(WTF_HEADERS
     StringPrintStream.h
     SystemFree.h
     SystemTracing.h
+    ThreadGroup.h
     ThreadHolder.cpp
     ThreadMessage.h
     ThreadSafeRefCounted.h
@@ -246,6 +249,7 @@ set(WTF_SOURCES
     StackStats.cpp
     StackTrace.cpp
     StringPrintStream.cpp
+    ThreadGroup.cpp
     ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
@@ -276,7 +280,6 @@ set(WTF_SOURCES
     text/CString.cpp
     text/StringBuilder.cpp
     text/StringImpl.cpp
-    text/StringStatics.cpp
     text/StringView.cpp
     text/SymbolImpl.cpp
     text/SymbolRegistry.cpp
@@ -347,6 +350,9 @@ if (WIN32)
         ThreadSpecificWin.cpp
         ThreadingWin.cpp
     )
+    list(APPEND WTF_LIBRARIES
+        winmm
+    )
 else ()
     list(APPEND WTF_SOURCES
         OSAllocatorPosix.cpp
@@ -355,6 +361,7 @@ else ()
     )
 endif ()
 
+WEBKIT_FRAMEWORK_DECLARE(WTF)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})

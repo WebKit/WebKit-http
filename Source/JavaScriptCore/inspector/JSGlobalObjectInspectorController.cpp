@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSGlobalObjectInspectorController.h"
 
+#include "CatchScope.h"
 #include "Completion.h"
 #include "ConsoleMessage.h"
 #include "ErrorHandlingScope.h"
@@ -118,11 +119,12 @@ void JSGlobalObjectInspectorController::globalObjectDestroyed()
     m_agents.discardValues();
 }
 
-void JSGlobalObjectInspectorController::connectFrontend(FrontendChannel* frontendChannel, bool isAutomaticInspection)
+void JSGlobalObjectInspectorController::connectFrontend(FrontendChannel* frontendChannel, bool isAutomaticInspection, bool immediatelyPause)
 {
     ASSERT_ARG(frontendChannel, frontendChannel);
 
     m_isAutomaticInspection = isAutomaticInspection;
+    m_pauseAfterInitialization = immediatelyPause;
 
     bool connectedFirstFrontend = !m_frontendRouter->hasFrontends();
     m_frontendRouter->connectFrontend(frontendChannel);
@@ -155,6 +157,7 @@ void JSGlobalObjectInspectorController::disconnectFrontend(FrontendChannel* fron
     m_frontendRouter->disconnectFrontend(frontendChannel);
 
     m_isAutomaticInspection = false;
+    m_pauseAfterInitialization = false;
 
     bool disconnectedLastFrontend = !m_frontendRouter->hasFrontends();
     if (!disconnectedLastFrontend)
@@ -173,13 +176,6 @@ void JSGlobalObjectInspectorController::disconnectFrontend(FrontendChannel* fron
 void JSGlobalObjectInspectorController::dispatchMessageFromFrontend(const String& message)
 {
     m_backendDispatcher->dispatch(message);
-}
-
-void JSGlobalObjectInspectorController::pause()
-{
-    ErrorString dummyError;
-    m_debuggerAgent->enable(dummyError);
-    m_debuggerAgent->pause(dummyError);
 }
 
 void JSGlobalObjectInspectorController::appendAPIBacktrace(ScriptCallStack& callStack)
@@ -265,6 +261,13 @@ InspectorEvaluateHandler JSGlobalObjectInspectorController::evaluateHandler() co
 
 void JSGlobalObjectInspectorController::frontendInitialized()
 {
+    if (m_pauseAfterInitialization) {
+        m_pauseAfterInitialization = false;
+        ErrorString ignored;
+        m_debuggerAgent->enable(ignored);
+        m_debuggerAgent->pause(ignored);
+    }
+
 #if ENABLE(REMOTE_INSPECTOR)
     if (m_isAutomaticInspection)
         m_globalObject.inspectorDebuggable().unpauseForInitializedInspector();

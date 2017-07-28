@@ -23,7 +23,6 @@
 #include "Text.h"
 
 #include "Event.h"
-#include "ExceptionCode.h"
 #include "RenderCombineText.h"
 #include "RenderSVGInlineText.h"
 #include "RenderText.h"
@@ -54,13 +53,12 @@ Ref<Text> Text::createEditingText(Document& document, const String& data)
 
 Text::~Text()
 {
-    ASSERT(!renderer());
 }
 
 ExceptionOr<Ref<Text>> Text::splitText(unsigned offset)
 {
     if (offset > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     EventQueueScope scope;
     auto oldData = data();

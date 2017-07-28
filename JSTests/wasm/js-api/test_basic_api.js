@@ -14,6 +14,14 @@ const checkOwnPropertyDescriptor = (obj, prop, expect) => {
     assert.eq(descriptor.enumerable, expect.enumerable);
 };
 
+const checkAccessorOwnPropertyDescriptor = (obj, prop, expect) => {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
+    assert.eq(typeof descriptor.value, "undefined");
+    assert.eq(typeof descriptor.writable, "undefined");
+    assert.eq(descriptor.configurable, expect.configurable);
+    assert.eq(descriptor.enumerable, expect.enumerable);
+};
+
 const functionProperties = {
     "validate": { length: 1 },
     "compile":  { length: 1 },
@@ -61,7 +69,6 @@ for (const c in constructorProperties) {
             // FIXME the following should be WebAssembly.CompileError. https://bugs.webkit.org/show_bug.cgi?id=163768
             assert.throws(() => new WebAssembly[c](buffer), Error, `WebAssembly.Module doesn't parse at byte 0 / 0: expected a module of at least 8 bytes (evaluating 'new WebAssembly[c](buffer)')`);
         assert.instanceof(new WebAssembly[c](emptyModuleArray), WebAssembly.Module);
-        // FIXME test neutered TypedArray and TypedArrayView. https://bugs.webkit.org/show_bug.cgi?id=163899
         break;
     case "Instance":
         for (const invalid of invalidConstructorInputs)
@@ -71,7 +78,9 @@ for (const c in constructorProperties) {
         for (const invalid of invalidInstanceImports)
             assert.throws(() => new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid), TypeError, `second argument to WebAssembly.Instance must be undefined or an Object (evaluating 'new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid)')`);
         assert.isNotUndef(instance.exports);
-        checkOwnPropertyDescriptor(instance, "exports", { typeofvalue: "object", writable: true, configurable: true, enumerable: true });
+        checkAccessorOwnPropertyDescriptor(WebAssembly.Instance.prototype, "exports", { configurable: true, enumerable: false });
+        assert.throws(() => WebAssembly.Instance.prototype.exports = undefined, TypeError, `Attempted to assign to readonly property.`);
+        assert.throws(() => WebAssembly.Instance.prototype.exports, TypeError, `expected |this| value to be an instance of WebAssembly.Instance`);
         assert.isUndef(instance.exports.__proto__);
         assert.eq(Reflect.isExtensible(instance.exports), false);
         assert.eq(Symbol.iterator in instance.exports, false);

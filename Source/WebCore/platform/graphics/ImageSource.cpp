@@ -70,19 +70,12 @@ void ImageSource::clearFrameBufferCache(size_t clearBeforeFrame)
     m_decoder->clearFrameBufferCache(clearBeforeFrame);
 }
 
-void ImageSource::clear(SharedBuffer* data)
-{
-    m_decoder = nullptr;
-    m_frameCache->setDecoder(nullptr);
-    setData(data, isAllDataReceived());
-}
-
 bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
 {
     if (!data || isDecoderAvailable())
         return true;
 
-    m_decoder = ImageDecoder::create(*data, m_frameCache->sourceURL(), m_alphaOption, m_gammaAndColorProfileOption);
+    m_decoder = ImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption);
     if (!isDecoderAvailable())
         return false;
 
@@ -109,6 +102,13 @@ void ImageSource::setData(SharedBuffer* data, bool allDataReceived)
         return;
 
     m_decoder->setData(*data, allDataReceived);
+}
+
+void ImageSource::resetData(SharedBuffer* data)
+{
+    m_decoder = nullptr;
+    m_frameCache->setDecoder(nullptr);
+    setData(data, isAllDataReceived());
 }
 
 EncodedDataStatus ImageSource::dataChanged(SharedBuffer* data, bool allDataReceived)
@@ -149,8 +149,10 @@ bool ImageSource::isAllDataReceived()
     return isDecoderAvailable() ? m_decoder->isAllDataReceived() : m_frameCache->frameCount();
 }
 
-bool ImageSource::shouldUseAsyncDecoding()
+bool ImageSource::canUseAsyncDecoding()
 {
+    if (!isDecoderAvailable())
+        return false;
     // FIXME: figure out the best heuristic for enabling async image decoding.
     return size().area() * sizeof(RGBA32) >= (frameCount() > 1 ? 100 * KB : 500 * KB);
 }

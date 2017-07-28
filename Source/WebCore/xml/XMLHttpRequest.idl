@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-typedef (ArrayBufferView or ArrayBuffer) BufferSource;
 // FIXME: Add URLSearchParams and ReadableStream to the union when supported.
 typedef (Blob or BufferSource or DOMFormData or USVString) BodyInit;
 
@@ -48,8 +47,6 @@ enum XMLHttpRequestResponseType {
     JSCustomMarkFunction,
     JSGenerateToJSObject,
     JSGenerateToNativeObject,
-    PrivateIdentifier,
-    PublicIdentifier,
 ] interface XMLHttpRequest : XMLHttpRequestEventTarget {
     // event handler
     attribute EventHandler onreadystatechange;
@@ -80,13 +77,8 @@ enum XMLHttpRequestResponseType {
     ByteString getAllResponseHeaders();
     [MayThrowException] void overrideMimeType(DOMString mime);
     [SetterMayThrowException] attribute XMLHttpRequestResponseType responseType;
-    [JSBuiltin] readonly attribute any response;
-    [GetterMayThrowException, CustomGetter] readonly attribute USVString? responseText;
+    [CachedAttribute, CustomGetter] readonly attribute any response;
+    [GetterMayThrowException] readonly attribute USVString responseText;
     // FIXME: responseXML should be annotated with [Exposed=Window].
     [GetterMayThrowException] readonly attribute Document? responseXML;
-
-    // internals
-    [PrivateIdentifier] boolean responseCacheIsValid();
-    [PrivateIdentifier, Custom] any retrieveResponse();
-
 };

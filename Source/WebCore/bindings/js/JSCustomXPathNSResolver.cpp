@@ -27,6 +27,7 @@
 #include "JSCustomXPathNSResolver.h"
 
 #include "CommonVM.h"
+#include "DOMWindow.h"
 #include "Document.h"
 #include "Frame.h"
 #include "JSDOMExceptionHandling.h"
@@ -48,7 +49,7 @@ ExceptionOr<Ref<JSCustomXPathNSResolver>> JSCustomXPathNSResolver::create(ExecSt
 
     auto* resolverObject = value.getObject();
     if (!resolverObject)
-        return Exception { TYPE_MISMATCH_ERR };
+        return Exception { TypeMismatchError };
 
     return adoptRef(*new JSCustomXPathNSResolver(state.vm(), resolverObject, asJSDOMWindow(state.vmEntryGlobalObject())));
 }

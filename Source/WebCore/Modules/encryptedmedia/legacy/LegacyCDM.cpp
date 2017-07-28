@@ -46,8 +46,8 @@ namespace WebCore {
 struct CDMFactory {
     WTF_MAKE_NONCOPYABLE(CDMFactory); WTF_MAKE_FAST_ALLOCATED;
 public:
-    CDMFactory(CreateCDM constructor, CDMSupportsKeySystem supportsKeySystem, CDMSupportsKeySystemAndMimeType supportsKeySystemAndMimeType)
-        : constructor(constructor)
+    CDMFactory(CreateCDM&& constructor, CDMSupportsKeySystem supportsKeySystem, CDMSupportsKeySystemAndMimeType supportsKeySystemAndMimeType)
+        : constructor(WTFMove(constructor))
         , supportsKeySystem(supportsKeySystem)
         , supportsKeySystemAndMimeType(supportsKeySystemAndMimeType)
     {
@@ -60,30 +60,25 @@ public:
 
 static Vector<CDMFactory*>& installedCDMFactories()
 {
-    static NeverDestroyed<Vector<CDMFactory*>> cdms;
-    static bool queriedCDMs = false;
-    if (!queriedCDMs) {
-        queriedCDMs = true;
-
-        cdms.get().append(new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateClearKey>(cdm); },
-            CDMPrivateClearKey::supportsKeySystem, CDMPrivateClearKey::supportsKeySystemAndMimeType));
+    static auto cdms = makeNeverDestroyed(Vector<CDMFactory*> {
+        new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateClearKey>(cdm); },
+            CDMPrivateClearKey::supportsKeySystem, CDMPrivateClearKey::supportsKeySystemAndMimeType),
 
         // FIXME: initialize specific UA CDMs. http://webkit.org/b/109318, http://webkit.org/b/109320
-        cdms.get().append(new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateMediaPlayer>(cdm); },
-            CDMPrivateMediaPlayer::supportsKeySystem, CDMPrivateMediaPlayer::supportsKeySystemAndMimeType));
+        new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateMediaPlayer>(cdm); },
+            CDMPrivateMediaPlayer::supportsKeySystem, CDMPrivateMediaPlayer::supportsKeySystemAndMimeType),
 
 #if PLATFORM(MAC) && ENABLE(MEDIA_SOURCE)
-        cdms.get().append(new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateMediaSourceAVFObjC>(cdm); },
-            CDMPrivateMediaSourceAVFObjC::supportsKeySystem, CDMPrivateMediaSourceAVFObjC::supportsKeySystemAndMimeType));
+        new CDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateMediaSourceAVFObjC>(cdm); },
+            CDMPrivateMediaSourceAVFObjC::supportsKeySystem, CDMPrivateMediaSourceAVFObjC::supportsKeySystemAndMimeType),
 #endif
-    }
-
+    });
     return cdms;
 }
 
-void CDM::registerCDMFactory(CreateCDM constructor, CDMSupportsKeySystem supportsKeySystem, CDMSupportsKeySystemAndMimeType supportsKeySystemAndMimeType)
+void CDM::registerCDMFactory(CreateCDM&& constructor, CDMSupportsKeySystem supportsKeySystem, CDMSupportsKeySystemAndMimeType supportsKeySystemAndMimeType)
 {
-    installedCDMFactories().append(new CDMFactory(constructor, supportsKeySystem, supportsKeySystemAndMimeType));
+    installedCDMFactories().append(new CDMFactory(WTFMove(constructor), supportsKeySystem, supportsKeySystemAndMimeType));
 }
 
 static CDMFactory* CDMFactoryForKeySystem(const String& keySystem)
@@ -92,7 +87,7 @@ static CDMFactory* CDMFactoryForKeySystem(const String& keySystem)
         if (factory->supportsKeySystem(keySystem))
             return factory;
     }
-    return 0;
+    return nullptr;
 }
 
 bool CDM::supportsKeySystem(const String& keySystem)

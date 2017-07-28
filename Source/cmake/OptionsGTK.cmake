@@ -2,20 +2,20 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 17)
-set(PROJECT_VERSION_MICRO 2)
+set(PROJECT_VERSION_MICRO 5)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
-        message(FATAL_ERROR "GCC 4.9.0 is required to build WebKitGTK+, use a newer GCC version or clang")
-    endif ()
-endif ()
-
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 58 1 21)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 24 2 6)
+macro(CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE library_name current revision age)
+    math(EXPR ${library_name}_VERSION_MAJOR "${current} - ${age}")
+    set(${library_name}_VERSION_MINOR ${age})
+    set(${library_name}_VERSION_MICRO ${revision})
+    set(${library_name}_VERSION ${${library_name}_VERSION_MAJOR}.${age}.${revision})
+endmacro()
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 60 1 23)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 24 5 6)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -54,8 +54,10 @@ find_package(OpenGLES2)
 
 WEBKIT_OPTION_BEGIN()
 
+set(USE_CAIRO ON)
 set(USE_WOFF2 ON)
 set(USE_XDGMIME ON)
+SET_AND_EXPOSE_TO_BUILD(USE_GCRYPT TRUE)
 
 # For old versions of HarfBuzz that do not expose an API for the OpenType MATH
 # table, we enable our own code to parse that table.
@@ -91,7 +93,7 @@ WEBKIT_OPTION_DEFINE(USE_LIBSECRET "Whether to enable the persistent credential 
 
 # Private options specific to the GTK+ port. Changing these options is
 # completely unsupported. They are intended for use only by WebKit developers.
-WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE ON)
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_WEBKIT_HTTP_SRC "Whether to enable support for Media resources loading with WebKit" PRIVATE ON)
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_MPEGTS "Whether to enable support for MPEG-TS" PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_REDIRECTED_XCOMPOSITE_WINDOW "Whether to use a Redirected XComposite Window for accelerated compositing in X11." PRIVATE ON)
@@ -143,6 +145,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_SPELLCHECK PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_TOUCH_EVENTS PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_VIDEO PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_AUDIO PUBLIC ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEBDRIVER PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(USE_SYSTEM_MALLOC PUBLIC OFF)
 
 # Private options shared with other WebKit ports. Add options here when
@@ -153,7 +156,6 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ACCESSIBILITY PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CANVAS_PATH PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_REGIONS PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_SELECTORS_LEVEL4 PRIVATE ON)
-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATABASE_PROCESS PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DOWNLOAD_ATTRIBUTE PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTPDIR PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FULLSCREEN_API PRIVATE ON)
@@ -186,8 +188,6 @@ if (${ENABLE_X11_TARGET})
     SET_AND_EXPOSE_TO_BUILD(XP_UNIX 1)
 endif ()
 
-set(ENABLE_WEBKIT OFF)
-set(ENABLE_WEBKIT2 ON)
 set(ENABLE_PLUGIN_PROCESS ${ENABLE_NETSCAPE_PLUGIN_API})
 
 add_definitions(-DBUILDING_GTK__=1)
@@ -205,10 +205,7 @@ set(GDK_INCLUDE_DIRS ${GDK3_INCLUDE_DIRS})
 SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_GESTURES ${GTK3_SUPPORTS_GESTURES})
 SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_UNIX_PRINTING ${GTK_UNIX_PRINT_FOUND})
 
-set(glib_components gio gobject gthread gmodule)
-if (ENABLE_GAMEPAD_DEPRECATED OR ENABLE_GEOLOCATION)
-    list(APPEND glib_components gio-unix)
-endif ()
+set(glib_components gio gio-unix gobject gthread gmodule)
 find_package(GLIB 2.36 REQUIRED COMPONENTS ${glib_components})
 
 if (ENABLE_XSLT)
@@ -271,8 +268,22 @@ if (ENABLE_MEDIA_STREAM OR ENABLE_WEB_RTC)
 endif ()
 
 if (ENABLE_SUBTLE_CRYPTO)
+    find_package(Libtasn1 REQUIRED)
+    if (NOT LIBTASN1_FOUND)
+        message(FATAL_ERROR "libtasn1 is required to enable Web Crypto API support.")
+    endif ()
     if (LIBGCRYPT_VERSION VERSION_LESS 1.7.0)
         message(FATAL_ERROR "libgcrypt 1.7.0 is required to enable Web Crypto API support.")
+    endif ()
+endif ()
+
+if (ENABLE_WEBDRIVER)
+    # WebDriver requires newer versions of GLib and Soup.
+    if (PC_GLIB_VERSION VERSION_LESS "2.40")
+        message(FATAL_ERROR "GLib 2.40 is required to enable WebDriver support.")
+    endif ()
+    if (PC_LIBSOUP_VERSION VERSION_LESS "2.48")
+        message(FATAL_ERROR "libsoup 2.48 is required to enable WebDriver support.")
     endif ()
 endif ()
 
@@ -359,8 +370,13 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     endif ()
 
     if (USE_GSTREAMER_GL)
-        if (NOT PC_GSTREAMER_GL_FOUND)
-            message(FATAL_ERROR "GStreamerGL is needed for USE_GSTREAMER_GL.")
+        if (PC_GSTREAMER_VERSION VERSION_LESS "1.10")
+            set(USE_GSTREAMER_GL OFF)
+            message(STATUS "Disabling GSTREAMER_GL as the GStreamer version is older than 1.10.")
+        else ()
+            if (NOT PC_GSTREAMER_GL_FOUND)
+                message(FATAL_ERROR "GStreamerGL is needed for USE_GSTREAMER_GL.")
+            endif ()
         endif ()
     endif ()
 
@@ -438,9 +454,9 @@ set(DERIVED_SOURCES_WEBKIT2GTK_API_DIR ${DERIVED_SOURCES_WEBKIT2GTK_DIR}/webkit2
 set(FORWARDING_HEADERS_WEBKIT2GTK_DIR ${FORWARDING_HEADERS_DIR}/webkit2gtk)
 set(FORWARDING_HEADERS_WEBKIT2GTK_EXTENSION_DIR ${FORWARDING_HEADERS_DIR}/webkit2gtk-webextension)
 
-set(WebKit_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc)
-set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-${WEBKITGTK_API_VERSION}.pc)
-set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKitLegacy/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
 
 set(SHOULD_INSTALL_JS_SHELL ON)
 
@@ -469,24 +485,3 @@ macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
         set(${_list_name} "${${_list_name}_TMP}")
     endif ()
 endmacro()
-
-if (CMAKE_MAJOR_VERSION LESS 3)
-    # Before CMake 3 it was necessary to use a build script instead of using cmake --build directly
-    # to preserve colors and pretty-printing.
-
-    build_command(COMMAND_LINE_TO_BUILD)
-    # build_command unconditionally adds -i (ignore errors) for make, and there's
-    # no reasonable way to turn that off, so we just replace it with -k, which has
-    # the same effect, except that the return code will indicate that an error occurred.
-    # See: http://www.cmake.org/cmake/help/v3.0/command/build_command.html
-    string(REPLACE " -i" " -k" COMMAND_LINE_TO_BUILD ${COMMAND_LINE_TO_BUILD})
-    file(WRITE
-        ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        "#!/bin/sh\n"
-        "${COMMAND_LINE_TO_BUILD} $@"
-    )
-    file(COPY ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        DESTINATION ${CMAKE_BINARY_DIR}
-        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-    )
-endif ()

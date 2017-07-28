@@ -78,6 +78,7 @@ ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
     case CachedResource::MediaResource:
     case CachedResource::FontResource:
     case CachedResource::RawResource:
+    case CachedResource::Icon:
         return ResourceLoadPriority::Medium;
     case CachedResource::ImageResource:
         return ResourceLoadPriority::Low;
@@ -123,6 +124,7 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_origin(request.releaseOrigin())
     , m_initiatorName(request.initiatorName())
     , m_isLinkPreload(request.isLinkPreload())
+    , m_hasUnknownEncoding(request.isLinkPreload())
     , m_type(type)
 {
     ASSERT(sessionID.isValid());
@@ -394,6 +396,8 @@ static inline bool shouldCacheSchemeIndefinitely(StringView scheme)
 
 std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceResponse& response) const
 {
+    using namespace std::literals::chrono_literals;
+
     if (!response.url().protocolIsInHTTPFamily()) {
         StringView protocol = response.url().protocol();
         if (!shouldCacheSchemeIndefinitely(protocol)) {

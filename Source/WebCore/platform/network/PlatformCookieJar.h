@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformCookieJar_h
-#define PlatformCookieJar_h
+#pragma once
 
 #include <chrono>
 #include <wtf/Forward.h>
@@ -54,5 +53,3 @@ WEBCORE_EXPORT void setCookies(const NetworkStorageSession&, const Vector<Cookie
 WEBCORE_EXPORT bool getCookies(const NetworkStorageSession&, Vector<Cookie>&);
 
 }
-
-#endif

@@ -32,74 +32,35 @@
 
 #include "CryptoAlgorithmEcdsaParams.h"
 #include "CryptoKeyEC.h"
-#include "ExceptionCode.h"
+#include "GCryptUtilities.h"
 #include "ScriptExecutionContext.h"
 #include <pal/crypto/CryptoDigest.h>
-#include <pal/crypto/gcrypt/Handle.h>
-#include <pal/crypto/gcrypt/Utilities.h>
 
 namespace WebCore {
 
-static std::optional<PAL::CryptoDigest::Algorithm> hashCryptoDigestAlgorithm(CryptoAlgorithmIdentifier identifier)
+static bool extractECDSASignatureInteger(Vector<uint8_t>& signature, gcry_sexp_t signatureSexp, const char* integerName, size_t keySizeInBytes)
 {
-    switch (identifier) {
-    case CryptoAlgorithmIdentifier::SHA_1:
-        return PAL::CryptoDigest::Algorithm::SHA_1;
-    case CryptoAlgorithmIdentifier::SHA_224:
-        return PAL::CryptoDigest::Algorithm::SHA_224;
-    case CryptoAlgorithmIdentifier::SHA_256:
-        return PAL::CryptoDigest::Algorithm::SHA_256;
-    case CryptoAlgorithmIdentifier::SHA_384:
-        return PAL::CryptoDigest::Algorithm::SHA_384;
-    case CryptoAlgorithmIdentifier::SHA_512:
-        return PAL::CryptoDigest::Algorithm::SHA_512;
-    default:
-        return std::nullopt;
-    }
-}
+    // Retrieve byte data of the specified integer.
+    PAL::GCrypt::Handle<gcry_sexp_t> integerSexp(gcry_sexp_find_token(signatureSexp, integerName, 0));
+    if (!integerSexp)
+        return false;
 
-static std::optional<const char*> hashAlgorithmName(CryptoAlgorithmIdentifier identifier)
-{
-    switch (identifier) {
-    case CryptoAlgorithmIdentifier::SHA_1:
-        return "sha1";
-    case CryptoAlgorithmIdentifier::SHA_224:
-        return "sha224";
-    case CryptoAlgorithmIdentifier::SHA_256:
-        return "sha256";
-    case CryptoAlgorithmIdentifier::SHA_384:
-        return "sha384";
-    case CryptoAlgorithmIdentifier::SHA_512:
-        return "sha512";
-    default:
-        return std::nullopt;
-    }
-}
+    auto integerData = mpiData(integerSexp);
+    if (!integerData)
+        return false;
 
-std::optional<Vector<uint8_t>> mpiData(gcry_sexp_t paramSexp)
-{
-    // Retrieve the MPI value stored in the s-expression: (name mpi-data)
-    PAL::GCrypt::Handle<gcry_mpi_t> paramMPI(gcry_sexp_nth_mpi(paramSexp, 1, GCRYMPI_FMT_USG));
-    if (!paramMPI)
-        return std::nullopt;
-
-    // Query the data length first to properly prepare the buffer.
-    size_t dataLength = 0;
-    gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, paramMPI);
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return std::nullopt;
+    size_t dataSize = integerData->size();
+    if (dataSize >= keySizeInBytes) {
+        // Append the last `keySizeInBytes` bytes of the data Vector, if available.
+        signature.append(&integerData->at(dataSize - keySizeInBytes), keySizeInBytes);
+    } else {
+        // If not, prefix the binary data with zero bytes.
+        for (size_t paddingSize = keySizeInBytes - dataSize; paddingSize > 0; --paddingSize)
+            signature.uncheckedAppend(0x00);
+        signature.appendVector(*integerData);
     }
 
-    // Finally, copy the MPI data into a properly-sized buffer.
-    Vector<uint8_t> output(dataLength);
-    error = gcry_mpi_print(GCRYMPI_FMT_USG, output.data(), output.size(), nullptr, paramMPI);
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return std::nullopt;
-    }
-
-    return output;
+    return true;
 }
 
 static std::optional<Vector<uint8_t>> gcryptSign(gcry_sexp_t keySexp, const Vector<uint8_t>& data, CryptoAlgorithmIdentifier hashAlgorithmIdentifier, size_t keySizeInBytes)
@@ -147,32 +108,13 @@ static std::optional<Vector<uint8_t>> gcryptSign(gcry_sexp_t keySexp, const Vect
     }
 
     // Retrieve MPI data of the resulting r and s integers. They are concatenated into
-    // a single buffer after checking that the data length matches the key size.
-    // FIXME: But r and s integers can still be valid even if they're of shorter size.
-    // https://bugs.webkit.org/show_bug.cgi?id=171535
+    // a single buffer, properly accounting for integers that don't match the key in size.
     Vector<uint8_t> signature;
-    {
-        PAL::GCrypt::Handle<gcry_sexp_t> rSexp(gcry_sexp_find_token(signatureSexp, "r", 0));
-        if (!rSexp)
-            return std::nullopt;
+    signature.reserveInitialCapacity(keySizeInBytes * 2);
 
-        auto rData = mpiData(rSexp);
-        if (!rData || rData->size() != keySizeInBytes)
-            return std::nullopt;
-
-        signature.appendVector(*rData);
-    }
-    {
-        PAL::GCrypt::Handle<gcry_sexp_t> sSexp(gcry_sexp_find_token(signatureSexp, "s", 0));
-        if (!sSexp)
-            return std::nullopt;
-
-        auto sData = mpiData(sSexp);
-        if (!sData || sData->size() != keySizeInBytes)
-            return std::nullopt;
-
-        signature.appendVector(*sData);
-    }
+    if (!extractECDSASignatureInteger(signature, signatureSexp, "r", keySizeInBytes)
+        || !extractECDSASignatureInteger(signature, signatureSexp, "s", keySizeInBytes))
+        return std::nullopt;
 
     return signature;
 }
@@ -222,15 +164,11 @@ static std::optional<bool> gcryptVerify(gcry_sexp_t keySexp, const Vector<uint8_
         }
     }
 
-    // Perform the PK verification. We report success if there's no error returned, failure
-    // if the returned error is GPG_ERR_BAD_SIGNATURE, or an OperationError otherwise.
+    // Perform the PK verification. We report success if there's no error returned, or
+    // a failure in any other case. OperationError should not be returned at this point,
+    // avoiding spilling information about the exact cause of verification failure.
     error = gcry_pk_verify(signatureSexp, dataSexp, keySexp);
-    if (error != GPG_ERR_NO_ERROR && gcry_err_code(error) != GPG_ERR_BAD_SIGNATURE) {
-        PAL::GCrypt::logError(error);
-        return std::nullopt;
-    }
-
-    return error == GPG_ERR_NO_ERROR;
+    return { error == GPG_ERR_NO_ERROR };
 }
 
 void CryptoAlgorithmECDSA::platformSign(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)

@@ -31,7 +31,6 @@
 
 #if ENABLE(FETCH_API)
 
-#include "ExceptionCode.h"
 #include "HTTPParsers.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
@@ -167,16 +166,20 @@ ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(FetchRequest& input, con
     return initializeOptions(init);
 }
 
-ExceptionOr<void> FetchRequest::setBody(JSC::ExecState& execState, JSC::JSValue body, FetchRequest* request)
+ExceptionOr<void> FetchRequest::setBody(FetchBody::BindingDataType&& body)
 {
-    if (!body.isNull()) {
-        if (!methodCanHaveBody(m_internalRequest))
-            return Exception { TypeError };
-        ASSERT(scriptExecutionContext());
-        extractBody(*scriptExecutionContext(), execState, body);
-        if (isBodyNull())
-            return Exception { TypeError };
-    } else if (request && !request->isBodyNull()) {
+    if (!methodCanHaveBody(m_internalRequest))
+        return Exception { TypeError };
+
+    ASSERT(scriptExecutionContext());
+    extractBody(*scriptExecutionContext(), WTFMove(body));
+    updateContentType();
+    return { };
+}
+
+ExceptionOr<void> FetchRequest::setBodyFromInputRequest(FetchRequest* request)
+{
+    if (request && !request->isBodyNull()) {
         if (!methodCanHaveBody(m_internalRequest))
             return Exception { TypeError };
         m_body = WTFMove(request->m_body);

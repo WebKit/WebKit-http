@@ -24,13 +24,11 @@
 #include "CustomElementReactionQueue.h"
 #include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
-#include "JSCustomElementInterface.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "PseudoElement.h"
 #include "RenderElement.h"
 #include "ShadowRoot.h"
-#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -118,9 +116,6 @@ public:
     bool hasPendingResources() const { return m_hasPendingResources; }
     void setHasPendingResources(bool has) { m_hasPendingResources = has; }
 
-    bool hasDisplayContents() const { return m_hasDisplayContents; }
-    void setHasDisplayContents(bool value) { m_hasDisplayContents = value; }
-
 private:
     int m_tabIndex;
     unsigned short m_childIndex;
@@ -141,7 +136,6 @@ private:
     unsigned m_childrenAffectedByLastChildRules : 1;
     unsigned m_childrenAffectedByBackwardPositionalRules : 1;
     unsigned m_childrenAffectedByPropertyBasedBackwardPositionalRules : 1;
-    unsigned m_hasDisplayContents : 1;
     unsigned m_isNamedFlowContentElement : 1;
 
     RegionOversetState m_regionOversetState;
@@ -185,7 +179,6 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_childrenAffectedByLastChildRules(false)
     , m_childrenAffectedByBackwardPositionalRules(false)
     , m_childrenAffectedByPropertyBasedBackwardPositionalRules(false)
-    , m_hasDisplayContents(false)
     , m_isNamedFlowContentElement(false)
     , m_regionOversetState(RegionUndefined)
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
@@ -214,7 +207,6 @@ inline void ElementRareData::setAfterPseudoElement(RefPtr<PseudoElement>&& pseud
 inline void ElementRareData::resetComputedStyle()
 {
     m_computedStyle = nullptr;
-    m_hasDisplayContents = false;
 }
 
 inline void ElementRareData::resetStyleRelations()

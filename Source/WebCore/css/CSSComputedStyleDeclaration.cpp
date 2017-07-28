@@ -26,14 +26,12 @@
 #include "CSSComputedStyleDeclaration.h"
 
 #include "BasicShapeFunctions.h"
-#include "BasicShapes.h"
 #include "CSSAnimationController.h"
 #include "CSSAnimationTriggerScrollValue.h"
 #include "CSSAspectRatioValue.h"
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
 #include "CSSBorderImageSliceValue.h"
-#include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontStyleValue.h"
 #include "CSSFontValue.h"
@@ -52,17 +50,14 @@
 #include "CSSValuePool.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ContentData.h"
-#include "CounterContent.h"
 #include "CursorList.h"
 #include "DeprecatedCSSOMValue.h"
 #include "Document.h"
-#include "ExceptionCode.h"
+#include "FontCascade.h"
 #include "FontSelectionValueInlines.h"
 #include "FontTaggedSettings.h"
-#include "HTMLFrameOwnerElement.h"
 #include "NodeRenderStyle.h"
 #include "Pair.h"
-#include "PseudoElement.h"
 #include "Rect.h"
 #include "RenderBlock.h"
 #include "RenderBox.h"
@@ -71,14 +66,12 @@
 #include "SVGElement.h"
 #include "Settings.h"
 #include "ShapeValue.h"
-#include "StyleInheritedData.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StylePropertyShorthandFunctions.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "StyleScrollSnapPoints.h"
-#include "Text.h"
 #include "WebKitFontFamilyNames.h"
 #include "WillChangeData.h"
 #include <wtf/NeverDestroyed.h>
@@ -231,6 +224,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyTextTransform,
     CSSPropertyTop,
     CSSPropertyTransform,
+    CSSPropertyTransformBox,
     CSSPropertyTransformOrigin,
     CSSPropertyTransformStyle,
     CSSPropertyTransitionDelay,
@@ -707,41 +701,100 @@ static Ref<CSSValueList> createPositionListForLayer(CSSPropertyID propertyID, co
     return list;
 }
 
-static RefPtr<CSSValue> positionOffsetValue(const RenderStyle& style, CSSPropertyID propertyID)
+static Length getOffsetComputedLength(const RenderStyle& style, CSSPropertyID propertyID)
 {
-    Length length;
+    // If specified as a length, the corresponding absolute length; if specified as
+    // a percentage, the specified value; otherwise, 'auto'. Hence, we can just
+    // return the value in the style.
+    //
+    // See http://www.w3.org/TR/CSS21/cascade.html#computed-value
     switch (propertyID) {
-        case CSSPropertyLeft:
-            length = style.left();
-            break;
-        case CSSPropertyRight:
-            length = style.right();
-            break;
-        case CSSPropertyTop:
-            length = style.top();
-            break;
-        case CSSPropertyBottom:
-            length = style.bottom();
-            break;
-        default:
-            return nullptr;
+    case CSSPropertyLeft:
+        return style.left();
+    case CSSPropertyRight:
+        return style.right();
+    case CSSPropertyTop:
+        return style.top();
+    case CSSPropertyBottom:
+        return style.bottom();
+    default:
+        ASSERT_NOT_REACHED();
     }
 
-    if (style.hasOutOfFlowPosition()) {
-        if (length.isFixed())
-            return zoomAdjustedPixelValue(length.value(), style);
+    return { };
+}
 
-        return CSSValuePool::singleton().createValue(length);
+static LayoutUnit getOffsetUsedStyleRelative(RenderBox& box, CSSPropertyID propertyID)
+{
+    // For relatively positioned boxes, the offset is with respect to the top edges
+    // of the box itself. This ties together top/bottom and left/right to be
+    // opposites of each other.
+    //
+    // See http://www.w3.org/TR/CSS2/visuren.html#relative-positioning
+    //
+    // Specifically;
+    //   Since boxes are not split or stretched as a result of 'left' or
+    //   'right', the used values are always: left = -right.
+    // and
+    //   Since boxes are not split or stretched as a result of 'top' or
+    //   'bottom', the used values are always: top = -bottom.
+    switch (propertyID) {
+    case CSSPropertyTop:
+        return box.relativePositionOffset().height();
+    case CSSPropertyBottom:
+        return -(box.relativePositionOffset().height());
+    case CSSPropertyLeft:
+        return box.relativePositionOffset().width();
+    case CSSPropertyRight:
+        return -(box.relativePositionOffset().width());
+    default:
+        ASSERT_NOT_REACHED();
     }
 
-    if (style.hasInFlowPosition()) {
-        // FIXME: It's not enough to simply return "auto" values for one offset if the other side is defined.
-        // In other words if left is auto and right is not auto, then left's computed value is negative right().
-        // So we should get the opposite length unit and see if it is auto.
-        return CSSValuePool::singleton().createValue(length);
+    return 0;
+}
+
+static LayoutUnit getOffsetUsedStyleOutOfFlowPositioned(RenderBlock& container, RenderBox& box, CSSPropertyID propertyID)
+{
+    // For out-of-flow positioned boxes, the offset is how far an box's margin
+    // edge is offset below the edge of the box's containing block.
+    // See http://www.w3.org/TR/CSS2/visuren.html#position-props
+
+    // Margins are included in offsetTop/offsetLeft so we need to remove them here.
+    switch (propertyID) {
+    case CSSPropertyTop:
+        return box.offsetTop() - box.marginTop();
+    case CSSPropertyBottom:
+        return container.clientHeight() - (box.offsetTop() + box.offsetHeight()) - box.marginBottom();
+    case CSSPropertyLeft:
+        return box.offsetLeft() - box.marginLeft();
+    case CSSPropertyRight:
+        return container.clientWidth() - (box.offsetLeft() + box.offsetWidth()) - box.marginRight();
+    default:
+        ASSERT_NOT_REACHED();
     }
 
-    return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
+    return 0;
+}
+
+static RefPtr<CSSValue> positionOffsetValue(const RenderStyle& style, CSSPropertyID propertyID, RenderObject* renderer)
+{
+    // If the element is not displayed; return the "computed value".
+    if (!renderer || !renderer->isBox())
+        return zoomAdjustedPixelValueForLength(getOffsetComputedLength(style, propertyID), style);
+
+    // We should return the "used value".
+    auto& box = downcast<RenderBox>(*renderer);
+    auto* containingBlock = box.containingBlock();
+    if (box.isRelPositioned() || !containingBlock)
+        return zoomAdjustedPixelValue(getOffsetUsedStyleRelative(box, propertyID), style);
+    if (renderer->isOutOfFlowPositioned())
+        return zoomAdjustedPixelValue(getOffsetUsedStyleOutOfFlowPositioned(*containingBlock, box, propertyID), style);
+    // In-flow element.
+    auto offset = getOffsetComputedLength(style, propertyID);
+    if (offset.isAuto())
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
+    return zoomAdjustedPixelValueForLength(offset, style);
 }
 
 RefPtr<CSSPrimitiveValue> ComputedStyleExtractor::currentColorOrValidColor(const RenderStyle* style, const Color& color) const
@@ -1648,7 +1701,7 @@ String CSSComputedStyleDeclaration::cssText() const
 
 ExceptionOr<void> CSSComputedStyleDeclaration::setCssText(const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 RefPtr<CSSPrimitiveValue> ComputedStyleExtractor::getFontSizeCSSValuePreferringKeyword()
@@ -1917,7 +1970,7 @@ static Ref<CSSPrimitiveValue> lineHeightFromStyle(const RenderStyle& style)
         // for how high to be in pixels does include things like minimum font size and the zoom factor.
         // On the other hand, since font-size doesn't include the zoom factor, we really can't do
         // that here either.
-        return zoomAdjustedPixelValue(static_cast<int>(length.percent() * style.fontDescription().specifiedSize()) / 100, style);
+        return zoomAdjustedPixelValue(static_cast<int>(length.percent() * style.fontDescription().computedSize()) / 100, style);
     }
     return zoomAdjustedPixelValue(floatValueForLength(length, 0), style);
 }
@@ -1966,16 +2019,16 @@ Ref<CSSFontStyleValue> ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue
     return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG));
 }
 
-Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic)
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic, FontStyleAxis fontStyleAxis)
 {
-    if (auto keyword = fontStyleKeyword(italic))
+    if (auto keyword = fontStyleKeyword(italic, fontStyleAxis))
         return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(keyword.value()));
     return fontNonKeywordStyleFromStyleValue(italic);
 }
 
 static Ref<CSSFontStyleValue> fontStyleFromStyle(const RenderStyle& style)
 {
-    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic());
+    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic(), style.fontDescription().fontStyleAxis());
 }
 
 static Ref<CSSValue> fontVariantFromStyle(const RenderStyle& style)
@@ -2198,6 +2251,11 @@ static bool paddingOrMarginIsRendererDependent(const RenderStyle* style, RenderO
     return renderer && style && renderer->isBox() && !(style->*lengthGetter)().isFixed();
 }
 
+static bool positionOffsetValueIsRendererDependent(const RenderStyle* style, RenderObject* renderer)
+{
+    return renderer && style && renderer->isBox();
+}
+
 static CSSValueID convertToPageBreak(BreakBetween value)
 {
     if (value == PageBreakBetween || value == LeftPageBreakBetween || value == RightPageBreakBetween
@@ -2248,18 +2306,29 @@ static CSSValueID convertToRegionBreak(BreakInside value)
     return CSSValueAuto;
 }
 #endif
-    
+
+static inline bool isNonReplacedInline(RenderObject& renderer)
+{
+    return renderer.isInline() && !renderer.isReplaced();
+}
+
 static bool isLayoutDependent(CSSPropertyID propertyID, const RenderStyle* style, RenderObject* renderer)
 {
     switch (propertyID) {
+    case CSSPropertyTop:
+    case CSSPropertyBottom:
+    case CSSPropertyLeft:
+    case CSSPropertyRight:
+        return positionOffsetValueIsRendererDependent(style, renderer);
     case CSSPropertyWidth:
     case CSSPropertyHeight:
+        return renderer && !renderer->isRenderSVGModelObject() && !isNonReplacedInline(*renderer);
     case CSSPropertyPerspectiveOrigin:
     case CSSPropertyTransformOrigin:
     case CSSPropertyTransform:
-    case CSSPropertyFilter:
+    case CSSPropertyFilter: // Why are filters layout-dependent?
 #if ENABLE(FILTERS_LEVEL_2)
-    case CSSPropertyWebkitBackdropFilter:
+    case CSSPropertyWebkitBackdropFilter: // Ditto for backdrop-filter.
 #endif
         return true;
     case CSSPropertyMargin: {
@@ -2312,49 +2381,6 @@ Element* ComputedStyleExtractor::styledElement()
     return m_element.get();
 }
 
-static StyleSelfAlignmentData resolveLegacyJustifyItems(const StyleSelfAlignmentData& data)
-{
-    if (data.positionType() == LegacyPosition)
-        return { data.position(), OverflowAlignmentDefault };
-    return data;
-}
-
-static StyleSelfAlignmentData resolveJustifyItemsAuto(const StyleSelfAlignmentData& data, Node* parent)
-{
-    if (data.position() != ItemPositionAuto)
-        return data;
-
-    // If the inherited value of justify-items includes the 'legacy' keyword, 'auto' computes to the inherited value.
-    const auto& inheritedValue = (!parent || !parent->computedStyle()) ? RenderStyle::initialDefaultAlignment() : parent->computedStyle()->justifyItems();
-    if (inheritedValue.positionType() == LegacyPosition)
-        return inheritedValue;
-    if (inheritedValue.position() == ItemPositionAuto)
-        return resolveJustifyItemsAuto(inheritedValue, parent->parentNode());
-    return { ItemPositionNormal, OverflowAlignmentDefault };
-}
-
-static StyleSelfAlignmentData resolveJustifySelfAuto(const StyleSelfAlignmentData& data, Node* parent)
-{
-    if (data.position() != ItemPositionAuto)
-        return data;
-
-    // The 'auto' keyword computes to the computed value of justify-items on the parent or 'normal' if the box has no parent.
-    if (!parent || !parent->computedStyle())
-        return { ItemPositionNormal, OverflowAlignmentDefault };
-    return resolveLegacyJustifyItems(resolveJustifyItemsAuto(parent->computedStyle()->justifyItems(), parent->parentNode()));
-}
-
-static StyleSelfAlignmentData resolveAlignSelfAuto(const StyleSelfAlignmentData& data, Node* parent)
-{
-    if (data.position() != ItemPositionAuto)
-        return data;
-
-    // The 'auto' keyword computes to the computed value of align-items on the parent or 'normal' if the box has no parent.
-    if (!parent || !parent->computedStyle())
-        return { ItemPositionNormal, OverflowAlignmentDefault };
-    return parent->computedStyle()->alignItems();
-}
-
 static bool isImplicitlyInheritedGridOrFlexProperty(CSSPropertyID propertyID)
 {
     // It would be nice if grid and flex worked within normal CSS mechanisms and not invented their own inheritance system.
@@ -2370,6 +2396,13 @@ static bool isImplicitlyInheritedGridOrFlexProperty(CSSPropertyID propertyID)
     }
 }
 
+// In CSS 2.1 the returned object should actually contain the "used values"
+// rather then the "computed values" (despite the name saying otherwise).
+//
+// See;
+// http://www.w3.org/TR/CSS21/cascade.html#used-value
+// http://www.w3.org/TR/DOM-Level-2-Style/css.html#CSS-CSSStyleDeclaration
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle#Notes
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
 {
     return ComputedStyleExtractor(m_element.ptr(), m_allowVisitedStyle, m_pseudoElementSpecifier).propertyValue(propertyID, updateLayout);
@@ -2609,7 +2642,7 @@ static Ref<CSSFontValue> fontShorthandValueForSelectionProperties(const FontDesc
     else
         return CSSFontValue::create();
 
-    if (auto italic = fontStyleKeyword(fontDescription.italic()))
+    if (auto italic = fontStyleKeyword(fontDescription.italic(), fontDescription.fontStyleAxis()))
         computedFont->style = CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(italic.value()));
     else
         return CSSFontValue::create();
@@ -2828,7 +2861,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyBorderLeftWidth:
             return zoomAdjustedPixelValue(style->borderLeftWidth(), *style);
         case CSSPropertyBottom:
-            return positionOffsetValue(*style, CSSPropertyBottom);
+            return positionOffsetValue(*style, CSSPropertyBottom, renderer);
         case CSSPropertyWebkitBoxAlign:
             return cssValuePool.createValue(style->boxAlign());
 #if ENABLE(CSS_BOX_DECORATION_BREAK)
@@ -2937,7 +2970,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyAlignItems:
             return valueForItemPositionWithOverflowAlignment(style->alignItems());
         case CSSPropertyAlignSelf:
-            return valueForItemPositionWithOverflowAlignment(resolveAlignSelfAuto(style->alignSelf(), styledElement->parentNode()));
+            return valueForItemPositionWithOverflowAlignment(style->alignSelf());
         case CSSPropertyFlex:
             return getCSSPropertyValuesForShorthandProperties(flexShorthand());
         case CSSPropertyFlexBasis:
@@ -2955,9 +2988,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyJustifyContent:
             return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent(), CSSValueFlexStart);
         case CSSPropertyJustifyItems:
-            return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledElement->parentNode()));
+            return valueForItemPositionWithOverflowAlignment(style->justifyItems().position() == ItemPositionAuto ? RenderStyle::initialDefaultAlignment() : style->justifyItems());
         case CSSPropertyJustifySelf:
-            return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledElement->parentNode()));
+            return valueForItemPositionWithOverflowAlignment(style->justifySelf());
         case CSSPropertyPlaceContent:
             return getCSSPropertyValuesForShorthandProperties(placeContentShorthand());
         case CSSPropertyPlaceItems:
@@ -3076,7 +3109,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             if (renderer && !renderer->isRenderSVGModelObject()) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-height-property,
                 // the "height" property does not apply for non-replaced inline elements.
-                if (!renderer->isReplaced() && renderer->isInline())
+                if (isNonReplacedInline(*renderer))
                     return cssValuePool.createIdentifierValue(CSSValueAuto);
                 return zoomAdjustedPixelValue(sizingBox(*renderer).height(), *style);
             }
@@ -3114,7 +3147,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->imageResolution(), CSSPrimitiveValue::CSS_DPPX);
 #endif
         case CSSPropertyLeft:
-            return positionOffsetValue(*style, CSSPropertyLeft);
+            return positionOffsetValue(*style, CSSPropertyLeft, renderer);
         case CSSPropertyLetterSpacing:
             if (!style->letterSpacing())
                 return cssValuePool.createIdentifierValue(CSSValueNormal);
@@ -3252,7 +3285,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyPosition:
             return cssValuePool.createValue(style->position());
         case CSSPropertyRight:
-            return positionOffsetValue(*style, CSSPropertyRight);
+            return positionOffsetValue(*style, CSSPropertyRight, renderer);
         case CSSPropertyWebkitRubyPosition:
             return cssValuePool.createValue(style->rubyPosition());
         case CSSPropertyTableLayout:
@@ -3352,7 +3385,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyTextTransform:
             return cssValuePool.createValue(style->textTransform());
         case CSSPropertyTop:
-            return positionOffsetValue(*style, CSSPropertyTop);
+            return positionOffsetValue(*style, CSSPropertyTop, renderer);
         case CSSPropertyUnicodeBidi:
             return cssValuePool.createValue(style->unicodeBidi());
         case CSSPropertyVerticalAlign:
@@ -3392,7 +3425,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             if (renderer && !renderer->isRenderSVGModelObject()) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-width-property,
                 // the "width" property does not apply for non-replaced inline elements.
-                if (!renderer->isReplaced() && renderer->isInline())
+                if (isNonReplacedInline(*renderer))
                     return cssValuePool.createIdentifierValue(CSSValueAuto);
                 return zoomAdjustedPixelValue(sizingBox(*renderer).width(), *style);
             }
@@ -3682,6 +3715,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->speak());
         case CSSPropertyTransform:
             return computedTransform(renderer, *style);
+        case CSSPropertyTransformBox:
+            return CSSPrimitiveValue::create(style->transformBox());
         case CSSPropertyTransformOrigin: {
             auto list = CSSValueList::createSpaceSeparated();
             if (renderer) {
@@ -4188,7 +4223,7 @@ RefPtr<DeprecatedCSSOMValue> CSSComputedStyleDeclaration::getPropertyCSSValue(co
         auto value = ComputedStyleExtractor(m_element.ptr(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
         if (!value)
             return nullptr;
-        return value->createDeprecatedCSSOMWrapper();
+        return value->createDeprecatedCSSOMWrapper(*this);
     }
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
@@ -4197,7 +4232,7 @@ RefPtr<DeprecatedCSSOMValue> CSSComputedStyleDeclaration::getPropertyCSSValue(co
     auto value = getPropertyCSSValue(propertyID);
     if (!value)
         return nullptr;
-    return value->createDeprecatedCSSOMWrapper();
+    return value->createDeprecatedCSSOMWrapper(*this);
 }
 
 String CSSComputedStyleDeclaration::getPropertyValue(const String &propertyName)
@@ -4229,12 +4264,12 @@ bool CSSComputedStyleDeclaration::isPropertyImplicit(const String&)
 
 ExceptionOr<void> CSSComputedStyleDeclaration::setProperty(const String&, const String&, const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 ExceptionOr<String> CSSComputedStyleDeclaration::removeProperty(const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
     
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValueInternal(CSSPropertyID propertyID)
@@ -4249,7 +4284,7 @@ String CSSComputedStyleDeclaration::getPropertyValueInternal(CSSPropertyID prope
 
 ExceptionOr<bool> CSSComputedStyleDeclaration::setPropertyInternal(CSSPropertyID, const String&, bool)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 Ref<CSSValueList> ComputedStyleExtractor::getBackgroundShorthandValue()

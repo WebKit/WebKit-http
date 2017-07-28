@@ -76,8 +76,8 @@ public:
     void showNodeTreeForThis() const;
     void showLineTreeForThis() const;
     
-    virtual void showLineTreeAndMark(const InlineBox* markedBox, int depth) const;
-    virtual void showLineBox(bool mark, int depth) const;
+    virtual void outputLineTreeAndMark(TextStream&, const InlineBox* markedBox, int depth) const;
+    virtual void outputLineBox(TextStream&, bool mark, int depth) const;
     virtual const char* boxName() const;
 #endif
 
@@ -287,9 +287,7 @@ private:
 
     RenderObject& m_renderer;
 
-public:
-    FloatPoint m_topLeft;
-    float m_logicalWidth { 0 };
+    float m_expansion { 0 };
 
 #define ADD_BOOLEAN_BITFIELD(name, Name) \
     private:\
@@ -367,8 +365,6 @@ public:
     };
 #undef ADD_BOOLEAN_BITFIELD
 
-private:
-    float m_expansion { 0 };
     InlineBoxBitfields m_bitfields;
 
 protected:
@@ -382,9 +378,9 @@ protected:
         , m_prev(prev)
         , m_parent(parent)
         , m_renderer(renderer)
+        , m_bitfields(firstLine, constructed, dirty, extracted, isHorizontal)
         , m_topLeft(topLeft)
         , m_logicalWidth(logicalWidth)
-        , m_bitfields(firstLine, constructed, dirty, extracted, isHorizontal)
     {
     }
 
@@ -411,12 +407,18 @@ protected:
     // For InlineFlowBox and InlineTextBox
     bool extracted() const { return m_bitfields.extracted(); }
 
+protected:
+    FloatPoint m_topLeft;
+    float m_logicalWidth { 0 };
+
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
 private:
     static constexpr unsigned deletionSentinelNotDeletedValue = 0xF0F0F0F0U;
     static constexpr unsigned deletionSentinelDeletedValue = 0xF0DEADF0U;
     unsigned m_deletionSentinel { deletionSentinelNotDeletedValue };
     bool m_hasBadParent { false };
+protected:
+    bool m_isEverInChildList { true };
 #endif
 };
 

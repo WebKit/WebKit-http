@@ -71,6 +71,7 @@ public:
 #endif
         MediaResource,
         RawResource,
+        Icon,
         SVGDocumentResource
 #if ENABLE(XSLT)
         , XSLStyleSheet
@@ -161,7 +162,7 @@ public:
 
     bool isImage() const { return type() == ImageResource; }
     // FIXME: CachedRawResource could be a main resource, an audio/video resource, or a raw XHR/icon resource.
-    bool isMainOrMediaOrRawResource() const { return type() == MainResource || type() == MediaResource || type() == RawResource; }
+    bool isMainOrMediaOrIconOrRawResource() const { return type() == MainResource || type() == MediaResource || type() == Icon || type() == RawResource; }
     bool ignoreForRequestCount() const
     {
         return m_resourceRequest.ignoreForRequestCount()
@@ -170,6 +171,7 @@ public:
             || type() == LinkPrefetch
             || type() == LinkSubresource
 #endif
+            || type() == Icon
             || type() == RawResource;
     }
 
@@ -232,6 +234,8 @@ public:
     void decreasePreloadCount() { ASSERT(m_preloadCount); --m_preloadCount; }
     bool isLinkPreload() { return m_isLinkPreload; }
     void setLinkPreload() { m_isLinkPreload = true; }
+    bool hasUnknownEncoding() { return m_hasUnknownEncoding; }
+    void setHasUnknownEncoding(bool hasUnknownEncoding) { m_hasUnknownEncoding = hasUnknownEncoding; }
 
     void registerHandle(CachedResourceHandleBase*);
     WEBCORE_EXPORT void unregisterHandle(CachedResourceHandleBase*);
@@ -334,6 +338,7 @@ private:
     bool m_inCache { false };
     bool m_loading { false };
     bool m_isLinkPreload { false };
+    bool m_hasUnknownEncoding { false };
 
     bool m_switchingClientsToRevalidatedResource { false };
 

@@ -1,6 +1,6 @@
 [
     {
-        "section" : "Bytecodes", "emitInHFile" : true, "emitInASMFile" : true, 
+        "section" : "Bytecodes", "emitInHFile" : true, "emitInASMFile" : true, "emitOpcodeIDStringValuesInHFile" : true,
         "macroNameComponent" : "BYTECODE", "asmPrefix" : "llint_", 
         "bytecodes" : [
             { "name" : "op_enter", "length" : 1 },
@@ -147,17 +147,19 @@
             { "name" : "op_enumerator_generic_pname", "length" : 4 },
             { "name" : "op_to_index_string", "length" : 3 },
             { "name" : "op_assert", "length" : 3 },
+            { "name" : "op_unreachable", "length" : 1 },
             { "name" : "op_create_rest", "length": 4 },
             { "name" : "op_get_rest_length", "length": 3 },
             { "name" : "op_yield", "length" : 4 },
             { "name" : "op_check_traps", "length" : 1 },
             { "name" : "op_log_shadow_chicken_prologue", "length" : 2},
             { "name" : "op_log_shadow_chicken_tail", "length" : 3},
-            { "name" : "op_resolve_scope_for_hoisting_func_decl_in_eval", "length" : 4 }
+            { "name" : "op_resolve_scope_for_hoisting_func_decl_in_eval", "length" : 4 },
+            { "name" : "op_nop", "length" : 1 }
         ]
     },
     {
-        "section" : "CLoopHelpers", "emitInHFile" : true, "emitInASMFile" : false, "defaultLength" : 1,
+        "section" : "CLoopHelpers", "emitInHFile" : true, "emitInASMFile" : false, "emitOpcodeIDStringValuesInHFile" : false, "defaultLength" : 1,
         "macroNameComponent" : "CLOOP_BYTECODE_HELPER",
         "bytecodes" : [
             { "name" : "llint_entry" },
@@ -180,7 +182,7 @@
         ]
     },
     {
-        "section" : "NativeHelpers", "emitInHFile" : true, "emitInASMFile" : true, "defaultLength" : 1,
+        "section" : "NativeHelpers", "emitInHFile" : true, "emitInASMFile" : true, "emitOpcodeIDStringValuesInHFile" : false, "defaultLength" : 1,
         "macroNameComponent" : "BYTECODE_HELPER",
         "bytecodes" : [
             { "name" : "llint_program_prologue" },

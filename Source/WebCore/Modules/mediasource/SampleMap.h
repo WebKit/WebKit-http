@@ -39,7 +39,7 @@ class SampleMap;
 class PresentationOrderSampleMap {
     friend class SampleMap;
 public:
-    typedef std::map<MediaTime, RefPtr<MediaSample>> MapType;
+    using MapType = std::map<MediaTime, RefPtr<MediaSample>, std::less<MediaTime>, FastAllocator<std::pair<const MediaTime, RefPtr<MediaSample>>>>;
     typedef MapType::iterator iterator;
     typedef MapType::const_iterator const_iterator;
     typedef MapType::reverse_iterator reverse_iterator;
@@ -57,7 +57,9 @@ public:
 
     WEBCORE_EXPORT iterator findSampleWithPresentationTime(const MediaTime&);
     WEBCORE_EXPORT iterator findSampleContainingPresentationTime(const MediaTime&);
+    WEBCORE_EXPORT iterator findSampleContainingOrAfterPresentationTime(const MediaTime&);
     WEBCORE_EXPORT iterator findSampleStartingOnOrAfterPresentationTime(const MediaTime&);
+    WEBCORE_EXPORT iterator findSampleStartingAfterPresentationTime(const MediaTime&);
     WEBCORE_EXPORT reverse_iterator reverseFindSampleContainingPresentationTime(const MediaTime&);
     WEBCORE_EXPORT reverse_iterator reverseFindSampleBeforePresentationTime(const MediaTime&);
     WEBCORE_EXPORT iterator_range findSamplesBetweenPresentationTimes(const MediaTime&, const MediaTime&);
@@ -72,7 +74,7 @@ class DecodeOrderSampleMap {
     friend class SampleMap;
 public:
     typedef std::pair<MediaTime, MediaTime> KeyType;
-    typedef std::map<KeyType, RefPtr<MediaSample>> MapType;
+    using MapType = std::map<KeyType, RefPtr<MediaSample>, std::less<KeyType>, FastAllocator<std::pair<const KeyType, RefPtr<MediaSample>>>>;
     typedef MapType::iterator iterator;
     typedef MapType::const_iterator const_iterator;
     typedef MapType::reverse_iterator reverse_iterator;

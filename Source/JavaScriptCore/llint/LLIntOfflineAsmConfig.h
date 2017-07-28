@@ -27,7 +27,6 @@
 
 #include "LLIntCommon.h"
 #include <wtf/Assertions.h>
-#include <wtf/InlineASM.h>
 
 #if !ENABLE(JIT)
 #define OFFLINE_ASM_C_LOOP 1
@@ -48,13 +47,13 @@
 
 #define OFFLINE_ASM_C_LOOP 0
 
-#if CPU(X86) && !PLATFORM(WIN)
+#if CPU(X86) && !COMPILER(MSVC)
 #define OFFLINE_ASM_X86 1
 #else
 #define OFFLINE_ASM_X86 0
 #endif
 
-#if CPU(X86) && PLATFORM(WIN)
+#if CPU(X86) && COMPILER(MSVC)
 #define OFFLINE_ASM_X86_WIN 1
 #else
 #define OFFLINE_ASM_X86_WIN 0
@@ -91,13 +90,13 @@
 #define OFFLINE_ASM_ARM 0
 #endif
 
-#if CPU(X86_64) && !PLATFORM(WIN)
+#if CPU(X86_64) && !COMPILER(MSVC)
 #define OFFLINE_ASM_X86_64 1
 #else
 #define OFFLINE_ASM_X86_64 0
 #endif
 
-#if CPU(X86_64) && PLATFORM(WIN)
+#if CPU(X86_64) && COMPILER(MSVC)
 #define OFFLINE_ASM_X86_64_WIN 1
 #else
 #define OFFLINE_ASM_X86_64_WIN 0

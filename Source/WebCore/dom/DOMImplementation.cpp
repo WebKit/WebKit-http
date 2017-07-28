@@ -56,7 +56,6 @@
 #include "Text.h"
 #include "TextDocument.h"
 #include "XMLDocument.h"
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -141,7 +140,7 @@ Ref<HTMLDocument> DOMImplementation::createHTMLDocument(const String& title)
 {
     auto document = HTMLDocument::create(nullptr, URL());
     document->open();
-    document->write("<!doctype html><html><head></head><body></body></html>");
+    document->write(nullptr, { ASCIILiteral("<!doctype html><html><head></head><body></body></html>") });
     if (!title.isNull()) {
         auto titleElement = HTMLTitleElement::create(titleTag, document);
         titleElement->appendChild(document->createTextNode(title));
@@ -195,7 +194,7 @@ Ref<Document> DOMImplementation::createDocument(const String& type, Frame* frame
     // Key system is not applicable here.
     DOMImplementationSupportsTypeClient client(frame && frame->settings().needsSiteSpecificQuirks(), url.host());
     MediaEngineSupportParameters parameters;
-    parameters.type = type;
+    parameters.type = ContentType(type);
     parameters.url = url;
     if (MediaPlayer::supportsType(parameters, &client))
         return MediaDocument::create(frame, url);

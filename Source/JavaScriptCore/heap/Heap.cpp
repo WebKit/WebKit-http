@@ -62,6 +62,7 @@
 #include "StopIfNecessaryTimer.h"
 #include "SweepingScope.h"
 #include "SynchronousStopTheWorldMutatorScheduler.h"
+#include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
 #include "VM.h"
@@ -72,11 +73,13 @@
 #include <bmalloc/bmalloc.h>
 #endif
 #include <wtf/CurrentTime.h>
+#include <wtf/ListDump.h>
 #include <wtf/MainThread.h>
 #include <wtf/ParallelVectorIterator.h>
 #include <wtf/ProcessID.h>
 #include <wtf/RAMSize.h>
 #include <wtf/SimpleStats.h>
+#include <wtf/Threading.h>
 
 #if USE(FOUNDATION)
 #if __has_include(<objc/objc-internal.h>)
@@ -289,9 +292,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     // schedule the timer if we've never done a collection.
     , m_lastFullGCLength(0.01)
     , m_lastEdenGCLength(0.01)
-#if USE(CF)
-    , m_runLoop(CFRunLoopGetCurrent())
-#endif // USE(CF)
     , m_fullActivityCallback(GCActivityCallback::createFullTimer(this))
     , m_edenActivityCallback(GCActivityCallback::createEdenTimer(this))
     , m_sweeper(adoptRef(new IncrementalSweeper(this)))
@@ -1622,7 +1622,7 @@ NEVER_INLINE void Heap::resumeThePeriphery()
                 slotVisitorsToUpdate.takeLast();
             }
         }
-        std::this_thread::yield();
+        WTF::Thread::yield();
     }
     
     for (SlotVisitor* slotVisitor : slotVisitorsToUpdate)
@@ -2589,16 +2589,6 @@ void Heap::didFreeBlock(size_t capacity)
     UNUSED_PARAM(capacity);
 #endif
 }
-
-#if USE(CF)
-void Heap::setRunLoop(CFRunLoopRef runLoop)
-{
-    m_runLoop = runLoop;
-    m_fullActivityCallback->setRunLoop(runLoop);
-    m_edenActivityCallback->setRunLoop(runLoop);
-    m_sweeper->setRunLoop(runLoop);
-}
-#endif // USE(CF)
 
 void Heap::addCoreConstraints()
 {

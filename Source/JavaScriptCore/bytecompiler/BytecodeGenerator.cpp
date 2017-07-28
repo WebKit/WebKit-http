@@ -33,6 +33,7 @@
 
 #include "ArithProfile.h"
 #include "BuiltinExecutables.h"
+#include "BuiltinNames.h"
 #include "BytecodeGeneratorification.h"
 #include "BytecodeLivenessAnalysis.h"
 #include "DefinePropertyAttributes.h"
@@ -144,6 +145,13 @@ ParserError BytecodeGenerator::generate()
     bool callingClassConstructor = constructorKind() != ConstructorKind::None && !isConstructor();
     if (!callingClassConstructor)
         m_scopeNode->emitBytecode(*this);
+    else {
+        // At this point we would have emitted an unconditional throw followed by some nonsense that's
+        // just an artifact of how this generator is structured. That code never runs, but it confuses
+        // bytecode analyses because it constitutes an unterminated basic block. So, we terminate the
+        // basic block the strongest way possible.
+        emitUnreachable();
+    }
 
     m_staticPropertyAnalyzer.kill();
 
@@ -185,6 +193,7 @@ ParserError BytecodeGenerator::generate()
     if (isGeneratorOrAsyncFunctionBodyParseMode(m_codeBlock->parseMode()))
         performGeneratorification(m_codeBlock.get(), m_instructions, m_generatorFrameSymbolTable.get(), m_generatorFrameSymbolTableIndex);
 
+    RELEASE_ASSERT(static_cast<unsigned>(m_codeBlock->numCalleeLocals()) < static_cast<unsigned>(FirstConstantRegisterIndex));
     m_codeBlock->setInstructions(std::make_unique<UnlinkedInstructionStream>(m_instructions));
 
     m_codeBlock->shrinkToFit();
@@ -624,16 +633,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             if (isConstructor()) {
                 emitMove(m_newTargetRegister, &m_thisRegister);
                 if (constructorKind() == ConstructorKind::Extends) {
-                    Ref<Label> isDerived = newLabel();
-                    Ref<Label> done = newLabel();
-                    m_isDerivedConstuctor = addVar();
-                    emitGetById(m_isDerivedConstuctor, &m_calleeRegister, propertyNames().builtinNames().isDerivedConstructorPrivateName());
-                    emitJumpIfTrue(m_isDerivedConstuctor, isDerived.get());
-                    emitCreateThis(&m_thisRegister);
-                    emitJump(done.get());
-                    emitLabel(isDerived.get());
                     emitMoveEmptyValue(&m_thisRegister);
-                    emitLabel(done.get());
                 } else
                     emitCreateThis(&m_thisRegister);
             } else if (constructorKind() != ConstructorKind::None)
@@ -1620,9 +1620,7 @@ unsigned BytecodeGenerator::addConstant(const Identifier& ident)
 RegisterID* BytecodeGenerator::addConstantEmptyValue()
 {
     if (!m_emptyValueRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_emptyValueRegister = &m_constantPoolRegisters[index];
     }
@@ -1642,8 +1640,7 @@ RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentat
     EncodedJSValueWithRepresentation valueMapKey { JSValue::encode(v), sourceCodeRepresentation };
     JSValueMap::AddResult result = m_jsValueMap.add(valueMapKey, m_nextConstantOffset);
     if (result.isNewEntry) {
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        addConstantIndex();
         m_codeBlock->addConstant(v, sourceCodeRepresentation);
     } else
         index = result.iterator->value;
@@ -1654,9 +1651,7 @@ RegisterID* BytecodeGenerator::emitMoveLinkTimeConstant(RegisterID* dst, LinkTim
 {
     unsigned constantIndex = static_cast<unsigned>(type);
     if (!m_linkTimeConstantRegisters[constantIndex]) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(type);
         m_linkTimeConstantRegisters[constantIndex] = &m_constantPoolRegisters[index];
     }
@@ -1928,6 +1923,14 @@ void BytecodeGenerator::emitProfileControlFlow(int textOffset)
     }
 }
 
+unsigned BytecodeGenerator::addConstantIndex()
+{
+    unsigned index = m_nextConstantOffset;
+    m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
+    ++m_nextConstantOffset;
+    return index;
+}
+
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
 {
     return emitLoad(dst, jsBoolean(b));
@@ -1951,12 +1954,29 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v, SourceCodeRe
     return constantID;
 }
 
+RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, IdentifierSet& set)
+{
+    for (const auto& entry : m_codeBlock->constantIdentifierSets()) {
+        if (entry.first != set)
+            continue;
+        
+        return &m_constantPoolRegisters[entry.second];
+    }
+    
+    unsigned index = addConstantIndex();
+    m_codeBlock->addSetConstant(set);
+    RegisterID* m_setRegister = &m_constantPoolRegisters[index];
+    
+    if (dst)
+        return emitMove(dst, m_setRegister);
+    
+    return m_setRegister;
+}
+
 RegisterID* BytecodeGenerator::emitLoadGlobalObject(RegisterID* dst)
 {
     if (!m_globalObjectRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_globalObjectRegister = &m_constantPoolRegisters[index];
         m_codeBlock->setGlobalObjectRegister(VirtualRegister(index));
@@ -2000,7 +2020,7 @@ bool BytecodeGenerator::instantiateLexicalVariables(const VariableEnvironment& l
                 varOffset = VarOffset(local->virtualRegister());
             }
 
-            SymbolTableEntry newEntry(varOffset, entry.value.isConst() ? ReadOnly : 0);
+            SymbolTableEntry newEntry(varOffset, entry.value.isConst() ? ReadOnly : None);
             symbolTable->add(NoLockingNecessary, entry.key.get(), newEntry);
         }
     }
@@ -2825,7 +2845,10 @@ void BytecodeGenerator::emitPutGeneratorFields(RegisterID* nextFunction)
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorNextPrivateName(), nextFunction, PropertyNode::KnownDirect);
 
-    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorThisPrivateName(), &m_thisRegister, PropertyNode::KnownDirect);
+    // We do not store 'this' in arrow function within constructor,
+    // because it might be not initialized, if super is called later.
+    if (!(isDerivedConstructorContext() && m_codeBlock->parseMode() == SourceParseMode::AsyncArrowFunctionMode))
+        emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorThisPrivateName(), &m_thisRegister, PropertyNode::KnownDirect);
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorStatePrivateName(), emitLoad(nullptr, jsNumber(0)), PropertyNode::KnownDirect);
 
@@ -2843,15 +2866,15 @@ RegisterID* BytecodeGenerator::emitDeleteById(RegisterID* dst, RegisterID* base,
 
 RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, RegisterID* property)
 {
-    for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext& context = m_forInContextStack[i - 1].get();
+    for (size_t i = m_forInContextStack.size(); i--; ) {
+        ForInContext& context = m_forInContextStack[i].get();
         if (context.local() != property)
             continue;
 
-        if (!context.isValid())
-            break;
+        unsigned instIndex = instructions().size();
 
         if (context.type() == ForInContext::IndexedForInContextType) {
+            static_cast<IndexedForInContext&>(context).addGetInst(instIndex, property->index());
             property = static_cast<IndexedForInContext&>(context).index();
             break;
         }
@@ -2865,6 +2888,8 @@ RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, R
         instructions().append(structureContext.index()->index());
         instructions().append(structureContext.enumerator()->index());
         instructions().append(profile);
+
+        structureContext.addGetInst(instIndex, property->index(), profile);
         return dst;
     }
 
@@ -2947,6 +2972,11 @@ RegisterID* BytecodeGenerator::emitAssert(RegisterID* condition, int line)
     instructions().append(condition->index());
     instructions().append(line);
     return condition;
+}
+
+void BytecodeGenerator::emitUnreachable()
+{
+    emitOpcode(op_unreachable);
 }
 
 RegisterID* BytecodeGenerator::emitGetArgument(RegisterID* dst, int32_t index)
@@ -3094,9 +3124,7 @@ RegisterID* BytecodeGenerator::addTemplateRegistryKeyConstant(Ref<TemplateRegist
 {
     return m_templateRegistryKeyMap.ensure(templateRegistryKey.copyRef(), [&] {
         auto* result = JSTemplateRegistryKey::create(*vm(), WTFMove(templateRegistryKey));
-        unsigned index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        unsigned index = addConstantIndex();
         m_codeBlock->addConstant(result);
         return &m_constantPoolRegisters[index];
     }).iterator->value;
@@ -3601,27 +3629,22 @@ void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* p
 RegisterID* BytecodeGenerator::emitReturn(RegisterID* src, ReturnFrom from)
 {
     if (isConstructor()) {
-        bool mightBeDerived = constructorKind() == ConstructorKind::Extends;
+        bool isDerived = constructorKind() == ConstructorKind::Extends;
         bool srcIsThis = src->index() == m_thisRegister.index();
 
-        if (mightBeDerived && (srcIsThis || from == ReturnFrom::Finally))
+        if (isDerived && (srcIsThis || from == ReturnFrom::Finally))
             emitTDZCheck(src);
 
         if (!srcIsThis || from == ReturnFrom::Finally) {
             Ref<Label> isObjectLabel = newLabel();
             emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
 
-            if (mightBeDerived) {
-                ASSERT(m_isDerivedConstuctor);
-                Ref<Label> returnThis = newLabel();
-                emitJumpIfFalse(m_isDerivedConstuctor, returnThis.get());
-                // Else, we're a derived constructor here.
+            if (isDerived) {
                 Ref<Label> isUndefinedLabel = newLabel();
                 emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
                 emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
                 emitLabel(isUndefinedLabel.get());
                 emitTDZCheck(&m_thisRegister);
-                emitLabel(returnThis.get());
             }
             emitUnaryNoDstOp(op_ret, &m_thisRegister);
             emitLabel(isObjectLabel.get());
@@ -3638,7 +3661,7 @@ RegisterID* BytecodeGenerator::emitUnaryNoDstOp(OpcodeID opcodeID, RegisterID* s
     return src;
 }
 
-RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, RegisterID* lazyThis, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
     ASSERT(func->refCount());
 
@@ -3659,19 +3682,23 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
                     instructions().append(argumentRegister.get()->index());
                     instructions().append(argumentRegister.get()->index());
 
+                    emitMove(callArguments.thisRegister(), lazyThis);
                     RefPtr<RegisterID> thisRegister = emitMove(newTemporary(), callArguments.thisRegister());
                     return emitConstructVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, divot, divotStart, divotEnd, DebuggableCall::No);
                 }
             }
             RefPtr<RegisterID> argumentRegister;
             argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
+            emitMove(callArguments.thisRegister(), lazyThis);
             return emitConstructVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, divot, divotStart, divotEnd, DebuggableCall::No);
         }
         
         for (ArgumentListNode* n = argumentsNode->m_listNode; n; n = n->m_next)
             emitNode(callArguments.argumentRegister(argument++), n);
     }
-
+    
+    emitMove(callArguments.thisRegister(), lazyThis);
+    
     // Reserve space for call frame.
     Vector<RefPtr<RegisterID>, CallFrame::headerSizeInRegisters, UnsafeVectorOverflow> callFrame;
     for (int i = 0; i < CallFrame::headerSizeInRegisters; ++i)
@@ -4551,6 +4578,9 @@ void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
 {
     if (!localRegister)
         return;
+
+    ASSERT(m_forInContextStack.last()->type() == ForInContext::IndexedForInContextType);
+    static_cast<IndexedForInContext&>(m_forInContextStack.last().get()).finalize(*this);
     m_forInContextStack.removeLast();
 }
 
@@ -4582,11 +4612,12 @@ RegisterID* BytecodeGenerator::emitLoadDerivedConstructorFromArrowFunctionLexica
 
 RegisterID* BytecodeGenerator::ensureThis()
 {
-    if ((constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())  && needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction())
-        emitLoadThisFromArrowFunctionLexicalEnvironment();
+    if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext()) {
+        if ((needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction()) || m_codeBlock->parseMode() == SourceParseMode::AsyncArrowFunctionBodyMode)
+            emitLoadThisFromArrowFunctionLexicalEnvironment();
 
-    if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
         emitTDZCheck(thisRegister());
+    }
 
     return thisRegister();
 }
@@ -4659,6 +4690,8 @@ void BytecodeGenerator::popStructureForInScope(RegisterID* localRegister)
 {
     if (!localRegister)
         return;
+    ASSERT(m_forInContextStack.last()->type() == ForInContext::StructureForInContextType);
+    static_cast<StructureForInContext&>(m_forInContextStack.last().get()).finalize(*this);
     m_forInContextStack.removeLast();
 }
 
@@ -4675,12 +4708,10 @@ void BytecodeGenerator::invalidateForInContextForLocal(RegisterID* localRegister
     // to perform some flow-sensitive analysis to see if/when the loop iteration variable was 
     // reassigned, or we'd have to resort to runtime checks to see if the variable had been 
     // reassigned from its original value.
-    for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext& context = m_forInContextStack[i - 1].get();
-        if (context.local() != localRegister)
-            continue;
-        context.invalidate();
-        break;
+    for (size_t i = m_forInContextStack.size(); i--; ) {
+        ForInContext& context = m_forInContextStack[i].get();
+        if (context.local() == localRegister)
+            context.invalidate();
     }
 }
 
@@ -5028,6 +5059,51 @@ void BytecodeGenerator::emitJumpIf(OpcodeID compareOpcode, RegisterID* completio
 
     auto equivalenceResult = emitBinaryOp(compareOpcode, tempRegister.get(), valueConstant, completionTypeRegister, operandTypes);
     emitJumpIfTrue(equivalenceResult, jumpTarget);
+}
+
+void StructureForInContext::finalize(BytecodeGenerator& generator)
+{
+    if (isValid())
+        return;
+
+    for (const auto& instTuple : m_getInsts) {
+        unsigned instIndex = std::get<0>(instTuple);
+        int propertyRegIndex = std::get<1>(instTuple);
+        UnlinkedValueProfile valueProfile = std::get<2>(instTuple);
+        OpcodeID op = generator.instructions()[instIndex].u.opcode;
+        RELEASE_ASSERT(op == op_get_direct_pname);
+        ASSERT(opcodeLength(op_get_direct_pname) == 7);
+        ASSERT(opcodeLength(op_get_by_val) == 6);
+
+        // 0. Change the opcode to get_by_val.
+        generator.instructions()[instIndex].u.opcode = op_get_by_val;
+        // 1. dst stays the same.
+        // 2. base stays the same.
+        // 3. property gets switched to the original property.
+        generator.instructions()[instIndex + 3].u.operand = propertyRegIndex;
+        // 4. add an array profile.
+        generator.instructions()[instIndex + 4].u.unsignedValue = generator.newArrayProfile();
+        // 5. set the result value profile.
+        generator.instructions()[instIndex + 5].u.unsignedValue = valueProfile;
+        // 6. nop out the last instruction word.
+        generator.instructions()[instIndex + 6].u.opcode = op_nop;
+    }
+}
+
+void IndexedForInContext::finalize(BytecodeGenerator& generator)
+{
+    if (isValid())
+        return;
+
+    for (const auto& instPair : m_getInsts) {
+        unsigned instIndex = instPair.first;
+        int propertyRegIndex = instPair.second;
+        OpcodeID op = generator.instructions()[instIndex].u.opcode;
+        RELEASE_ASSERT(op == op_get_by_val);
+        // We just need to perform the get_by_val with the original property here,
+        // not the indexed one.
+        generator.instructions()[instIndex + 3].u.operand = propertyRegIndex;
+    }
 }
 
 } // namespace JSC

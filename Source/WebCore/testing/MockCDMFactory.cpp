@@ -220,11 +220,6 @@ MockCDMInstance::MockCDMInstance(WeakPtr<MockCDM> cdm)
 {
 }
 
-CDMInstance::ImplementationType MockCDMInstance::implementationType() const
-{
-    return ImplementationType::Mock;
-}
-
 CDMInstance::SuccessValue MockCDMInstance::initializeWithConfiguration(const MediaKeySystemConfiguration& configuration)
 {
     if (!m_cdm || !m_cdm->supportsConfiguration(configuration))
@@ -274,7 +269,7 @@ void MockCDMInstance::requestLicense(LicenseType licenseType, const AtomicString
 {
     MockCDMFactory* factory = m_cdm ? m_cdm->factory() : nullptr;
     if (!factory) {
-        callback(SharedBuffer::create(), emptyAtom, false, SuccessValue::Failed);
+        callback(SharedBuffer::create(), emptyAtom(), false, SuccessValue::Failed);
         return;
     }
 

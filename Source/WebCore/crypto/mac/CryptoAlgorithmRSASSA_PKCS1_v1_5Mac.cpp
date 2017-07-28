@@ -30,30 +30,11 @@
 
 #include "CommonCryptoUtilities.h"
 #include "CryptoAlgorithmRsaSsaParamsDeprecated.h"
+#include "CryptoDigestAlgorithm.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
-#include <pal/crypto/CryptoDigest.h>
 
 namespace WebCore {
-
-inline std::optional<PAL::CryptoDigest::Algorithm> cryptoDigestAlgorithm(CryptoAlgorithmIdentifier hashFunction)
-{
-    switch (hashFunction) {
-    case CryptoAlgorithmIdentifier::SHA_1:
-        return PAL::CryptoDigest::Algorithm::SHA_1;
-    case CryptoAlgorithmIdentifier::SHA_224:
-        return PAL::CryptoDigest::Algorithm::SHA_224;
-    case CryptoAlgorithmIdentifier::SHA_256:
-        return PAL::CryptoDigest::Algorithm::SHA_256;
-    case CryptoAlgorithmIdentifier::SHA_384:
-        return PAL::CryptoDigest::Algorithm::SHA_384;
-    case CryptoAlgorithmIdentifier::SHA_512:
-        return PAL::CryptoDigest::Algorithm::SHA_512;
-    default:
-        return std::nullopt;
-    }
-}
 
 // FIXME: We should change data to Vector<uint8_t> type once WebKitSubtleCrypto is deprecated.
 // https://bugs.webkit.org/show_bug.cgi?id=164939

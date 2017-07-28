@@ -26,6 +26,8 @@
 #include "config.h"
 #include "MainThreadSharedTimer.h"
 
+#include <wtf/NeverDestroyed.h>
+
 namespace WebCore {
 
 MainThreadSharedTimer& MainThreadSharedTimer::singleton()
@@ -40,7 +42,7 @@ MainThreadSharedTimer::MainThreadSharedTimer()
 }
 #endif
 
-void MainThreadSharedTimer::setFiredFunction(std::function<void()>&& firedFunction)
+void MainThreadSharedTimer::setFiredFunction(WTF::Function<void()>&& firedFunction)
 {
     RELEASE_ASSERT(!m_firedFunction || !firedFunction);
     m_firedFunction = WTFMove(firedFunction);

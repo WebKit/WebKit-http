@@ -29,6 +29,7 @@
 #include "DocumentOrderedMap.h"
 #include <memory>
 #include <wtf/Forward.h>
+#include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -45,7 +46,6 @@ class ShadowRoot;
 
 class TreeScope {
     friend class Document;
-    friend class TreeScopeAdopter;
 
 public:
     TreeScope* parentTreeScope() const { return m_parentTreeScope; }
@@ -88,7 +88,8 @@ public:
     void removeLabel(const AtomicStringImpl& forAttributeValue, HTMLLabelElement&);
     HTMLLabelElement* labelElementForId(const AtomicString& forAttributeValue);
 
-    WEBCORE_EXPORT Element* elementFromPoint(double x, double y);
+    WEBCORE_EXPORT RefPtr<Element> elementFromPoint(double clientX, double clientY);
+    WEBCORE_EXPORT Vector<RefPtr<Element>> elementsFromPoint(double clientX, double clientY);
 
     // Find first anchor with the given name.
     // First searches for an element with the given ID, but if that fails, then looks
@@ -96,9 +97,6 @@ public:
     // Anchor name matching is case sensitive in strict mode and not case sensitive in
     // quirks mode for historical compatibility reasons.
     Element* findAnchor(const String& name);
-
-    // Used by the basic DOM mutation methods (e.g., appendChild()).
-    void adoptIfNeeded(Node&);
 
     ContainerNode& rootNode() const { return m_rootNode; }
 
@@ -118,6 +116,7 @@ protected:
     Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint);
 
 private:
+
     ContainerNode& m_rootNode;
     std::reference_wrapper<Document> m_documentScope;
     TreeScope* m_parentTreeScope;

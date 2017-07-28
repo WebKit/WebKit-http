@@ -1,3 +1,487 @@
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-24  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] libtasn1 should not be required when not enabling subtle_crypto
+        https://bugs.webkit.org/show_bug.cgi?id=174785
+
+        Reviewed by Žan Doberšek.
+
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called
+        https://bugs.webkit.org/show_bug.cgi?id=174557
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * pal/CMakeLists.txt:
+
+2017-07-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Build error when building WebCore from WebCore.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174462
+
+        Reviewed by Brent Fulgham.
+
+        Add required include directory to list of include directories.
+ 
+        * pal/CMakeLists.txt:
+        * pal/PlatformWin.cmake:
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Build error when building WebKit.dll from WebKit.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174410
+
+        Reviewed by Brent Fulgham.
+
+        Copy required header files to forwarding headers folder.
+
+        * pal/PlatformWin.cmake:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Build error when building WebCore from WebCore.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174330
+
+        Reviewed by Brent Fulgham.
+
+        CMAKE_BINARY_DIR is needed in the include list in order to find 'cmakeconfig.h'. 
+
+        * pal/CMakeLists.txt:
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop NOSNIFF compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=174289
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-06  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Move KillRing into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173900
+
+        Reviewed by Myles C. Maxfield.
+
+        No new tests. No change in functionality.
+
+        * Configurations/PAL.xcconfig:
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformMac.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/PlatformWin.cmake:
+        * pal/text/KillRing.h: Renamed from Source/WebCore/platform/KillRing.h.
+        * pal/text/KillRingNone.cpp: Renamed from Source/WebCore/platform/KillRingNone.cpp.
+        * pal/text/mac/KillRingMac.mm: Renamed from Source/WebCore/platform/mac/KillRingMac.mm.
+
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * Configurations/PAL.xcconfig: iphoneos and iphonesimulator should use the
+        same directory for private framework stubs.
+
+2017-07-03  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove more unnecessary uses of the preprocessor in idl files
+        https://bugs.webkit.org/show_bug.cgi?id=174083
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_NAVIGATOR_STANDALONE.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI exports
+        https://bugs.webkit.org/show_bug.cgi?id=173646
+
+        Reviewed by Jiewen Tan.
+
+        No new tests -- covered by existing Web Crypto tests.
+
+        Add three new libtasn1 utility functions.
+
+        createStructure() is a simple wrapper around asn1_create_element(), creating a new
+        ASN.1 structure for the specified definition that's listed in WebCrypto.asn. The
+        existing decodeStructure() is modified to use this new addition.
+
+        encodedData() retrieves the ASN.1-encoded data of the specified element that's
+        located in the passed-in asn1_node. This is used when retrieving SPKI or PKCS#8
+        data from filled-out ASN.1 structures.
+
+        writeElement() writes the provided data to the given asn1_node object under the
+        specified element, using the given size. True is returned if this operation was
+        successful.
+
+        * pal/crypto/tasn1/Utilities.cpp:
+        (PAL::TASN1::createStructure):
+        (PAL::TASN1::decodeStructure):
+        (PAL::TASN1::encodedData):
+        (PAL::TASN1::writeElement):
+        * pal/crypto/tasn1/Utilities.h:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PAL] Move Sound into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173999
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/PAL.xcconfig:
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformMac.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/PlatformWin.cmake:
+        * pal/system/Sound.h: Renamed from Source/WebCore/platform/ios/SoundIOS.mm.
+        * pal/system/SoundNone.cpp: Renamed from Source/WebCore/platform/wpe/SoundWPE.cpp.
+        (PAL::systemBeep):
+        * pal/system/gtk/SoundGtk.cpp: Renamed from Source/WebCore/platform/gtk/SoundGtk.cpp.
+        * pal/system/mac/SoundMac.mm: Renamed from Source/WebCore/platform/mac/SoundMac.mm.
+        * pal/system/win/SoundWin.cpp: Renamed from Source/WebCore/platform/win/SoundWin.cpp.
+
+2017-06-28  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173896
+
+        Reviewed by Dan Bernstein.
+
+        Remove the workaround build fix in r218863.
+
+        * PAL.xcodeproj/project.pbxproj: We should be using PROJECT_DIR instead of SRCROOT
+        when in a nested Xcode project.
+
+2017-06-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173896
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj: Ensure that the SRCROOT is WebCore/PAL and not
+        just WebCore.
+
+2017-06-27  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Add symbol export macros for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=171519
+
+        Reviewed by Konstantin Tokarev.
+
+        No new tests. No change in behavior.
+
+        * Configurations/CopyPALHeaders.xcconfig: Added.
+        * PAL.xcodeproj/project.pbxproj:
+        * config.h:
+        * pal/ExportMacros.h: Copied from Source/WebCore/platform/PlatformExportMacros.h.
+        * pal/PlatformWin.cmake:
+        * pal/crypto/CryptoDigest.h:
+
+2017-06-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI imports
+        https://bugs.webkit.org/show_bug.cgi?id=172927
+
+        Reviewed by Jiewen Tan, Michael Catanzaro and Carlos Garcia Campos.
+
+        Add a file that provides utility functions for operating with libtasn1 APIs.
+
+        The precomputed ASN.1 declarations, generated from the WebCrypto.asn file with
+        the asn1Parser tool, are used to enable construction of ASN.1 structures that
+        are then used to decode the SPKI or PKCS#8 data through the decodeStructure()
+        function. Raw data of each element in that structure can be retrieved throug the
+        elementData() function.
+
+        The Structure class is added as a wrapper for asn1_node objects that are used
+        as decoding targets, simplifying lifetime management of these objects.
+
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/crypto/tasn1/Utilities.cpp: Added.
+        (PAL::TASN1::asn1Definitions):
+        (PAL::TASN1::decodeStructure):
+        (PAL::TASN1::elementData):
+        * pal/crypto/tasn1/Utilities.h: Added.
+        (PAL::TASN1::Structure::~Structure):
+        (PAL::TASN1::Structure::operator&):
+        (PAL::TASN1::Structure::operator asn1_node):
+        * pal/crypto/tasn1/WebCrypto.asn: Added.
+
+2017-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Disable font variations on macOS Sierra and iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=173618
+        <rdar://problem/32879164>
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix after r218484.
+
+        * pal/crypto/gcrypt/Utilities.h: Drop the GCrypt prefix from the
+        GCryptCipherOperation type definition, since it's already nested
+        in the PAL::GCrypt namespace.
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] AES_CTR support
+        https://bugs.webkit.org/show_bug.cgi?id=171420
+
+        Reviewed by Michael Catanzaro.
+
+        * pal/crypto/gcrypt/Utilities.h: Add a GCryptCipherOperation type alias that can be used
+        for the gcry_cipher_decrypt or gcry_cipher_encrypt function pointers.
+
+2017-06-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Upstream iOS drag and drop implementation into OpenSource WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=173366
+        <rdar://problem/32767014>
+
+        Reviewed by Tim Horton.
+
+        Introduce ENABLE_DATA_INTERACTION and ENABLE_DRAG_SUPPORT to FeatureDefines.xcconfig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-01  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r217626): ENABLE_APPLE_PAY_SESSION_V3 was disabled by mistake
+        https://bugs.webkit.org/show_bug.cgi?id=172828
+
+        Reviewed by Beth Dakin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-31  Andy Estes  <aestes@apple.com>
+
+        Rename ENABLE_APPLE_PAY_DELEGATE to ENABLE_APPLE_PAY_SESSION_V3 and bump the supported version number
+        https://bugs.webkit.org/show_bug.cgi?id=172366
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-30  Alex Christensen  <achristensen@webkit.org>
+
+        Update libwebrtc configuration
+        https://bugs.webkit.org/show_bug.cgi?id=172727
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove dead ENABLE(FONT_LOAD_EVENTS) code
+        https://bugs.webkit.org/show_bug.cgi?id=172517
+
+        Rubber-stamped by Simon Fraser.
+
+        No new tests because there is no behavior change.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-18  Andy Estes  <aestes@apple.com>
+
+        ENABLE(APPLE_PAY_DELEGATE) should be NO on macOS Sierra and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=172305
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-05-09  Sam Weinig  <sam@webkit.org>
 
         Remove support for legacy Notifications

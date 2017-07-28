@@ -2430,7 +2430,7 @@ def check_braces(clean_lines, line_number, file_state, error):
         # We also allow '#' for #endif and '=' for array initialization,
         # and '- (' and '+ (' for Objective-C methods.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override)\s*)?(->\s*\S+)?\s*$', previous_line)
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override|final|const final)\s*)?(->\s*\S+)?\s*$', previous_line)
              or search(r'\b(if|for|while|switch|else|NS_ENUM)\b', previous_line)
              or regex_for_lambdas_and_blocks(previous_line, line_number, file_state, error))
             and previous_line.find('#') < 0
@@ -2438,7 +2438,7 @@ def check_braces(clean_lines, line_number, file_state, error):
             and previous_line.find('+ (') != 0):
             error(line_number, 'whitespace/braces', 4,
                   'This { should be at the end of the previous line')
-    elif (search(r'\)\s*(((const|override)\s*)*\s*)?{\s*$', line)
+    elif (search(r'\)\s*(((const|override|final)\s*)*\s*)?{\s*$', line)
           and line.count('(') == line.count(')')
           and not search(r'(\s*(if|for|while|switch|NS_ENUM|@synchronized)|} @catch)\b', line)
           and not regex_for_lambdas_and_blocks(line, line_number, file_state, error)
@@ -3419,7 +3419,7 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
         if not file_state.is_objective_c_or_objective_cpp() and modified_identifier.find('_') >= 0:
             # Various exceptions to the rule: JavaScript op codes functions, const_iterator.
             if (not (filename.find('JavaScriptCore') >= 0 and (modified_identifier.find('op_') >= 0 or modified_identifier.find('intrinsic_') >= 0))
-                and not (filename.find('gtk') >= 0 and modified_identifier.startswith('webkit_') >= 0)
+                and not (('gtk' in filename or 'glib' in filename or 'wpe' in filename) and modified_identifier.startswith('webkit_') >= 0)
                 and not modified_identifier.startswith('tst_')
                 and not modified_identifier.startswith('webkit_dom_object_')
                 and not modified_identifier.startswith('webkit_soup')

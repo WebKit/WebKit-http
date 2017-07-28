@@ -26,6 +26,8 @@
 #pragma once
 
 #include "AbstractModuleRecord.h"
+#include "SourceCode.h"
+#include "VariableEnvironment.h"
 
 namespace JSC {
 
@@ -49,8 +51,6 @@ public:
     const SourceCode& sourceCode() const { return m_sourceCode; }
     const VariableEnvironment& declaredVariables() const { return m_declaredVariables; }
     const VariableEnvironment& lexicalVariables() const { return m_lexicalVariables; }
-
-    ModuleProgramExecutable* moduleProgramExecutable() const { return m_moduleProgramExecutable.get(); }
 
 private:
     JSModuleRecord(VM&, Structure*, const Identifier&, const SourceCode&, const VariableEnvironment&, const VariableEnvironment&);

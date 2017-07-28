@@ -28,7 +28,7 @@
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
 #include "AVMediaCaptureSource.h"
-#include "OrientationNotifer.h"
+#include "OrientationNotifier.h"
 
 OBJC_CLASS CALayer;
 OBJC_CLASS AVFrameRateRange;
@@ -56,7 +56,7 @@ private:
     AVVideoCaptureSource(AVCaptureDevice*, const AtomicString&);
     virtual ~AVVideoCaptureSource();
 
-    void setupCaptureSession() final;
+    bool setupCaptureSession() final;
     void shutdownCaptureSession() final;
 
     void updateSettings(RealtimeMediaSourceSettings&) final;
@@ -69,6 +69,8 @@ private:
     void monitorOrientation(OrientationNotifier&) final;
     void computeSampleRotation();
 
+    bool isFrameRateSupported(double frameRate);
+
     NSString *bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height) const;
     bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
 
@@ -80,20 +82,15 @@ private:
 
     bool setFrameRateConstraint(double minFrameRate, double maxFrameRate);
 
-    bool updateFramerate(CMSampleBufferRef);
-
     void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*) final;
     void processNewFrame(RetainPtr<CMSampleBufferRef>, RetainPtr<AVCaptureConnection>);
 
     RetainPtr<NSString> m_pendingPreset;
     RetainPtr<CMSampleBufferRef> m_buffer;
-    RetainPtr<CGImageRef> m_lastImage;
     RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
 
     std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
 
-    Vector<Float64> m_videoFrameTimeStamps;
-    Float64 m_frameRate { 0 };
     int32_t m_width { 0 };
     int32_t m_height { 0 };
     int m_sensorOrientation { 0 };

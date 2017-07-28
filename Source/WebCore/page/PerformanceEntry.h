@@ -31,12 +31,9 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
 #include "Performance.h"
 #include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
-#include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -82,5 +79,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

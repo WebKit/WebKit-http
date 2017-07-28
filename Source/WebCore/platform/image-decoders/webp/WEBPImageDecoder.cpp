@@ -70,7 +70,7 @@ ImageFrame* WEBPImageDecoder::frameBufferAtIndex(size_t index)
         return 0;
 
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(1);
+        m_frameBufferCache.grow(1);
 
     ImageFrame& frame = m_frameBufferCache[0];
     if (!frame.isComplete())
@@ -119,7 +119,7 @@ bool WEBPImageDecoder::decode(bool onlySize, bool)
     if (buffer.isInvalid()) {
         if (!buffer.initialize(size(), m_premultiplyAlpha))
             return setFailed();
-        buffer.setDecodingStatus(ImageFrame::DecodingStatus::Partial);
+        buffer.setDecodingStatus(DecodingStatus::Partial);
         buffer.setHasAlpha(m_hasAlpha);
     }
 
@@ -137,7 +137,7 @@ bool WEBPImageDecoder::decode(bool onlySize, bool)
 
     switch (WebPIUpdate(m_decoder, dataBytes, dataSize)) {
     case VP8_STATUS_OK:
-        buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+        buffer.setDecodingStatus(DecodingStatus::Complete);
         clear();
         return true;
     case VP8_STATUS_SUSPENDED:

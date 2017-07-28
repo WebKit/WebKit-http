@@ -27,8 +27,10 @@
 
 #if ENABLE(WEB_AUDIO) && ENABLE(MEDIA_STREAM)
 
-#include "AudioSourceProvider.h"
-#include "RealtimeMediaSource.h"
+#include "CAAudioStreamDescription.h"
+#include "MediaStreamTrackPrivate.h"
+#include "WebAudioSourceProvider.h"
+#include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/Lock.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -44,37 +46,41 @@ namespace WebCore {
 class AudioSampleDataSource;
 class CAAudioStreamDescription;
 
-class WEBCORE_EXPORT WebAudioSourceProviderAVFObjC : public RefCounted<WebAudioSourceProviderAVFObjC>, public AudioSourceProvider, RealtimeMediaSource::Observer {
+class WEBCORE_EXPORT WebAudioSourceProviderAVFObjC final : public WebAudioSourceProvider, MediaStreamTrackPrivate::Observer {
 public:
-    static Ref<WebAudioSourceProviderAVFObjC> create(RealtimeMediaSource&);
+    static Ref<WebAudioSourceProviderAVFObjC> create(MediaStreamTrackPrivate&);
     virtual ~WebAudioSourceProviderAVFObjC();
 
-    void prepare(const AudioStreamBasicDescription *);
+    void prepare(const AudioStreamBasicDescription&);
     void unprepare();
 
 private:
-    WebAudioSourceProviderAVFObjC(RealtimeMediaSource&);
+    explicit WebAudioSourceProviderAVFObjC(MediaStreamTrackPrivate&);
 
     // AudioSourceProvider
-    void provideInput(AudioBus*, size_t) override;
-    void setClient(AudioSourceProviderClient*) override;
+    void provideInput(AudioBus*, size_t) final;
+    void setClient(AudioSourceProviderClient*) final;
 
-    // RealtimeMediaSource::Observer
-    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
+    // MediaStreamTrackPrivate::Observer
+    void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
+    void trackEnded(MediaStreamTrackPrivate&) final { }
+    void trackMutedChanged(MediaStreamTrackPrivate&) final { }
+    void trackSettingsChanged(MediaStreamTrackPrivate&) final { }
+    void trackEnabledChanged(MediaStreamTrackPrivate&) final { }
 
     size_t m_listBufferSize { 0 };
-    std::unique_ptr<CAAudioStreamDescription> m_inputDescription;
-    std::unique_ptr<CAAudioStreamDescription> m_outputDescription;
+    std::optional<CAAudioStreamDescription> m_inputDescription;
+    std::optional<CAAudioStreamDescription> m_outputDescription;
     RefPtr<AudioSampleDataSource> m_dataSource;
 
     uint64_t m_writeCount { 0 };
     uint64_t m_readCount { 0 };
     AudioSourceProviderClient* m_client { nullptr };
-    RealtimeMediaSource* m_captureSource { nullptr };
+    MediaStreamTrackPrivate* m_captureSource { nullptr };
     Lock m_mutex;
     bool m_connected { false };
 };
-    
+
 }
 
 #endif

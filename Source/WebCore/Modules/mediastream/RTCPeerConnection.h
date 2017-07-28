@@ -147,13 +147,20 @@ public:
 
     void clearController() { m_controller = nullptr; }
 
+    // ActiveDOMObject.
+    bool hasPendingActivity() const final;
+
 private:
     RTCPeerConnection(ScriptExecutionContext&);
 
+    ExceptionOr<void> initializeConfiguration(RTCConfiguration&&);
     Ref<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpSender>&&, const RTCRtpTransceiverInit&, const String& trackId, const String& trackKind);
 
     void registerToController(RTCController&);
     void unregisterFromController();
+
+    friend class Internals;
+    void applyRotationForOutgoingVideoSources() { m_backend->applyRotationForOutgoingVideoSources(); }
 
     // EventTarget implementation.
     void refEventTarget() final { ref(); }

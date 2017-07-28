@@ -32,7 +32,6 @@
 #include "Editing.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLBRElement.h"
@@ -40,6 +39,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "LayoutDisallowedScope.h"
 #include "Logging.h"
 #include "NoEventDispatchAssertion.h"
 #include "NodeTraversal.h"
@@ -222,7 +222,7 @@ ExceptionOr<void> HTMLTextFormControlElement::setRangeText(const String& replace
 ExceptionOr<void> HTMLTextFormControlElement::setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode)
 {
     if (start > end)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     String text = innerTextValue();
     unsigned textLength = text.length();
@@ -549,7 +549,8 @@ static String innerTextValueFrom(TextControlInnerTextElement& innerText)
 
 void HTMLTextFormControlElement::setInnerTextValue(const String& value)
 {
-    TextControlInnerTextElement* innerText = innerTextElement();
+    LayoutDisallowedScope layoutDisallowedScope(LayoutDisallowedScope::Reason::PerformanceOptimization);
+    RefPtr<TextControlInnerTextElement> innerText = innerTextElement();
     if (!innerText)
         return;
 
@@ -577,7 +578,7 @@ void HTMLTextFormControlElement::setInnerTextValue(const String& value)
 #if HAVE(ACCESSIBILITY) && PLATFORM(COCOA)
         if (textIsChanged && renderer()) {
             if (AXObjectCache* cache = document().existingAXObjectCache())
-                cache->postTextReplacementNotification(this, AXTextEditTypeDelete, previousValue, AXTextEditTypeInsert, value, VisiblePosition(Position(this, Position::PositionIsBeforeAnchor)));
+                cache->postTextReplacementNotificationForTextControl(*this, previousValue, value);
         }
 #endif
     }
@@ -776,7 +777,7 @@ String HTMLTextFormControlElement::directionForFormData() const
 ExceptionOr<void> HTMLTextFormControlElement::setMaxLength(int maxLength)
 {
     if (maxLength < 0 || (m_minLength >= 0 && maxLength < m_minLength))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     setIntegralAttribute(maxlengthAttr, maxLength);
     return { };
 }
@@ -784,7 +785,7 @@ ExceptionOr<void> HTMLTextFormControlElement::setMaxLength(int maxLength)
 ExceptionOr<void> HTMLTextFormControlElement::setMinLength(int minLength)
 {
     if (minLength < 0 || (m_maxLength >= 0 && minLength > m_maxLength))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     setIntegralAttribute(minlengthAttr, minLength);
     return { };
 }

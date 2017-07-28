@@ -21,14 +21,17 @@
 #include "config.h"
 #include "JSTestEventTarget.h"
 
+#include "JSDOMAbstractOperations.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertNumbers.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMGlobalObject.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include "JSNode.h"
-#include <runtime/Error.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/PropertyNameArray.h>
 #include <wtf/GetPtr.h>
 
@@ -99,7 +102,7 @@ const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype
 void JSTestEventTargetPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestEventTargetPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestEventTarget::info(), JSTestEventTargetPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTarget) };
@@ -126,55 +129,78 @@ JSObject* JSTestEventTarget::prototype(VM& vm, JSDOMGlobalObject& globalObject)
     return getDOMPrototype<JSTestEventTarget>(vm, globalObject);
 }
 
+JSValue JSTestEventTarget::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSTestEventTargetConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+}
+
 bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
 {
     auto* thisObject = jsCast<JSTestEventTarget*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    auto optionalIndex = parseIndex(propertyName);
-    if (optionalIndex && optionalIndex.value() < thisObject->wrapped().length()) {
-        auto index = optionalIndex.value();
-        slot.setValue(thisObject, ReadOnly, toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index)));
-        return true;
-    }
-    if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot))
-        return true;
-    JSValue proto = thisObject->getPrototypeDirect();
-    if (proto.isObject() && jsCast<JSObject*>(proto)->hasProperty(state, propertyName))
-        return false;
-
-    if (!optionalIndex && thisObject->classInfo() == info() && !propertyName.isSymbol()) {
-        auto item = thisObject->wrapped().namedItem(propertyNameToAtomicString(propertyName));
-        if (!IDLInterface<Node>::isNullValue(item)) {
-            slot.setValue(thisObject, ReadOnly, toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), item));
+    if (auto index = parseIndex(propertyName)) {
+        if (index.value() < thisObject->wrapped().length()) {
+            auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index.value()));
+            slot.setValue(thisObject, ReadOnly, value);
             return true;
         }
+        return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
     }
-    return false;
+    using GetterIDLType = IDLInterface<Node>;
+    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> std::optional<typename GetterIDLType::ImplementationType> {
+        auto result = thisObject.wrapped().namedItem(propertyNameToAtomicString(propertyName));
+        if (!GetterIDLType::isNullValue(result))
+            return typename GetterIDLType::ImplementationType { GetterIDLType::extractValueFromNullable(result) };
+        return std::nullopt;
+    };
+    if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
+        auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
+        slot.setValue(thisObject, ReadOnly, value);
+        return true;
+    }
+    return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
 }
 
 bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* state, unsigned index, PropertySlot& slot)
 {
     auto* thisObject = jsCast<JSTestEventTarget*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (LIKELY(index < thisObject->wrapped().length())) {
-        slot.setValue(thisObject, ReadOnly, toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index)));
+    if (LIKELY(index <= MAX_ARRAY_INDEX)) {
+        if (index < thisObject->wrapped().length()) {
+            auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index));
+            slot.setValue(thisObject, ReadOnly, value);
+            return true;
+        }
+        return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
+    }
+    auto propertyName = Identifier::from(state, index);
+    using GetterIDLType = IDLInterface<Node>;
+    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> std::optional<typename GetterIDLType::ImplementationType> {
+        auto result = thisObject.wrapped().namedItem(propertyNameToAtomicString(propertyName));
+        if (!GetterIDLType::isNullValue(result))
+            return typename GetterIDLType::ImplementationType { GetterIDLType::extractValueFromNullable(result) };
+        return std::nullopt;
+    };
+    if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
+        auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
+        slot.setValue(thisObject, ReadOnly, value);
         return true;
     }
-    return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
+    return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
 }
 
 void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     auto* thisObject = jsCast<JSTestEventTarget*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    ASSERT_GC_OBJECT_INHERITS(object, info());
     for (unsigned i = 0, count = thisObject->wrapped().length(); i < count; ++i)
         propertyNames.add(Identifier::from(state, i));
     for (auto& propertyName : thisObject->wrapped().supportedPropertyNames())
         propertyNames.add(Identifier::fromString(state, propertyName));
-    Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
+    JSObject::getOwnPropertyNames(object, state, propertyNames, mode);
 }
 
-template<> inline JSTestEventTarget* BindingCaller<JSTestEventTarget>::castForOperation(ExecState& state)
+template<> inline JSTestEventTarget* IDLOperation<JSTestEventTarget>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestEventTarget*>(state.vm(), state.thisValue());
 }
@@ -183,39 +209,26 @@ EncodedJSValue jsTestEventTargetConstructor(ExecState* state, EncodedJSValue thi
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject))
+    auto* prototype = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
-    return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), domObject->globalObject()));
+    return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), prototype->globalObject()));
 }
 
 bool setJSTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = JSValue::decode(encodedValue);
-    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
+    auto* prototype = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
+    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
 }
 
-JSValue JSTestEventTarget::getConstructor(VM& vm, const JSGlobalObject* globalObject)
-{
-    return getDOMConstructor<JSTestEventTargetConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
-}
-
-static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(JSC::ExecState*, JSTestEventTarget*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* state)
-{
-    return BindingCaller<JSTestEventTarget>::callOperation<jsTestEventTargetPrototypeFunctionItemCaller>(state, "item");
-}
-
-static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(JSC::ExecState* state, JSTestEventTarget* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemBody(JSC::ExecState* state, typename IDLOperation<JSTestEventTarget>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -227,11 +240,9 @@ static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(J
     return JSValue::encode(toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.item(WTFMove(index))));
 }
 
-void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)
+EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* state)
 {
-    auto* thisObject = jsCast<JSTestEventTarget*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
+    return IDLOperation<JSTestEventTarget>::call<jsTestEventTargetPrototypeFunctionItemBody>(*state, "item");
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -252,12 +263,12 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestEventTarget@WebCore@@6B@"));
 #else
     void* expectedVTablePointer = &_ZTVN7WebCore15TestEventTargetE[2];
-#if COMPILER(CLANG)
+#endif
+
     // If this fails TestEventTarget does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    static_assert(__is_polymorphic(TestEventTarget), "TestEventTarget is not polymorphic");
-#endif
-#endif
+    static_assert(std::is_polymorphic<TestEventTarget>::value, "TestEventTarget is not polymorphic");
+
     // If you hit this assertion you either have a use after free bug, or
     // TestEventTarget has subclasses. If TestEventTarget has subclasses that get passed
     // to toJS() we currently require TestEventTarget you to opt out of binding hardening

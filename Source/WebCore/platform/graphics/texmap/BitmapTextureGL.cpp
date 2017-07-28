@@ -57,7 +57,7 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, GC3Dint internalFormat, const Flags flags)
+BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, const Flags flags, GC3Dint internalFormat)
     : m_context3D(WTFMove(context3D))
     , m_internalFormat(internalFormat)
 {

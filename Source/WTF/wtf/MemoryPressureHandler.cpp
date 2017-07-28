@@ -27,6 +27,7 @@
 #include "MemoryPressureHandler.h"
 
 #include <wtf/MemoryFootprint.h>
+#include <wtf/NeverDestroyed.h>
 
 #define LOG_CHANNEL_PREFIX Log
 
@@ -57,6 +58,12 @@ MemoryPressureHandler::MemoryPressureHandler()
 
 void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
 {
+    if (!isFastMallocEnabled()) {
+        // If we're running with FastMalloc disabled, some kind of testing or debugging is probably happening.
+        // Let's be nice and not enable the memory kill mechanism.
+        return;
+    }
+
     if (use) {
         m_measurementTimer = std::make_unique<RunLoop::Timer<MemoryPressureHandler>>(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired);
         m_measurementTimer->startRepeating(30);
@@ -75,15 +82,34 @@ static const char* toString(MemoryUsagePolicy policy)
 }
 #endif
 
-size_t MemoryPressureHandler::thresholdForMemoryKill()
+static size_t thresholdForMemoryKillWithProcessState(WebsamProcessState processState, unsigned tabCount)
 {
 #if CPU(X86_64) || CPU(ARM64)
-    if (m_processState == WebsamProcessState::Active)
-        return 4 * GB;
-    return 2 * GB;
+    size_t baseThreshold;
+    if (processState == WebsamProcessState::Active)
+        baseThreshold = 4 * GB;
+    else
+        baseThreshold = 2 * GB;
+    if (tabCount <= 1)
+        return baseThreshold;
+    return baseThreshold + (std::min(tabCount - 1, 4u) * 1 * GB);
 #else
+    UNUSED_PARAM(processState);
+    UNUSED_PARAM(tabCount);
     return 3 * GB;
 #endif
+}
+
+void MemoryPressureHandler::setPageCount(unsigned pageCount)
+{
+    if (singleton().m_pageCount == pageCount)
+        return;
+    singleton().m_pageCount = pageCount;
+}
+
+size_t MemoryPressureHandler::thresholdForMemoryKill()
+{
+    return thresholdForMemoryKillWithProcessState(m_processState, m_pageCount);
 }
 
 static size_t thresholdForPolicy(MemoryUsagePolicy policy)
@@ -163,6 +189,25 @@ void MemoryPressureHandler::measurementTimerFired()
         releaseMemory(Critical::Yes, Synchronous::No);
         break;
     }
+
+    if (processState() == WebsamProcessState::Active && footprint.value() > thresholdForMemoryKillWithProcessState(WebsamProcessState::Inactive, m_pageCount))
+        doesExceedInactiveLimitWhileActive();
+    else
+        doesNotExceedInactiveLimitWhileActive();
+}
+
+void MemoryPressureHandler::doesExceedInactiveLimitWhileActive()
+{
+    if (m_hasInvokedDidExceedInactiveLimitWhileActiveCallback)
+        return;
+    if (m_didExceedInactiveLimitWhileActiveCallback)
+        m_didExceedInactiveLimitWhileActiveCallback();
+    m_hasInvokedDidExceedInactiveLimitWhileActiveCallback = true;
+}
+
+void MemoryPressureHandler::doesNotExceedInactiveLimitWhileActive()
+{
+    m_hasInvokedDidExceedInactiveLimitWhileActiveCallback = false;
 }
 
 void MemoryPressureHandler::setProcessState(WebsamProcessState state)
@@ -170,9 +215,6 @@ void MemoryPressureHandler::setProcessState(WebsamProcessState state)
     if (m_processState == state)
         return;
     m_processState = state;
-    memoryPressureStatusChanged();
-    if (m_processState == WebsamProcessState::Inactive)
-        respondToMemoryPressure(Critical::Yes, Synchronous::No);
 }
 
 void MemoryPressureHandler::beginSimulatedMemoryPressure()
@@ -190,17 +232,6 @@ void MemoryPressureHandler::endSimulatedMemoryPressure()
         return;
     m_isSimulatingMemoryPressure = false;
     memoryPressureStatusChanged();
-}
-
-bool MemoryPressureHandler::isUnderMemoryPressure()
-{
-    auto& memoryPressureHandler = singleton();
-    return memoryPressureHandler.m_underMemoryPressure
-#if PLATFORM(MAC)
-        || memoryPressureHandler.m_memoryUsagePolicy >= MemoryUsagePolicy::Strict
-        || memoryPressureHandler.m_processState == WebsamProcessState::Inactive
-#endif
-        || memoryPressureHandler.m_isSimulatingMemoryPressure;
 }
 
 void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchronous)
@@ -252,7 +283,7 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
         m_initialMemory->physical, currentMemory->physical, physicalDiff);
 }
 
-#if !PLATFORM(COCOA) && !OS(LINUX) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !OS(LINUX) && !OS(WINDOWS)
 void MemoryPressureHandler::install() { }
 void MemoryPressureHandler::uninstall() { }
 void MemoryPressureHandler::holdOff(unsigned) { }
@@ -261,7 +292,7 @@ void MemoryPressureHandler::platformReleaseMemory(Critical) { }
 std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return std::nullopt; }
 #endif
 
-#if !PLATFORM(WIN)
+#if !OS(WINDOWS)
 void MemoryPressureHandler::platformInitialize() { }
 #endif
 

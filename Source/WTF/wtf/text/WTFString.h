@@ -25,6 +25,7 @@
 // This file would be called String.h, but that conflicts with <string.h>
 // on systems without case-sensitive file systems.
 
+#include <wtf/Function.h>
 #include <wtf/text/ASCIIFastPath.h>
 #include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/StringImpl.h>
@@ -123,8 +124,8 @@ public:
     // Construct a string from a constant string literal.
     // This constructor is the "big" version, as it put the length in the function call and generate bigger code.
     enum ConstructFromLiteralTag { ConstructFromLiteral };
-    template<unsigned charactersCount>
-    String(const char (&characters)[charactersCount], ConstructFromLiteralTag) : m_impl(StringImpl::createFromLiteral<charactersCount>(characters)) { }
+    template<unsigned characterCount>
+    String(const char (&characters)[characterCount], ConstructFromLiteralTag) : m_impl(StringImpl::createFromLiteral<characterCount>(characters)) { }
 
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
     // they'll be implicitly deleted by adding the move constructor and move assignment operator.
@@ -257,11 +258,11 @@ public:
         { return caseSensitive ? reverseFind(str, start) : reverseFindIgnoringCase(str, start); }
 
     WTF_EXPORT_STRING_API Vector<UChar> charactersWithNullTermination() const;
-    
+
     WTF_EXPORT_STRING_API UChar32 characterStartingAt(unsigned) const; // Ditto.
-    
+
     bool contains(UChar c) const { return find(c) != notFound; }
-    bool contains(const LChar* str, bool caseSensitive = true, unsigned startOffset = 0) const 
+    bool contains(const LChar* str, bool caseSensitive = true, unsigned startOffset = 0) const
         { return find(str, startOffset, caseSensitive) != notFound; }
     bool contains(const String& str) const
         { return find(str) != notFound; }
@@ -314,11 +315,11 @@ public:
     String& replace(const String& a, const String& b) { if (m_impl) m_impl = m_impl->replace(a.impl(), b.impl()); return *this; }
     String& replace(unsigned index, unsigned len, const String& b) { if (m_impl) m_impl = m_impl->replace(index, len, b.impl()); return *this; }
 
-    template<unsigned charactersCount>
-    ALWAYS_INLINE String& replaceWithLiteral(UChar a, const char (&characters)[charactersCount])
+    template<unsigned characterCount>
+    ALWAYS_INLINE String& replaceWithLiteral(UChar a, const char (&characters)[characterCount])
     {
         if (m_impl)
-            m_impl = m_impl->replace(a, characters, charactersCount - 1);
+            m_impl = m_impl->replace(a, characters, characterCount - 1);
 
         return *this;
     }
@@ -364,10 +365,25 @@ public:
     {
         split(separator, false, result);
     }
+
+    using SplitFunctor = WTF::Function<void(const StringView&)>;
+    WTF_EXPORT_STRING_API void split(UChar separator, bool allowEmptyEntries, const SplitFunctor&) const;
     WTF_EXPORT_STRING_API void split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const;
     void split(UChar separator, Vector<String>& result) const
     {
         split(separator, false, result);
+    }
+    Vector<String> split(UChar separator) const
+    {
+        Vector<String> result;
+        split(separator, false, result);
+        return result;
+    }
+    Vector<String> split(const String& separator) const
+    {
+        Vector<String> result;
+        split(separator, false, result);
+        return result;
     }
 
     WTF_EXPORT_STRING_API int toIntStrict(bool* ok = nullptr, int base = 10) const;
@@ -413,7 +429,7 @@ public:
 
 #ifdef __OBJC__
     WTF_EXPORT_STRING_API String(NSString *);
-    
+
     // This conversion converts the null string to an empty NSString rather than to nil.
     // Given Cocoa idioms, this is a more useful default. Clients that need to preserve the
     // null string can check isNull explicitly.
@@ -441,7 +457,7 @@ public:
     // Tries to convert the passed in string to UTF-8, but will fall back to Latin-1 if the string is not valid UTF-8.
     WTF_EXPORT_STRING_API static String fromUTF8WithLatin1Fallback(const LChar*, size_t);
     static String fromUTF8WithLatin1Fallback(const char* s, size_t length) { return fromUTF8WithLatin1Fallback(reinterpret_cast<const LChar*>(s), length); };
-    
+
     // Determines the writing direction using the Unicode Bidi Algorithm rules P2 and P3.
     UCharDirection defaultWritingDirection(bool* hasStrongDirectionality = nullptr) const
     {

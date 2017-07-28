@@ -29,9 +29,6 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "GraphicsTypes3D.h"
-#include "TextureMapper.h"
-#include "TransformationMatrix.h"
-#include <wtf/Condition.h>
 #include <wtf/Function.h>
 #include <wtf/Lock.h>
 #include <wtf/RunLoop.h>
@@ -44,6 +41,7 @@
 
 namespace WebCore {
 
+class IntSize;
 class TextureMapperGL;
 class TextureMapperLayer;
 class TextureMapperPlatformLayerProxy;
@@ -84,6 +82,7 @@ public:
     bool scheduleUpdateOnCompositorThread(Function<void()>&&);
 
 private:
+    void appendToUnusedBuffers(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     void scheduleReleaseUnusedBuffers();
     void releaseUnusedBuffersTimerFired();
 
@@ -96,8 +95,8 @@ private:
     Lock m_lock;
 
     Vector<std::unique_ptr<TextureMapperPlatformLayerBuffer>> m_usedBuffers;
+    std::unique_ptr<RunLoop::Timer<TextureMapperPlatformLayerProxy>> m_releaseUnusedBuffersTimer;
 
-    RunLoop::Timer<TextureMapperPlatformLayerProxy> m_releaseUnusedBuffersTimer;
 #ifndef NDEBUG
     ThreadIdentifier m_compositorThreadID { 0 };
 #endif

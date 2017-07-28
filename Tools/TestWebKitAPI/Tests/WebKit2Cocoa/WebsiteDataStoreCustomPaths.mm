@@ -115,13 +115,13 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     // We expect 4 messages, 1 each for WebSQL, IndexedDB, cookies, and localStorage.
     EXPECT_STREQ([getNextMessage().body UTF8String], "localstorage written");
     EXPECT_STREQ([getNextMessage().body UTF8String], "cookie written");
-    EXPECT_STREQ([getNextMessage().body UTF8String], "Exception: QuotaExceededError (DOM Exception 22): The quota has been exceeded.");
+    EXPECT_STREQ([getNextMessage().body UTF8String], "Exception: QuotaExceededError: The quota has been exceeded.");
     EXPECT_STREQ([getNextMessage().body UTF8String], "Success opening indexed database");
 
     [[[webView configuration] processPool] _syncNetworkProcessCookies];
 
     // Forcibly shut down everything of WebKit that we can.
-    [[[webView configuration] processPool] _terminateDatabaseProcess];
+    [[[webView configuration] processPool] _terminateStorageProcess];
     auto pid = [webView _webProcessIdentifier];
     if (pid)
         kill(pid, SIGKILL);
@@ -159,7 +159,7 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
 
     // Data stores can't delete anything unless a WKProcessPool exists, so make sure the shared data store exists.
     auto *processPool = [WKProcessPool _sharedProcessPool];
-    [processPool _terminateDatabaseProcess];
+    [processPool _terminateStorageProcess];
     RetainPtr<WKWebsiteDataStore> dataStore = [[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()];
     RetainPtr<NSSet> types = adoptNS([[NSSet alloc] initWithObjects:WKWebsiteDataTypeIndexedDBDatabases, nil]);
 
@@ -170,6 +170,42 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     TestWebKitAPI::Util::run(&receivedScriptMessage);
 
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:fileIDBPath.get().path]);
+
+    // Now, with brand new WKWebsiteDataStores pointing at the same custom cookie storage location,
+    // in newly fired up NetworkProcesses, verify that the fetch and delete APIs work as expected.
+
+    [processPool _terminateNetworkProcess];
+    auto newCustomDataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()]);
+
+    [newCustomDataStore fetchDataRecordsOfTypes:[NSSet setWithObjects:WKWebsiteDataTypeCookies, nil] completionHandler:^(NSArray<WKWebsiteDataRecord *> * records) {
+        EXPECT_GT([records count], (unsigned long)0);
+        receivedScriptMessage = true;
+    }];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+
+    [processPool _terminateNetworkProcess];
+    newCustomDataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()]);
+
+    [newCustomDataStore removeDataOfTypes:[NSSet setWithObjects:WKWebsiteDataTypeCookies, nil] modifiedSince:[NSDate distantPast] completionHandler:^ {
+        receivedScriptMessage = true;
+    }];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+
+    // This time, reuse the same network process but still do a new websitedatastore, to make sure even an existing network process
+    // gets the new datastore.
+    newCustomDataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()]);
+
+    [newCustomDataStore fetchDataRecordsOfTypes:[NSSet setWithObjects:WKWebsiteDataTypeCookies, nil] completionHandler:^(NSArray<WKWebsiteDataRecord *> * records) {
+        EXPECT_EQ([records count], (unsigned long)0);
+        receivedScriptMessage = true;
+    }];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
 }
 
 #endif

@@ -27,6 +27,7 @@
 #include "config.h"
 #include "TreeScope.h"
 
+#include "Attr.h"
 #include "DOMWindow.h"
 #include "ElementIterator.h"
 #include "FocusController.h"
@@ -38,12 +39,14 @@
 #include "HTMLMapElement.h"
 #include "HitTestResult.h"
 #include "IdTargetObserverRegistry.h"
+#include "NodeRareData.h"
 #include "Page.h"
 #include "PointerLockController.h"
+#include "PseudoElement.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
+#include "Settings.h"
 #include "ShadowRoot.h"
-#include "TreeScopeAdopter.h"
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -293,18 +296,27 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
     return m_labelsByForAttribute->getElementByLabelForAttribute(*forAttributeValue.impl(), *this);
 }
 
-Node* TreeScope::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
+static std::optional<LayoutPoint> absolutePointIfNotClipped(Document& document, const LayoutPoint& clientPoint)
 {
-    auto* frame = documentScope().frame();
-    auto* view = documentScope().view();
+    auto* frame = document.frame();
+    auto* view = document.view();
     if (!frame || !view)
-        return nullptr;
+        return std::nullopt;
+
+    if (frame->settings().visualViewportEnabled()) {
+        document.updateLayout();
+        FloatPoint layoutViewportPoint = view->clientToLayoutViewportPoint(clientPoint);
+        FloatRect layoutViewportBounds({ }, view->layoutViewportRect().size());
+        if (!layoutViewportBounds.contains(layoutViewportPoint))
+            return std::nullopt;
+        return LayoutPoint(view->layoutViewportToAbsolutePoint(layoutViewportPoint));
+    }
 
     float scaleFactor = frame->pageZoomFactor() * frame->frameScaleFactor();
 
-    LayoutPoint contentsPoint = clientPoint;
-    contentsPoint.scale(scaleFactor);
-    contentsPoint.moveBy(view->contentsScrollPosition());
+    LayoutPoint absolutePoint = clientPoint;
+    absolutePoint.scale(scaleFactor);
+    absolutePoint.moveBy(view->contentsScrollPosition());
 
     LayoutRect visibleRect;
 #if PLATFORM(IOS)
@@ -312,10 +324,18 @@ Node* TreeScope::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* loca
 #else
     visibleRect = view->visibleContentRect();
 #endif
-    if (!visibleRect.contains(contentsPoint))
+    if (visibleRect.contains(absolutePoint))
+        return absolutePoint;
+    return std::nullopt;
+}
+
+Node* TreeScope::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
+{
+    auto absolutePoint = absolutePointIfNotClipped(documentScope(), clientPoint);
+    if (!absolutePoint)
         return nullptr;
 
-    HitTestResult result(contentsPoint);
+    HitTestResult result(absolutePoint.value());
     documentScope().renderView()->hitTest(HitTestRequest(), result);
 
     if (localPoint)
@@ -324,13 +344,13 @@ Node* TreeScope::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* loca
     return result.innerNode();
 }
 
-Element* TreeScope::elementFromPoint(double x, double y)
+RefPtr<Element> TreeScope::elementFromPoint(double clientX, double clientY)
 {
     Document& document = documentScope();
     if (!document.hasLivingRenderTree())
         return nullptr;
 
-    Node* node = nodeFromPoint(LayoutPoint(x, y), nullptr);
+    Node* node = nodeFromPoint(LayoutPoint(clientX, clientY), nullptr);
     if (!node)
         return nullptr;
 
@@ -343,6 +363,62 @@ Element* TreeScope::elementFromPoint(double x, double y)
     }
 
     return downcast<Element>(node);
+}
+
+Vector<RefPtr<Element>> TreeScope::elementsFromPoint(double clientX, double clientY)
+{
+    Vector<RefPtr<Element>> elements;
+
+    Document& document = documentScope();
+    if (!document.hasLivingRenderTree())
+        return elements;
+
+    auto absolutePoint = absolutePointIfNotClipped(document, LayoutPoint(clientX, clientY));
+    if (!absolutePoint)
+        return elements;
+
+    HitTestRequest request(HitTestRequest::ReadOnly
+        | HitTestRequest::Active
+        | HitTestRequest::DisallowUserAgentShadowContent
+        | HitTestRequest::CollectMultipleElements
+        | HitTestRequest::IncludeAllElementsUnderPoint);
+    HitTestResult result(absolutePoint.value());
+    documentScope().renderView()->hitTest(request, result);
+
+    Node* lastNode = nullptr;
+    for (auto listBasedNode : result.listBasedTestResult()) {
+        Node* node = listBasedNode.get();
+        node = &retargetToScope(*node);
+        while (!is<Element>(*node)) {
+            node = node->parentInComposedTree();
+            if (!node)
+                break;
+            node = &retargetToScope(*node);
+        }
+
+        if (!node)
+            continue;
+
+        if (is<PseudoElement>(node))
+            node = downcast<PseudoElement>(*node).hostElement();
+
+        // Prune duplicate entries. A pseudo ::before content above its parent
+        // node should only result in one entry.
+        if (node == lastNode)
+            continue;
+
+        elements.append(downcast<Element>(node));
+        lastNode = node;
+    }
+
+    if (m_rootNode.isDocumentNode()) {
+        if (Element* rootElement = downcast<Document>(m_rootNode).documentElement()) {
+            if (elements.isEmpty() || elements.last() != rootElement)
+                elements.append(rootElement);
+        }
+    }
+
+    return elements;
 }
 
 Element* TreeScope::findAnchor(const String& name)
@@ -365,15 +441,6 @@ Element* TreeScope::findAnchor(const String& name)
         }
     }
     return nullptr;
-}
-
-void TreeScope::adoptIfNeeded(Node& node)
-{
-    ASSERT(!node.isDocumentNode());
-    ASSERT(!node.m_deletionHasBegun);
-    TreeScopeAdopter adopter(node, *this);
-    if (adopter.needsScopeChange())
-        adopter.execute();
 }
 
 static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFrame)

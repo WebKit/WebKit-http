@@ -72,9 +72,7 @@ public:
 protected:
     AVMediaCaptureSource(AVCaptureDevice*, const AtomicString&, RealtimeMediaSource::Type);
 
-    AudioSourceProvider* audioSourceProvider() override;
-
-    virtual void setupCaptureSession() = 0;
+    virtual bool setupCaptureSession() = 0;
     virtual void shutdownCaptureSession() = 0;
     virtual void updateSettings(RealtimeMediaSourceSettings&) = 0;
     virtual void initializeCapabilities(RealtimeMediaSourceCapabilities&) = 0;
@@ -89,12 +87,14 @@ protected:
     void setAudioSampleBufferDelegate(AVCaptureAudioDataOutput*);
 
 private:
-    void setupSession();
+    bool setupSession();
 
     void beginConfiguration() final;
     void commitConfiguration() final;
 
     bool isCaptureSource() const final { return true; }
+
+    bool interrupted() const final;
 
     void initializeSettings();
     void initializeCapabilities();

@@ -44,6 +44,7 @@ class InspectorDebuggerAgent;
 namespace WebCore {
 
 class InspectorApplicationCacheAgent;
+class InspectorCanvasAgent;
 class InspectorCSSAgent;
 class InspectorDOMAgent;
 class InspectorDOMDebuggerAgent;
@@ -54,7 +55,6 @@ class InspectorWorkerAgent;
 class InspectorMemoryAgent;
 class InspectorNetworkAgent;
 class InspectorPageAgent;
-class InspectorReplayAgent;
 class InspectorTimelineAgent;
 class Page;
 class PageDebuggerAgent;
@@ -83,6 +83,9 @@ public:
     InspectorPageAgent* inspectorPageAgent() const { return m_inspectorPageAgent; }
     void setInspectorPageAgent(InspectorPageAgent* agent) { m_inspectorPageAgent = agent; }
 
+    InspectorCanvasAgent* inspectorCanvasAgent() const { return m_inspectorCanvasAgent; }
+    void setInspectorCanvasAgent(InspectorCanvasAgent* agent) { m_inspectorCanvasAgent = agent; }
+
     InspectorCSSAgent* inspectorCSSAgent() const { return m_inspectorCSSAgent; }
     void setInspectorCSSAgent(InspectorCSSAgent* agent) { m_inspectorCSSAgent = agent; }
 
@@ -106,11 +109,6 @@ public:
 
     InspectorDOMStorageAgent* inspectorDOMStorageAgent() const { return m_inspectorDOMStorageAgent; }
     void setInspectorDOMStorageAgent(InspectorDOMStorageAgent* agent) { m_inspectorDOMStorageAgent = agent; }
-
-#if ENABLE(WEB_REPLAY)
-    InspectorReplayAgent* inspectorReplayAgent() const { return m_inspectorReplayAgent; }
-    void setInspectorReplayAgent(InspectorReplayAgent* agent) { m_inspectorReplayAgent = agent; }
-#endif
 
 #if ENABLE(RESOURCE_USAGE)
     InspectorMemoryAgent* inspectorMemoryAgent() const { return m_inspectorMemoryAgent; }
@@ -158,9 +156,6 @@ private:
     InspectorTimelineAgent* m_inspectorTimelineAgent { nullptr };
     InspectorTimelineAgent* m_persistentInspectorTimelineAgent { nullptr };
     InspectorDOMStorageAgent* m_inspectorDOMStorageAgent { nullptr };
-#if ENABLE(WEB_REPLAY)
-    InspectorReplayAgent* m_inspectorReplayAgent { nullptr };
-#endif
 #if ENABLE(RESOURCE_USAGE)
     InspectorMemoryAgent* m_inspectorMemoryAgent { nullptr };
 #endif
@@ -170,6 +165,7 @@ private:
     PageDebuggerAgent* m_pageDebuggerAgent { nullptr };
     PageHeapAgent* m_pageHeapAgent { nullptr };
     InspectorDOMDebuggerAgent* m_inspectorDOMDebuggerAgent { nullptr };
+    InspectorCanvasAgent* m_inspectorCanvasAgent { nullptr };
 };
 
 } // namespace WebCore

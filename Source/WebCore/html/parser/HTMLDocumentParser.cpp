@@ -28,6 +28,7 @@
 #include "HTMLDocumentParser.h"
 
 #include "DocumentFragment.h"
+#include "DocumentLoader.h"
 #include "Frame.h"
 #include "HTMLDocument.h"
 #include "HTMLParserScheduler.h"
@@ -36,6 +37,8 @@
 #include "HTMLTreeBuilder.h"
 #include "HTMLUnknownElement.h"
 #include "JSCustomElementInterface.h"
+#include "LinkLoader.h"
+#include "NavigationScheduler.h"
 #include "ScriptElement.h"
 
 namespace WebCore {
@@ -295,6 +298,9 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
         }
         m_preloadScanner->scan(*m_preloader, *document());
     }
+    // The viewport definition is known here, so we can load link preloads with media attributes.
+    if (document()->loader())
+        LinkLoader::loadLinksFromHeader(document()->loader()->response().httpHeaderField(HTTPHeaderName::Link), document()->url(), *document(), LinkLoader::MediaAttributeCheck::MediaAttributeNotEmpty);
 }
 
 void HTMLDocumentParser::constructTreeFromHTMLToken(HTMLTokenizer::TokenPtr& rawToken)

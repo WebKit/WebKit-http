@@ -33,10 +33,9 @@
 #include "config.h"
 #include "Performance.h"
 
-#if ENABLE(WEB_TIMING)
-
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
 #include "PerformanceEntry.h"
@@ -267,5 +266,3 @@ void Performance::queueEntry(PerformanceEntry& entry)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

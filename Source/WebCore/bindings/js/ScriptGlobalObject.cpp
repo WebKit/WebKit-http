@@ -31,10 +31,11 @@
 #include "config.h"
 #include "ScriptGlobalObject.h"
 
-#include "JSDOMConvert.h"
-#include "JSDOMExceptionHandling.h"
+#include "JSDOMConvertInterface.h"
 #include "JSInspectorFrontendHost.h"
+#include <runtime/CatchScope.h>
 #include <runtime/IdentifierInlines.h>
+#include <runtime/JSObjectInlines.h>
 
 using namespace JSC;
 

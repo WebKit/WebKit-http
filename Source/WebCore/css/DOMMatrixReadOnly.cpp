@@ -29,15 +29,25 @@
 #include "CSSParser.h"
 #include "CSSToLengthConversionData.h"
 #include "DOMMatrix.h"
-#include "ExceptionCode.h"
+#include "DOMPoint.h"
 #include "StyleProperties.h"
 #include "TransformFunctions.h"
+#include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
+#include <heap/HeapInlines.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
 DOMMatrixReadOnly::DOMMatrixReadOnly(const TransformationMatrix& matrix, Is2D is2D)
     : m_matrix(matrix)
+    , m_is2D(is2D == Is2D::Yes)
+{
+    ASSERT(!m_is2D || m_matrix.isAffine());
+}
+
+DOMMatrixReadOnly::DOMMatrixReadOnly(TransformationMatrix&& matrix, Is2D is2D)
+    : m_matrix(WTFMove(matrix))
     , m_is2D(is2D == Is2D::Yes)
 {
     ASSERT(!m_is2D || m_matrix.isAffine());
@@ -114,6 +124,40 @@ ExceptionOr<Ref<DOMMatrixReadOnly>> DOMMatrixReadOnly::fromMatrix(DOMMatrixInit&
     return fromMatrixHelper<DOMMatrixReadOnly>(WTFMove(init));
 }
 
+ExceptionOr<Ref<DOMMatrixReadOnly>> DOMMatrixReadOnly::fromFloat32Array(Ref<Float32Array>&& array32)
+{
+    if (array32->length() == 6)
+        return DOMMatrixReadOnly::create(TransformationMatrix(array32->item(0), array32->item(1), array32->item(2), array32->item(3), array32->item(4), array32->item(5)), Is2D::Yes);
+
+    if (array32->length() == 16) {
+        return DOMMatrixReadOnly::create(TransformationMatrix(
+            array32->item(0), array32->item(1), array32->item(2), array32->item(3),
+            array32->item(4), array32->item(5), array32->item(6), array32->item(7),
+            array32->item(8), array32->item(9), array32->item(10), array32->item(11),
+            array32->item(12), array32->item(13), array32->item(14), array32->item(15)
+        ), Is2D::No);
+    }
+
+    return Exception { TypeError };
+}
+
+ExceptionOr<Ref<DOMMatrixReadOnly>> DOMMatrixReadOnly::fromFloat64Array(Ref<Float64Array>&& array64)
+{
+    if (array64->length() == 6)
+        return DOMMatrixReadOnly::create(TransformationMatrix(array64->item(0), array64->item(1), array64->item(2), array64->item(3), array64->item(4), array64->item(5)), Is2D::Yes);
+
+    if (array64->length() == 16) {
+        return DOMMatrixReadOnly::create(TransformationMatrix(
+            array64->item(0), array64->item(1), array64->item(2), array64->item(3),
+            array64->item(4), array64->item(5), array64->item(6), array64->item(7),
+            array64->item(8), array64->item(9), array64->item(10), array64->item(11),
+            array64->item(12), array64->item(13), array64->item(14), array64->item(15)
+        ), Is2D::No);
+    }
+
+    return Exception { TypeError };
+}
+
 bool DOMMatrixReadOnly::isIdentity() const
 {
     return m_matrix.isIdentity();
@@ -127,7 +171,7 @@ ExceptionOr<void> DOMMatrixReadOnly::setMatrixValue(const String& string)
 
     auto styleDeclaration = MutableStyleProperties::create();
     if (CSSParser::parseValue(styleDeclaration, CSSPropertyTransform, string, true, HTMLStandardMode) == CSSParser::ParseResult::Error)
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     // Convert to TransformOperations. This can fail if a property requires style (i.e., param uses 'ems' or 'exs')
     auto value = styleDeclaration->getPropertyCSSValue(CSSPropertyTransform);
@@ -138,14 +182,14 @@ ExceptionOr<void> DOMMatrixReadOnly::setMatrixValue(const String& string)
 
     TransformOperations operations;
     if (!transformsForValue(*value, CSSToLengthConversionData(), operations))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     m_is2D = true;
     // Convert transform operations to a TransformationMatrix. This can fail if a parameter has a percentage ('%').
     TransformationMatrix matrix;
     for (auto& operation : operations.operations()) {
         if (operation->apply(matrix, IntSize(0, 0)))
-            return Exception { SYNTAX_ERR };
+            return Exception { SyntaxError };
         if (operation->is3DOperation())
             m_is2D = false;
     }
@@ -248,11 +292,70 @@ Ref<DOMMatrix> DOMMatrixReadOnly::inverse() const
     return matrix->invertSelf();
 }
 
+// https://drafts.fxtf.org/geometry/#dom-dommatrixreadonly-transformpoint
+Ref<DOMPoint> DOMMatrixReadOnly::transformPoint(DOMPointInit&& pointInit)
+{
+    m_matrix.map4ComponentPoint(pointInit.x, pointInit.y, pointInit.z, pointInit.w);
+    return DOMPoint::create(pointInit.x, pointInit.y, pointInit.z, pointInit.w);
+}
+
+ExceptionOr<Ref<Float32Array>> DOMMatrixReadOnly::toFloat32Array() const
+{
+    auto array32 = Float32Array::createUninitialized(16);
+    if (!array32)
+        return Exception { UnknownError, ASCIILiteral("Out of memory") };
+
+    unsigned index = 0;
+    array32->set(index++, m_matrix.m11());
+    array32->set(index++, m_matrix.m12());
+    array32->set(index++, m_matrix.m13());
+    array32->set(index++, m_matrix.m14());
+    array32->set(index++, m_matrix.m21());
+    array32->set(index++, m_matrix.m22());
+    array32->set(index++, m_matrix.m23());
+    array32->set(index++, m_matrix.m24());
+    array32->set(index++, m_matrix.m31());
+    array32->set(index++, m_matrix.m32());
+    array32->set(index++, m_matrix.m33());
+    array32->set(index++, m_matrix.m34());
+    array32->set(index++, m_matrix.m41());
+    array32->set(index++, m_matrix.m42());
+    array32->set(index++, m_matrix.m43());
+    array32->set(index, m_matrix.m44());
+    return array32.releaseNonNull();
+}
+
+ExceptionOr<Ref<Float64Array>> DOMMatrixReadOnly::toFloat64Array() const
+{
+    auto array64 = Float64Array::createUninitialized(16);
+    if (!array64)
+        return Exception { UnknownError, ASCIILiteral("Out of memory") };
+
+    unsigned index = 0;
+    array64->set(index++, m_matrix.m11());
+    array64->set(index++, m_matrix.m12());
+    array64->set(index++, m_matrix.m13());
+    array64->set(index++, m_matrix.m14());
+    array64->set(index++, m_matrix.m21());
+    array64->set(index++, m_matrix.m22());
+    array64->set(index++, m_matrix.m23());
+    array64->set(index++, m_matrix.m24());
+    array64->set(index++, m_matrix.m31());
+    array64->set(index++, m_matrix.m32());
+    array64->set(index++, m_matrix.m33());
+    array64->set(index++, m_matrix.m34());
+    array64->set(index++, m_matrix.m41());
+    array64->set(index++, m_matrix.m42());
+    array64->set(index++, m_matrix.m43());
+    array64->set(index, m_matrix.m44());
+    return array64.releaseNonNull();
+}
+
 // https://drafts.fxtf.org/geometry/#dom-dommatrixreadonly-stringifier
 ExceptionOr<String> DOMMatrixReadOnly::toString() const
 {
     if (!m_matrix.containsOnlyFiniteValues())
-        return Exception { INVALID_STATE_ERR, ASCIILiteral("Matrix contains non-finite values") };
+        return Exception { InvalidStateError, ASCIILiteral("Matrix contains non-finite values") };
 
     StringBuilder builder;
     if (is2D()) {

@@ -43,7 +43,7 @@ promise_test((test) => {
     if (window.testRunner)
         testRunner.setUserMediaPermission(true);
 
-    return navigator.mediaDevices.getUserMedia({ video: true}).then((stream) => {
+    return navigator.mediaDevices.getUserMedia({video: {advanced: [{width:{min:1280}}, {height:{min:720} } ]}}).then((stream) => {
         return new Promise((resolve, reject) => {
             createConnections((firstConnection) => {
                 var track = stream.getVideoTracks()[0];
@@ -55,6 +55,7 @@ promise_test((test) => {
                     assert_true(Array.isArray(trackEvent.streams), "Array.isArray() should return true");
                     assert_true(Object.isFrozen(trackEvent.streams), "Object.isFrozen() should return true");
                     assert_equals(trackEvent.track.id, stream.getVideoTracks()[0].id);
+                    assert_equals(trackEvent.track, trackEvent.streams[0].getVideoTracks()[0]);
                     resolve(trackEvent.streams[0]);
                 };
             });

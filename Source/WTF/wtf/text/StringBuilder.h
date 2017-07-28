@@ -174,8 +174,8 @@ public:
 
     WTF_EXPORT_PRIVATE void appendQuotedJSONString(const String&);
 
-    template<unsigned charactersCount>
-    ALWAYS_INLINE void appendLiteral(const char (&characters)[charactersCount]) { append(characters, charactersCount - 1); }
+    template<unsigned characterCount>
+    ALWAYS_INLINE void appendLiteral(const char (&characters)[characterCount]) { append(characters, characterCount - 1); }
 
     WTF_EXPORT_PRIVATE void appendNumber(int);
     WTF_EXPORT_PRIVATE void appendNumber(unsigned int);
@@ -205,7 +205,7 @@ public:
     AtomicString toAtomicString() const
     {
         if (!m_length)
-            return emptyAtom;
+            return emptyAtom();
 
         // If the buffer is sufficiently over-allocated, make a new AtomicString from a copy so its buffer is not so large.
         if (canShrink()) {

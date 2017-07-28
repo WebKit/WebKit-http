@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "SVGPreserveAspectRatioValue.h"
 #include "SVGPropertyTearOff.h"
 
@@ -63,7 +62,7 @@ public:
     ExceptionOr<void> setAlign(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setAlign(value);
         if (result.hasException())
@@ -81,7 +80,7 @@ public:
     ExceptionOr<void> setMeetOrSlice(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setMeetOrSlice(value);
         if (result.hasException())

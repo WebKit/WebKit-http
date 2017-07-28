@@ -39,6 +39,7 @@
 #import "EditorClient.h"
 #import "FontCascade.h"
 #import "Frame.h"
+#import "FrameLoader.h"
 #import "FrameLoaderClient.h"
 #import "HTMLAnchorElement.h"
 #import "HTMLConverter.h"
@@ -55,13 +56,13 @@
 #import "RenderBlock.h"
 #import "RenderImage.h"
 #import "SharedBuffer.h"
-#import "SoftLinking.h"
 #import "StyleProperties.h"
 #import "Text.h"
 #import "TypingCommand.h"
 #import "WAKAppKitStubs.h"
 #import "markup.h"
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -198,16 +199,29 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 {
     PasteboardImage pasteboardImage;
 
+    RefPtr<Image> image;
     CachedImage* cachedImage;
-    getImage(imageElement, pasteboardImage.image, cachedImage);
-    if (!pasteboardImage.image)
+    getImage(imageElement, image, cachedImage);
+    if (!image)
         return;
     ASSERT(cachedImage);
 
-    pasteboardImage.url.url = url.isEmpty() ? imageElement.document().completeURL(stripLeadingAndTrailingHTMLSpaces(imageElement.imageSourceURL())) : url;
-    pasteboardImage.url.title = title;
+    auto imageSourceURL = imageElement.document().completeURL(stripLeadingAndTrailingHTMLSpaces(imageElement.imageSourceURL()));
+
+    auto pasteboardImageURL = url.isEmpty() ? imageSourceURL : url;
+    if (!pasteboardImageURL.isLocalFile()) {
+        pasteboardImage.url.url = pasteboardImageURL;
+        pasteboardImage.url.title = title;
+    }
+    pasteboardImage.suggestedName = imageSourceURL.lastPathComponent();
+    pasteboardImage.imageSize = image->size();
     pasteboardImage.resourceMIMEType = pasteboard.resourceMIMEType(cachedImage->response().mimeType());
     pasteboardImage.resourceData = cachedImage->resourceBuffer();
+
+    Position beforeImagePosition(&imageElement, Position::PositionIsBeforeAnchor);
+    Position afterImagePosition(&imageElement, Position::PositionIsAfterAnchor);
+    RefPtr<Range> imageRange = Range::create(imageElement.document(), beforeImagePosition, afterImagePosition);
+    client()->getClientPasteboardDataForRange(imageRange.get(), pasteboardImage.clientTypes, pasteboardImage.clientData);
 
     pasteboard.write(pasteboardImage);
 }
@@ -244,11 +258,18 @@ private:
 
 void Editor::WebContentReader::addFragment(RefPtr<DocumentFragment>&& newFragment)
 {
-    if (fragment) {
-        if (newFragment && newFragment->firstChild())
-            fragment->appendChild(*newFragment->firstChild());
-    } else
+    if (!newFragment)
+        return;
+
+    if (!fragment) {
         fragment = WTFMove(newFragment);
+        return;
+    }
+
+    while (auto* firstChild = newFragment->firstChild()) {
+        if (fragment->appendChild(*firstChild).hasException())
+            break;
+    }
 }
 
 bool Editor::WebContentReader::readWebArchive(SharedBuffer* buffer)
@@ -337,6 +358,8 @@ bool Editor::WebContentReader::readURL(const URL& url, const String& title)
     anchor->appendChild(frame.document()->createTextNode(linkText));
 
     auto newFragment = frame.document()->createDocumentFragment();
+    if (fragment)
+        newFragment->appendChild(Text::create(*frame.document(), { &space, 1 }));
     newFragment->appendChild(anchor);
     addFragment(WTFMove(newFragment));
     return true;

@@ -2048,22 +2048,11 @@
             ]
         },
         {
-            "name": "detached",
-            "description": "Fired when remote debugging connection is about to be terminated. Contains detach reason.",
-            "parameters": [
-                { "name": "reason", "type": "string", "description": "The reason why connection has been terminated." }
-            ]
-        },
-        {
             "name": "activateExtraDomains",
             "description": "Fired when the backend has alternate domains that need to be activated.",
             "parameters": [
                 { "name": "domains", "type": "array", "items": { "type": "string" }, "description": "Domain names that need activation" }
             ]
-        },
-        {
-            "name": "targetCrashed",
-            "description": "Fired when debugging target has crashed"
         }
     ]
 }
@@ -2789,21 +2778,6 @@
         {
             "name": "disable",
             "description": "Disables page domain notifications."
-        },
-        {
-            "name": "addScriptToEvaluateOnLoad",
-            "parameters": [
-                { "name": "scriptSource", "type": "string" }
-            ],
-            "returns": [
-                { "name": "identifier", "$ref": "ScriptIdentifier", "description": "Identifier of the added script." }
-            ]
-        },
-        {
-            "name": "removeScriptToEvaluateOnLoad",
-            "parameters": [
-                { "name": "identifier", "$ref": "ScriptIdentifier" }
-            ]
         },
         {
             "name": "reload",

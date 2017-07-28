@@ -31,6 +31,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGGraph.h"
 #include "DFGJITCode.h"
+#include "Disassembler.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
 #include "ProfilerDatabase.h"
@@ -42,7 +43,7 @@ Disassembler::Disassembler(Graph& graph)
     : m_graph(graph)
 {
     m_dumpContext.graph = &m_graph;
-    m_labelForBlockIndex.resize(graph.numBlocks());
+    m_labelForBlockIndex.grow(graph.numBlocks());
 }
 
 void Disassembler::dump(PrintStream& out, LinkBuffer& linkBuffer)

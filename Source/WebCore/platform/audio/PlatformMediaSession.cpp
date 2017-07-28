@@ -62,6 +62,7 @@ static const char* interruptionName(PlatformMediaSession::InterruptionType type)
     INTERRUPTION_CASE(SystemInterruption);
     INTERRUPTION_CASE(SuspendedUnderLock);
     INTERRUPTION_CASE(InvisibleAutoplay);
+    INTERRUPTION_CASE(ProcessInactive);
     }
     
     ASSERT_NOT_REACHED();
@@ -297,6 +298,11 @@ String PlatformMediaSession::sourceApplicationIdentifier() const
 bool PlatformMediaSession::isHidden() const
 {
     return m_client.elementIsHidden();
+}
+
+bool PlatformMediaSession::isSuspended() const
+{
+    return m_client.isSuspended();
 }
 
 bool PlatformMediaSession::shouldOverrideBackgroundLoadingRestriction() const

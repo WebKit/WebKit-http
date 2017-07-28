@@ -23,13 +23,20 @@
 
 #include "GraphicsContext3D.h"
 #include "PlatformDisplay.h"
+
+#if USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#else
 #include <EGL/egl.h>
+#endif
 
 #if USE(CAIRO)
 #include <cairo.h>
 #endif
 
-#if USE(OPENGL_ES_2)
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif USE(OPENGL_ES_2)
 #define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -115,6 +122,9 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowTy
     if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
         surface = createWindowSurfaceWayland(display, config, window);
 #endif
+#elif PLATFORM(WPE)
+    if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+        surface = createWindowSurfaceWPE(display, config, window);
 #else
     surface = eglCreateWindowSurface(display, config, static_cast<EGLNativeWindowType>(window), nullptr);
 #endif
@@ -189,6 +199,10 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay, eglSharingContext);
 #endif
+#if PLATFORM(WPE)
+        if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+            context = createWPEContext(platformDisplay, eglSharingContext);
+#endif
     }
     if (!context)
         context = createPbufferContext(platformDisplay, eglSharingContext);
@@ -204,13 +218,6 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
     if (eglBindAPI(gEGLAPIVersion) == EGL_FALSE)
         return nullptr;
 
-#if PLATFORM(WPE)
-    if (platformDisplay.type() == PlatformDisplay::Type::WPE) {
-        if (auto context = createWPEContext(platformDisplay))
-            return context;
-    }
-#endif
-
     auto context = createSurfacelessContext(platformDisplay);
     if (!context) {
 #if PLATFORM(X11)
@@ -220,6 +227,10 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
 #if PLATFORM(WAYLAND)
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay);
+#endif
+#if PLATFORM(WPE)
+        if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+            context = createWPEContext(platformDisplay);
 #endif
     }
     if (!context)

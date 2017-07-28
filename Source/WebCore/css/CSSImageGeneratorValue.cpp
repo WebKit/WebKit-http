@@ -34,8 +34,9 @@
 #include "CSSImageValue.h"
 #include "CSSNamedImageValue.h"
 #include "GeneratedImage.h"
+#include "HTMLCanvasElement.h"
+#include "InspectorInstrumentation.h"
 #include "RenderElement.h"
-#include "StyleCachedImage.h"
 
 namespace WebCore {
 
@@ -70,13 +71,27 @@ void CSSImageGeneratorValue::addClient(RenderElement& renderer)
 {
     if (m_clients.isEmpty())
         ref();
+
     m_clients.add(&renderer);
+
+    if (is<CSSCanvasValue>(this)) {
+        if (HTMLCanvasElement* canvasElement = downcast<CSSCanvasValue>(this)->element())
+            InspectorInstrumentation::didChangeCSSCanvasClientNodes(*canvasElement);
+    }
 }
 
 void CSSImageGeneratorValue::removeClient(RenderElement& renderer)
 {
     ASSERT(m_clients.contains(&renderer));
-    if (m_clients.remove(&renderer) && m_clients.isEmpty())
+    if (!m_clients.remove(&renderer))
+        return;
+
+    if (is<CSSCanvasValue>(this)) {
+        if (HTMLCanvasElement* canvasElement = downcast<CSSCanvasValue>(this)->element())
+            InspectorInstrumentation::didChangeCSSCanvasClientNodes(*canvasElement);
+    }
+
+    if (m_clients.isEmpty())
         deref();
 }
 

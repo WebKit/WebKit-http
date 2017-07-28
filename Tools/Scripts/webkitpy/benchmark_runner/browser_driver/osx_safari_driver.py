@@ -2,7 +2,6 @@
 
 import logging
 import os
-import re
 import subprocess
 import time
 
@@ -44,6 +43,12 @@ class OSXSafariDriver(OSXBrowserDriver):
         # command may use the system safari.
         time.sleep(3)
         subprocess.Popen(['open', '-a', args[0], url])
+
+    def launch_driver(self, url, options, browser_build_path):
+        from webkitpy.thirdparty.autoinstalled.selenium import webdriver
+        driver = webdriver.Safari(quiet=False)
+        self._launch_webdriver(url=url, driver=driver)
+        return driver
 
     def close_browsers(self):
         super(OSXSafariDriver, self).close_browsers()

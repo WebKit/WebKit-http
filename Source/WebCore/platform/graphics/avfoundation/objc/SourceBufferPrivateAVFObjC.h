@@ -62,6 +62,7 @@ class AudioTrackPrivate;
 class VideoTrackPrivate;
 class AudioTrackPrivateMediaSourceAVFObjC;
 class VideoTrackPrivateMediaSourceAVFObjC;
+class WebCoreDecompressionSession;
 
 class SourceBufferPrivateAVFObjCErrorClient {
 public:
@@ -88,6 +89,7 @@ public:
     bool processCodedFrame(int trackID, CMSampleBufferRef, const String& mediaType);
 
     bool hasVideo() const;
+    bool hasSelectedVideo() const;
     bool hasAudio() const;
 
     void trackDidChangeEnabled(VideoTrackPrivateMediaSourceAVFObjC*);
@@ -108,6 +110,11 @@ public:
     void unregisterForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient*);
     void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *);
     void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *);
+
+    void setVideoLayer(AVSampleBufferDisplayLayer*);
+    void setDecompressionSession(WebCoreDecompressionSession*);
+
+    void bufferWasConsumed();
 
 private:
     explicit SourceBufferPrivateAVFObjC(MediaSourcePrivateAVFObjC*);
@@ -131,7 +138,7 @@ private:
     void destroyParser();
     void destroyRenderers();
 
-    void flush(AVSampleBufferDisplayLayer *);
+    void flushVideo();
     void flush(AVSampleBufferAudioRenderer *);
 
     WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
@@ -152,6 +159,7 @@ private:
     RetainPtr<NSError> m_hdcpError;
     OSObjectPtr<dispatch_semaphore_t> m_hasSessionSemaphore;
     OSObjectPtr<dispatch_group_t> m_isAppendingGroup;
+    RefPtr<WebCoreDecompressionSession> m_decompressionSession;
 
     MediaSourcePrivateAVFObjC* m_mediaSource;
     SourceBufferPrivateClient* m_client { nullptr };

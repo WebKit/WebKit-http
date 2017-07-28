@@ -28,8 +28,6 @@
 
 #pragma once
 
-#include <wtf/OptionSet.h>
-
 namespace WebCore {
 
 enum FrameState {
@@ -83,6 +81,11 @@ enum class ShouldOpenExternalURLsPolicy {
     ShouldNotAllow,
     ShouldAllowExternalSchemes,
     ShouldAllow,
+};
+
+enum class InitiatedByMainFrame {
+    Yes,
+    Unknown,
 };
 
 enum ClearProvisionalItemPolicy {

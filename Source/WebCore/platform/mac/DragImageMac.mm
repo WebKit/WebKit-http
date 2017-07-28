@@ -39,12 +39,11 @@
 #import "GraphicsContext.h"
 #import "Image.h"
 #import "LinkPresentationSPI.h"
-#import "SoftLinking.h"
 #import "StringTruncator.h"
 #import "TextIndicator.h"
 #import "TextRun.h"
 #import "URL.h"
-#import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 SOFT_LINK_PRIVATE_FRAMEWORK(LinkPresentation)
@@ -154,15 +153,21 @@ RetainPtr<NSImage> createDragImageIconForCachedImageFilename(const String& filen
     return [[NSWorkspace sharedWorkspace] iconForFileType:extension];
 }
 
-
 const CGFloat linkImagePadding = 10;
 const CGFloat linkImageDomainBaselineToTitleBaseline = 18;
 const CGFloat linkImageCornerRadius = 5;
 const CGFloat linkImageMaximumWidth = 400;
 const CGFloat linkImageFontSize = 11;
 const CFIndex linkImageTitleMaximumLineCount = 2;
-const int linkImageDragCornerOutsetX = 6;
-const int linkImageDragCornerOutsetY = 10;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+const int linkImageShadowRadius = 0;
+const int linkImageShadowOffsetY = 0;
+#else
+const int linkImageShadowRadius = 9;
+const int linkImageShadowOffsetY = -3;
+#endif
+const int linkImageDragCornerOutsetX = 6 - linkImageShadowRadius;
+const int linkImageDragCornerOutsetY = 10 - linkImageShadowRadius + linkImageShadowOffsetY;
 
 IntPoint dragOffsetForLinkDragImage(DragImageRef dragImage)
 {
@@ -220,7 +225,7 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
         paragraphStyleSettings[0].spec = kCTParagraphStyleSpecifierLineBreakMode;
         paragraphStyleSettings[0].valueSize = sizeof(CTLineBreakMode);
         paragraphStyleSettings[0].value = &lineBreakMode;
-        RetainPtr<CTParagraphStyleRef> paragraphStyle = CTParagraphStyleCreate(paragraphStyleSettings, 1);
+        RetainPtr<CTParagraphStyleRef> paragraphStyle = adoptCF(CTParagraphStyleCreate(paragraphStyleSettings, 1));
 
         NSDictionary *textAttributes = @{
             (id)kCTFontAttributeName: font,
@@ -281,17 +286,33 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
     currentY += linkImagePadding;
 
     boundingRect = FloatRect(0, 0, maximumUsedTextWidth + linkImagePadding * 2, currentY);
+
+    // To work around blurry drag images on 1x displays, make the width and height a multiple of 2.
+    // FIXME: remove this workaround when <rdar://problem/33059739> is fixed.
+    boundingRect.setWidth((static_cast<int>(boundingRect.width()) / 2) * 2);
+    boundingRect.setHeight((static_cast<int>(boundingRect.height() / 2) * 2));
 }
 
 DragImageRef createDragImageForLink(Element&, URL& url, const String& title, TextIndicatorData&, FontRenderingMode, float)
 {
     LinkImageLayout layout(url, title);
 
-    RetainPtr<NSImage> dragImage = adoptNS([[NSImage alloc] initWithSize:layout.boundingRect.size()]);
+    auto imageSize = layout.boundingRect.size();
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    imageSize.expand(2 * linkImageShadowRadius, 2 * linkImageShadowRadius - linkImageShadowOffsetY);
+#endif
+    RetainPtr<NSImage> dragImage = adoptNS([[NSImage alloc] initWithSize:imageSize]);
     [dragImage lockFocus];
 
     GraphicsContext context((CGContextRef)[NSGraphicsContext currentContext].graphicsPort);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    context.translate(linkImageShadowRadius, linkImageShadowRadius - linkImageShadowOffsetY);
+    context.setShadow({ 0, linkImageShadowOffsetY }, linkImageShadowRadius, { 0.f, 0.f, 0.f, .25 });
+#endif
     context.fillRoundedRect(FloatRoundedRect(layout.boundingRect, FloatRoundedRect::Radii(linkImageCornerRadius)), Color::white);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    context.clearShadow();
+#endif
 
     for (const auto& label : layout.labels) {
         GraphicsContextStateSaver saver(context);

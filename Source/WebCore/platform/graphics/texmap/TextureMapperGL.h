@@ -25,7 +25,6 @@
 
 #include "ClipStack.h"
 #include "FilterOperation.h"
-#include "FloatQuad.h"
 #include "GraphicsContext3D.h"
 #include "IntSize.h"
 #include "TextureMapper.h"
@@ -51,7 +50,9 @@ public:
         ShouldRotateTexture90 = 0x10,
         ShouldRotateTexture180 = 0x20,
         ShouldRotateTexture270 = 0x40,
-        ShouldOverwriteRect = 0x80
+        ShouldConvertTextureBGRAToRGBA = 0x80,
+        ShouldConvertTextureARGBToRGBA = 0x100,
+        ShouldOverwriteRect = 0x200
     };
 
     typedef int Flags;
@@ -71,8 +72,8 @@ public:
     void endClip() override;
     IntRect clipBounds() override;
     IntSize maxTextureSize() const override { return IntSize(2000, 2000); }
-    Ref<BitmapTexture> createTexture() override;
-    Ref<BitmapTexture> createTexture(GC3Dint internalFormat);
+    Ref<BitmapTexture> createTexture() override { return createTexture(GraphicsContext3D::DONT_CARE); }
+    Ref<BitmapTexture> createTexture(GC3Dint internalFormat) override;
     inline GraphicsContext3D* graphicsContext3D() const { return m_context3D.get(); }
 
     void drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture* contentTexture, const FilterOperation&, int pass);

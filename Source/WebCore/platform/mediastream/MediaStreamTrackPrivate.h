@@ -36,6 +36,7 @@ class AudioSourceProvider;
 class GraphicsContext;
 class MediaSample;
 class RealtimeMediaSourceCapabilities;
+class WebAudioSourceProvider;
 
 class MediaStreamTrackPrivate : public RefCounted<MediaStreamTrackPrivate>, public RealtimeMediaSource::Observer {
 public:
@@ -43,12 +44,13 @@ public:
     public:
         virtual ~Observer() { }
 
+        virtual void trackStarted(MediaStreamTrackPrivate&) { };
         virtual void trackEnded(MediaStreamTrackPrivate&) = 0;
         virtual void trackMutedChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackSettingsChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackEnabledChanged(MediaStreamTrackPrivate&) = 0;
         virtual void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) { };
-        virtual void audioSamplesAvailable(MediaStreamTrackPrivate&) { };
+        virtual void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) { };
         virtual void readyStateChanged(MediaStreamTrackPrivate&) { };
     };
 
@@ -102,9 +104,9 @@ private:
     MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&&, String&& id);
 
     // RealtimeMediaSourceObserver
+    void sourceStarted() final;
     void sourceStopped() final;
     void sourceMutedChanged() final;
-    void sourceEnabledChanged() final;
     void sourceSettingsChanged() final;
     bool preventSourceFromStopping() final;
     void videoSampleAvailable(MediaSample&) final;
@@ -120,6 +122,7 @@ private:
     bool m_isEnabled { true };
     bool m_isEnded { false };
     bool m_haveProducedData { false };
+    RefPtr<WebAudioSourceProvider> m_audioSourceProvider;
 };
 
 typedef Vector<RefPtr<MediaStreamTrackPrivate>> MediaStreamTrackPrivateVector;

@@ -48,8 +48,8 @@
 #import "PageOverlayController.h"
 #import "PlatformCAAnimationCocoa.h"
 #import "Settings.h"
-#import "SoftLinking.h"
 #import <QuartzCore/QuartzCore.h>
+#import <wtf/SoftLinking.h>
 
 const float highlightFadeAnimationDuration = 0.3;
 
@@ -129,7 +129,7 @@ void ServicesOverlayController::Highlight::notifyFlushRequired(const GraphicsLay
     page->chrome().client().scheduleCompositingLayerFlush();
 }
 
-void ServicesOverlayController::Highlight::paintContents(const GraphicsLayer*, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect&)
+void ServicesOverlayController::Highlight::paintContents(const GraphicsLayer*, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect&, GraphicsLayerPaintBehavior)
 {
     if (!DataDetectorsLibrary())
         return;

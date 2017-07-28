@@ -45,13 +45,13 @@ namespace {
 static unsigned copyFromSharedBuffer(char* buffer, unsigned bufferLength, const SharedBuffer& sharedBuffer)
 {
     unsigned bytesExtracted = 0;
-    for (const auto& segment : sharedBuffer) {
-        if (bytesExtracted + segment->size() <= bufferLength) {
-            memcpy(buffer + bytesExtracted, segment->data(), segment->size());
-            bytesExtracted += segment->size();
+    for (const auto& element : sharedBuffer) {
+        if (bytesExtracted + element.segment->size() <= bufferLength) {
+            memcpy(buffer + bytesExtracted, element.segment->data(), element.segment->size());
+            bytesExtracted += element.segment->size();
         } else {
-            ASSERT(bufferLength - bytesExtracted < segment->size());
-            memcpy(buffer + bytesExtracted, segment->data(), bufferLength - bytesExtracted);
+            ASSERT(bufferLength - bytesExtracted < element.segment->size());
+            memcpy(buffer + bytesExtracted, element.segment->data(), bufferLength - bytesExtracted);
             bytesExtracted = bufferLength;
             break;
         }
@@ -98,7 +98,7 @@ bool matchesCURSignature(char* contents)
 
 }
 
-RefPtr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, const URL&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+RefPtr<ImageDecoder> ImageDecoder::create(SharedBuffer& data, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
 {
     static const unsigned lengthOfLongestSignature = 14; // To wit: "RIFF????WEBPVP"
     char contents[lengthOfLongestSignature];

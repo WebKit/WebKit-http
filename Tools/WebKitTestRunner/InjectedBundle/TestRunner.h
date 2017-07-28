@@ -127,7 +127,6 @@ public:
     void setAsynchronousSpellCheckingEnabled(bool);
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
-    void setSubtleCryptoEnabled(bool);
     void setMediaDevicesEnabled(bool);
     void setWebRTCLegacyAPIEnabled(bool);
 
@@ -289,6 +288,7 @@ public:
 
     // MediaStream
     void setUserMediaPermission(bool);
+    void resetUserMediaPermission();
     void setUserMediaPersistentPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin);
     unsigned userMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin) const;
     void resetUserMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin);
@@ -348,14 +348,22 @@ public:
     
     // Resource Load Statistics
     void installStatisticsDidModifyDataRecordsCallback(JSValueRef callback);
+    void installStatisticsDidScanDataRecordsCallback(JSValueRef callback);
+    void installStatisticsDidRunTelemetryCallback(JSValueRef callback);
     void statisticsDidModifyDataRecordsCallback();
-    void statisticsFireDataModificationHandler();
-    void statisticsFireShouldPartitionCookiesHandler();
-    void statisticsFireShouldPartitionCookiesHandlerForOneDomain(JSStringRef hostName, bool value);
+    void statisticsDidScanDataRecordsCallback();
+    void statisticsDidRunTelemetryCallback(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
+    void statisticsProcessStatisticsAndDataRecords();
+    void statisticsUpdateCookiePartitioning();
+    void statisticsSetShouldPartitionCookiesForHost(JSStringRef hostName, bool value);
+    void statisticsSubmitTelemetry();
+    void setStatisticsLastSeen(JSStringRef hostName, double seconds);
     void setStatisticsPrevalentResource(JSStringRef hostName, bool value);
     bool isStatisticsPrevalentResource(JSStringRef hostName);
     void setStatisticsHasHadUserInteraction(JSStringRef hostName, bool value);
     bool isStatisticsHasHadUserInteraction(JSStringRef hostName);
+    void setStatisticsGrandfathered(JSStringRef hostName, bool value);
+    bool isStatisticsGrandfathered(JSStringRef hostName);
     void setStatisticsSubframeUnderTopFrameOrigin(JSStringRef hostName, JSStringRef topFrameHostName);
     void setStatisticsSubresourceUnderTopFrameOrigin(JSStringRef hostName, JSStringRef topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(JSStringRef hostName, JSStringRef hostNameRedirectedTo);
@@ -363,7 +371,11 @@ public:
     void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
-    void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
+    void setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value);
+    void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double);
+    void setStatisticsGrandfatheringTime(double seconds);
+    void setStatisticsMaxStatisticsEntries(unsigned);
+    void setStatisticsPruneEntriesDownTo(unsigned);
     void statisticsClearInMemoryAndPersistentStore();
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours);
     void statisticsResetToConsistentState();
@@ -372,6 +384,9 @@ public:
     void setOpenPanelFiles(JSValueRef);
 
     void terminateNetworkProcess();
+
+    void removeAllSessionCredentials(JSValueRef);
+    void callDidRemoveAllSessionCredentialsCallback();
 
 private:
     TestRunner();

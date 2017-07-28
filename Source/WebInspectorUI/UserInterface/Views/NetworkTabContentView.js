@@ -29,9 +29,9 @@ WebInspector.NetworkTabContentView = class NetworkTabContentView extends WebInsp
     {
         let {image, title} = WebInspector.NetworkTabContentView.tabInfo();
         let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
+        let detailsSidebarPanelConstructors = [WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel];
 
-        super(identifier || "network", "network", tabBarItem, WebInspector.NetworkSidebarPanel, detailsSidebarPanels);
+        super(identifier || "network", "network", tabBarItem, WebInspector.NetworkSidebarPanel, detailsSidebarPanelConstructors);
     }
 
     static tabInfo()
@@ -59,7 +59,7 @@ WebInspector.NetworkTabContentView = class NetworkTabContentView extends WebInsp
         if (!(representedObject instanceof WebInspector.Resource))
             return false;
 
-        return !!this._navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
+        return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
     }
 
     get supportsSplitContentBrowser()

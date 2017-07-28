@@ -762,13 +762,15 @@ private:
             setPrediction(SpecBoolean);
             break;
 
-        case GetRestLength: {
+        case GetRestLength:
+        case ArrayIndexOf: {
             setPrediction(SpecInt32Only);
             break;
         }
 
         case GetTypedArrayByteOffset:
-        case GetArrayLength: {
+        case GetArrayLength:
+        case GetVectorLength: {
             setPrediction(SpecInt32Only);
             break;
         }

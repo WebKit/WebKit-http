@@ -35,7 +35,6 @@
 #include "debugger/Debugger.h"
 #include "inspector/InspectorAgentBase.h"
 #include "inspector/ScriptBreakpoint.h"
-#include "inspector/ScriptCallStack.h"
 #include "inspector/ScriptDebugListener.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -92,9 +91,14 @@ public:
 
     void handleConsoleAssert(const String& message);
 
-    void didScheduleAsyncCall(JSC::ExecState*, int asyncCallType, int callbackIdentifier, bool singleShot);
-    void didCancelAsyncCall(int asyncCallType, int callbackIdentifier);
-    void willDispatchAsyncCall(int asyncCallType, int callbackIdentifier);
+    enum class AsyncCallType {
+        DOMTimer,
+        RequestAnimationFrame,
+    };
+
+    void didScheduleAsyncCall(JSC::ExecState*, AsyncCallType, int callbackId, bool singleShot);
+    void didCancelAsyncCall(AsyncCallType, int callbackId);
+    void willDispatchAsyncCall(AsyncCallType, int callbackId);
     void didDispatchAsyncCall();
 
     void schedulePauseOnNextStatement(DebuggerFrontendDispatcher::Reason breakReason, RefPtr<InspectorObject>&& data);
@@ -162,7 +166,8 @@ private:
 
     bool breakpointActionsFromProtocol(ErrorString&, RefPtr<InspectorArray>& actions, BreakpointActions* result);
 
-    typedef std::pair<int, int> AsyncCallIdentifier;
+    typedef std::pair<unsigned, int> AsyncCallIdentifier;
+    static AsyncCallIdentifier asyncCallIdentifier(AsyncCallType, int callbackId);
 
     typedef HashMap<JSC::SourceID, Script> ScriptsMap;
     typedef HashMap<String, Vector<JSC::BreakpointID>> BreakpointIdentifierToDebugServerBreakpointIDsMap;

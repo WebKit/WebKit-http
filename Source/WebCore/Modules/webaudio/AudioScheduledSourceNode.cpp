@@ -133,9 +133,9 @@ ExceptionOr<void> AudioScheduledSourceNode::start(double when)
     context().nodeWillBeginPlayback();
 
     if (m_playbackState != UNSCHEDULED_STATE)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     if (!std::isfinite(when) || when < 0)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     m_startTime = when;
     m_playbackState = SCHEDULED_STATE;
@@ -148,9 +148,9 @@ ExceptionOr<void> AudioScheduledSourceNode::stop(double when)
     ASSERT(isMainThread());
 
     if (m_playbackState == UNSCHEDULED_STATE || m_endTime != UnknownTime)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     if (!std::isfinite(when) || when < 0)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     m_endTime = when;
 
@@ -167,8 +167,8 @@ void AudioScheduledSourceNode::finish()
     }
 
     if (m_hasEndedListener) {
-        callOnMainThread([strongThis = makeRef(*this)] () mutable {
-            strongThis->dispatchEvent(Event::create(eventNames().endedEvent, false, false));
+        callOnMainThread([protectedThis = makeRef(*this)] () mutable {
+            protectedThis->dispatchEvent(Event::create(eventNames().endedEvent, false, false));
         });
     }
 }

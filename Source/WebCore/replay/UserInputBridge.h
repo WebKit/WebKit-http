@@ -29,17 +29,13 @@
 
 #include "FrameLoaderTypes.h"
 #include "ScrollTypes.h"
+#include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
-
-namespace JSC {
-class InputCursor;
-}
 
 namespace WebCore {
 
-struct FrameLoadRequest;
-
 class Frame;
+class FrameLoadRequest;
 class Page;
 class PlatformKeyboardEvent;
 class PlatformMouseEvent;
@@ -56,19 +52,6 @@ class UserInputBridge {
     WTF_MAKE_NONCOPYABLE(UserInputBridge);
 public:
     UserInputBridge(Page&);
-
-#if ENABLE(WEB_REPLAY)
-    enum class State {
-        Capturing,
-        Open,
-        Replaying,
-    };
-
-    void setState(State bridgeState) { m_state = bridgeState; }
-    State state() const { return m_state; }
-
-    JSC::InputCursor& activeCursor() const;
-#endif
 
     // User input APIs.
 #if ENABLE(CONTEXT_MENUS)
@@ -88,16 +71,13 @@ public:
     bool logicalScrollRecursively(ScrollLogicalDirection, ScrollGranularity, InputSource source = InputSource::User);
 
     // Navigation APIs.
-    WEBCORE_EXPORT void loadRequest(const FrameLoadRequest&, InputSource source = InputSource::User);
+    WEBCORE_EXPORT void loadRequest(FrameLoadRequest&&, InputSource = InputSource::User);
     WEBCORE_EXPORT void reloadFrame(Frame*, OptionSet<ReloadOption>, InputSource = InputSource::User);
     WEBCORE_EXPORT void stopLoadingFrame(Frame*, InputSource source = InputSource::User);
     WEBCORE_EXPORT bool tryClosePage(InputSource source = InputSource::User);
 
 private:
     Page& m_page;
-#if ENABLE(WEB_REPLAY)
-    State m_state;
-#endif
 };
 
 } // namespace WebCore

@@ -28,31 +28,29 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "DOMError.h"
-#include "IDBDatabaseException.h"
+#include "ExceptionCode.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class IDBError {
 public:
-    IDBError() { }
-    IDBError(ExceptionCode);
-    WEBCORE_EXPORT IDBError(ExceptionCode, const String& message);
+    WEBCORE_EXPORT explicit IDBError(std::optional<ExceptionCode> = std::nullopt, const String& message = { });
 
     static IDBError userDeleteError()
     {
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("Database deleted by request of the user") };
+        return IDBError { UnknownError, ASCIILiteral("Database deleted by request of the user") };
     }
 
     IDBError& operator=(const IDBError&);
 
     RefPtr<DOMError> toDOMError() const;
 
-    ExceptionCode code() const { return m_code; }
+    std::optional<ExceptionCode> code() const { return m_code; }
     String name() const;
     String message() const;
 
-    bool isNull() const { return m_code == IDBDatabaseException::NoError; }
+    bool isNull() const { return !m_code; }
 
     IDBError isolatedCopy() const;
 
@@ -60,21 +58,35 @@ public:
     template<class Decoder> static bool decode(Decoder&, IDBError&);
 
 private:
-    ExceptionCode m_code { IDBDatabaseException::NoError };
+    std::optional<ExceptionCode> m_code;
     String m_message;
 };
 
 template<class Encoder>
 void IDBError::encode(Encoder& encoder) const
 {
-    encoder << m_code << m_message;
+    if (m_code) {
+        encoder << true;
+        encoder.encodeEnum(m_code.value());
+    } else
+        encoder << false;
+    encoder << m_message;
 }
     
 template<class Decoder>
 bool IDBError::decode(Decoder& decoder, IDBError& error)
 {
-    if (!decoder.decode(error.m_code))
+    bool hasCode = false;
+    if (!decoder.decode(hasCode))
         return false;
+
+    if (hasCode) {
+        ExceptionCode ec;
+        if (!decoder.decodeEnum(ec))
+            return false;
+        error.m_code = ec;
+    } else
+        error.m_code = std::nullopt;
 
     if (!decoder.decode(error.m_message))
         return false;

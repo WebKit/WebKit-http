@@ -31,7 +31,7 @@
 #include "BasicBlockLocation.h"
 #include "Exception.h"
 #include "Heap.h"
-#include "Interpreter.h"
+#include "InterpreterInlines.h"
 #include "JITInlines.h"
 #include "JSArray.h"
 #include "JSCell.h"
@@ -40,6 +40,7 @@
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "SlowPathCall.h"
+#include "ThunkGenerators.h"
 #include "TypeLocation.h"
 #include "TypeProfilerLog.h"
 #include "VirtualRegister.h"
@@ -948,6 +949,10 @@ void JIT::emit_op_check_traps(Instruction*)
     addSlowCase(branchTest8(NonZero, AbsoluteAddress(m_vm->needTrapHandlingAddress())));
 }
 
+void JIT::emit_op_nop(Instruction*)
+{
+}
+
 void JIT::emitSlow_op_check_traps(Instruction*, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkSlowCase(iter);
@@ -971,7 +976,7 @@ void JIT::emitNewFuncCommon(Instruction* currentInstruction)
 #endif
     FunctionExecutable* funcExec = m_codeBlock->functionDecl(currentInstruction[3].u.operand);
 
-    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
+    OpcodeID opcodeID = Interpreter::getOpcodeID(currentInstruction->u.opcode);
     if (opcodeID == op_new_func)
         callOperation(operationNewFunction, dst, regT0, funcExec);
     else if (opcodeID == op_new_generator_func)
@@ -1014,7 +1019,7 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
     notUndefinedScope.link(this);
         
     FunctionExecutable* function = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
-    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
+    OpcodeID opcodeID = Interpreter::getOpcodeID(currentInstruction->u.opcode);
 
     if (opcodeID == op_new_func_exp)
         callOperation(operationNewFunction, dst, regT0, function);
@@ -1514,6 +1519,12 @@ void JIT::emit_op_get_argument(Instruction* currentInstruction)
     done.link(this);
     emitValueProfilingSite();
     emitPutVirtualRegister(dst, resultRegs);
+}
+
+void JIT::emit_op_unreachable(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_unreachable);
+    slowPathCall.call();
 }
 
 } // namespace JSC

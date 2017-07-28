@@ -27,10 +27,8 @@
 #include "FontFaceSet.h"
 
 #include "Document.h"
-#include "ExceptionCodeDescription.h"
 #include "FontFace.h"
 #include "JSDOMBinding.h"
-#include "JSDOMCoreException.h"
 #include "JSFontFace.h"
 #include "JSFontFaceSet.h"
 
@@ -142,7 +140,7 @@ void FontFaceSet::load(const String& font, const String& text, LoadPromise&& pro
 
     for (auto& face : matchingFaces) {
         if (face.get().status() == CSSFontFace::Status::Failure) {
-            promise.reject(NETWORK_ERR);
+            promise.reject(NetworkError);
             return;
         }
     }
@@ -227,7 +225,7 @@ void FontFaceSet::faceFinished(CSSFontFace& face, CSSFontFace::Status newStatus)
             }
         } else {
             ASSERT(newStatus == CSSFontFace::Status::Failure);
-            pendingPromise->promise.reject(NETWORK_ERR);
+            pendingPromise->promise.reject(NetworkError);
             pendingPromise->hasReachedTerminalState = true;
         }
     }

@@ -71,13 +71,9 @@ WEBCORE_EXPORT bool isWebBookmarksD();
 bool isDumpRenderTree();
 bool isMobileStore();
 WEBCORE_EXPORT bool isWebApp();
-WEBCORE_EXPORT bool isOkCupid();
-WEBCORE_EXPORT bool isFacebook();
-WEBCORE_EXPORT bool isDaijisenDictionary();
-bool isNASAHD();
-WEBCORE_EXPORT bool isTheEconomistOnIphone();
 WEBCORE_EXPORT bool isWebProcess();
 bool isIBooks();
+bool isIBooksStorytime();
 WEBCORE_EXPORT bool isTheSecretSocietyHiddenMystery();
 
 } // IOSApplication

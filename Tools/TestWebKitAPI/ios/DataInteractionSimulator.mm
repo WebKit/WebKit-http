@@ -30,21 +30,221 @@
 
 #import "InstanceMethodSwizzler.h"
 #import "PlatformUtilities.h"
-#import <UIKit/UIItemProvider_Private.h>
-#import <WebCore/SoftLinking.h>
+
+#import <UIKit/UIDragInteraction.h>
+#import <UIKit/UIDragItem.h>
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <UIKit/UIDragSession.h>
+#import <UIKit/UIDragging.h>
+#else
+
+@protocol UIDraggingInfo <NSObject>
+@end
+
+@interface UIDraggingSession : NSObject <UIDraggingInfo>
+@end
+
+#endif
+
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKFocusedElementInfo.h>
 #import <WebKit/_WKFormInputSession.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK(UIKit, UIApplicationInstantiateSingleton, void, (Class singletonClass), (singletonClass))
 
 using namespace TestWebKitAPI;
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/DataInteractionSimulatorAdditions.mm>)
-#include <WebKitAdditions/DataInteractionSimulatorAdditions.mm>
-#endif
+@interface MockDragDropSession : NSObject <UIDragDropSession> {
+@private
+    RetainPtr<NSArray> _mockItems;
+    RetainPtr<UIWindow> _window;
+}
+@property (nonatomic) CGPoint mockLocationInWindow;
+@property (nonatomic) BOOL allowMove;
+@end
+
+@implementation MockDragDropSession
+
+- (instancetype)initWithItems:(NSArray <UIDragItem *>*)items location:(CGPoint)locationInWindow window:(UIWindow *)window allowMove:(BOOL)allowMove
+{
+    if (self = [super init]) {
+        _mockItems = items;
+        _mockLocationInWindow = locationInWindow;
+        _window = window;
+        _allowMove = allowMove;
+    }
+    return self;
+}
+
+- (BOOL)allowsMoveOperation
+{
+    return _allowMove;
+}
+
+- (BOOL)isRestrictedToDraggingApplication
+{
+    return NO;
+}
+
+- (BOOL)hasItemsConformingToTypeIdentifiers:(NSArray<NSString *> *)typeIdentifiers
+{
+    for (NSString *typeIdentifier in typeIdentifiers) {
+        BOOL hasItemConformingToType = NO;
+        for (UIDragItem *item in self.items)
+            hasItemConformingToType |= [[item.itemProvider registeredTypeIdentifiers] containsObject:typeIdentifier];
+        if (!hasItemConformingToType)
+            return NO;
+    }
+    return YES;
+}
+
+- (BOOL)canLoadObjectsOfClass:(Class<UIItemProviderReading>)aClass
+{
+    for (UIDragItem *item in self.items) {
+        if ([item.itemProvider canLoadObjectOfClass:aClass])
+            return YES;
+    }
+    return NO;
+}
+
+- (BOOL)canLoadObjectsOfClasses:(NSArray<Class<UIItemProviderReading>> *)classes
+{
+    for (Class<UIItemProviderReading> aClass in classes) {
+        BOOL canLoad = NO;
+        for (UIDragItem *item in self.items)
+            canLoad |= [item.itemProvider canLoadObjectOfClass:aClass];
+        if (!canLoad)
+            return NO;
+    }
+    return YES;
+}
+
+- (NSArray<UIDragItem *> *)items
+{
+    return _mockItems.get();
+}
+
+- (void)setItems:(NSArray<UIDragItem *> *)items
+{
+    _mockItems = items;
+}
+
+- (CGPoint)locationInView:(UIView *)view
+{
+    return [_window convertPoint:_mockLocationInWindow toView:view];
+}
+
+@end
+
+NSString * const DataInteractionEnterEventName = @"dragenter";
+NSString * const DataInteractionOverEventName = @"dragover";
+NSString * const DataInteractionPerformOperationEventName = @"drop";
+NSString * const DataInteractionLeaveEventName = @"dragleave";
+NSString * const DataInteractionStartEventName = @"dragstart";
+
+@interface MockDataOperationSession : MockDragDropSession <UIDropSession>
+@property (nonatomic, strong) id localContext;
+@end
+
+@implementation MockDataOperationSession
+
+- (instancetype)initWithProviders:(NSArray<UIItemProvider *> *)providers location:(CGPoint)locationInWindow window:(UIWindow *)window allowMove:(BOOL)allowMove
+{
+    auto items = adoptNS([[NSMutableArray alloc] init]);
+    for (UIItemProvider *itemProvider in providers)
+        [items addObject:[[[UIDragItem alloc] initWithItemProvider:itemProvider] autorelease]];
+
+    return [super initWithItems:items.get() location:locationInWindow window:window allowMove:allowMove];
+}
+
+- (UIDraggingSession *)session
+{
+    return nil;
+}
+
+- (BOOL)isLocal
+{
+    return YES;
+}
+
+- (NSProgress *)progress
+{
+    return [NSProgress discreteProgressWithTotalUnitCount:100];
+}
+
+- (void)setProgressIndicatorStyle:(UIDropSessionProgressIndicatorStyle)progressIndicatorStyle
+{
+}
+
+- (UIDropSessionProgressIndicatorStyle)progressIndicatorStyle
+{
+    return UIDropSessionProgressIndicatorStyleNone;
+}
+
+- (NSUInteger)operationMask
+{
+    return 0;
+}
+
+- (id <UIDragSession>)localDragSession
+{
+    return nil;
+}
+
+- (BOOL)hasItemsConformingToTypeIdentifier:(NSString *)typeIdentifier
+{
+    ASSERT_NOT_REACHED();
+    return NO;
+}
+
+- (BOOL)canCreateItemsOfClass:(Class<UIItemProviderReading>)aClass
+{
+    ASSERT_NOT_REACHED();
+    return NO;
+}
+
+- (NSProgress *)loadObjectsOfClass:(Class<NSItemProviderReading>)aClass completion:(void(^)(NSArray<__kindof id <NSItemProviderReading>> *objects))completion
+{
+    ASSERT_NOT_REACHED();
+    return nil;
+}
+
+@end
+
+@interface MockDataInteractionSession : MockDragDropSession <UIDragSession>
+@property (nonatomic, strong) id localContext;
+@property (nonatomic, strong) id context;
+@end
+
+@implementation MockDataInteractionSession
+
+- (instancetype)initWithWindow:(UIWindow *)window allowMove:(BOOL)allowMove
+{
+    return [super initWithItems:@[ ] location:CGPointZero window:window allowMove:allowMove];
+}
+
+- (NSUInteger)localOperationMask
+{
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+- (NSUInteger)externalOperationMask
+{
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+- (id)session
+{
+    return nil;
+}
+
+@end
 
 static double progressIncrementStep = 0.033;
 static double progressTimeStep = 0.016;
@@ -77,6 +277,7 @@ static NSArray *dataInteractionEventNames()
     if (self = [super init]) {
         _webView = webView;
         _shouldEnsureUIApplication = NO;
+        _shouldAllowMoveOperation = YES;
         _isDoneWaitingForInputSession = true;
         [_webView setUIDelegate:self];
         [_webView _setInputDelegate:self];
@@ -105,6 +306,7 @@ static NSArray *dataInteractionEventNames()
     _dataInteractionSession = nil;
     _dataOperationSession = nil;
     _shouldPerformOperation = NO;
+    _lastKnownDragCaretRect = CGRectZero;
 }
 
 - (NSArray *)observedEventNames
@@ -144,11 +346,11 @@ static NSArray *dataInteractionEventNames()
     _endLocation = endLocation;
 
     if (self.externalItemProviders.count) {
-        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:self.externalItemProviders location:_startLocation window:[_webView window]]);
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:self.externalItemProviders location:_startLocation window:[_webView window] allowMove:self.shouldAllowMoveOperation]);
         _phase = DataInteractionBegan;
         [self _advanceProgress];
     } else {
-        _dataInteractionSession = adoptNS([[MockDataInteractionSession alloc] initWithWindow:[_webView window]]);
+        _dataInteractionSession = adoptNS([[MockDataInteractionSession alloc] initWithWindow:[_webView window] allowMove:self.shouldAllowMoveOperation]);
         [_dataInteractionSession setMockLocationInWindow:_startLocation];
         [_webView _simulatePrepareForDataInteractionSession:_dataInteractionSession.get() completion:^() {
             DataInteractionSimulator *weakSelf = strongSelf.get();
@@ -174,6 +376,7 @@ static NSArray *dataInteractionEventNames()
 
 - (void)_concludeDataInteractionAndPerformOperationIfNecessary
 {
+    _lastKnownDragCaretRect = [_webView _dragCaretRect];
     if (_shouldPerformOperation) {
         [_webView _simulateDataInteractionPerformOperation:_dataOperationSession.get()];
         _phase = DataInteractionPerforming;
@@ -190,6 +393,7 @@ static NSArray *dataInteractionEventNames()
 
 - (void)_advanceProgress
 {
+    _lastKnownDragCaretRect = [_webView _dragCaretRect];
     _currentProgress += progressIncrementStep;
     CGPoint locationInWindow = self._currentLocation;
     [_dataInteractionSession setMockLocationInWindow:locationInWindow];
@@ -212,14 +416,16 @@ static NSArray *dataInteractionEventNames()
             return;
         }
 
-        for (WKDataInteractionItem *item in items)
+        for (UIDragItem *item in items)
             [itemProviders addObject:item.itemProvider];
 
-        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:itemProviders location:self._currentLocation window:[_webView window]]);
+        _dataOperationSession = adoptNS([[MockDataOperationSession alloc] initWithProviders:itemProviders location:self._currentLocation window:[_webView window] allowMove:self.shouldAllowMoveOperation]);
         [_dataInteractionSession setItems:items];
         _sourceItemProviders = itemProviders;
         if (self.showCustomActionSheetBlock) {
             // Defer progress until the custom action sheet is dismissed.
+            auto startLocationInView = [[_webView window] convertPoint:_startLocation toView:_webView.get()];
+            [_webView _simulateLongPressActionAtLocation:startLocationInView];
             return;
         }
 
@@ -237,9 +443,11 @@ static NSArray *dataInteractionEventNames()
         [_webView _simulateDataInteractionEntered:_dataOperationSession.get()];
         _phase = DataInteractionEntered;
         break;
-    case DataInteractionEntered:
-        _shouldPerformOperation = [_webView _simulateDataInteractionUpdated:_dataOperationSession.get()];
+    case DataInteractionEntered: {
+        auto operation = static_cast<UIDropOperation>([_webView _simulateDataInteractionUpdated:_dataOperationSession.get()]);
+        _shouldPerformOperation = operation == UIDropOperationCopy || ([_dataOperationSession allowsMoveOperation] && operation != UIDropOperationCancel);
         break;
+    }
     default:
         break;
     }
@@ -280,6 +488,11 @@ static NSArray *dataInteractionEventNames()
     return _phase;
 }
 
+- (CGRect)lastKnownDragCaretRect
+{
+    return _lastKnownDragCaretRect;
+}
+
 - (void)waitForInputSession
 {
     _isDoneWaitingForInputSession = false;
@@ -305,9 +518,9 @@ static NSArray *dataInteractionEventNames()
     return self.overrideDataInteractionOperationBlock ? self.overrideDataInteractionOperationBlock(operation, session) : operation;
 }
 
-- (NSArray<UIItemProvider *>*)_webView:(WKWebView *)webView adjustedDataInteractionItemProviders:(NSArray<UIItemProvider *>*)originalItemProviders
+- (NSArray *)_webView:(WKWebView *)webView adjustedDataInteractionItemProvidersForItemProvider:(UIItemProvider *)itemProvider representingObjects:(NSArray *)representingObjects additionalData:(NSDictionary *)additionalData
 {
-    return self.convertItemProvidersBlock ? self.convertItemProvidersBlock(originalItemProviders) : originalItemProviders;
+    return self.convertItemProvidersBlock ? self.convertItemProvidersBlock(itemProvider, representingObjects, additionalData) : @[ itemProvider ];
 }
 
 - (BOOL)_webView:(WKWebView *)webView showCustomSheetForElement:(_WKActivatedElementInfo *)element
@@ -324,6 +537,11 @@ static NSArray *dataInteractionEventNames()
     });
 
     return self.showCustomActionSheetBlock(element);
+}
+
+- (NSArray<UIDragItem *> *)_webView:(WKWebView *)webView willPerformDropWithSession:(id <UIDropSession>)session
+{
+    return self.overridePerformDropBlock ? self.overridePerformDropBlock(session) : session.items;
 }
 
 #pragma mark - _WKInputDelegate

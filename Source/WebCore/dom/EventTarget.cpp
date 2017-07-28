@@ -34,7 +34,6 @@
 
 #include "DOMWrapperWorld.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
 #include "JSEventListener.h"
 #include "NoEventDispatchAssertion.h"
@@ -147,7 +146,7 @@ ExceptionOr<bool> EventTarget::dispatchEventForBindings(Event& event)
     event.setUntrusted();
 
     if (!event.isInitialized() || event.isBeingDispatched())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     if (!scriptExecutionContext())
         return false;
@@ -191,7 +190,7 @@ static const AtomicString& legacyType(const Event& event)
     if (event.type() == eventNames().wheelEvent)
         return eventNames().mousewheelEvent;
 
-    return nullAtom;
+    return nullAtom();
 }
 
 bool EventTarget::fireEventListeners(Event& event)
@@ -232,12 +231,13 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
 {
     Ref<EventTarget> protectedThis(*this);
     ASSERT(!listeners.isEmpty());
+    ASSERT(scriptExecutionContext());
 
-    auto* context = scriptExecutionContext();
+    auto& context = *scriptExecutionContext();
     bool contextIsDocument = is<Document>(context);
     InspectorInstrumentationCookie willDispatchEventCookie;
     if (contextIsDocument)
-        willDispatchEventCookie = InspectorInstrumentation::willDispatchEvent(downcast<Document>(*context), event, true);
+        willDispatchEventCookie = InspectorInstrumentation::willDispatchEvent(downcast<Document>(context), event, true);
 
     for (auto& registeredListener : listeners) {
         if (UNLIKELY(registeredListener->wasRemoved()))
@@ -260,8 +260,8 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
         if (registeredListener->isPassive())
             event.setInPassiveListener(true);
 
-        InspectorInstrumentation::willHandleEvent(context, event);
-        registeredListener->callback().handleEvent(context, &event);
+        InspectorInstrumentation::willHandleEvent(&context, event);
+        registeredListener->callback().handleEvent(context, event);
 
         if (registeredListener->isPassive())
             event.setInPassiveListener(false);

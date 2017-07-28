@@ -44,7 +44,6 @@
 #include <wtf/MonotonicTime.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/ThreadMessage.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace JSC { namespace Wasm {
 
@@ -88,18 +87,23 @@ void OMGPlan::work(CompilationEffort)
     }
 
     Entrypoint omgEntrypoint;
-    LinkBuffer linkBuffer(*context.wasmEntrypointJIT, nullptr);
+    LinkBuffer linkBuffer(*context.wasmEntrypointJIT, nullptr, JITCompilationCanFail);
+    if (UNLIKELY(linkBuffer.didFailToAllocate())) {
+        Base::fail(holdLock(m_lock), makeString("Out of executable memory while tiering up function at index ", String::number(m_functionIndex)));
+        return;
+    }
+
     omgEntrypoint.compilation = std::make_unique<B3::Compilation>(
         FINALIZE_CODE(linkBuffer, ("WebAssembly OMG function[%i] %s", m_functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data())),
         WTFMove(context.wasmEntrypointByproducts));
 
-    omgEntrypoint.calleeSaveRegisters = WTFMove(parseAndCompileResult.value()->wasmEntrypoint.calleeSaveRegisters);
+    omgEntrypoint.calleeSaveRegisters = WTFMove(parseAndCompileResult.value()->entrypoint.calleeSaveRegisters);
 
     void* entrypoint;
     {
         ASSERT(m_codeBlock.ptr() == m_module->codeBlockFor(mode()));
         Ref<Callee> callee = Callee::create(WTFMove(omgEntrypoint), functionIndexSpace, m_moduleInformation->nameSection.get(functionIndexSpace));
-        MacroAssembler::repatchPointer(parseAndCompileResult.value()->wasmCalleeMoveLocation, CalleeBits::boxWasm(callee.ptr()));
+        MacroAssembler::repatchPointer(parseAndCompileResult.value()->calleeMoveLocation, CalleeBits::boxWasm(callee.ptr()));
         ASSERT(!m_codeBlock->m_optimizedCallees[m_functionIndex]);
         entrypoint = callee->entrypoint();
 
@@ -161,7 +165,6 @@ void runOMGPlanForIndex(Context* context, uint32_t functionIndex)
     JSWebAssemblyCodeBlock* codeBlock = context->codeBlock();
     ASSERT(context->memoryMode() == codeBlock->m_codeBlock->mode());
 
-    // We use the least significant bit of the tierUpCount to represent whether or not someone has already started the tier up.
     if (codeBlock->m_codeBlock->tierUpCount(functionIndex).shouldStartTierUp()) {
         Ref<Plan> plan = adoptRef(*new OMGPlan(context->module()->module(), functionIndex, codeBlock->m_codeBlock->mode(), Plan::dontFinalize()));
         ensureWorklist().enqueue(plan.copyRef());

@@ -35,6 +35,7 @@
 
 #include "JSDOMPromiseDeferred.h"
 #include "RTCRtpParameters.h"
+#include "RTCSessionDescription.h"
 #include "RTCSignalingState.h"
 
 namespace WebCore {
@@ -56,7 +57,7 @@ struct RTCDataChannelInit;
 struct RTCOfferOptions;
 
 namespace PeerConnection {
-using SessionDescriptionPromise = DOMPromiseDeferred<IDLInterface<RTCSessionDescription>>;
+using SessionDescriptionPromise = DOMPromiseDeferred<IDLDictionary<RTCSessionDescription::Init>>;
 using StatsPromise = DOMPromiseDeferred<IDLInterface<RTCStatsReport>>;
 }
 
@@ -87,7 +88,7 @@ public:
     virtual RefPtr<RTCSessionDescription> currentRemoteDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> pendingRemoteDescription() const = 0;
 
-    virtual void setConfiguration(MediaEndpointConfiguration&&) = 0;
+    virtual bool setConfiguration(MediaEndpointConfiguration&&) = 0;
 
     virtual void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) = 0;
 
@@ -106,9 +107,11 @@ public:
 
     virtual void emulatePlatformEvent(const String& action) = 0;
 
-    void newICECandidate(String&& sdp, String&& mid);
+    void newICECandidate(String&& sdp, String&& mid, unsigned short sdpMLineIndex);
     void disableICECandidateFiltering();
     void enableICECandidateFiltering();
+
+    virtual void applyRotationForOutgoingVideoSources() { }
 
 protected:
     void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&);
@@ -130,6 +133,8 @@ protected:
 
     void addIceCandidateSucceeded();
     void addIceCandidateFailed(Exception&&);
+
+    String filterSDP(String&&) const;
 
 private:
     virtual void doCreateOffer(RTCOfferOptions&&) = 0;
@@ -153,6 +158,7 @@ private:
         // Fields described in https://www.w3.org/TR/webrtc/#idl-def-rtcicecandidateinit.
         String sdp;
         String mid;
+        unsigned short sdpMLineIndex;
     };
     Vector<PendingICECandidate> m_pendingICECandidates;
 

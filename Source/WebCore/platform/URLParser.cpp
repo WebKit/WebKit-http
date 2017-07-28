@@ -191,7 +191,7 @@ static const uint8_t characterClassTable[256] = {
     0, // '$'
     ForbiddenHost, // '%'
     0, // '&'
-    QueryPercent, // '''
+    0, // '''
     0, // '('
     0, // ')'
     0, // '*'
@@ -420,7 +420,14 @@ template<typename CharacterType> ALWAYS_INLINE static bool isPercentOrNonASCII(C
 template<typename CharacterType> ALWAYS_INLINE static bool isSlashQuestionOrHash(CharacterType character) { return character <= '\\' && characterClassTable[character] & SlashQuestionOrHash; }
 template<typename CharacterType> ALWAYS_INLINE static bool isValidSchemeCharacter(CharacterType character) { return character <= 'z' && characterClassTable[character] & ValidScheme; }
 template<typename CharacterType> ALWAYS_INLINE static bool isForbiddenHostCodePoint(CharacterType character) { return character <= ']' && characterClassTable[character] & ForbiddenHost; }
-static bool shouldPercentEncodeQueryByte(uint8_t byte) { return characterClassTable[byte] & QueryPercent; }
+ALWAYS_INLINE static bool shouldPercentEncodeQueryByte(uint8_t byte, const bool& urlIsSpecial)
+{
+    if (characterClassTable[byte] & QueryPercent)
+        return true;
+    if (byte == '\'' && urlIsSpecial)
+        return true;
+    return false;
+}
 
 template<typename CharacterType, URLParser::ReportSyntaxViolation reportSyntaxViolation>
 ALWAYS_INLINE void URLParser::advance(CodePointIterator<CharacterType>& iterator, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
@@ -578,7 +585,7 @@ ALWAYS_INLINE void URLParser::utf8QueryEncode(const CodePointIterator<CharacterT
     ASSERT(!iterator.atEnd());
     UChar32 codePoint = *iterator;
     if (LIKELY(isASCII(codePoint))) {
-        if (UNLIKELY(shouldPercentEncodeQueryByte(codePoint))) {
+        if (UNLIKELY(shouldPercentEncodeQueryByte(codePoint, m_urlIsSpecial))) {
             syntaxViolation(iterator);
             percentEncodeByte(codePoint);
         } else
@@ -598,7 +605,7 @@ ALWAYS_INLINE void URLParser::utf8QueryEncode(const CodePointIterator<CharacterT
     U8_APPEND_UNSAFE(buffer, offset, codePoint);
     for (int32_t i = 0; i < offset; ++i) {
         auto byte = buffer[i];
-        if (shouldPercentEncodeQueryByte(byte))
+        if (shouldPercentEncodeQueryByte(byte, m_urlIsSpecial))
             percentEncodeByte(byte);
         else
             appendToASCIIBuffer(byte);
@@ -626,7 +633,7 @@ void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& enc
             syntaxViolation(iterator);
             break;
         }
-        if (UNLIKELY(shouldPercentEncodeQueryByte(byte))) {
+        if (UNLIKELY(shouldPercentEncodeQueryByte(byte, m_urlIsSpecial))) {
             syntaxViolation(iterator);
             break;
         }
@@ -639,7 +646,7 @@ void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& enc
     for (; i < length; ++i) {
         ASSERT(m_didSeeSyntaxViolation);
         uint8_t byte = data[i];
-        if (shouldPercentEncodeQueryByte(byte))
+        if (shouldPercentEncodeQueryByte(byte, m_urlIsSpecial))
             percentEncodeByte(byte);
         else
             appendToASCIIBuffer(byte);
@@ -822,14 +829,11 @@ enum class URLParser::URLPart {
     PathAfterLastSlash,
     PathEnd,
     QueryEnd,
-    FragmentEnd,
 };
 
 size_t URLParser::urlLengthUntilPart(const URL& url, URLPart part)
 {
     switch (part) {
-    case URLPart::FragmentEnd:
-        return url.m_fragmentEnd;
     case URLPart::QueryEnd:
         return url.m_queryEnd;
     case URLPart::PathEnd:
@@ -879,8 +883,6 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
     m_asciiBuffer.clear();
     copyASCIIStringUntil(base.m_string, urlLengthUntilPart(base, part));
     switch (part) {
-    case URLPart::FragmentEnd:
-        RELEASE_ASSERT_NOT_REACHED();
     case URLPart::QueryEnd:
         m_url.m_queryEnd = base.m_queryEnd;
         FALLTHROUGH;
@@ -1854,7 +1856,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
     case State::SpecialRelativeOrAuthority:
         LOG_FINAL_STATE("SpecialRelativeOrAuthority");
         copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
-        m_url.m_fragmentEnd = m_url.m_queryEnd;
         break;
     case State::PathOrAuthority:
         LOG_FINAL_STATE("PathOrAuthority");
@@ -1869,7 +1870,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-        m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
         break;
     case State::Relative:
         LOG_FINAL_STATE("Relative");
@@ -1881,7 +1881,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_pathAfterLastSlash = base.m_portEnd + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-        m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
         break;
     case State::SpecialAuthoritySlashes:
         LOG_FINAL_STATE("SpecialAuthoritySlashes");
@@ -1893,7 +1892,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_pathAfterLastSlash = m_url.m_userStart;
         m_url.m_pathEnd = m_url.m_userStart;
         m_url.m_queryEnd = m_url.m_userStart;
-        m_url.m_fragmentEnd = m_url.m_userStart;
         break;
     case State::SpecialAuthorityIgnoreSlashes:
         LOG_FINAL_STATE("SpecialAuthorityIgnoreSlashes");
@@ -1922,7 +1920,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         }
         m_url.m_pathAfterLastSlash = m_url.m_pathEnd;
         m_url.m_queryEnd = m_url.m_pathEnd;
-        m_url.m_fragmentEnd = m_url.m_pathEnd;
         break;
     case State::Host:
         LOG_FINAL_STATE("Host");
@@ -1938,13 +1935,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_pathEnd = m_url.m_portEnd;
         m_url.m_pathAfterLastSlash = m_url.m_pathEnd;
         m_url.m_queryEnd = m_url.m_pathEnd;
-        m_url.m_fragmentEnd = m_url.m_pathEnd;
         break;
     case State::File:
         LOG_FINAL_STATE("File");
         if (base.isValid() && base.protocolIs("file")) {
             copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
-            m_url.m_fragmentEnd = m_url.m_queryEnd;
             break;
         }
         syntaxViolation(c);
@@ -1957,7 +1952,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-        m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
         break;
     case State::FileSlash:
         LOG_FINAL_STATE("FileSlash");
@@ -1975,7 +1969,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-        m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
         break;
     case State::FileHost:
         LOG_FINAL_STATE("FileHost");
@@ -1987,7 +1980,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_pathAfterLastSlash = currentPosition(c);
             m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
             m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-            m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
             break;
         }
         
@@ -2002,7 +1994,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
             m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
             m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-            m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
             break;
         }
 
@@ -2021,7 +2012,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_pathAfterLastSlash = m_url.m_portEnd + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
-        m_url.m_fragmentEnd = m_url.m_pathAfterLastSlash;
         break;
     case State::PathStart:
         LOG_FINAL_STATE("PathStart");
@@ -2030,30 +2020,25 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         LOG_FINAL_STATE("Path");
         m_url.m_pathEnd = currentPosition(c);
         m_url.m_queryEnd = m_url.m_pathEnd;
-        m_url.m_fragmentEnd = m_url.m_pathEnd;
         break;
     case State::CannotBeABaseURLPath:
         LOG_FINAL_STATE("CannotBeABaseURLPath");
         m_url.m_pathEnd = currentPosition(c);
         m_url.m_queryEnd = m_url.m_pathEnd;
-        m_url.m_fragmentEnd = m_url.m_pathEnd;
         break;
     case State::UTF8Query:
         LOG_FINAL_STATE("UTF8Query");
         ASSERT(queryBegin == CodePointIterator<CharacterType>());
         m_url.m_queryEnd = currentPosition(c);
-        m_url.m_fragmentEnd = m_url.m_queryEnd;
         break;
     case State::NonUTF8Query:
         LOG_FINAL_STATE("NonUTF8Query");
         ASSERT(queryBegin != CodePointIterator<CharacterType>());
         encodeQuery(queryBuffer, encoding, CodePointIterator<CharacterType>(queryBegin, c));
         m_url.m_queryEnd = currentPosition(c);
-        m_url.m_fragmentEnd = m_url.m_queryEnd;
         break;
     case State::Fragment:
         LOG_FINAL_STATE("Fragment");
-        m_url.m_fragmentEnd = currentPosition(c);
         break;
     }
 
@@ -2111,7 +2096,7 @@ template<typename UnsignedIntegerType>
 void URLParser::appendNumberToASCIIBuffer(UnsignedIntegerType number)
 {
     LChar buf[sizeof(UnsignedIntegerType) * 3 + 1];
-    LChar* end = buf + WTF_ARRAY_LENGTH(buf);
+    LChar* end = std::end(buf);
     LChar* p = end;
     do {
         *--p = (number % 10) + '0';
@@ -2852,6 +2837,9 @@ static void serializeURLEncodedForm(const String& input, Vector<LChar>& output)
     
 String URLParser::serialize(const URLEncodedForm& tuples)
 {
+    if (tuples.isEmpty())
+        return { };
+
     Vector<LChar> output;
     for (auto& tuple : tuples) {
         if (!output.isEmpty())
@@ -2880,7 +2868,7 @@ bool URLParser::allValuesEqual(const URL& a, const URL& b)
 {
     // FIXME: m_cannotBeABaseURL is not compared because the old URL::parse did not use it,
     // but once we get rid of URL::parse its value should be tested.
-    URL_PARSER_LOG("%d %d %d %d %d %d %d %d %d %d %d %d %s\n%d %d %d %d %d %d %d %d %d %d %d %d %s",
+    URL_PARSER_LOG("%d %d %d %d %d %d %d %d %d %d %d %s\n%d %d %d %d %d %d %d %d %d %d %d %s",
         a.m_isValid,
         a.m_protocolIsInHTTPFamily,
         a.m_schemeEnd,
@@ -2892,7 +2880,6 @@ bool URLParser::allValuesEqual(const URL& a, const URL& b)
         a.m_pathAfterLastSlash,
         a.m_pathEnd,
         a.m_queryEnd,
-        a.m_fragmentEnd,
         a.m_string.utf8().data(),
         b.m_isValid,
         b.m_protocolIsInHTTPFamily,
@@ -2905,7 +2892,6 @@ bool URLParser::allValuesEqual(const URL& a, const URL& b)
         b.m_pathAfterLastSlash,
         b.m_pathEnd,
         b.m_queryEnd,
-        b.m_fragmentEnd,
         b.m_string.utf8().data());
 
     return a.m_string == b.m_string
@@ -2919,8 +2905,7 @@ bool URLParser::allValuesEqual(const URL& a, const URL& b)
         && a.m_portEnd == b.m_portEnd
         && a.m_pathAfterLastSlash == b.m_pathAfterLastSlash
         && a.m_pathEnd == b.m_pathEnd
-        && a.m_queryEnd == b.m_queryEnd
-        && a.m_fragmentEnd == b.m_fragmentEnd;
+        && a.m_queryEnd == b.m_queryEnd;
 }
 
 bool URLParser::internalValuesConsistent(const URL& url)
@@ -2933,10 +2918,7 @@ bool URLParser::internalValuesConsistent(const URL& url)
         && url.m_portEnd <= url.m_pathAfterLastSlash
         && url.m_pathAfterLastSlash <= url.m_pathEnd
         && url.m_pathEnd <= url.m_queryEnd
-        && url.m_queryEnd <= url.m_fragmentEnd
-        && (url.m_isValid ? url.m_fragmentEnd == url.m_string.length() : !url.m_fragmentEnd);
-    // FIXME: Why do we even store m_fragmentEnd?
-    // It should be able to be deduced from m_isValid and m_string.length() to save memory.
+        && url.m_queryEnd <= url.m_string.length();
 }
 
 } // namespace WebCore

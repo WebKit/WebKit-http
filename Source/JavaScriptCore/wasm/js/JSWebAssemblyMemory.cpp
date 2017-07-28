@@ -37,8 +37,19 @@ namespace JSC {
 
 const ClassInfo JSWebAssemblyMemory::s_info = { "WebAssembly.Memory", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSWebAssemblyMemory) };
 
-JSWebAssemblyMemory* JSWebAssemblyMemory::create(VM& vm, Structure* structure, Ref<Wasm::Memory>&& memory)
+JSWebAssemblyMemory* JSWebAssemblyMemory::create(ExecState* exec, VM& vm, Structure* structure, Ref<Wasm::Memory>&& memory)
 {
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto* globalObject = exec->lexicalGlobalObject();
+
+    auto exception = [&] (JSObject* error) {
+        throwException(exec, throwScope, error);
+        return nullptr;
+    };
+
+    if (!globalObject->webAssemblyEnabled())
+        return exception(createEvalError(exec, globalObject->webAssemblyDisabledErrorMessage()));
+
     auto* instance = new (NotNull, allocateCell<JSWebAssemblyMemory>(vm.heap)) JSWebAssemblyMemory(vm, structure, WTFMove(memory));
     instance->m_memory->check();
     instance->finishCreation(vm);
@@ -68,6 +79,7 @@ JSArrayBuffer* JSWebAssemblyMemory::buffer(VM& vm, JSGlobalObject* globalObject)
     Ref<Wasm::Memory> protectedMemory = m_memory.get();
     auto destructor = [protectedMemory = WTFMove(protectedMemory)] (void*) { };
     m_buffer = ArrayBuffer::createFromBytes(memory().memory(), memory().size(), WTFMove(destructor));
+    m_buffer->makeWasmMemory();
     m_bufferWrapper.set(vm, this, JSArrayBuffer::create(vm, globalObject->m_arrayBufferStructure.get(), m_buffer.get()));
     RELEASE_ASSERT(m_bufferWrapper);
     return m_bufferWrapper.get();
@@ -110,8 +122,7 @@ Wasm::PageCount JSWebAssemblyMemory::grow(VM& vm, ExecState* exec, uint32_t delt
     // to stale memory.
     // Neuter the old array.
     if (m_buffer) {
-        ArrayBufferContents dummyContents;
-        m_buffer->transferTo(vm, dummyContents);
+        m_buffer->neuter(vm);
         m_buffer = nullptr;
         m_bufferWrapper.clear();
     }

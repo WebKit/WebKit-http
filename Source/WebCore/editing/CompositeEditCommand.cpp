@@ -766,7 +766,7 @@ void CompositeEditCommand::replaceTextInNodePreservingMarkers(Text& node, unsign
 {
     Ref<Text> protectedNode(node);
     DocumentMarkerController& markerController = document().markers();
-    auto markers = copyMarkers(markerController.markersInRange(Range::create(document(), &node, offset, &node, offset + count), DocumentMarker::AllMarkers()));
+    auto markers = copyMarkers(markerController.markersInRange(Range::create(document(), &node, offset, &node, offset + count), DocumentMarker::allMarkers()));
     replaceTextInNode(node, offset, count, replacementText);
     RefPtr<Range> newRange = Range::create(document(), &node, offset, &node, offset + replacementText.length());
     for (const auto& marker : markers)
@@ -837,7 +837,7 @@ void CompositeEditCommand::deleteSelection(const VisibleSelection &selection, bo
 
 void CompositeEditCommand::removeNodeAttribute(Element& element, const QualifiedName& attribute)
 {
-    setNodeAttribute(element, attribute, nullAtom);
+    setNodeAttribute(element, attribute, nullAtom());
 }
 
 void CompositeEditCommand::setNodeAttribute(Element& element, const QualifiedName& attribute, const AtomicString& value)
@@ -1477,7 +1477,7 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     // Must recononicalize these two VisiblePositions after the pruning above.
     beforeParagraph = VisiblePosition(beforeParagraph.deepEquivalent());
     afterParagraph = VisiblePosition(afterParagraph.deepEquivalent());
-    if (beforeParagraph.isNotNull() && (!isEndOfParagraph(beforeParagraph) || beforeParagraph == afterParagraph)) {
+    if (beforeParagraph.isNotNull() && ((!isStartOfParagraph(beforeParagraph) && !isEndOfParagraph(beforeParagraph)) || beforeParagraph == afterParagraph)) {
         // FIXME: Trim text between beforeParagraph and afterParagraph if they aren't equal.
         insertNodeAt(HTMLBRElement::create(document()), beforeParagraph.deepEquivalent());
         // Need an updateLayout here in case inserting the br has split a text node.

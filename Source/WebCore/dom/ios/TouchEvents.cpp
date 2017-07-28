@@ -28,9 +28,10 @@
 #if ENABLE(IOS_TOUCH_EVENTS)
 
 #include <WebKitAdditions/DocumentIOS.cpp>
+#include <WebKitAdditions/DocumentTouchIOS.cpp>
 #include <WebKitAdditions/GestureEvent.cpp>
-#include <WebKitAdditions/TouchIOS.cpp>
 #include <WebKitAdditions/TouchEventIOS.cpp>
+#include <WebKitAdditions/TouchIOS.cpp>
 #include <WebKitAdditions/TouchListIOS.cpp>
 
 #endif

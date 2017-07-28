@@ -138,20 +138,28 @@ bool FontCascadeFonts::isLoadingCustomFonts() const
 
 static FontRanges realizeNextFallback(const FontCascadeDescription& description, unsigned& index, FontSelector* fontSelector)
 {
-    ASSERT(index < description.familyCount());
+    ASSERT(index < description.effectiveFamilyCount());
 
     auto& fontCache = FontCache::singleton();
-    while (index < description.familyCount()) {
-        const AtomicString& family = description.familyAt(index++);
-        if (family.isEmpty())
-            continue;
-        if (fontSelector) {
-            auto ranges = fontSelector->fontRangesForFamily(description, family);
-            if (!ranges.isNull())
-                return ranges;
-        }
-        if (auto font = fontCache.fontForFamily(description, family))
-            return FontRanges(WTFMove(font));
+    while (index < description.effectiveFamilyCount()) {
+        auto visitor = WTF::makeVisitor([&](const AtomicString& family) -> FontRanges {
+            if (family.isEmpty())
+                return FontRanges();
+            if (fontSelector) {
+                auto ranges = fontSelector->fontRangesForFamily(description, family);
+                if (!ranges.isNull())
+                    return ranges;
+            }
+            if (auto font = fontCache.fontForFamily(description, family))
+                return FontRanges(WTFMove(font));
+            return FontRanges();
+        }, [&](const FontFamilyPlatformSpecification& fontFamilySpecification) -> FontRanges {
+            return fontFamilySpecification.fontRanges(description);
+        });
+        const auto& currentFamily = description.effectiveFamilyAt(index++);
+        auto ranges = WTF::visit(visitor, currentFamily);
+        if (!ranges.isNull())
+            return ranges;
     }
     // We didn't find a font. Try to find a similar font using our own specific knowledge about our platform.
     // For example on OS X, we know to map any families containing the words Arabic, Pashto, or Urdu to the
@@ -183,13 +191,13 @@ const FontRanges& FontCascadeFonts::realizeFallbackRangesAt(const FontCascadeDes
         return fontRanges;
     }
 
-    if (m_lastRealizedFallbackIndex < description.familyCount())
+    if (m_lastRealizedFallbackIndex < description.effectiveFamilyCount())
         fontRanges = realizeNextFallback(description, m_lastRealizedFallbackIndex, m_fontSelector.get());
 
     if (fontRanges.isNull() && m_fontSelector) {
-        ASSERT(m_lastRealizedFallbackIndex >= description.familyCount());
+        ASSERT(m_lastRealizedFallbackIndex >= description.effectiveFamilyCount());
 
-        unsigned fontSelectorFallbackIndex = m_lastRealizedFallbackIndex - description.familyCount();
+        unsigned fontSelectorFallbackIndex = m_lastRealizedFallbackIndex - description.effectiveFamilyCount();
         if (fontSelectorFallbackIndex == m_fontSelector->fallbackFontCount())
             return fontRanges;
         ++m_lastRealizedFallbackIndex;
@@ -214,7 +222,7 @@ static bool shouldIgnoreRotation(UChar32 character)
 
     if (isInRange(character, 0x002E5, 0x002EB))
         return true;
-    
+
     if (isInRange(character, 0x01100, 0x011FF) || isInRange(character, 0x01401, 0x0167F) || isInRange(character, 0x01800, 0x018FF))
         return true;
 
@@ -275,13 +283,13 @@ static bool shouldIgnoreRotation(UChar32 character)
         || isInRange(character, 0x1D000, 0x1D1FF) || isInRange(character, 0x1D300, 0x1D37F)
         || isInRange(character, 0x1F000, 0x1F64F) || isInRange(character, 0x1F680, 0x1F77F))
         return true;
-    
+
     if (isInRange(character, 0x20000, 0x2FFFD) || isInRange(character, 0x30000, 0x3FFFD))
         return true;
 
     return false;
 }
-    
+
 static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 character, NonCJKGlyphOrientation orientation, const GlyphData& data)
 {
     bool syntheticOblique = data.font->platformData().syntheticOblique();
@@ -300,7 +308,7 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
             return uprightData;
     } else if (orientation == NonCJKGlyphOrientation::Mixed) {
         GlyphData verticalRightData = data.font->verticalRightOrientationFont().glyphDataForCharacter(character);
-        
+
         // If there is a baked-in rotated glyph, we will use it unless syntheticOblique is set. If
         // synthetic oblique is set, we fall back to the horizontal glyph. This guarantees that vertical
         // fonts without isTextOrientationFallback() set contain CJK characters only and thus we can get
@@ -315,30 +323,49 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
     return data;
 }
 
-GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 c, const FontCascadeDescription& description, FontVariant variant)
+static const Font* findBestFallbackFont(FontCascadeFonts& fontCascadeFonts, const FontCascadeDescription& description, UChar32 character)
 {
-    // System fallback is character-dependent.
-    auto& primaryRanges = realizeFallbackRangesAt(description, 0);
-    auto* originalFont = primaryRanges.fontForCharacter(c);
-    if (!originalFont)
-        originalFont = &primaryRanges.fontForFirstRange();
+    for (unsigned fallbackIndex = 0; ; ++fallbackIndex) {
+        auto& fontRanges = fontCascadeFonts.realizeFallbackRangesAt(description, fallbackIndex);
+        if (fontRanges.isNull())
+            break;
+        auto* currentFont = fontRanges.glyphDataForCharacter(character, ExternalResourceDownloadPolicy::Forbid).font;
+        if (!currentFont)
+            currentFont = &fontRanges.fontForFirstRange();
 
-    auto systemFallbackFont = originalFont->systemFallbackFontForCharacter(c, description, m_isForPlatformFont);
+        if (!currentFont->isInterstitial())
+            return currentFont;
+    }
+
+    return nullptr;
+}
+
+GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 character, const FontCascadeDescription& description, FontVariant variant, bool systemFallbackShouldBeInvisible)
+{
+    const Font* font = findBestFallbackFont(*this, description, character);
+
+    if (!font)
+        font = &realizeFallbackRangesAt(description, 0).fontForFirstRange();
+
+    auto systemFallbackFont = font->systemFallbackFontForCharacter(character, description, m_isForPlatformFont);
     if (!systemFallbackFont)
         return GlyphData();
 
-    if (systemFallbackFont->platformData().orientation() == Vertical && !systemFallbackFont->hasVerticalGlyphs() && FontCascade::isCJKIdeographOrSymbol(c))
+    if (systemFallbackShouldBeInvisible)
+        systemFallbackFont = const_cast<Font*>(&systemFallbackFont->invisibleFont());
+
+    if (systemFallbackFont->platformData().orientation() == Vertical && !systemFallbackFont->hasVerticalGlyphs() && FontCascade::isCJKIdeographOrSymbol(character))
         variant = BrokenIdeographVariant;
 
     GlyphData fallbackGlyphData;
     if (variant == NormalVariant)
-        fallbackGlyphData = systemFallbackFont->glyphDataForCharacter(c);
+        fallbackGlyphData = systemFallbackFont->glyphDataForCharacter(character);
     else
-        fallbackGlyphData = systemFallbackFont->variantFont(description, variant)->glyphDataForCharacter(c);
+        fallbackGlyphData = systemFallbackFont->variantFont(description, variant)->glyphDataForCharacter(character);
 
     if (fallbackGlyphData.font && fallbackGlyphData.font->platformData().orientation() == Vertical && !fallbackGlyphData.font->isTextOrientationFallback()) {
-        if (variant == NormalVariant && !FontCascade::isCJKIdeographOrSymbol(c))
-            fallbackGlyphData = glyphDataForNonCJKCharacterWithGlyphOrientation(c, description.nonCJKGlyphOrientation(), fallbackGlyphData);
+        if (variant == NormalVariant && !FontCascade::isCJKIdeographOrSymbol(character))
+            fallbackGlyphData = glyphDataForNonCJKCharacterWithGlyphOrientation(character, description.nonCJKGlyphOrientation(), fallbackGlyphData);
     }
 
     // Keep the system fallback fonts we use alive.
@@ -348,68 +375,59 @@ GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 c, const FontCasc
     return fallbackGlyphData;
 }
 
-GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 c, const FontCascadeDescription& description, FontVariant variant, unsigned fallbackIndex)
+enum class SystemFallbackVisibility {
+    Immaterial,
+    Visible,
+    Invisible
+};
+
+GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 character, const FontCascadeDescription& description, FontVariant variant, unsigned fallbackIndex)
 {
+    SystemFallbackVisibility systemFallbackVisibility = SystemFallbackVisibility::Immaterial;
     ExternalResourceDownloadPolicy policy = ExternalResourceDownloadPolicy::Allow;
     GlyphData loadingResult;
-    while (true) {
-        auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex++);
-        if (fontRanges.isNull())
-            break;
-        GlyphData data = fontRanges.glyphDataForCharacter(c, policy);
-        if (!data.font)
-            continue;
-        if (data.font->isInterstitial()) {
-            policy = ExternalResourceDownloadPolicy::Forbid;
-            if (!loadingResult.font)
-                loadingResult = data;
-            continue;
-        }
-        // The variantFont function should not normally return 0.
-        // But if it does, we will just render the capital letter big.
-        if (const Font* variantFont = data.font->variantFont(description, variant))
-            return variantFont->glyphDataForCharacter(c);
-        return data;
-    }
-
-    if (loadingResult.font)
-        return loadingResult;
-    return glyphDataForSystemFallback(c, description, variant);
-}
-
-GlyphData FontCascadeFonts::glyphDataForNormalVariant(UChar32 c, const FontCascadeDescription& description)
-{
-    ExternalResourceDownloadPolicy policy = ExternalResourceDownloadPolicy::Allow;
-    GlyphData loadingResult;
-    for (unsigned fallbackIndex = 0; ; ++fallbackIndex) {
+    for (; ; ++fallbackIndex) {
         auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex);
         if (fontRanges.isNull())
             break;
-        GlyphData data = fontRanges.glyphDataForCharacter(c, policy);
+
+        GlyphData data = fontRanges.glyphDataForCharacter(character, policy);
         if (!data.font)
             continue;
+
         if (data.font->isInterstitial()) {
             policy = ExternalResourceDownloadPolicy::Forbid;
-            if (!loadingResult.font)
+            if (systemFallbackVisibility == SystemFallbackVisibility::Immaterial)
+                systemFallbackVisibility = data.font->visibility() == Font::Visibility::Visible ? SystemFallbackVisibility::Visible : SystemFallbackVisibility::Invisible;
+            if (!loadingResult.font && data.glyph)
                 loadingResult = data;
             continue;
         }
-        if (data.font->platformData().orientation() == Vertical && !data.font->isTextOrientationFallback()) {
-            if (!FontCascade::isCJKIdeographOrSymbol(c))
-                return glyphDataForNonCJKCharacterWithGlyphOrientation(c, description.nonCJKGlyphOrientation(), data);
 
-            if (!data.font->hasVerticalGlyphs()) {
-                // Use the broken ideograph font data. The broken ideograph font will use the horizontal width of glyphs
-                // to make sure you get a square (even for broken glyphs like symbols used for punctuation).
-                return glyphDataForVariant(c, description, BrokenIdeographVariant, fallbackIndex);
+        if (variant == NormalVariant) {
+            if (data.font->platformData().orientation() == Vertical && !data.font->isTextOrientationFallback()) {
+                if (!FontCascade::isCJKIdeographOrSymbol(character))
+                    return glyphDataForNonCJKCharacterWithGlyphOrientation(character, description.nonCJKGlyphOrientation(), data);
+
+                if (!data.font->hasVerticalGlyphs()) {
+                    // Use the broken ideograph font data. The broken ideograph font will use the horizontal width of glyphs
+                    // to make sure you get a square (even for broken glyphs like symbols used for punctuation).
+                    return glyphDataForVariant(character, description, BrokenIdeographVariant, fallbackIndex);
+                }
             }
+        } else {
+            // The variantFont function should not normally return 0.
+            // But if it does, we will just render the capital letter big.
+            if (const Font* variantFont = data.font->variantFont(description, variant))
+                return variantFont->glyphDataForCharacter(character);
         }
+
         return data;
     }
 
     if (loadingResult.font)
         return loadingResult;
-    return glyphDataForSystemFallback(c, description, NormalVariant);
+    return glyphDataForSystemFallback(character, description, variant, systemFallbackVisibility == SystemFallbackVisibility::Invisible);
 }
 
 static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const FontRanges& fontRanges)
@@ -444,7 +462,7 @@ GlyphData FontCascadeFonts::glyphDataForCharacter(UChar32 c, const FontCascadeDe
     ASSERT(variant != AutoVariant);
 
     if (variant != NormalVariant)
-        return glyphDataForVariant(c, description, variant, 0);
+        return glyphDataForVariant(c, description, variant);
 
     const unsigned pageNumber = GlyphPage::pageNumberForCodePoint(c);
 
@@ -457,7 +475,8 @@ GlyphData FontCascadeFonts::glyphDataForCharacter(UChar32 c, const FontCascadeDe
     GlyphData glyphData = cacheEntry.glyphDataForCharacter(c);
     if (!glyphData.glyph) {
         // No glyph, resolve per-character.
-        glyphData = glyphDataForNormalVariant(c, description);
+        ASSERT(variant == NormalVariant);
+        glyphData = glyphDataForVariant(c, description, variant);
         // Cache the results.
         cacheEntry.setGlyphDataForCharacter(c, glyphData);
     }

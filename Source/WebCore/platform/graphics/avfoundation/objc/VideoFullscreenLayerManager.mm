@@ -33,6 +33,7 @@
 #import "WebCoreCALayerExtras.h"
 #import <mach/mach_init.h>
 #import <mach/mach_port.h>
+#import <wtf/BlockPtr.h>
 
 @interface WebVideoContainerLayer : CALayer
 @end
@@ -80,15 +81,13 @@ void VideoFullscreenLayerManager::setVideoLayer(PlatformLayer *videoLayer, IntSi
     if (m_videoFullscreenLayer) {
         [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        [m_videoLayer setBackgroundColor:cachedCGColor(Color::transparent)];
     } else {
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
         [m_videoLayer setFrame:m_videoInlineLayer.get().bounds];
-        [m_videoLayer setBackgroundColor:cachedCGColor(Color::black)];
     }
 }
 
-void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, std::function<void()> completionHandler)
+void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {
     if (m_videoFullscreenLayer == videoFullscreenLayer) {
         completionHandler();
@@ -106,11 +105,9 @@ void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFu
         if (m_videoFullscreenLayer) {
             [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
             [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
-            [m_videoLayer setBackgroundColor:cachedCGColor(Color::transparent)];
         } else if (m_videoInlineLayer) {
             [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
             [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
-            [m_videoLayer setBackgroundColor:cachedCGColor(Color::black)];
         } else
             [m_videoLayer removeFromSuperlayer];
 
@@ -125,13 +122,13 @@ void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFu
             mach_port_deallocate(mach_task_self(), fencePort);
         }
 
-        [CATransaction setCompletionBlock:[completionHandler] {
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
             completionHandler();
-        }];
+        }).get()];
     } else {
-        [CATransaction setCompletionBlock:[completionHandler] {
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
             completionHandler();
-        }];
+        }).get()];
     }
 
     [CATransaction commit];

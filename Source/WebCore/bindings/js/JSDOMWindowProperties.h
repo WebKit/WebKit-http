@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "DOMWindow.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWrapper.h"
 
@@ -55,7 +54,8 @@ public:
 protected:
     JSDOMWindowProperties(JSC::Structure* structure, JSC::JSGlobalObject& globalObject)
         : JSDOMObject(structure, globalObject)
-    { }
+    {
+    }
 };
 
 } // namespace WebCore

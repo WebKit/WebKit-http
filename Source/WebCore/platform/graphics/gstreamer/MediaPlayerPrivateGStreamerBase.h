@@ -36,7 +36,6 @@
 #include <wtf/RunLoop.h>
 
 #if USE(TEXTURE_MAPPER)
-#include "TextureMapperPlatformLayer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
@@ -58,7 +57,7 @@ class VideoTextureCopierGStreamer;
 void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
-#if USE(COORDINATED_GRAPHICS_THREADED) || (USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
+#if USE(TEXTURE_MAPPER_GL)
     , public PlatformLayer
 #endif
 {
@@ -75,7 +74,7 @@ public:
     bool ensureGstGLContext();
     static GstContext* requestGLContext(const gchar* contextType, MediaPlayerPrivateGStreamerBase*);
 #endif
-
+    static bool initializeGStreamerAndRegisterWebKitElements();
     bool supportsMuting() const override { return true; }
     void setMuted(bool) override;
     bool muted() const;
@@ -110,7 +109,7 @@ public:
 
     void acceleratedRenderingStateChanged() override;
 
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#if USE(TEXTURE_MAPPER_GL)
     PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
 #if PLATFORM(WIN_CAIRO)
     // FIXME: Accelerated rendering has not been implemented for WinCairo yet.
@@ -118,12 +117,6 @@ public:
 #else
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
-    void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
-#endif
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
-    bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -171,10 +164,13 @@ protected:
     GstElement* createVideoSinkGL();
     GstGLContext* gstGLContext() const { return m_glContext.get(); }
     GstGLDisplay* gstGLDisplay() const { return m_glDisplay.get(); }
-#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
-    GLContext* prepareContextForCairoPaint(GstVideoInfo&, IntSize&, IntSize&);
-    bool paintToCairoSurface(cairo_surface_t*, cairo_device_t*, GstVideoInfo&, const IntSize&, const IntSize&, bool);
 #endif
+
+#if USE(TEXTURE_MAPPER_GL)
+    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
+    RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    void swapBuffersIfNeeded() override { };
+    void pushTextureToCompositor();
 #endif
 
     GstElement* videoSink() const { return m_videoSink.get(); }
@@ -188,9 +184,11 @@ protected:
 
     void triggerRepaint(GstSample*);
     void repaint();
+    void cancelRepaint();
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
+    static void repaintCancelledCallback(MediaPlayerPrivateGStreamerBase*);
 #endif
 
     void notifyPlayerOfVolumeChange();
@@ -211,7 +209,7 @@ protected:
         SizeChanged = 1 << 6
     };
 
-    MainThreadNotifier<MainThreadNotification> m_notifier;
+    Ref<MainThreadNotifier<MainThreadNotification>> m_notifier;
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstStreamVolume> m_volumeElement;
@@ -224,36 +222,30 @@ protected:
     IntPoint m_position;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
-    RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
-#endif
-    unsigned long m_repaintHandler;
-    unsigned long m_drainHandler;
-    mutable FloatSize m_videoSize;
-    bool m_usingFallbackVideoSink;
-    bool m_renderingCanBeAccelerated { false };
-#if USE(TEXTURE_MAPPER_GL)
-    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
-#endif
-#if USE(GSTREAMER_GL)
-    GRefPtr<GstGLContext> m_glContext;
-    GRefPtr<GstGLDisplay> m_glDisplay;
-#endif
+    unsigned long m_repaintRequestedHandler { 0 };
+    unsigned long m_repaintCancelledHandler { 0 };
+    unsigned long m_drainHandler { 0 };
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
-    void swapBuffersIfNeeded() override { };
-    void pushTextureToCompositor();
+    mutable FloatSize m_videoSize;
+    bool m_usingFallbackVideoSink { false };
+    bool m_renderingCanBeAccelerated { false };
+
+    Condition m_drawCondition;
+    Lock m_drawMutex;
+    RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
+
+#if USE(TEXTURE_MAPPER_GL)
+    RefPtr<GraphicsContext3D> m_context3D;
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
 #endif
 
-#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
-    RefPtr<GraphicsContext3D> m_context3D;
-    Condition m_drawCondition;
-    Lock m_drawMutex;
+#if USE(GSTREAMER_GL)
+    GRefPtr<GstGLContext> m_glContext;
+    GRefPtr<GstGLDisplay> m_glDisplay;
+    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 
-private:
+    ImageOrientation m_videoSourceOrientation;
 
 #if USE(HOLE_PUNCH_GSTREAMER)
     void updateVideoRectangle();
@@ -269,11 +261,6 @@ private:
     Condition m_protectionCondition;
     RefPtr<const CDMInstance> m_cdmInstance;
     HashSet<uint32_t> m_handledProtectionEvents;
-#endif
-
-    ImageOrientation m_videoSourceOrientation;
-#if USE(GSTREAMER_GL)
-    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 };
 

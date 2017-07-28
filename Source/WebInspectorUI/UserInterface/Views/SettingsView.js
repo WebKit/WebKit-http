@@ -49,8 +49,7 @@ WebInspector.SettingsView = class SettingsView extends WebInspector.View
     addGroupWithCustomSetting(title, editorType, options)
     {
         let settingsGroup = this.addGroup(title);
-        let customSetting = settingsGroup.addCustomSetting(editorType, options);
-        return [settingsGroup, customSetting];
+        return settingsGroup.addCustomSetting(editorType, options);
     }
 
     addGroup(title)
@@ -68,6 +67,16 @@ WebInspector.SettingsView = class SettingsView extends WebInspector.View
 
         let separatorElement = this.element.appendChild(document.createElement("div"));
         separatorElement.classList.add("separator");
+    }
+
+    addCenteredContainer(...nodes)
+    {
+        let containerElement = document.createElement("div");
+        containerElement.append(...nodes);
+        containerElement.classList.add("container", "container-centered");
+        this.element.append(containerElement);
+
+        return containerElement;
     }
 };
 

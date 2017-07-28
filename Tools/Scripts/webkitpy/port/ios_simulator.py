@@ -29,6 +29,7 @@ import subprocess
 import time
 
 from webkitpy.common.memoized import memoized
+from webkitpy.common.system.executive import ScriptError
 from webkitpy.port.device import Device
 from webkitpy.port.ios import IOSPort
 from webkitpy.xcode.simulator import Simulator, Runtime, DeviceType
@@ -78,7 +79,11 @@ class IOSSimulatorPort(IOSPort):
         _log.debug('IOSSimulatorPort _device_class is %s', self._device_class)
 
         if not IOSSimulatorPort._CURRENT_DEVICE:
-            IOSSimulatorPort._CURRENT_DEVICE = Device(Simulator(host).current_device())
+            try:
+                IOSSimulatorPort._CURRENT_DEVICE = Device(Simulator(host).current_device())
+            except ScriptError:
+                # Failure to find a current device should not result in an exception being thrown
+                IOSSimulatorPort._CURRENT_DEVICE = Device(None)
         self._current_device = IOSSimulatorPort._CURRENT_DEVICE
         if not self._current_device:
             self.set_option('dedicated_simulators', True)
@@ -96,9 +101,20 @@ class IOSSimulatorPort(IOSPort):
         runtime_identifier = self.get_option('runtime')
         if runtime_identifier:
             runtime = Runtime.from_identifier(runtime_identifier)
+        elif self.get_option('version'):
+            runtime = Runtime.from_version_string(self.get_option('version'))
         else:
             runtime = Runtime.from_version_string(self.host.platform.xcode_sdk_version('iphonesimulator'))
         return runtime
+
+    @memoized
+    def ios_version(self):
+        runtime_identifier = self.get_option('runtime')
+        if self.get_option('version'):
+            return self.get_option('version')
+        if runtime_identifier:
+            return '.'.join(str(i) for i in Runtime.from_identifier(runtime_identifier).version)
+        return self.host.platform.xcode_sdk_version('iphonesimulator')
 
     def simulator_device_type(self):
         device_type_identifier = self.get_option('device_type')
@@ -170,6 +186,9 @@ class IOSSimulatorPort(IOSPort):
             except:
                 _log.warning('Unable to remove Simulator' + str(i))
 
+    def use_multiple_simulator_apps(self):
+        return int(self.host.platform.xcode_version().split('.')[0]) < 9
+
     def _create_simulators(self):
         if (self.default_child_processes() < self.child_processes()):
             _log.warn('You have specified very high value({0}) for --child-processes'.format(self.child_processes()))
@@ -178,7 +197,9 @@ class IOSSimulatorPort(IOSPort):
 
         if self._using_dedicated_simulators():
             atexit.register(lambda: self._teardown_managed_simulators())
-            self._createSimulatorApps()
+
+            if self.use_multiple_simulator_apps():
+                self._createSimulatorApps()
 
             for i in xrange(self.child_processes()):
                 self._create_device(i)
@@ -211,16 +232,23 @@ class IOSSimulatorPort(IOSPort):
             _log.debug('testing device %s has udid %s', i, device_udid)
 
             # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
-            self._executive.run_command([
-                'open', '-g', '-b', self.SIMULATOR_BUNDLE_ID + str(i),
-                '--args', '-CurrentDeviceUDID', device_udid])
+            if self.use_multiple_simulator_apps():
+                self._executive.run_command([
+                    'open', '-g', '-b', self.SIMULATOR_BUNDLE_ID + str(i),
+                    '--args', '-CurrentDeviceUDID', device_udid])
+            else:
+                self._executive.run_command(['xcrun', 'simctl', 'boot', device_udid])
 
             if mac_os_version in ['elcapitan', 'yosemite', 'mavericks']:
                 time.sleep(2.5)
 
+        if not self.use_multiple_simulator_apps():
+            self._executive.run_command(['open', '-g', '-b', self.SIMULATOR_BUNDLE_ID], return_exit_code=True)
+
         _log.info('Waiting for all iOS Simulators to finish booting.')
         for i in xrange(self.child_processes()):
             Simulator.wait_until_device_is_booted(Simulator.managed_devices[i].udid)
+        _log.info('All simulators have booted.')
 
         IOSSimulatorPort._DEVICE_MAP = {}
         for i in xrange(self.child_processes()):
@@ -236,13 +264,6 @@ class IOSSimulatorPort(IOSPort):
     def clean_up_test_run(self):
         super(IOSSimulatorPort, self).clean_up_test_run()
         _log.debug("clean_up_test_run")
-        fifos = [path for path in os.listdir('/tmp') if re.search('org.webkit.(DumpRenderTree|WebKitTestRunner).*_(IN|OUT|ERROR)', path)]
-        for fifo in fifos:
-            try:
-                os.remove(os.path.join('/tmp', fifo))
-            except OSError:
-                _log.warning('Unable to remove ' + fifo)
-                pass
 
         if not self._using_dedicated_simulators():
             return

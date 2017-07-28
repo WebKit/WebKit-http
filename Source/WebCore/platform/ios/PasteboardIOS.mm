@@ -29,6 +29,7 @@
 #import "Document.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
+#import "DragData.h"
 #import "Editing.h"
 #import "Editor.h"
 #import "EditorClient.h"
@@ -39,6 +40,7 @@
 #import "HTMLParserIdioms.h"
 #import "Image.h"
 #import "LegacyWebArchive.h"
+#import "NotImplemented.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
 #import "RenderImage.h"
@@ -58,11 +60,32 @@
 - (BOOL)containsAttachments;
 @end
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/PasteboardAdditions.mm>
-#endif
-
 namespace WebCore {
+
+#if ENABLE(DRAG_SUPPORT)
+
+Pasteboard::Pasteboard(const String& pasteboardName)
+    : m_pasteboardName(pasteboardName)
+    , m_changeCount(platformStrategies()->pasteboardStrategy()->changeCount(pasteboardName))
+{
+}
+
+void Pasteboard::setDragImage(DragImage, const IntPoint&)
+{
+    notImplemented();
+}
+
+std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
+{
+    return std::make_unique<Pasteboard>("data interaction pasteboard");
+}
+
+std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData)
+{
+    return std::make_unique<Pasteboard>(dragData.pasteboardName());
+}
+
+#endif
 
 static long changeCountForPasteboard(const String& pasteboardName = { })
 {
@@ -131,6 +154,8 @@ void Pasteboard::write(const PasteboardImage& pasteboardImage)
 
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption)
 {
+    // FIXME: We vend "public.text" here for backwards compatibility with pre-iOS 11 apps. In the future, we should stop vending this UTI,
+    // and instead set data for concrete plain text types. See <https://bugs.webkit.org/show_bug.cgi?id=173317>.
     platformStrategies()->pasteboardStrategy()->writeToPasteboard(kUTTypeText, text, m_pasteboardName);
 }
 
@@ -238,7 +263,7 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
     if (!numberOfItems)
         return;
 
-    NSArray *types = supportedPasteboardTypes();
+    NSArray *types = supportedWebContentPasteboardTypes();
     int numberOfTypes = [types count];
 
     for (int i = 0; i < numberOfItems; i++) {
@@ -273,9 +298,14 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader)
     }
 }
 
-NSArray* Pasteboard::supportedPasteboardTypes()
+NSArray *Pasteboard::supportedWebContentPasteboardTypes()
 {
     return @[(id)WebArchivePboardType, (id)kUTTypeFlatRTFD, (id)kUTTypeRTF, (id)kUTTypeHTML, (id)kUTTypePNG, (id)kUTTypeTIFF, (id)kUTTypeJPEG, (id)kUTTypeGIF, (id)kUTTypeURL, (id)kUTTypeText];
+}
+
+NSArray *Pasteboard::supportedFileUploadPasteboardTypes()
+{
+    return @[ (NSString *)kUTTypeContent, (NSString *)kUTTypeZipArchive ];
 }
 
 bool Pasteboard::hasData()
@@ -399,7 +429,7 @@ void Pasteboard::writeString(const String& type, const String& data)
 
 Vector<String> Pasteboard::types()
 {
-    NSArray* types = supportedPasteboardTypes();
+    NSArray *types = supportedWebContentPasteboardTypes();
 
     // Enforce changeCount ourselves for security. We check after reading instead of before to be
     // sure it doesn't change between our testing the change count and accessing the data.

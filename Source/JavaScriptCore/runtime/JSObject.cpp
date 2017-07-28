@@ -25,6 +25,7 @@
 #include "JSObject.h"
 
 #include "ButterflyInlines.h"
+#include "CatchScope.h"
 #include "CustomGetterSetter.h"
 #include "DatePrototype.h"
 #include "ErrorConstructor.h"
@@ -748,7 +749,7 @@ bool ordinarySetSlow(ExecState* exec, JSObject* object, PropertyName propertyNam
 // ECMA 8.6.2.2
 bool JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    return putInline(cell, exec, propertyName, value, slot);
+    return putInlineForJSObject(cell, exec, propertyName, value, slot);
 }
 
 bool JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
@@ -791,8 +792,8 @@ bool JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue
         }
         if (!obj->staticPropertiesReified()) {
             if (obj->classInfo(vm)->hasStaticSetterOrReadonlyProperties()) {
-                if (auto* entry = obj->findPropertyHashEntry(vm, propertyName))
-                    return putEntry(exec, entry, obj, this, propertyName, value, slot);
+                if (auto entry = obj->findPropertyHashEntry(vm, propertyName))
+                    return putEntry(exec, entry->table->classForThis, entry->value, obj, this, propertyName, value, slot);
             }
         }
         if (obj->type() == ProxyObjectType && propertyName != vm.propertyNames->underscoreProto) {
@@ -1001,7 +1002,7 @@ void JSObject::notifyPresenceOfIndexedAccessors(VM& vm)
 
 Butterfly* JSObject::createInitialIndexedStorage(VM& vm, unsigned length)
 {
-    ASSERT(length < MAX_ARRAY_INDEX);
+    ASSERT(length <= MAX_STORAGE_VECTOR_LENGTH);
     IndexingType oldType = indexingType();
     ASSERT_UNUSED(oldType, !hasIndexedProperties(oldType));
     ASSERT(!structure()->needsSlowPutIndexing());
@@ -1799,11 +1800,11 @@ bool JSObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName proper
     unsigned attributes;
 
     if (!thisObject->staticPropertiesReified()) {
-        if (auto* entry = thisObject->findPropertyHashEntry(vm, propertyName)) {
+        if (auto entry = thisObject->findPropertyHashEntry(vm, propertyName)) {
             // If the static table contains a non-configurable (DontDelete) property then we can return early;
             // if there is a property in the storage array it too must be non-configurable (the language does
             // not allow repacement of a non-configurable property with a configurable one).
-            if (entry->attributes() & DontDelete && vm.deletePropertyMode() != VM::DeletePropertyMode::IgnoreConfigurable) {
+            if (entry->value->attributes() & DontDelete && vm.deletePropertyMode() != VM::DeletePropertyMode::IgnoreConfigurable) {
                 ASSERT(!isValidOffset(thisObject->structure(vm)->get(vm, propertyName, attributes)) || attributes & DontDelete);
                 return false;
             }
@@ -2002,22 +2003,22 @@ bool JSObject::getOwnStaticPropertySlot(VM& vm, PropertyName propertyName, Prope
 {
     for (auto* info = classInfo(vm); info; info = info->parentClass) {
         if (auto* table = info->staticPropHashTable) {
-            if (getStaticPropertySlotFromTable(vm, *table, this, propertyName, slot))
+            if (getStaticPropertySlotFromTable(vm, table->classForThis, *table, this, propertyName, slot))
                 return true;
         }
     }
     return false;
 }
 
-const HashTableValue* JSObject::findPropertyHashEntry(VM& vm, PropertyName propertyName) const
+auto JSObject::findPropertyHashEntry(VM& vm, PropertyName propertyName) const -> std::optional<PropertyHashEntry>
 {
     for (const ClassInfo* info = classInfo(vm); info; info = info->parentClass) {
         if (const HashTable* propHashTable = info->staticPropHashTable) {
             if (const HashTableValue* entry = propHashTable->entry(propertyName))
-                return entry;
+                return PropertyHashEntry { propHashTable, entry };
         }
     }
-    return 0;
+    return std::nullopt;
 }
 
 bool JSObject::hasInstance(ExecState* exec, JSValue value, JSValue hasInstanceValue)
@@ -2036,12 +2037,16 @@ bool JSObject::hasInstance(ExecState* exec, JSValue value, JSValue hasInstanceVa
         MarkedArgumentBuffer args;
         args.append(value);
         JSValue result = call(exec, hasInstanceValue, callType, callData, this, args);
+        RETURN_IF_EXCEPTION(scope, false);
         return result.toBoolean(exec);
     }
 
     TypeInfo info = structure(vm)->typeInfo();
-    if (info.implementsDefaultHasInstance())
-        return defaultHasInstance(exec, value, get(exec, exec->propertyNames().prototype));
+    if (info.implementsDefaultHasInstance()) {
+        JSValue prototype = get(exec, exec->propertyNames().prototype);
+        RETURN_IF_EXCEPTION(scope, false);
+        return defaultHasInstance(exec, value, prototype);
+    }
     if (info.implementsHasInstance())
         return methodTable(vm)->customHasInstance(this, exec, value);
     throwException(exec, scope, createInvalidInstanceofParameterErrorNotFunction(exec, this));
@@ -2050,7 +2055,10 @@ bool JSObject::hasInstance(ExecState* exec, JSValue value, JSValue hasInstanceVa
 
 bool JSObject::hasInstance(ExecState* exec, JSValue value)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue hasInstanceValue = get(exec, exec->propertyNames().hasInstanceSymbol);
+    RETURN_IF_EXCEPTION(scope, false);
 
     return hasInstance(exec, value, hasInstanceValue);
 }
@@ -2295,14 +2303,14 @@ void JSObject::reifyAllStaticProperties(ExecState* exec)
             auto key = Identifier::fromString(&vm, value.m_key);
             PropertyOffset offset = getDirectOffset(vm, key, attributes);
             if (!isValidOffset(offset))
-                reifyStaticProperty(vm, key, value, *this);
+                reifyStaticProperty(vm, hashTable->classForThis, key, value, *this);
         }
     }
 
     structure(vm)->setStaticPropertiesReified(true);
 }
 
-NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, JSValue getterSetter, unsigned attributes, PropertyOffset offset)
+NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, JSCell* getterSetter, unsigned attributes, PropertyOffset offset)
 {
     if (structure()->isUncacheableDictionary()) {
         slot.setGetterSlot(this, attributes, jsCast<GetterSetter*>(getterSetter));
@@ -2360,9 +2368,7 @@ ALWAYS_INLINE static bool canDoFastPutDirectIndex(JSObject* object)
 {
     return isJSArray(object)
         || isJSFinalObject(object)
-        || object->type() == DirectArgumentsType
-        || object->type() == ScopedArgumentsType
-        || object->type() == ClonedArgumentsType;
+        || TypeInfo::isArgumentsType(object->type());
 }
 
 // Defined in ES5.1 8.12.9
@@ -3128,7 +3134,7 @@ bool JSObject::ensureLengthSlow(VM& vm, unsigned length)
 {
     Butterfly* butterfly = m_butterfly.get();
     
-    ASSERT(length < MAX_ARRAY_INDEX);
+    ASSERT(length <= MAX_STORAGE_VECTOR_LENGTH);
     ASSERT(hasContiguous(indexingType()) || hasInt32(indexingType()) || hasDouble(indexingType()) || hasUndecided(indexingType()));
     ASSERT(length > butterfly->vectorLength());
     
@@ -3161,7 +3167,7 @@ bool JSObject::ensureLengthSlow(VM& vm, unsigned length)
     if (hasDouble(indexingType())) {
         for (unsigned i = oldVectorLength; i < newVectorLength; ++i)
             butterfly->indexingPayload<double>()[i] = PNaN;
-    } else {
+    } else if (LIKELY(!hasUndecided(indexingType()))) {
         for (unsigned i = oldVectorLength; i < newVectorLength; ++i)
             butterfly->indexingPayload<WriteBarrier<Unknown>>()[i].clear();
     }
@@ -3180,8 +3186,7 @@ bool JSObject::ensureLengthSlow(VM& vm, unsigned length)
 
 void JSObject::reallocateAndShrinkButterfly(VM& vm, unsigned length)
 {
-    ASSERT(length < MAX_ARRAY_INDEX);
-    ASSERT(length < MAX_STORAGE_VECTOR_LENGTH);
+    ASSERT(length <= MAX_STORAGE_VECTOR_LENGTH);
     ASSERT(hasContiguous(indexingType()) || hasInt32(indexingType()) || hasDouble(indexingType()) || hasUndecided(indexingType()));
     ASSERT(m_butterfly.get()->vectorLength() > length);
     ASSERT(!m_butterfly.get()->indexingHeader()->preCapacity(structure()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1150,6 +1150,8 @@ unsigned Graph::requiredRegisterCountForExit()
 
 unsigned Graph::requiredRegisterCountForExecutionAndExit()
 {
+    // FIXME: We should make sure that frameRegisterCount() and requiredRegisterCountForExit()
+    // never overflows. https://bugs.webkit.org/show_bug.cgi?id=173852
     return std::max(frameRegisterCount(), requiredRegisterCountForExit());
 }
 
@@ -1328,7 +1330,7 @@ JSArrayBufferView* Graph::tryGetFoldableView(JSValue value, ArrayMode arrayMode)
 
 void Graph::registerFrozenValues()
 {
-    m_codeBlock->constants().resize(0);
+    m_codeBlock->constants().shrink(0);
     m_codeBlock->constantsSourceCodeRepresentation().resize(0);
     for (FrozenValue* value : m_frozenValues) {
         if (!value->pointsToHeap())
@@ -1436,7 +1438,7 @@ void Graph::assertIsRegistered(Structure* structure)
     DFG_CRASH(*this, nullptr, toCString("Structure ", pointerDump(structure), " is watchable but isn't being watched.").data());
 }
 
-NO_RETURN_DUE_TO_CRASH static void crash(
+static void logDFGAssertionFailure(
     Graph& graph, const CString& whileText, const char* file, int line, const char* function,
     const char* assertion)
 {
@@ -1450,25 +1452,24 @@ NO_RETURN_DUE_TO_CRASH static void crash(
     dataLog("\n");
     dataLog("DFG ASSERTION FAILED: ", assertion, "\n");
     dataLog(file, "(", line, ") : ", function, "\n");
-    CRASH_WITH_SECURITY_IMPLICATION();
 }
 
-void Graph::handleAssertionFailure(
+void Graph::logAssertionFailure(
     std::nullptr_t, const char* file, int line, const char* function, const char* assertion)
 {
-    crash(*this, "", file, line, function, assertion);
+    logDFGAssertionFailure(*this, "", file, line, function, assertion);
 }
 
-void Graph::handleAssertionFailure(
+void Graph::logAssertionFailure(
     Node* node, const char* file, int line, const char* function, const char* assertion)
 {
-    crash(*this, toCString("While handling node ", node, "\n\n"), file, line, function, assertion);
+    logDFGAssertionFailure(*this, toCString("While handling node ", node, "\n\n"), file, line, function, assertion);
 }
 
-void Graph::handleAssertionFailure(
+void Graph::logAssertionFailure(
     BasicBlock* block, const char* file, int line, const char* function, const char* assertion)
 {
-    crash(*this, toCString("While handling block ", pointerDump(block), "\n\n"), file, line, function, assertion);
+    logDFGAssertionFailure(*this, toCString("While handling block ", pointerDump(block), "\n\n"), file, line, function, assertion);
 }
 
 Dominators& Graph::ensureDominators()

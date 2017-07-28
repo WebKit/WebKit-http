@@ -36,7 +36,6 @@
     <script src="External/Esprima/esprima.js"></script>
 
     <script src="Base/WebInspector.js"></script>
-    <script src="Base/InspectorFrontendHostStub.js"></script>
     <script src="Base/Platform.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
@@ -72,6 +71,7 @@
 
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
+    <script src="Protocol/CanvasObserver.js"></script>
     <script src="Protocol/ConsoleObserver.js"></script>
     <script src="Protocol/DOMObserver.js"></script>
     <script src="Protocol/DOMStorageObserver.js"></script>
@@ -80,7 +80,6 @@
     <script src="Protocol/NetworkObserver.js"></script>
     <script src="Protocol/PageObserver.js"></script>
     <script src="Protocol/RemoteObject.js"></script>
-    <script src="Protocol/ReplayObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
     <script src="Protocol/WorkerObserver.js"></script>
@@ -106,6 +105,7 @@
     <script src="Models/CallFrame.js"></script>
     <script src="Models/CallingContextTree.js"></script>
     <script src="Models/CallingContextTreeNode.js"></script>
+    <script src="Models/Canvas.js"></script>
     <script src="Models/Collection.js"></script>
     <script src="Models/CollectionEntry.js"></script>
     <script src="Models/CollectionEntryPreview.js"></script>
@@ -151,9 +151,10 @@
     <script src="Models/ProfileNodeCall.js"></script>
     <script src="Models/PropertyDescriptor.js"></script>
     <script src="Models/PropertyPreview.js"></script>
+    <script src="Models/Recording.js"></script>
+    <script src="Models/RecordingAction.js"></script>
+    <script src="Models/RecordingFrame.js"></script>
     <script src="Models/RenderingFrameTimelineRecord.js"></script>
-    <script src="Models/ReplaySession.js"></script>
-    <script src="Models/ReplaySessionSegment.js"></script>
     <script src="Models/Resource.js"></script>
     <script src="Models/ResourceCollection.js"></script>
     <script src="Models/ResourceQueryMatch.js"></script>
@@ -186,6 +187,7 @@
 
     <script src="Controllers/BreakpointLogMessageLexer.js"></script>
     <script src="Controllers/CSSStyleManager.js"></script>
+    <script src="Controllers/CanvasManager.js"></script>
     <script src="Controllers/DOMDebuggerManager.js"></script>
     <script src="Controllers/DOMTreeManager.js"></script>
     <script src="Controllers/DebuggerManager.js"></script>
@@ -195,7 +197,6 @@
     <script src="Controllers/LogManager.js"></script>
     <script src="Controllers/MemoryManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
-    <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>
     <script src="Controllers/StorageManager.js"></script>
     <script src="Controllers/TargetManager.js"></script>

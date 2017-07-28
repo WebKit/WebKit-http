@@ -88,12 +88,14 @@ class GtkPort(Port):
         return XvfbDriver
 
     def default_timeout_ms(self):
+        default_timeout = 15000
         # Starting an application under Valgrind takes a lot longer than normal
         # so increase the timeout (empirically 10x is enough to avoid timeouts).
         multiplier = 10 if self.get_option("leaks") else 1
+        # Debug builds are slower (no compiler optimizations are used).
         if self.get_option('configuration') == 'Debug':
-            return multiplier * 12 * 1000
-        return multiplier * 6 * 1000
+            multiplier *= 2
+        return multiplier * default_timeout
 
     def driver_stop_timeout(self):
         if self.get_option("leaks"):
@@ -120,10 +122,6 @@ class GtkPort(Port):
         environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('lib', 'plugins')
         environment['OWR_USE_TEST_SOURCES'] = '1'
         self._copy_value_from_environ_if_set(environment, 'WEBKIT_OUTPUTDIR')
-
-        if self._driver_class() is XvfbDriver:
-            # Make sure to use the correct GDK backend - we might have a Wayland session
-            environment['GDK_BACKEND'] = 'x11'
 
         # Configure the software libgl renderer if jhbuild ready and we test inside a virtualized window system
         if self._driver_class() in [XvfbDriver, WestonDriver] and self._should_use_jhbuild():
@@ -220,7 +218,7 @@ class GtkPort(Port):
     def check_sys_deps(self, needs_http):
         return super(GtkPort, self).check_sys_deps(needs_http) and self._driver_class().check_driver(self)
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, target_host=None):
         name = "WebKitWebProcess" if name == "WebProcess" else name
         return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
 

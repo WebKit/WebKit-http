@@ -53,6 +53,7 @@
 #include "RenderTreeUpdater.h"
 #include "RenderWidget.h"
 #include "RootInlineBox.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
@@ -105,12 +106,11 @@ void ContainerNode::removeDetachedChildren()
 
 static inline void destroyRenderTreeIfNeeded(Node& child)
 {
-    bool childIsHTMLSlotElement = false;
-    childIsHTMLSlotElement = is<HTMLSlotElement>(child);
-    // FIXME: Get rid of the named flow test.
     bool isElement = is<Element>(child);
-    if (!child.renderer() && !childIsHTMLSlotElement
-        && !(isElement && downcast<Element>(child).isNamedFlowContentElement()))
+    auto hasDisplayContents = isElement && downcast<Element>(child).hasDisplayContents();
+    auto isNamedFlowElement = isElement && downcast<Element>(child).isNamedFlowContentElement();
+    // FIXME: Get rid of the named flow test.
+    if (!child.renderer() && !hasDisplayContents && !isNamedFlowElement)
         return;
     if (isElement)
         RenderTreeUpdater::tearDownRenderers(downcast<Element>(child));
@@ -150,7 +150,7 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
     for (auto& child : children) {
         RELEASE_ASSERT(!child->parentNode() && &child->treeScope() == &treeScope());
         ASSERT(!ensurePreInsertionValidity(child, nullptr).hasException());
-        treeScope().adoptIfNeeded(child);
+        child->setTreeScopeRecursively(treeScope());
         parserAppendChild(child);
     }
 }
@@ -194,28 +194,28 @@ static inline ExceptionOr<void> checkAcceptChild(ContainerNode& newParent, Node&
         ASSERT(!newParent.isDocumentTypeNode());
         ASSERT(isChildTypeAllowed(newParent, newChild));
         if (containsConsideringHostElements(newChild, newParent))
-            return Exception { HIERARCHY_REQUEST_ERR };
+            return Exception { HierarchyRequestError };
         if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
-            return Exception { NOT_FOUND_ERR };
+            return Exception { NotFoundError };
         return { };
     }
 
     // This should never happen, but also protect release builds from tree corruption.
     ASSERT(!newChild.isPseudoElement());
     if (newChild.isPseudoElement())
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
 
     if (containsConsideringHostElements(newChild, newParent))
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
 
     if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     if (is<Document>(newParent)) {
         if (!downcast<Document>(newParent).canAcceptChild(newChild, refChild, operation))
-            return Exception { HIERARCHY_REQUEST_ERR };
+            return Exception { HierarchyRequestError };
     } else if (!isChildTypeAllowed(newParent, newChild))
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
 
     return { };
 }
@@ -225,7 +225,7 @@ static inline ExceptionOr<void> checkAcceptChildGuaranteedNodeTypes(ContainerNod
     ASSERT(!newParent.isDocumentTypeNode());
     ASSERT(isChildTypeAllowed(newParent, newChild));
     if (newChild.contains(&newParent))
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
     return { };
 }
 
@@ -290,7 +290,7 @@ ExceptionOr<void> ContainerNode::insertBefore(Node& newChild, Node* refChild)
         {
             NoEventDispatchAssertion assertNoEventDispatch;
 
-            treeScope().adoptIfNeeded(child);
+            child->setTreeScopeRecursively(treeScope());
             insertBeforeCommon(next, child);
         }
 
@@ -413,9 +413,9 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
     if (validityResult.hasException())
         return validityResult.releaseException();
 
-    // NOT_FOUND_ERR: Raised if oldChild is not a child of this node.
+    // NotFoundError: Raised if oldChild is not a child of this node.
     if (oldChild.parentNode() != this)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     RefPtr<Node> refChild = oldChild.nextSibling();
     if (refChild.get() == &newChild)
@@ -466,7 +466,7 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
 
         {
             NoEventDispatchAssertion assertNoEventDispatch;
-            treeScope().adoptIfNeeded(child);
+            child->setTreeScopeRecursively(treeScope());
             if (refChild)
                 insertBeforeCommon(*refChild, child.get());
             else
@@ -525,9 +525,9 @@ ExceptionOr<void> ContainerNode::removeChild(Node& oldChild)
 
     Ref<ContainerNode> protectedThis(*this);
 
-    // NOT_FOUND_ERR: Raised if oldChild is not a child of this node.
+    // NotFoundError: Raised if oldChild is not a child of this node.
     if (oldChild.parentNode() != this)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     Ref<Node> child(oldChild);
 
@@ -535,7 +535,7 @@ ExceptionOr<void> ContainerNode::removeChild(Node& oldChild)
 
     // Mutation events in willRemoveChild might have moved this child into a different parent.
     if (child->parentNode() != this)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     {
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
@@ -587,7 +587,7 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node& ol
     ASSERT(!oldChild.nextSibling());
     oldChild.setParentNode(nullptr);
 
-    document().adoptIfNeeded(oldChild);
+    oldChild.setTreeScopeRecursively(document());
 }
 
 void ContainerNode::parserRemoveChild(Node& oldChild)
@@ -641,7 +641,7 @@ void ContainerNode::replaceAllChildren(Ref<Node>&& node)
     ChildListMutationScope mutation(*this);
 
     // If node is not null, adopt node into parent's node document.
-    treeScope().adoptIfNeeded(node);
+    node->setTreeScopeRecursively(treeScope());
 
     // Remove all parent's children, in tree order.
     willRemoveChildren(*this);
@@ -756,7 +756,7 @@ ExceptionOr<void> ContainerNode::appendChildWithoutPreInsertionValidityCheck(Nod
         // Append child to the end of the list
         {
             NoEventDispatchAssertion assertNoEventDispatch;
-            treeScope().adoptIfNeeded(child);
+            child->setTreeScopeRecursively(treeScope());
             appendChildCommon(child);
         }
 
@@ -780,7 +780,7 @@ void ContainerNode::parserAppendChild(Node& newChild)
             document().adoptNode(newChild);
 
         appendChildCommon(newChild);
-        treeScope().adoptIfNeeded(newChild);
+        newChild.setTreeScopeRecursively(treeScope());
     }
 
     newChild.updateAncestorConnectedSubframeCountForInsertion();
@@ -897,7 +897,7 @@ Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& qual
 {
     ASSERT(!qualifiedName.isNull());
 
-    if (qualifiedName == starAtom)
+    if (qualifiedName == starAtom())
         return ensureRareData().ensureNodeLists().addCachedCollection<AllDescendantsCollection>(*this, AllDescendants);
 
     if (document().isHTMLDocument())
@@ -908,7 +908,7 @@ Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& qual
 Ref<HTMLCollection> ContainerNode::getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
     ASSERT(!localName.isNull());
-    return ensureRareData().ensureNodeLists().addCachedTagCollectionNS(*this, namespaceURI.isEmpty() ? nullAtom : namespaceURI, localName);
+    return ensureRareData().ensureNodeLists().addCachedTagCollectionNS(*this, namespaceURI.isEmpty() ? nullAtom() : namespaceURI, localName);
 }
 
 Ref<NodeList> ContainerNode::getElementsByName(const String& elementName)

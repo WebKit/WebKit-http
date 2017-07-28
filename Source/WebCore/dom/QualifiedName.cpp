@@ -26,72 +26,26 @@
 #endif
 
 #include "QualifiedName.h"
-#include "HTMLNames.h"
-#include "SVGNames.h"
-#include "XLinkNames.h"
-#include "XMLNSNames.h"
-#include "XMLNames.h"
+#include "QualifiedNameCache.h"
+#include "ThreadGlobalData.h"
 #include <wtf/Assertions.h>
-#include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StaticConstructors.h>
 
-#if ENABLE(MATHML)
-#include "MathMLNames.h"
-#endif
-
 namespace WebCore {
 
-static const int staticQualifiedNamesCount = HTMLNames::HTMLTagsCount + HTMLNames::HTMLAttrsCount
-#if ENABLE(MATHML)
-    + MathMLNames::MathMLTagsCount + MathMLNames::MathMLAttrsCount
-#endif
-    + SVGNames::SVGTagsCount + SVGNames::SVGAttrsCount
-    + XLinkNames::XLinkAttrsCount
-    + XMLNSNames::XMLNSAttrsCount
-    + XMLNames::XMLAttrsCount;
-
-struct QualifiedNameHashTraits : public HashTraits<QualifiedName::QualifiedNameImpl*> {
-    static const int minimumTableSize = WTF::HashTableCapacityForSize<staticQualifiedNamesCount>::value;
-};
-
-typedef HashSet<QualifiedName::QualifiedNameImpl*, QualifiedNameHash, QualifiedNameHashTraits> QNameSet;
-
-struct QNameComponentsTranslator {
-    static unsigned hash(const QualifiedNameComponents& components)
-    {
-        return hashComponents(components); 
-    }
-    static bool equal(QualifiedName::QualifiedNameImpl* name, const QualifiedNameComponents& c)
-    {
-        return c.m_prefix == name->m_prefix.impl() && c.m_localName == name->m_localName.impl() && c.m_namespace == name->m_namespace.impl();
-    }
-    static void translate(QualifiedName::QualifiedNameImpl*& location, const QualifiedNameComponents& components, unsigned)
-    {
-        location = &QualifiedName::QualifiedNameImpl::create(components.m_prefix, components.m_localName, components.m_namespace).leakRef();
-    }
-};
-
-static inline QNameSet& qualifiedNameCache()
-{
-    static NeverDestroyed<QNameSet> nameCache;
-    return nameCache;
-}
-
 QualifiedName::QualifiedName(const AtomicString& p, const AtomicString& l, const AtomicString& n)
+    : m_impl(threadGlobalData().qualifiedNameCache().getOrCreate(QualifiedNameComponents { p.impl(), l.impl(), n.isEmpty() ? nullptr : n.impl() }))
 {
-    QualifiedNameComponents components = { p.impl(), l.impl(), n.isEmpty() ? nullptr : n.impl() };
-    QNameSet::AddResult addResult = qualifiedNameCache().add<QNameComponentsTranslator>(components);
-    m_impl = addResult.isNewEntry ? adoptRef(*addResult.iterator) : *addResult.iterator;
 }
 
 QualifiedName::QualifiedNameImpl::~QualifiedNameImpl()
 {
-    qualifiedNameCache().remove(this);
+    threadGlobalData().qualifiedNameCache().remove(*this);
 }
 
 // Global init routines
-DEFINE_GLOBAL(QualifiedName, anyName, nullAtom, starAtom, starAtom)
+DEFINE_GLOBAL(QualifiedName, anyName, nullAtom(), starAtom(), starAtom())
 
 void QualifiedName::init()
 {
@@ -101,13 +55,13 @@ void QualifiedName::init()
 
     // Use placement new to initialize the globals.
     AtomicString::init();
-    new (NotNull, (void*)&anyName) QualifiedName(nullAtom, starAtom, starAtom);
+    new (NotNull, (void*)&anyName) QualifiedName(nullAtom(), starAtom(), starAtom());
     initialized = true;
 }
 
 const QualifiedName& nullQName()
 {
-    static NeverDestroyed<QualifiedName> nullName(nullAtom, nullAtom, nullAtom);
+    static NeverDestroyed<QualifiedName> nullName(nullAtom(), nullAtom(), nullAtom());
     return nullName;
 }
 
@@ -126,12 +80,12 @@ unsigned QualifiedName::QualifiedNameImpl::computeHash() const
 
 void createQualifiedName(void* targetAddress, StringImpl* name, const AtomicString& nameNamespace)
 {
-    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nameNamespace);
+    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom(), AtomicString(name), nameNamespace);
 }
 
 void createQualifiedName(void* targetAddress, StringImpl* name)
 {
-    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nullAtom);
+    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom(), AtomicString(name), nullAtom());
 }
 
 }

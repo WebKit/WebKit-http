@@ -28,7 +28,6 @@
 #include "DOMRectReadOnly.h"
 #include "FloatRect.h"
 #include "IntRect.h"
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -57,7 +56,5 @@ private:
 
     DOMRect() = default;
 };
-
-WEBCORE_EXPORT Vector<Ref<DOMRect>> createDOMRectVector(const Vector<FloatQuad>&);
 
 }

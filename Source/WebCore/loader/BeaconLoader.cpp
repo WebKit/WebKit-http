@@ -3,6 +3,7 @@
 
 #include "Document.h"
 #include "File.h"
+#include "FrameLoader.h"
 #include "runtime/ArrayBufferView.h"
 #include "DOMFormData.h"
 #include "ResourceRequest.h"

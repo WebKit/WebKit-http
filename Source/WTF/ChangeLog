@@ -1,3 +1,3304 @@
+2017-07-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop Thread initialization wait in some platforms by introducing StackBounds::newThreadStackBounds(PlatformThreadHandle&)
+        https://bugs.webkit.org/show_bug.cgi?id=174303
+
+        Reviewed by Mark Lam.
+
+        Currently, the caller thread of Thread::create() need to wait for completion of the initialization of the target thread.
+        This is because we need to initialize Thread::m_stack in the target thread. Before this patch, a target thread's
+        StackBounds can only be retrieved by the target thread itself. However, this potentially causes context-switching between
+        the caller and the target threads and hurts efficiency of creating threads.
+
+        Fortunately, in some platforms (including major platforms except for Windows), we can get StackBounds of a target
+        thread from a caller thread. This allows us to avoid waiting for completion of thread initialization.
+
+        In this patch, we introduce HAVE_STACK_BOUNDS_FOR_NEW_THREAD and StackBounds::newThreadStackBounds. When creating
+        a new thread, we will use StackBounds::newThreadStackBounds to get StackBounds if possible. As a result, we
+        do not need to wait for completion of thread initialization to ensure m_stack field of Thread is initialized.
+
+        While some documents claim that it is possible on Windows to get the StackBounds of another thread[1], the method relies on
+        undocumented Windows NT APIs (NtQueryInformationThread, NtReadVirtualMemory etc.). So in this patch, we just
+        use the conservative approach simply waiting for completion of thread initialization.
+
+        [1]: https://stackoverflow.com/questions/3918375/how-to-get-thread-stack-information-on-windows
+
+        * wtf/Platform.h:
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::newThreadStackBounds):
+        (WTF::StackBounds::currentThreadStackBoundsInternal):
+        (WTF::StackBounds::initialize): Deleted.
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::currentThreadStackBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/Threading.cpp:
+        (WTF::Thread::NewThreadContext::NewThreadContext):
+        (WTF::Thread::entryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::initialize): Deleted.
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2017-07-27  JF Bastien  <jfbastien@apple.com>
+
+        Update lock benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=174907
+
+        Reviewed by Filip Pizlo.
+
+        * benchmarks/ConditionSpeedTest.cpp:
+        (main):
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * benchmarks/ToyLocks.h:
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-26  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Enable KeyboardEvent key and code attributes
+        https://bugs.webkit.org/show_bug.cgi?id=174822
+
+        Reviewed by Žan Doberšek.
+
+        There is no reason for this to be disabled from what I see.
+
+        * wtf/FeatureDefines.h: Enable KeyboardEvent key and code attributes.
+
+2017-07-23  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should do LICM
+        https://bugs.webkit.org/show_bug.cgi?id=174750
+
+        Reviewed by Keith Miller and Saam Barati.
+        
+        Moved DFG::NaturalLoops to WTF. The new templatized NaturalLoops<> uses the same Graph abstraction as
+        Dominators<>. This allows us to add a B3::NaturalLoops for free.
+        
+        Also made small tweaks to RangeSet, which the LICM uses.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Dominators.h:
+        * wtf/NaturalLoops.h: Added.
+        (WTF::NaturalLoop::NaturalLoop):
+        (WTF::NaturalLoop::graph):
+        (WTF::NaturalLoop::header):
+        (WTF::NaturalLoop::size):
+        (WTF::NaturalLoop::at):
+        (WTF::NaturalLoop::operator[]):
+        (WTF::NaturalLoop::contains):
+        (WTF::NaturalLoop::index):
+        (WTF::NaturalLoop::isOuterMostLoop):
+        (WTF::NaturalLoop::dump):
+        (WTF::NaturalLoop::addBlock):
+        (WTF::NaturalLoops::NaturalLoops):
+        (WTF::NaturalLoops::graph):
+        (WTF::NaturalLoops::numLoops):
+        (WTF::NaturalLoops::loop):
+        (WTF::NaturalLoops::headerOf):
+        (WTF::NaturalLoops::innerMostLoopOf):
+        (WTF::NaturalLoops::innerMostOuterLoop):
+        (WTF::NaturalLoops::belongsTo):
+        (WTF::NaturalLoops::loopDepth):
+        (WTF::NaturalLoops::loopsOf):
+        (WTF::NaturalLoops::dump):
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::begin):
+        (WTF::RangeSet::end):
+        (WTF::RangeSet::addAll):
+
+2017-07-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Implement FALLTHROUGH attribute for C with GCC
+        https://bugs.webkit.org/show_bug.cgi?id=174555
+
+        Reviewed by Darin Adler.
+
+        My previous attempt to silence the JSC -Wimplicit-fallthrough warnings failed because they
+        are coming from a C file, and our FALLTHROUGH macro is only implemented for C++. So
+        implement it for C as well, using C attribute syntax.
+ 
+        Note this is only possible to do for GCC, because Clang only supports this attribute using
+        the [[C++ attribute syntax]].
+
+        * wtf/Compiler.h:
+
+2017-07-14  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be easy to decide how WebKit yields
+        https://bugs.webkit.org/show_bug.cgi?id=174298
+
+        Reviewed by Saam Barati.
+        
+        Created a Thread::yield() abstraction for sched_yield(), and made WTF use it everywhere that it
+        had previously used std::this_thread::yield().
+        
+        To make it less annoying to experiment with changes to the lock algorithm in the future, this also
+        moves the meat of the algorithm into LockAlgorithmInlines.h. Only two files include that header.
+        Since LockAlgorithm.h no longer includes ParkingLot.h, a bunch of files in WK now need to include
+        timing headers (Seconds, MonotonicTime, etc) manually.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/ToyLocks.h:
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.cpp:
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::lockSlow): Deleted.
+        (WTF::LockAlgorithm::unlockSlow): Deleted.
+        * wtf/LockAlgorithmInlines.h: Added.
+        (WTF::hasParkedBit>::lockSlow):
+        (WTF::hasParkedBit>::unlockSlow):
+        * wtf/MainThread.cpp:
+        * wtf/RunLoopTimer.h:
+        * wtf/Threading.cpp:
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::yield):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::yield):
+        * wtf/WordLock.cpp:
+        (WTF::WordLockBase::lockSlow):
+        (WTF::WordLockBase::unlockSlow):
+
+2017-07-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Extend ThreadGroup::add results from bool to ThreadGroupAddResult
+        https://bugs.webkit.org/show_bug.cgi?id=174705
+
+        Reviewed by Mark Lam.
+
+        After starting using ThreadGroup to bookkeep active threads for Signals,
+        we would like to know tristate of ThreadGroup::add result, NewlyAdded, AlreadyAdded, NotAdded.
+        This patch extends the result of ThreadGroup::add from bool to ThreadGroupAddResult tristate.
+        Note that NotAdded is returned if the target thread is dying.
+
+        * wtf/ThreadGroup.cpp:
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        * wtf/ThreadGroup.h:
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+        * wtf/Threading.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::registerThreadForMachExceptionHandling):
+
+2017-07-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219732.
+        https://bugs.webkit.org/show_bug.cgi?id=174748
+
+        static is not threadsafe in WebKit tree (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Drop initializeDate"
+        https://bugs.webkit.org/show_bug.cgi?id=174714
+        http://trac.webkit.org/changeset/219732
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop initializeDate
+        https://bugs.webkit.org/show_bug.cgi?id=174714
+
+        Reviewed by Darin Adler.
+
+        minYear static variable will be initialized in an exclusive manner, which is ensured by C++ "static" semantics.
+        Thus, we do not need to call initializeDate() explicitly.
+
+        * wtf/DateMath.cpp:
+        (WTF::equivalentYearForDST):
+        (WTF::initializeDates): Deleted.
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Introduce static symbols
+        https://bugs.webkit.org/show_bug.cgi?id=158863
+
+        Reviewed by Darin Adler.
+
+        We add a new class StaticSymbolImpl. StaticSymbolImpl can offer
+        the way to create static SymbolImpl. It can be shared between
+        multiple VMs and multiple threads.
+
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::StaticSymbolImpl::StaticSymbolImpl):
+        (WTF::SymbolImpl::StaticSymbolImpl::operator SymbolImpl&):
+        For StaticSymbolImpl's hashForSymbol, we use usual string hash value.
+        Since all the SymbolImpls are unique, basically, any value is OK here.
+        Non-confilicting to the other SymbolImpls is ideal.
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Newly added AtomicStringImpl should use BufferInternal static string if StringImpl is static
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+
+        Reviewed by Darin Adler.
+
+        When creating AtomicStringImpl from static StringImpl, we can just use createWithoutCopying
+        to create a BufferInternal AtomicStringImpl which m_data{8,16} is static string's one.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::CStringTranslator::hash):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::AtomicStringImpl::add):
+        (WTF::HashTranslatorCharBuffer::HashTranslatorCharBuffer):
+        (WTF::UCharBufferTranslator::hash):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::LCharBufferTranslator::hash):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::BufferFromStaticDataTranslator::hash):
+        (WTF::BufferFromStaticDataTranslator::equal):
+        (WTF::BufferFromStaticDataTranslator::translate):
+        (WTF::AtomicStringImpl::addLiteral):
+        (WTF::addSymbol):
+        (WTF::addStatic):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::lookUp):
+        (WTF::CharBufferFromLiteralDataTranslator::hash): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::equal): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::translate): Deleted.
+        (WTF::addSubstring): Deleted.
+        * wtf/text/StringImpl.h:
+
+2017-07-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+       [cmake] Unreviewed, add definitions necessary to use ICU shipped with macOS
+
+       macOS system ICU libraries are built with U_DISABLE_RENAMING=1 and
+       U_SHOW_CPLUSPLUS_API=0. After r219155 we have to pass this definitons
+       explicitly, because ICU headers in the tree are not modified anymore.
+
+        * wtf/PlatformMac.cmake: Rely on ICU_LIBRARIES instead of passing ICU
+        library name explicitly in WTF_LIBRARIES.
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable
+        https://bugs.webkit.org/show_bug.cgi?id=174660
+
+        Reviewed by Geoffrey Garen.
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable.
+        This essentially replaces a branch to figure out if the new size is less or greater than the
+        current size by an assertion.
+
+        * wtf/IndexSparseSet.h:
+        (WTF::OverflowHandler>::IndexSparseSet):
+        (WTF::OverflowHandler>::clear):
+        * wtf/Insertion.h:
+        (WTF::executeInsertions):
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::compact):
+        * wtf/Vector.h:
+        (WTF::removeRepeatedElements):
+        * wtf/persistence/Coders.h:
+
+2017-07-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use ThreadGroup to bookkeep active threads for Mach exception
+        https://bugs.webkit.org/show_bug.cgi?id=174678
+
+        Reviewed by Mark Lam.
+
+        We can use ThreadGroup to bookkeep active threads for Mach exceptions.
+        When the thread dies, it is automatically removed from the thread groups.
+        So we do not need to call unregisterThreadForMachExceptionHandling.
+
+        * wtf/ThreadGroup.cpp:
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        * wtf/ThreadGroup.h:
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::unregisterThreadForMachExceptionHandling): Deleted.
+        * wtf/threads/Signals.h:
+
+2017-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove unnecessary indirection of WTF::Thread entry point
+        https://bugs.webkit.org/show_bug.cgi?id=174291
+
+        Reviewed by Mark Lam.
+
+        Now wtfThreadEntryPoint is almost the same. Only the difference is function signature due to platform APIs.
+        We remove ThreadFunctionInvocation indirection in ThreadingPthread.cpp and ThreadingWin.cpp.
+
+        Also, ThreadFunctionInvocation keeps a RefPtr to the Thread object. This was previously needed to keep the
+        Thread object alive until the thread itself could install the ThreadHolder into its thread local storage.
+        The ThreadHolder has a Ref that keeps the Thread object alive for the lifetime of the thread. Since
+        Thread::create() now waits for the thread to be initialized before returning and Thread::create() hold a Ref
+        to the Thread object, we are guaranteed that the Thread object will be alive long enough for it to be installed
+        in the thread's ThreadHolder, and we no longer need ThreadFunctionInvocation.
+
+        And we also simplify ThreadHolder::initialize a bit. Now Thread::create waits for the completion of Thread
+        initialization. So, after establishing thread handle, we can call ThreadHolder::initialize before completing
+        Thread initialization.
+
+        Also we drop errno.h ifdefs in ThreadingWin.cpp. This is introduced to support WinCE. But now WinCE port is removed.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ThreadFunctionInvocation.h: Removed.
+        * wtf/ThreadHolder.h:
+        * wtf/ThreadHolderWin.cpp:
+        (WTF::ThreadHolder::initialize):
+        * wtf/Threading.cpp:
+        (WTF::Thread::entryPoint):
+        (WTF::Thread::create):
+        (WTF::threadEntryPoint): Deleted.
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        (WTF::Thread::createInternal): Deleted.
+        (WTF::Thread::establish): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::current):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        (WTF::Thread::createInternal): Deleted.
+        (WTF::Thread::establish): Deleted.
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2017-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        This patch implements WTF::ThreadGroup. It implements core of JSC::MachineThreads with more reliable way.
+        JSC::MachineThreads was complicated because of managing dead threads. Each JSC::MachineThreads has its
+        own TLS with a registered destructor. And everytime a thread dies, the registered TLS destructor is called.
+        And this destructor will remove the current dying thread from JSC::MachineThreads.
+
+        However the above implementation is tricky. And each JSC::MachineThreads requires own TLS space, which is
+        not considered in WTF's Windows ThreadSpecific implementation. Current design works well since we only
+        have small number of MachineThreads right now.
+
+        Instead, we use more reliable way. After introducing WTF::Thread, WTF::Thread has WTF::Thread::didExit,
+        which is called when associated TLS (with WTF::Thread) is destroyed. We leverage this mechanism to remove
+        WTF::Thread from MachineThreads.
+
+        This patch introduces WTF::ThreadGroup. It is tightly integrated with WTF::Thread: WTF::Thread knows
+        ThreadGroups which includes this thread. And WTF::ThreadGroup of course knows WTF::Threads added to it.
+        WTF::Thread::didExit carefully remove itself from WTF::ThreadGroups.
+
+        The most important part of this patch is locking. WTF::Thread can die. And WTF::ThreadGroup can die.
+        If we take a design using two fine grain locks in WTF::Thread and WTF::ThreadGroup, we easily encounter
+        dead lock. Consider the following case.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold a lock of THG, and hold a lock of TH (locking order is THG -> TH).
+        2. When TH dies, TH need to hold a lock of TH to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is TH -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold a lock of TH to unregister THG from TH. We can hold a lock of THG before that (locking order is THG -> TH).
+
+        Then, it easily causes dead lock. We cannot swap the locking order of (2) since iterating THG requires a lock of TH.
+        To solve this problem, we use std::shared_ptr and std::weak_ptr.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold THG, and hold a lock of TH. (THG -> TH)
+        2. When TH dies, TH first hold lock of TH. And we use std::weak_ptr<>::lock() to retain non-destructed ThreadGroups.
+        If some of ThreadGroups are dying, we just ignore them. It is ok because such a ThreadGroup will be destructed. So we do not need to unregister this thread from
+        such a ThreadGroup. Then, we have Vector<std::shared_ptr<ThreadGroup>>. So we unlock a lock of TH. To unregister a thread from thread group, we first hold a
+        lock of THG and then hold a lock of TH. Both lifetime is ensured: THG is retained by std::shared_ptr. And TH is itself. (TH), (THG -> TH).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (THG -> TH).
+        4. When destroying THG, we hold a lock of THG. And hold a lock of TH. During holding THG's lock, registered thread never dies because (2) holds THG lock. (THG -> TH).
+
+        We also fix suspend and resume locking mechanism to avoid dead lock. We should hold the global lock when suspending and resuming.
+        If we use per-thread lock, the suspended thread can hold the lock of the other threads. It causes dead lock.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.h:
+        * wtf/ParkingLot.h:
+        * wtf/ThreadGroup.cpp: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        * wtf/ThreadGroup.h: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::create):
+        (WTF::ThreadGroup::threads):
+        (WTF::ThreadGroup::getLock):
+        (WTF::ThreadGroup::weakFromThis):
+        * wtf/Threading.cpp:
+        (WTF::shouldRemoveThreadFromThreadGroup):
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Mark Lam.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        We also clean up WTF::initializeThreading. StringImpl::empty()
+        is now statically initialized by using constexpr constructor.
+        Thus we do not need to call StringImpl::empty() explicitly here.
+        And WTF::initializeThreading() does not have any main thread
+        affinity right now in all the platforms. So we fix the comment
+        in Threading.h. Then, now, WTF::initializeThreading() is called
+        in UI thread when using Web thread in iOS.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Set library types before their targets are created
+        https://bugs.webkit.org/show_bug.cgi?id=174600
+
+        Reviewed by Michael Catanzaro.
+
+        Since r219560 library targets are created before PlatformXXX.cmake
+        files are processed, however library type must be passed in
+        add_library() call and cannot be changed afterwards. Set these
+        variables in OptionsXXX.cmake.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+
+2017-07-17  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        Move USE_AVFOUNDATION definition on Windows to wtf/Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=174356
+
+        Reviewed by Brent Fulgham.
+
+        Move the definition of USE_AVFOUNDATION on Windows to wtf/platform.h
+
+        Add a custom command to generate AVFoundationHeaderDetection.h, which
+        is renamed from WebCoreHeaderDetection.h
+
+        * AVFoundationSupport.py: Moved from Source/WebCore/AVFoundationSupport.py.
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+
+2017-07-17  Darin Adler  <darin@apple.com>
+
+        Improve use of NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=174348
+
+        Reviewed by Sam Weinig.
+
+        * wtf/HashSet.h: Added an overload of HashSet::add that takes an initializer list of
+        const references. This is handy to add a bunch of values all at once. Later we can
+        consider optimizing to grow the hash table only once instead of deciding whether to
+        grow repeatedly as we add each value.
+        (WTF::copyToVector): Changed to use std::copy, removing 4 of the 6 lines of code here.
+
+        * wtf/MemoryPressureHandler.cpp: Include NeverDestroyed.h here ...
+        * wtf/MemoryPressureHandler.h: ... not here.
+
+        * wtf/NeverDestroyed.h: Added the ability to have a const NeverDestroyed.
+        Added a makeNeverDestroyed function that deduces the type from the argument.
+        With auto, this can be used to avoid writing out a long type twice.
+
+        * wtf/ThreadingPthreads.cpp: Removed unneeded include of NeverDestroyed.h.
+        * wtf/text/AtomicString.cpp: Ditto.
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called
+        https://bugs.webkit.org/show_bug.cgi?id=174557
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/CMakeLists.txt:
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Add iOS 11 SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174430
+        <rdar://problem/33269288>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WTF.xcconfig: Exclude MachExceptions.def when building iOS 11 for
+        the iOS simulator.
+
+2017-07-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219510.
+        https://bugs.webkit.org/show_bug.cgi?id=174525
+
+        Need to revert length() == 0 check for null string (Requested
+        by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Newly added AtomicStringImpl should use BufferInternal
+        static string if StringImpl is static"
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+        http://trac.webkit.org/changeset/219510
+
+2017-07-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Newly added AtomicStringImpl should use BufferInternal static string if StringImpl is static
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+
+        Reviewed by Darin Adler.
+
+        When creating AtomicStringImpl from static StringImpl, we can just use createWithoutCopying
+        to create a BufferInternal AtomicStringImpl which m_data{8,16} is static string's one.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::CStringTranslator::hash):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::AtomicStringImpl::add):
+        (WTF::HashTranslatorCharBuffer::HashTranslatorCharBuffer):
+        (WTF::UCharBufferTranslator::hash):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::LCharBufferTranslator::hash):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::BufferFromStaticDataTranslator::hash):
+        (WTF::BufferFromStaticDataTranslator::equal):
+        (WTF::BufferFromStaticDataTranslator::translate):
+        (WTF::AtomicStringImpl::addLiteral):
+        (WTF::addSymbol):
+        (WTF::addStatic):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::lookUp):
+        (WTF::CharBufferFromLiteralDataTranslator::hash): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::equal): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::translate): Deleted.
+        (WTF::addSubstring): Deleted.
+        * wtf/text/StringImpl.h:
+
+2017-07-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use std::unique_ptr for StackTrace
+        https://bugs.webkit.org/show_bug.cgi?id=174495
+
+        Reviewed by Alex Christensen.
+
+        Instead of returning pointer to heap allocated StackTrace,
+        we should return std::unique_ptr<StackTrace>.
+        And we also move WTFGetBackTrace from Assertions.cpp to
+        StackTrace.cpp to consolidate stack trace related operations
+        into StackTrace.cpp.
+
+        * wtf/Assertions.cpp:
+        * wtf/StackTrace.cpp:
+        (WTFGetBacktrace):
+        (WTF::StackTrace::captureStackTrace):
+        * wtf/StackTrace.h:
+
+2017-07-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, annotate inline for operator==/!= for FastAllocator
+        https://bugs.webkit.org/show_bug.cgi?id=174366
+
+        * wtf/FastMalloc.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+
+2017-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219176.
+        https://bugs.webkit.org/show_bug.cgi?id=174436
+
+        "Can cause infinite recursion on iOS" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219176
+
+2017-07-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WTF] Failure to build when the compiler specifically targets ARMv8-A / defines __ARM_ARCH_8A__
+        https://bugs.webkit.org/show_bug.cgi?id=174425
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Also check for __ARCH_ARM_8A__ to detect ARMv8.
+
+2017-07-12  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix when both DATA_LOG_TO_FILE and DATA_LOG_FILENAME are defined.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce): Changed declaration of logBasename from
+        char* logBasename to const char* logBasename.
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=174366
+
+        * wtf/FastMalloc.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::FastAllocator::operator==): Deleted.
+        (WTF::FastAllocator::operator!=): Deleted.
+
+2017-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Enable FILE_LOCK and implement lockFile and unlockFile
+        https://bugs.webkit.org/show_bug.cgi?id=174357
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Enable FILE_LOCK in GTK and WPE ports.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop unnecessary AtomicString constructor since we have constexpr hash function
+        https://bugs.webkit.org/show_bug.cgi?id=174347
+
+        Reviewed by Alex Christensen.
+
+        Previously, we calculate hash value in perl script and generate source code with that value.
+        This AtomicString constructor takes this pre-calculated hash value to efficiently construct
+        itself. But now, we have constexpr hash function, then we do not need to specify hash value
+        directly in this way. Thus we drop this functionality.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::HashAndCharactersTranslator::hash): Deleted.
+        (WTF::HashAndCharactersTranslator::equal): Deleted.
+        (WTF::HashAndCharactersTranslator::translate): Deleted.
+        * wtf/text/AtomicStringImpl.h:
+        (WTF::AtomicStringImpl::add):
+
+2017-07-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Link error when building WTF from WTF.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174316
+        <rdar://problem/33178200>
+
+        Reviewed by Brent Fulgham.
+
+        WTF_CPU_X86 cmake variable needs to be set for link libraries directories to be correct.
+
+        * WTF.vcxproj/WTF.proj:
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-10  Brady Eidson  <beidson@apple.com>
+
+        Cleanup lifetime issues of UniqueIDBDatabase and IDBBackingStore.
+        <rdar://problem/32908525> and https://bugs.webkit.org/show_bug.cgi?id=174244
+
+        Reviewed by David Kilzer and Alex Christensen. 
+
+        Add proper "kill" support to CrossThreadQueue, as well as isEmpty() support.
+
+        * wtf/CrossThreadQueue.h:
+        (WTF::CrossThreadQueue<DataType>::append):
+        (WTF::CrossThreadQueue<DataType>::kill):
+        (WTF::CrossThreadQueue<DataType>::isKilled):
+        (WTF::CrossThreadQueue<DataType>::isEmpty):
+        (WTF::CrossThreadQueue::isKilled): Deleted.
+
+2017-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use fastMalloc / fastFree for STL containers
+        https://bugs.webkit.org/show_bug.cgi?id=174297
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FastMalloc.h:
+        (WTF::FastAllocator::FastAllocator):
+        (WTF::FastAllocator::allocate):
+        (WTF::FastAllocator::deallocate):
+        (WTF::FastAllocator::operator==):
+        (WTF::FastAllocator::operator!=):
+
+2017-07-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Use a rolling 30-day uptime for processing statistics
+        https://bugs.webkit.org/show_bug.cgi?id=174235
+        <rdar://problem/33164381>
+
+        Reviewed by Chris Dumez.
+
+        Modify Deque to allow it to be used in a template specialization in KeyedDecoder.
+
+        * wtf/Deque.h:
+
+2017-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219238, r219239, and r219241.
+        https://bugs.webkit.org/show_bug.cgi?id=174265
+
+        "fast/workers/dedicated-worker-lifecycle.html is flaky"
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Implement WTF::ThreadGroup"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219238
+
+        "Unreviewed, build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219239
+
+        "Unreviewed, CLoop build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219241
+
+2017-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 4
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 3
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+        (compilerFenceForCrash):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 2
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Compiler.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix after r219238
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        This patch implements WTF::ThreadGroup. It implements core of JSC::MachineThreads with more reliable way.
+        JSC::MachineThreads was complicated because of managing dead threads. Each JSC::MachineThreads has its
+        own TLS with a registered destructor. And everytime a thread dies, the registered TLS destructor is called.
+        And this destructor will remove the current dying thread from JSC::MachineThreads.
+
+        However the above implementation is tricky. And each JSC::MachineThreads requires own TLS space, which is
+        not considered in WTF's Windows ThreadSpecific implementation. Current design works well since we only
+        have small number of MachineThreads right now.
+
+        Instead, we use more reliable way. After introducing WTF::Thread, WTF::Thread has WTF::Thread::didExit,
+        which is called when associated TLS (with WTF::Thread) is destroyed. We leverage this mechanism to remove
+        WTF::Thread from MachineThreads.
+
+        This patch introduces WTF::ThreadGroup. It is tightly integrated with WTF::Thread: WTF::Thread knows
+        ThreadGroups which includes this thread. And WTF::ThreadGroup of course knows WTF::Threads added to it.
+        WTF::Thread::didExit carefully remove itself from WTF::ThreadGroups.
+
+        The most important part of this patch is locking. WTF::Thread can die. And WTF::ThreadGroup can die.
+        If we take a design using two fine grain locks in WTF::Thread and WTF::ThreadGroup, we easily encounter
+        dead lock. Consider the following case.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold a lock of THG, and hold a lock of TH (locking order is THG -> TH).
+        2. When TH dies, TH need to hold a lock of TH to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is TH -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold a lock of TH to unregister THG from TH. We can hold a lock of THG before that (locking order is THG -> TH).
+
+        Then, it easily causes dead lock. We cannot swap the locking order of (2) since iterating THG requires a lock of TH.
+        To solve this problem, we introduce one global lock ThreadGroup::destructionMutex (GL).
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold GL, and hold a lock of THG. Do not hold a
+        lock of TH. TH's thread groups information is guarded by GL instead of a lock of TH (locking order is GL -> THG).
+        2. When TH dies, TH need to hold GL to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is GL -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold GL to unregister THG from TH. We can hold a lock of THG after that (locking order is GL -> THG).
+
+        We still have a lock of THG. By separating GL and THG's lock, we can hold a lock of THG while completely unrelated TH is destructed which takes a lock of GL and unrelated THG.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.h:
+        * wtf/ParkingLot.h:
+        * wtf/ThreadGroup.cpp: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::destructionMutex):
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        (WTF::ThreadGroup::removeCurrentThread):
+        * wtf/ThreadGroup.h: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::create):
+        (WTF::ThreadGroup::threads):
+        (WTF::ThreadGroup::getLock):
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        (WTF::Thread::canAddToThreadGroup):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        This patch cleans up StringStatics.cpp and remove it from the tree.
+
+        1. Move StringImpl methods to appropriate place, "StringImpl.cpp".
+
+        StringImpl::hashSlowCase() and StringImpl::concurrentHash() are defined in
+        StringStatics.cpp. But they should be defined in StringImpl.cpp.
+        This patch just moves them to StringImpl.cpp.
+
+        2. Use LazyNeverDestroyed to initialize AtomicString atoms like emptyAtom.
+
+        Previously, we initialized AtomicString atoms like emptyAtom in a hacky way.
+        We first define them as extern global variables. However, AtomicString has
+        a non-trivial constructor. Thus, we cannot do this because it requires global
+        constructor calls. This is why we have StringStatics.cpp. In this file, we
+        include "StaticConstructors.h". After including this file, all the global
+        constructor call disabled in Windows. And in GCC environment, we allocate
+        void* storage for that variable. And we use placement new in AtomicString::init()
+        to initialize these storage.
+        However, we already have better way for that: LazyNeverDestroyed. It just allocates
+        storage like the above. And it does not have any global constructors. Thus
+        we can just declare it as a global variable. And we initialize them lazily in
+        AtomicString::init(). This way effectively avoids "StaticConstructors.h" hacky way.
+        And it makes "StringStatics.cpp" unnecessary.
+        Then, we just move these variables and AtomicString::init() to AtomicString.cpp.
+
+        And we also change emptyAtom to emptyAtom() to get the value from LazyNeverDestroyed<>.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicString::init):
+        * wtf/text/AtomicString.h:
+        (WTF::nullAtom):
+        (WTF::emptyAtom):
+        (WTF::starAtom):
+        (WTF::xmlAtom):
+        (WTF::xmlnsAtom):
+        (WTF::AtomicString::fromUTF8):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::toAtomicString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::hashSlowCase):
+        (WTF::StringImpl::concurrentHash):
+        * wtf/text/StringStatics.cpp: Removed.
+
+2017-07-06  Keith Miller  <keith_miller@apple.com>
+
+        Add extra insurance to prevent clang from making crash traces sad
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        Reviewed by Saam Barati.
+
+        This patch makes it slightly harder for Clang to coalesce our crash calls.
+        Additionally, it also makes Clang never tail call the WTFCrashWithInfo so
+        our stack trace should always be "reasonable".
+
+        * wtf/Assertions.h:
+        * wtf/Compiler.h:
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219178.
+
+        This caused a consistent failure with the API test
+        StringBuilderTest.ToAtomicStringOnEmpty on all Debug testers.
+
+        Reverted changeset:
+
+        "[WTF] Clean up StringStatics.cpp by using
+        LazyNeverDestroyed<> for Atoms"
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+        http://trac.webkit.org/changeset/219178
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move SoftLinking.h into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=174000
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/SoftLinking.h: Copied from Source/WebCore/platform/ios/QuickLookSoftLink.mm.
+        * wtf/cocoa/SoftLinking.h: Renamed from Source/WebCore/platform/cocoa/SoftLinking.h.
+        * wtf/win/SoftLinking.h: Renamed from Source/WebCore/platform/win/SoftLinking.h.
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Upgrade GCC baseline
+        https://bugs.webkit.org/show_bug.cgi?id=174155
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Compiler.h:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::StringImpl::copyChars segfaults when built with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=173407
+
+        Reviewed by Andreas Kling.
+
+        With GCC 7, StringImpl::copyChars() behaves as unexpected.
+        This function violates strict aliasing rule.
+
+        This optimization is originally introduced to improve performance
+        in SunSpider's string tests in 2008. When running it in my Linux
+        box, it no longer causes any observable difference. So, we just
+        remove this optimization.
+
+                                        baseline                  patched
+
+        string-base64                7.7544+-0.1761            7.6138+-0.2071          might be 1.0185x faster
+        string-fasta                10.5429+-0.2746     ?     10.7500+-0.2669        ? might be 1.0196x slower
+        string-tagcloud             14.8588+-0.2828           14.8039+-0.3039
+        string-unpack-code          36.1769+-0.4251           35.3397+-0.5398          might be 1.0237x faster
+        string-validate-input        8.5182+-0.2206            8.3514+-0.2179          might be 1.0200x faster
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::copyChars):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use std::lock_guard instead of std::unique_lock if move semantics and try_lock is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=174148
+
+        Reviewed by Mark Lam.
+
+        It is not necessary to use std::unique_lock if we do not use additional features compared to std::lock_guard.
+
+        (WTF::ThreadHolder::get):
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::destruct):
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::signal):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::establish):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::establish):
+        * wtf/WordLock.cpp:
+        (WTF::WordLockBase::unlockSlow):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        This patch cleans up StringStatics.cpp and remove it from the tree.
+
+        1. Move StringImpl methods to appropriate place, "StringImpl.cpp".
+
+        StringImpl::hashSlowCase() and StringImpl::concurrentHash() are defined in
+        StringStatics.cpp. But they should be defined in StringImpl.cpp.
+        This patch just moves them to StringImpl.cpp.
+
+        2. Use LazyNeverDestroyed to initialize AtomicString atoms like emptyAtom.
+
+        Previously, we initialized AtomicString atoms like emptyAtom in a hacky way.
+        We first define them as extern global variables. However, AtomicString has
+        a non-trivial constructor. Thus, we cannot do this because it requires global
+        constructor calls. This is why we have StringStatics.cpp. In this file, we
+        include "StaticConstructors.h". After including this file, all the global
+        constructor call disabled in Windows. And in GCC environment, we allocate
+        void* storage for that variable. And we use placement new in AtomicString::init()
+        to initialize these storage.
+        However, we already have better way for that: LazyNeverDestroyed. It just allocates
+        storage like the above. And it does not have any global constructors. Thus
+        we can just declare it as a global variable. And we initialize them lazily in
+        AtomicString::init(). This way effectively avoids "StaticConstructors.h" hacky way.
+        And it makes "StringStatics.cpp" unnecessary.
+        Then, we just move these variables and AtomicString::init() to AtomicString.cpp.
+
+        And we also change emptyAtom to emptyAtom() to get the value from LazyNeverDestroyed<>.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicString::init):
+        * wtf/text/AtomicString.h:
+        (WTF::nullAtom):
+        (WTF::emptyAtom):
+        (WTF::starAtom):
+        (WTF::xmlAtom):
+        (WTF::xmlnsAtom):
+        (WTF::AtomicString::fromUTF8):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::toAtomicString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::hashSlowCase):
+        (WTF::StringImpl::concurrentHash):
+        * wtf/text/StringStatics.cpp: Removed.
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Keith Miller.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        We also clean up WTF::initializeThreading. StringImpl::empty()
+        is now statically initialized by using constexpr constructor.
+        Thus we do not need to call StringImpl::empty() explicitly here.
+        And WTF::initializeThreading() does not have any main thread
+        affinity right now in all the platforms. So we fix the comment
+        in Threading.h. Then, now, WTF::initializeThreading() is called
+        in UI thread when using Web thread in iOS.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack): Deleted.
+
+2017-07-05  Keith Miller  <keith_miller@apple.com>
+
+        Crashing with information should have an abort reason
+        https://bugs.webkit.org/show_bug.cgi?id=174185
+
+        Reviewed by Saam Barati.
+
+        Fix an ifdef to actually work with X86_64. It turns out X64_64 is
+        not an architecture... Whoops.
+
+        * wtf/Assertions.cpp:
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Add an extra rsync command to CopyWTFHeaders which copies the ICU headers
+        to DSTROOT/usr/local/include/. These headers already live inside a
+        "unicode" folder, so an example path of a header is
+        DSTROOT/usr/local/include/unicode/uchar.h. This is already in the search
+        path of the other WebKit projects, so those other projects can remove
+        their explicit listing of the old place these headers lived.
+
+        Also add the remaining ICU 55.1 headers which the other projects (like
+        WebCore) need. Revert any local changes to these headers in favor of
+        using the GCC_PREPROCESSOR_DEFINITIONS build setting. This is so we can
+        compile the same way against unmodified headers.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CopyWTFHeaders.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * icu/unicode/alphaindex.h: Added.
+        * icu/unicode/appendable.h: Added.
+        * icu/unicode/basictz.h: Added.
+        * icu/unicode/brkiter.h: Added.
+        (BreakIterator::isBufferClone):
+        * icu/unicode/bytestrie.h: Added.
+        * icu/unicode/bytestriebuilder.h: Added.
+        * icu/unicode/calendar.h: Added.
+        (Calendar::createInstance):
+        (Calendar::roll):
+        (Calendar::internalSet):
+        (Calendar::weekNumber):
+        * icu/unicode/caniter.h: Added.
+        * icu/unicode/chariter.h: Renamed from Source/WebCore/icu/unicode/chariter.h.
+        * icu/unicode/choicfmt.h: Added.
+        * icu/unicode/coleitr.h: Added.
+        (CollationElementIterator::primaryOrder):
+        (CollationElementIterator::secondaryOrder):
+        (CollationElementIterator::tertiaryOrder):
+        (CollationElementIterator::isIgnorable):
+        * icu/unicode/coll.h: Added.
+        * icu/unicode/compactdecimalformat.h: Added.
+        * icu/unicode/curramt.h: Added.
+        (CurrencyAmount::getCurrency):
+        (CurrencyAmount::getISOCurrency):
+        * icu/unicode/currpinf.h: Added.
+        (CurrencyPluralInfo::operator!=):
+        * icu/unicode/currunit.h: Added.
+        (CurrencyUnit::getISOCurrency):
+        * icu/unicode/datefmt.h: Added.
+        * icu/unicode/dbbi.h: Added.
+        * icu/unicode/dcfmtsym.h: Added.
+        (DecimalFormatSymbols::getSymbol):
+        (DecimalFormatSymbols::getConstSymbol):
+        (DecimalFormatSymbols::setSymbol):
+        (DecimalFormatSymbols::getLocale):
+        (DecimalFormatSymbols::getCurrencyPattern):
+        * icu/unicode/decimfmt.h: Added.
+        (DecimalFormat::getConstSymbol):
+        * icu/unicode/docmain.h: Added.
+        * icu/unicode/dtfmtsym.h: Added.
+        * icu/unicode/dtintrv.h: Added.
+        (DateInterval::getFromDate):
+        (DateInterval::getToDate):
+        (DateInterval::operator!=):
+        * icu/unicode/dtitvfmt.h: Added.
+        (DateIntervalFormat::operator!=):
+        * icu/unicode/dtitvinf.h: Added.
+        (DateIntervalInfo::operator!=):
+        * icu/unicode/dtptngen.h: Added.
+        * icu/unicode/dtrule.h: Added.
+        * icu/unicode/enumset.h: Added.
+        (EnumSet::EnumSet):
+        (EnumSet::~EnumSet):
+        (EnumSet::clear):
+        (EnumSet::add):
+        (EnumSet::remove):
+        (EnumSet::contains):
+        (EnumSet::set):
+        (EnumSet::get):
+        (EnumSet::isValidEnum):
+        (EnumSet::isValidValue):
+        (EnumSet::operator=):
+        (EnumSet::getAll):
+        (EnumSet::flag):
+        * icu/unicode/errorcode.h: Added.
+        * icu/unicode/fieldpos.h: Added.
+        (FieldPosition::operator=):
+        (FieldPosition::operator==):
+        (FieldPosition::operator!=):
+        * icu/unicode/filteredbrk.h: Added.
+        * icu/unicode/fmtable.h: Added.
+        (Formattable::getDate):
+        (Formattable::getString):
+        (Formattable::getLong):
+        (Formattable::toUFormattable):
+        (Formattable::fromUFormattable):
+        * icu/unicode/format.h: Added.
+        * icu/unicode/fpositer.h: Added.
+        * icu/unicode/gender.h: Added.
+        * icu/unicode/gregocal.h: Added.
+        * icu/unicode/icudataver.h: Added.
+        * icu/unicode/icuplug.h: Added.
+        * icu/unicode/idna.h: Added.
+        * icu/unicode/listformatter.h: Added.
+        (ListFormatData::ListFormatData):
+        * icu/unicode/locdspnm.h: Added.
+        (LocaleDisplayNames::createInstance):
+        * icu/unicode/locid.h: Added.
+        (Locale::operator!=):
+        (Locale::getCountry):
+        (Locale::getLanguage):
+        (Locale::getScript):
+        (Locale::getVariant):
+        (Locale::getName):
+        (Locale::isBogus):
+        * icu/unicode/measfmt.h: Added.
+        * icu/unicode/measunit.h: Added.
+        * icu/unicode/measure.h: Added.
+        (Measure::getNumber):
+        (Measure::getUnit):
+        * icu/unicode/messagepattern.h: Added.
+        * icu/unicode/msgfmt.h: Added.
+        * icu/unicode/normalizer2.h: Added.
+        * icu/unicode/normlzr.h: Added.
+        (Normalizer::operator!= ):
+        (Normalizer::quickCheck):
+        (Normalizer::isNormalized):
+        (Normalizer::compare):
+        * icu/unicode/numfmt.h: Added.
+        (NumberFormat::isParseIntegerOnly):
+        (NumberFormat::isLenient):
+        * icu/unicode/numsys.h: Added.
+        * icu/unicode/parsepos.h: Added.
+        (ParsePosition::operator=):
+        (ParsePosition::operator==):
+        (ParsePosition::operator!=):
+        (ParsePosition::getIndex):
+        (ParsePosition::setIndex):
+        (ParsePosition::getErrorIndex):
+        (ParsePosition::setErrorIndex):
+        * icu/unicode/plurfmt.h: Added.
+        * icu/unicode/plurrule.h: Added.
+        * icu/unicode/rbbi.h: Added.
+        (RuleBasedBreakIterator::operator!=):
+        * icu/unicode/rbnf.h: Added.
+        (RuleBasedNumberFormat::isLenient):
+        (RuleBasedNumberFormat::getDefaultRuleSet):
+        * icu/unicode/rbtz.h: Added.
+        * icu/unicode/regex.h: Added.
+        * icu/unicode/region.h: Added.
+        * icu/unicode/reldatefmt.h: Added.
+        * icu/unicode/resbund.h: Added.
+        * icu/unicode/schriter.h: Added.
+        * icu/unicode/scientificnumberformatter.h: Added.
+        * icu/unicode/search.h: Added.
+        (SearchIterator::operator!=):
+        * icu/unicode/selfmt.h: Added.
+        * icu/unicode/simpletz.h: Added.
+        (SimpleTimeZone::setStartRule):
+        (SimpleTimeZone::setEndRule):
+        (SimpleTimeZone::getOffset):
+        * icu/unicode/smpdtfmt.h: Added.
+        (SimpleDateFormat::get2DigitYearStart):
+        * icu/unicode/sortkey.h: Added.
+        (CollationKey::operator!=):
+        (CollationKey::isBogus):
+        (CollationKey::getByteArray):
+        * icu/unicode/stringtriebuilder.h: Added.
+        * icu/unicode/stsearch.h: Added.
+        * icu/unicode/symtable.h: Added.
+        * icu/unicode/tblcoll.h: Added.
+        * icu/unicode/timezone.h: Added.
+        (TimeZone::getID):
+        (TimeZone::setID):
+        * icu/unicode/tmunit.h: Added.
+        * icu/unicode/tmutamt.h: Added.
+        (TimeUnitAmount::operator!=):
+        * icu/unicode/tmutfmt.h: Added.
+        (TimeUnitFormat::operator!=):
+        * icu/unicode/translit.h: Added.
+        (Transliterator::getMaximumContextLength):
+        (Transliterator::setID):
+        (Transliterator::integerToken):
+        (Transliterator::pointerToken):
+        * icu/unicode/tzfmt.h: Added.
+        * icu/unicode/tznames.h: Added.
+        * icu/unicode/tzrule.h: Added.
+        * icu/unicode/tztrans.h: Added.
+        * icu/unicode/ubidi.h: Added.
+        * icu/unicode/ucal.h: Renamed from Source/JavaScriptCore/icu/unicode/ucal.h.
+        * icu/unicode/ucasemap.h: Added.
+        * icu/unicode/ucat.h: Added.
+        * icu/unicode/ucharstrie.h: Added.
+        * icu/unicode/ucharstriebuilder.h: Added.
+        * icu/unicode/uchriter.h: Added.
+        * icu/unicode/uclean.h: Added.
+        * icu/unicode/ucnv_cb.h: Renamed from Source/WebCore/icu/unicode/ucnv_cb.h.
+        * icu/unicode/ucnvsel.h: Added.
+        * icu/unicode/ucoleitr.h: Renamed from Source/WebCore/icu/unicode/ucoleitr.h.
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucsdet.h: Renamed from Source/WebCore/icu/unicode/ucsdet.h.
+        * icu/unicode/udat.h: Renamed from Source/JavaScriptCore/icu/unicode/udat.h.
+        * icu/unicode/udata.h: Added.
+        * icu/unicode/udateintervalformat.h: Added.
+        * icu/unicode/udatpg.h: Renamed from Source/JavaScriptCore/icu/unicode/udatpg.h.
+        * icu/unicode/udisplaycontext.h: Renamed from Source/JavaScriptCore/icu/unicode/udisplaycontext.h.
+        * icu/unicode/ufieldpositer.h: Renamed from Source/JavaScriptCore/icu/unicode/ufieldpositer.h.
+        * icu/unicode/uformattable.h: Renamed from Source/JavaScriptCore/icu/unicode/uformattable.h.
+        * icu/unicode/ugender.h: Added.
+        * icu/unicode/uidna.h: Renamed from Source/WebCore/icu/unicode/uidna.h.
+        * icu/unicode/uldnames.h: Added.
+        * icu/unicode/ulistformatter.h: Added.
+        * icu/unicode/ulocdata.h: Added.
+        * icu/unicode/umisc.h: Renamed from Source/JavaScriptCore/icu/unicode/umisc.h.
+        * icu/unicode/umsg.h: Added.
+        * icu/unicode/unifilt.h: Added.
+        * icu/unicode/unifunct.h: Added.
+        * icu/unicode/unimatch.h: Added.
+        * icu/unicode/unirepl.h: Added.
+        * icu/unicode/uniset.h: Added.
+        (UnicodeSet::operator!=):
+        (UnicodeSet::isFrozen):
+        (UnicodeSet::containsSome):
+        (UnicodeSet::isBogus):
+        (UnicodeSet::fromUSet):
+        (UnicodeSet::toUSet):
+        (UnicodeSet::span):
+        (UnicodeSet::spanBack):
+        * icu/unicode/unum.h: Renamed from Source/JavaScriptCore/icu/unicode/unum.h.
+        * icu/unicode/unumsys.h: Renamed from Source/JavaScriptCore/icu/unicode/unumsys.h.
+        * icu/unicode/upluralrules.h: Added.
+        * icu/unicode/uregex.h: Added.
+        * icu/unicode/uregion.h: Added.
+        * icu/unicode/urep.h: Added.
+        * icu/unicode/ures.h: Added.
+        (ures_getUnicodeString):
+        (ures_getNextUnicodeString):
+        (ures_getUnicodeStringByIndex):
+        (ures_getUnicodeStringByKey):
+        * icu/unicode/usearch.h: Renamed from Source/WebCore/icu/unicode/usearch.h.
+        * icu/unicode/usetiter.h: Added.
+        (UnicodeSetIterator::isString):
+        (UnicodeSetIterator::getCodepoint):
+        (UnicodeSetIterator::getCodepointEnd):
+        * icu/unicode/ushape.h: Renamed from Source/WebCore/icu/unicode/ushape.h.
+        * icu/unicode/uspoof.h: Added.
+        * icu/unicode/usprep.h: Added.
+        * icu/unicode/ustdio.h: Added.
+        * icu/unicode/ustream.h: Added.
+        * icu/unicode/ustringtrie.h: Added.
+        * icu/unicode/utf32.h: Added.
+        * icu/unicode/utmscale.h: Added.
+        * icu/unicode/utrace.h: Added.
+        * icu/unicode/utrans.h: Added.
+        * icu/unicode/utypes.h:
+        * icu/unicode/vtzone.h: Added.
+
+2017-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Make double-conversion's cache data constant and drop double_conversion::initialize()
+        https://bugs.webkit.org/show_bug.cgi?id=174124
+
+        Reviewed by Saam Barati.
+
+        We annotate double-conversion's cache data as const and constexpr. And move it out of function.
+        Since they are not involving global constructors, they are compiled as rodata and initialized
+        without calling double_conversion::initialize().
+
+        And we drop double_conversion::initialize() function since it is no longer necessary.
+
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/dtoa/cached-powers.cc:
+        * wtf/dtoa/cached-powers.h:
+
+2017-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Initialize srandom and srand with cryptographically random number
+        https://bugs.webkit.org/show_bug.cgi?id=174123
+
+        Reviewed by Mark Lam.
+
+        Use cryptographically random number instead of current time as a seed.
+
+        * wtf/RandomNumberSeed.h:
+        (WTF::initializeRandomNumberGenerator):
+
+2017-07-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Xcode duplicate UUID for DisallowCType.h and DispatchPtr.h
+        https://bugs.webkit.org/show_bug.cgi?id=174117
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WTF.xcodeproj/project.pbxproj:
+        Give DisallowCType.h and DispatchPtr.h different UUIDs.
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        LayoutTest workers/bomb.html is a Crash
+        https://bugs.webkit.org/show_bug.cgi?id=167757
+        <rdar://problem/33086462>
+
+        Reviewed by Keith Miller.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::waitFor):
+        * wtf/AutomaticThread.h:
+
+2017-07-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219060.
+        https://bugs.webkit.org/show_bug.cgi?id=174108
+
+        crashing constantly when initializing UIWebView (Requested by
+        thorton on #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219060
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219103.
+
+        Caused multiple build failures.
+
+        Reverted changeset:
+
+        "Remove copy of ICU headers from WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+        http://trac.webkit.org/changeset/219103
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Add an extra rsync command to CopyWTFHeaders which copies the ICU headers
+        to DSTROOT/usr/local/include/. These headers already live inside a
+        "unicode" folder, so an example path of a header is
+        DSTROOT/usr/local/include/unicode/uchar.h. This is already in the search
+        path of the other WebKit projects, so those other projects can remove
+        their explicit listing of the old place these headers lived.
+
+        Also add the remaining ICU 55.1 headers which the other projects (like
+        WebCore) need. Revert any local changes to these headers in favor of
+        using the GCC_PREPROCESSOR_DEFINITIONS build setting. This is so we can
+        compile the same way against unmodified headers.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CopyWTFHeaders.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * icu/unicode/alphaindex.h: Added.
+        * icu/unicode/appendable.h: Added.
+        * icu/unicode/basictz.h: Added.
+        * icu/unicode/brkiter.h: Added.
+        (BreakIterator::isBufferClone):
+        * icu/unicode/bytestrie.h: Added.
+        * icu/unicode/bytestriebuilder.h: Added.
+        * icu/unicode/calendar.h: Added.
+        (Calendar::createInstance):
+        (Calendar::roll):
+        (Calendar::internalSet):
+        (Calendar::weekNumber):
+        * icu/unicode/caniter.h: Added.
+        * icu/unicode/chariter.h: Renamed from Source/WebCore/icu/unicode/chariter.h.
+        * icu/unicode/choicfmt.h: Added.
+        * icu/unicode/coleitr.h: Added.
+        (CollationElementIterator::primaryOrder):
+        (CollationElementIterator::secondaryOrder):
+        (CollationElementIterator::tertiaryOrder):
+        (CollationElementIterator::isIgnorable):
+        * icu/unicode/coll.h: Added.
+        * icu/unicode/compactdecimalformat.h: Added.
+        * icu/unicode/curramt.h: Added.
+        (CurrencyAmount::getCurrency):
+        (CurrencyAmount::getISOCurrency):
+        * icu/unicode/currpinf.h: Added.
+        (CurrencyPluralInfo::operator!=):
+        * icu/unicode/currunit.h: Added.
+        (CurrencyUnit::getISOCurrency):
+        * icu/unicode/datefmt.h: Added.
+        * icu/unicode/dbbi.h: Added.
+        * icu/unicode/dcfmtsym.h: Added.
+        (DecimalFormatSymbols::getSymbol):
+        (DecimalFormatSymbols::getConstSymbol):
+        (DecimalFormatSymbols::setSymbol):
+        (DecimalFormatSymbols::getLocale):
+        (DecimalFormatSymbols::getCurrencyPattern):
+        * icu/unicode/decimfmt.h: Added.
+        (DecimalFormat::getConstSymbol):
+        * icu/unicode/docmain.h: Added.
+        * icu/unicode/dtfmtsym.h: Added.
+        * icu/unicode/dtintrv.h: Added.
+        (DateInterval::getFromDate):
+        (DateInterval::getToDate):
+        (DateInterval::operator!=):
+        * icu/unicode/dtitvfmt.h: Added.
+        (DateIntervalFormat::operator!=):
+        * icu/unicode/dtitvinf.h: Added.
+        (DateIntervalInfo::operator!=):
+        * icu/unicode/dtptngen.h: Added.
+        * icu/unicode/dtrule.h: Added.
+        * icu/unicode/enumset.h: Added.
+        (EnumSet::EnumSet):
+        (EnumSet::~EnumSet):
+        (EnumSet::clear):
+        (EnumSet::add):
+        (EnumSet::remove):
+        (EnumSet::contains):
+        (EnumSet::set):
+        (EnumSet::get):
+        (EnumSet::isValidEnum):
+        (EnumSet::isValidValue):
+        (EnumSet::operator=):
+        (EnumSet::getAll):
+        (EnumSet::flag):
+        * icu/unicode/errorcode.h: Added.
+        * icu/unicode/fieldpos.h: Added.
+        (FieldPosition::operator=):
+        (FieldPosition::operator==):
+        (FieldPosition::operator!=):
+        * icu/unicode/filteredbrk.h: Added.
+        * icu/unicode/fmtable.h: Added.
+        (Formattable::getDate):
+        (Formattable::getString):
+        (Formattable::getLong):
+        (Formattable::toUFormattable):
+        (Formattable::fromUFormattable):
+        * icu/unicode/format.h: Added.
+        * icu/unicode/fpositer.h: Added.
+        * icu/unicode/gender.h: Added.
+        * icu/unicode/gregocal.h: Added.
+        * icu/unicode/icudataver.h: Added.
+        * icu/unicode/icuplug.h: Added.
+        * icu/unicode/idna.h: Added.
+        * icu/unicode/listformatter.h: Added.
+        (ListFormatData::ListFormatData):
+        * icu/unicode/locdspnm.h: Added.
+        (LocaleDisplayNames::createInstance):
+        * icu/unicode/locid.h: Added.
+        (Locale::operator!=):
+        (Locale::getCountry):
+        (Locale::getLanguage):
+        (Locale::getScript):
+        (Locale::getVariant):
+        (Locale::getName):
+        (Locale::isBogus):
+        * icu/unicode/measfmt.h: Added.
+        * icu/unicode/measunit.h: Added.
+        * icu/unicode/measure.h: Added.
+        (Measure::getNumber):
+        (Measure::getUnit):
+        * icu/unicode/messagepattern.h: Added.
+        * icu/unicode/msgfmt.h: Added.
+        * icu/unicode/normalizer2.h: Added.
+        * icu/unicode/normlzr.h: Added.
+        (Normalizer::operator!= ):
+        (Normalizer::quickCheck):
+        (Normalizer::isNormalized):
+        (Normalizer::compare):
+        * icu/unicode/numfmt.h: Added.
+        (NumberFormat::isParseIntegerOnly):
+        (NumberFormat::isLenient):
+        * icu/unicode/numsys.h: Added.
+        * icu/unicode/parsepos.h: Added.
+        (ParsePosition::operator=):
+        (ParsePosition::operator==):
+        (ParsePosition::operator!=):
+        (ParsePosition::getIndex):
+        (ParsePosition::setIndex):
+        (ParsePosition::getErrorIndex):
+        (ParsePosition::setErrorIndex):
+        * icu/unicode/plurfmt.h: Added.
+        * icu/unicode/plurrule.h: Added.
+        * icu/unicode/rbbi.h: Added.
+        (RuleBasedBreakIterator::operator!=):
+        * icu/unicode/rbnf.h: Added.
+        (RuleBasedNumberFormat::isLenient):
+        (RuleBasedNumberFormat::getDefaultRuleSet):
+        * icu/unicode/rbtz.h: Added.
+        * icu/unicode/regex.h: Added.
+        * icu/unicode/region.h: Added.
+        * icu/unicode/reldatefmt.h: Added.
+        * icu/unicode/resbund.h: Added.
+        * icu/unicode/schriter.h: Added.
+        * icu/unicode/scientificnumberformatter.h: Added.
+        * icu/unicode/search.h: Added.
+        (SearchIterator::operator!=):
+        * icu/unicode/selfmt.h: Added.
+        * icu/unicode/simpletz.h: Added.
+        (SimpleTimeZone::setStartRule):
+        (SimpleTimeZone::setEndRule):
+        (SimpleTimeZone::getOffset):
+        * icu/unicode/smpdtfmt.h: Added.
+        (SimpleDateFormat::get2DigitYearStart):
+        * icu/unicode/sortkey.h: Added.
+        (CollationKey::operator!=):
+        (CollationKey::isBogus):
+        (CollationKey::getByteArray):
+        * icu/unicode/stringtriebuilder.h: Added.
+        * icu/unicode/stsearch.h: Added.
+        * icu/unicode/symtable.h: Added.
+        * icu/unicode/tblcoll.h: Added.
+        * icu/unicode/timezone.h: Added.
+        (TimeZone::getID):
+        (TimeZone::setID):
+        * icu/unicode/tmunit.h: Added.
+        * icu/unicode/tmutamt.h: Added.
+        (TimeUnitAmount::operator!=):
+        * icu/unicode/tmutfmt.h: Added.
+        (TimeUnitFormat::operator!=):
+        * icu/unicode/translit.h: Added.
+        (Transliterator::getMaximumContextLength):
+        (Transliterator::setID):
+        (Transliterator::integerToken):
+        (Transliterator::pointerToken):
+        * icu/unicode/tzfmt.h: Added.
+        * icu/unicode/tznames.h: Added.
+        * icu/unicode/tzrule.h: Added.
+        * icu/unicode/tztrans.h: Added.
+        * icu/unicode/ubidi.h: Added.
+        * icu/unicode/ucal.h: Renamed from Source/JavaScriptCore/icu/unicode/ucal.h.
+        * icu/unicode/ucasemap.h: Added.
+        * icu/unicode/ucat.h: Added.
+        * icu/unicode/ucharstrie.h: Added.
+        * icu/unicode/ucharstriebuilder.h: Added.
+        * icu/unicode/uchriter.h: Added.
+        * icu/unicode/uclean.h: Added.
+        * icu/unicode/ucnv_cb.h: Renamed from Source/WebCore/icu/unicode/ucnv_cb.h.
+        * icu/unicode/ucnvsel.h: Added.
+        * icu/unicode/ucoleitr.h: Renamed from Source/WebCore/icu/unicode/ucoleitr.h.
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucsdet.h: Renamed from Source/WebCore/icu/unicode/ucsdet.h.
+        * icu/unicode/udat.h: Renamed from Source/JavaScriptCore/icu/unicode/udat.h.
+        * icu/unicode/udata.h: Added.
+        * icu/unicode/udateintervalformat.h: Added.
+        * icu/unicode/udatpg.h: Renamed from Source/JavaScriptCore/icu/unicode/udatpg.h.
+        * icu/unicode/udisplaycontext.h: Renamed from Source/JavaScriptCore/icu/unicode/udisplaycontext.h.
+        * icu/unicode/ufieldpositer.h: Renamed from Source/JavaScriptCore/icu/unicode/ufieldpositer.h.
+        * icu/unicode/uformattable.h: Renamed from Source/JavaScriptCore/icu/unicode/uformattable.h.
+        * icu/unicode/ugender.h: Added.
+        * icu/unicode/uidna.h: Renamed from Source/WebCore/icu/unicode/uidna.h.
+        * icu/unicode/uldnames.h: Added.
+        * icu/unicode/ulistformatter.h: Added.
+        * icu/unicode/ulocdata.h: Added.
+        * icu/unicode/umisc.h: Renamed from Source/JavaScriptCore/icu/unicode/umisc.h.
+        * icu/unicode/umsg.h: Added.
+        * icu/unicode/unifilt.h: Added.
+        * icu/unicode/unifunct.h: Added.
+        * icu/unicode/unimatch.h: Added.
+        * icu/unicode/unirepl.h: Added.
+        * icu/unicode/uniset.h: Added.
+        (UnicodeSet::operator!=):
+        (UnicodeSet::isFrozen):
+        (UnicodeSet::containsSome):
+        (UnicodeSet::isBogus):
+        (UnicodeSet::fromUSet):
+        (UnicodeSet::toUSet):
+        (UnicodeSet::span):
+        (UnicodeSet::spanBack):
+        * icu/unicode/unum.h: Renamed from Source/JavaScriptCore/icu/unicode/unum.h.
+        * icu/unicode/unumsys.h: Renamed from Source/JavaScriptCore/icu/unicode/unumsys.h.
+        * icu/unicode/upluralrules.h: Added.
+        * icu/unicode/uregex.h: Added.
+        * icu/unicode/uregion.h: Added.
+        * icu/unicode/urep.h: Added.
+        * icu/unicode/ures.h: Added.
+        (ures_getUnicodeString):
+        (ures_getNextUnicodeString):
+        (ures_getUnicodeStringByIndex):
+        (ures_getUnicodeStringByKey):
+        * icu/unicode/usearch.h: Renamed from Source/WebCore/icu/unicode/usearch.h.
+        * icu/unicode/usetiter.h: Added.
+        (UnicodeSetIterator::isString):
+        (UnicodeSetIterator::getCodepoint):
+        (UnicodeSetIterator::getCodepointEnd):
+        * icu/unicode/ushape.h: Renamed from Source/WebCore/icu/unicode/ushape.h.
+        * icu/unicode/usprep.h: Added.
+        * icu/unicode/ustdio.h: Added.
+        * icu/unicode/ustream.h: Added.
+        * icu/unicode/ustringtrie.h: Added.
+        * icu/unicode/utf32.h: Added.
+        * icu/unicode/utmscale.h: Added.
+        * icu/unicode/utrace.h: Added.
+        * icu/unicode/utrans.h: Added.
+        * icu/unicode/utypes.h:
+        * icu/unicode/vtzone.h: Added.
+
+2017-07-03  Keith Miller  <keith_miller@apple.com>
+
+        Fix ifndef in Assertions.h
+        https://bugs.webkit.org/show_bug.cgi?id=174104
+
+        Reviewed by Saam Barati.
+
+        The ifndef should have been checking for
+        CRASH_WITH_SECURITY_IMPLICATION_AND_INFO since that is what the
+        ifndef defines.
+
+        * wtf/Assertions.h:
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Remove an unused function export
+        https://bugs.webkit.org/show_bug.cgi?id=174084
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Threading.h:
+
+2017-07-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Mark Lam.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack): Deleted.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        * wtf/spi/darwin/dyldSPI.h:
+
+2017-07-01  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] WTFGetBacktrace can return numberOfFrames == 0 in some architectures
+        https://bugs.webkit.org/show_bug.cgi?id=172768
+
+        Reviewed by Mark Lam.
+
+        In some architectures, like ARMv6 running on a Raspberry pi, the
+        backtrace function from "execinfo.h" is returning 0. In
+        that case, the RELEASE_ASSERT in StackTrace::captureStackTrace
+        fails causing a runtime crash.
+        This patch is adding a guard for the case described above to
+        avoid a runtime crash in such case.
+
+        * wtf/StackTrace.cpp:
+        (WTF::StackTrace::captureStackTrace):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * wtf/Platform.h:
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+        * wtf/spi/cocoa/SecuritySPI.h:
+        * wtf/text/TextBreakIterator.cpp:
+
+2017-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add a warning if WEBGL2 is enabled without WEBGL
+        https://bugs.webkit.org/show_bug.cgi?id=174054
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        Force crashWithInfo to be out of line.
+        https://bugs.webkit.org/show_bug.cgi?id=174028
+
+        Reviewed by Filip Pizlo.
+
+        The first pass at making crashes hold information about why they
+        were crashing had the problem that it would inline the assertion.
+        This meant that clang could coalesce DFG_ASSERTS with other
+        assertion failures in the same function. This patch moves it out
+        of line to help fix that issue.
+
+        * wtf/Assertions.cpp:
+        (WTFCrashWithInfo):
+        * wtf/Assertions.h:
+        (WTF::isIntegralType):
+
+2017-06-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop SymbolRegistry::keyForSymbol
+        https://bugs.webkit.org/show_bug.cgi?id=174052
+
+        Reviewed by Sam Weinig.
+
+        Since we can know whether a given symbol is registered by checking RegisteredSymbolImpl,
+        we do not need to query key string for a given symbol by using SymbolRegistry::keyForSymbol.
+
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::extractFoldedString): Deleted.
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::keyForSymbol): Deleted.
+        * wtf/text/SymbolRegistry.h:
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2017-06-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218992.
+
+        The patch broke the iOS device builds.
+
+        Reverted changeset:
+
+        "DFG_ASSERT should allow stuffing registers before trapping."
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+        http://trac.webkit.org/changeset/218992
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        DFG_ASSERT should allow stuffing registers before trapping.
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+
+        Reviewed by Mark Lam.
+
+        Add new template functions that enable stuffing up to five values
+        into registers before crashing.
+
+        * wtf/Assertions.h:
+        (CRASH_WITH_INFO):
+
+2017-06-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Teach ResourceLoadStatistics to recognize changes in the file system
+        https://bugs.webkit.org/show_bug.cgi?id=173800
+        <rdar://problem/32937842>
+
+        Reviewed by Chris Dumez.
+
+        * wtf/DispatchPtr.h: Added (moved from WebKit2)
+        * wtf/Platform.h: Make sure USE_FILE_LOCK is enabled.
+
+2017-06-28  David Kilzer  <ddkilzer@apple.com>
+
+        Fix typo in comment: WordResult => WorkResult
+
+        * wtf/AutomaticThread.h:
+
+2017-06-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Saam Barati.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-06-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop Thread::create(obsolete things) API since we can use lambda
+        https://bugs.webkit.org/show_bug.cgi?id=173825
+
+        Reviewed by Saam Barati.
+
+        Thread::create(ThreadFunction, void* data, const char* name) is a bit old API.
+        Since we have C++ lambda, the above API is simply unnecessary. And C++ lambda
+        based one is better since the above API needs casting data to and from void*.
+
+        * wtf/Function.h:
+        Avoid ambiguity.
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::tryLockFor):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread): Deleted.
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/Threading.cpp:
+        * wtf/ThreadingWin.cpp:
+        (WTF::createThread):
+
+2017-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        initializeThreading() [first] causes WTFCrash due to maxSingleAllocationSize not being initialized
+        https://bugs.webkit.org/show_bug.cgi?id=173720
+
+        Reviewed by Mark Lam.
+
+        When using std::numeric_limits<size_t>::max() for global variable's initialization,
+        it seems that it invokes static constructor to initialize this in VC++.
+        We avoid this edge case by introducing a workaround using SIZE_MAX here.
+
+        When I perform git-grep, there is only one site (this) using std::numeric_limits<>::xxx()
+        to initialize global variable.
+
+        * wtf/FastMalloc.cpp:
+
+2017-06-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive headers from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=173812
+
+        Reviewed by Darin Adler.
+
+        * wtf/Bag.h:
+
+2017-06-23  Keith Miller  <keith_miller@apple.com>
+
+        Switch VMTraps to use halt instructions rather than breakpoint instructions
+        https://bugs.webkit.org/show_bug.cgi?id=173677
+        <rdar://problem/32178892>
+
+        Reviewed by JF Bastien.
+
+        Remove the Trap signal handler code since it plays badly with lldb and combine
+        SIGBUS with SIGSEGV since distiguishing them is generally non-portable.
+
+        Also, update the platform code to only use signaling VMTraps
+        on where we have an appropriate instruction (x86 and ARM64).
+
+        * wtf/Platform.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+        (WTF::toSystemSignal):
+        (WTF::fromSystemSignal):
+
+2017-06-23  Antti Koivisto  <antti@apple.com>
+
+        Add notifyutil registrations for going in and out of simulated low memory state
+        https://bugs.webkit.org/show_bug.cgi?id=173797
+
+        Reviewed by Andreas Kling.
+
+        Add
+
+        notifyutil -p org.WebKit.lowMemory.begin
+        notifyutil -p org.WebKit.lowMemory.end
+
+        for debugging.
+
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::install):
+
+2017-06-23  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove more unused headers from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173761
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Liveness.h:
+        * wtf/PageAllocation.h:
+        * wtf/ParallelJobs.h:
+
+2017-06-22  Andreas Kling  <akling@apple.com>
+
+        Rename MemoryPressureHandler::setTabCount to setPageCount
+        https://bugs.webkit.org/show_bug.cgi?id=173750
+
+        Reviewed by Daniel Bates.
+
+        This function is counting WebCore::Page objects (excluding utility Pages used
+        by SVG-as-image and the web inspector) so let's name it appropriately.
+        Not all WebKit clients have tabs.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setPageCount):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::setTabCount): Deleted.
+        * wtf/MemoryPressureHandler.h:
+
+2017-06-21  Andreas Kling  <akling@apple.com>
+
+        Increase memory kill limits for WebContent processes that manage multiple tabs.
+        https://bugs.webkit.org/show_bug.cgi?id=173674
+
+        Reviewed by Geoffrey Garen.
+
+        When opening <a target=_blank> links, we currently have to use the same WebContent
+        process for the new tab, to support scripting the window.opener object.
+        This means that some WebContent processes end up hosting multiple tabs, making it
+        more likely that those processes will hit the memory limits.
+
+        Address this by adding some additional allowance for multi-tab processes:
+
+            For each additional tab, up to 4 tabs, add 1GB to the memory kill limit.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForMemoryKillWithProcessState):
+        (WTF::MemoryPressureHandler::setTabCount):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        * wtf/MemoryPressureHandler.h:
+
+2017-06-21  Chris Dumez  <cdumez@apple.com>
+
+        Allow constructing a WTF:Function from a function pointer
+        https://bugs.webkit.org/show_bug.cgi?id=173660
+
+        Reviewed by Alex Christensen.
+
+        Allow constructing a WTF:Function from a function pointer and
+        assigning a function pointer to a WTF:Function.
+
+        * wtf/Function.h:
+
+2017-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove WILL_REVEAL_EDGE_EVENTS code
+        https://bugs.webkit.org/show_bug.cgi?id=173632
+
+        Reviewed by Sam Weinig, Beth Dakin.
+
+        Remove will-reveal-edge events, which never took off.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive include directives from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173553
+
+        Reviewed by Saam Barati.
+
+        * wtf/AutomaticThread.h:
+        * wtf/BagToHashMap.h:
+        * wtf/CrossThreadCopier.h:
+        * wtf/CrossThreadQueue.h:
+        * wtf/DateMath.h:
+        * wtf/Expected.h:
+        * wtf/HashMap.h:
+        * wtf/Indenter.h:
+        * wtf/MessageQueue.h:
+        * wtf/MetaAllocator.h:
+        * wtf/MetaAllocatorHandle.h:
+        * wtf/RandomNumberSeed.h:
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        * wtf/RunLoop.h:
+        * wtf/SchedulePair.h:
+        * wtf/StackStats.h:
+        * wtf/SynchronizedFixedQueue.h:
+        * wtf/ThreadMessage.h:
+        * wtf/Threading.cpp:
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/WTFThreadData.h:
+        * wtf/WorkQueue.h:
+        * wtf/glib/GRefPtr.h:
+        * wtf/text/AtomicStringTable.h:
+        * wtf/text/LineBreakIteratorPoolICU.h:
+
+2017-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Enable WTF::Signals only when HAVE(MACHINE_CONTEXT) is true
+        https://bugs.webkit.org/show_bug.cgi?id=173590
+
+        Reviewed by Carlos Garcia Campos.
+
+        WTF::Signals require a feature rewriting a value of a machine context.
+        This is only available under HAVE(MACHINE_CONTEXT).
+        This patch disables WTF::Signals on !HAVE(MACHINE_CONTEXT) environments.
+
+        * wtf/threads/Signals.cpp:
+        * wtf/threads/Signals.h:
+
+2017-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Rebaseline std::optional
+        https://bugs.webkit.org/show_bug.cgi?id=173582
+
+        Reviewed by JF Bastien.
+
+        Update the copy of our std::optional to the latest version.
+        It adds std::optional::has_value() and std::optional::reset().
+
+        * wtf/Optional.h:
+
+2017-06-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Include execinfo.h and dlfcn.h based on platform defines
+        https://bugs.webkit.org/show_bug.cgi?id=173531
+
+        Reviewed by Alex Christensen.
+
+        execinfo.h and dlfcn.h can be missing in some libc libraries.
+        When including it, we should honor platform defines like HAVE(DLADDR).
+
+        * wtf/StackTrace.cpp:
+
+2017-06-18  Darin Adler  <darin@apple.com>
+
+        Fix Ref to deref before assignment, add tests for this to RefPtr, Ref, Function
+        https://bugs.webkit.org/show_bug.cgi?id=173526
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Ref.h: Changed operator= to not be defined inside the class definition.
+        Added swap functions. Changed operator= implementations to use swap in the
+        conventional manner, the same way that RefPtr does.
+
+2017-06-18  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in WTF/
+        https://bugs.webkit.org/show_bug.cgi?id=173519
+
+        Reviewed by Sam Weinig.
+
+        Use WTF::Function instead of std::function in WTF/ to avoid
+        copying.
+
+        * wtf/Brigand.h:
+        * wtf/Condition.h:
+        * wtf/Expected.h:
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.h:
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setMemoryPressureStatusChangedCallback):
+        (WTF::MemoryPressureHandler::setDidExceedInactiveLimitWhileActiveCallback):
+        * wtf/Optional.h:
+        * wtf/ParkingLot.h:
+        * wtf/RefCounter.h:
+        (WTF::RefCounter<T>::RefCounter):
+        * wtf/WorkQueue.h:
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::split):
+        * wtf/text/WTFString.h:
+
+2017-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * wtf/PlatformMac.cmake:
+        Generate MachExceptionsServer.h
+
+2017-06-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Upstream iOS drag and drop implementation into OpenSource WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=173366
+        <rdar://problem/32767014>
+
+        Reviewed by Tim Horton.
+
+        Define ENABLE_DRAG_SUPPORT as 1 by default and 0 for iOS, and define ENABLE_DATA_INTERACTION as 0 by default.
+        These are overridden to both be 1 for iOS 11+ in the FeatureDefines.xcconfig within each individual project.
+
+        * wtf/Platform.h:
+
+2017-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Fix typo in XPCSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=173426
+
+        Reviewed by Alex Christensen.
+
+        We should check if xpc_release is defined before defining it,
+        not xpc_retain.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2017-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Implement FALLTHROUGH macro for compilers other than Clang
+        https://bugs.webkit.org/show_bug.cgi?id=173385
+
+        Reviewed by Alex Christensen.
+
+        FALLTHROUGH should be able to use [[gnu::fallthrough]] attribute of
+        GCC, and [[fallthrough]] from C++17, whichever is available.
+
+        * wtf/Compiler.h:
+
+2017-06-14  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        MediaSource duration attribute should not be equal to Infinity when set to a value greater than 2^64
+        https://bugs.webkit.org/show_bug.cgi?id=171668
+
+        Reviewed by Jer Noble.
+
+        MediaSource duration attribute is a double represented in MediaSource by a MediaTime instance created with
+        MediaTime::CreateWithDouble(). This method implements an overflow control mechanism which sets MediaTime to
+        Infinity when the double value passed as argument is greater than 2^64.
+
+        This patch removes the overflow control mechanism when time value is represented as a double. This patch also
+        modifies the behavior of mathematical operations between a double MediaTime and rational MediaTime: the rational
+        MediaTime is converted to a double before applying the operation. Double MediaTime precision is the same as for
+        double. Overflow mechanisms still apply to the conversion of a double MediaTime to rational with setTimescale()
+        method. No behavior change for rational MediaTime.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+
+2017-06-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Use CMAKE_THREAD_LIBS_INIT in WTF platform CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=173310
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        In the WTF platform CMake files for the GTK+ and WPE ports, use the
+        CMAKE_THREAD_LIBS_INIT variable to specify the threading library we
+        should be linking against. On some platforms this variable will be
+        empty because the given compiler will automatically handle the -pthread
+        compiler flag and sort out linking on its own.
+
+        The same approach is already used for the JSCOnly configuration.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWPE.cmake:
+
+2017-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Filter SDP from ICE candidates in case of local ICE candidate filtering
+        https://bugs.webkit.org/show_bug.cgi?id=173120
+
+        Reviewed by Eric Carlson.
+
+        Adding split helper routine with functor parameter.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::split):
+        * wtf/text/WTFString.h:
+        (WTF::String::contains):
+
+2017-06-13  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Remove redundant includes in config.h
+        https://bugs.webkit.org/show_bug.cgi?id=173292
+
+        Reviewed by Alex Christensen.
+
+        * config.h:
+        * wtf/ExportMacros.h:
+
+2017-06-12  Jer Noble  <jer.noble@apple.com>
+
+        Screen sleeps while doing WebRTC video
+        https://bugs.webkit.org/show_bug.cgi?id=173278
+
+        Reviewed by Eric Carlson.
+
+        Drive-by fix: add some generic methods for iterating over collections.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Algorithms.h: Added.
+        (WTF::forEach):
+        (WTF::anyOf):
+        (WTF::allOf):
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move WebKit GType macros to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173249
+
+        Reviewed by Žan Doberšek.
+
+        They can be used by glib-based ports and eventually by JavaScriptCore glib bindings too.
+
+        * wtf/glib/WTFGType.h: Copied from Source/WebKit2/UIProcess/API/gtk/WebKitPrivate.h.
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Make ThreadMessage portable
+        https://bugs.webkit.org/show_bug.cgi?id=172073
+
+        Reviewed by Keith Miller.
+
+        Recently, we change ThreadMessage semantics: message handler
+        can be executed in the sender thread.
+        This allows ThreadMessage to be implemented in a portable way.
+
+        This patch implements ThreadMessage for all the platforms.
+        We use platform-independent Thread APIs, suspend(), resume(),
+        and getRegisters().
+
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageScoped):
+        (WTF::ThreadMessageData::ThreadMessageData): Deleted.
+        (): Deleted.
+        (WTF::initializeThreadMessages): Deleted.
+        (WTF::sendMessageUsingSignal): Deleted.
+        (WTF::sendMessageUsingMach): Deleted.
+        (WTF::deliverMessagesUsingMach): Deleted.
+        * wtf/ThreadMessage.h:
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::threadMessages): Deleted.
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::threadStateMetadata):
+        (WTF::Thread::getRegisters):
+        * wtf/threads/Signals.cpp:
+        (WTF::handleSignalsWithMach):
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop unnecessary includes in Threading.h
+        https://bugs.webkit.org/show_bug.cgi?id=173167
+
+        Reviewed by Darin Adler.
+
+        Threading.h includes bunch of headers. But some of them are not necessary.
+        This patch cleans up it a bit.
+
+        * wtf/Assertions.cpp:
+        * wtf/LocklessBag.h:
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add RegisteredSymbolImpl
+        https://bugs.webkit.org/show_bug.cgi?id=173230
+
+        Reviewed by Mark Lam.
+
+        Most symbols are not registered in SymbolRegistry. However, we currently always
+        allocate a pointer member to point to a SymbolRegistry, and this pointer is always null.
+        SymbolImpl is immutable, and it will never be registered with a SymbolRegistry
+        after it is created. Hence, this member is wasteful.
+
+        Instead, we add a new derived class RegisteredSymbolImpl, which will set a flag in
+        SymbolImpl to indicate that it is registered with a SymbolRegistry. The only way to
+        create a RegisteredSymbolImpl is via a factory method provided by the SymbolRegistry.
+        The factory method will pass the SymbolRegistry this pointer to the RegisteredSymbolImpl's
+        constructor for initializing the RegisteredSymbolImpl's m_symbolRegistry field.
+        By doing so,
+
+        1. We do not need to set m_symbolRegistry after creating a Symbol. It is clean.
+        2. We reduce the size of SymbolImpls that do not need to be registered.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.cpp:
+        (WTF::SymbolImpl::create):
+        (WTF::RegisteredSymbolImpl::create):
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::hashForSymbol):
+        (WTF::SymbolImpl::isRegistered):
+        (WTF::SymbolImpl::SymbolImpl):
+        (WTF::RegisteredSymbolImpl::symbolRegistry):
+        (WTF::RegisteredSymbolImpl::clearSymbolRegistry):
+        (WTF::RegisteredSymbolImpl::RegisteredSymbolImpl):
+        (WTF::SymbolImpl::symbolRegistry):
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::~SymbolRegistry):
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        (WTF::SymbolRegistry::remove):
+        * wtf/text/SymbolRegistry.h:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Update Thread::create() to take in a WTF::Function instead of a std::function
+        https://bugs.webkit.org/show_bug.cgi?id=173175
+
+        Reviewed by Mark Lam.
+
+        Update Thread::create() to take in a WTF::Function instead of a std::function. Unlike
+        std::function, WTF:Function is not copyable and does not make implicit copies of captured
+        variables. Doing captures such as [string = string.isolatedCopy()] when passing an
+        std::function to another thread has lead to bugs in the past due to implicit copying of
+        the captured string.
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::create):
+        * wtf/Threading.h:
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Update WorkQueue::concurrentApply() to take a WTF::Function instead of an std::function
+        https://bugs.webkit.org/show_bug.cgi?id=173165
+
+        Reviewed by Saam Barati.
+
+        Update WorkQueue::concurrentApply() to take a WTF::Function instead of an std::function
+        as std::function has issues with regards to thread safety.
+
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::concurrentApply):
+
+2017-06-08  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        MediaTime class has rounding issues in different platforms
+        https://bugs.webkit.org/show_bug.cgi?id=172640
+
+        Reviewed by Jer Noble.
+
+        The way a timescale is set when creating a MediaTime from a double
+        can create rounding issues in different platforms because in some
+        rounding is made and in others, it truncates. This way we ensure a
+        common behavior.
+
+        Dumping MediaTimes is also confusing and by the output you don't
+        know if it's containing a double or a fraction. Now, if it
+        contains a double, it only prints the double because printing the
+        fraction is misleading (it currently prints the double read as an
+        integer) and if it contains a fraction it shows the fraction and
+        its double representation separated by an = instead of a ,.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithDouble): When creating MediaTime from
+        double, we round instead of leaving it to the cast operation.
+        (WTF::MediaTime::dump):
+
+2017-06-07  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: MediaEngineSupportParameters should take a ContentType rather than separate type & codecs strings
+        https://bugs.webkit.org/show_bug.cgi?id=173038
+
+        Reviewed by Eric Carlson.
+
+        Drive by fix: add a version of split that takes a UChar and returns a Vector<String>.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::split):
+
+2017-06-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] RSA-PSS support
+        https://bugs.webkit.org/show_bug.cgi?id=172856
+
+        Reviewed by Jiewen Tan.
+
+        * wtf/Platform.h: Define HAVE_RSA_PSS to 1 for USE(GCRYPT). Support for RSA-PSS
+        is provided by default through the libgcrypt library.
+
+2017-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r214974.
+
+        Causes some tabs to start using a huge amount of CPU after 8
+        minutes in the background
+
+        Reverted changeset:
+
+        "Make inactive web processes behave as though under memory
+        pressure."
+        https://bugs.webkit.org/show_bug.cgi?id=170042
+        http://trac.webkit.org/changeset/214974
+
+2017-06-06  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WebCore] Enable REQUEST_ANIMATION_FRAME_TIMER for all ports
+        https://bugs.webkit.org/show_bug.cgi?id=172780
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-06-06  Darin Adler  <darin@apple.com>
+
+        Cut down use of WTF_ARRAY_LENGTH
+        https://bugs.webkit.org/show_bug.cgi?id=172997
+
+        Reviewed by Chris Dumez.
+
+        * wtf/DateMath.cpp:
+        (WTF::equalLettersIgnoringASCIICase): Added helper function template.
+        (WTF::parseDateFromNullTerminatedCharacters): Use a modern for loop instead of
+        WTF_ARRAY_LENGTH. Use startsWithLettersIgnoringASCIICase and
+        equalLettersIgnoringASCIICase instead of strncasecmp.
+
+        * wtf/text/IntegerToStringConversion.h:
+        (WTF::numberToStringImpl): Use std::end instead of WTF_ARRAY_LENGTH.
+        (WTF::writeNumberToBufferImpl): Ditto.
+
+2017-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        index out of bound in bytecodebasicblock
+        https://bugs.webkit.org/show_bug.cgi?id=172963
+
+        Reviewed by Saam Barati and Mark Lam.
+
+        * wtf/Assertions.h:
+        (UNREACHABLE_FOR_PLATFORM):
+
+2017-06-05  Jer Noble  <jer.noble@apple.com>
+
+        Allow clients to specify a list of codecs which should require hardware decode support.
+        https://bugs.webkit.org/show_bug.cgi?id=172787
+
+        Reviewed by Alex Christensen.
+
+        Add a couple of convenience methods:
+        - a String::split() that returns a vector (rather than taking an out-reference to a vector).
+        - A Vector::map() template which takes a Callable and returns a Vector of a different type.
+
+        * wtf/Vector.h:
+        (WTF::Vector::map):
+        * wtf/text/WTFString.h:
+        (WTF::String::split):
+
+2017-06-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix build of Windows-specific code with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=172729
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/win/WCharStringExtras.h: Added new header file wuth helper
+        functions for conversion between WTF::String and wchart_t*.
+        (WTF::stringToNullTerminatedWChar):
+        (WTF::wcharToString):
+        (WTF::nullTerminatedWCharToString):
+
+2017-06-02  Stephan Szabo  <stephan.szabo@am.sony.com>
+
+        [JSCOnly] Build static jsc.exe on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=172833
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2017-06-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Zalan Bujtas.
+
+        We hates std::chrono. Don't include it everywhere to discourage use.
+
+        * wtf/StdLibExtras.h:
+
+2017-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.load and Atomics.store need to be fully fenced
+        https://bugs.webkit.org/show_bug.cgi?id=172844
+
+        Reviewed by Keith Miller.
+        
+        Add loadFullyFenced and storeFullyFenced to Atomic<>.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::loadFullyFenced):
+        (WTF::Atomic::storeRelaxed):
+        (WTF::Atomic::storeFullyFenced):
+        (WTF::atomicLoadFullyFenced):
+        (WTF::atomicStoreFullyFenced):
+
+2017-06-01  Keith Miller  <keith_miller@apple.com>
+
+        Undo rollout in r217638 with bug fix
+        https://bugs.webkit.org/show_bug.cgi?id=172824
+
+        Unreviewed, reland patch with unused set_state code removed.
+
+        * Configurations/WTF.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageUsingSignal):
+        (WTF::sendMessageUsingMach):
+        (WTF::deliverMessagesUsingMach):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h:
+        (WTF::sendMessage):
+        * wtf/Threading.h:
+        (WTF::Thread::machThread):
+        * wtf/mac/MachExceptions.defs: Copied from Source/WTF/wtf/ThreadMessage.h.
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::handleSignalsWithMach):
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::unregisterThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+
+2017-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217611 and r217631.
+        https://bugs.webkit.org/show_bug.cgi?id=172785
+
+        "caused wasm-hashset-many.html to become flaky." (Requested by
+        keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Reland r216808, underlying lldb bug has been fixed."
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+        http://trac.webkit.org/changeset/217611
+
+        "Use dispatch queues for mach exceptions"
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+        http://trac.webkit.org/changeset/217631
+
+2017-05-31  Keith Miller  <keith_miller@apple.com>
+
+        Use dispatch queues for mach exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds support for using a dispatch queue to handle our
+        mach exceptions. We use a high priority concurrent dispatch queue
+        to handle our mach exceptions. We don't know the priority of the
+        thread whose exception we are handling so the most conservative
+        answer is to respond with a high priority. These events are both
+        rare and usually quite fast so it is likely not a significant cost
+        when the thread with an exception has a low priority.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+
+2017-05-31  Keith Miller  <keith_miller@apple.com>
+
+        Reland r216808, underlying lldb bug has been fixed.
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+
+        Unreviewed, relanding old patch. See: rdar://problem/31183352
+
+        * Configurations/WTF.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageUsingSignal):
+        (WTF::sendMessageUsingMach):
+        (WTF::deliverMessagesUsingMach):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h:
+        (WTF::sendMessage):
+        * wtf/Threading.h:
+        (WTF::Thread::machThread):
+        * wtf/mac/MachExceptions.defs: Copied from Source/WTF/wtf/ThreadMessage.h.
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::handleSignalsWithMach):
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::unregisterThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+
+2017-05-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r217603.
+
+        This patch broke the internal builds.
+
+        Reverted changeset:
+
+        "Get <chrono> out of StdLibExtras.h"
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+        http://trac.webkit.org/changeset/217603
+
+2017-05-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Saam Barati.
+
+        We hates std::chrono. Don't include it everywhere to discourage use.
+
+        * wtf/StdLibExtras.h:
+
+2017-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Only include DataDetectorsUI headers in iOS
+        https://bugs.webkit.org/show_bug.cgi?id=172633
+
+        Reviewed by David Kilzer.
+
+        Enable data detectors only on iOS and not other variants of iOS.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2017-05-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, disable faster Interpreter::getOpcodeID for ARM_THUMB2 with non-Darwin OSes
+        https://bugs.webkit.org/show_bug.cgi?id=172686
+
+        Because of test failures.
+
+        * wtf/Platform.h:
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][Linux][FreeBSD] Use faster Interpreter::getOpcodeID()
+        https://bugs.webkit.org/show_bug.cgi?id=172686
+
+        Reviewed by Mark Lam.
+
+        As of r217526, JSC gets faster Interpreter::getOpcodeID() by
+        embedding OpcodeID value just before the LLInt machine code
+        handler pointer. By doing so, we can retrieve OpcodeID from
+        the LLInt machine code handler by dereferencing the code
+        pointer. `*((int*)ptr - 1)`.
+
+        This patch allows Linux and FreeBSD environments to use this
+        optimization.
+
+        * wtf/Platform.h:
+
+2017-05-28  Mark Lam  <mark.lam@apple.com>
+
+        Implement a faster Interpreter::getOpcodeID().
+        https://bugs.webkit.org/show_bug.cgi?id=172669
+
+        Reviewed by Saam Barati.
+
+        Added the USE(LLINT_EMBEDDED_OPCODE_ID) configuration.
+
+        * wtf/Platform.h:
+
+2017-05-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Address thread safety issues with ResourceLoadStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=172519
+        <rdar://problem/31707642>
+
+        Reviewed by Chris Dumez.
+
+        Add a new specialization for HashSet.
+
+        * wtf/CrossThreadCopier.h:
+
+2017-05-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217458.
+
+        This change caused 55 JSC test failures.
+
+        Reverted changeset:
+
+        "Date should use historical data if it's available."
+        https://bugs.webkit.org/show_bug.cgi?id=172592
+        http://trac.webkit.org/changeset/217458
+
+2017-05-25  Keith Miller  <keith_miller@apple.com>
+
+        Date should use historical data if it's available.
+        https://bugs.webkit.org/show_bug.cgi?id=172592
+
+        Reviewed by Mark Lam.
+
+        The spec previously disallowed using historical data for Dates.
+        This is no longer the case. Additionally, not using historical
+        data, when available, seems unfortunate for users. This patch
+        removes the code dropping historical data.
+
+        * wtf/DateMath.cpp:
+        (WTF::calculateLocalTimeOffset):
+        (WTF::msToMilliseconds): Deleted.
+
+2017-05-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] ASSERTION FAILED: !HashTranslator::equal(KeyTraits::emptyValue(), key)
+        https://bugs.webkit.org/show_bug.cgi?id=172586
+
+        Reviewed by Brent Fulgham.
+
+        In ThreadHolder for Windows, we need to construct HashMap<ThreadIdentifier, ThreadHolder*>.
+        The problem is that ThreadHolder::platformInitialize touches Thread::id() even before Thread
+        is not established. In that case, id() returns incorrect value.
+
+        But, calling ThreadHolder::initialize() after waiting for completion of Thread::establish() is
+        not a good idea. Since we already have NewThreadContext->creationMutex, we can wait for completion
+        of Thread::establish() easily. However, if we do so, Thread::create() returns RefPtr<Thread> that
+        may not call ThreadHolder::initialize() in its thread yet. In that case, ThreadHolder::get() fails.
+        Thus, Windows WTF::waitForThreadCompletion implementation becomes broken. We can add a new mutex
+        to wait for completion of ThreadHolder::initialize in the creator of the thread (like a ping-pong!).
+        But it overly complicates the implementation.
+
+        The following is overly complicated initialization phase.
+
+        Creator -> AC mutex(1) -------> establishment -> RL mutex(1) ----------------------> AC mutex(2) ->
+
+                               Thread -----------------> AC mutex(1) -> ThreadHolder init -> RL mutex(2) ->
+
+        So, instead, in this patch, we just use Thread::currentID(). When calling ThreadHolder::initialize(),
+        we pass ThreadIdentifier by using Thread::currentID(). This implementation works great because,
+
+        1. ThreadHolder::initialize requires ThreadIdentifier only in Windows environment because Pthread
+           ThreadHolder does not create HashMap<>. And this is used for obsolete Threading APIs. Thus this
+           hack will be removed in the near future.
+
+        2. In Windows, Thread::currentID() can return a valid value without using ThreadHolder. And it does
+           not require Thread establishment. So, calling currentID() to initialize ThreadHolder is ok in
+           Windows.
+
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::initialize): Deleted.
+        * wtf/ThreadHolder.h:
+        * wtf/ThreadHolderPthreads.cpp:
+        (WTF::ThreadHolder::initialize):
+        * wtf/ThreadHolderWin.cpp:
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::platformInitialize): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::wtfThreadEntryPoint):
+
+2017-05-25  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Clang warns about (intended) returning pointer to stack location in WTF/wtf/ThreadingPthreads.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=172595
+
+        Reviewed by Mark Lam.
+
+        * wtf/ThreadingPthreads.cpp: Use a #pragma to silence Clang warning about returning a
+        pointer to the stack (which is intended)
+
+2017-05-25  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r217416): Using #pragma once in WTFString.h broke the build
+
+        * wtf/text/WTFString.h: Switch back to #ifndef/#define/#endif.
+
+2017-05-25  David Kilzer  <ddkilzer@apple.com>
+
+        Make a change to force a build on the Apple bots
+
+        * wtf/text/WTFString.h: Use #pragma once.
+
+2017-05-24  Andreas Kling  <akling@apple.com>
+
+        Disable memory kill mechanisms when running with FastMalloc disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=172550
+        <rdar://problem/32181908>
+
+        Reviewed by Antti Koivisto.
+
+        If someone is using WebKit with a non-standard allocator, they are likely trying to debug
+        or test something, and suddenly getting killed is not gonna help with that.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+
+2017-05-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support RSA-PSS
+        https://bugs.webkit.org/show_bug.cgi?id=170869
+        <rdar://problem/31640672>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        Add a flag to enable RSA-PSS in the future.
+
+2017-05-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove dead ENABLE(FONT_LOAD_EVENTS) code
+        https://bugs.webkit.org/show_bug.cgi?id=172517
+
+        Rubber-stamped by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+
+2017-05-23  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WTF] Export additional symbols in threading
+        https://bugs.webkit.org/show_bug.cgi?id=171952
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/ThreadMessage.h:
+        * wtf/threads/Signals.h:
+
+2017-05-23  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] Compilation fails with system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=172445
+
+        Reviewed by Michael Catanzaro.
+
+        We are using the bmalloc even if the system malloc should be used.
+        Don't use bmalloc if the system malloc is requested and add the
+        missing implementation for computeRAMSize() on UNIX that's utilizing
+        the sysinfo() call.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2017-05-22  Brian Burg  <bburg@apple.com>
+
+        Add a debugging macro that sleeps a thread until a debugger attaches
+        https://bugs.webkit.org/show_bug.cgi?id=171575
+
+        Reviewed by Mark Lam.
+
+        This is really useful for debugging early errors if for some reason you can't
+        launch a process directly from the debugger easily, such as Web Content processes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Assertions.h:
+        Always define the WTFBreakpointTrap() macro. Still make it an error if the CPU
+        type isn't supported for OS(DARWIN); if used on other platforms, cause a WTFCrash()
+        with a comment that indicates this is not implemented.
+
+        * wtf/DebugUtilities.h: Added.
+
+2017-05-19  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WTF] Remove PLATFORM(WIN) references
+        https://bugs.webkit.org/show_bug.cgi?id=172301
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/MemoryPressureHandler.h:
+        * wtf/Platform.h:
+
+2017-05-19  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for __int128_t
+        https://bugs.webkit.org/show_bug.cgi?id=172317
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+        * wtf/Platform.h:
+
+2017-05-18  Andreas Kling  <akling@apple.com>
+
+        [WK2] Notify WebPageProxy client when an active process goes over the inactive memory limit
+        https://bugs.webkit.org/show_bug.cgi?id=172244
+        <rdar://problem/31800943>
+
+        Reviewed by Geoffrey Garen.
+
+        Add an installable callback to MemoryPressureHandler that gets invoked when an active process
+        exceeds the kill limit for an inactive process.
+
+        This allows a UI client to become aware that backgrounding a tab may cause it to get killed.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForMemoryKillWithProcessState):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::doesExceedInactiveLimitWhileActive):
+        (WTF::MemoryPressureHandler::doesNotExceedInactiveLimitWhileActive):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setDidExceedInactiveLimitWhileActiveCallback):
+
+2017-05-18  Geoffrey Garen  <ggaren@apple.com>
+
+        AutomaticThread should wait longer before timing out
+        https://bugs.webkit.org/show_bug.cgi?id=172292
+
+        Reviewed by Filip Pizlo.
+
+        Increased the idle timeout from 1s => 10s.
+
+        This reduces the number of thread restarts on JetStream from
+        ~150 => ~0. It also matches other thread pool APIs on Darwin.
+
+        Intuitively, it seems wrong for helper threads to idle exit during
+        hardcore benchmarking.
+
+        This patch in combination with a bmalloc fix seems to be a 1%-2% JetStream
+        speedup on my Mac Pro.
+
+        A nice side-benefit is that per-thread traces are easier to read.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+
+2017-05-18  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove usage of _snprintf
+        https://bugs.webkit.org/show_bug.cgi?id=172251
+
+        Reviewed by Per Arne Vollan.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::setDataFile):
+
 2017-05-15  Mark Lam  <mark.lam@apple.com>
 
         Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.

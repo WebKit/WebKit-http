@@ -14,7 +14,7 @@ set(TestWebKitAPI_LIBRARIES
     WTF${DEBUG_SUFFIX}
 )
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     set(test_webkit2_api_LIBRARIES
         JavaScriptCore
         TestWebKitAPIBase
@@ -50,6 +50,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/EnumTraits.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Expected.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Function.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
@@ -80,6 +81,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringOperators.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringView.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TextBreakIterator.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/ThreadGroup.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Time.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/UniqueRef.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Variant.cpp
@@ -99,6 +101,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     ${JAVASCRIPTCORE_DIR}
+    ${PAL_DIR}
     ${THIRDPARTY_DIR}/gtest/include
     ${WEBKIT2_DIR}/Platform/IPC
     ${WEBKIT2_DIR}/Shared
@@ -111,7 +114,7 @@ include_directories(
     ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c
 )
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     add_library(TestWebKitAPIInjectedBundle SHARED
         ${bundle_harness_SOURCES}
         ${TESTWEBKITAPI_DIR}/InjectedBundleController.cpp
@@ -145,8 +148,6 @@ if (ENABLE_WEBKIT2)
 
     target_link_libraries(TestWebKitAPIInjectedBundle ${TestWebKitAPI_LIBRARIES})
     add_dependencies(TestWebKitAPIInjectedBundle WTF ${ForwardingHeadersForTestWebKitAPI_NAME})
-
-    get_property(TestWebKitAPIInjectedBundle_PATH TARGET TestWebKitAPIInjectedBundle PROPERTY LOCATION)
 endif ()
 
 if (WIN32)
@@ -156,8 +157,7 @@ else ()
 endif ()
 
 add_definitions(-DGTEST_HAS_RTTI=0
-    -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit2\"
-    -DTEST_INJECTED_BUNDLE_PATH=\"${TestWebKitAPIInjectedBundle_PATH}\"
+    -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit\"
 )
 
 # FIXME: This works around compatibility problems in the old version of the third-pary
@@ -194,7 +194,7 @@ foreach (testName ${test_webcore_BINARIES})
     )
 endforeach ()
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     add_library(TestWebKitAPIBase
         ${test_main_SOURCES}
         ${webkit2_api_harness_SOURCES}
@@ -209,12 +209,12 @@ if (ENABLE_WEBKIT2)
 
     foreach (testName ${test_webkit2_api_BINARIES})
         get_filename_component(testBaseName ${testName} NAME)
-        add_executable(${testBaseName} ${TESTWEBKITAPI_DIR}/Tests/WebKit2/${testName}.cpp)
-        add_test(${testBaseName} ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/${testBaseName})
+        add_executable(${testBaseName} ${TESTWEBKITAPI_DIR}/Tests/WebKit/${testName}.cpp)
+        add_test(${testBaseName} ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit/${testBaseName})
         set_tests_properties(${testBaseName} PROPERTIES TIMEOUT 60)
         target_link_libraries(${testBaseName} ${test_webkit2_api_LIBRARIES})
         set_target_properties(${testBaseName} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2
+            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit
         )
     endforeach ()
 
@@ -222,10 +222,10 @@ if (ENABLE_WEBKIT2)
     # property, but it reports failure when the test crashes or timeouts and would
     # make the bot red.
     foreach (testName ${test_webkit2_api_fail_BINARIES})
-        add_executable(${testName} ${TESTWEBKITAPI_DIR}/Tests/WebKit2/${testName}.cpp)
+        add_executable(${testName} ${TESTWEBKITAPI_DIR}/Tests/WebKit/${testName}.cpp)
         target_link_libraries(${testName} ${test_webkit2_api_LIBRARIES})
         set_target_properties(${testName} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/failure
+            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit/failure
         )
     endforeach ()
 endif ()

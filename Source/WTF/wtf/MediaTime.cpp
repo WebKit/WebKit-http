@@ -90,10 +90,6 @@ MediaTime MediaTime::createWithFloat(float floatTime)
         return invalidTime();
     if (std::isinf(floatTime))
         return std::signbit(floatTime) ? negativeInfiniteTime() : positiveInfiniteTime();
-    if (floatTime > std::numeric_limits<int64_t>::max())
-        return positiveInfiniteTime();
-    if (floatTime < std::numeric_limits<int64_t>::min())
-        return negativeInfiniteTime();
 
     MediaTime value(0, DefaultTimeScale, Valid | DoubleValue);
     value.m_timeValueAsDouble = floatTime;
@@ -122,10 +118,6 @@ MediaTime MediaTime::createWithDouble(double doubleTime)
         return invalidTime();
     if (std::isinf(doubleTime))
         return std::signbit(doubleTime) ? negativeInfiniteTime() : positiveInfiniteTime();
-    if (doubleTime > std::numeric_limits<int64_t>::max())
-        return positiveInfiniteTime();
-    if (doubleTime < std::numeric_limits<int64_t>::min())
-        return negativeInfiniteTime();
 
     MediaTime value(0, DefaultTimeScale, Valid | DoubleValue);
     value.m_timeValueAsDouble = doubleTime;
@@ -205,13 +197,11 @@ MediaTime MediaTime::operator+(const MediaTime& rhs) const
     if (hasDoubleValue() && rhs.hasDoubleValue())
         return MediaTime::createWithDouble(m_timeValueAsDouble + rhs.m_timeValueAsDouble);
 
+    if (hasDoubleValue() || rhs.hasDoubleValue())
+        return MediaTime::createWithDouble(toDouble() + rhs.toDouble());
+
     MediaTime a = *this;
     MediaTime b = rhs;
-
-    if (a.hasDoubleValue())
-        a.setTimeScale(DefaultTimeScale);
-    else if (b.hasDoubleValue())
-        b.setTimeScale(DefaultTimeScale);
 
     uint32_t commonTimeScale;
     if (!leastCommonMultiple(a.m_timeScale, b.m_timeScale, commonTimeScale) || commonTimeScale > MaximumTimeScale)
@@ -251,13 +241,11 @@ MediaTime MediaTime::operator-(const MediaTime& rhs) const
     if (hasDoubleValue() && rhs.hasDoubleValue())
         return MediaTime::createWithDouble(m_timeValueAsDouble - rhs.m_timeValueAsDouble);
 
+    if (hasDoubleValue() || rhs.hasDoubleValue())
+        return MediaTime::createWithDouble(toDouble() - rhs.toDouble());
+
     MediaTime a = *this;
     MediaTime b = rhs;
-
-    if (a.hasDoubleValue())
-        a.setTimeScale(DefaultTimeScale);
-    else if (b.hasDoubleValue())
-        b.setTimeScale(DefaultTimeScale);
 
     uint32_t commonTimeScale;
     if (!leastCommonMultiple(this->m_timeScale, rhs.m_timeScale, commonTimeScale) || commonTimeScale > MaximumTimeScale)
@@ -489,7 +477,7 @@ void MediaTime::setTimeScale(uint32_t timeScale, RoundingFlags flags)
 
     timeScale = std::min(MaximumTimeScale, timeScale);
 
-#if !PLATFORM(WIN) && (CPU(X86_64) || CPU(ARM64))
+#if HAVE(INT128_T)
     __int128_t newValue = static_cast<__int128_t>(m_timeValue) * timeScale;
     int64_t remainder = newValue % m_timeScale;
     newValue = newValue / m_timeScale;

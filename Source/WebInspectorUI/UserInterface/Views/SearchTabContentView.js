@@ -29,13 +29,13 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
     {
         let {image, title} = WebInspector.SearchTabContentView.tabInfo();
         let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel,
-            WebInspector.domNodeDetailsSidebarPanel, WebInspector.cssStyleDetailsSidebarPanel];
+        let detailsSidebarPanelConstructors = [WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel,
+            WebInspector.DOMNodeDetailsSidebarPanel, WebInspector.CSSStyleDetailsSidebarPanel];
 
-        if (WebInspector.layerTreeDetailsSidebarPanel)
-            detailsSidebarPanels.push(WebInspector.layerTreeDetailsSidebarPanel);
+        if (window.LayerTreeAgent)
+            detailsSidebarPanelConstructors.push(WebInspector.LayerTreeDetailsSidebarPanel);
 
-        super(identifier || "search", "search", tabBarItem, WebInspector.SearchSidebarPanel, detailsSidebarPanels);
+        super(identifier || "search", "search", tabBarItem, WebInspector.SearchSidebarPanel, detailsSidebarPanelConstructors);
 
         this._forcePerformSearch = false;
     }
@@ -73,7 +73,7 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
         if (!(representedObject instanceof WebInspector.Resource) && !(representedObject instanceof WebInspector.Script) && !(representedObject instanceof WebInspector.DOMTree))
             return false;
 
-        return !!this._navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
+        return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
     }
 
     focusSearchField()
@@ -86,6 +86,8 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
     performSearch(searchQuery)
     {
         this.navigationSidebarPanel.performSearch(searchQuery);
+
+        this._forcePerformSearch = false;
     }
 
     handleCopyEvent(event)

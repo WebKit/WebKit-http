@@ -1,3 +1,493 @@
+2017-07-14  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be easy to decide how WebKit yields
+        https://bugs.webkit.org/show_bug.cgi?id=174298
+
+        Reviewed by Saam Barati.
+        
+        Use sched_yield() explicitly.
+
+        * bmalloc/StaticMutex.cpp:
+        (bmalloc::StaticMutex::lockSlowCase):
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable
+        https://bugs.webkit.org/show_bug.cgi?id=174660
+
+        Reviewed by Geoffrey Garen.
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable.
+        This essentially replaces a branch to figure out if the new size is less or greater than the
+        current size by an assertion.
+
+        * bmalloc/Map.h:
+        (bmalloc::Hash>::rehash):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        bmalloc: Failure to build when the compiler specifically targets ARMv8-A / defines __ARM_ARCH_8A__
+        https://bugs.webkit.org/show_bug.cgi?id=174424
+
+        Reviewed by Michael Catanzaro.
+
+        * bmalloc/BPlatform.h: Also check for __ARCH_ARM_8A__ to detect ARMv8.
+
+2017-07-05  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        reinterpret_cast does not evaluate to constexpr
+        https://bugs.webkit.org/show_bug.cgi?id=173622
+
+        Reviewed by Yusuke Suzuki.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::mask):
+        (bmalloc::roundUpToMultipleOf):
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * bmalloc/BPlatform.h:
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmPageSizePhysical):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
+2017-06-19  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Add a per-thread line cache
+        https://bugs.webkit.org/show_bug.cgi?id=173552
+
+        Reviewed by Darin Adler.
+
+        Previously, any thread could allocate out of any page with free lines.
+        Now, the first thread to free a line in a page owns that page's free
+        lines until the whole page becomes free.
+
+        This patch is a big speedup on multi-threaded benchmarks.
+        tree_churn --parallel gets 14% faster on a 2-core (4-hyper-core) MacBook
+        Air and 2.85X faster on 12-core (24-hyper-core) Mac Pro. Other parallel
+        benchmarks show significant but smaller speedups.
+
+        Thread affinity is a great predictor of object lifetime. The per-thread
+        line cache avoids the pathology of shuffling pages between threads,
+        turning predictable lifetimes into unpredictable lifetimes, increasing
+        fragmentation. On tree_churn --parallel, the per-thread line cache
+        increases free memory found per page scanned by 2.85X.
+
+        Free line scanning in fragmented pages is pretty expensive relative to
+        other allocate / initialize / free operations. According to Instruments,
+        on tree_churn --parallel, scanning is about 10X more expensive than
+        freeing. This explains why a 2.85X improvement in scanning efficiency
+        translates into a 2.85X overall speedup on tree_churn --parallel.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::refillAllocatorSlowCase): Pass through our line
+        cache so the Heap can fill it.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::scavenge): Scavenge our line cache.
+
+        (bmalloc::Deallocator::processObjectLog): Deleted.
+
+        * bmalloc/Deallocator.h:
+        (bmalloc::Deallocator::lineCache): Added a line cache.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::deallocateLineCache): Deallocation function for thread
+        destruction.
+
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::deallocateSmallLine):
+        (bmalloc::Heap::allocateSmallBumpRangesByMetadata):
+        (bmalloc::Heap::allocateSmallBumpRangesByObject): Consult the new per-thread line
+        cache for allocation and deallocation.
+
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::allocateSmallBumpRanges):
+        (bmalloc::Heap::derefSmallLine):
+
+        * bmalloc/List.h:
+        (bmalloc::List::remove): Remove has always been a logically static
+        operation. Declare it static now so that the Heap can remove a page from
+        a thread's line cache without holding a direct pointer to the cache.
+
+        * bmalloc/SmallPage.h:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-07  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: memory APIs don't need to be heap members
+        https://bugs.webkit.org/show_bug.cgi?id=173076
+
+        Reviewed by Sam Weinig.
+
+        Asking the OS about memory use is unrelated to the state of bmalloc's
+        heap, so it's a better separation of concerns if related code is not 
+        part of the heap.
+
+        * bmalloc/AvailableMemory.cpp:
+        (bmalloc::memoryStatus):
+        * bmalloc/AvailableMemory.h:
+        (bmalloc::MemoryStatus::MemoryStatus):
+        (bmalloc::isUnderMemoryPressure):
+        (bmalloc::memoryFootprint):
+        (bmalloc::percentAvailableMemoryInUse):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::updateMemoryInUseParameters): Deleted.
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::isUnderMemoryPressure): Deleted.
+        (bmalloc::Heap::memoryFootprint): Deleted.
+        (bmalloc::Heap::percentAvailableMemoryInUse): Deleted.
+
+2017-06-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        struct does not accept initializer-form if member has initializers in GCC 4.9
+        https://bugs.webkit.org/show_bug.cgi?id=172974
+
+        Reviewed by Carlos Garcia Campos.
+
+        struct cannot accept initializer-form constructor (like, `ListNode<T> t { ... }`) if
+        the member of the struct has a default initializer.
+        Here is a simple snippet.
+
+        template<typename T>
+        struct Pair {
+            T* prev { nullptr };
+            T* next { nullptr };
+        };
+
+        Pair<int> pair { nullptr, nullptr };  // compile erorr in GCC 4.9.
+
+        Instead, we define a default constructor (to invoke default initializers) and a constructor
+        to accept the above initialization.
+
+        * bmalloc/List.h:
+        (bmalloc::ListNode::ListNode):
+        (bmalloc::List::iterator::iterator):
+
+2017-06-06  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the GTK build.
+
+        Unreviewed.
+
+        * bmalloc/List.h:
+        (bmalloc::List::List):
+
+2017-06-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the GTK build.
+
+        Unreviewed.
+
+        * bmalloc/List.h:
+
+2017-06-02  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Small and large objects should share memory
+        https://bugs.webkit.org/show_bug.cgi?id=172880
+        <rdar://problem/31494732>
+
+        Reviewed by Sam Weinig.
+
+        This reduces our high water mark memory usage on JetStream on macOS
+        by 10%-20%. It also has the nice side effect that we can free small
+        object metadata after returning from a high water mark.
+
+        No change in throughput.
+
+        Our old algorithm allocated small object chunks and large objects in
+        segregated virtual memory and never recycled addresses between them.
+        This provided a slight security benefit because we could apply guard
+        pages between the segregated ranges and we would never reuse the same
+        virtual address for object and metadata memory.
+
+        Our new algorithm allocates small object chunks from the large object
+        allocator. This naturally recycles memory between small chunks and large
+        objects, and between small chunks of different page classes. This allows
+        us to shift memory between allocation types as a program moves between
+        different phases of allocation, and to delete small object chunk metadata
+        when a program shrinks back from a high water mark.
+
+        Two intuitions I had about memory use turned out to be backwards in
+        this context:
+
+        (1) I thought that this optimization would work because it allowed you to
+        allocate and free a 4MB object and then reuse that large allocation to
+        service small allocations. In practice, the common benefit seems to be
+        the opposite: After you allocate and free many small objects, you can
+        stitch them together to allocate a large object without growing the heap.
+
+        (2) I thought that it would be more memory-efficient to allocate
+        fine-grained pages from the large object allocator. In practice, giving
+        the large object allocator too many arbitrarily-sized ranges to manage
+        leads to fragmentation. Meanwhile, segregated fit is a powerful memory
+        optimization. So, it's best to return small object memory to the large
+        allocator only when a whole small object chunk is free.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::ref):
+        (bmalloc::Chunk::deref):
+        (bmalloc::Chunk::refCount):
+        (bmalloc::Chunk::freePages): We keep a free list per chunk and refcount
+        each chunk so we can notice when a chunk becomes empty, and return it
+        to the large allocator.
+
+        (bmalloc::forEachPage): A new helper function for iterating the pages
+        in a Chunk.
+
+        (bmalloc::Chunk::Chunk): Use forEachPage instead of manual iteration.
+        Use { } initialization because we don't get zero-initialized by the OS
+        anymore.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::concurrentScavenge):
+        (bmalloc::Heap::scavenge): Don't bother unlocking while scavenging. I
+        wasn't able to show it to be a consistent speedup. A more promising
+        approach, if we find a motivating example, is for the scavenger to give
+        up and return early if any other client is waiting on the lock.
+
+        (bmalloc::Heap::allocateSmallChunk): New helper function for allocating
+        a small chunk. It allocates through the large allocator to facilitate
+        sharing. We still allocate a chunk at a time instead of a page at a time.
+        Surprisingly, more precise page-at-a-time allocation is worse for memory
+        use because of fragmentation. Segregated fit is a powerful optimization.
+
+        (bmalloc::Heap::deallocateSmallChunk): New helper function for deallocating
+        a small chunk.
+
+        (bmalloc::Heap::allocateSmallPage): Updated for new APIs.
+
+        (bmalloc::Heap::deallocateSmallLine):  Updated for new APIs. Note that
+        we cache one free chunk per page class. This avoids churn in the large
+        allocator when you free(malloc(X)).
+
+        (bmalloc::Heap::allocateSmallBumpRangesByMetadata):
+        (bmalloc::Heap::allocateSmallBumpRangesByObject):
+        (bmalloc::Heap::tryAllocateLarge):
+        (bmalloc::Heap::scavengeSmallPages): Deleted.
+        (bmalloc::Heap::scavengeLargeObjects): Deleted.
+        * bmalloc/Heap.h:
+
+        * bmalloc/LargeMap.h:
+        (bmalloc::LargeMap::begin):
+        (bmalloc::LargeMap::end): Added iteration helpers for scavenging.
+
+        * bmalloc/LargeRange.h:
+        (bmalloc::LargeRange::physicalSize): Added a comment about something
+        that I confused myself about in this patch.
+
+        * bmalloc/List.h:
+        (bmalloc::List::iterator::operator*):
+        (bmalloc::List::iterator::operator->):
+        (bmalloc::List::iterator::operator!=):
+        (bmalloc::List::iterator::operator++):
+        (bmalloc::List::begin):
+        (bmalloc::List::end):
+        (bmalloc::List::pushFront):
+        (bmalloc::List::remove):
+        (bmalloc::ListNode::ListNode): Deleted. Added iteration helpers for
+        scavenging. Changed the default state of a Node to null pointers instead
+        of self pointers to distinguish the null node from the empty node for
+        easier debugging.
+
+        * bmalloc/Sizes.h: Changed the chunk size to 1MB to increase the chances
+        of a chunk becoming free and recyclable.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::hasPhysicalPages):
+        (bmalloc::SmallPage::setHasPhysicalPages): Track physical state by page
+        instead of implicitly by which list a page is in. It's simpler not
+        to have to move chunks and pages between physical vs virtual lists.
+
+        (bmalloc::SmallPage::SmallPage): Deleted.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::tryAllocateLargeChunk):
+        (bmalloc::VMHeap::allocateSmallChunk): Deleted.
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage): Deleted.
+        (bmalloc::VMHeap::deallocateSmallPage): Deleted. Small chunk allocation
+        just forwards to the large allocator now.
+
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::scavenge):
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-25  Geoffrey Garen  <ggaren@apple.com> and Michael Saboff  <msaboff@apple.com>
+
+        bmalloc: scavenger runs too much on JetStream
+        https://bugs.webkit.org/show_bug.cgi?id=172373
+
+        Reviewed by Geoffrey Garen.
+
+        Instruments says that JetStream on macOS spends about 3% of its time in
+        madvise.
+
+        In <https://bugs.webkit.org/show_bug.cgi?id=160098>, Ben saw some
+        evidence that madvise was the reason that switching to bmalloc for
+        DFG::Node allocations was a slowdown the first time around.
+
+        In <https://bugs.webkit.org/show_bug.cgi?id=172124>, Michael saw that
+        scavening policy can affect JetStream.
+
+        Intuitively, it seems wrong for the heap to idle shrink during hardcore
+        benchmarking.
+
+        The strategy here is to back off in response to any heap growth event,
+        and to wait 2s instead of 0.5s for heap growth to take place -- but we
+        scavenge immediately in response to critical memory pressure, to avoid
+        jetsam.
+
+        One hole in this strategy is that a workload with a perfectly
+        unfragmented heap that allocates and deallocates ~16kB every 2s will
+        never shrink its heap. This doesn't seem to be a problem in practice.
+
+        This looks like a 2% - 4% speedup on JetStream on Mac Pro and MacBook Air.
+
+        * bmalloc/AsyncTask.h:
+        (bmalloc::AsyncTask::willRun):
+        (bmalloc::AsyncTask::willRunSoon):
+        (bmalloc::Function>::AsyncTask):
+        (bmalloc::Function>::run):
+        (bmalloc::Function>::runSoon):
+        (bmalloc::Function>::threadRunLoop):
+        (bmalloc::Function>::runSlowCase): Deleted. Added a "run soon" state
+        so that execution delay is modeled directly instead of implicitly
+        through sleep events. This enables the Heap to issue a "run now" event
+        at any moment in response ot memory pressure.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap): Don't call into our own API -- that's a layering
+        violation.
+
+        (bmalloc::Heap::updateMemoryInUseParameters): No need for
+        m_scavengeSleepDuration anymore.
+
+        (bmalloc::Heap::concurrentScavenge): Added a back-off policy when the
+        heap is growing.
+        (bmalloc::Heap::scavenge):
+
+        (bmalloc::Heap::scavengeSmallPages):
+        (bmalloc::Heap::scavengeLargeObjects): Don't try to give up in the middle
+        of a scavenge event. Our new backoff policy supplants that design. Also,
+        it's easier to profile and understand scavenging behavior if it always
+        runs to completion once started.
+
+        (bmalloc::Heap::scheduleScavenger):
+        (bmalloc::Heap::scheduleScavengerIfUnderMemoryPressure): Added a
+        synchronous amortized check for memory pressure. This check has the
+        benefit that it runs immediately during high rates of heap activity,
+        so we can detect memory pressure right away and wake the scavenger
+        instead of waiting for the scavenger to wake up.
+
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::deallocateSmallLine):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateLarge):
+        (bmalloc::Heap::shrinkLarge):
+        (bmalloc::Heap::deallocateLarge):
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::isUnderMemoryPressure):
+        * bmalloc/Sizes.h:
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::deallocateSmallPage):
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::scavenge): Updated for API changes above.
+
 2017-05-17  Michael Saboff  <msaboff@apple.com>
 
         [iOS] The Garbage Collector shouldn't rely on the bmalloc scavenger for up to date memory footprint info (172186)

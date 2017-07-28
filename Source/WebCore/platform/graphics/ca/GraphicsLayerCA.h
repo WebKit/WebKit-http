@@ -157,6 +157,7 @@ public:
         int treeDepth { 0 };
         bool ancestorHadChanges { false };
         bool ancestorHasTransformAnimation { false };
+        bool ancestorWithTransformAnimationIntersectsCoverageRect { false };
         bool ancestorIsViewportConstrained { false };
     };
     bool needsCommit(const CommitState&);
@@ -187,9 +188,10 @@ private:
     WEBCORE_EXPORT void platformCALayerAnimationStarted(const String& animationKey, CFTimeInterval beginTime) override;
     WEBCORE_EXPORT void platformCALayerAnimationEnded(const String& animationKey) override;
     CompositingCoordinatesOrientation platformCALayerContentsOrientation() const override { return contentsOrientation(); }
-    WEBCORE_EXPORT void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect& clip) override;
+    WEBCORE_EXPORT void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect& clip, GraphicsLayerPaintBehavior) override;
     bool platformCALayerShowDebugBorders() const override { return isShowingDebugBorder(); }
     WEBCORE_EXPORT bool platformCALayerShowRepaintCounter(PlatformCALayer*) const override;
+    int platformCALayerRepaintCount(PlatformCALayer*) const override { return repaintCount(); }
     int platformCALayerIncrementRepaintCount(PlatformCALayer*) override { return incrementRepaintCount(); }
 
     bool platformCALayerContentsOpaque() const override { return contentsOpaque(); }
@@ -201,6 +203,7 @@ private:
     WEBCORE_EXPORT bool platformCALayerShouldAggressivelyRetainTiles(PlatformCALayer*) const override;
     WEBCORE_EXPORT bool platformCALayerShouldTemporarilyRetainTileCohorts(PlatformCALayer*) const override;
     WEBCORE_EXPORT bool platformCALayerUseGiantTiles() const override;
+    WEBCORE_EXPORT void platformCALayerLogFilledVisibleFreshTile(unsigned) override;
 
     bool isCommittingChanges() const override { return m_isCommittingChanges; }
     bool isUsingDisplayListDrawing(PlatformCALayer*) const override { return m_usesDisplayListDrawing; }
@@ -258,6 +261,8 @@ private:
 
     bool isRunningTransformAnimation() const;
 
+    WEBCORE_EXPORT bool backingStoreAttached() const override;
+
     bool animationIsRunning(const String& animationName) const
     {
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
@@ -296,12 +301,7 @@ private:
     struct VisibleAndCoverageRects {
         FloatRect visibleRect;
         FloatRect coverageRect;
-        
-        VisibleAndCoverageRects(const FloatRect& visRect, const FloatRect& covRect)
-            : visibleRect(visRect)
-            , coverageRect(covRect)
-        {
-        }
+        TransformationMatrix animatingTransform;
     };
     
     VisibleAndCoverageRects computeVisibleAndCoverageRect(TransformState&, bool accumulateTransform, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
@@ -397,7 +397,7 @@ private:
     void updateBackfaceVisibility();
     void updateStructuralLayer();
     void updateDrawsContent();
-    void updateCoverage();
+    void updateCoverage(const CommitState&);
     void updateBackgroundColor();
     void updateUserInteractionEnabled();
 

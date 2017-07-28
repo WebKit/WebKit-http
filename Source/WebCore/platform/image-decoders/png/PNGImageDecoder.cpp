@@ -158,15 +158,17 @@ public:
             return decoder->setFailed();
 
         auto bytesToSkip = m_readOffset;
-        for (const auto& segment : data) {
-            if (bytesToSkip > segment->size()) {
-                bytesToSkip -= segment->size();
+        
+        // FIXME: Use getSomeData which is O(log(n)) instead of skipping bytes which is O(n).
+        for (const auto& element : data) {
+            if (bytesToSkip > element.segment->size()) {
+                bytesToSkip -= element.segment->size();
                 continue;
             }
-            auto bytesToUse = segment->size() - bytesToSkip;
+            auto bytesToUse = element.segment->size() - bytesToSkip;
             m_readOffset += bytesToUse;
             m_currentBufferSize = m_readOffset;
-            png_process_data(m_png, m_info, reinterpret_cast<png_bytep>(const_cast<char*>(segment->data() + bytesToSkip)), bytesToUse);
+            png_process_data(m_png, m_info, reinterpret_cast<png_bytep>(const_cast<char*>(element.segment->data() + bytesToSkip)), bytesToUse);
             bytesToSkip = 0;
             // We explicitly specify the superclass encodedDataStatus() because we
             // merely want to check if we've managed to set the size, not
@@ -268,7 +270,7 @@ ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
 #endif
 
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(1);
+        m_frameBufferCache.grow(1);
 
     ImageFrame& frame = m_frameBufferCache[index];
     if (!frame.isComplete())
@@ -448,7 +450,7 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
             }
         }
 
-        buffer.setDecodingStatus(ImageFrame::DecodingStatus::Partial);
+        buffer.setDecodingStatus(DecodingStatus::Partial);
         buffer.setHasAlpha(false);
 
 #if ENABLE(APNG)
@@ -556,7 +558,7 @@ void PNGImageDecoder::pngComplete()
     }
 #endif
     if (!m_frameBufferCache.isEmpty())
-        m_frameBufferCache.first().setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+        m_frameBufferCache.first().setDecodingStatus(DecodingStatus::Complete);
 }
 
 void PNGImageDecoder::decode(bool onlySize, unsigned haltAtFrame, bool allDataReceived)
@@ -642,7 +644,7 @@ void PNGImageDecoder::readChunks(png_unknown_chunkp chunk)
         }
 
         if (m_frameBufferCache.isEmpty())
-            m_frameBufferCache.resize(1);
+            m_frameBufferCache.grow(1);
 
         if (m_currentFrame < m_frameBufferCache.size()) {
             ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
@@ -823,7 +825,7 @@ void PNGImageDecoder::frameComplete()
         return;
 
     ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
-    buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+    buffer.setDecodingStatus(DecodingStatus::Complete);
 
     png_bytep interlaceBuffer = m_reader->interlaceBuffer();
 

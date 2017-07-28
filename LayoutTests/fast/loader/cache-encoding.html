@@ -2,7 +2,7 @@
 <script>
 jsTestIsAsync = true;
 
-description("First load a script with a wrong charset then again with the right one. Second attempt should work and 'scriptSuccess' should be set to true. 'successfullyParsed' will be undefined.");
+description("First load a script with a wrong charset then again with the right one. Second attempt should work and 'scriptSuccess' should be set to true.");
 
 function appendScriptWithCharset(charset, onload)
 {
@@ -16,9 +16,14 @@ function appendScriptWithCharset(charset, onload)
 
 function test()
 {
-    appendScriptWithCharset("utf-8", function () {
-        shouldBeTrue("scriptSuccess");
-        appendScriptWithCharset("utf-16", function () {
+    debug("Loading with the wrong encoding...");
+    appendScriptWithCharset("utf-16", function () {
+        // We should get a SyntaxError since the script was loaded with the wrong encoding.
+        shouldHaveHadError("SyntaxError");
+        shouldBeUndefined("window.scriptSuccess");
+
+        debug("Now loading with the right encoding...");
+        appendScriptWithCharset("utf-8", function () {
             shouldBeTrue("scriptSuccess");
             finishJSTest();
         });

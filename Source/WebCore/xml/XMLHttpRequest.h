@@ -48,6 +48,7 @@ class SharedBuffer;
 class TextResourceDecoder;
 class ThreadableLoader;
 class XMLHttpRequestUpload;
+struct OwnedString;
 
 class XMLHttpRequest final : public RefCounted<XMLHttpRequest>, public XMLHttpRequestEventTarget, private ThreadableLoaderClient, public ActiveDOMObject {
     WTF_MAKE_FAST_ALLOCATED;
@@ -86,7 +87,7 @@ public:
     bool doneWithoutErrors() const { return !m_error && m_state == DONE; }
     String getAllResponseHeaders() const;
     String getResponseHeader(const String& name) const;
-    ExceptionOr<String> responseText();
+    ExceptionOr<OwnedString> responseText();
     String responseTextIgnoringResponseType() const { return m_responseBuilder.toStringPreserveCapacity(); }
     String responseMIMEType() const;
 
@@ -227,7 +228,7 @@ private:
     unsigned m_lastSendLineNumber { 0 };
     unsigned m_lastSendColumnNumber { 0 };
     String m_lastSendURL;
-    ExceptionCode m_exceptionCode { 0 };
+    std::optional<ExceptionCode> m_exceptionCode;
 
     XMLHttpRequestProgressEventThrottle m_progressEventThrottle;
 

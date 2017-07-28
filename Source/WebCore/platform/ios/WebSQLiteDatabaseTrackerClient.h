@@ -25,12 +25,11 @@
 
 #pragma once
 
-#include "PlatformExportMacros.h"
-
 #if PLATFORM(IOS)
 
+#include "HysteresisActivity.h"
 #include "SQLiteDatabaseTrackerClient.h"
-#include <wtf/NeverDestroyed.h>
+#include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -40,13 +39,17 @@ class WebSQLiteDatabaseTrackerClient final : public SQLiteDatabaseTrackerClient 
 public:
     WEBCORE_EXPORT static WebSQLiteDatabaseTrackerClient& sharedWebSQLiteDatabaseTrackerClient();
 
-    void willBeginFirstTransaction() override;
-    void didFinishLastTransaction() override;
+    void willBeginFirstTransaction() final;
+    void didFinishLastTransaction() final;
 
 private:
     friend class NeverDestroyed<WebSQLiteDatabaseTrackerClient>;
     WebSQLiteDatabaseTrackerClient();
     virtual ~WebSQLiteDatabaseTrackerClient();
+
+    void hysteresisUpdated(HysteresisState);
+
+    HysteresisActivity m_hysteresis;
 };
 
 }

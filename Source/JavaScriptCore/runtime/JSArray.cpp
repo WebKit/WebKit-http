@@ -91,7 +91,7 @@ JSArray* JSArray::tryCreateUninitializedRestricted(ObjectInitializationScope& sc
         if (hasDouble(indexingType)) {
             for (; i < vectorLength; ++i)
                 butterfly->contiguousDouble()[i] = PNaN;
-        } else {
+        } else if (LIKELY(!hasUndecided(indexingType))) {
             for (; i < vectorLength; ++i)
                 butterfly->contiguous()[i].clear();
         }
@@ -377,7 +377,7 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
     // vector with half the post-capacity it had previously.
     unsigned postCapacity = 0;
     if (!addToFront)
-        postCapacity = max(newStorageCapacity - requiredVectorLength, count);
+        postCapacity = newStorageCapacity - requiredVectorLength;
     else if (length < storage->vectorLength()) {
         // Atomic decay, + the post-capacity cannot be greater than what is available.
         postCapacity = min((storage->vectorLength() - length) >> 1, newStorageCapacity - requiredVectorLength);
@@ -386,6 +386,7 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
     }
 
     unsigned newVectorLength = requiredVectorLength + postCapacity;
+    RELEASE_ASSERT(newVectorLength <= MAX_STORAGE_VECTOR_LENGTH);
     unsigned newIndexBias = newStorageCapacity - newVectorLength;
 
     Butterfly* newButterfly = Butterfly::fromBase(newAllocBase, newIndexBias, propertyCapacity);
@@ -569,7 +570,7 @@ bool JSArray::setLength(ExecState* exec, unsigned newLength, bool throwException
     case ArrayWithContiguous: {
         if (newLength == butterfly->publicLength())
             return true;
-        if (newLength >= MAX_ARRAY_INDEX // This case ensures that we can do fast push.
+        if (newLength > MAX_STORAGE_VECTOR_LENGTH // This check ensures that we can do fast push.
             || (newLength >= MIN_SPARSE_ARRAY_INDEX
                 && !isDenseEnoughForVector(newLength, countElements()))) {
             scope.release();

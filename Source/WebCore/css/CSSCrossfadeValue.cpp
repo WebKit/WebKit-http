@@ -32,10 +32,8 @@
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "CrossfadeGeneratedImage.h"
-#include "ImageBuffer.h"
 #include "RenderElement.h"
 #include "StyleCachedImage.h"
-#include "StyleGeneratedImage.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -206,7 +204,7 @@ inline void CSSCrossfadeValue::crossfadeChanged()
         client.key->imageChanged(this);
 }
 
-bool CSSCrossfadeValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSCrossfadeValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (m_cachedFromImage && handler(*m_cachedFromImage))
         return true;

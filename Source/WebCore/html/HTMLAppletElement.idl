@@ -19,9 +19,7 @@
  */
 
 [
-    CustomCall,
-    CustomNamedSetter,
-    JSCustomGetOwnPropertySlotAndDescriptor,
+    Plugin
 ] interface HTMLAppletElement : HTMLElement {
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString alt;

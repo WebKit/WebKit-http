@@ -23,10 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+let mediaControlsHost;
+
 // This is called from HTMLMediaElement::ensureMediaControlsInjectedScript().
 function createControls(shadowRoot, media, host)
 {
     if (host) {
+        mediaControlsHost = host;
         iconService.mediaControlsHost = host;
         shadowRoot.appendChild(document.createElement("style")).textContent = host.shadowRootCSSText;
     }
@@ -36,14 +39,15 @@ function createControls(shadowRoot, media, host)
 
 function UIString(string)
 {
-    if (!("UIStrings" in window))
-        return string;
+    let localizedStrings = {};
+    try {
+        localizedStrings = UIStrings;
+    } catch (error) {}
 
-    if (string in UIStrings)
-        return UIStrings[string];
+    if (localizedStrings[string])
+        return localizedStrings[string];
 
-    console.error(`Localization for "${string}" not found.`);
-    return "LOCALIZED STRING NOT FOUND";
+    return string;
 }
 
 function formatTimeByUnit(value)
@@ -51,9 +55,9 @@ function formatTimeByUnit(value)
     const time = value || 0;
     const absTime = Math.abs(time);
     return {
-        "seconds": Math.floor(absTime % 60).toFixed(0),
-        "minutes": Math.floor((absTime / 60) % 60).toFixed(0),
-        "hours": Math.floor(absTime / (60 * 60)).toFixed(0)
+        seconds: Math.floor(absTime % 60).toFixed(0),
+        minutes: Math.floor((absTime / 60) % 60).toFixed(0),
+        hours: Math.floor(absTime / (60 * 60)).toFixed(0)
     };
 }
 
@@ -64,4 +68,12 @@ function unitizeTime(value, unit)
         returnedUnit = UIString(`${unit}s`);
 
     return `${value} ${returnedUnit}`;
+}
+
+function formattedStringForDuration(timeInSeconds)
+{
+    if (mediaControlsHost)
+        return mediaControlsHost.formattedStringForDuration(Math.abs(timeInSeconds));
+    else
+        return "";
 }

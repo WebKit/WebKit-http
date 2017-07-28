@@ -32,7 +32,6 @@
 #include <wtf/Lock.h>
 #include <wtf/MetaAllocatorHandle.h>
 #include <wtf/MetaAllocator.h>
-#include <wtf/PageAllocation.h>
 
 #if OS(IOS)
 #include <libkern/OSCacheControl.h>
@@ -60,23 +59,6 @@ static const unsigned jitAllocationGranule = 32;
 typedef WTF::MetaAllocatorHandle ExecutableMemoryHandle;
 
 #if ENABLE(ASSEMBLER)
-
-#if defined(FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB) && FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB > 0
-static const size_t fixedExecutableMemoryPoolSize = FIXED_EXECUTABLE_MEMORY_POOL_SIZE_IN_MB * 1024 * 1024;
-#elif CPU(ARM)
-static const size_t fixedExecutableMemoryPoolSize = 16 * 1024 * 1024;
-#elif CPU(ARM64)
-static const size_t fixedExecutableMemoryPoolSize = 32 * 1024 * 1024;
-#elif CPU(X86_64)
-static const size_t fixedExecutableMemoryPoolSize = 1024 * 1024 * 1024;
-#else
-static const size_t fixedExecutableMemoryPoolSize = 32 * 1024 * 1024;
-#endif
-#if CPU(ARM)
-static const double executablePoolReservationFraction = 0.15;
-#else
-static const double executablePoolReservationFraction = 0.25;
-#endif
 
 extern JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
 extern JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;

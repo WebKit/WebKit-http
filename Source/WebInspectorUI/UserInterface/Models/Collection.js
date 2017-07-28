@@ -116,4 +116,6 @@ WebInspector.Collection = class Collection extends WebInspector.Object
     Frame: (object) => object instanceof WebInspector.Frame,
     Resource: (object) => object instanceof WebInspector.Resource,
     Script: (object) => object instanceof WebInspector.Script,
+    CSSStyleSheet: (object) => object instanceof WebInspector.CSSStyleSheet,
+    Canvas: (object) => object instanceof WebInspector.Canvas,
 };

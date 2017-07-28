@@ -30,11 +30,30 @@
 #include <wtf/Assertions.h>
 #include <wtf/PrintStream.h>
 
-#if HAVE(BACKTRACE_SYMBOLS) || HAVE(DLADDR)
-#include <cxxabi.h>
-#include <dlfcn.h>
+#if HAVE(BACKTRACE_SYMBOLS) || HAVE(BACKTRACE)
 #include <execinfo.h>
 #endif
+
+#if HAVE(DLADDR)
+#include <cxxabi.h>
+#include <dlfcn.h>
+#endif
+
+#if OS(WINDOWS)
+#include <windows.h>
+#endif
+
+void WTFGetBacktrace(void** stack, int* size)
+{
+#if HAVE(BACKTRACE)
+    *size = backtrace(stack, *size);
+#elif OS(WINDOWS)
+    *size = RtlCaptureStackBackTrace(0, *size, stack, 0);
+#else
+    UNUSED_PARAM(stack);
+    *size = 0;
+#endif
+}
 
 namespace WTF {
 
@@ -44,19 +63,23 @@ ALWAYS_INLINE size_t StackTrace::instanceSize(int capacity)
     return sizeof(StackTrace) + (capacity - 1) * sizeof(void*);
 }
 
-StackTrace* StackTrace::captureStackTrace(int maxFrames, int framesToSkip)
+std::unique_ptr<StackTrace> StackTrace::captureStackTrace(int maxFrames, int framesToSkip)
 {
     maxFrames = std::max(1, maxFrames);
     size_t sizeToAllocate = instanceSize(maxFrames);
-    StackTrace* trace = new (NotNull, fastMalloc(sizeToAllocate)) StackTrace();
+    std::unique_ptr<StackTrace> trace(new (NotNull, fastMalloc(sizeToAllocate)) StackTrace());
 
     // Skip 2 additional frames i.e. StackTrace::captureStackTrace and WTFGetBacktrace.
     framesToSkip += 2;
     int numberOfFrames = maxFrames + framesToSkip;
 
     WTFGetBacktrace(&trace->m_skippedFrame0, &numberOfFrames);
-    RELEASE_ASSERT(numberOfFrames >= framesToSkip);
-    trace->m_size = numberOfFrames - framesToSkip;
+    if (numberOfFrames) {
+        RELEASE_ASSERT(numberOfFrames >= framesToSkip);
+        trace->m_size = numberOfFrames - framesToSkip;
+    } else
+        trace->m_size = 0;
+
     trace->m_capacity = maxFrames;
 
     return trace;

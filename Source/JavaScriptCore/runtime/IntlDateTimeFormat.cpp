@@ -959,7 +959,9 @@ const char* IntlDateTimeFormat::partTypeString(UDateFormatField field)
     case UDAT_STANDALONE_QUARTER_FIELD:
     case UDAT_RELATED_YEAR_FIELD:
     case UDAT_TIME_SEPARATOR_FIELD:
+#if U_ICU_VERSION_MAJOR_NUM < 58
     case UDAT_FIELD_COUNT:
+#endif
         return "literal";
     }
     // Any newer additions to the UDateFormatField enum should just be considered a "literal" part.

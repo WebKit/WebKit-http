@@ -140,6 +140,7 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
             *result = downcast<CachedScript>(*cachedResource).script().toString();
             return true;
         case CachedResource::MediaResource:
+        case CachedResource::Icon:
         case CachedResource::RawResource: {
             auto* buffer = cachedResource->resourceBuffer();
             if (!buffer)
@@ -291,6 +292,7 @@ InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const Ca
     case CachedResource::MainResource:
         return InspectorPageAgent::DocumentResource;
     case CachedResource::MediaResource:
+    case CachedResource::Icon:
     case CachedResource::RawResource: {
         switch (cachedResource.resourceRequest().requester()) {
         case ResourceRequest::Requester::Fetch:
@@ -367,7 +369,6 @@ void InspectorPageAgent::enable(ErrorString&)
 void InspectorPageAgent::disable(ErrorString&)
 {
     m_enabled = false;
-    m_scriptsToEvaluateOnLoad = nullptr;
     m_instrumentingAgents.setInspectorPageAgent(nullptr);
 
     ErrorString unused;
@@ -375,48 +376,30 @@ void InspectorPageAgent::disable(ErrorString&)
     setEmulatedMedia(unused, emptyString());
 }
 
-void InspectorPageAgent::addScriptToEvaluateOnLoad(ErrorString&, const String& source, String* identifier)
-{
-    if (!m_scriptsToEvaluateOnLoad)
-        m_scriptsToEvaluateOnLoad = InspectorObject::create();
-
-    // Assure we don't override existing ids -- m_lastScriptIdentifier could get out of sync WRT actual
-    // scripts once we restored the scripts from the cookie during navigation.
-    do {
-        *identifier = String::number(++m_lastScriptIdentifier);
-    } while (m_scriptsToEvaluateOnLoad->find(*identifier) != m_scriptsToEvaluateOnLoad->end());
-
-    m_scriptsToEvaluateOnLoad->setString(*identifier, source);
-}
-
-void InspectorPageAgent::removeScriptToEvaluateOnLoad(ErrorString& error, const String& identifier)
-{
-    if (!m_scriptsToEvaluateOnLoad || m_scriptsToEvaluateOnLoad->find(identifier) == m_scriptsToEvaluateOnLoad->end()) {
-        error = ASCIILiteral("Script not found");
-        return;
-    }
-
-    m_scriptsToEvaluateOnLoad->remove(identifier);
-}
-
-void InspectorPageAgent::reload(ErrorString&, const bool* const optionalIgnoreCache, const String* optionalScriptToEvaluateOnLoad)
+void InspectorPageAgent::reload(ErrorString&, const bool* const optionalIgnoreCache, const bool* const optionalRevalidateAllResources, const String* optionalScriptToEvaluateOnLoad)
 {
     m_pendingScriptToEvaluateOnLoadOnce = optionalScriptToEvaluateOnLoad ? *optionalScriptToEvaluateOnLoad : emptyString();
 
+    bool reloadFromOrigin = optionalIgnoreCache && *optionalIgnoreCache;
+    bool revalidateAllResources = optionalRevalidateAllResources && *optionalRevalidateAllResources;
+
     OptionSet<ReloadOption> reloadOptions;
-    if (optionalIgnoreCache && *optionalIgnoreCache)
+    if (reloadFromOrigin)
         reloadOptions |= ReloadOption::FromOrigin;
+    if (!revalidateAllResources)
+        reloadOptions |= ReloadOption::ExpiredOnly;
+
     m_page.mainFrame().loader().reload(reloadOptions);
 }
 
 void InspectorPageAgent::navigate(ErrorString&, const String& url)
 {
-    UserGestureIndicator indicator(ProcessingUserGesture);
+    UserGestureIndicator indicator { ProcessingUserGesture };
     Frame& frame = m_page.mainFrame();
 
-    ResourceRequest resourceRequest(frame.document()->completeURL(url));
-    FrameLoadRequest frameRequest(frame.document()->securityOrigin(), resourceRequest, "_self", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::No, NewFrameOpenerPolicy::Allow, ShouldReplaceDocumentIfJavaScriptURL::ReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
-    frame.loader().changeLocation(frameRequest);
+    ResourceRequest resourceRequest { frame.document()->completeURL(url) };
+    FrameLoadRequest frameLoadRequest { *frame.document(), frame.document()->securityOrigin(), resourceRequest, ASCIILiteral("_self"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::No, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    frame.loader().changeLocation(WTFMove(frameLoadRequest));
 }
 
 static Ref<Inspector::Protocol::Page::Cookie> buildObjectForCookie(const Cookie& cookie)
@@ -660,14 +643,6 @@ void InspectorPageAgent::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWor
 {
     if (&world != &mainThreadNormalWorld())
         return;
-
-    if (m_scriptsToEvaluateOnLoad) {
-        for (auto& keyValuePair : *m_scriptsToEvaluateOnLoad) {
-            String scriptText;
-            if (keyValuePair.value->asString(scriptText))
-                frame->script().executeScript(scriptText);
-        }
-    }
 
     if (!m_scriptToEvaluateOnLoadOnce.isEmpty())
         frame->script().executeScript(m_scriptToEvaluateOnLoadOnce);

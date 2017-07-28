@@ -31,7 +31,6 @@
 #include "DatabaseContext.h"
 #include "DatabaseTask.h"
 #include "DatabaseTracker.h"
-#include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
 #include "PlatformStrategies.h"
@@ -124,7 +123,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     auto backend = tryToOpenDatabaseBackend(context, name, expectedVersion, displayName, estimatedSize, setVersionInNewDatabase, FirstTryToOpenDatabase);
 
     if (backend.hasException()) {
-        if (backend.exception().code() == QUOTA_EXCEEDED_ERR) {
+        if (backend.exception().code() == QuotaExceededError) {
             // Notify the client that we've exceeded the database quota.
             // The client may want to increase the quota, and we'll give it
             // one more try after if that is the case.
@@ -138,7 +137,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     }
 
     if (backend.hasException()) {
-        if (backend.exception().code() == INVALID_STATE_ERR)
+        if (backend.exception().code() == InvalidStateError)
             logErrorMessage(context, backend.exception().message());
         else
             logOpenDatabaseError(context, name);
@@ -153,12 +152,12 @@ ExceptionOr<Ref<Database>> DatabaseManager::tryToOpenDatabaseBackend(ScriptExecu
     if (is<Document>(&scriptContext)) {
         auto* page = downcast<Document>(scriptContext).page();
         if (!page || page->usesEphemeralSession())
-            return Exception { SECURITY_ERR };
+            return Exception { SecurityError };
     }
 
     if (scriptContext.isWorkerGlobalScope()) {
         ASSERT_NOT_REACHED();
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
     }
 
     auto backendContext = this->databaseContext(scriptContext);
@@ -217,7 +216,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabase(ScriptExecutionContext&
         LOG(StorageAPI, "Scheduling DatabaseCreationCallbackTask for database %p\n", database.get());
         database->setHasPendingCreationEvent(true);
         database->m_scriptExecutionContext->postTask([creationCallback, database] (ScriptExecutionContext&) {
-            creationCallback->handleEvent(database.get());
+            creationCallback->handleEvent(*database);
             database->setHasPendingCreationEvent(false);
         });
     }

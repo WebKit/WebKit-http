@@ -28,7 +28,6 @@
 #if USE(LIBWEBRTC)
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "IceCandidate.h"
 #include "JSRTCStatsReport.h"
 #include "LibWebRTCDataChannelHandler.h"
@@ -70,19 +69,34 @@ LibWebRTCPeerConnectionBackend::~LibWebRTCPeerConnectionBackend()
 {
 }
 
+static inline webrtc::PeerConnectionInterface::BundlePolicy bundlePolicyfromConfiguration(const MediaEndpointConfiguration& configuration)
+{
+    switch (configuration.bundlePolicy) {
+    case RTCBundlePolicy::MaxCompat:
+        return webrtc::PeerConnectionInterface::kBundlePolicyMaxCompat;
+    case RTCBundlePolicy::MaxBundle:
+        return webrtc::PeerConnectionInterface::kBundlePolicyMaxBundle;
+    case RTCBundlePolicy::Balanced:
+        return webrtc::PeerConnectionInterface::kBundlePolicyBalanced;
+    }
+}
+
+static inline webrtc::PeerConnectionInterface::IceTransportsType iceTransportPolicyfromConfiguration(const MediaEndpointConfiguration& configuration)
+{
+    switch (configuration.iceTransportPolicy) {
+    case RTCIceTransportPolicy::Relay:
+        return webrtc::PeerConnectionInterface::kRelay;
+    case RTCIceTransportPolicy::All:
+        return webrtc::PeerConnectionInterface::kAll;
+    }
+}
+
 static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaEndpointConfiguration(MediaEndpointConfiguration&& configuration)
 {
     webrtc::PeerConnectionInterface::RTCConfiguration rtcConfiguration;
 
-    if (configuration.iceTransportPolicy == RTCIceTransportPolicy::Relay)
-        rtcConfiguration.type = webrtc::PeerConnectionInterface::kRelay;
-
-    // FIXME: Support PeerConnectionStates::BundlePolicy::MaxBundle.
-    // LibWebRTC does not like it and will fail to set any configuration field otherwise.
-    // See https://bugs.webkit.org/show_bug.cgi?id=169389.
-
-    if (configuration.bundlePolicy == RTCBundlePolicy::MaxCompat)
-        rtcConfiguration.bundle_policy = webrtc::PeerConnectionInterface::kBundlePolicyMaxCompat;
+    rtcConfiguration.type = iceTransportPolicyfromConfiguration(configuration);
+    rtcConfiguration.bundle_policy = bundlePolicyfromConfiguration(configuration);
 
     for (auto& server : configuration.iceServers) {
         webrtc::PeerConnectionInterface::IceServer iceServer;
@@ -93,14 +107,16 @@ static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaE
         rtcConfiguration.servers.push_back(WTFMove(iceServer));
     }
 
-    rtcConfiguration.ice_candidate_pool_size = configuration.iceCandidatePoolSize;
+    rtcConfiguration.set_cpu_adaptation(false);
+    // FIXME: Activate ice candidate pool size once it no longer bothers test bots.
+    // rtcConfiguration.ice_candidate_pool_size = configuration.iceCandidatePoolSize;
 
     return rtcConfiguration;
 }
 
-void LibWebRTCPeerConnectionBackend::setConfiguration(MediaEndpointConfiguration&& configuration)
+bool LibWebRTCPeerConnectionBackend::setConfiguration(MediaEndpointConfiguration&& configuration)
 {
-    m_endpoint->backend().SetConfiguration(configurationFromMediaEndpointConfiguration(WTFMove(configuration)));
+    return m_endpoint->setConfiguration(libWebRTCProvider(m_peerConnection), configurationFromMediaEndpointConfiguration(WTFMove(configuration)));
 }
 
 void LibWebRTCPeerConnectionBackend::getStats(MediaStreamTrack* track, Ref<DeferredPromise>&& promise)
@@ -159,7 +175,7 @@ void LibWebRTCPeerConnectionBackend::doCreateOffer(RTCOfferOptions&& options)
 void LibWebRTCPeerConnectionBackend::doCreateAnswer(RTCAnswerOptions&&)
 {
     if (!m_isRemoteDescriptionSet) {
-        createAnswerFailed(Exception { INVALID_STATE_ERR, "No remote description set" });
+        createAnswerFailed(Exception { InvalidStateError, "No remote description set" });
         return;
     }
     m_endpoint->doCreateAnswer();
@@ -250,6 +266,11 @@ LibWebRTCPeerConnectionBackend::VideoReceiver LibWebRTCPeerConnectionBackend::vi
     }
     auto source = RealtimeIncomingVideoSource::create(nullptr, WTFMove(trackId));
     auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+
+    auto transceiver = RTCRtpTransceiver::create(RTCRtpSender::create("video", { }, m_peerConnection), receiver.copyRef());
+    transceiver->disableSendingDirection();
+    m_peerConnection.addTransceiver(WTFMove(transceiver));
+
     return { WTFMove(receiver), WTFMove(source) };
 }
 
@@ -267,6 +288,11 @@ LibWebRTCPeerConnectionBackend::AudioReceiver LibWebRTCPeerConnectionBackend::au
     }
     auto source = RealtimeIncomingAudioSource::create(nullptr, WTFMove(trackId));
     auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+
+    auto transceiver = RTCRtpTransceiver::create(RTCRtpSender::create("audio", { }, m_peerConnection), receiver.copyRef());
+    transceiver->disableSendingDirection();
+    m_peerConnection.addTransceiver(WTFMove(transceiver));
+
     return { WTFMove(receiver), WTFMove(source) };
 }
 
@@ -277,7 +303,10 @@ std::unique_ptr<RTCDataChannelHandler> LibWebRTCPeerConnectionBackend::createDat
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentLocalDescription() const
 {
-    return m_endpoint->currentLocalDescription();
+    auto description = m_endpoint->currentLocalDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentRemoteDescription() const
@@ -287,7 +316,10 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentRemoteDescr
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingLocalDescription() const
 {
-    return m_endpoint->pendingLocalDescription();
+    auto description = m_endpoint->pendingLocalDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingRemoteDescription() const
@@ -297,7 +329,10 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingRemoteDescr
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::localDescription() const
 {
-    return m_endpoint->localDescription();
+    auto description = m_endpoint->localDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::remoteDescription() const
@@ -337,34 +372,34 @@ void LibWebRTCPeerConnectionBackend::replaceTrack(RTCRtpSender& sender, Ref<Medi
     switch (currentTrack->source().type()) {
     case RealtimeMediaSource::Type::None:
         ASSERT_NOT_REACHED();
-        promise.reject(INVALID_MODIFICATION_ERR);
+        promise.reject(InvalidModificationError);
         break;
     case RealtimeMediaSource::Type::Audio: {
         for (auto& audioSource : m_audioSources) {
-            if (&audioSource->source() == &currentTrack->source()) {
-                if (!audioSource->setSource(track->source())) {
-                    promise.reject(INVALID_MODIFICATION_ERR);
+            if (&audioSource->source() == &currentTrack->privateTrack()) {
+                if (!audioSource->setSource(track->privateTrack())) {
+                    promise.reject(InvalidModificationError);
                     return;
                 }
                 connection().enqueueReplaceTrackTask(sender, WTFMove(track), WTFMove(promise));
                 return;
             }
         }
-        promise.reject(INVALID_MODIFICATION_ERR);
+        promise.reject(InvalidModificationError);
         break;
     }
     case RealtimeMediaSource::Type::Video: {
         for (auto& videoSource : m_videoSources) {
-            if (&videoSource->source() == &currentTrack->source()) {
-                if (!videoSource->setSource(track->source())) {
-                    promise.reject(INVALID_MODIFICATION_ERR);
+            if (&videoSource->source() == &currentTrack->privateTrack()) {
+                if (!videoSource->setSource(track->privateTrack())) {
+                    promise.reject(InvalidModificationError);
                     return;
                 }
                 connection().enqueueReplaceTrackTask(sender, WTFMove(track), WTFMove(promise));
                 return;
             }
         }
-        promise.reject(INVALID_MODIFICATION_ERR);
+        promise.reject(InvalidModificationError);
         break;
     }
     }
@@ -373,6 +408,12 @@ void LibWebRTCPeerConnectionBackend::replaceTrack(RTCRtpSender& sender, Ref<Medi
 RTCRtpParameters LibWebRTCPeerConnectionBackend::getParameters(RTCRtpSender& sender) const
 {
     return m_endpoint->getRTCRtpSenderParameters(sender);
+}
+
+void LibWebRTCPeerConnectionBackend::applyRotationForOutgoingVideoSources()
+{
+    for (auto& source : m_videoSources)
+        source->setApplyRotation(true);
 }
 
 } // namespace WebCore

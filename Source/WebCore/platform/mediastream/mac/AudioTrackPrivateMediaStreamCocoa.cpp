@@ -38,8 +38,6 @@
 
 namespace WebCore {
 
-const int renderBufferSize = 128;
-
 AudioTrackPrivateMediaStreamCocoa::AudioTrackPrivateMediaStreamCocoa(MediaStreamTrackPrivate& track)
     : AudioTrackPrivateMediaStream(track)
 {
@@ -162,8 +160,6 @@ AudioComponentInstance AudioTrackPrivateMediaStreamCocoa::createAudioUnit(CAAudi
         LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnits(%p) AudioUnitInitialize() failed, error %d (%.4s)", this, (int)err, (char*)&err);
         return nullptr;
     }
-
-    AudioSession::sharedSession().setPreferredBufferSize(renderBufferSize);
 
     return remoteIOUnit;
 }

@@ -34,7 +34,6 @@
 #include "DatabaseContext.h"
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
-#include "ExceptionCode.h"
 #include "Logging.h"
 #include "OriginLock.h"
 #include "SQLError.h"
@@ -76,7 +75,7 @@ SQLTransaction::~SQLTransaction()
 ExceptionOr<void> SQLTransaction::executeSql(const String& sqlStatement, std::optional<Vector<SQLValue>>&& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& callbackError)
 {
     if (!m_executeSqlAllowed || !m_database->opened())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     int permissions = DatabaseAuthorizer::ReadWriteMask;
     if (!m_database->databaseContext().allowDatabaseAccess())
@@ -371,7 +370,10 @@ void SQLTransaction::deliverTransactionCallback()
     RefPtr<SQLTransactionCallback> callback = m_callbackWrapper.unwrap();
     if (callback) {
         m_executeSqlAllowed = true;
-        shouldDeliverErrorCallback = !callback->handleEvent(this);
+
+        auto result = callback->handleEvent(*this);
+        shouldDeliverErrorCallback = result.type() == CallbackResultType::ExceptionThrown;
+
         m_executeSqlAllowed = false;
     }
 
@@ -392,7 +394,7 @@ void SQLTransaction::deliverTransactionErrorCallback()
     // error to have occurred in this transaction.
     RefPtr<SQLTransactionErrorCallback> errorCallback = m_errorCallbackWrapper.unwrap();
     if (errorCallback)
-        errorCallback->handleEvent(m_transactionError.get());
+        errorCallback->handleEvent(*m_transactionError);
 
     clearCallbackWrappers();
 
@@ -407,7 +409,7 @@ void SQLTransaction::deliverStatementCallback()
     // Spec 4.3.2.6.6 and 4.3.2.6.3: If the statement callback went wrong, jump to the transaction error callback
     // Otherwise, continue to loop through the statement queue
     m_executeSqlAllowed = true;
-    bool result = m_currentStatement->performCallback(this);
+    bool result = m_currentStatement->performCallback(*this);
     m_executeSqlAllowed = false;
 
     if (result) {

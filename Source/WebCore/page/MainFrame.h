@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "EventHandler.h"
 #include "Frame.h"
 #include <wtf/Vector.h>
 
@@ -93,6 +92,9 @@ private:
 #endif
 
     std::unique_ptr<PerformanceLogging> m_performanceLogging;
+
+    unsigned m_navigationDisableCount { 0 };
+    friend class NavigationDisabler;
 };
 
 } // namespace WebCore

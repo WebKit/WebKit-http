@@ -21,10 +21,15 @@
 #include "JSLazyEventListener.h"
 
 #include "CachedScriptFetcher.h"
+#include "ContainerNode.h"
 #include "ContentSecurityPolicy.h"
+#include "Document.h"
+#include "Element.h"
 #include "Frame.h"
 #include "JSNode.h"
+#include "QualifiedName.h"
 #include "ScriptController.h"
+#include <runtime/CatchScope.h>
 #include <runtime/FunctionConstructor.h>
 #include <runtime/IdentifierInlines.h>
 #include <wtf/NeverDestroyed.h>
@@ -71,18 +76,19 @@ JSLazyEventListener::~JSLazyEventListener()
 #endif
 }
 
-JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* executionContext) const
+JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext& executionContext) const
 {
     ASSERT(is<Document>(executionContext));
-    if (!executionContext)
-        return nullptr;
-
     ASSERT(!m_code.isNull());
     ASSERT(!m_eventParameterName.isNull());
     if (m_code.isNull() || m_eventParameterName.isNull())
         return nullptr;
 
-    Document& document = downcast<Document>(*executionContext);
+    // As per the HTML specification [1], if this is an element's event handler, then document should be the
+    // element's document. The script execution context may be different from the node's document if the
+    // node's document was created by JavaScript.
+    // [1] https://html.spec.whatwg.org/multipage/webappapis.html#getting-the-current-value-of-the-event-handler
+    Document& document = m_originalNode ? m_originalNode->document() : downcast<Document>(executionContext);
 
     if (!document.frame())
         return nullptr;
@@ -94,7 +100,7 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
     if (!script.canExecuteScripts(AboutToExecuteScript) || script.isPaused())
         return nullptr;
 
-    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(executionContext, isolatedWorld());
+    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(&executionContext, isolatedWorld());
     if (!globalObject)
         return nullptr;
 

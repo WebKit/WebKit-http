@@ -26,12 +26,15 @@
 #include "config.h"
 #include "MarkedBlock.h"
 
+#include "FreeListInlines.h"
 #include "JSCell.h"
 #include "JSDestructibleObject.h"
 #include "JSCInlines.h"
+#include "MarkedAllocatorInlines.h"
 #include "MarkedBlockInlines.h"
 #include "SuperSampler.h"
 #include "SweepingScope.h"
+#include <wtf/CommaPrinter.h>
 
 namespace JSC {
 
@@ -134,8 +137,7 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
             return IterationStatus::Continue;
         });
 
-    forEachFreeCell(
-        freeList,
+    freeList.forEach(
         [&] (HeapCell* cell) {
             if (false)
                 dataLog("Free cell: ", RawPointer(cell), "\n");
@@ -150,16 +152,17 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
 void MarkedBlock::Handle::lastChanceToFinalize()
 {
     allocator()->setIsAllocated(NoLockingNecessary, this, false);
+    allocator()->setIsDestructible(NoLockingNecessary, this, true);
     m_block->m_marks.clearAll();
     m_block->clearHasAnyMarked();
     m_block->m_markingVersion = heap()->objectSpace().markingVersion();
     m_weakSet.lastChanceToFinalize();
     m_newlyAllocated.clearAll();
     m_newlyAllocatedVersion = heap()->objectSpace().newlyAllocatedVersion();
-    sweep();
+    sweep(nullptr);
 }
 
-FreeList MarkedBlock::Handle::resumeAllocating()
+void MarkedBlock::Handle::resumeAllocating(FreeList& freeList)
 {
     {
         auto locker = holdLock(block().m_lock);
@@ -173,38 +176,23 @@ FreeList MarkedBlock::Handle::resumeAllocating()
             if (false)
                 dataLog("There ain't no newly allocated.\n");
             // This means we had already exhausted the block when we stopped allocation.
-            return FreeList();
+            freeList.clear();
+            return;
         }
     }
 
     // Re-create our free list from before stopping allocation. Note that this may return an empty
     // freelist, in which case the block will still be Marked!
-    return sweep(SweepToFreeList);
+    sweep(&freeList);
 }
 
 void MarkedBlock::Handle::zap(const FreeList& freeList)
 {
-    forEachFreeCell(
-        freeList,
+    freeList.forEach(
         [&] (HeapCell* cell) {
             if (m_attributes.destruction == NeedsDestruction)
                 cell->zap();
         });
-}
-
-template<typename Func>
-void MarkedBlock::Handle::forEachFreeCell(const FreeList& freeList, const Func& func)
-{
-    if (freeList.remaining) {
-        for (unsigned remaining = freeList.remaining; remaining; remaining -= cellSize())
-            func(bitwise_cast<HeapCell*>(freeList.payloadEnd - remaining));
-    } else {
-        for (FreeCell* current = freeList.head; current;) {
-            FreeCell* next = current->next;
-            func(bitwise_cast<HeapCell*>(current));
-            current = next;
-        }
-    }
 }
 
 void MarkedBlock::aboutToMarkSlow(HeapVersion markingVersion)
@@ -407,20 +395,25 @@ Subspace* MarkedBlock::Handle::subspace() const
     return allocator()->subspace();
 }
 
-FreeList MarkedBlock::Handle::sweep(SweepMode sweepMode)
+void MarkedBlock::Handle::sweep(FreeList* freeList)
 {
     SweepingScope sweepingScope(*heap());
+    
+    SweepMode sweepMode = freeList ? SweepToFreeList : SweepOnly;
     
     m_allocator->setIsUnswept(NoLockingNecessary, this, false);
     
     m_weakSet.sweep();
+    
+    bool needsDestruction = m_attributes.destruction == NeedsDestruction
+        && m_allocator->isDestructible(NoLockingNecessary, this);
 
-    if (sweepMode == SweepOnly && m_attributes.destruction == DoesNotNeedDestruction)
-        return FreeList();
+    if (sweepMode == SweepOnly && !needsDestruction)
+        return;
 
     if (UNLIKELY(m_isFreeListed)) {
         RELEASE_ASSERT(sweepMode == SweepToFreeList);
-        return FreeList();
+        return;
     }
     
     ASSERT(!m_allocator->isAllocated(NoLockingNecessary, this));
@@ -428,8 +421,10 @@ FreeList MarkedBlock::Handle::sweep(SweepMode sweepMode)
     if (space()->isMarking())
         block().m_lock.lock();
     
-    if (m_attributes.destruction == NeedsDestruction)
-        return subspace()->finishSweep(*this, sweepMode);
+    if (needsDestruction) {
+        subspace()->finishSweep(*this, freeList);
+        return;
+    }
     
     // Handle the no-destructor specializations here, since we have the most of those. This
     // ensures that they don't get re-specialized for every destructor space.
@@ -439,7 +434,6 @@ FreeList MarkedBlock::Handle::sweep(SweepMode sweepMode)
     NewlyAllocatedMode newlyAllocatedMode = this->newlyAllocatedMode();
     MarksMode marksMode = this->marksMode();
     
-    FreeList result;
     auto trySpecialized = [&] () -> bool {
         if (sweepMode != SweepToFreeList)
             return false;
@@ -452,20 +446,20 @@ FreeList MarkedBlock::Handle::sweep(SweepMode sweepMode)
         case IsEmpty:
             switch (marksMode) {
             case MarksNotStale:
-                result = specializedSweep<true, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale>(IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale, [] (VM&, JSCell*) { });
+                specializedSweep<true, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale>(freeList, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale, [] (VM&, JSCell*) { });
                 return true;
             case MarksStale:
-                result = specializedSweep<true, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale>(IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale, [] (VM&, JSCell*) { });
+                specializedSweep<true, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale>(freeList, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale, [] (VM&, JSCell*) { });
                 return true;
             }
             break;
         case NotEmpty:
             switch (marksMode) {
             case MarksNotStale:
-                result = specializedSweep<true, NotEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale>(IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale, [] (VM&, JSCell*) { });
+                specializedSweep<true, NotEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale>(freeList, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksNotStale, [] (VM&, JSCell*) { });
                 return true;
             case MarksStale:
-                result = specializedSweep<true, NotEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale>(IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale, [] (VM&, JSCell*) { });
+                specializedSweep<true, NotEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale>(freeList, IsEmpty, SweepToFreeList, BlockHasNoDestructors, DontScribble, DoesNotHaveNewlyAllocated, MarksStale, [] (VM&, JSCell*) { });
                 return true;
             }
             break;
@@ -475,10 +469,16 @@ FreeList MarkedBlock::Handle::sweep(SweepMode sweepMode)
     };
     
     if (trySpecialized())
-        return result;
+        return;
 
     // The template arguments don't matter because the first one is false.
-    return specializedSweep<false, IsEmpty, SweepOnly, BlockHasNoDestructors, DontScribble, HasNewlyAllocated, MarksStale>(emptyMode, sweepMode, BlockHasNoDestructors, scribbleMode, newlyAllocatedMode, marksMode, [] (VM&, JSCell*) { });
+    specializedSweep<false, IsEmpty, SweepOnly, BlockHasNoDestructors, DontScribble, HasNewlyAllocated, MarksStale>(freeList, emptyMode, sweepMode, BlockHasNoDestructors, scribbleMode, newlyAllocatedMode, marksMode, [] (VM&, JSCell*) { });
+}
+
+bool MarkedBlock::Handle::isFreeListedCell(const void* target) const
+{
+    ASSERT(isFreeListed());
+    return m_allocator->isFreeListedCell(target);
 }
 
 } // namespace JSC

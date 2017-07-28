@@ -1,7 +1,5 @@
 /*
- * This file is part of the theme implementation for form controls in WebCore.
- *
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,48 +20,38 @@
 
 #pragma once
 
-#include "BorderData.h"
 #include "ControlStates.h"
-#include "FillLayer.h"
-#if USE(NEW_THEME)
-#include "Theme.h"
-#else
-#include "ThemeTypes.h"
-#endif
 #include "PaintInfo.h"
 #include "PopupMenuStyle.h"
 #include "ScrollTypes.h"
-#include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
+#include "ThemeTypes.h"
 
 namespace WebCore {
 
-class CSSStyleSheet;
+class BorderData;
 class Element;
 class FileList;
+class FillLayer;
 class HTMLInputElement;
 class Icon;
-class Page;
-class PopupMenu;
 class RenderAttachment;
 class RenderBox;
-class RenderMenuList;
 class RenderMeter;
 class RenderObject;
 class RenderProgress;
-class RenderSnapshottedPlugIn;
+class RenderStyle;
 class StyleResolver;
 
-class RenderTheme : public RefCounted<RenderTheme> {
+class RenderTheme {
 protected:
     RenderTheme();
 
-public:
     virtual ~RenderTheme() { }
 
-    // This function is to be implemented in your platform-specific theme implementation to hand back the
+public:
+    // This function is to be implemented in platform-specific theme implementations to hand back the
     // appropriate platform theme.
-    static RenderTheme& singleton();
+    WEBCORE_EXPORT static RenderTheme& singleton();
 
     virtual void purgeCaches() { }
 
@@ -95,6 +83,7 @@ public:
     virtual String extraMediaControlsStyleSheet() { return String(); }
     virtual String mediaControlsScript() { return String(); }
     virtual String mediaControlsBase64StringForIconNameAndType(const String&, const String&) { return String(); }
+    virtual String mediaControlsFormattedStringForDuration(double) { return String(); }
 #endif
 #if ENABLE(FULLSCREEN_API)
     virtual String extraFullScreenStyleSheet() { return String(); }
@@ -253,6 +242,9 @@ public:
     enum class InnerSpinButtonLayout { Vertical, HorizontalUpLeft, HorizontalUpRight };
     virtual InnerSpinButtonLayout innerSpinButtonLayout(const RenderObject&) const { return InnerSpinButtonLayout::Vertical; }
 
+    virtual bool shouldMockBoldSystemFontForAccessibility() const { return false; }
+    virtual void setShouldMockBoldSystemFontForAccessibility(bool) { }
+
 protected:
     virtual FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const;
     virtual void updateCachedSystemFontDescription(CSSValueID systemFontID, FontCascadeDescription&) const = 0;
@@ -407,10 +399,6 @@ private:
     mutable Color m_inactiveListBoxSelectionBackgroundColor;
     mutable Color m_activeListBoxSelectionForegroundColor;
     mutable Color m_inactiveListBoxSelectionForegroundColor;
-
-#if USE(NEW_THEME)
-    Theme* m_theme; // The platform-specific theme.
-#endif
 };
 
 } // namespace WebCore

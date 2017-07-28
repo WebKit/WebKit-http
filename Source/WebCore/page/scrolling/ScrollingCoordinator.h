@@ -26,7 +26,6 @@
 #pragma once
 
 #include "EventTrackingRegions.h"
-#include "IntRect.h"
 #include "LayoutRect.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollSnapOffsetsInfo.h"
@@ -113,6 +112,12 @@ struct ScrollableAreaParameters {
     }
 };
 
+enum class ViewportRectStability {
+    Stable,
+    Unstable,
+    ChangingObscuredInsetsInteractively // This implies Unstable.
+};
+
 class ScrollingCoordinator : public ThreadSafeRefCounted<ScrollingCoordinator> {
 public:
     static Ref<ScrollingCoordinator> create(Page*);
@@ -130,7 +135,7 @@ public:
     virtual void frameViewLayoutUpdated(FrameView&) { }
 
     using LayoutViewportOriginOrOverrideRect = WTF::Variant<std::optional<FloatPoint>, std::optional<FloatRect>>;
-    virtual void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool /* programmaticScroll */, bool /* inStableState*/, ScrollingLayerPositionAction) { }
+    virtual void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool /* programmaticScroll */, ViewportRectStability, ScrollingLayerPositionAction) { }
 
     // Should be called whenever the slow repaint objects counter changes between zero and one.
     void frameViewHasSlowRepaintObjectsDidChange(FrameView&);
@@ -149,11 +154,6 @@ public:
     void handleWheelEventPhase(PlatformWheelEventPhase);
 #endif
 
-#if ENABLE(WEB_REPLAY)
-    // Called when the page transitions between executing normally and deterministically.
-    void replaySessionStateDidChange();
-#endif
-
     // Force all scroll layer position updates to happen on the main thread.
     WEBCORE_EXPORT void setForceSynchronousScrollLayerPositionUpdates(bool);
 
@@ -165,7 +165,9 @@ public:
     virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID /*parentID*/) { return newNodeID; }
     virtual void detachFromStateTree(ScrollingNodeID) { }
     virtual void clearStateTree() { }
-    virtual void updateViewportConstrainedNode(ScrollingNodeID, const ViewportConstraints&, GraphicsLayer*) { }
+
+    virtual void updateNodeLayer(ScrollingNodeID, GraphicsLayer*) { }
+    virtual void updateNodeViewportConstraints(ScrollingNodeID, const ViewportConstraints&) { }
 
     struct ScrollingGeometry {
         FloatSize scrollableAreaSize;
@@ -238,15 +240,17 @@ private:
 
     virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(const FrameView&) const;
     void updateSynchronousScrollingReasons(FrameView&);
+    void updateSynchronousScrollingReasonsForAllFrames();
 
     EventTrackingRegions absoluteEventTrackingRegionsForFrame(const Frame&) const;
-    
+
     bool m_forceSynchronousScrollLayerPositionUpdates { false };
 };
 
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollableAreaParameters);
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingNodeType);
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingLayerPositionAction);
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, ViewportRectStability);
 
 } // namespace WebCore
 

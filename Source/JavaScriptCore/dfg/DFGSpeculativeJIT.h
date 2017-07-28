@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,8 +33,8 @@
 #include "DFGJITCompiler.h"
 #include "DFGOSRExit.h"
 #include "DFGOSRExitJumpPlaceholder.h"
+#include "DFGRegisterBank.h"
 #include "DFGSilentRegisterSavePlan.h"
-#include "DFGValueSource.h"
 #include "JITMathIC.h"
 #include "JITOperations.h"
 #include "MarkedAllocator.h"
@@ -387,7 +387,7 @@ public:
     SilentRegisterSavePlan silentSavePlanForGPR(VirtualRegister spillMe, GPRReg source);
     SilentRegisterSavePlan silentSavePlanForFPR(VirtualRegister spillMe, FPRReg source);
     void silentSpill(const SilentRegisterSavePlan&);
-    void silentFill(const SilentRegisterSavePlan&, GPRReg canTrample);
+    void silentFill(const SilentRegisterSavePlan&);
 
     template<typename CollectionType>
     void silentSpill(const CollectionType& savePlans)
@@ -397,11 +397,10 @@ public:
     }
 
     template<typename CollectionType>
-    void silentFill(const CollectionType& savePlans, GPRReg exclude = InvalidGPRReg)
+    void silentFill(const CollectionType& savePlans)
     {
-        GPRReg canTrample = SpeculativeJIT::pickCanTrample(exclude);
         for (unsigned i = savePlans.size(); i--;)
-            silentFill(savePlans[i], canTrample);
+            silentFill(savePlans[i]);
     }
 
     template<typename CollectionType>
@@ -462,53 +461,12 @@ public:
         silentSpillAllRegisters(exclude.payloadGPR(), exclude.tagGPR());
 #endif
     }
-    
-    static GPRReg pickCanTrample(GPRReg exclude)
-    {
-        GPRReg result = GPRInfo::regT0;
-        if (result == exclude)
-            result = GPRInfo::regT1;
-        return result;
-    }
-    static GPRReg pickCanTrample(FPRReg)
-    {
-        return GPRInfo::regT0;
-    }
-    static GPRReg pickCanTrample(NoResultTag)
-    {
-        return GPRInfo::regT0;
-    }
 
-#if USE(JSVALUE64)
-    static GPRReg pickCanTrample(JSValueRegs exclude)
+    void silentFillAllRegisters()
     {
-        return pickCanTrample(exclude.payloadGPR());
-    }
-#else
-    static GPRReg pickCanTrample(JSValueRegs exclude)
-    {
-        GPRReg result = GPRInfo::regT0;
-        if (result == exclude.tagGPR()) {
-            result = GPRInfo::regT1;
-            if (result == exclude.payloadGPR())
-                result = GPRInfo::regT2;
-        } else if (result == exclude.payloadGPR()) {
-            result = GPRInfo::regT1;
-            if (result == exclude.tagGPR())
-                result = GPRInfo::regT2;
-        }
-        return result;
-    }
-#endif
-    
-    template<typename RegisterType>
-    void silentFillAllRegisters(RegisterType exclude)
-    {
-        GPRReg canTrample = pickCanTrample(exclude);
-        
         while (!m_plans.isEmpty()) {
             SilentRegisterSavePlan& plan = m_plans.last();
-            silentFill(plan, canTrample);
+            silentFill(plan);
             m_plans.removeLast();
         }
     }
@@ -1048,6 +1006,11 @@ public:
         m_jit.setupArgumentsWithExecState(obj, impl);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(Z_JITOperation_EBJssZ operation, GPRReg result, GPRReg butterfly, GPRReg string, GPRReg index)
+    {
+        m_jit.setupArgumentsWithExecState(butterfly, string, index);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(P_JITOperation_ESt operation, GPRReg result, RegisteredStructure structure)
     {
         m_jit.setupArgumentsWithExecState(TrustedImmPtr(structure));
@@ -1544,7 +1507,7 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result);
     }
-    JITCompiler::Call callOperation(J_JITOperation_EAZ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
+    JITCompiler::Call callOperation(J_JITOperation_EOZ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
@@ -1929,6 +1892,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, TrustedImm32(arg2));
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(Z_JITOperation_EBJZ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg3);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(V_JITOperation_EZJZZZ operation, unsigned arg1, GPRReg arg2, unsigned arg3, GPRReg arg4, unsigned arg5)
     {
         m_jit.setupArgumentsWithExecState(TrustedImm32(arg1), arg2, TrustedImm32(arg3), arg4, TrustedImm32(arg5));
@@ -1948,6 +1916,17 @@ public:
     {
         m_jit.setupArgumentsWithExecState(arg1.gpr());
         return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callCustomGetter(J_JITOperation_EJI function, JSValueRegs result, GPRReg arg1, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(uid));
+        m_jit.storePtr(GPRInfo::callFrameRegister, &m_jit.vm()->topCallFrame);
+        m_jit.emitStoreCodeOrigin(m_currentNode->origin.semantic);
+        JITCompiler::Call call = m_jit.appendCall(function);
+        if (result.payloadGPR() != InvalidGPRReg)
+            m_jit.move(GPRInfo::returnValueGPR, result.payloadGPR());
+        return call;
     }
 #else // USE(JSVALUE32_64)
     JITCompiler::Call callOperation(Z_JITOperation_EOJ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2)
@@ -2104,7 +2083,7 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
     }
-    JITCompiler::Call callOperation(J_JITOperation_EAZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2)
+    JITCompiler::Call callOperation(J_JITOperation_EOZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
@@ -2462,6 +2441,11 @@ public:
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), TrustedImm32(arg2));
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(Z_JITOperation_EBJZ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg2.tagGPR(), arg3);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(V_JITOperation_EZJZZZ operation, unsigned arg1, JSValueRegs arg2, unsigned arg3, GPRReg arg4, unsigned arg5)
     {
         m_jit.setupArgumentsWithExecState(TrustedImm32(arg1), arg2.payloadGPR(), arg2.tagGPR(), TrustedImm32(arg3), arg4, TrustedImm32(arg5));
@@ -2481,6 +2465,16 @@ public:
     {
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR());
         return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callCustomGetter(J_JITOperation_EJI function, JSValueRegs result, TrustedImm32 arg1Tag, GPRReg arg1Payload, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, TrustedImmPtr(uid));
+        m_jit.storePtr(GPRInfo::callFrameRegister, &m_jit.vm()->topCallFrame);
+        m_jit.emitStoreCodeOrigin(m_currentNode->origin.semantic);
+        JITCompiler::Call call = m_jit.appendCall(function);
+        m_jit.setupResults(result.payloadGPR(), result.tagGPR());
+        return call;
     }
 #endif // USE(JSVALUE32_64)
     
@@ -2871,6 +2865,7 @@ public:
     void compileNewArrayWithSpread(Node*);
     void compileGetRestLength(Node*);
     void compileArraySlice(Node*);
+    void compileArrayIndexOf(Node*);
     void compileNotifyWrite(Node*);
     bool compileRegExpExec(Node*);
     void compileIsObjectOrNull(Node*);
@@ -2991,6 +2986,7 @@ public:
 #if USE(JSVALUE64)
     void convertAnyInt(Edge, GPRReg resultGPR);
     void speculateAnyInt(Edge);
+    void speculateInt32(Edge, JSValueRegs);
     void speculateDoubleRepAnyInt(Edge);
 #endif // USE(JSVALUE64)
     void speculateNumber(Edge);
@@ -2999,6 +2995,7 @@ public:
     void speculateBoolean(Edge);
     void speculateCell(Edge);
     void speculateCellOrOther(Edge);
+    void speculateObject(Edge, GPRReg cell);
     void speculateObject(Edge);
     void speculateArray(Edge, GPRReg cell);
     void speculateArray(Edge);
@@ -3032,6 +3029,8 @@ public:
     void speculateSymbol(Edge);
     void speculateNotCell(Edge, JSValueRegs);
     void speculateNotCell(Edge);
+    void speculateOther(Edge, JSValueRegs, GPRReg temp);
+    void speculateOther(Edge, JSValueRegs);
     void speculateOther(Edge);
     void speculateMisc(Edge, JSValueRegs);
     void speculateMisc(Edge);

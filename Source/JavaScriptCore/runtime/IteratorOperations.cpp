@@ -27,6 +27,7 @@
 #include "config.h"
 #include "IteratorOperations.h"
 
+#include "CatchScope.h"
 #include "Error.h"
 #include "JSCInlines.h"
 #include "ObjectConstructor.h"
@@ -174,6 +175,43 @@ bool hasIteratorMethod(ExecState& state, JSValue value)
     RETURN_IF_EXCEPTION(scope, false);
 
     return !applyMethod.isUndefined();
+}
+
+JSValue iteratorMethod(ExecState& state, JSObject* object)
+{
+    auto& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    CallData callData;
+    CallType callType;
+    JSValue method = object->getMethod(&state, callData, callType, vm.propertyNames->iteratorSymbol, ASCIILiteral("Symbol.iterator property should be callable"));
+    RETURN_IF_EXCEPTION(scope, jsUndefined());
+
+    return method;
+}
+
+JSValue iteratorForIterable(ExecState& state, JSObject* object, JSValue iteratorMethod)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    CallData iteratorMethodCallData;
+    CallType iteratorMethodCallType = getCallData(iteratorMethod, iteratorMethodCallData);
+    if (iteratorMethodCallType == CallType::None) {
+        throwTypeError(&state, scope);
+        return { };
+    }
+
+    ArgList iteratorMethodArguments;
+    JSValue iterator = call(&state, iteratorMethod, iteratorMethodCallType, iteratorMethodCallData, object, iteratorMethodArguments);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    if (!iterator.isObject()) {
+        throwTypeError(&state, scope);
+        return { };
+    }
+
+    return iterator;
 }
 
 JSValue iteratorForIterable(ExecState* state, JSValue iterable)

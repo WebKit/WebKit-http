@@ -31,72 +31,45 @@
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
-#include "ExceptionCode.h"
+#include "GCryptUtilities.h"
+#include "NotImplemented.h"
 #include "ScriptExecutionContext.h"
 #include <array>
 #include <pal/crypto/gcrypt/ASN1.h>
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
+#include <pal/crypto/tasn1/Utilities.h>
 
 namespace WebCore {
 
-// Retrieve size of the public modulus N of the given RSA key, in bits.
-static size_t getRSAModulusLength(gcry_sexp_t sexp)
+static size_t getRSAModulusLength(gcry_sexp_t keySexp)
 {
-    // The s-expression is of roughly the following form:
-    // (private-key|public-key
-    //   (rsa
-    //     (n n-mpi)
-    //     (e e-mpi)
-    //     ...))
-    PAL::GCrypt::Handle<gcry_sexp_t> nSexp(gcry_sexp_find_token(sexp, "n", 0));
+    // Retrieve the s-expression token for the public modulus N of the given RSA key.
+    PAL::GCrypt::Handle<gcry_sexp_t> nSexp(gcry_sexp_find_token(keySexp, "n", 0));
     if (!nSexp)
         return 0;
 
-    PAL::GCrypt::Handle<gcry_mpi_t> nMPI(gcry_sexp_nth_mpi(nSexp, 1, GCRYMPI_FMT_USG));
-    if (!nMPI)
+    // Retrieve the MPI length for the corresponding s-expression token, in bits.
+    auto length = mpiLength(nSexp);
+    if (!length)
         return 0;
 
-    size_t dataLength = 0;
-    gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, nMPI);
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return 0;
-    }
-
-    return dataLength * 8;
+    return *length * 8;
 }
 
-static Vector<uint8_t> getParameterMPIData(gcry_mpi_t paramMPI)
+static Vector<uint8_t> getRSAKeyParameter(gcry_sexp_t keySexp, const char* name)
 {
-    size_t dataLength = 0;
-    gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, paramMPI);
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return { };
-    }
-
-    Vector<uint8_t> parameter(dataLength);
-    error = gcry_mpi_print(GCRYMPI_FMT_USG, parameter.data(), parameter.size(), nullptr, paramMPI);
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return { };
-    }
-
-    return parameter;
-}
-
-static Vector<uint8_t> getRSAKeyParameter(gcry_sexp_t sexp, const char* name)
-{
-    PAL::GCrypt::Handle<gcry_sexp_t> paramSexp(gcry_sexp_find_token(sexp, name, 0));
+    // Retrieve the s-expression token for the specified parameter of the given RSA key.
+    PAL::GCrypt::Handle<gcry_sexp_t> paramSexp(gcry_sexp_find_token(keySexp, name, 0));
     if (!paramSexp)
         return { };
 
-    PAL::GCrypt::Handle<gcry_mpi_t> paramMPI(gcry_sexp_nth_mpi(paramSexp, 1, GCRYMPI_FMT_USG));
-    if (!paramMPI)
+    // Retrieve the MPI data for the corresponding s-expression token.
+    auto data = mpiData(paramSexp);
+    if (!data)
         return { };
 
-    return getParameterMPIData(paramMPI);
+    return WTFMove(data.value());
 }
 
 RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyDataRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usages)
@@ -269,552 +242,388 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgor
         });
 }
 
-enum class RSAAlgorithm {
-    RSAEncryption,
-    RSAES_OAEP,
-    RSASSA_PSS,
-};
-
-static std::optional<RSAAlgorithm> algorithmForIdentifier(const uint8_t* data, size_t size)
+static bool supportedAlgorithmIdentifier(const uint8_t* data, size_t size)
 {
-    static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
-    static const std::array<uint8_t, 9> s_idRSAES_OAEP{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x07 } };
-    static const std::array<uint8_t, 9> s_idRSASSA_PSS{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a } };
+    // FIXME: This is far from sufficient. Per the spec, when importing for key algorithm
+    // - RSASSA-PKCS1-v1_5:
+    //     - rsaEncryption, sha{1,256,384,512}WithRSAEncryption OIDs must be supported
+    //     - in case of sha{1,256,384,512}WithRSAEncryption OIDs the specified hash algorithm
+    //       has to match the algorithm in the OID
+    // - RSA-PSS:
+    //     - rsaEncryption, id-RSASSA-PSS OIDs must be supported
+    //     - in case of id-RSASSA-PSS OID the parameters field of AlgorithmIdentifier has
+    //       to be decoded as RSASSA-PSS-params ASN.1 structure, and the hashAlgorithm field
+    //       of that structure has to contain one of id-sha{1,256,384,512} OIDs that match
+    //       the specified hash algorithm
+    // - RSA-OAEP:
+    //     - rsaEncryption, id-RSAES-OAEP OIDS must be supported
+    //     - in case of id-RSAES-OAEP OID the parameters field of AlgorithmIdentifier has
+    //       to be decoded as RSAES-OAEP-params ASN.1 structure, and the hashAlgorithm field
+    //       of that structure has to contain one of id-sha{1,256,384,512} OIDs that match
+    //       the specified hash algorithm
 
-    if (size != 9)
-        return std::nullopt;
+    static const std::array<uint8_t, 21> s_id_rsaEncryption { { "1.2.840.113549.1.1.1" } };
+    static const std::array<uint8_t, 21> s_id_RSAES_OAEP { { "1.2.840.113549.1.1.7" } };
+    static const std::array<uint8_t, 22> s_id_RSASSA_PSS { { "1.2.840.113549.1.1.10" } };
 
-    if (!std::memcmp(data, s_rsaEncryption.data(), size))
-        return RSAAlgorithm::RSAEncryption;
-    if (!std::memcmp(data, s_idRSAES_OAEP.data(), size))
-        return std::nullopt;
-    if (!std::memcmp(data, s_idRSASSA_PSS.data(), size))
-        return std::nullopt;
-    return std::nullopt;
+    if (size == s_id_rsaEncryption.size() && !std::memcmp(data, s_id_rsaEncryption.data(), size))
+        return true;
+    if (size == s_id_RSAES_OAEP.size() && !std::memcmp(data, s_id_RSAES_OAEP.data(), size))
+        return false; // Not yet supported.
+    if (size == s_id_RSASSA_PSS.size() && !std::memcmp(data, s_id_RSASSA_PSS.data(), size))
+        return false; // Not yet supported.
+    return false;
 }
 
 RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    // SubjectPublicKeyInfo  ::=  SEQUENCE  {
-    //   algorithm            AlgorithmIdentifier,
-    //   subjectPublicKey     BIT STRING  }
-    auto subjectPublicKeyInfoTLV = ASN1::parseTLV(keyData, 0);
-    if (!subjectPublicKeyInfoTLV.bufferSize || !subjectPublicKeyInfoTLV.hasTag(ASN1::Tag::Sequence))
+    // Decode the `SubjectPublicKeyInfo` structure using the provided key data.
+    PAL::TASN1::Structure spki;
+    if (!PAL::TASN1::decodeStructure(&spki, "WebCrypto.SubjectPublicKeyInfo", keyData))
         return nullptr;
 
-    // AlgorithmIdentifier  ::=  SEQUENCE  {
-    //    algorithm   OBJECT IDENTIFIER,
-    //    parameters  ANY DEFINED BY algorithm OPTIONAL
-    // }
-    auto algorithmIdentifierTLV = ASN1::parseTLV(keyData, subjectPublicKeyInfoTLV.valueOffset());
-    if (!algorithmIdentifierTLV.bufferSize || !algorithmIdentifierTLV.hasTag(ASN1::Tag::Sequence))
-        return nullptr;
-
-    auto algorithmTLV = ASN1::parseTLV(keyData, algorithmIdentifierTLV.valueOffset());
-    if (!algorithmTLV.bufferSize || !algorithmTLV.hasTag(ASN1::Tag::ObjectIdentifier))
-        return nullptr;
-
-    auto supportedAlgorithm = algorithmForIdentifier(keyData.data() + algorithmTLV.valueOffset(), algorithmTLV.length);
-    if (!supportedAlgorithm)
-        return nullptr;
-
-    auto subjectPublicKeyTLV = ASN1::parseTLV(keyData,
-        subjectPublicKeyInfoTLV.valueOffset() + algorithmIdentifierTLV.bufferSize);
-    if (!subjectPublicKeyTLV.bufferSize || !subjectPublicKeyTLV.hasTag(ASN1::Tag::BitString)
-        || keyData[subjectPublicKeyTLV.valueOffset()] != 0x00)
-        return nullptr;
-
-    // RSAPublicKey ::= SEQUENCE {
-    //   modulus           INTEGER,  -- n
-    //   publicExponent    INTEGER   -- e
-    // }
-    auto rsaPublicKeyTLV = ASN1::parseTLV(keyData, subjectPublicKeyTLV.valueOffset() + 1);
-    if (!rsaPublicKeyTLV.bufferSize || !rsaPublicKeyTLV.hasTag(ASN1::Tag::Sequence))
-        return nullptr;
-
-    ASN1::TLV modulusTLV;
-    ASN1::TLV publicExponentTLV;
+    // Validate `algorithm.algorithm`.
     {
-        size_t offset = rsaPublicKeyTLV.valueOffset();
-        modulusTLV = ASN1::parseTLV(keyData, offset);
-        if (!modulusTLV.bufferSize || !modulusTLV.hasTag(ASN1::Tag::Integer))
+        auto algorithm = PAL::TASN1::elementData(spki, "algorithm.algorithm");
+        if (!algorithm)
             return nullptr;
 
-        offset += modulusTLV.bufferSize;
-        publicExponentTLV = ASN1::parseTLV(keyData, offset);
-        if (!publicExponentTLV.bufferSize || !publicExponentTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        if (modulusTLV.bufferSize + publicExponentTLV.bufferSize != rsaPublicKeyTLV.length)
+        if (!supportedAlgorithmIdentifier(algorithm->data(), algorithm->size()))
             return nullptr;
     }
 
+    // Decode the `RSAPublicKey` structure using the `subjectPublicKey` data.
+    PAL::TASN1::Structure rsaPublicKey;
+    {
+        auto subjectPublicKey = PAL::TASN1::elementData(spki, "subjectPublicKey");
+        if (!subjectPublicKey)
+            return nullptr;
+
+        if (!PAL::TASN1::decodeStructure(&rsaPublicKey, "WebCrypto.RSAPublicKey", *subjectPublicKey))
+            return nullptr;
+    }
+
+    // Retrieve the `modulus` and `publicExponent` data and embed it into the `public-key` s-expression.
     PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
-    gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(rsa(n %b)(e %b)))",
-        modulusTLV.length, keyData.data() + modulusTLV.valueOffset(),
-        publicExponentTLV.length, keyData.data() + publicExponentTLV.valueOffset());
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return nullptr;
+    {
+        auto modulus = PAL::TASN1::elementData(rsaPublicKey, "modulus");
+        auto publicExponent = PAL::TASN1::elementData(rsaPublicKey, "publicExponent");
+        if (!modulus || !publicExponent)
+            return nullptr;
+
+        gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(rsa(n %b)(e %b)))",
+            modulus->size(), modulus->data(), publicExponent->size(), publicExponent->data());
+        if (error != GPG_ERR_NO_ERROR) {
+            PAL::GCrypt::logError(error);
+            return nullptr;
+        }
     }
 
-    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, platformKey.release(), extractable, usages));;
+    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, platformKey.release(), extractable, usages));
 }
 
 RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    // PrivateKeyInfo ::= SEQUENCE {
-    //   version                   Version,
-    //   privateKeyAlgorithm       PrivateKeyAlgorithmIdentifier,
-    //   privateKey                PrivateKey,
-    //   attributes           [0]  IMPLICIT Attributes OPTIONAL }
-    auto privateKeyInfoTLV = ASN1::parseTLV(keyData, 0);
-    if (!privateKeyInfoTLV.bufferSize || !privateKeyInfoTLV.hasTag(ASN1::Tag::Sequence))
-        return nullptr;
-    if (privateKeyInfoTLV.bufferSize != keyData.size())
+    // Decode the `PrivateKeyInfo` structure using the provided key data.
+    PAL::TASN1::Structure pkcs8;
+    if (!PAL::TASN1::decodeStructure(&pkcs8, "WebCrypto.PrivateKeyInfo", keyData))
         return nullptr;
 
-    // Version ::= INTEGER
-    auto versionTLV = ASN1::parseTLV(keyData, privateKeyInfoTLV.valueOffset());
-    if (!versionTLV.bufferSize || !versionTLV.hasTag(ASN1::Tag::Integer))
-        return nullptr;
-    if (versionTLV.length != 1 && keyData[versionTLV.valueOffset()] != 0)
-        return nullptr;
-
-    // PrivateKeyAlgorithmIdentifier ::= AlgorithmIdentifier
-    // AlgorithmIdentifier  ::=  SEQUENCE  {
-    //    algorithm   OBJECT IDENTIFIER,
-    //    parameters  ANY DEFINED BY algorithm OPTIONAL
-    // }
-    auto privateKeyAlgorithmTLV = ASN1::parseTLV(keyData,
-        privateKeyInfoTLV.valueOffset() + versionTLV.bufferSize);
-    if (!privateKeyAlgorithmTLV.bufferSize || !privateKeyAlgorithmTLV.hasTag(ASN1::Tag::Sequence))
-        return nullptr;
-
-    auto algorithmTLV = ASN1::parseTLV(keyData, privateKeyAlgorithmTLV.valueOffset());
-    if (!algorithmTLV.bufferSize || !algorithmTLV.hasTag(ASN1::Tag::ObjectIdentifier))
-        return nullptr;
-
-    auto supportedAlgorithm = algorithmForIdentifier(keyData.data() + algorithmTLV.valueOffset(), algorithmTLV.length);
-    if (!supportedAlgorithm)
-        return nullptr;
-
-    // PrivateKey ::= OCTET STRING
-    auto privateKeyTLV = ASN1::parseTLV(keyData,
-        privateKeyInfoTLV.valueOffset() + versionTLV.bufferSize + privateKeyAlgorithmTLV.bufferSize);
-    if (!privateKeyTLV.bufferSize || !privateKeyTLV.hasTag(ASN1::Tag::OctetString))
-        return nullptr;
-
-    // RSAPrivateKey ::= SEQUENCE {
-    //     version           Version,
-    //     modulus           INTEGER,  -- n
-    //     publicExponent    INTEGER,  -- e
-    //     privateExponent   INTEGER,  -- d
-    //     prime1            INTEGER,  -- p
-    //     prime2            INTEGER,  -- q
-    //     exponent1         INTEGER,  -- d mod (p-1)
-    //     exponent2         INTEGER,  -- d mod (q-1)
-    //     coefficient       INTEGER,  -- (inverse of q) mod p
-    //     otherPrimeInfos   OtherPrimeInfos OPTIONAL
-    // }
-    auto rsaPrivateKeyTLV = ASN1::parseTLV(keyData, privateKeyTLV.valueOffset());
-    if (!rsaPrivateKeyTLV.bufferSize || !rsaPrivateKeyTLV.hasTag(ASN1::Tag::Sequence))
-        return nullptr;
-
-    ASN1::TLV modulusTLV;
-    ASN1::TLV publicExponentTLV;
-    ASN1::TLV privateExponentTLV;
-    ASN1::TLV prime1TLV;
-    ASN1::TLV prime2TLV;
-    ASN1::TLV exponent1TLV;
-    ASN1::TLV exponent2TLV;
-    ASN1::TLV coefficientTLV;
+    // Validate `version`.
     {
-        size_t offset = rsaPrivateKeyTLV.valueOffset();
-        auto versionTLV = ASN1::parseTLV(keyData, offset);
-        if (!versionTLV.bufferSize || !versionTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-        if (versionTLV.length != 1 || keyData[versionTLV.valueOffset()] != 0)
+        auto version = PAL::TASN1::elementData(pkcs8, "version");
+        if (!version)
             return nullptr;
 
-        offset += versionTLV.bufferSize;
-        modulusTLV = ASN1::parseTLV(keyData, offset);
-        if (!modulusTLV.bufferSize || !modulusTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += modulusTLV.bufferSize;
-        publicExponentTLV = ASN1::parseTLV(keyData, offset);
-        if (!publicExponentTLV.bufferSize || !publicExponentTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += publicExponentTLV.bufferSize;
-        privateExponentTLV = ASN1::parseTLV(keyData, offset);
-        if (!privateExponentTLV.bufferSize || !privateExponentTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += privateExponentTLV.bufferSize;
-        prime1TLV = ASN1::parseTLV(keyData, offset);
-        if (!prime1TLV.bufferSize || !prime1TLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += prime1TLV.bufferSize;
-        prime2TLV = ASN1::parseTLV(keyData, offset);
-        if (!prime2TLV.bufferSize || !prime2TLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += prime2TLV.bufferSize;
-        exponent1TLV = ASN1::parseTLV(keyData, offset);
-        if (!exponent1TLV.bufferSize || !exponent1TLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += exponent1TLV.bufferSize;
-        exponent2TLV = ASN1::parseTLV(keyData, offset);
-        if (!exponent2TLV.bufferSize || !exponent2TLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        offset += exponent2TLV.bufferSize;
-        coefficientTLV = ASN1::parseTLV(keyData, offset);
-        if (!coefficientTLV.bufferSize || !coefficientTLV.hasTag(ASN1::Tag::Integer))
-            return nullptr;
-
-        // TODO: support for OtherPrimeInfos.
-
-        size_t bufferSizeSum = versionTLV.bufferSize + modulusTLV.bufferSize + publicExponentTLV.bufferSize + privateExponentTLV.bufferSize
-            + prime1TLV.bufferSize + prime2TLV.bufferSize + exponent1TLV.bufferSize + exponent2TLV.bufferSize + coefficientTLV.bufferSize;
-        if (bufferSizeSum != rsaPrivateKeyTLV.length)
+        if (version->size() != 1 || version->at(0) != 0x00)
             return nullptr;
     }
 
-    Vector<uint8_t> uData;
+    // Validate `privateKeyAlgorithm.algorithm`.
     {
-        PAL::GCrypt::Handle<gcry_mpi_t> pMPI;
-        gcry_error_t error = gcry_mpi_scan(&pMPI, GCRYMPI_FMT_USG, keyData.data() + prime1TLV.valueOffset(), prime1TLV.length, nullptr);
-        if (error != GPG_ERR_NO_ERROR)
+        auto algorithm = PAL::TASN1::elementData(pkcs8, "privateKeyAlgorithm.algorithm");
+        if (!algorithm)
             return nullptr;
 
-        PAL::GCrypt::Handle<gcry_mpi_t> qMPI;
-        error = gcry_mpi_scan(&qMPI, GCRYMPI_FMT_USG, keyData.data() + prime2TLV.valueOffset(), prime2TLV.length, nullptr);
-        if (error != GPG_ERR_NO_ERROR)
+        if (!supportedAlgorithmIdentifier(algorithm->data(), algorithm->size()))
+            return nullptr;
+    }
+
+    // Decode the `RSAPrivateKey` structure using the `privateKey` data.
+    PAL::TASN1::Structure rsaPrivateKey;
+    {
+        auto privateKey = PAL::TASN1::elementData(pkcs8, "privateKey");
+        if (!privateKey)
             return nullptr;
 
-        PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_set_ui(nullptr, 0));
-        gcry_mpi_invm(qiMPI, qMPI, pMPI);
-        uData = getParameterMPIData(qiMPI);
+        if (!PAL::TASN1::decodeStructure(&rsaPrivateKey, "WebCrypto.RSAPrivateKey", *privateKey))
+            return nullptr;
     }
 
-    PAL::GCrypt::Handle<gcry_sexp_t> keySexp;
-    gcry_error_t error = gcry_sexp_build(&keySexp, nullptr, "(private-key(rsa(n %b)(e %b)(d %b)(p %b)(q %b)(u %b)))",
-        modulusTLV.length, keyData.data() + modulusTLV.valueOffset(),
-        publicExponentTLV.length, keyData.data() + publicExponentTLV.valueOffset(),
-        privateExponentTLV.length, keyData.data() + privateExponentTLV.valueOffset(),
-        prime2TLV.length, keyData.data() + prime2TLV.valueOffset(),
-        prime1TLV.length, keyData.data() + prime1TLV.valueOffset(),
-        uData.size(), uData.data());
-    if (error != GPG_ERR_NO_ERROR) {
-        PAL::GCrypt::logError(error);
-        return nullptr;
+    // Validate `privateKey.version`.
+    {
+        auto version = PAL::TASN1::elementData(rsaPrivateKey, "version");
+        if (!version)
+            return nullptr;
+
+        if (version->size() != 1 || version->at(0) != 0x00)
+            return nullptr;
     }
 
-    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Private, keySexp.release(), extractable, usages));
+    // Retrieve the `modulus`, `publicExponent`, `privateExponent`, `prime1`, `prime2`,
+    // `exponent1`, `exponent2` and `coefficient` data and embed it into the `public-key` s-expression.
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    {
+        auto modulus = PAL::TASN1::elementData(rsaPrivateKey, "modulus");
+        auto publicExponent = PAL::TASN1::elementData(rsaPrivateKey, "publicExponent");
+        auto privateExponent = PAL::TASN1::elementData(rsaPrivateKey, "privateExponent");
+        auto prime1 = PAL::TASN1::elementData(rsaPrivateKey, "prime1");
+        auto prime2 = PAL::TASN1::elementData(rsaPrivateKey, "prime2");
+        auto exponent1 = PAL::TASN1::elementData(rsaPrivateKey, "exponent1");
+        auto exponent2 = PAL::TASN1::elementData(rsaPrivateKey, "exponent2");
+        auto coefficient = PAL::TASN1::elementData(rsaPrivateKey, "coefficient");
+
+        if (!modulus || !publicExponent || !privateExponent
+            || !prime1 || !prime2 || !exponent1 || !exponent2 || !coefficient)
+            return nullptr;
+
+        // libgcrypt inverts the use of p and q parameters, so we have to recalculate the `coefficient` value.
+        PAL::GCrypt::Handle<gcry_mpi_t> uMPI(gcry_mpi_new(0));
+        {
+            PAL::GCrypt::Handle<gcry_mpi_t> pMPI;
+            gcry_error_t error = gcry_mpi_scan(&pMPI, GCRYMPI_FMT_USG, prime1->data(), prime1->size(), nullptr);
+            if (error != GPG_ERR_NO_ERROR)
+                return nullptr;
+
+            PAL::GCrypt::Handle<gcry_mpi_t> qMPI;
+            error = gcry_mpi_scan(&qMPI, GCRYMPI_FMT_USG, prime2->data(), prime2->size(), nullptr);
+            if (error != GPG_ERR_NO_ERROR)
+                return nullptr;
+
+            gcry_mpi_invm(uMPI, qMPI, pMPI);
+        }
+
+        gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(private-key(rsa(n %b)(e %b)(d %b)(p %b)(q %b)(u %M)))",
+            modulus->size(), modulus->data(),
+            publicExponent->size(), publicExponent->data(),
+            privateExponent->size(), privateExponent->data(),
+            prime2->size(), prime2->data(), prime1->size(), prime1->data(), uMPI.handle());
+        if (error != GPG_ERR_NO_ERROR) {
+            PAL::GCrypt::logError(error);
+            return nullptr;
+        }
+    }
+
+    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Private, platformKey.release(), extractable, usages));
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportSpki() const
 {
     if (type() != CryptoKeyType::Public)
-        return Exception{ INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
-    auto appendLength =
-        [](size_t length, Vector<uint8_t>& result) {
-            if (length > 127) {
-                uint8_t lengthBytes = std::ceil(std::log2(length + 1) / 8);
-                result.append(0x80 | lengthBytes);
-                for (uint8_t i = 0; i < lengthBytes; ++i)
-                    result.append((length >> ((lengthBytes - i - 1) * 8) & 0xff));
-            } else
-                result.append(length);
-        };
-
-    // SubjectPublicKeyInfo  ::=  SEQUENCE  {
-    //   algorithm            AlgorithmIdentifier,
-    //   subjectPublicKey     BIT STRING  }
-
-
-    // AlgorithmIdentifier  ::=  SEQUENCE  {
-    //    algorithm   OBJECT IDENTIFIER,
-    //    parameters  ANY DEFINED BY algorithm OPTIONAL
-    // }
-    Vector<uint8_t> algorithmIdentifierData;
+    PAL::TASN1::Structure rsaPublicKey;
     {
-        static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
+        // Create the `RSAPublicKey` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.RSAPublicKey", &rsaPublicKey))
+            return Exception { OperationError };
 
-        algorithmIdentifierData.append(0x30);
-        algorithmIdentifierData.append(2 + s_rsaEncryption.size() + 2);
+        // Retrieve the modulus and public exponent s-expressions.
+        PAL::GCrypt::Handle<gcry_sexp_t> modulusSexp(gcry_sexp_find_token(m_platformKey, "n", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> publicExponentSexp(gcry_sexp_find_token(m_platformKey, "e", 0));
+        if (!modulusSexp || !publicExponentSexp)
+            return Exception { OperationError };
 
-        // algorithm
-        algorithmIdentifierData.append(0x06);
-        algorithmIdentifierData.append(s_rsaEncryption.size());
-        algorithmIdentifierData.append(s_rsaEncryption.data(), s_rsaEncryption.size());
+        // Retrieve MPI data for the modulus and public exponent components.
+        auto modulus = mpiSignedData(modulusSexp);
+        auto publicExponent = mpiSignedData(publicExponentSexp);
+        if (!modulus || !publicExponent)
+            return Exception { OperationError };
 
-        // parameters
-        algorithmIdentifierData.append(0x05);
-        algorithmIdentifierData.append(0x00);
+        // Write out the modulus data under `modulus`.
+        if (!PAL::TASN1::writeElement(rsaPublicKey, "modulus", modulus->data(), modulus->size()))
+            return Exception { OperationError };
+
+        // Write out the public exponent data under `publicExponent`.
+        if (!PAL::TASN1::writeElement(rsaPublicKey, "publicExponent", publicExponent->data(), publicExponent->size()))
+            return Exception { OperationError };
     }
 
-    Vector<uint8_t> subjectPublicKeyData;
+    PAL::TASN1::Structure spki;
     {
-        // RSAPublicKey ::= SEQUENCE {
-        //   modulus           INTEGER,  -- n
-        //   publicExponent    INTEGER   -- e
-        // }
-        Vector<uint8_t> rsaPublicKeyData;
+        // Create the `SubjectPublicKeyInfo` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.SubjectPublicKeyInfo", &spki))
+            return Exception { OperationError };
+
+        // Write out the id-rsaEncryption identifier under `algorithm.algorithm`.
+        // FIXME: In case the key algorithm is:
+        // - RSA-PSS:
+        //     - this should write out id-RSASSA-PSS, along with setting `algorithm.parameters`
+        //       to a RSASSA-PSS-params structure
+        // - RSA-OAEP:
+        //     - this should write out id-RSAES-OAEP, along with setting `algorithm.parameters`
+        //       to a RSAES-OAEP-params structure
+        if (!PAL::TASN1::writeElement(spki, "algorithm.algorithm", "1.2.840.113549.1.1.1", 1))
+            return Exception { OperationError };
+
+        // Write out the null value under `algorithm.parameters`.
+        if (!PAL::TASN1::writeElement(spki, "algorithm.parameters", "\x05\x00", 2))
+            return Exception { OperationError };
+
+        // Write out the `RSAPublicKey` data under `subjectPublicKey`. Because this is a
+        // bit string parameter, the data size has to be multiplied by 8.
         {
-            auto parameterData =
-                [&appendLength](gcry_sexp_t sexp, const char* name) -> Vector<uint8_t> {
-                    Vector<uint8_t> parameter = getRSAKeyParameter(sexp, name);
-                    bool negative = parameter[0] & 0x80;
-
-                    Vector<uint8_t> data;
-                    data.append(0x02);
-                    appendLength(parameter.size() + (negative ? 1 : 0), data);
-                    if (negative)
-                        data.append(0x00);
-                    data.appendVector(parameter);
-                    return data;
-                };
-
-            auto nData = parameterData(m_platformKey, "n");
-            auto eData = parameterData(m_platformKey, "e");
-
-            rsaPublicKeyData.append(0x30);
-            appendLength(nData.size() + eData.size(), rsaPublicKeyData);
-
-            // modulus
-            rsaPublicKeyData.appendVector(nData);
-            // publicExponent
-            rsaPublicKeyData.appendVector(eData);
+            auto data = PAL::TASN1::encodedData(rsaPublicKey, "");
+            if (!data || !PAL::TASN1::writeElement(spki, "subjectPublicKey", data->data(), data->size() * 8))
+                return Exception { OperationError };
         }
-
-        subjectPublicKeyData.append(0x03);
-        appendLength(1 + rsaPublicKeyData.size(), subjectPublicKeyData);
-        subjectPublicKeyData.append(0x00);
-        subjectPublicKeyData.appendVector(rsaPublicKeyData);
     }
 
-    Vector<uint8_t> result;
-    result.append(0x30);
-    appendLength(algorithmIdentifierData.size() + subjectPublicKeyData.size(), result);
-    result.appendVector(algorithmIdentifierData);
-    result.appendVector(subjectPublicKeyData);
+    // Retrieve the encoded `SubjectPublicKeyInfo` data and return it.
+    auto result = PAL::TASN1::encodedData(spki, "");
+    if (!result)
+        return Exception { OperationError };
 
-    return WTFMove(result);
+    return WTFMove(result.value());
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const
 {
     if (type() != CryptoKeyType::Private)
-        return Exception{ INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
-    auto appendLength =
-        [](size_t length, Vector<uint8_t>& result) {
-            if (length > 127) {
-                uint8_t lengthBytes = std::ceil(std::log2(length + 1) / 8);
-                result.append(0x80 | lengthBytes);
-                for (uint8_t i = 0; i < lengthBytes; ++i)
-                    result.append((length >> ((lengthBytes - i - 1) * 8) & 0xff));
-            } else
-                result.append(length);
-        };
-
-    // PrivateKeyInfo ::= SEQUENCE {
-    //   version                   Version,
-    //   privateKeyAlgorithm       PrivateKeyAlgorithmIdentifier,
-    //   privateKey                PrivateKey,
-    //   attributes           [0]  IMPLICIT Attributes OPTIONAL }
-
-    // Version ::= INTEGER
-    static const std::array<uint8_t, 3> s_versionData{ { 0x02, 0x01, 0x00 } };
-
-
-    // PrivateKeyAlgorithmIdentifier ::= AlgorithmIdentifier
-    // AlgorithmIdentifier  ::=  SEQUENCE  {
-    //    algorithm   OBJECT IDENTIFIER,
-    //    parameters  ANY DEFINED BY algorithm OPTIONAL
-    // }
-    Vector<uint8_t> privateKeyAlgorithmData;
+    PAL::TASN1::Structure rsaPrivateKey;
     {
-        static const std::array<uint8_t, 9> s_rsaEncryption{ { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } };
+        // Create the `RSAPrivateKey` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.RSAPrivateKey", &rsaPrivateKey))
+            return Exception { OperationError };
 
-        privateKeyAlgorithmData.append(0x30);
-        privateKeyAlgorithmData.append(2 + s_rsaEncryption.size() + 2);
+        // Write out '0' under `version`.
+        if (!PAL::TASN1::writeElement(rsaPrivateKey, "version", "0", 0))
+            return Exception { OperationError };
 
-        privateKeyAlgorithmData.append(0x06);
-        privateKeyAlgorithmData.append(s_rsaEncryption.size());
-        privateKeyAlgorithmData.append(s_rsaEncryption.data(), s_rsaEncryption.size());
+        // Retrieve the `n`, `e`, `d`, `q` and `p` s-expression tokens. libgcrypt swaps the usage of
+        // the p and q primes internally, so we adjust the lookup accordingly.
+        PAL::GCrypt::Handle<gcry_sexp_t> nSexp(gcry_sexp_find_token(m_platformKey, "n", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> eSexp(gcry_sexp_find_token(m_platformKey, "e", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> dSexp(gcry_sexp_find_token(m_platformKey, "d", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> pSexp(gcry_sexp_find_token(m_platformKey, "q", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> qSexp(gcry_sexp_find_token(m_platformKey, "p", 0));
+        if (!nSexp || !eSexp || !dSexp || !pSexp || !qSexp)
+            return Exception { OperationError };
 
-        privateKeyAlgorithmData.append(0x05);
-        privateKeyAlgorithmData.append(0x00);
-    }
-
-    // PrivateKey ::= OCTET STRING
-    Vector<uint8_t> privateKeyData;
-    {
-        // RSAPrivateKey ::= SEQUENCE {
-        //     version           Version,
-        //     modulus           INTEGER,  -- n
-        //     publicExponent    INTEGER,  -- e
-        //     privateExponent   INTEGER,  -- d
-        //     prime1            INTEGER,  -- p
-        //     prime2            INTEGER,  -- q
-        //     exponent1         INTEGER,  -- d mod (p-1)
-        //     exponent2         INTEGER,  -- d mod (q-1)
-        //     coefficient       INTEGER,  -- (inverse of q) mod p
-        //     otherPrimeInfos   OtherPrimeInfos OPTIONAL
-        // }
-        Vector<uint8_t> rsaPrivateKeyData;
+        // Write the MPI data of retrieved s-expression tokens under `modulus`, `publicExponent`,
+        // `privateExponent`, `prime1` and `prime2`.
         {
-            auto parameterData =
-                [&appendLength](gcry_sexp_t sexp, const char* name) -> Vector<uint8_t> {
-                    Vector<uint8_t> parameter = getRSAKeyParameter(sexp, name);
-                    bool negative = parameter[0] & 0x80;
+            auto modulus = mpiSignedData(nSexp);
+            auto publicExponent = mpiSignedData(eSexp);
+            auto privateExponent = mpiSignedData(dSexp);
+            auto prime1 = mpiSignedData(pSexp);
+            auto prime2 = mpiSignedData(qSexp);
+            if (!modulus || !publicExponent || !privateExponent || !prime1 || !prime2)
+                return Exception { OperationError };
 
-                    Vector<uint8_t> data;
-                    data.append(0x02);
-                    appendLength(parameter.size() + (negative ? 1 : 0), data);
-                    if (negative)
-                        data.append(0x00);
-                    data.appendVector(parameter);
-                    return data;
-                };
-
-            auto nData = parameterData(m_platformKey, "n");
-            auto eData = parameterData(m_platformKey, "e");
-            auto dData = parameterData(m_platformKey, "d");
-            auto pData = parameterData(m_platformKey, "q");
-            auto qData = parameterData(m_platformKey, "p");
-
-            Vector<uint8_t> dpData;
-            Vector<uint8_t> dqData;
-            Vector<uint8_t> qiData;
-            {
-                auto getMPI =
-                    [](gcry_sexp_t sexp, const char* name) -> gcry_mpi_t {
-                        PAL::GCrypt::Handle<gcry_sexp_t> paramSexp(gcry_sexp_find_token(sexp, name, 0));
-                        if (!paramSexp)
-                            return nullptr;
-                        return gcry_sexp_nth_mpi(paramSexp, 1, GCRYMPI_FMT_USG);
-                    };
-
-                auto extractData =
-                    [](gcry_mpi_t paramMPI) -> Vector<uint8_t> {
-                        size_t dataLength = 0;
-                        gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, paramMPI);
-                        if (error != GPG_ERR_NO_ERROR)
-                            return { };
-
-                        Vector<uint8_t> output(dataLength);
-                        error = gcry_mpi_print(GCRYMPI_FMT_USG, output.data(), output.size(), nullptr, paramMPI);
-                        if (error != GPG_ERR_NO_ERROR) {
-                            PAL::GCrypt::logError(error);
-                            return { };
-                        }
-
-                        return output;
-                    };
-
-                PAL::GCrypt::Handle<gcry_mpi_t> dMPI(getMPI(m_platformKey, "d"));
-                PAL::GCrypt::Handle<gcry_mpi_t> pMPI(getMPI(m_platformKey, "q"));
-                PAL::GCrypt::Handle<gcry_mpi_t> qMPI(getMPI(m_platformKey, "p"));
-
-                // dp
-                {
-                    PAL::GCrypt::Handle<gcry_mpi_t> dpMPI(gcry_mpi_set_ui(nullptr, 0));
-                    PAL::GCrypt::Handle<gcry_mpi_t> pm1MPI(gcry_mpi_set(nullptr, pMPI));
-                    gcry_mpi_sub_ui(pm1MPI, pm1MPI, 1);
-                    gcry_mpi_mod(dpMPI, dMPI, pm1MPI);
-
-                    auto dp = extractData(dpMPI);
-                    bool negative = dp[0] & 0x80;
-
-                    dpData.append(0x02);
-                    appendLength(dp.size() + (negative ? 1 : 0), dpData);
-                    if (negative)
-                        dpData.append(0x00);
-                    dpData.appendVector(dp);
-                }
-
-                // dq
-                {
-                    PAL::GCrypt::Handle<gcry_mpi_t> dqMPI(gcry_mpi_set_ui(nullptr, 0));
-                    PAL::GCrypt::Handle<gcry_mpi_t> qm1MPI(gcry_mpi_set(nullptr, qMPI));
-                    gcry_mpi_sub_ui(qm1MPI, qm1MPI, 1);
-                    gcry_mpi_mod(dqMPI, dMPI, qm1MPI);
-
-                    auto dq = extractData(dqMPI);
-                    bool negative = dq[0] & 0x80;
-
-                    dqData.append(0x02);
-                    appendLength(dq.size() + (negative ? 1 : 0), dqData);
-                    if (negative)
-                        dqData.append(0x00);
-                    dqData.appendVector(dq);
-                }
-
-                // qi
-                {
-                    PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_set_ui(nullptr, 0));
-                    gcry_mpi_invm(qiMPI, qMPI, pMPI);
-
-                    auto qi = extractData(qiMPI);
-                    bool negative = qi[0] & 0x80;
-
-                    qiData.append(0x02);
-                    appendLength(qi.size() + (negative ? 1 : 0), qiData);
-                    if (negative)
-                        qiData.append(0x00);
-                    qiData.appendVector(qi);
-                }
-            }
-
-            rsaPrivateKeyData.append(0x30);
-            appendLength(3 + nData.size() + eData.size() + dData.size() + pData.size() + qData.size()
-                + dpData.size() + dqData.size() + qiData.size(), rsaPrivateKeyData);
-
-            // version
-            rsaPrivateKeyData.append(0x02);
-            rsaPrivateKeyData.append(1);
-            rsaPrivateKeyData.append(0x00);
-
-            // modulus
-            rsaPrivateKeyData.appendVector(nData);
-            // publicExponent
-            rsaPrivateKeyData.appendVector(eData);
-            // privateExponent
-            rsaPrivateKeyData.appendVector(dData);
-            // prime1
-            rsaPrivateKeyData.appendVector(pData);
-            // prime2
-            rsaPrivateKeyData.appendVector(qData);
-            // exponent1
-            rsaPrivateKeyData.appendVector(dpData);
-            // exponent2
-            rsaPrivateKeyData.appendVector(dqData);
-            // coefficient
-            rsaPrivateKeyData.appendVector(qiData);
+            if (!PAL::TASN1::writeElement(rsaPrivateKey, "modulus", modulus->data(), modulus->size())
+                || !PAL::TASN1::writeElement(rsaPrivateKey, "publicExponent", publicExponent->data(), publicExponent->size())
+                || !PAL::TASN1::writeElement(rsaPrivateKey, "privateExponent", privateExponent->data(), privateExponent->size())
+                || !PAL::TASN1::writeElement(rsaPrivateKey, "prime1", prime1->data(), prime1->size())
+                || !PAL::TASN1::writeElement(rsaPrivateKey, "prime2", prime2->data(), prime2->size()))
+                return Exception { OperationError };
         }
 
-        privateKeyData.append(0x04);
-        appendLength(rsaPrivateKeyData.size(), privateKeyData);
-        privateKeyData.appendVector(rsaPrivateKeyData);
+        // Manually compute the MPI values for the `exponent1`, `exponent2` and `coefficient`
+        // parameters. Again note the swapped usage of the `p` and `q` s-expression parameters.
+        {
+            PAL::GCrypt::Handle<gcry_mpi_t> dMPI(gcry_sexp_nth_mpi(dSexp, 1, GCRYMPI_FMT_USG));
+            PAL::GCrypt::Handle<gcry_mpi_t> pMPI(gcry_sexp_nth_mpi(pSexp, 1, GCRYMPI_FMT_USG));
+            PAL::GCrypt::Handle<gcry_mpi_t> qMPI(gcry_sexp_nth_mpi(qSexp, 1, GCRYMPI_FMT_USG));
+            if (!dMPI || !pMPI || !qMPI)
+                return Exception { OperationError };
+
+            // `exponent1`
+            {
+                PAL::GCrypt::Handle<gcry_mpi_t> dpMPI(gcry_mpi_set_ui(nullptr, 0));
+                PAL::GCrypt::Handle<gcry_mpi_t> pm1MPI(gcry_mpi_set(nullptr, pMPI));
+                gcry_mpi_sub_ui(pm1MPI, pm1MPI, 1);
+                gcry_mpi_mod(dpMPI, dMPI, pm1MPI);
+
+                auto dp = mpiSignedData(dpMPI);
+                if (!dp || !PAL::TASN1::writeElement(rsaPrivateKey, "exponent1", dp->data(), dp->size()))
+                    return Exception { OperationError };
+            }
+
+            // `exponent2`
+            {
+                PAL::GCrypt::Handle<gcry_mpi_t> dqMPI(gcry_mpi_set_ui(nullptr, 0));
+                PAL::GCrypt::Handle<gcry_mpi_t> qm1MPI(gcry_mpi_set(nullptr, qMPI));
+                gcry_mpi_sub_ui(qm1MPI, qm1MPI, 1);
+                gcry_mpi_mod(dqMPI, dMPI, qm1MPI);
+
+                auto dq = mpiSignedData(dqMPI);
+                if (!dq || !PAL::TASN1::writeElement(rsaPrivateKey, "exponent2", dq->data(), dq->size()))
+                    return Exception { OperationError };
+            }
+
+            // `coefficient`
+            {
+                PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_set_ui(nullptr, 0));
+                gcry_mpi_invm(qiMPI, qMPI, pMPI);
+
+                auto qi = mpiSignedData(qiMPI);
+                if (!qi || !PAL::TASN1::writeElement(rsaPrivateKey, "coefficient", qi->data(), qi->size()))
+                    return Exception { OperationError };
+            }
+        }
+
+        // Eliminate the optional `otherPrimeInfos` element.
+        // FIXME: this should be supported in the future, if there is such information available.
+        if (!PAL::TASN1::writeElement(rsaPrivateKey, "otherPrimeInfos", nullptr, 0))
+            return Exception { OperationError };
     }
 
-    Vector<uint8_t> result;
-    result.append(0x30);
-    appendLength(s_versionData.size() + privateKeyAlgorithmData.size() + privateKeyData.size(), result);
-    result.append(s_versionData.data(), s_versionData.size());
-    result.appendVector(privateKeyAlgorithmData);
-    result.appendVector(privateKeyData);
+    PAL::TASN1::Structure pkcs8;
+    {
+        // Create the `PrivateKeyInfo` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.PrivateKeyInfo", &pkcs8))
+            return Exception { OperationError };
 
-    return WTFMove(result);
+        // Write out '0' under `version`.
+        if (!PAL::TASN1::writeElement(pkcs8, "version", "0", 0))
+            return Exception { OperationError };
+
+        // Write out the id-rsaEncryption identifier under `algorithm.algorithm`.
+        // FIXME: In case the key algorithm is:
+        // - RSA-PSS:
+        //     - this should write out id-RSASSA-PSS, along with setting `algorithm.parameters`
+        //       to a RSASSA-PSS-params structure
+        // - RSA-OAEP:
+        //     - this should write out id-RSAES-OAEP, along with setting `algorithm.parameters`
+        //       to a RSAES-OAEP-params structure
+        if (!PAL::TASN1::writeElement(pkcs8, "privateKeyAlgorithm.algorithm", "1.2.840.113549.1.1.1", 1))
+            return Exception { OperationError };
+
+        // Write out a null value under `algorithm.parameters`.
+        if (!PAL::TASN1::writeElement(pkcs8, "privateKeyAlgorithm.parameters", "\x05\x00", 2))
+            return Exception { OperationError };
+
+        // Write out the `RSAPrivateKey` data under `privateKey`.
+        {
+            auto data = PAL::TASN1::encodedData(rsaPrivateKey, "");
+            if (!data || !PAL::TASN1::writeElement(pkcs8, "privateKey", data->data(), data->size()))
+                return Exception { OperationError };
+        }
+
+        // Eliminate the optional `attributes` element.
+        if (!PAL::TASN1::writeElement(pkcs8, "attributes", nullptr, 0))
+            return Exception { OperationError };
+    }
+
+    // Retrieve the encoded `PrivateKeyInfo` data and return it.
+    auto result = PAL::TASN1::encodedData(pkcs8, "");
+    if (!result)
+        return Exception { OperationError };
+
+    return WTFMove(result.value());
 }
 
 std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
@@ -852,8 +661,13 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
         if (!dMPI || !pMPI || !qMPI)
             return nullptr;
 
-        CryptoKeyDataRSAComponents::PrimeInfo firstPrimeInfo { getParameterMPIData(pMPI), { }, { } };
-        CryptoKeyDataRSAComponents::PrimeInfo secondPrimeInfo { getParameterMPIData(qMPI), { }, { } };
+        CryptoKeyDataRSAComponents::PrimeInfo firstPrimeInfo;
+        if (auto data = mpiData(pMPI))
+            firstPrimeInfo.primeFactor = WTFMove(data.value());
+
+        CryptoKeyDataRSAComponents::PrimeInfo secondPrimeInfo;
+        if (auto data = mpiData(qMPI))
+            secondPrimeInfo.primeFactor = WTFMove(data.value());
 
         // dp -- d mod (p - 1)
         {
@@ -861,7 +675,9 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
             PAL::GCrypt::Handle<gcry_mpi_t> pm1MPI(gcry_mpi_new(0));
             gcry_mpi_sub_ui(pm1MPI, pMPI, 1);
             gcry_mpi_mod(dpMPI, dMPI, pm1MPI);
-            firstPrimeInfo.factorCRTExponent = getParameterMPIData(dpMPI);
+
+            if (auto data = mpiData(dpMPI))
+                firstPrimeInfo.factorCRTExponent = WTFMove(data.value());
         }
 
         // dq -- d mod (q - 1)
@@ -870,18 +686,26 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
             PAL::GCrypt::Handle<gcry_mpi_t> qm1MPI(gcry_mpi_new(0));
             gcry_mpi_sub_ui(qm1MPI, qMPI, 1);
             gcry_mpi_mod(dqMPI, dMPI, qm1MPI);
-            secondPrimeInfo.factorCRTExponent = getParameterMPIData(dqMPI);
+
+            if (auto data = mpiData(dqMPI))
+                secondPrimeInfo.factorCRTExponent = WTFMove(data.value());
         }
 
         // qi -- q^(-1) mod p
         {
             PAL::GCrypt::Handle<gcry_mpi_t> qiMPI(gcry_mpi_new(0));
             gcry_mpi_invm(qiMPI, qMPI, pMPI);
-            secondPrimeInfo.factorCRTCoefficient = getParameterMPIData(qiMPI);
+
+            if (auto data = mpiData(qiMPI))
+                secondPrimeInfo.factorCRTCoefficient = WTFMove(data.value());
         }
 
-        return CryptoKeyDataRSAComponents::createPrivateWithAdditionalData(getRSAKeyParameter(m_platformKey, "n"),
-            getRSAKeyParameter(m_platformKey, "e"), getParameterMPIData(dMPI),
+        Vector<uint8_t> privateExponent;
+        if (auto data = mpiData(dMPI))
+            privateExponent = WTFMove(data.value());
+
+        return CryptoKeyDataRSAComponents::createPrivateWithAdditionalData(
+            getRSAKeyParameter(m_platformKey, "n"), getRSAKeyParameter(m_platformKey, "e"), WTFMove(privateExponent),
             WTFMove(firstPrimeInfo), WTFMove(secondPrimeInfo), Vector<CryptoKeyDataRSAComponents::PrimeInfo> { });
     }
     default:

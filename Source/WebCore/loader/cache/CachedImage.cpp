@@ -51,7 +51,6 @@
 
 #if USE(CG)
 #include "PDFDocumentImage.h"
-#include "UTIRegistry.h"
 #endif
 
 namespace WebCore {
@@ -101,7 +100,7 @@ void CachedImage::setBodyDataFrom(const CachedResource& resource)
     m_image = image.m_image;
     m_imageObserver = image.m_imageObserver;
     if (m_imageObserver)
-        m_imageObserver->add(*this);
+        m_imageObserver->cachedImages().add(this);
 
     if (m_image && is<SVGImage>(*m_image))
         m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
@@ -119,7 +118,7 @@ void CachedImage::didAddClient(CachedResourceClient& client)
         static_cast<CachedImageClient&>(client).imageChanged(this);
 
     if (m_image)
-        m_image->startAnimation();
+        m_image->startAnimationAsynchronously();
 
     CachedResource::didAddClient(client);
 }
@@ -129,6 +128,7 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
     ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
 
     m_pendingContainerSizeRequests.remove(&static_cast<CachedImageClient&>(client));
+    m_pendingImageDrawingClients.remove(&static_cast<CachedImageClient&>(client));
 
     if (m_svgImageCache)
         m_svgImageCache->removeClientFromCache(&static_cast<CachedImageClient&>(client));
@@ -136,6 +136,25 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
     CachedResource::didRemoveClient(client);
 
     static_cast<CachedImageClient&>(client).didRemoveCachedImageClient(*this);
+}
+
+void CachedImage::addPendingImageDrawingClient(CachedImageClient& client)
+{
+    ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
+    if (m_pendingImageDrawingClients.contains(&client))
+        return;
+    if (!m_clients.contains(&client)) {
+        // If the <html> element does not have its own background specified, painting the root box
+        // renderer uses the style of the <body> element, see RenderView::rendererForRootBackground().
+        // In this case, the client we are asked to add is the root box renderer. Since we can't add
+        // a client to m_pendingImageDrawingClients unless it is one of the m_clients, we are going
+        // to cancel the repaint optimization we do in CachedImage::imageFrameAvailable() by adding
+        // all the m_clients to m_pendingImageDrawingClients.
+        CachedResourceClientWalker<CachedImageClient> walker(m_clients);
+        while (auto* client = walker.next())
+            m_pendingImageDrawingClients.add(client);
+    } else
+        m_pendingImageDrawingClients.add(&client);
 }
 
 void CachedImage::switchClientsToRevalidatedResource()
@@ -160,6 +179,7 @@ void CachedImage::switchClientsToRevalidatedResource()
 void CachedImage::allClientsRemoved()
 {
     m_pendingContainerSizeRequests.clear();
+    m_pendingImageDrawingClients.clear();
     if (m_image && !errorOccurred())
         m_image->resetAnimation();
 }
@@ -292,6 +312,7 @@ void CachedImage::clear()
     destroyDecodedData();
     clearImage();
     m_pendingContainerSizeRequests.clear();
+    m_pendingImageDrawingClients.clear();
     setEncodedSize(0);
 }
 
@@ -321,13 +342,13 @@ inline void CachedImage::createImage()
                 setContainerSizeForRenderer(request.key, request.value.first, request.value.second);
         }
         m_pendingContainerSizeRequests.clear();
+        m_pendingImageDrawingClients.clear();
     }
 }
 
 CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
 {
-    m_cachedImages.reserveInitialCapacity(1);
-    m_cachedImages.append(&image);
+    m_cachedImages.add(&image);
 }
 
 void CachedImage::CachedImageObserver::decodedSizeChanged(const Image& image, long long delta)
@@ -353,10 +374,10 @@ bool CachedImage::CachedImageObserver::canDestroyDecodedData(const Image& image)
     return true;
 }
 
-void CachedImage::CachedImageObserver::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+void CachedImage::CachedImageObserver::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect, DecodingStatus decodingStatus)
 {
     for (auto cachedImage : m_cachedImages)
-        cachedImage->imageFrameAvailable(image, animatingState, changeRect);
+        cachedImage->imageFrameAvailable(image, animatingState, changeRect, decodingStatus);
 }
 
 void CachedImage::CachedImageObserver::changedInRect(const Image& image, const IntRect* rect)
@@ -367,10 +388,20 @@ void CachedImage::CachedImageObserver::changedInRect(const Image& image, const I
 
 inline void CachedImage::clearImage()
 {
+    if (!m_image)
+        return;
+
     if (m_imageObserver) {
-        m_imageObserver->remove(*this);
+        m_imageObserver->cachedImages().remove(this);
+
+        if (m_imageObserver->cachedImages().isEmpty()) {
+            ASSERT(m_imageObserver->hasOneRef());
+            m_image->setImageObserver(nullptr);
+        }
+
         m_imageObserver = nullptr;
     }
+
     m_image = nullptr;
 }
 
@@ -408,12 +439,7 @@ void CachedImage::addIncrementalDataBuffer(SharedBuffer& data)
 
 EncodedDataStatus CachedImage::setImageDataBuffer(SharedBuffer* data, bool allDataReceived)
 {
-    EncodedDataStatus encodedDataStatus = m_image ? m_image->setData(data, allDataReceived) : EncodedDataStatus::Error;
-#if USE(CG)
-    if (encodedDataStatus >= EncodedDataStatus::TypeAvailable && m_image->isBitmapImage() && !isAllowedImageUTI(m_image->uti()))
-        return EncodedDataStatus::Error;
-#endif
-    return encodedDataStatus;
+    return m_image ? m_image->setData(data, allDataReceived) : EncodedDataStatus::Error;
 }
 
 void CachedImage::addDataBuffer(SharedBuffer& data)
@@ -522,7 +548,7 @@ bool CachedImage::canDestroyDecodedData(const Image& image)
     return true;
 }
 
-void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect, DecodingStatus decodingStatus)
 {
     if (&image != m_image)
         return;
@@ -531,12 +557,18 @@ void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState an
     VisibleInViewportState visibleState = VisibleInViewportState::No;
 
     while (CachedImageClient* client = clientWalker.next()) {
+        // All the clients of animated images have to be notified. The new frame has to be drawn in all of them.
+        if (animatingState == ImageAnimatingState::No && !m_pendingImageDrawingClients.contains(client))
+            continue;
         if (client->imageFrameAvailable(*this, animatingState, changeRect) == VisibleInViewportState::Yes)
             visibleState = VisibleInViewportState::Yes;
     }
 
     if (visibleState == VisibleInViewportState::No && animatingState == ImageAnimatingState::Yes)
         m_image->stopAnimation();
+
+    if (decodingStatus != DecodingStatus::Partial)
+        m_pendingImageDrawingClients.clear();
 }
 
 void CachedImage::changedInRect(const Image& image, const IntRect* rect)

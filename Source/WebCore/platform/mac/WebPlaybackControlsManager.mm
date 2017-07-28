@@ -29,9 +29,9 @@
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 #import "MediaSelectionOption.h"
-#import "SoftLinking.h"
-#import "WebPlaybackSessionInterfaceMac.h"
-#import "WebPlaybackSessionModel.h"
+#import "PlaybackSessionInterfaceMac.h"
+#import "PlaybackSessionModel.h"
+#import <wtf/SoftLinking.h>
 #import <wtf/text/WTFString.h>
 
 using namespace WebCore;
@@ -59,8 +59,8 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
 
 - (void)dealloc
 {
-    if (_webPlaybackSessionInterfaceMac)
-        _webPlaybackSessionInterfaceMac->setPlayBackControlsManager(nullptr);
+    if (_playbackSessionInterfaceMac)
+        _playbackSessionInterfaceMac->setPlayBackControlsManager(nullptr);
     [super dealloc];
 }
 
@@ -93,7 +93,7 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
 {
     UNUSED_PARAM(toleranceBefore);
     UNUSED_PARAM(toleranceAfter);
-    _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->seekToTime(time);
+    _playbackSessionInterfaceMac->playbackSessionModel()->seekToTime(time);
 }
 
 - (void)cancelThumbnailAndAudioAmplitudeSampleGeneration
@@ -116,20 +116,21 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
 
 - (BOOL)canBeginTouchBarScrubbing
 {
-    // It's not ideal to return YES all the time here. The intent of the API is that we return NO when the
-    // media is being scrubbed via the on-screen scrubber. But we can only possibly get the right answer for
-    // media that uses the default controls.
-    return YES;
+    // At this time, we return YES for all media that is not a live stream and media that is not Netflix. (A Netflix
+    // quirk means we pretend Netflix is a live stream for Touch Bar.) It's not ideal to return YES all the time for
+    // other media. The intent of the API is that we return NO when the media is being scrubbed via the on-screen scrubber.
+    // But we can only possibly get the right answer for media that uses the default controls.
+    return std::isfinite(_contentDuration);;
 }
 
 - (void)beginTouchBarScrubbing
 {
-    _webPlaybackSessionInterfaceMac->beginScrubbing();
+    _playbackSessionInterfaceMac->beginScrubbing();
 }
 
 - (void)endTouchBarScrubbing
 {
-    _webPlaybackSessionInterfaceMac->endScrubbing();
+    _playbackSessionInterfaceMac->endScrubbing();
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
@@ -191,7 +192,7 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
     if (audioMediaSelectionOption && _audioTouchBarMediaSelectionOptions)
         index = [_audioTouchBarMediaSelectionOptions indexOfObject:audioMediaSelectionOption];
 
-    _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->selectAudioMediaOption(index != NSNotFound ? index : UINT64_MAX);
+    _playbackSessionInterfaceMac->playbackSessionModel()->selectAudioMediaOption(index != NSNotFound ? index : UINT64_MAX);
 }
 
 - (NSArray<AVTouchBarMediaSelectionOption *> *)legibleTouchBarMediaSelectionOptions
@@ -221,7 +222,7 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
     if (legibleMediaSelectionOption && _legibleTouchBarMediaSelectionOptions)
         index = [_legibleTouchBarMediaSelectionOptions indexOfObject:legibleMediaSelectionOption];
 
-    _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->selectLegibleMediaOption(index != NSNotFound ? index : UINT64_MAX);
+    _playbackSessionInterfaceMac->playbackSessionModel()->selectLegibleMediaOption(index != NSNotFound ? index : UINT64_MAX);
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
@@ -291,60 +292,58 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
     [self didChangeValueForKey:@"currentLegibleTouchBarMediaSelectionOption"];
 }
 
-- (WebPlaybackSessionInterfaceMac*)webPlaybackSessionInterfaceMac
+- (PlaybackSessionInterfaceMac*)playbackSessionInterfaceMac
 {
-    return _webPlaybackSessionInterfaceMac.get();
+    return _playbackSessionInterfaceMac.get();
 }
 
-- (void)setWebPlaybackSessionInterfaceMac:(WebPlaybackSessionInterfaceMac*)webPlaybackSessionInterfaceMac
+- (void)setPlaybackSessionInterfaceMac:(PlaybackSessionInterfaceMac*)playbackSessionInterfaceMac
 {
-    if (_webPlaybackSessionInterfaceMac == webPlaybackSessionInterfaceMac)
+    if (_playbackSessionInterfaceMac == playbackSessionInterfaceMac)
         return;
 
-    if (_webPlaybackSessionInterfaceMac)
-        _webPlaybackSessionInterfaceMac->setPlayBackControlsManager(nullptr);
+    if (_playbackSessionInterfaceMac)
+        _playbackSessionInterfaceMac->setPlayBackControlsManager(nullptr);
 
-    _webPlaybackSessionInterfaceMac = webPlaybackSessionInterfaceMac;
+    _playbackSessionInterfaceMac = playbackSessionInterfaceMac;
 
-    if (_webPlaybackSessionInterfaceMac)
-        _webPlaybackSessionInterfaceMac->setPlayBackControlsManager(self);
+    if (_playbackSessionInterfaceMac)
+        _playbackSessionInterfaceMac->setPlayBackControlsManager(self);
 }
 
 - (void)togglePlayback
 {
-    if (_webPlaybackSessionInterfaceMac && _webPlaybackSessionInterfaceMac->webPlaybackSessionModel())
-        _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->togglePlayState();
+    if (_playbackSessionInterfaceMac && _playbackSessionInterfaceMac->playbackSessionModel())
+        _playbackSessionInterfaceMac->playbackSessionModel()->togglePlayState();
 }
 
 - (void)setPlaying:(BOOL)playing
 {
-    if (!_webPlaybackSessionInterfaceMac || !_webPlaybackSessionInterfaceMac->webPlaybackSessionModel())
+    if (!_playbackSessionInterfaceMac || !_playbackSessionInterfaceMac->playbackSessionModel())
         return;
 
     BOOL isCurrentlyPlaying = self.playing;
     if (!isCurrentlyPlaying && playing)
-        _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->play();
+        _playbackSessionInterfaceMac->playbackSessionModel()->play();
     else if (isCurrentlyPlaying && !playing)
-        _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->pause();
+        _playbackSessionInterfaceMac->playbackSessionModel()->pause();
 }
 
 - (BOOL)isPlaying
 {
-    if (_webPlaybackSessionInterfaceMac && _webPlaybackSessionInterfaceMac->webPlaybackSessionModel())
-        return _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->isPlaying();
+    if (_playbackSessionInterfaceMac && _playbackSessionInterfaceMac->playbackSessionModel())
+        return _playbackSessionInterfaceMac->playbackSessionModel()->isPlaying();
 
     return NO;
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-
 - (void)togglePictureInPicture
 {
-    if (_webPlaybackSessionInterfaceMac && _webPlaybackSessionInterfaceMac->webPlaybackSessionModel())
-        _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->togglePictureInPicture();
+    if (_playbackSessionInterfaceMac && _playbackSessionInterfaceMac->playbackSessionModel())
+        _playbackSessionInterfaceMac->playbackSessionModel()->togglePictureInPicture();
 }
-
-#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#endif
 
 #pragma clang diagnostic pop
 

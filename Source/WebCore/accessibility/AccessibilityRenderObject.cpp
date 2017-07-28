@@ -1151,7 +1151,18 @@ AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion()
 
     return AccessibilityObject::defaultObjectInclusion();
 }
-
+    
+static bool webAreaIsPresentational(RenderObject* renderer)
+{
+    if (!is<RenderView>(*renderer))
+        return false;
+    
+    if (auto ownerElement = renderer->document().ownerElement())
+        return nodeHasPresentationRole(ownerElement);
+    
+    return false;
+}
+    
 bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
 #ifndef NDEBUG
@@ -1180,6 +1191,10 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (roleValue() == PresentationalRole || inheritsPresentationalRole())
         return true;
     
+    // WebAreas should be ignored if their iframe container is marked as presentational.
+    if (webAreaIsPresentational(m_renderer))
+        return true;
+        
     // An ARIA tree can only have tree items and static text as children.
     if (!isAllowedChildOfTree())
         return true;
@@ -1490,7 +1505,7 @@ const AtomicString& AccessibilityRenderObject::accessKey() const
 {
     Node* node = m_renderer->node();
     if (!is<Element>(node))
-        return nullAtom;
+        return nullAtom();
     return downcast<Element>(*node).getAttribute(accesskeyAttr);
 }
 
@@ -1743,16 +1758,15 @@ void AccessibilityRenderObject::setValue(const String& string)
     if (!m_renderer || !is<Element>(m_renderer->node()))
         return;
     Element& element = downcast<Element>(*m_renderer->node());
-
-    if (!is<RenderBoxModelObject>(*m_renderer))
-        return;
-    RenderBoxModelObject& renderer = downcast<RenderBoxModelObject>(*m_renderer);
-
+    RenderObject& renderer = *m_renderer;
+    
     // FIXME: Do we want to do anything here for ARIA textboxes?
     if (renderer.isTextField() && is<HTMLInputElement>(element))
         downcast<HTMLInputElement>(element).setValue(string);
     else if (renderer.isTextArea() && is<HTMLTextAreaElement>(element))
         downcast<HTMLTextAreaElement>(element).setValue(string);
+    else if (is<HTMLElement>(element) && contentEditableAttributeIsEnabled(&element))
+        downcast<HTMLElement>(element).setInnerText(string);
 }
 
 bool AccessibilityRenderObject::supportsARIAOwns() const
@@ -2844,7 +2858,7 @@ AccessibilityOrientation AccessibilityRenderObject::orientation() const
     
     return AccessibilityObject::orientation();
 }
-    
+
 bool AccessibilityRenderObject::inheritsPresentationalRole() const
 {
     // ARIA states if an item can get focus, it should not be presentational.
@@ -2854,48 +2868,41 @@ bool AccessibilityRenderObject::inheritsPresentationalRole() const
     // ARIA spec says that when a parent object is presentational, and it has required child elements,
     // those child elements are also presentational. For example, <li> becomes presentational from <ul>.
     // http://www.w3.org/WAI/PF/aria/complete#presentation
-    static NeverDestroyed<HashSet<QualifiedName>> listItemParents;
-    static NeverDestroyed<HashSet<QualifiedName>> tableCellParents;
 
-    HashSet<QualifiedName>* possibleParentTagNames = nullptr;
+    const Vector<const HTMLQualifiedName*>* parentTags;
     switch (roleValue()) {
     case ListItemRole:
-    case ListMarkerRole:
-        if (listItemParents.get().isEmpty()) {
-            listItemParents.get().add(ulTag);
-            listItemParents.get().add(olTag);
-            listItemParents.get().add(dlTag);
-        }
-        possibleParentTagNames = &listItemParents.get();
-        break;
-    case GridCellRole:
-    case CellRole:
-        if (tableCellParents.get().isEmpty())
-            tableCellParents.get().add(tableTag);
-        possibleParentTagNames = &tableCellParents.get();
-        break;
-    default:
+    case ListMarkerRole: {
+        static const auto listItemParents = makeNeverDestroyed(Vector<const HTMLQualifiedName*> { &dlTag, &olTag, &ulTag });
+        parentTags = &listItemParents.get();
         break;
     }
-    
-    // Not all elements need to check for this, only ones that are required children.
-    if (!possibleParentTagNames)
+    case GridCellRole:
+    case CellRole: {
+        static const auto tableCellParents = makeNeverDestroyed(Vector<const HTMLQualifiedName*> { &tableTag });
+        parentTags = &tableCellParents.get();
+        break;
+    }
+    default:
+        // Not all elements need to do the following check, only ones that are required children.
         return false;
-    
-    for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) { 
+    }
+
+    for (auto* parent = parentObject(); parent; parent = parent->parentObject()) {
         if (!is<AccessibilityRenderObject>(*parent))
             continue;
-        
+
         Node* node = downcast<AccessibilityRenderObject>(*parent).node();
         if (!is<Element>(node))
             continue;
-        
+
         // If native tag of the parent element matches an acceptable name, then return
         // based on its presentational status.
-        if (possibleParentTagNames->contains(downcast<Element>(node)->tagQName()))
+        auto& name = downcast<Element>(*node).tagQName();
+        if (std::any_of(parentTags->begin(), parentTags->end(), [&name] (auto* possibleName) { return *possibleName == name; }))
             return parent->roleValue() == PresentationalRole;
     }
-    
+
     return false;
 }
     
@@ -3114,9 +3121,7 @@ void AccessibilityRenderObject::addAttachmentChildren()
     if (!widget || !widget->isFrameView())
         return;
     
-    AccessibilityObject* axWidget = axObjectCache()->getOrCreate(widget);
-    if (!axWidget->accessibilityIsIgnored())
-        m_children.append(axWidget);
+    addChild(axObjectCache()->getOrCreate(widget));
 }
 
 #if PLATFORM(COCOA)
@@ -3452,10 +3457,10 @@ const String& AccessibilityRenderObject::actionVerb() const
     case WebCoreLinkRole:
         return linkAction;
     default:
-        return nullAtom;
+        return nullAtom();
     }
 #else
-    return nullAtom;
+    return nullAtom();
 #endif
 }
     

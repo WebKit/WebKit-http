@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,95 +53,6 @@
 
 namespace WebCore {
 
-namespace {
-struct TypeExtensionPair {
-    const char* type;
-    const char* extension;
-};
-}
-
-// A table of common media MIME types and file extenstions used when a platform's
-// specific MIME type lookup doesn't have a match for a media file extension.
-static const TypeExtensionPair commonMediaTypes[] = {
-
-    // Ogg
-    { "application/ogg", "ogx" },
-    { "audio/ogg", "ogg" },
-    { "audio/ogg", "oga" },
-    { "video/ogg", "ogv" },
-
-    // Annodex
-    { "application/annodex", "anx" },
-    { "audio/annodex", "axa" },
-    { "video/annodex", "axv" },
-    { "audio/speex", "spx" },
-
-    // WebM
-    { "video/webm", "webm" },
-    { "audio/webm", "webm" },
-
-    // MPEG
-    { "audio/mpeg", "m1a" },
-    { "audio/mpeg", "m2a" },
-    { "audio/mpeg", "m1s" },
-    { "audio/mpeg", "mpa" },
-    { "video/mpeg", "mpg" },
-    { "video/mpeg", "m15" },
-    { "video/mpeg", "m1s" },
-    { "video/mpeg", "m1v" },
-    { "video/mpeg", "m75" },
-    { "video/mpeg", "mpa" },
-    { "video/mpeg", "mpeg" },
-    { "video/mpeg", "mpm" },
-    { "video/mpeg", "mpv" },
-
-    // MPEG playlist
-    { "application/vnd.apple.mpegurl", "m3u8" },
-    { "application/mpegurl", "m3u8" },
-    { "application/x-mpegurl", "m3u8" },
-    { "audio/mpegurl", "m3url" },
-    { "audio/x-mpegurl", "m3url" },
-    { "audio/mpegurl", "m3u" },
-    { "audio/x-mpegurl", "m3u" },
-
-    // MPEG-4
-    { "video/x-m4v", "m4v" },
-    { "audio/x-m4a", "m4a" },
-    { "audio/x-m4b", "m4b" },
-    { "audio/x-m4p", "m4p" },
-    { "audio/mp4", "m4a" },
-
-    // MP3
-    { "audio/mp3", "mp3" },
-    { "audio/x-mp3", "mp3" },
-    { "audio/x-mpeg", "mp3" },
-
-    // MPEG-2
-    { "video/x-mpeg2", "mp2" },
-    { "video/mpeg2", "vob" },
-    { "video/mpeg2", "mod" },
-    { "video/m2ts", "m2ts" },
-    { "video/x-m2ts", "m2t" },
-    { "video/x-m2ts", "ts" },
-
-    // 3GP/3GP2
-    { "audio/3gpp", "3gpp" }, 
-    { "audio/3gpp2", "3g2" }, 
-    { "application/x-mpeg", "amc" },
-
-    // AAC
-    { "audio/aac", "aac" },
-    { "audio/aac", "adts" },
-    { "audio/x-aac", "m4r" },
-
-    // CoreAudio File
-    { "audio/x-caf", "caf" },
-    { "audio/x-gsm", "gsm" },
-
-    // ADPCM
-    { "audio/x-wav", "wav" }
-};
-
 static HashSet<String, ASCIICaseInsensitiveHash>* supportedImageResourceMIMETypes;
 static HashSet<String, ASCIICaseInsensitiveHash>* supportedImageMIMETypes;
 static HashSet<String, ASCIICaseInsensitiveHash>* supportedImageMIMETypesForEncoding;
@@ -152,8 +63,6 @@ static HashSet<String, ASCIICaseInsensitiveHash>* pdfMIMETypes;
 static HashSet<String, ASCIICaseInsensitiveHash>* pdfAndPostScriptMIMETypes;
 static HashSet<String, ASCIICaseInsensitiveHash>* unsupportedTextMIMETypes;
 
-typedef HashMap<String, Vector<String>*, ASCIICaseInsensitiveHash> MediaMIMETypeMap;
-    
 static void initializeSupportedImageMIMETypes()
 {
 #if USE(CG)
@@ -195,7 +104,7 @@ static void initializeSupportedImageMIMETypes()
     // This can be removed when Mail addresses:
     // <rdar://problem/7879510> Mail should use standard image mimetypes 
     // and we fix sniffing so that it corrects items such as image/jpg -> image/jpeg.
-    static const char* malformedMIMETypes[] = {
+    static const char* const malformedMIMETypes[] = {
         // JPEG (image/jpeg)
         "image/jpg", "image/jp_", "image/jpe_", "application/jpg", "application/x-jpg", "image/pipeg",
         "image/vnd.switfview-jpeg", "image/x-xbitmap",
@@ -219,7 +128,7 @@ static void initializeSupportedImageMIMETypes()
 #else
     // assume that all implementations at least support the following standard
     // image types:
-    static const char* types[] = {
+    static const char* const types[] = {
         "image/jpeg",
         "image/png",
         "image/gif",
@@ -277,7 +186,7 @@ static void initializeSupportedImageMIMETypesForEncoding()
 static void initializeSupportedJavaScriptMIMETypes()
 {
     // https://html.spec.whatwg.org/multipage/scripting.html#javascript-mime-type
-    static const char* types[] = {
+    static const char* const types[] = {
         "text/javascript",
         "text/ecmascript",
         "application/javascript",
@@ -316,7 +225,7 @@ static void initializePostScriptMIMETypes()
 
 static void initializeSupportedNonImageMimeTypes()
 {
-    static const char* types[] = {
+    static const char* const types[] = {
         "text/html",
         "text/xml",
         "text/xsl",
@@ -347,65 +256,135 @@ static void initializeSupportedNonImageMimeTypes()
 #endif
 }
 
-static MediaMIMETypeMap& mediaMIMETypeMap()
+static const Vector<String>* typesForCommonExtension(const String& extension)
 {
-    static NeverDestroyed<MediaMIMETypeMap> mediaMIMETypeForExtensionMap;
+    static const auto map = makeNeverDestroyed([] {
+        struct TypeExtensionPair {
+            const char* type;
+            const char* extension;
+        };
 
-    if (!mediaMIMETypeForExtensionMap.get().isEmpty())
-        return mediaMIMETypeForExtensionMap;
+        // A table of common media MIME types and file extentions used when a platform's
+        // specific MIME type lookup doesn't have a match for a media file extension.
+        static const TypeExtensionPair commonMediaTypes[] = {
+            // Ogg
+            { "application/ogg", "ogx" },
+            { "audio/ogg", "ogg" },
+            { "audio/ogg", "oga" },
+            { "video/ogg", "ogv" },
 
-    const unsigned numPairs = sizeof(commonMediaTypes) / sizeof(commonMediaTypes[0]);
-    for (unsigned ndx = 0; ndx < numPairs; ++ndx) {
+            // Annodex
+            { "application/annodex", "anx" },
+            { "audio/annodex", "axa" },
+            { "video/annodex", "axv" },
+            { "audio/speex", "spx" },
 
-        if (mediaMIMETypeForExtensionMap.get().contains(commonMediaTypes[ndx].extension))
-            mediaMIMETypeForExtensionMap.get().get(commonMediaTypes[ndx].extension)->append(commonMediaTypes[ndx].type);
-        else {
-            Vector<String>* synonyms = new Vector<String>;
+            // WebM
+            { "video/webm", "webm" },
+            { "audio/webm", "webm" },
 
-            // If there is a system specific type for this extension, add it as the first type so
-            // getMediaMIMETypeForExtension will always return it.
-            String systemType = MIMETypeRegistry::getMIMETypeForExtension(commonMediaTypes[ndx].extension);
-            if (!systemType.isEmpty() && commonMediaTypes[ndx].type != systemType)
-                synonyms->append(systemType);
-            synonyms->append(commonMediaTypes[ndx].type);
-            mediaMIMETypeForExtensionMap.get().add(commonMediaTypes[ndx].extension, synonyms);
+            // MPEG
+            { "audio/mpeg", "m1a" },
+            { "audio/mpeg", "m2a" },
+            { "audio/mpeg", "m1s" },
+            { "audio/mpeg", "mpa" },
+            { "video/mpeg", "mpg" },
+            { "video/mpeg", "m15" },
+            { "video/mpeg", "m1s" },
+            { "video/mpeg", "m1v" },
+            { "video/mpeg", "m75" },
+            { "video/mpeg", "mpa" },
+            { "video/mpeg", "mpeg" },
+            { "video/mpeg", "mpm" },
+            { "video/mpeg", "mpv" },
+
+            // MPEG playlist
+            { "application/vnd.apple.mpegurl", "m3u8" },
+            { "application/mpegurl", "m3u8" },
+            { "application/x-mpegurl", "m3u8" },
+            { "audio/mpegurl", "m3url" },
+            { "audio/x-mpegurl", "m3url" },
+            { "audio/mpegurl", "m3u" },
+            { "audio/x-mpegurl", "m3u" },
+
+            // MPEG-4
+            { "video/x-m4v", "m4v" },
+            { "audio/x-m4a", "m4a" },
+            { "audio/x-m4b", "m4b" },
+            { "audio/x-m4p", "m4p" },
+            { "audio/mp4", "m4a" },
+
+            // MP3
+            { "audio/mp3", "mp3" },
+            { "audio/x-mp3", "mp3" },
+            { "audio/x-mpeg", "mp3" },
+
+            // MPEG-2
+            { "video/x-mpeg2", "mp2" },
+            { "video/mpeg2", "vob" },
+            { "video/mpeg2", "mod" },
+            { "video/m2ts", "m2ts" },
+            { "video/x-m2ts", "m2t" },
+            { "video/x-m2ts", "ts" },
+
+            // 3GP/3GP2
+            { "audio/3gpp", "3gpp" },
+            { "audio/3gpp2", "3g2" },
+            { "application/x-mpeg", "amc" },
+
+            // AAC
+            { "audio/aac", "aac" },
+            { "audio/aac", "adts" },
+            { "audio/x-aac", "m4r" },
+
+            // CoreAudio File
+            { "audio/x-caf", "caf" },
+            { "audio/x-gsm", "gsm" },
+
+            // ADPCM
+            { "audio/x-wav", "wav" },
+            { "audio/vnd.wave", "wav" },
+        };
+
+        HashMap<String, Vector<String>, ASCIICaseInsensitiveHash> map;
+        for (auto& pair : commonMediaTypes) {
+            const char* type = pair.type;
+            const char* extension = pair.extension;
+            map.ensure(ASCIILiteral { extension }, [type, extension] {
+                // First type in the vector must always be the one from getMIMETypeForExtension,
+                // so we can use the map without also calling getMIMETypeForExtension each time.
+                Vector<String> synonyms;
+                String systemType = MIMETypeRegistry::getMIMETypeForExtension(extension);
+                if (!systemType.isEmpty() && type != systemType)
+                    synonyms.append(systemType);
+                return synonyms;
+            }).iterator->value.append(ASCIILiteral { type });
         }
-    }
-
-    return mediaMIMETypeForExtensionMap;
+        return map;
+    }());
+    auto mapEntry = map.get().find(extension);
+    if (mapEntry == map.get().end())
+        return nullptr;
+    return &mapEntry->value;
 }
 
-String MIMETypeRegistry::getMediaMIMETypeForExtension(const String& ext)
+String MIMETypeRegistry::getMediaMIMETypeForExtension(const String& extension)
 {
-    // Look in the system-specific registry first.
-    String type = getMIMETypeForExtension(ext);
-    if (!type.isEmpty())
-        return type;
-
-    Vector<String>* typeList = mediaMIMETypeMap().get(ext);
-    if (typeList)
-        return (*typeList)[0];
-    
-    return String();
+    auto* vector = typesForCommonExtension(extension);
+    if (vector)
+        return (*vector)[0];
+    return getMIMETypeForExtension(extension);
 }
-    
-Vector<String> MIMETypeRegistry::getMediaMIMETypesForExtension(const String& ext)
-{
-    Vector<String>* typeList = mediaMIMETypeMap().get(ext);
-    if (typeList)
-        return *typeList;
 
-    // Only need to look in the system-specific registry if mediaMIMETypeMap() doesn't contain
-    // the extension at all, because it always contains the system-specific type if the
-    // extension is in the static mapping table.
-    String type = getMIMETypeForExtension(ext);
-    if (!type.isEmpty()) {
-        Vector<String> typeList;
-        typeList.append(type);
-        return typeList;
-    }
-    
-    return Vector<String>();
+Vector<String> MIMETypeRegistry::getMediaMIMETypesForExtension(const String& extension)
+{
+    auto* vector = typesForCommonExtension(extension);
+    if (vector)
+        return *vector;
+    String type = getMIMETypeForExtension(extension);
+    if (!type.isNull())
+        return { { type } };
+    return { };
 }
 
 static void initializeSupportedMediaMIMETypes()
@@ -418,7 +397,7 @@ static void initializeSupportedMediaMIMETypes()
 
 static void initializeUnsupportedTextMIMETypes()
 {
-    static const char* types[] = {
+    static const char* const types[] = {
         "text/calendar",
         "text/x-calendar",
         "text/x-vcalendar",
@@ -438,7 +417,7 @@ static void initializeUnsupportedTextMIMETypes()
 #endif
     };
     for (auto& type : types)
-        unsupportedTextMIMETypes->add(type);
+        unsupportedTextMIMETypes->add(ASCIILiteral { type });
 }
 
 static void initializeMIMETypeRegistry()
@@ -484,6 +463,11 @@ bool MIMETypeRegistry::isSupportedImageMIMEType(const String& mimeType)
     return supportedImageMIMETypes->contains(getNormalizedMIMEType(mimeType));
 }
 
+bool MIMETypeRegistry::isSupportedImageOrSVGMIMEType(const String& mimeType)
+{
+    return isSupportedImageMIMEType(mimeType) || equalLettersIgnoringASCIICase(mimeType, "image/svg+xml");
+}
+
 bool MIMETypeRegistry::isSupportedImageResourceMIMEType(const String& mimeType)
 {
     if (mimeType.isEmpty())
@@ -511,6 +495,24 @@ bool MIMETypeRegistry::isSupportedJavaScriptMIMEType(const String& mimeType)
     if (!supportedJavaScriptMIMETypes)
         initializeMIMETypeRegistry();
     return supportedJavaScriptMIMETypes->contains(mimeType);
+}
+
+bool MIMETypeRegistry::isSupportedStyleSheetMIMEType(const String& mimeType)
+{
+    return equalLettersIgnoringASCIICase(mimeType, "text/css");
+}
+
+bool MIMETypeRegistry::isSupportedFontMIMEType(const String& mimeType)
+{
+    static const unsigned fontLen = 5;
+    if (!mimeType.startsWithIgnoringASCIICase("font/"))
+        return false;
+    String subType = mimeType.substring(fontLen);
+    return equalLettersIgnoringASCIICase(subType, "woff")
+        || equalLettersIgnoringASCIICase(subType, "woff2")
+        || equalLettersIgnoringASCIICase(subType, "otf")
+        || equalLettersIgnoringASCIICase(subType, "ttf")
+        || equalLettersIgnoringASCIICase(subType, "sfnt");
 }
 
 bool MIMETypeRegistry::isSupportedJSONMIMEType(const String& mimeType)
@@ -547,6 +549,11 @@ bool MIMETypeRegistry::isSupportedMediaMIMEType(const String& mimeType)
     if (!supportedMediaMIMETypes)
         initializeSupportedMediaMIMETypes();
     return supportedMediaMIMETypes->contains(mimeType);
+}
+
+bool MIMETypeRegistry::isSupportedTextTrackMIMEType(const String& mimeType)
+{
+    return equalLettersIgnoringASCIICase(mimeType, "text/vtt");
 }
 
 bool MIMETypeRegistry::isUnsupportedTextMIMEType(const String& mimeType)
@@ -744,6 +751,7 @@ static const MIMETypeAssociationMap& mimeTypeAssociationMap()
     mimeTypeMap->add(ASCIILiteral("audio/qcp"), ASCIILiteral("audio/qcelp"));
     mimeTypeMap->add(ASCIILiteral("audio/vnd.qcp"), ASCIILiteral("audio/qcelp"));
     mimeTypeMap->add(ASCIILiteral("audio/wav"), ASCIILiteral("audio/x-wav"));
+    mimeTypeMap->add(ASCIILiteral("audio/vnd.wave"), ASCIILiteral("audio/x-wav"));
     mimeTypeMap->add(ASCIILiteral("audio/mid"), ASCIILiteral("audio/midi"));
     mimeTypeMap->add(ASCIILiteral("audio/sp-midi"), ASCIILiteral("audio/midi"));
     mimeTypeMap->add(ASCIILiteral("audio/x-mid"), ASCIILiteral("audio/midi"));

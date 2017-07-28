@@ -25,13 +25,14 @@
 
 #pragma once
 
-#import "SoftLinking.h"
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 
 #import <AVFoundation/AVAssetCache_Private.h>
 #import <AVFoundation/AVOutputContext.h>
+#import <AVFoundation/AVPlayerItem_Private.h>
 #import <AVFoundation/AVPlayerLayer_Private.h>
 #import <AVFoundation/AVPlayer_Private.h>
 
@@ -46,6 +47,16 @@
 #else
 
 #import <AVFoundation/AVPlayer.h>
+#import <AVFoundation/AVPlayerItem.h>
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
+NS_ASSUME_NONNULL_BEGIN
+@interface AVPlayerItem ()
+@property (nonatomic, readonly) NSTimeInterval seekableTimeRangesLastModifiedTime NS_AVAILABLE(10_13, 11_0);
+@property (nonatomic, readonly) NSTimeInterval liveUpdateInterval;
+@end
+NS_ASSUME_NONNULL_END
+#endif // (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
@@ -65,7 +76,7 @@ NS_ASSUME_NONNULL_END
 
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200) || PLATFORM(IOS)
 #import <AVFoundation/AVAssetCache.h>
 #else
 @interface AVAssetCache : NSObject
@@ -193,7 +204,7 @@ NS_ASSUME_NONNULL_END
 
 #endif // __has_include(<AVFoundation/AVSampleBufferRenderSynchronizer.h>)
 
-#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)) && __has_include(<AVFoundation/AVQueuedSampleBufferRendering.h>)
+#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 110000)) && __has_include(<AVFoundation/AVQueuedSampleBufferRendering.h>)
 #import <AVFoundation/AVQueuedSampleBufferRendering.h>
 #elif __has_include(<AVFoundation/AVSampleBufferDisplayLayer.h>)
 #import <AVFoundation/AVSampleBufferDisplayLayer.h>
@@ -219,7 +230,7 @@ NS_ASSUME_NONNULL_END
 
 #endif // __has_include(<AVFoundation/AVSampleBufferDisplayLayer.h>)
 
-#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)) && __has_include(<AVFoundation/AVQueuedSampleBufferRendering.h>)
+#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 110000)) && __has_include(<AVFoundation/AVQueuedSampleBufferRendering.h>)
 // Nothing to do, AVfoundation/AVQueuedSampleBufferRendering.h was imported above.
 #elif __has_include(<AVFoundation/AVSampleBufferAudioRenderer.h>)
 #import <AVFoundation/AVSampleBufferAudioRenderer.h>

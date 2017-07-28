@@ -38,6 +38,7 @@
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
 #include "DOMRect.h"
+#include "DOMRectList.h"
 #include "DOMTokenList.h"
 #include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
@@ -401,7 +402,7 @@ bool Element::removeAttribute(const QualifiedName& name)
 void Element::setBooleanAttribute(const QualifiedName& name, bool value)
 {
     if (value)
-        setAttribute(name, emptyAtom);
+        setAttribute(name, emptyAtom());
     else
         removeAttribute(name);
 }
@@ -478,18 +479,18 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) 
     if (elementData()->animatedSVGAttributesAreDirty()) {
         // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
         ASSERT_WITH_SECURITY_IMPLICATION(isSVGElement());
-        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
+        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom(), localName, nullAtom()));
     }
 }
 
 const AtomicString& Element::getAttribute(const QualifiedName& name) const
 {
     if (!elementData())
-        return nullAtom;
+        return nullAtom();
     synchronizeAttribute(name);
     if (const Attribute* attribute = findAttributeByName(name))
         return attribute->value();
-    return nullAtom;
+    return nullAtom();
 }
 
 Vector<String> Element::getAttributeNames() const
@@ -1144,13 +1145,13 @@ LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElemen
     return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
 
-Vector<Ref<DOMRect>> Element::getClientRects()
+Ref<DOMRectList> Element::getClientRects()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
     RenderBoxModelObject* renderBoxModelObject = this->renderBoxModelObject();
     if (!renderBoxModelObject)
-        return { };
+        return DOMRectList::create();
 
     // FIXME: Handle SVG elements.
     // FIXME: Handle table/inline-table with a caption.
@@ -1158,10 +1159,10 @@ Vector<Ref<DOMRect>> Element::getClientRects()
     Vector<FloatQuad> quads;
     renderBoxModelObject->absoluteQuads(quads);
     document().convertAbsoluteToClientQuads(quads, renderBoxModelObject->style());
-    return createDOMRectVector(quads);
+    return DOMRectList::create(quads);
 }
 
-Ref<DOMRect> Element::getBoundingClientRect()
+FloatRect Element::boundingClientRect()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -1179,14 +1180,19 @@ Ref<DOMRect> Element::getBoundingClientRect()
     }
 
     if (quads.isEmpty())
-        return DOMRect::create();
+        return { };
 
     FloatRect result = quads[0].boundingBox();
     for (size_t i = 1; i < quads.size(); ++i)
         result.unite(quads[i].boundingBox());
 
     document().convertAbsoluteToClientRect(result, renderer()->style());
-    return DOMRect::create(result);
+    return result;
+}
+
+Ref<DOMRect> Element::getBoundingClientRect()
+{
+    return DOMRect::create(boundingClientRect());
 }
 
 // Note that this is not web-exposed, and does not use the same coordinate system as getBoundingClientRect() and friends.
@@ -1207,27 +1213,27 @@ IntRect Element::screenRect() const
 const AtomicString& Element::getAttribute(const AtomicString& localName) const
 {
     if (!elementData())
-        return nullAtom;
+        return nullAtom();
     synchronizeAttribute(localName);
     if (const Attribute* attribute = elementData()->findAttributeByName(localName, shouldIgnoreAttributeCase(*this)))
         return attribute->value();
-    return nullAtom;
+    return nullAtom();
 }
 
 const AtomicString& Element::getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const
 {
-    return getAttribute(QualifiedName(nullAtom, localName, namespaceURI));
+    return getAttribute(QualifiedName(nullAtom(), localName, namespaceURI));
 }
 
 ExceptionOr<void> Element::setAttribute(const AtomicString& localName, const AtomicString& value)
 {
     if (!Document::isValidName(localName))
-        return Exception { INVALID_CHARACTER_ERR };
+        return Exception { InvalidCharacterError };
 
     synchronizeAttribute(localName);
     auto caseAdjustedLocalName = shouldIgnoreAttributeCase(*this) ? localName.convertToASCIILowercase() : localName;
     unsigned index = elementData() ? elementData()->findAttributeIndexByName(caseAdjustedLocalName, false) : ElementData::attributeNotFound;
-    auto name = index != ElementData::attributeNotFound ? attributeAt(index).name() : QualifiedName { nullAtom, caseAdjustedLocalName, nullAtom };
+    auto name = index != ElementData::attributeNotFound ? attributeAt(index).name() : QualifiedName { nullAtom(), caseAdjustedLocalName, nullAtom() };
     setAttributeInternal(index, name, value, NotInSynchronizationOfLazyAttribute);
 
     return { };
@@ -1460,21 +1466,24 @@ WebAnimationVector Element::getAnimations()
 
     auto* document = DocumentAnimation::from(&this->document());
     if (document)
-        return document->getAnimations(checkTarget);
+        return document->getAnimations(WTFMove(checkTarget));
     return WebAnimationVector();
 }
 #endif
 
 bool Element::hasDisplayContents() const
 {
-    return hasRareData() && elementRareData()->hasDisplayContents();
+    if (renderer() || !hasRareData())
+        return false;
+    const RenderStyle* style = elementRareData()->computedStyle();
+    return style && style->display() == CONTENTS;
 }
 
-void Element::setHasDisplayContents(bool value)
+void Element::storeDisplayContentsStyle(std::unique_ptr<RenderStyle> style)
 {
-    if (hasDisplayContents() == value)
-        return;
-    ensureElementRareData().setHasDisplayContents(value);
+    ASSERT(style && style->display() == CONTENTS);
+    ASSERT(!renderer());
+    ensureElementRareData().setComputedStyle(WTFMove(style));
 }
 
 // Returns true is the given attribute is an event handler.
@@ -1519,27 +1528,28 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector)
 
     // Use attributeVector instead of m_elementData because attributeChanged might modify m_elementData.
     for (const auto& attribute : attributeVector)
-        attributeChanged(attribute.name(), nullAtom, attribute.value(), ModifiedDirectly);
+        attributeChanged(attribute.name(), nullAtom(), attribute.value(), ModifiedDirectly);
 }
 
 void Element::parserDidSetAttributes()
 {
 }
 
-void Element::didMoveToNewDocument(Document& oldDocument)
+void Element::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    Node::didMoveToNewDocument(oldDocument);
+    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    Node::didMoveToNewDocument(oldDocument, newDocument);
 
     if (oldDocument.inQuirksMode() != document().inQuirksMode()) {
         // ElementData::m_classNames or ElementData::m_idForStyleResolution need to be updated with the right case.
         if (hasID())
-            attributeChanged(idAttr, nullAtom, getIdAttribute());
+            attributeChanged(idAttr, nullAtom(), getIdAttribute());
         if (hasClass())
-            attributeChanged(classAttr, nullAtom, getAttribute(classAttr));
+            attributeChanged(classAttr, nullAtom(), getAttribute(classAttr));
     }
 
     if (UNLIKELY(isDefinedCustomElement()))
-        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, document());
+        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, newDocument);
 }
 
 bool Element::hasAttributes() const
@@ -1577,7 +1587,7 @@ ExceptionOr<void> Element::setPrefix(const AtomicString& prefix)
     if (result.hasException())
         return result.releaseException();
 
-    m_tagName.setPrefix(prefix.isEmpty() ? nullAtom : prefix);
+    m_tagName.setPrefix(prefix.isEmpty() ? nullAtom() : prefix);
     return { };
 }
 
@@ -1629,22 +1639,22 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     const AtomicString& idValue = getIdAttribute();
     if (!idValue.isNull()) {
         if (newScope)
-            updateIdForTreeScope(*newScope, nullAtom, idValue);
+            updateIdForTreeScope(*newScope, nullAtom(), idValue);
         if (newDocument)
-            updateIdForDocument(*newDocument, nullAtom, idValue, AlwaysUpdateHTMLDocumentNamedItemMaps);
+            updateIdForDocument(*newDocument, nullAtom(), idValue, AlwaysUpdateHTMLDocumentNamedItemMaps);
     }
 
     const AtomicString& nameValue = getNameAttribute();
     if (!nameValue.isNull()) {
         if (newScope)
-            updateNameForTreeScope(*newScope, nullAtom, nameValue);
+            updateNameForTreeScope(*newScope, nullAtom(), nameValue);
         if (newDocument)
-            updateNameForDocument(*newDocument, nullAtom, nameValue);
+            updateNameForDocument(*newDocument, nullAtom(), nameValue);
     }
 
     if (newScope && hasTagName(labelTag)) {
         if (newScope->shouldCacheLabelsByForAttribute())
-            updateLabel(*newScope, nullAtom, attributeWithoutSynchronization(forAttr));
+            updateLabel(*newScope, nullAtom(), attributeWithoutSynchronization(forAttr));
     }
 
     if (becomeConnected) {
@@ -1683,22 +1693,22 @@ void Element::removedFrom(ContainerNode& insertionPoint)
         const AtomicString& idValue = getIdAttribute();
         if (!idValue.isNull()) {
             if (oldScope)
-                updateIdForTreeScope(*oldScope, idValue, nullAtom);
+                updateIdForTreeScope(*oldScope, idValue, nullAtom());
             if (oldDocument)
-                updateIdForDocument(*oldDocument, idValue, nullAtom, AlwaysUpdateHTMLDocumentNamedItemMaps);
+                updateIdForDocument(*oldDocument, idValue, nullAtom(), AlwaysUpdateHTMLDocumentNamedItemMaps);
         }
 
         const AtomicString& nameValue = getNameAttribute();
         if (!nameValue.isNull()) {
             if (oldScope)
-                updateNameForTreeScope(*oldScope, nameValue, nullAtom);
+                updateNameForTreeScope(*oldScope, nameValue, nullAtom());
             if (oldDocument)
-                updateNameForDocument(*oldDocument, nameValue, nullAtom);
+                updateNameForDocument(*oldDocument, nameValue, nullAtom());
         }
 
         if (oldScope && hasTagName(labelTag)) {
             if (oldScope->shouldCacheLabelsByForAttribute())
-                updateLabel(*oldScope, attributeWithoutSynchronization(forAttr), nullAtom);
+                updateLabel(*oldScope, attributeWithoutSynchronization(forAttr), nullAtom());
         }
 
         if (becomeDisconnected && UNLIKELY(isDefinedCustomElement()))
@@ -1814,9 +1824,9 @@ static bool canAttachAuthorShadowRoot(const Element& element)
 ExceptionOr<ShadowRoot&> Element::attachShadow(const ShadowRootInit& init)
 {
     if (!canAttachAuthorShadowRoot(*this))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     if (shadowRoot())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     if (init.mode == ShadowRootMode::UserAgent)
         return Exception { TypeError };
     auto shadow = ShadowRoot::create(document(), init.mode);
@@ -2123,7 +2133,6 @@ void Element::attachAttributeNodeIfNeeded(Attr& attrNode)
     NoEventDispatchAssertion assertNoEventDispatch;
 
     attrNode.attachToElement(*this);
-    treeScope().adoptIfNeeded(attrNode);
     ensureAttrNodeListForElement(*this).append(&attrNode);
 }
 
@@ -2133,10 +2142,10 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
     if (oldAttrNode.get() == &attrNode)
         return WTFMove(oldAttrNode);
 
-    // INUSE_ATTRIBUTE_ERR: Raised if node is an Attr that is already an attribute of another Element object.
+    // InUseAttributeError: Raised if node is an Attr that is already an attribute of another Element object.
     // The DOM user must explicitly clone Attr nodes to re-use them in other elements.
     if (attrNode.ownerElement() && attrNode.ownerElement() != this)
-        return Exception { INUSE_ATTRIBUTE_ERR };
+        return Exception { InUseAttributeError };
 
     {
     NoEventDispatchAssertion assertNoEventDispatch;
@@ -2180,10 +2189,10 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
     if (oldAttrNode.get() == &attrNode)
         return WTFMove(oldAttrNode);
 
-    // INUSE_ATTRIBUTE_ERR: Raised if node is an Attr that is already an attribute of another Element object.
+    // InUseAttributeError: Raised if node is an Attr that is already an attribute of another Element object.
     // The DOM user must explicitly clone Attr nodes to re-use them in other elements.
     if (attrNode.ownerElement() && attrNode.ownerElement() != this)
-        return Exception { INUSE_ATTRIBUTE_ERR };
+        return Exception { InUseAttributeError };
 
     unsigned index = 0;
     
@@ -2215,18 +2224,18 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
 ExceptionOr<Ref<Attr>> Element::removeAttributeNode(Attr& attr)
 {
     if (attr.ownerElement() != this)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     ASSERT(&document() == &attr.document());
 
     synchronizeAllAttributes();
 
     if (!m_elementData)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     auto existingAttributeIndex = m_elementData->findAttributeIndexByName(attr.qualifiedName());
     if (existingAttributeIndex == ElementData::attributeNotFound)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     Ref<Attr> oldAttrNode { attr };
 
@@ -2243,7 +2252,7 @@ ExceptionOr<QualifiedName> Element::parseAttributeName(const AtomicString& names
         return parseResult.releaseException();
     QualifiedName parsedAttributeName { parseResult.releaseReturnValue() };
     if (!Document::hasValidNamespaceForAttributes(parsedAttributeName))
-        return Exception { NAMESPACE_ERR };
+        return Exception { NamespaceError };
     return WTFMove(parsedAttributeName);
 }
 
@@ -2274,10 +2283,10 @@ void Element::removeAttributeInternal(unsigned index, SynchronizationOfLazyAttri
     }
 
     if (!valueBeingRemoved.isNull())
-        willModifyAttribute(name, valueBeingRemoved, nullAtom);
+        willModifyAttribute(name, valueBeingRemoved, nullAtom());
 
     {
-        Style::AttributeChangeInvalidation styleInvalidation(*this, name, valueBeingRemoved, nullAtom);
+        Style::AttributeChangeInvalidation styleInvalidation(*this, name, valueBeingRemoved, nullAtom());
         elementData.removeAttribute(index);
     }
 
@@ -2291,9 +2300,9 @@ void Element::addAttributeInternal(const QualifiedName& name, const AtomicString
         return;
     }
 
-    willModifyAttribute(name, nullAtom, value);
+    willModifyAttribute(name, nullAtom(), value);
     {
-        Style::AttributeChangeInvalidation styleInvalidation(*this, name, nullAtom, value);
+        Style::AttributeChangeInvalidation styleInvalidation(*this, name, nullAtom(), value);
         ensureUniqueElementData().addAttribute(name, value);
     }
     didAddAttribute(name, value);
@@ -2318,7 +2327,7 @@ bool Element::removeAttribute(const AtomicString& name)
 
 bool Element::removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
-    return removeAttribute(QualifiedName(nullAtom, localName, namespaceURI));
+    return removeAttribute(QualifiedName(nullAtom(), localName, namespaceURI));
 }
 
 RefPtr<Attr> Element::getAttributeNode(const AtomicString& localName)
@@ -2336,7 +2345,7 @@ RefPtr<Attr> Element::getAttributeNodeNS(const AtomicString& namespaceURI, const
 {
     if (!elementData())
         return 0;
-    QualifiedName qName(nullAtom, localName, namespaceURI);
+    QualifiedName qName(nullAtom(), localName, namespaceURI);
     synchronizeAttribute(qName);
     const Attribute* attribute = elementData()->findAttributeByName(qName);
     if (!attribute)
@@ -2356,7 +2365,7 @@ bool Element::hasAttributeNS(const AtomicString& namespaceURI, const AtomicStrin
 {
     if (!elementData())
         return false;
-    QualifiedName qName(nullAtom, localName, namespaceURI);
+    QualifiedName qName(nullAtom(), localName, namespaceURI);
     synchronizeAttribute(qName);
     return elementData()->findAttributeByName(qName);
 }
@@ -2549,7 +2558,7 @@ ExceptionOr<void> Element::setOuterHTML(const String& html)
 {
     auto* parentElement = this->parentElement();
     if (!is<HTMLElement>(parentElement))
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
+        return Exception { NoModificationAllowedError };
 
     Ref<HTMLElement> parent = downcast<HTMLElement>(*parentElement);
     RefPtr<Node> prev = previousSibling();
@@ -2681,11 +2690,11 @@ const RenderStyle& Element::resolveComputedStyle()
     // Collect ancestors until we find one that has style.
     auto composedAncestors = composedTreeAncestors(*this);
     for (auto& ancestor : composedAncestors) {
-        elementsRequiringComputedStyle.prepend(&ancestor);
         if (auto* existingStyle = ancestor.existingComputedStyle()) {
             computedStyle = existingStyle;
             break;
         }
+        elementsRequiringComputedStyle.prepend(&ancestor);
     }
 
     // Resolve and cache styles starting from the most distant ancestor.
@@ -2859,7 +2868,7 @@ AtomicString Element::computeInheritedLanguage() const
         }
     }
 
-    return nullAtom;
+    return nullAtom();
 }
 
 Locale& Element::locale() const
@@ -3253,7 +3262,7 @@ void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& 
         return;
 
     if (WindowNameCollection::elementMatchesIfNameAttributeMatch(*this)) {
-        const AtomicString& id = WindowNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom;
+        const AtomicString& id = WindowNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom();
         if (!oldName.isEmpty() && oldName != id)
             document.removeWindowNamedItem(*oldName.impl(), *this);
         if (!newName.isEmpty() && newName != id)
@@ -3261,7 +3270,7 @@ void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& 
     }
 
     if (DocumentNameCollection::elementMatchesIfNameAttributeMatch(*this)) {
-        const AtomicString& id = DocumentNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom;
+        const AtomicString& id = DocumentNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom();
         if (!oldName.isEmpty() && oldName != id)
             document.removeDocumentNamedItem(*oldName.impl(), *this);
         if (!newName.isEmpty() && newName != id)
@@ -3306,7 +3315,7 @@ void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& ol
         return;
 
     if (WindowNameCollection::elementMatchesIfIdAttributeMatch(*this)) {
-        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom;
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom();
         if (!oldId.isEmpty() && oldId != name)
             document.removeWindowNamedItem(*oldId.impl(), *this);
         if (!newId.isEmpty() && newId != name)
@@ -3314,7 +3323,7 @@ void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& ol
     }
 
     if (DocumentNameCollection::elementMatchesIfIdAttributeMatch(*this)) {
-        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom;
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom();
         if (!oldId.isEmpty() && oldId != name)
             document.removeDocumentNamedItem(*oldId.impl(), *this);
         if (!newId.isEmpty() && newId != name)
@@ -3357,7 +3366,7 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
 
 void Element::didAddAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    attributeChanged(name, nullAtom, value);
+    attributeChanged(name, nullAtom(), value);
     InspectorInstrumentation::didModifyDOMAttr(document(), *this, name.localName(), value);
     dispatchSubtreeModifiedEvent();
 }
@@ -3371,7 +3380,7 @@ void Element::didModifyAttribute(const QualifiedName& name, const AtomicString& 
 
 void Element::didRemoveAttribute(const QualifiedName& name, const AtomicString& oldValue)
 {
-    attributeChanged(name, oldValue, nullAtom);
+    attributeChanged(name, oldValue, nullAtom());
     InspectorInstrumentation::didRemoveDOMAttr(document(), *this, name.localName());
     dispatchSubtreeModifiedEvent();
 }
@@ -3408,7 +3417,7 @@ Ref<Attr> Element::ensureAttr(const QualifiedName& name)
     RefPtr<Attr> attrNode = findAttrNodeInList(attrNodeList, name);
     if (!attrNode) {
         attrNode = Attr::create(*this, name);
-        treeScope().adoptIfNeeded(*attrNode);
+        attrNode->setTreeScopeRecursively(treeScope());
         attrNodeList.append(attrNode);
     }
     return attrNode.releaseNonNull();
@@ -3565,7 +3574,7 @@ void Element::cloneAttributesFromElement(const Element& other)
         m_elementData = other.m_elementData->makeUniqueCopy();
 
     for (const Attribute& attribute : attributesIterator())
-        attributeChanged(attribute.name(), nullAtom, attribute.value(), ModifiedByCloning);
+        attributeChanged(attribute.name(), nullAtom(), attribute.value(), ModifiedByCloning);
 }
 
 void Element::cloneDataFromElement(const Element& other)
@@ -3650,7 +3659,7 @@ ExceptionOr<Node*> Element::insertAdjacent(const String& where, Ref<Node>&& newC
         return newChild.ptr();
     }
 
-    return Exception { SYNTAX_ERR };
+    return Exception { SyntaxError };
 }
 
 ExceptionOr<Element*> Element::insertAdjacentElement(const String& where, Element& newChild)
@@ -3667,12 +3676,12 @@ static ExceptionOr<ContainerNode&> contextNodeForInsertion(const String& where, 
     if (equalLettersIgnoringASCIICase(where, "beforebegin") || equalLettersIgnoringASCIICase(where, "afterend")) {
         auto* parent = element.parentNode();
         if (!parent || is<Document>(*parent))
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
         return *parent;
     }
     if (equalLettersIgnoringASCIICase(where, "afterbegin") || equalLettersIgnoringASCIICase(where, "beforeend"))
         return element;
-    return Exception { SYNTAX_ERR };
+    return Exception { SyntaxError };
 }
 
 // Step 2 of https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml.

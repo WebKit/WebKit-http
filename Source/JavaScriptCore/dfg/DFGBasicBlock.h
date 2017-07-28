@@ -28,13 +28,10 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractValue.h"
-#include "DFGAvailability.h"
 #include "DFGAvailabilityMap.h"
 #include "DFGBranchDirection.h"
-#include "DFGFlushedAt.h"
 #include "DFGNode.h"
 #include "DFGNodeAbstractValuePair.h"
-#include "DFGNodeOrigin.h"
 #include "DFGStructureClobberState.h"
 #include "Operands.h"
 #include <wtf/Vector.h>
@@ -232,9 +229,7 @@ struct BasicBlock : RefCounted<BasicBlock> {
     float executionCount;
     
     // These fields are reserved for NaturalLoops.
-    static const unsigned numberOfInnerMostLoopIndices = 2;
-    unsigned innerMostLoopIndices[numberOfInnerMostLoopIndices];
-
+    
     struct SSAData {
         WTF_MAKE_FAST_ALLOCATED;
     public:

@@ -29,9 +29,9 @@
 #include "config.h"
 #include "JSHistory.h"
 
-#include "ExceptionCode.h"
 #include "Frame.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertStrings.h"
 #include "SerializedScriptValue.h"
 #include <runtime/JSFunction.h>
 

@@ -97,8 +97,6 @@ enum EventThrottlingBehavior {
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
     DOMString xhrResponseSource(XMLHttpRequest xhr);
-    sequence<DOMString> mediaResponseSources(HTMLMediaElement media);
-    sequence<DOMString> mediaResponseContentRanges(HTMLMediaElement media);
     boolean isSharingStyleSheetContents(HTMLLinkElement a, HTMLLinkElement b);
     boolean isStyleSheetLoadingSubresources(HTMLLinkElement link);
     void clearMemoryCache();
@@ -153,7 +151,7 @@ enum EventThrottlingBehavior {
 
     DOMRect boundingBox(Element element);
 
-    [MayThrowException] sequence<DOMRect> inspectorHighlightRects();
+    [MayThrowException] DOMRectList inspectorHighlightRects();
     [MayThrowException] DOMString inspectorHighlightObject();
 
     [MayThrowException] unsigned long markerCountForNode(Node node, DOMString markerType);
@@ -216,8 +214,8 @@ enum EventThrottlingBehavior {
     [MayThrowException] unsigned long wheelEventHandlerCount();
     [MayThrowException] unsigned long touchEventHandlerCount();
 
-    [MayThrowException] sequence<DOMRect> touchEventRectsForEvent(DOMString eventName);
-    [MayThrowException] sequence<DOMRect> passiveTouchEventListenerRects();
+    [MayThrowException] DOMRectList touchEventRectsForEvent(DOMString eventName);
+    [MayThrowException] DOMRectList passiveTouchEventListenerRects();
 
     [MayThrowException] NodeList? nodesFromRect(Document document, long x, long y,
         unsigned long topPadding, unsigned long rightPadding, unsigned long bottomPadding, unsigned long leftPadding,
@@ -251,7 +249,9 @@ enum EventThrottlingBehavior {
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
     void resetImageAnimation(HTMLImageElement element);
     boolean isImageAnimating(HTMLImageElement element);
-    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean value);
+    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean enabled);
+    unsigned long imageDecodeCount(HTMLImageElement element);
+    void setLargeImageAsyncDecodingEnabledForTesting(HTMLImageElement element, boolean enabled);
 
     void setGridMaxTracksLimit(unsigned long maxTracksLimit);
 
@@ -268,13 +268,14 @@ enum EventThrottlingBehavior {
     const unsigned short LAYER_TREE_INCLUDES_PAINTING_PHASES = 8;
     const unsigned short LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16;
     const unsigned short LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32;
+    const unsigned short LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] unsigned long long layerIDForElement(Element element);
 
     [MayThrowException] DOMString scrollingStateTreeAsText();
     [MayThrowException] DOMString mainThreadScrollingReasons(); // FIXME: rename to synchronousScrollingReasons().
-    [MayThrowException] sequence<DOMRect> nonFastScrollableRects();
+    [MayThrowException] DOMRectList nonFastScrollableRects();
 
     [MayThrowException] DOMString repaintRectsAsText();
 
@@ -298,12 +299,11 @@ enum EventThrottlingBehavior {
     void beginSimulatedMemoryPressure();
     void endSimulatedMemoryPressure();
 
-#if defined(ENABLE_PROXIMITY_EVENTS) && ENABLE_PROXIMITY_EVENTS
-    [MayThrowException] void setDeviceProximity(DOMString eventType, unrestricted double value, unrestricted double min, unrestricted double max);
-#endif
+    [Conditional=PROXIMITY_EVENTS, MayThrowException] void setDeviceProximity(DOMString eventType, unrestricted double value, unrestricted double min, unrestricted double max);
 
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
+    unsigned long referencingNodeCount(Document document);
     DOMWindow? openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
     [MayThrowException] void setInspectorIsUnderTest(boolean isUnderTest);
@@ -323,6 +323,7 @@ enum EventThrottlingBehavior {
 
     [MayThrowException] void setUseFixedLayout(boolean useFixedLayout);
     [MayThrowException] void setFixedLayoutSize(long width, long height);
+    void setPrinting(long width, long height);
 
     [MayThrowException] void setViewExposedRect(unrestricted float x, unrestricted float y, unrestricted float width, unrestricted float height);
 
@@ -331,12 +332,10 @@ enum EventThrottlingBehavior {
 
     void setTopContentInset(unrestricted float contentInset);
 
-#if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
-    void webkitWillEnterFullScreenForElement(Element element);
-    void webkitDidEnterFullScreenForElement(Element element);
-    void webkitWillExitFullScreenForElement(Element element);
-    void webkitDidExitFullScreenForElement(Element element);
-#endif
+    [Conditional=FULLSCREEN_API] void webkitWillEnterFullScreenForElement(Element element);
+    [Conditional=FULLSCREEN_API] void webkitDidEnterFullScreenForElement(Element element);
+    [Conditional=FULLSCREEN_API] void webkitWillExitFullScreenForElement(Element element);
+    [Conditional=FULLSCREEN_API] void webkitDidExitFullScreenForElement(Element element);
 
     void setApplicationCacheOriginQuota(unsigned long long quota);
 
@@ -367,6 +366,7 @@ enum EventThrottlingBehavior {
 
     [MayThrowException] void setLowPowerModeEnabled(boolean enabled);
     readonly attribute double requestAnimationFrameInterval;
+    readonly attribute boolean scriptedAnimationsAreSuspended;
 
     // Override the behavior of WebPage::eventThrottlingDelay(), which only affects iOS.
     attribute EventThrottlingBehavior? eventThrottlingBehaviorOverride;
@@ -405,6 +405,8 @@ enum EventThrottlingBehavior {
 
     void enableAutoSizeMode(boolean enabled, long minimumWidth, long minimumHeight, long maximumWidth, long maximumHeight);
 
+    [Conditional=VIDEO] sequence<DOMString> mediaResponseSources(HTMLMediaElement media);
+    [Conditional=VIDEO] sequence<DOMString> mediaResponseContentRanges(HTMLMediaElement media);
     [Conditional=VIDEO] void simulateAudioInterruption(HTMLMediaElement element);
     [Conditional=VIDEO, MayThrowException] boolean mediaElementHasCharacteristic(HTMLMediaElement element, DOMString characteristic);
 
@@ -443,8 +445,10 @@ enum EventThrottlingBehavior {
     [Conditional=MEDIA_SESSION] DOMString mediaSessionCurrentState(MediaSession session);
     [Conditional=MEDIA_SESSION] double mediaElementPlayerVolume(HTMLMediaElement element);
     [Conditional=MEDIA_SESSION] void sendMediaControlEvent(MediaControlEvent event);
-    [Conditional=VIDEO] void applicationDidEnterForeground();
-    [Conditional=VIDEO] void applicationWillEnterBackground();
+    [Conditional=VIDEO] void applicationWillBecomeInactive();
+    [Conditional=VIDEO] void applicationDidBecomeActive();
+    [Conditional=VIDEO] void applicationWillEnterForeground(optional boolean suspendedUnderLock = false);
+    [Conditional=VIDEO] void applicationDidEnterBackground(optional boolean suspendedUnderLock = false);
     [Conditional=VIDEO, MayThrowException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
     [Conditional=VIDEO, MayThrowException] DOMString mediaSessionRestrictions(DOMString mediaType);
     [Conditional=VIDEO] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);
@@ -478,10 +482,8 @@ enum EventThrottlingBehavior {
 
     [Conditional=CONTENT_FILTERING] readonly attribute MockContentFilterSettings mockContentFilterSettings;
 
-#if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
-    [MayThrowException] DOMString scrollSnapOffsets(Element element);
-    void setPlatformMomentumScrollingPredictionEnabled(boolean enabled);
-#endif
+    [Conditional=CSS_SCROLL_SNAP, MayThrowException] DOMString scrollSnapOffsets(Element element);
+    [Conditional=CSS_SCROLL_SNAP] void setPlatformMomentumScrollingPredictionEnabled(boolean enabled);
 
     [MayThrowException] DOMString pathStringWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
 
@@ -496,6 +498,7 @@ enum EventThrottlingBehavior {
 
     DOMString resourceLoadStatisticsForOrigin(DOMString domain);
     void setResourceLoadStatisticsEnabled(boolean enable);
+    void setResourceLoadStatisticsShouldThrottleObserverNotifications(boolean enable);
 
     [MayThrowException] void setCanShowModalDialogOverride(boolean allow);
 
@@ -518,9 +521,7 @@ enum EventThrottlingBehavior {
 
     sequence<DOMString> accessKeyModifiers();
 
-#if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
     void setQuickLookPassword(DOMString password);
-#endif
 
     [CallWith=Document] void setAsRunningUserScripts();
 
@@ -528,13 +529,23 @@ enum EventThrottlingBehavior {
     void setSpeculativeTilingDelayDisabledForTesting(boolean disabled);
 
     [Conditional=WEBGL] void simulateWebGLContextChanged(WebGLRenderingContext context);
+    [Conditional=WEBGL] void failNextGPUStatusCheck(WebGLRenderingContext context);
 
     void setPageVisibility(boolean isVisible);
 
+    [Conditional=WEB_RTC] void setH264HardwareEncoderAllowed(boolean allowed);
+    [Conditional=WEB_RTC] void applyRotationForOutgoingVideoSources(RTCPeerConnection connection);
+
+    [Conditional=MEDIA_STREAM] void setCameraMediaStreamTrackOrientation(MediaStreamTrack track, short orientation);
     [Conditional=MEDIA_STREAM] void observeMediaStreamTrack(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] Promise<ImageData> grabNextMediaStreamTrackFrame();
     [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackAudioSampleCount;
     [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackVideoSampleCount;
     [Conditional=MEDIA_STREAM, MayThrowException] void setMediaDeviceState(DOMString deviceID, DOMString property, boolean value);
     [Conditional=MEDIA_STREAM] void delayMediaStreamTrackSamples(MediaStreamTrack track, float delay);
+    [Conditional=MEDIA_STREAM] void setMediaStreamTrackMuted(MediaStreamTrack track, boolean muted);
+    [Conditional=MEDIA_STREAM] void removeMediaStreamTrack(MediaStream stream, MediaStreamTrack track);
+    [Conditional=MEDIA_STREAM] void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack track);
+
+    DOMString audioSessionCategory();
 };

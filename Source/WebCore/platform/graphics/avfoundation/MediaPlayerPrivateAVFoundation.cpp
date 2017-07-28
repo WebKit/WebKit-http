@@ -34,12 +34,11 @@
 #include "GraphicsContext.h"
 #include "InbandTextTrackPrivateAVF.h"
 #include "InbandTextTrackPrivateClient.h"
-#include "URL.h"
 #include "Logging.h"
 #include "PlatformLayer.h"
 #include "PlatformTimeRanges.h"
 #include "Settings.h"
-#include "SoftLinking.h"
+#include "URL.h"
 #include <CoreMedia/CoreMedia.h>
 #include <heap/HeapInlines.h>
 #include <runtime/DataView.h>
@@ -47,8 +46,9 @@
 #include <runtime/Uint16Array.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/CString.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/StringPrintStream.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -659,7 +659,7 @@ void MediaPlayerPrivateAVFoundation::seekCompleted(bool finished)
 
     m_seeking = false;
 
-    std::function<void()> pendingSeek;
+    WTF::Function<void()> pendingSeek;
     std::swap(pendingSeek, m_pendingSeek);
 
     if (pendingSeek) {
@@ -790,16 +790,17 @@ static const char* notificationName(MediaPlayerPrivateAVFoundation::Notification
 #endif // !LOG_DISABLED
     
 
-void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification notification)
+void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification&& notification)
 {
-    if (notification.type() != Notification::FunctionType)
+    auto notificationType = notification.type();
+    if (notificationType != Notification::FunctionType)
         LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - notification %s", this, notificationName(notification));
 
     m_queueMutex.lock();
 
     // It is important to always process the properties in the order that we are notified,
     // so always go through the queue because notifications happen on different threads.
-    m_queuedNotifications.append(notification);
+    m_queuedNotifications.append(WTFMove(notification));
 
 #if OS(WINDOWS)
     bool delayDispatch = true;
@@ -820,7 +821,7 @@ void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification
     m_queueMutex.unlock();
 
     if (delayDispatch) {
-        if (notification.type() != Notification::FunctionType)
+        if (notificationType != Notification::FunctionType)
             LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - early return", this);
         return;
     }
@@ -832,7 +833,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
 {
     ASSERT(isMainThread());
 
-    Notification notification = Notification();
+    Notification notification;
     {
         LockHolder lock(m_queueMutex);
         
@@ -841,8 +842,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
         
         if (!m_delayCallbacks) {
             // Only dispatch one notification callback per invocation because they can cause recursion.
-            notification = m_queuedNotifications.first();
-            m_queuedNotifications.remove(0);
+            notification = m_queuedNotifications.takeFirst();
         }
         
         if (!m_queuedNotifications.isEmpty() && !m_mainThreadCallPending) {
@@ -1124,47 +1124,39 @@ bool MediaPlayerPrivateAVFoundation::isUnsupportedMIMEType(const String& type)
 
 const HashSet<String, ASCIICaseInsensitiveHash>& MediaPlayerPrivateAVFoundation::staticMIMETypeList()
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache = []() {
-        HashSet<String, ASCIICaseInsensitiveHash> types;
-
-        static const char* const typeNames[] = {
-            "application/vnd.apple.mpegurl",
-            "application/x-mpegurl",
-            "audio/3gpp",
-            "audio/aac",
-            "audio/aacp",
-            "audio/aiff",
-            "audio/basic",
-            "audio/mp3",
-            "audio/mp4",
-            "audio/mpeg",
-            "audio/mpeg3",
-            "audio/mpegurl",
-            "audio/mpg",
-            "audio/wav",
-            "audio/wave",
-            "audio/x-aac",
-            "audio/x-aiff",
-            "audio/x-m4a",
-            "audio/x-mpegurl",
-            "audio/x-wav",
-            "video/3gpp",
-            "video/3gpp2",
-            "video/mp4",
-            "video/mpeg",
-            "video/mpeg2",
-            "video/mpg",
-            "video/quicktime",
-            "video/x-m4v",
-            "video/x-mpeg",
-            "video/x-mpg",
-        };
-        for (auto& type : typeNames)
-            types.add(type);
-
-        return types;
-    }();
-
+    static const auto cache = makeNeverDestroyed(HashSet<String, ASCIICaseInsensitiveHash> {
+        "application/vnd.apple.mpegurl",
+        "application/x-mpegurl",
+        "audio/3gpp",
+        "audio/aac",
+        "audio/aacp",
+        "audio/aiff",
+        "audio/basic",
+        "audio/mp3",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/mpeg3",
+        "audio/mpegurl",
+        "audio/mpg",
+        "audio/vnd.wave",
+        "audio/wav",
+        "audio/wave",
+        "audio/x-aac",
+        "audio/x-aiff",
+        "audio/x-m4a",
+        "audio/x-mpegurl",
+        "audio/x-wav",
+        "video/3gpp",
+        "video/3gpp2",
+        "video/mp4",
+        "video/mpeg",
+        "video/mpeg2",
+        "video/mpg",
+        "video/quicktime",
+        "video/x-m4v",
+        "video/x-mpeg",
+        "video/x-mpg",
+    });
     return cache;
 }
 

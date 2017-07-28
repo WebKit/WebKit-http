@@ -31,7 +31,6 @@
 #include "GRefPtrGStreamer.h"
 #include "MainThreadNotifier.h"
 #include <wtf/Lock.h>
-#include <wtf/ThreadingPrimitives.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -63,7 +62,7 @@ protected:
         StreamChanged = 1 << 3
     };
 
-    MainThreadNotifier<MainThreadNotification> m_notifier;
+    Ref<MainThreadNotifier<MainThreadNotification>> m_notifier;
     gint m_index;
     AtomicString m_label;
     AtomicString m_language;

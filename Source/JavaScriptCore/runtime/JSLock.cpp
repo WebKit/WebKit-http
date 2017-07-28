@@ -30,6 +30,8 @@
 #include "SamplingProfiler.h"
 #include "WasmMachineThreads.h"
 #include <thread>
+#include <wtf/Threading.h>
+#include <wtf/threads/Signals.h>
 
 namespace JSC {
 
@@ -148,10 +150,14 @@ void JSLock::didAcquireLock()
     Wasm::startTrackingCurrentThread();
 #endif
 
+#if HAVE(MACH_EXCEPTIONS)
+    registerThreadForMachExceptionHandling(Thread::current());
+#endif
+
+    // Note: everything below must come after addCurrentThread().
     m_vm->traps().notifyGrabAllLocks();
 
 #if ENABLE(SAMPLING_PROFILER)
-    // Note: this must come after addCurrentThread().
     if (SamplingProfiler* samplingProfiler = m_vm->samplingProfiler())
         samplingProfiler->noticeJSLockAcquisition();
 #endif
@@ -240,7 +246,7 @@ void JSLock::grabAllLocks(DropAllLocks* dropper, unsigned droppedLockCount)
 
     while (dropper->dropDepth() != m_lockDropDepth) {
         unlock(droppedLockCount);
-        std::this_thread::yield();
+        Thread::yield();
         lock(droppedLockCount);
     }
 

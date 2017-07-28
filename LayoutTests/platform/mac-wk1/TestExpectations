@@ -97,8 +97,9 @@ http/tests/ssl/media-stream
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
+http/tests/webrtc [ Skip ]
 webrtc/datachannel [ Pass ]
-webrtc/captureCanvas-webrtc.html [ Pass ]
+webrtc/captureCanvas-webrtc.html [ Failure Pass ]
 
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
@@ -154,6 +155,11 @@ compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 http/tests/cache/disk-cache
 http/tests/inspector/network/resource-response-source-disk-cache.html
 http/tests/inspector/network/resource-sizes-disk-cache.html
+
+# Async image decoding is WK2 only
+fast/images/async-image-background-change.html
+fast/images/async-image-src-change.html
+http/tests/multipart/multipart-async-image.html
 
 [ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 
@@ -341,22 +347,6 @@ webkit.org/b/167127 pointer-lock/locked-element-removed-from-dom.html
 
 webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]
 
-webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure Timeout ]
-webkit.org/b/169654 [ Debug ] media/modern-media-controls/airplay-placard/airplay-placard-text-section.html [ Pass Timeout ]
-webkit.org/b/167371 [ Debug ] media/modern-media-controls/buttons-container/buttons-container-buttons-property.html [ Pass Timeout ]
-webkit.org/b/171391 [ Debug ] media/modern-media-controls/fullscreen-button/fullscreen-button.html [ Pass Timeout ]
-webkit.org/b/169678 [ Debug ] media/modern-media-controls/time-label/time-label.html [ Pass Timeout ]
-webkit.org/b/167589 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html [ Pass Timeout ]
-webkit.org/b/169117 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html [ Pass Timeout ]
-webkit.org/b/170456 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Timeout ]
-webkit.org/b/167752 media/modern-media-controls/icon-button/icon-button-active-state.html [ Pass Timeout ]
-webkit.org/b/167477 [ Debug ] media/modern-media-controls/play-pause-button/play-pause-button.html [ Pass Timeout ]
-webkit.org/b/171245 [ Debug ] media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Timeout ]
-webkit.org/b/171629 media/modern-media-controls/slider/slider-styles.html [ Pass Timeout ]
-webkit.org/b/171828 media/modern-media-controls/status-label/status-label-font.html [ Pass Timeout ]
-webkit.org/b/167475 [ Debug ] media/modern-media-controls/volume-slider/volume-slider-value.html [ Pass Timeout ]
-webkit.org/b/170682 [ Debug ] media/modern-media-controls/volume-up-support/volume-up-support.html [ Pass Timeout ]
-
 # There is not NetworkProcess in WK1, so it can't crash.
 http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 
@@ -377,3 +367,16 @@ webkit.org/b/171814 http/tests/media/hls/video-controls-live-stream.html [ Failu
 webkit.org/b/171814 http/tests/media/hls/video-duration-accessibility.html [ Failure ]
 
 webkit.org/b/172241 http/tests/appcache/404-resource-with-slow-main-resource.php [ Pass Failure ]
+
+webkit.org/b/172331 workers/wasm-long-compile-many.html [ Pass Timeout ]
+
+webkit.org/b/172807 imported/w3c/web-platform-tests/css/selectors4/focus-display-none-001.html [ Pass Failure ]
+webkit.org/b/172807 imported/w3c/web-platform-tests/css/selectors4/focus-within-display-none-001.html [ Pass Failure ]
+
+webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Timeout ]
+webkit.org/b/168265 media/modern-media-controls/forward-button/forward-button.html [ Pass Timeout ]
+
+webkit.org/b/173432 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
+
+# requires wk2 speculative tiling
+fast/images/low-memory-decode.html [ Skip ]

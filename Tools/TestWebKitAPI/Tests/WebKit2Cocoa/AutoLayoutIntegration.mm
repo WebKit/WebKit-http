@@ -67,6 +67,7 @@ static bool didEvaluateJavaScript;
     ".large { width: 100px; height: 100px; }"
     ".veryWide { width: 100px; height: 10px; }"
     ".inline { display: inline-block; }"
+    ".viewportUnit { height: 50vh; }"
     "</style>";
 
     [self loadHTMLString:[baseHTML stringByAppendingString:HTMLString] baseURL:nil];
@@ -129,6 +130,10 @@ TEST(WebKit2, AutoLayoutIntegration)
 
     // 100x10 rect with the constraint (width >= 50) -> 100x10
     [webView load:@"<div class='veryWide'></div>" withWidth:50 expectingContentSize:NSMakeSize(100, 10)];
+
+    // 100px height + 50vh -> 150px
+    [webView _setViewportSizeForCSSViewportUnits:CGSizeMake(100, 100)];
+    [webView load:@"<div class='viewportUnit'></div><div class='large'></div>" withWidth:100 expectingContentSize:NSMakeSize(100, 150)];
 
     // Ten 10x10 rects, inline, should result in two rows of five; with the constraint (width >= 50) -> 50x20
     [webView load:@"<div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div><div class='small inline'></div>" withWidth:50 expectingContentSize:NSMakeSize(50, 20)];

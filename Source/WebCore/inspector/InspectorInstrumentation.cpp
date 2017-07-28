@@ -40,6 +40,7 @@
 #include "EventDispatcher.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
+#include "InspectorCanvasAgent.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorDOMDebuggerAgent.h"
 #include "InspectorDOMStorageAgent.h"
@@ -61,6 +62,7 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "WebConsoleAgent.h"
+#include "WebGLRenderingContextBase.h"
 #include "WebSocketFrame.h"
 #include <inspector/ConsoleMessage.h>
 #include <inspector/ScriptArguments.h>
@@ -68,11 +70,6 @@
 #include <inspector/agents/InspectorDebuggerAgent.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/StdLibExtras.h>
-
-#if ENABLE(WEB_REPLAY)
-#include "InspectorReplayAgent.h"
-#include "ReplayController.h"
-#endif
 
 using namespace Inspector;
 
@@ -84,11 +81,6 @@ static const char* const animationFrameFiredEventName = "animationFrameFired";
 static const char* const setTimerEventName = "setTimer";
 static const char* const clearTimerEventName = "clearTimer";
 static const char* const timerFiredEventName = "timerFired";
-
-enum AsyncCallType {
-    AsyncCallTypeRequestAnimationFrame,
-    AsyncCallTypeTimer,
-};
 
 namespace {
 static HashSet<InstrumentingAgents*>* s_instrumentingAgentsSet = nullptr;
@@ -104,17 +96,6 @@ void InspectorInstrumentation::firstFrontendCreated()
 void InspectorInstrumentation::lastFrontendDeleted()
 {
     platformStrategies()->loaderStrategy()->setCaptureExtraNetworkLoadMetricsEnabled(false);
-}
-
-static void didScheduleAsyncCall(InstrumentingAgents& instrumentingAgents, AsyncCallType type, int callbackId, ScriptExecutionContext& context, bool singleShot)
-{
-    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent()) {
-        JSC::ExecState* scriptState = context.execState();
-        if (!scriptState)
-            return;
-
-        debuggerAgent->didScheduleAsyncCall(scriptState, type, callbackId, singleShot);
-    }
 }
 
 static Frame* frameForScriptExecutionContext(ScriptExecutionContext* context)
@@ -351,7 +332,9 @@ void InspectorInstrumentation::willSendXMLHttpRequestImpl(InstrumentingAgents& i
 void InspectorInstrumentation::didInstallTimerImpl(InstrumentingAgents& instrumentingAgents, int timerId, Seconds timeout, bool singleShot, ScriptExecutionContext& context)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, setTimerEventName, true);
-    didScheduleAsyncCall(instrumentingAgents, AsyncCallTypeTimer, timerId, context, singleShot);
+
+    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
+        debuggerAgent->didScheduleAsyncCall(context.execState(), InspectorDebuggerAgent::AsyncCallType::DOMTimer, timerId, singleShot);
 
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didInstallTimer(timerId, timeout, singleShot, frameForScriptExecutionContext(context));
@@ -362,7 +345,7 @@ void InspectorInstrumentation::didRemoveTimerImpl(InstrumentingAgents& instrumen
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, clearTimerEventName, true);
 
     if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
-        debuggerAgent->didCancelAsyncCall(AsyncCallTypeTimer, timerId);
+        debuggerAgent->didCancelAsyncCall(InspectorDebuggerAgent::AsyncCallType::DOMTimer, timerId);
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
         timelineAgent->didRemoveTimer(timerId, frameForScriptExecutionContext(context));
 }
@@ -391,10 +374,7 @@ InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEventImpl(I
         timelineAgent->willDispatchEvent(event, document.frame());
         timelineAgentId = timelineAgent->id();
     }
-#if ENABLE(WEB_REPLAY)
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->willDispatchEvent(event, document.frame());
-#endif
+
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
 }
 
@@ -417,10 +397,7 @@ InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEventOnWind
         timelineAgent->willDispatchEvent(event, window.frame());
         timelineAgentId = timelineAgent->id();
     }
-#if ENABLE(WEB_REPLAY)
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->willDispatchEvent(event, window.frame());
-#endif
+
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
 }
 
@@ -451,7 +428,7 @@ InspectorInstrumentationCookie InspectorInstrumentation::willFireTimerImpl(Instr
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, timerFiredEventName, false);
 
     if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
-        debuggerAgent->willDispatchAsyncCall(AsyncCallTypeTimer, timerId);
+        debuggerAgent->willDispatchAsyncCall(InspectorDebuggerAgent::AsyncCallType::DOMTimer, timerId);
 
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
@@ -700,13 +677,6 @@ void InspectorInstrumentation::frameDetachedFromParentImpl(InstrumentingAgents& 
     if (InspectorPageAgent* pageAgent = instrumentingAgents.inspectorPageAgent())
         pageAgent->frameDetached(frame);
 
-#if ENABLE(WEB_REPLAY)
-    if (!frame.isMainFrame())
-        return;
-
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->frameDetached(frame);
-#endif
 }
 
 void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, DocumentLoader* loader)
@@ -748,6 +718,9 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents& instrument
             pageHeapAgent->mainFrameNavigated();
     }
 
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        canvasAgent->frameNavigated(frame);
+
     if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
         domAgent->didCommitLoad(frame.document());
 
@@ -758,11 +731,6 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents& instrument
         if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
             timelineAgent->mainFrameNavigated();
     }
-
-#if ENABLE(WEB_REPLAY)
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->frameNavigated(frame);
-#endif
 }
 
 void InspectorInstrumentation::frameDocumentUpdatedImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
@@ -988,85 +956,41 @@ void InspectorInstrumentation::didSendWebSocketFrameImpl(InstrumentingAgents& in
 }
 #endif
 
-#if ENABLE(WEB_REPLAY)
-void InspectorInstrumentation::sessionCreatedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
+void InspectorInstrumentation::didCreateCSSCanvasImpl(InstrumentingAgents* instrumentingAgents, HTMLCanvasElement& canvasElement, const String& name)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionCreated(WTFMove(session));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didCreateCSSCanvas(canvasElement, name);
 }
 
-void InspectorInstrumentation::sessionLoadedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
+void InspectorInstrumentation::didChangeCSSCanvasClientNodesImpl(InstrumentingAgents* instrumentingAgents, HTMLCanvasElement& canvasElement)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionLoaded(WTFMove(session));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didChangeCSSCanvasClientNodes(canvasElement);
 }
 
-void InspectorInstrumentation::sessionModifiedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
+void InspectorInstrumentation::didCreateCanvasRenderingContextImpl(InstrumentingAgents* instrumentingAgents, HTMLCanvasElement& canvasElement)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionModified(WTFMove(session));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didCreateCanvasRenderingContext(canvasElement);
 }
 
-void InspectorInstrumentation::segmentCreatedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
+void InspectorInstrumentation::didChangeCanvasMemoryImpl(InstrumentingAgents* instrumentingAgents, HTMLCanvasElement& canvasElement)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentCreated(WTFMove(segment));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didChangeCanvasMemory(canvasElement);
 }
 
-void InspectorInstrumentation::segmentCompletedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
+void InspectorInstrumentation::recordCanvasActionImpl(InstrumentingAgents* instrumentingAgents, CanvasRenderingContext& canvasRenderingContext, const String& name, Vector<CanvasActionParameterVariant>&& parameters)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentCompleted(WTFMove(segment));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->recordCanvasAction(canvasRenderingContext, name, WTFMove(parameters));
 }
 
-void InspectorInstrumentation::segmentLoadedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
+void InspectorInstrumentation::didFinishRecordingCanvasFrameImpl(InstrumentingAgents* instrumentingAgents, HTMLCanvasElement& canvasElement, bool forceDispatch)
 {
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentLoaded(WTFMove(segment));
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didFinishRecordingCanvasFrame(canvasElement, forceDispatch);
 }
-
-void InspectorInstrumentation::segmentUnloadedImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentUnloaded();
-}
-
-void InspectorInstrumentation::captureStartedImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->captureStarted();
-}
-
-void InspectorInstrumentation::captureStoppedImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->captureStopped();
-}
-
-void InspectorInstrumentation::playbackStartedImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->playbackStarted();
-}
-
-void InspectorInstrumentation::playbackPausedImpl(InstrumentingAgents& instrumentingAgents, const ReplayPosition& position)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->playbackPaused(position);
-}
-
-void InspectorInstrumentation::playbackHitPositionImpl(InstrumentingAgents& instrumentingAgents, const ReplayPosition& position)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->playbackHitPosition(position);
-}
-
-void InspectorInstrumentation::playbackFinishedImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->playbackFinished();
-}
-#endif
 
 #if ENABLE(RESOURCE_USAGE)
 void InspectorInstrumentation::didHandleMemoryPressureImpl(InstrumentingAgents& instrumentingAgents, Critical critical)
@@ -1101,52 +1025,42 @@ bool InspectorInstrumentation::timelineAgentEnabled(ScriptExecutionContext* scri
     return instrumentingAgents && instrumentingAgents->inspectorTimelineAgent();
 }
 
-bool InspectorInstrumentation::replayAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
-{
-#if ENABLE(WEB_REPLAY)
-    InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
-    return instrumentingAgents && instrumentingAgents->inspectorReplayAgent();
-#else
-    UNUSED_PARAM(scriptExecutionContext);
-    return false;
-#endif
-}
-
 void InspectorInstrumentation::pauseOnNativeEventIfNeeded(InstrumentingAgents& instrumentingAgents, bool isDOMEvent, const String& eventName, bool synchronous)
 {
     if (InspectorDOMDebuggerAgent* domDebuggerAgent = instrumentingAgents.inspectorDOMDebuggerAgent())
         domDebuggerAgent->pauseOnNativeEventIfNeeded(isDOMEvent, eventName, synchronous);
 }
 
-void InspectorInstrumentation::didRequestAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Frame* frame)
+void InspectorInstrumentation::didRequestAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Document& document)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, requestAnimationFrameEventName, true);
-    didScheduleAsyncCall(instrumentingAgents, AsyncCallTypeRequestAnimationFrame, callbackId, *frame->document(), true);
 
+    if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+        pageDebuggerAgent->didRequestAnimationFrame(callbackId, document);
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didRequestAnimationFrame(callbackId, frame);
+        timelineAgent->didRequestAnimationFrame(callbackId, document.frame());
 }
 
-void InspectorInstrumentation::didCancelAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Frame* frame)
+void InspectorInstrumentation::didCancelAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Document& document)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, cancelAnimationFrameEventName, true);
 
-    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
-        debuggerAgent->didCancelAsyncCall(AsyncCallTypeRequestAnimationFrame, callbackId);
+    if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+        pageDebuggerAgent->didCancelAnimationFrame(callbackId);
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didCancelAnimationFrame(callbackId, frame);
+        timelineAgent->didCancelAnimationFrame(callbackId, document.frame());
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willFireAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Frame* frame)
+InspectorInstrumentationCookie InspectorInstrumentation::willFireAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Document& document)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, animationFrameFiredEventName, false);
 
-    if (InspectorDebuggerAgent* debuggerAgent = instrumentingAgents.inspectorDebuggerAgent())
-        debuggerAgent->willDispatchAsyncCall(AsyncCallTypeRequestAnimationFrame, callbackId);
+    if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+        pageDebuggerAgent->willFireAnimationFrame(callbackId);
 
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
-        timelineAgent->willFireAnimationFrame(callbackId, frame);
+        timelineAgent->willFireAnimationFrame(callbackId, document.frame());
         timelineAgentId = timelineAgent->id();
     }
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);

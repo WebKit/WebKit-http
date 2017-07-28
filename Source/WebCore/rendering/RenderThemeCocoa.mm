@@ -31,8 +31,8 @@
 #include "PassKitSPI.h"
 #include "RenderElement.h"
 #include "RenderStyle.h"
-#include "SoftLinking.h"
 #include "TranslateTransformOperation.h"
+#include <wtf/SoftLinking.h>
 
 #if PLATFORM(MAC)
 SOFT_LINK_PRIVATE_FRAMEWORK(PassKit);
@@ -42,7 +42,15 @@ SOFT_LINK_FRAMEWORK(PassKit);
 
 SOFT_LINK_MAY_FAIL(PassKit, PKDrawApplePayButton, void, (CGContextRef context, CGRect drawRect, CGFloat scale, PKPaymentButtonType type, PKPaymentButtonStyle style, NSString *languageCode), (context, drawRect, scale, type, style, languageCode));
 
+#endif // ENABLE(APPLE_PAY)
+
+#if ENABLE(VIDEO)
+#include "LocalizedStrings.h"
+#endif
+
 namespace WebCore {
+
+#if ENABLE(APPLE_PAY)
 
 static const auto applePayButtonMinimumWidth = 140;
 static const auto applePayButtonPlainMinimumWidth = 100;
@@ -99,6 +107,29 @@ bool RenderThemeCocoa::paintApplePayButton(const RenderObject& renderer, const P
     return false;
 }
 
+#endif // ENABLE(APPLE_PAY)
+
+#if ENABLE(VIDEO)
+
+String RenderThemeCocoa::mediaControlsFormattedStringForDuration(const double durationInSeconds)
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (!std::isfinite(durationInSeconds))
+        return WEB_UI_STRING("indefinite time", "accessibility help text for an indefinite media controller time value");
+
+    if (!m_durationFormatter) {
+        m_durationFormatter = adoptNS([NSDateComponentsFormatter new]);
+        m_durationFormatter.get().unitsStyle = NSDateComponentsFormatterUnitsStyleFull;
+        m_durationFormatter.get().allowedUnits = NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
+        m_durationFormatter.get().formattingContext = NSFormattingContextStandalone;
+        m_durationFormatter.get().maximumUnitCount = 2;
+    }
+    return [m_durationFormatter.get() stringFromTimeInterval:durationInSeconds];
+#else
+    return emptyString();
+#endif
 }
 
-#endif
+#endif // ENABLE(VIDEO)
+
+}

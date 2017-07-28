@@ -25,10 +25,12 @@
 
 #pragma once
 
-#if USE(PTHREADS)
+#if USE(PTHREADS) && HAVE(MACHINE_CONTEXT)
 
 #include <signal.h>
 #include <wtf/Function.h>
+#include <wtf/Optional.h>
+#include <wtf/PlatformRegisters.h>
 
 namespace WTF {
 
@@ -40,22 +42,18 @@ enum class Signal {
 
     // These signals will only chain if we don't have a handler that can process them. If there is nothing
     // to chain to we restore the default handler and crash.
-    Trap,
     Ill,
-    SegV,
-    Bus,
-    NumberOfSignals,
+    BadAccess, // For posix this is both SIGSEGV and SIGBUS
+    NumberOfSignals = BadAccess + 2, // BadAccess is really two signals.
     Unknown = NumberOfSignals
 };
 
-inline int toSystemSignal(Signal signal)
+inline std::tuple<int, std::optional<int>> toSystemSignal(Signal signal)
 {
     switch (signal) {
-    case Signal::SegV: return SIGSEGV;
-    case Signal::Bus: return SIGBUS;
-    case Signal::Ill: return SIGILL;
-    case Signal::Usr: return SIGUSR2;
-    case Signal::Trap: return SIGTRAP;
+    case Signal::BadAccess: return std::make_tuple(SIGSEGV, SIGBUS);
+    case Signal::Ill: return std::make_tuple(SIGILL, std::nullopt);
+    case Signal::Usr: return std::make_tuple(SIGILL, std::nullopt);
     default: break;
     }
     RELEASE_ASSERT_NOT_REACHED();
@@ -64,11 +62,10 @@ inline int toSystemSignal(Signal signal)
 inline Signal fromSystemSignal(int signal)
 {
     switch (signal) {
-    case SIGSEGV: return Signal::SegV;
-    case SIGBUS: return Signal::Bus;
+    case SIGSEGV: return Signal::BadAccess;
+    case SIGBUS: return Signal::BadAccess;
     case SIGILL: return Signal::Ill;
     case SIGUSR2: return Signal::Usr;
-    case SIGTRAP: return Signal::Trap;
     default: return Signal::Unknown;
     }
 }
@@ -79,20 +76,38 @@ enum class SignalAction {
     ForceDefault
 };
 
-using SignalHandler = Function<SignalAction(int, siginfo_t*, void*)>;
+struct SigInfo {
+    void* faultingAddress { 0 };
+};
+
+using SignalHandler = Function<SignalAction(Signal, SigInfo&, PlatformRegisters&)>;
 
 // Call this method whenever you want to install a signal handler. It's ok to call this function lazily.
 // Note: Your signal handler will be called every time the handler for the desired signal is called.
 // Thus it is your responsibility to discern if the signal fired was yours.
 // This function is currently a one way street i.e. once installed, a signal handler cannot be uninstalled.
-void installSignalHandler(Signal, SignalHandler&&);
+WTF_EXPORT_PRIVATE void installSignalHandler(Signal, SignalHandler&&);
+
+
+#if HAVE(MACH_EXCEPTIONS)
+class Thread;
+void registerThreadForMachExceptionHandling(Thread&);
+
+void handleSignalsWithMach();
+#endif // HAVE(MACH_EXCEPTIONS)
 
 } // namespace WTF
 
+#if HAVE(MACH_EXCEPTIONS)
+using WTF::registerThreadForMachExceptionHandling;
+using WTF::handleSignalsWithMach;
+#endif // HAVE(MACH_EXCEPTIONS)
+
 using WTF::Signal;
+using WTF::SigInfo;
 using WTF::toSystemSignal;
 using WTF::fromSystemSignal;
 using WTF::SignalAction;
 using WTF::installSignalHandler;
 
-#endif // USE(PTHREADS)
+#endif // USE(PTHREADS) && HAVE(MACHINE_CONTEXT)

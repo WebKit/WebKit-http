@@ -355,7 +355,6 @@ void URL::invalidate()
     m_pathEnd = 0;
     m_pathAfterLastSlash = 0;
     m_queryEnd = 0;
-    m_fragmentEnd = 0;
 }
 
 URL::URL(ParsedURLStringTag, const String& url)
@@ -493,15 +492,15 @@ String URL::encodedPass() const
 
 String URL::fragmentIdentifier() const
 {
-    if (m_fragmentEnd == m_queryEnd)
+    if (!m_isValid || m_queryEnd == m_string.length())
         return String();
 
-    return m_string.substring(m_queryEnd + 1, m_fragmentEnd - (m_queryEnd + 1));
+    return m_string.substring(m_queryEnd + 1);
 }
 
 bool URL::hasFragmentIdentifier() const
 {
-    return m_fragmentEnd != m_queryEnd;
+    return m_isValid && m_string.length() != m_queryEnd;
 }
 
 String URL::baseAsString() const
@@ -544,29 +543,49 @@ static void assertProtocolIsGood(StringView protocol)
 
 #endif
 
-using DefaultPortForProtocolMapForTesting = HashMap<String, uint16_t>;
-static DefaultPortForProtocolMapForTesting& defaultPortForProtocolMapForTesting()
+static Lock& defaultPortForProtocolMapForTestingLock()
 {
-    static NeverDestroyed<DefaultPortForProtocolMapForTesting> defaultPortForProtocolMap;
+    static NeverDestroyed<Lock> lock;
+    return lock;
+}
+
+using DefaultPortForProtocolMapForTesting = HashMap<String, uint16_t>;
+static DefaultPortForProtocolMapForTesting*& defaultPortForProtocolMapForTesting()
+{
+    static DefaultPortForProtocolMapForTesting* defaultPortForProtocolMap;
     return defaultPortForProtocolMap;
+}
+
+static DefaultPortForProtocolMapForTesting& ensureDefaultPortForProtocolMapForTesting()
+{
+    DefaultPortForProtocolMapForTesting*& defaultPortForProtocolMap = defaultPortForProtocolMapForTesting();
+    if (!defaultPortForProtocolMap)
+        defaultPortForProtocolMap = new DefaultPortForProtocolMapForTesting;
+    return *defaultPortForProtocolMap;
 }
 
 void registerDefaultPortForProtocolForTesting(uint16_t port, const String& protocol)
 {
-    defaultPortForProtocolMapForTesting().add(protocol, port);
+    LockHolder locker(defaultPortForProtocolMapForTestingLock());
+    ensureDefaultPortForProtocolMapForTesting().add(protocol, port);
 }
 
 void clearDefaultPortForProtocolMapForTesting()
 {
-    defaultPortForProtocolMapForTesting().clear();
+    LockHolder locker(defaultPortForProtocolMapForTestingLock());
+    if (auto* map = defaultPortForProtocolMapForTesting())
+        map->clear();
 }
 
 std::optional<uint16_t> defaultPortForProtocol(StringView protocol)
 {
-    const auto& defaultPortForProtocolMap = defaultPortForProtocolMapForTesting();
-    auto iterator = defaultPortForProtocolMap.find(protocol.toStringWithoutCopying());
-    if (iterator != defaultPortForProtocolMap.end())
-        return iterator->value;
+    if (auto* overrideMap = defaultPortForProtocolMapForTesting()) {
+        LockHolder locker(defaultPortForProtocolMapForTestingLock());
+        ASSERT(overrideMap); // No need to null check again here since overrideMap cannot become null after being non-null.
+        auto iterator = overrideMap->find(protocol.toStringWithoutCopying());
+        if (iterator != overrideMap->end())
+            return iterator->value;
+    }
     return URLParser::defaultPortForProtocol(protocol);
 }
 
@@ -844,13 +863,11 @@ void URL::setFragmentIdentifier(StringView identifier)
 void URL::removeFragmentIdentifier()
 {
     if (!m_isValid) {
-        ASSERT(!m_fragmentEnd);
         ASSERT(!m_queryEnd);
         return;
     }
-    if (m_fragmentEnd > m_queryEnd)
+    if (m_isValid && m_string.length() > m_queryEnd)
         m_string = m_string.left(m_queryEnd);
-    m_fragmentEnd = m_queryEnd;
 }
     
 void URL::setQuery(const String& query)
@@ -1253,20 +1270,10 @@ bool portAllowed(const URL& url)
         6669, // Alternate IRC [Apple addition]
         invalidPortNumber, // Used to block all invalid port numbers
     };
-    const unsigned short* const blockedPortListEnd = blockedPortList + WTF_ARRAY_LENGTH(blockedPortList);
-
-#ifndef NDEBUG
-    // The port list must be sorted for binary_search to work.
-    static bool checkedPortList = false;
-    if (!checkedPortList) {
-        for (const unsigned short* p = blockedPortList; p != blockedPortListEnd - 1; ++p)
-            ASSERT(*p < *(p + 1));
-        checkedPortList = true;
-    }
-#endif
 
     // If the port is not in the blocked port list, allow it.
-    if (!std::binary_search(blockedPortList, blockedPortListEnd, port.value()))
+    ASSERT(std::is_sorted(std::begin(blockedPortList), std::end(blockedPortList)));
+    if (!std::binary_search(std::begin(blockedPortList), std::end(blockedPortList), port.value()))
         return true;
 
     // Allow ports 21 and 22 for FTP URLs, as Mozilla does.

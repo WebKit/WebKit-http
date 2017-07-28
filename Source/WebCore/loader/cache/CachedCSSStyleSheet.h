@@ -26,6 +26,7 @@
 
 namespace WebCore {
 
+class FrameLoader;
 class StyleSheetContents;
 class TextResourceDecoder;
 
@@ -39,12 +40,10 @@ public:
     enum class MIMETypeCheckHint { Strict, Lax };
     const String sheetText(MIMETypeCheckHint = MIMETypeCheckHint::Strict, bool* hasValidMIMEType = nullptr) const;
 
-    RefPtr<StyleSheetContents> restoreParsedStyleSheet(const CSSParserContext&, CachePolicy);
+    RefPtr<StyleSheetContents> restoreParsedStyleSheet(const CSSParserContext&, CachePolicy, FrameLoader&);
     void saveParsedStyleSheet(Ref<StyleSheetContents>&&);
 
-#if ENABLE(NOSNIFF)
     bool mimeTypeAllowedByNosniff() const;
-#endif
 
 private:
     String responseMIMEType() const;

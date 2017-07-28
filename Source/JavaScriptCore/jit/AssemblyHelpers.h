@@ -35,13 +35,11 @@
 #include "JITCode.h"
 #include "MacroAssembler.h"
 #include "MarkedSpace.h"
-#include "MaxFrameExtentForSlowPathCall.h"
 #include "RegisterAtOffsetList.h"
 #include "RegisterSet.h"
-#include "SuperSampler.h"
+#include "TagRegistersMode.h"
 #include "TypeofType.h"
 #include "VM.h"
-#include <wtf/FastTLS.h>
 
 namespace JSC {
 
@@ -228,6 +226,31 @@ public:
         store32(TrustedImm32(value.tag()), address.withOffset(TagOffset));
         store32(TrustedImm32(value.payload()), address.withOffset(PayloadOffset));
 #endif
+    }
+    
+    Address addressFor(const RegisterAtOffset& entry)
+    {
+        return Address(GPRInfo::callFrameRegister, entry.offset());
+    }
+    
+    void emitSave(const RegisterAtOffsetList& list)
+    {
+        for (const RegisterAtOffset& entry : list) {
+            if (entry.reg().isGPR())
+                storePtr(entry.reg().gpr(), addressFor(entry));
+            else
+                storeDouble(entry.reg().fpr(), addressFor(entry));
+        }
+    }
+    
+    void emitRestore(const RegisterAtOffsetList& list)
+    {
+        for (const RegisterAtOffset& entry : list) {
+            if (entry.reg().isGPR())
+                loadPtr(addressFor(entry), entry.reg().gpr());
+            else
+                loadDouble(addressFor(entry), entry.reg().fpr());
+        }
     }
 
     void emitSaveCalleeSavesFor(CodeBlock* codeBlock)
@@ -1433,7 +1456,7 @@ public:
         Jump popPath;
         Jump done;
         
-        load32(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + OBJECT_OFFSETOF(FreeList, remaining)), resultGPR);
+        load32(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfRemaining()), resultGPR);
         popPath = branchTest32(Zero, resultGPR);
         if (allocator)
             add32(TrustedImm32(-allocator->cellSize()), resultGPR, scratchGPR);
@@ -1447,8 +1470,8 @@ public:
             }
         }
         negPtr(resultGPR);
-        store32(scratchGPR, Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + OBJECT_OFFSETOF(FreeList, remaining)));
-        Address payloadEndAddr = Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + OBJECT_OFFSETOF(FreeList, payloadEnd));
+        store32(scratchGPR, Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfRemaining()));
+        Address payloadEndAddr = Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfPayloadEnd());
         if (isX86())
             addPtr(payloadEndAddr, resultGPR);
         else {
@@ -1460,13 +1483,19 @@ public:
         
         popPath.link(this);
         
-        loadPtr(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + OBJECT_OFFSETOF(FreeList, head)), resultGPR);
+        loadPtr(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfScrambledHead()), resultGPR);
+        if (isX86())
+            xorPtr(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfSecret()), resultGPR);
+        else {
+            loadPtr(Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfSecret()), scratchGPR);
+            xorPtr(scratchGPR, resultGPR);
+        }
         slowPath.append(branchTestPtr(Zero, resultGPR));
         
         // The object is half-allocated: we have what we know is a fresh object, but
         // it's still on the GC's free list.
         loadPtr(Address(resultGPR), scratchGPR);
-        storePtr(scratchGPR, Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + OBJECT_OFFSETOF(FreeList, head)));
+        storePtr(scratchGPR, Address(allocatorGPR, MarkedAllocator::offsetOfFreeList() + FreeList::offsetOfScrambledHead()));
         
         done.link(this);
     }

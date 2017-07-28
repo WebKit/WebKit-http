@@ -40,6 +40,7 @@
 #include "StylePendingResources.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
+#include "TranslateTransformOperation.h"
 #include "WillChangeData.h"
 
 namespace WebCore {
@@ -58,6 +59,7 @@ KeyframeAnimation::KeyframeAnimation(const Animation& animation, RenderElement* 
     checkForMatchingBackdropFilterFunctionLists();
 #endif
     computeStackingContextImpact();
+    computeLayoutDependency();
 }
 
 KeyframeAnimation::~KeyframeAnimation()
@@ -73,6 +75,33 @@ void KeyframeAnimation::computeStackingContextImpact()
         if (WillChangeData::propertyCreatesStackingContext(propertyID)) {
             m_triggersStackingContext = true;
             break;
+        }
+    }
+}
+
+void KeyframeAnimation::computeLayoutDependency()
+{
+    if (!m_keyframes.containsProperty(CSSPropertyTransform))
+        return;
+
+    size_t numKeyframes = m_keyframes.size();
+    for (size_t i = 0; i < numKeyframes; i++) {
+        auto* keyframeStyle = m_keyframes[i].style();
+        if (!keyframeStyle) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+        if (keyframeStyle->hasTransform()) {
+            auto& transformOperations = keyframeStyle->transform();
+            for (auto operation : transformOperations.operations()) {
+                if (operation->isTranslateTransformOperationType()) {
+                    auto translation = downcast<TranslateTransformOperation>(operation.get());
+                    if (translation->x().isPercent() || translation->y().isPercent()) {
+                        m_dependsOnLayout = true;
+                        return;
+                    }
+                }
+            }
         }
     }
 }
@@ -125,14 +154,14 @@ void KeyframeAnimation::fetchIntervalEndpointsForProperty(CSSPropertyID property
     prog = progress(scale, offset, prevKeyframe.timingFunction(name()));
 }
 
-bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderElement*, const RenderStyle*, const RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
+bool KeyframeAnimation::animate(CompositeAnimation& compositeAnimation, RenderElement*, const RenderStyle*, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
 {
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
     
     // If we have not yet started, we will not have a valid start time, so just start the animation if needed.
     if (isNew()) {
-        if (m_animation->playState() == AnimPlayStatePlaying && !compositeAnimation->isSuspended())
+        if (m_animation->playState() == AnimPlayStatePlaying && !compositeAnimation.isSuspended())
             updateStateMachine(AnimationStateInput::StartAnimation, -1);
         else if (m_animation->playState() == AnimPlayStatePaused)
             updateStateMachine(AnimationStateInput::PlayStatePaused, -1);
@@ -142,7 +171,7 @@ bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderEl
     // If so, we need to send back the targetStyle.
     if (postActive()) {
         if (!animatedStyle)
-            animatedStyle = RenderStyle::clonePtr(*targetStyle);
+            animatedStyle = RenderStyle::clonePtr(targetStyle);
         return false;
     }
 
@@ -166,7 +195,7 @@ bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderEl
     // Run a cycle of animation.
     // We know we will need a new render style, so make one if needed.
     if (!animatedStyle)
-        animatedStyle = RenderStyle::clonePtr(*targetStyle);
+        animatedStyle = RenderStyle::clonePtr(targetStyle);
 
     // FIXME: we need to be more efficient about determining which keyframes we are animating between.
     // We should cache the last pair or something.

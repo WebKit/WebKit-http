@@ -41,139 +41,26 @@ bool getDefaultWebCryptoMasterKey(Vector<uint8_t>&)
     return false;
 }
 
+// Initially these helper functions were intended to perform KEK wrapping and unwrapping,
+// but this is not required anymore, despite the function names and the Mac implementation
+// still indicating otherwise.
+// See https://bugs.webkit.org/show_bug.cgi?id=173883 for more info.
+
 bool wrapSerializedCryptoKey(const Vector<uint8_t>& masterKey, const Vector<uint8_t>& key, Vector<uint8_t>& result)
 {
-    Vector<uint8_t> kek(16);
-    gcry_randomize(kek.data(), kek.size(), GCRY_VERY_STRONG_RANDOM);
+    UNUSED_PARAM(masterKey);
 
-    Vector<uint8_t> wrappedKEK(24);
-    {
-        auto algorithm = PAL::GCrypt::aesAlgorithmForKeySize(masterKey.size() * 8);
-        if (!algorithm)
-            return false;
-
-        PAL::GCrypt::Handle<gcry_cipher_hd_t> handle;
-        gcry_error_t error = gcry_cipher_open(&handle, *algorithm, GCRY_CIPHER_MODE_AESWRAP, 0);
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_setkey(handle, masterKey.data(), masterKey.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_encrypt(handle, wrappedKEK.data(), wrappedKEK.size(), kek.data(), kek.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-    }
-
-    Vector<uint8_t> encryptedKey(key.size());
-    Vector<uint8_t> tag(16);
-    {
-        PAL::GCrypt::Handle<gcry_cipher_hd_t> handle;
-        gcry_error_t error = gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_GCM, 0);
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_setkey(handle, kek.data(), kek.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_encrypt(handle, encryptedKey.data(), encryptedKey.size(), key.data(), key.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_gettag(handle, tag.data(), tag.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-    }
-
-    // magic[3] + version[1] + wrappedKEK[24] + encryptedKey[length(key)] + tag[16] + magic[3]
-    size_t serializedLength = 3 + 1 + 24 + encryptedKey.size() + 16 + 3;
-    result.resize(serializedLength);
-    result[0] = 0x04;
-    result[1] = 0x08;
-    result[2] = 0x15;
-    result[3] = 0x01;
-    std::memcpy(result.data() + 4, wrappedKEK.data(), 24);
-    std::memcpy(result.data() + 28, encryptedKey.data(), encryptedKey.size());
-    std::memcpy(result.data() + 28 + encryptedKey.size(), tag.data(), 16);
-    result[serializedLength - 3] = 0x16;
-    result[serializedLength - 2] = 0x23;
-    result[serializedLength - 1] = 0x42;
-
+    // No wrapping performed -- the serialized key data is copied into the `result` variable.
+    result = Vector<uint8_t>(key);
     return true;
 }
 
 bool unwrapSerializedCryptoKey(const Vector<uint8_t>& masterKey, const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key)
 {
-    // magic[3] + version[1] + wrappedKEK[24] + encryptedKey[length(key)] + tag[16] + magic[3]
-    size_t serializedLength = wrappedKey.size();
-    if (serializedLength < 3 + 1 + 24 + 16 + 3)
-        return false;
+    UNUSED_PARAM(masterKey);
 
-    uint8_t magic1[3] = { 0x04, 0x08, 0x15 };
-    if (std::memcmp(wrappedKey.data(), magic1, 3))
-        return false;
-    uint8_t magic2[3] = { 0x16, 0x23, 0x42 };
-    if (std::memcmp(wrappedKey.data() + serializedLength - 3, magic2, 3))
-        return false;
-    if (wrappedKey[3] != 0x01)
-        return false;
-
-    Vector<uint8_t> wrappedKEK(24);
-    std::memcpy(wrappedKEK.data(), wrappedKey.data() + 4, 24);
-
-    Vector<uint8_t> encryptedKey(serializedLength - 3 - 1 - 24 - 16 - 3);
-    std::memcpy(encryptedKey.data(), wrappedKey.data() + 28, encryptedKey.size());
-
-    Vector<uint8_t> tag(16);
-    std::memcpy(tag.data(), wrappedKey.data() + 28 + encryptedKey.size(), 16);
-
-    Vector<uint8_t> kek(16);
-    {
-        auto algorithm = PAL::GCrypt::aesAlgorithmForKeySize(masterKey.size() * 8);
-        if (!algorithm)
-            return false;
-
-        PAL::GCrypt::Handle<gcry_cipher_hd_t> handle;
-        gcry_error_t error = gcry_cipher_open(&handle, *algorithm, GCRY_CIPHER_MODE_AESWRAP, 0);
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_setkey(handle, masterKey.data(), masterKey.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_decrypt(handle, kek.data(), kek.size(), wrappedKEK.data(), wrappedKEK.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-    }
-
-    Vector<uint8_t> decryptedKey(encryptedKey.size());
-    Vector<uint8_t> actualTag(16);
-    {
-        PAL::GCrypt::Handle<gcry_cipher_hd_t> handle;
-        gcry_error_t error = gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_GCM, 0);
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_setkey(handle, kek.data(), kek.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_decrypt(handle, decryptedKey.data(), decryptedKey.size(), encryptedKey.data(), encryptedKey.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-
-        error = gcry_cipher_gettag(handle, actualTag.data(),actualTag.size());
-        if (error != GPG_ERR_NO_ERROR)
-            return false;
-    }
-
-    if (constantTimeMemcmp(tag.data(), actualTag.data(), 16))
-        return false;
-
-    key = WTFMove(decryptedKey);
+    // No unwrapping performed -- the serialized key data is copied into the `key` variable.
+    key = Vector<uint8_t>(wrappedKey);
     return true;
 }
 

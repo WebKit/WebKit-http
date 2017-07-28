@@ -176,7 +176,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
 
     if (newRequest.requester() != ResourceRequestBase::Requester::Main) {
         TracePoint(SubresourceLoadWillStart);
-        ResourceLoadObserver::sharedObserver().logSubresourceLoading(m_frame.get(), newRequest, redirectResponse);
+        ResourceLoadObserver::shared().logSubresourceLoading(m_frame.get(), newRequest, redirectResponse);
     }
 
     ASSERT(!newRequest.isNull());
@@ -448,6 +448,7 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
         resourceType = DiagnosticLoggingKeys::fontKey();
         break;
     case CachedResource::MediaResource:
+    case CachedResource::Icon:
     case CachedResource::RawResource:
         resourceType = DiagnosticLoggingKeys::rawKey();
         break;
@@ -505,7 +506,7 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
         if (!crossOriginFlag && isNextRequestCrossOrigin)
             redirectingToNewOrigin = true;
         else
-            redirectingToNewOrigin = !SecurityOrigin::create(previousRequest.url())->canRequest(newRequest.url());
+            redirectingToNewOrigin = !protocolHostAndPortAreEqual(previousRequest.url(), newRequest.url());
     }
 
     // Implementing https://fetch.spec.whatwg.org/#concept-http-redirect-fetch step 10.
@@ -544,7 +545,6 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
     // FIXME: Remove this with deprecatedNetworkLoadMetrics.
     m_loadTiming.setResponseEnd(MonotonicTime::now());
 
-#if ENABLE(WEB_TIMING)
     if (networkLoadMetrics.isComplete())
         reportResourceTiming(networkLoadMetrics);
     else {
@@ -553,7 +553,6 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
         // that they populated partial load timing information on the ResourceResponse.
         reportResourceTiming(m_resource->response().deprecatedNetworkLoadMetrics());
     }
-#endif
 
     if (m_resource->type() != CachedResource::MainResource)
         TracePoint(SubresourceLoadDidEnd);
@@ -681,7 +680,6 @@ void SubresourceLoader::releaseResources()
     ResourceLoader::releaseResources();
 }
 
-#if ENABLE(WEB_TIMING)
 void SubresourceLoader::reportResourceTiming(const NetworkLoadMetrics& networkLoadMetrics)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
@@ -710,6 +708,5 @@ void SubresourceLoader::reportResourceTiming(const NetworkLoadMetrics& networkLo
     ASSERT(options().initiatorContext == InitiatorContext::Document);
     m_documentLoader->cachedResourceLoader().resourceTimingInformation().addResourceTiming(*m_resource, *document, WTFMove(resourceTiming));
 }
-#endif
 
 }

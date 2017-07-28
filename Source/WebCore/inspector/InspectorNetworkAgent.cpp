@@ -43,11 +43,11 @@
 #include "FrameLoader.h"
 #include "HTTPHeaderMap.h"
 #include "HTTPHeaderNames.h"
-#include "IconController.h"
 #include "InspectorPageAgent.h"
 #include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
 #include "JSMainThreadExecState.h"
+#include "JSWebSocket.h"
 #include "MemoryCache.h"
 #include "NetworkResourcesData.h"
 #include "Page.h"
@@ -56,17 +56,24 @@
 #include "ResourceLoader.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScriptState.h"
 #include "ScriptableDocumentParser.h"
 #include "SubresourceLoader.h"
 #include "ThreadableLoaderClient.h"
 #include "URL.h"
+#include "WebSocket.h"
+#include "WebSocketChannel.h"
 #include "WebSocketFrame.h"
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/IdentifiersFactory.h>
+#include <inspector/InjectedScript.h>
+#include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorFrontendRouter.h>
 #include <inspector/InspectorValues.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
+#include <runtime/JSCInlines.h>
+#include <wtf/Lock.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Stopwatch.h>
 #include <wtf/text/StringBuilder.h>
@@ -155,6 +162,7 @@ InspectorNetworkAgent::InspectorNetworkAgent(WebAgentContext& context, Inspector
     : InspectorAgentBase(ASCIILiteral("Network"), context)
     , m_frontendDispatcher(std::make_unique<Inspector::NetworkFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::NetworkBackendDispatcher::create(context.backendDispatcher, this))
+    , m_injectedScriptManager(context.injectedScriptManager)
     , m_pageAgent(pageAgent)
     , m_resourcesData(std::make_unique<NetworkResourcesData>())
 {
@@ -344,10 +352,16 @@ void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLo
     if (type == InspectorPageAgent::OtherResource) {
         if (m_loadingXHRSynchronously)
             type = InspectorPageAgent::XHRResource;
-        else if (equalIgnoringFragmentIdentifier(request.url(), loader.frameLoader()->icon().url()))
-            type = InspectorPageAgent::ImageResource;
         else if (equalIgnoringFragmentIdentifier(request.url(), loader.url()) && !loader.isCommitted())
             type = InspectorPageAgent::DocumentResource;
+        else {
+            for (auto& linkIcon : loader.linkIcons()) {
+                if (equalIgnoringFragmentIdentifier(request.url(), linkIcon.url)) {
+                    type = InspectorPageAgent::ImageResource;
+                    break;
+                }
+            }
+        }
     }
 
     m_resourcesData->setResourceType(requestId, type);
@@ -655,6 +669,31 @@ void InspectorNetworkAgent::enable()
 {
     m_enabled = true;
     m_instrumentingAgents.setInspectorNetworkAgent(this);
+
+    LockHolder lock(WebSocket::allActiveWebSocketsMutex());
+
+    for (WebSocket* webSocket : WebSocket::allActiveWebSockets(lock)) {
+        if (!is<Document>(webSocket->scriptExecutionContext()) || !is<WebSocketChannel>(webSocket->channel().get()))
+            continue;
+
+        Document* document = downcast<Document>(webSocket->scriptExecutionContext());
+        if (document->page() != &m_pageAgent->page())
+            continue;
+
+        WebSocketChannel* channel = downcast<WebSocketChannel>(webSocket->channel().get());
+        if (!channel)
+            continue;
+
+        unsigned identifier = channel->identifier();
+        didCreateWebSocket(identifier, webSocket->url());
+        willSendWebSocketHandshakeRequest(identifier, channel->clientHandshakeRequest());
+
+        if (channel->handshakeMode() == WebSocketHandshake::Connected)
+            didReceiveWebSocketHandshakeResponse(identifier, channel->serverHandshakeResponse());
+
+        if (webSocket->readyState() == WebSocket::CLOSED)
+            didCloseWebSocket(identifier);
+    }
 }
 
 void InspectorNetworkAgent::disable(ErrorString&)
@@ -750,6 +789,69 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
 
     inspectorThreadableLoaderClient->setLoader(WTFMove(loader));
 }
+
+#if ENABLE(WEB_SOCKETS)
+
+WebSocket* InspectorNetworkAgent::webSocketForRequestId(const String& requestId)
+{
+    LockHolder lock(WebSocket::allActiveWebSocketsMutex());
+
+    for (WebSocket* webSocket : WebSocket::allActiveWebSockets(lock)) {
+        if (!is<WebSocketChannel>(webSocket->channel().get()))
+            continue;
+
+        WebSocketChannel* channel = downcast<WebSocketChannel>(webSocket->channel().get());
+        if (!channel)
+            continue;
+
+        if (IdentifiersFactory::requestId(channel->identifier()) != requestId)
+            continue;
+
+        // FIXME: <webkit.org/b/168475> Web Inspector: Correctly display iframe's and worker's WebSockets
+        if (!is<Document>(webSocket->scriptExecutionContext()))
+            continue;
+
+        Document* document = downcast<Document>(webSocket->scriptExecutionContext());
+        if (document->page() != &m_pageAgent->page())
+            continue;
+
+        return webSocket;
+    }
+
+    return nullptr;
+}
+
+static JSC::JSValue webSocketAsScriptValue(JSC::ExecState& state, WebSocket* webSocket)
+{
+    JSC::JSLockHolder lock(&state);
+    return toJS(&state, deprecatedGlobalObjectForPrototype(&state), webSocket);
+}
+
+void InspectorNetworkAgent::resolveWebSocket(ErrorString& errorString, const String& requestId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
+{
+    WebSocket* webSocket = webSocketForRequestId(requestId);
+    if (!webSocket) {
+        errorString = ASCIILiteral("WebSocket not found");
+        return;
+    }
+
+    // FIXME: <webkit.org/b/168475> Web Inspector: Correctly display iframe's and worker's WebSockets
+    Document* document = downcast<Document>(webSocket->scriptExecutionContext());
+    Frame* frame = document->frame();
+    if (!frame) {
+        errorString = ASCIILiteral("WebSocket belongs to document without a frame");
+        return;
+    }
+
+    auto& state = *mainWorldExecState(frame);
+    auto injectedScript = m_injectedScriptManager.injectedScriptFor(&state);
+    ASSERT(!injectedScript.hasNoValue());
+
+    String objectGroupName = objectGroup ? *objectGroup : String();
+    result = injectedScript.wrapObject(webSocketAsScriptValue(state, webSocket), objectGroupName);
+}
+
+#endif // ENABLE(WEB_SOCKETS)
 
 static Ref<Inspector::Protocol::Page::SearchResult> buildObjectForSearchResult(const String& requestId, const String& frameId, const String& url, int matchesCount)
 {

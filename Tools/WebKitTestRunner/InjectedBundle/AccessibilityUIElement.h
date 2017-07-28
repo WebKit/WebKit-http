@@ -110,6 +110,7 @@ public:
     bool isPressActionSupported();
     bool isIncrementActionSupported();
     bool isDecrementActionSupported();
+    void setValue(JSStringRef);
     JSRetainPtr<JSStringRef> role();
     JSRetainPtr<JSStringRef> subrole();
     JSRetainPtr<JSStringRef> roleDescription();
@@ -194,6 +195,31 @@ public:
     RefPtr<AccessibilityUIElement> ariaOwnsElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaFlowToElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaControlsElementAtIndex(unsigned);
+#if PLATFORM(GTK)
+    RefPtr<AccessibilityUIElement> ariaLabelledByElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaDescribedByElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaOwnsReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaFlowToReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaControlsReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaLabelledByReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaDescribedByReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaDetailsReferencingElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaErrorMessageReferencingElementAtIndex(unsigned);
+#else
+    RefPtr<AccessibilityUIElement> ariaLabelledByElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaDescribedByElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaOwnsReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaFlowToReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaControlsReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaLabelledByReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaDescribedByReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaDetailsReferencingElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaErrorMessageReferencingElementAtIndex(unsigned) { return nullptr; }
+#endif
 
     // ARIA Drag and Drop
     bool ariaIsGrabbed() const;
@@ -263,6 +289,7 @@ public:
     RefPtr<AccessibilityTextMarkerRange> sentenceTextMarkerRangeForTextMarker(AccessibilityTextMarker*);
     RefPtr<AccessibilityTextMarker> nextSentenceEndTextMarkerForTextMarker(AccessibilityTextMarker*);
     RefPtr<AccessibilityTextMarker> previousSentenceStartTextMarkerForTextMarker(AccessibilityTextMarker*);
+    RefPtr<AccessibilityTextMarkerRange> textMarkerRangeMatchesTextNearMarkers(JSStringRef, AccessibilityTextMarker*, AccessibilityTextMarker*);
 
     // Returns an ordered list of supported actions for an element.
     JSRetainPtr<JSStringRef> supportedActions() const;

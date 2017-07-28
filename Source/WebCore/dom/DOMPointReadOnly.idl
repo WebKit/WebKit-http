@@ -44,8 +44,7 @@ interface DOMPointReadOnly {
     readonly attribute unrestricted double z;
     readonly attribute unrestricted double w;
 
-    // FIXME: No support for DOMMatrix yet (webkit.org/b/110001)
-    // DOMPoint matrixTransform(optional DOMMatrixInit matrix);
+    [MayThrowException] DOMPoint matrixTransform(optional DOMMatrixInit matrix);
 
     serializer = { attribute };
 };

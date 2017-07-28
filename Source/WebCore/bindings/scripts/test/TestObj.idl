@@ -111,11 +111,19 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(DOMString testParam);
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(long testParam);
 
+    [EnabledForWorld=someWorld, EnabledAtRuntime=TestFeature] void enabledInSpecificWorldWhenRuntimeFeatureEnabled(long testParam);
+
     [EnabledForWorld=someWorld] void worldSpecificMethod(long testParam);
 
     // [EnabledBySetting] attributes and operations.
     [Conditional=TEST_FEATURE, EnabledBySetting=TestSetting] attribute DOMString enabledBySettingAttribute;
     [Conditional=TEST_FEATURE, EnabledBySetting=TestSetting] void enabledBySettingOperation(DOMString testParam);
+
+    // [SecureContext] attributes and operations; will not be exposed to a non-secure context.
+    // From <https://w3c.github.io/webappsec-secure-contexts/#integration-idl> (Editor's Draft, 17 November 2016)
+    [SecureContext] Promise<double> calculateSecretResult();
+    [SecureContext] boolean getSecretBoolean();
+    [Conditional=TEST_FEATURE, SecureContext, EnabledAtRuntime=TestFeature] boolean testFeatureGetSecretBoolean();
 
     // TypedArray attribute
     attribute Float32Array typedArrayAttr;
@@ -198,7 +206,6 @@ enum TestConfidence { "high", "kinda-low" };
     [CallWith=ScriptExecutionContext&ScriptState] void withScriptExecutionContextAndScriptState();
     [CallWith=ScriptExecutionContext&ScriptState, MayThrowException] TestObj withScriptExecutionContextAndScriptStateObjException();
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
-    [CallWith=ScriptArguments&CallStack] void withScriptArgumentsAndCallStack();
     [CallWith=Document] void withDocumentArgument();
     [CallWith=IncumbentDocument] void withCallerDocumentArgument();
     [CallWith=IncumbentWindow] void withCallerWindowArgument();
@@ -211,7 +218,6 @@ enum TestConfidence { "high", "kinda-low" };
     [CallWith=ScriptExecutionContext&ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttribute;
     [CallWith=ScriptExecutionContext&ScriptState,GetterMayThrowException] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises;
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
-    [CallWith=ScriptArguments&CallStack] attribute TestObj withScriptArgumentsAndCallStackAttribute;
 
     // Optional parameters.
     void    methodWithOptionalArg(optional long opt);
@@ -415,6 +421,8 @@ enum TestConfidence { "high", "kinda-low" };
     static Promise<void> testStaticPromiseFunction();
     [MayThrowException] static Promise<void> testStaticPromiseFunctionWithException();
     [Custom] Promise<void> testCustomPromiseFunction();
+    [Custom] static Promise<void> testStaticCustomPromiseFunction();
+    [Custom, ReturnsOwnPromise] Promise<void> testCustomReturnsOwnPromiseFunction();
 
     // PutForwards
     [PutForwards=name] readonly attribute TestNode putForwardsAttribute;
@@ -439,6 +447,12 @@ enum TestConfidence { "high", "kinda-low" };
     legacycaller void legacyCallerNamed(long param);
     legacycaller long (DOMString param);
     legacycaller void ();
+
+    Node testReturnValueOptimization([ReturnValue] Node a, Node b);
+    [MayThrowException] Node testReturnValueOptimizationWithException([ReturnValue] Node a, Node b);
+
+    [ConditionallyReadWrite=CONDITION] attribute Node conditionallyReadWriteAttribute;
+    [Conditional=CONDITION2, ConditionallyReadWrite=CONDITION] attribute Node conditionalAndConditionallyReadWriteAttribute;
 };
 
 // The following comment should not generate any code.
@@ -490,6 +504,7 @@ typedef any AnyTypedef;
     (long or Node) unionMember;
     (long or Node)? nullableUnionMember = null;
     BufferSource bufferSourceValue;
+    required BufferSource requiredBufferSourceValue;
     (DOMString or [Clamp] long) annotatedTypeInUnionMember;
     sequence<[Clamp] long> annotatedTypeInSequenceMember;
 };

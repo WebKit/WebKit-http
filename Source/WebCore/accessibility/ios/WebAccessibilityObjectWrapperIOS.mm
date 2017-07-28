@@ -52,6 +52,7 @@
 #import "RuntimeApplicationChecks.h"
 #import "SVGNames.h"
 #import "SVGElement.h"
+#import "SelectionRect.h"
 #import "TextIterator.h"
 #import "WAKScrollView.h"
 #import "WAKView.h"
@@ -180,10 +181,10 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 
 + (WebAccessibilityTextMarker *)textMarkerWithVisiblePosition:(VisiblePosition&)visiblePos cache:(AXObjectCache*)cache
 {
-    TextMarkerData textMarkerData;
-    cache->textMarkerDataForVisiblePosition(textMarkerData, visiblePos);
-    
-    return [[[WebAccessibilityTextMarker alloc] initWithTextMarker:&textMarkerData cache:cache] autorelease];
+    auto textMarkerData = cache->textMarkerDataForVisiblePosition(visiblePos);
+    if (!textMarkerData)
+        return nil;
+    return [[[WebAccessibilityTextMarker alloc] initWithTextMarker:&textMarkerData.value() cache:cache] autorelease];
 }
 
 + (WebAccessibilityTextMarker *)textMarkerWithCharacterOffset:(CharacterOffset&)characterOffset cache:(AXObjectCache*)cache
@@ -539,7 +540,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return role == TreeRole;
     };
     
-    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, matchFunc))
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, WTFMove(matchFunc)))
         return parent->wrapper();
     return nil;
 }
@@ -551,7 +552,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return role == ListRole || role == ListBoxRole;
     };
     
-    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, matchFunc))
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, WTFMove(matchFunc)))
         return parent->wrapper();
     return nil;
 }
@@ -875,6 +876,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case FeedRole:
         case FigureRole:
         case FooterRole:
+        case FootnoteRole:
         case FormRole:
         case GridRole:
         case GridCellRole:
@@ -1375,7 +1377,13 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     if (![self _prepareAccessibilityCall])
         return nil;
 
-    return [self baseAccessibilityHelpText];
+    NSMutableString *result = [NSMutableString string];
+    appendStringToResult(result, [self baseAccessibilityHelpText]);
+    
+    if ([self accessibilityIsShowingValidationMessage])
+        appendStringToResult(result, m_object->validationMessage());
+    
+    return result;
 }
 
 - (NSURL *)accessibilityURL
@@ -2026,7 +2034,7 @@ static RenderObject* rendererForView(WAKView* view)
         return YES;
     
     // Explicity set that this is now an element (in case other logic tries to override).
-    [wrapper setValue:[NSNumber numberWithBool:YES] forKey:@"isAccessibilityElement"];    
+    [wrapper setValue:@YES forKey:@"isAccessibilityElement"];    
     [array addObject:wrapper];
     return YES;
 }
@@ -2119,9 +2127,9 @@ static void AXAttributeStringSetFont(NSMutableAttributedString* attrString, CTFo
     if ([size boolValue])
         [attrString addAttribute:UIAccessibilityTokenFontSize value:size range:range];
     if ([bold boolValue] || (traits & kCTFontTraitBold))
-        [attrString addAttribute:UIAccessibilityTokenBold value:[NSNumber numberWithBool:YES] range:range];
+        [attrString addAttribute:UIAccessibilityTokenBold value:@YES range:range];
     if (traits & kCTFontTraitItalic)
-        [attrString addAttribute:UIAccessibilityTokenItalic value:[NSNumber numberWithBool:YES] range:range];
+        [attrString addAttribute:UIAccessibilityTokenItalic value:@YES range:range];
 
 }
 
@@ -2142,7 +2150,7 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
                 
     int decor = style.textDecorationsInEffect();
     if (decor & TextDecorationUnderline)
-        AXAttributeStringSetNumber(attrString, UIAccessibilityTokenUnderline, [NSNumber numberWithBool:YES], range);
+        AXAttributeStringSetNumber(attrString, UIAccessibilityTokenUnderline, @YES, range);
 }
 
 static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, Node* node, NSString *text)
@@ -2587,6 +2595,56 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return [self convertRectToScreenSpace:rect];
 }
 
+- (RefPtr<Range>)rangeFromMarkers:(NSArray *)markers withText:(NSString *)text
+{
+    RefPtr<Range> originalRange = [self rangeForTextMarkers:markers];
+    if (!originalRange)
+        return nil;
+    
+    AXObjectCache* cache = m_object->axObjectCache();
+    if (!cache)
+        return nil;
+    
+    return cache->rangeMatchesTextNearRange(originalRange, text);
+}
+
+// This is only used in the layout test.
+- (NSArray *)textMarkerRangeFromMarkers:(NSArray *)markers withText:(NSString *)text
+{
+    return [self textMarkersForRange:[self rangeFromMarkers:markers withText:text]];
+}
+
+- (NSArray *)textRectsFromMarkers:(NSArray *)markers withText:(NSString *)text
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    RefPtr<Range> range = [self rangeFromMarkers:markers withText:text];
+    if (!range || range->collapsed())
+        return nil;
+    
+    Vector<WebCore::SelectionRect> selectionRects;
+    range->collectSelectionRectsWithoutUnionInteriorLines(selectionRects);
+    return [self rectsForSelectionRects:selectionRects];
+}
+
+- (NSArray *)rectsForSelectionRects:(const Vector<WebCore::SelectionRect>&)selectionRects
+{
+    unsigned size = selectionRects.size();
+    if (!size)
+        return nil;
+    
+    NSMutableArray *rects = [NSMutableArray arrayWithCapacity:size];
+    for (unsigned i = 0; i < size; i++) {
+        const WebCore::SelectionRect& coreRect = selectionRects[i];
+        IntRect selectionRect = coreRect.rect();
+        CGRect rect = [self convertRectToScreenSpace:selectionRect];
+        [rects addObject:[NSValue valueWithRect:rect]];
+    }
+    
+    return rects;
+}
+
 - (WebAccessibilityTextMarker *)textMarkerForPoint:(CGPoint)point
 {
     if (![self _prepareAccessibilityCall])
@@ -2805,6 +2863,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return treeItemParent->isExpanded();
     
     return m_object->isExpanded();
+}
+
+- (BOOL)accessibilityIsShowingValidationMessage
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+    
+    return m_object->isShowingValidationMessage();
 }
 
 - (NSString *)accessibilityInvalidStatus

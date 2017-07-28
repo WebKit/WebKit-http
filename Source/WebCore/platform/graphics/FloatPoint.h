@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FloatPoint_h
-#define FloatPoint_h
+#pragma once
 
 #include "FloatSize.h"
 #include "IntPoint.h"
@@ -119,10 +118,20 @@ public:
         m_y *= scale;
     }
 
-    void scale(float sx, float sy)
+    void scale(float scaleX, float scaleY)
     {
-        m_x *= sx;
-        m_y *= sy;
+        m_x *= scaleX;
+        m_y *= scaleY;
+    }
+
+    FloatPoint scaled(float scale)
+    {
+        return { m_x * scale, m_y * scale };
+    }
+
+    FloatPoint scaled(float scaleX, float scaleY)
+    {
+        return { m_x * scaleX, m_y * scaleY };
     }
 
     WEBCORE_EXPORT void normalize();
@@ -289,4 +298,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FloatPoint&);
 
 }
 
-#endif

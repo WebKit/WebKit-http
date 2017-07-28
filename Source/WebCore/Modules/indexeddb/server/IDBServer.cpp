@@ -56,7 +56,9 @@ IDBServer::IDBServer(IDBBackingStoreTemporaryFileHandler& fileHandler)
     : m_backingStoreTemporaryFileHandler(fileHandler)
 {
     Locker<Lock> locker(m_databaseThreadCreationLock);
-    m_thread = Thread::create(IDBServer::databaseThreadEntry, this, "IndexedDatabase Server");
+    m_thread = Thread::create("IndexedDatabase Server", [this] {
+        databaseRunLoop();
+    });
 }
 
 IDBServer::IDBServer(const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler& fileHandler)
@@ -66,7 +68,9 @@ IDBServer::IDBServer(const String& databaseDirectoryPath, IDBBackingStoreTempora
     LOG(IndexedDB, "IDBServer created at path %s", databaseDirectoryPath.utf8().data());
 
     Locker<Lock> locker(m_databaseThreadCreationLock);
-    m_thread = Thread::create(IDBServer::databaseThreadEntry, this, "IndexedDatabase Server");
+    m_thread = Thread::create("IndexedDatabase Server", [this] {
+        databaseRunLoop();
+    });
 }
 
 void IDBServer::registerConnection(IDBConnectionToClient& connection)
@@ -117,7 +121,7 @@ UniqueIDBDatabase& IDBServer::getOrCreateUniqueIDBDatabase(const IDBDatabaseIden
 
     auto uniqueIDBDatabase = m_uniqueIDBDatabaseMap.add(identifier, nullptr);
     if (uniqueIDBDatabase.isNewEntry)
-        uniqueIDBDatabase.iterator->value = UniqueIDBDatabase::create(*this, identifier);
+        uniqueIDBDatabase.iterator->value = std::make_unique<UniqueIDBDatabase>(*this, identifier);
 
     return *uniqueIDBDatabase.iterator->value;
 }
@@ -167,12 +171,15 @@ void IDBServer::deleteDatabase(const IDBRequestData& requestData)
     database->handleDelete(*connection, requestData);
 }
 
-void IDBServer::closeUniqueIDBDatabase(UniqueIDBDatabase& database)
+std::unique_ptr<UniqueIDBDatabase> IDBServer::closeAndTakeUniqueIDBDatabase(UniqueIDBDatabase& database)
 {
     LOG(IndexedDB, "IDBServer::closeUniqueIDBDatabase");
     ASSERT(isMainThread());
 
-    m_uniqueIDBDatabaseMap.remove(database.identifier());
+    auto uniquePointer = m_uniqueIDBDatabaseMap.take(database.identifier());
+    ASSERT(uniquePointer);
+
+    return uniquePointer;
 }
 
 void IDBServer::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -486,9 +493,7 @@ void IDBServer::postDatabaseTask(CrossThreadTask&& task)
 
 void IDBServer::postDatabaseTaskReply(CrossThreadTask&& task)
 {
-    ASSERT(!isMainThread());
     m_databaseReplyQueue.append(WTFMove(task));
-
 
     Locker<Lock> locker(m_mainThreadReplyLock);
     if (m_mainThreadReplyScheduled)
@@ -498,13 +503,6 @@ void IDBServer::postDatabaseTaskReply(CrossThreadTask&& task)
     callOnMainThread([this] {
         handleTaskRepliesOnMainThread();
     });
-}
-
-void IDBServer::databaseThreadEntry(void* threadData)
-{
-    ASSERT(threadData);
-    IDBServer* server = reinterpret_cast<IDBServer*>(threadData);
-    server->databaseRunLoop();
 }
 
 void IDBServer::databaseRunLoop()
@@ -536,7 +534,7 @@ static uint64_t generateDeleteCallbackID()
     return ++currentID;
 }
 
-void IDBServer::closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::time_point modificationTime, std::function<void ()> completionHandler)
+void IDBServer::closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::time_point modificationTime, Function<void ()>&& completionHandler)
 {
     uint64_t callbackID = generateDeleteCallbackID();
     auto addResult = m_deleteDatabaseCompletionHandlers.add(callbackID, WTFMove(completionHandler));
@@ -548,7 +546,7 @@ void IDBServer::closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::
         return;
     }
 
-    HashSet<RefPtr<UniqueIDBDatabase>> openDatabases;
+    HashSet<UniqueIDBDatabase*> openDatabases;
     for (auto* connection : m_databaseConnections.values())
         openDatabases.add(&connection->database());
 
@@ -558,13 +556,13 @@ void IDBServer::closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::
     postDatabaseTask(createCrossThreadTask(*this, &IDBServer::performCloseAndDeleteDatabasesModifiedSince, modificationTime, callbackID));
 }
 
-void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>& origins, std::function<void ()> completionHandler)
+void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>& origins, Function<void ()>&& completionHandler)
 {
     uint64_t callbackID = generateDeleteCallbackID();
     auto addResult = m_deleteDatabaseCompletionHandlers.add(callbackID, WTFMove(completionHandler));
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
-    HashSet<RefPtr<UniqueIDBDatabase>> openDatabases;
+    HashSet<UniqueIDBDatabase*> openDatabases;
     for (auto* connection : m_databaseConnections.values()) {
         const auto& identifier = connection->database().identifier();
         for (auto& origin : origins) {

@@ -27,6 +27,7 @@
 
 #include "JSDOMConvert.h"
 #include "JSDOMGuardedObject.h"
+#include <runtime/CatchScope.h>
 #include <runtime/JSPromiseDeferred.h>
 
 namespace WebCore {
@@ -236,6 +237,26 @@ inline JSC::JSValue callPromiseFunction(JSC::ExecState& state)
         return JSC::jsUndefined();
 
     promiseFunction(state, DeferredPromise::create(globalObject, *promiseDeferred));
+
+    rejectPromiseWithExceptionIfAny(state, globalObject, *promiseDeferred);
+    ASSERT_UNUSED(scope, !scope.exception());
+    return promiseDeferred->promise();
+}
+
+template<PromiseExecutionScope executionScope, typename PromiseFunctor>
+inline JSC::JSValue callPromiseFunction(JSC::ExecState& state, PromiseFunctor functor)
+{
+    JSC::VM& vm = state.vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    JSDOMGlobalObject& globalObject = *JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject());
+    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+
+    // promiseDeferred can be null when terminating a Worker abruptly.
+    if (executionScope == PromiseExecutionScope::WindowOrWorker && !promiseDeferred)
+        return JSC::jsUndefined();
+
+    functor(state, DeferredPromise::create(globalObject, *promiseDeferred));
 
     rejectPromiseWithExceptionIfAny(state, globalObject, *promiseDeferred);
     ASSERT_UNUSED(scope, !scope.exception());

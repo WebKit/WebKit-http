@@ -33,6 +33,7 @@
 #include "JSCellInlines.h"
 #include "JSFunction.h"
 #include "JSObject.h"
+#include "JSProxy.h"
 #include "JSStringInlines.h"
 #include "MathCommon.h"
 #include <wtf/text/StringImpl.h>
@@ -876,16 +877,7 @@ ALWAYS_INLINE bool JSValue::putInline(ExecState* exec, PropertyName propertyName
 {
     if (UNLIKELY(!isCell()))
         return putToPrimitive(exec, propertyName, value, slot);
-
-    JSCell* cell = asCell();
-    auto putMethod = cell->methodTable(exec->vm())->put;
-    if (LIKELY(putMethod == JSObject::put))
-        return JSObject::putInline(cell, exec, propertyName, value, slot);
-
-    PutPropertySlot otherSlot = slot;
-    bool result = putMethod(cell, exec, propertyName, value, otherSlot);
-    slot = otherSlot;
-    return result;
+    return asCell()->putInline(exec, propertyName, value, slot);
 }
 
 inline bool JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)

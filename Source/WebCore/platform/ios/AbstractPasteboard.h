@@ -34,6 +34,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (readonly, nonatomic) NSInteger numberOfItems;
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+@property (nonatomic, copy, nullable) NSArray<__kindof NSItemProvider *> *itemProviders;
+#endif
+
 - (NSArray<NSString *> *)pasteboardTypes;
 - (NSArray *)dataForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
 - (NSArray *)valuesForPasteboardType:(NSString *)pasteboardType inItemSet:(NSIndexSet *)itemSet;
@@ -45,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<NSString *> *)pasteboardTypesByFidelityForItemAtIndex:(NSUInteger)index;
 @property (readonly, nonatomic) NSInteger numberOfFiles;
 @property (readonly, nonatomic) NSArray<NSURL *> *fileURLsForDataInteraction;
-- (void)updatePreferredTypeIdentifiers:(NSArray<NSString *> *)types;
+- (void)updateSupportedTypeIdentifiers:(NSArray<NSString *> *)types;
 
 @end
 

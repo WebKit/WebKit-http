@@ -863,9 +863,17 @@ void GraphicsLayerCA::setBlendMode(BlendMode blendMode)
 }
 #endif
 
+bool GraphicsLayerCA::backingStoreAttached() const
+{
+    return m_layer->backingStoreAttached();
+}
+
 void GraphicsLayerCA::setNeedsDisplay()
 {
     if (!drawsContent())
+        return;
+
+    if (!backingStoreAttached())
         return;
 
     m_needsFullRepaint = true;
@@ -1335,7 +1343,7 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     FloatRect clipRectForSelf(boundsOrigin, m_size);
     if (!applyWasClamped && !mapWasClamped)
         clipRectForSelf.intersect(clipRectForChildren);
-    
+
     if (masksToBounds()) {
         ASSERT(accumulation == TransformState::FlattenTransform);
         // Flatten, and replace the quad in the TransformState with one that is clipped to this layer's bounds.
@@ -1352,7 +1360,7 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     if (quad && !mapWasClamped && !applyWasClamped)
         coverageRect = (*quad).boundingBox();
 
-    return VisibleAndCoverageRects(clipRectForSelf, coverageRect);
+    return { clipRectForSelf, coverageRect, currentTransform };
 }
 
 bool GraphicsLayerCA::adjustCoverageRect(VisibleAndCoverageRects& rects, const FloatRect& oldVisibleRect) const
@@ -1384,11 +1392,17 @@ void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& 
 {
     bool visibleRectChanged = rects.visibleRect != m_visibleRect;
     bool coverageRectChanged = rects.coverageRect != m_coverageRect;
-    if (!visibleRectChanged && !coverageRectChanged)
+    if (!visibleRectChanged && !coverageRectChanged && !animationExtent())
         return;
 
+    auto bounds = FloatRect(m_boundsOrigin, size());
+    if (auto extent = animationExtent()) {
+        // Adjust the animation extent to match the current animation position.
+        bounds = rects.animatingTransform.inverse().value_or(TransformationMatrix()).mapRect(*extent);
+    }
+
     // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
-    bool intersectsCoverageRect = isViewportConstrained || rects.coverageRect.intersects(FloatRect(m_boundsOrigin, size()));
+    bool intersectsCoverageRect = isViewportConstrained || rects.coverageRect.intersects(bounds);
     if (intersectsCoverageRect != m_intersectsCoverageRect) {
         addUncommittedChanges(CoverageRectChanged);
         m_intersectsCoverageRect = intersectsCoverageRect;
@@ -1482,11 +1496,13 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     FloatPoint baseRelativePosition = positionRelativeToBase;
     if (affectedByPageScale)
         baseRelativePosition += m_position;
-    
+
     commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition);
 
     if (isRunningTransformAnimation()) {
         childCommitState.ancestorHasTransformAnimation = true;
+        if (m_intersectsCoverageRect)
+            childCommitState.ancestorWithTransformAnimationIntersectsCoverageRect = true;
         affectedByTransformAnimation = true;
     }
     
@@ -1563,7 +1579,7 @@ bool GraphicsLayerCA::platformCALayerShowRepaintCounter(PlatformCALayer* platfor
     return isShowingRepaintCounter();
 }
 
-void GraphicsLayerCA::platformCALayerPaintContents(PlatformCALayer*, GraphicsContext& context, const FloatRect& clip)
+void GraphicsLayerCA::platformCALayerPaintContents(PlatformCALayer*, GraphicsContext& context, const FloatRect& clip, GraphicsLayerPaintBehavior layerPaintBehavior)
 {
     m_hasEverPainted = true;
     if (m_displayList) {
@@ -1579,7 +1595,7 @@ void GraphicsLayerCA::platformCALayerPaintContents(PlatformCALayer*, GraphicsCon
     }
 
     TraceScope tracingScope(PaintLayerStart, PaintLayerEnd);
-    paintGraphicsLayerContents(context, clip);
+    paintGraphicsLayerContents(context, clip, layerPaintBehavior);
 }
 
 void GraphicsLayerCA::platformCALayerSetNeedsToRevalidateTiles()
@@ -1610,6 +1626,11 @@ bool GraphicsLayerCA::platformCALayerShouldTemporarilyRetainTileCohorts(Platform
 bool GraphicsLayerCA::platformCALayerUseGiantTiles() const
 {
     return client().useGiantTiles();
+}
+
+void GraphicsLayerCA::platformCALayerLogFilledVisibleFreshTile(unsigned blankPixelCount)
+{
+    client().logFilledVisibleFreshTile(blankPixelCount);
 }
 
 static PlatformCALayer::LayerType layerTypeForCustomBackdropAppearance(GraphicsLayer::CustomAppearance appearance)
@@ -1731,7 +1752,7 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
         updateContentsScale(pageScaleFactor);
 
     if (m_uncommittedChanges & CoverageRectChanged)
-        updateCoverage();
+        updateCoverage(commitState);
 
     if (m_uncommittedChanges & TilingAreaChanged) // Needs to happen after CoverageRectChanged, ContentsScaleChanged
         updateTiles();
@@ -2269,7 +2290,7 @@ void GraphicsLayerCA::updateDrawsContent()
     }
 }
 
-void GraphicsLayerCA::updateCoverage()
+void GraphicsLayerCA::updateCoverage(const CommitState& commitState)
 {
     // FIXME: Need to set coverage on clone layers too.
     if (TiledBacking* backing = tiledBacking()) {
@@ -2277,11 +2298,16 @@ void GraphicsLayerCA::updateCoverage()
         backing->setCoverageRect(m_coverageRect);
     }
 
-    m_layer->setBackingStoreAttached(m_intersectsCoverageRect);
-    if (m_layerClones) {
-        LayerMap::const_iterator end = m_layerClones->end();
-        for (LayerMap::const_iterator it = m_layerClones->begin(); it != end; ++it)
-            it->value->setBackingStoreAttached(m_intersectsCoverageRect);
+    if (canDetachBackingStore()) {
+        bool requiresBacking = m_intersectsCoverageRect
+            || commitState.ancestorWithTransformAnimationIntersectsCoverageRect // FIXME: Compute backing exactly for descendants of animating layers.
+            || (isRunningTransformAnimation() && !animationExtent()); // Create backing if we don't know the animation extent.
+
+        m_layer->setBackingStoreAttached(requiresBacking);
+        if (m_layerClones) {
+            for (auto& it : *m_layerClones)
+                it.value->setBackingStoreAttached(requiresBacking);
+        }
     }
 
     m_sizeAtLastCoverageRectUpdate = m_size;
@@ -4123,7 +4149,7 @@ double GraphicsLayerCA::backingStoreMemoryEstimate() const
     if (TiledBacking* tiledBacking = this->tiledBacking())
         return tiledBacking->retainedTileBackingStoreMemory();
 
-    if (!m_layer->backingContributesToMemoryEstimate())
+    if (!backingStoreAttached())
         return 0;
 
     return m_layer->backingStoreBytesPerPixel() * size().width() * m_layer->contentsScale() * size().height() * m_layer->contentsScale();

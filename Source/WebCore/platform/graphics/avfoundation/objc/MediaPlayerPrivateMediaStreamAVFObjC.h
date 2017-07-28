@@ -102,7 +102,8 @@ private:
 
     void prepareToPlay() override;
     PlatformLayer* platformLayer() const override;
-
+    
+    bool supportsPictureInPicture() const override;
     bool supportsFullscreen() const override { return true; }
 
     void play() override;
@@ -200,6 +201,7 @@ private:
     void didRemoveTrack(MediaStreamTrackPrivate&) override;
 
     // MediaStreamPrivateTrack::Observer
+    void trackStarted(MediaStreamTrackPrivate&) override { };
     void trackEnded(MediaStreamTrackPrivate&) override { };
     void trackMutedChanged(MediaStreamTrackPrivate&) override { };
     void trackSettingsChanged(MediaStreamTrackPrivate&) override { };
@@ -208,7 +210,7 @@ private:
     void readyStateChanged(MediaStreamTrackPrivate&) override;
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler) override;
+    void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
 #endif
 

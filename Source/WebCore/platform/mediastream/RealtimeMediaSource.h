@@ -35,7 +35,6 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "AudioSourceProvider.h"
 #include "CaptureDevice.h"
 #include "Image.h"
 #include "MediaConstraints.h"
@@ -68,11 +67,11 @@ public:
     class Observer {
     public:
         virtual ~Observer() { }
-        
+
         // Source state changes.
+        virtual void sourceStarted() { }
         virtual void sourceStopped() { }
         virtual void sourceMutedChanged() { }
-        virtual void sourceEnabledChanged() { }
         virtual void sourceSettingsChanged() { }
 
         // Observer state queries.
@@ -111,7 +110,7 @@ public:
     public:
         virtual ~AudioCaptureFactory() = default;
         virtual CaptureSourceOrError createAudioCaptureSource(const String& audioDeviceID, const MediaConstraints*) = 0;
-        
+
     protected:
         AudioCaptureFactory() = default;
     };
@@ -120,7 +119,7 @@ public:
     public:
         virtual ~VideoCaptureFactory() = default;
         virtual CaptureSourceOrError createVideoCaptureSource(const String& videoDeviceID, const MediaConstraints*) = 0;
-        virtual void setVisibility(bool) { }
+        virtual void setVideoCapturePageState(bool, bool) { }
 
     protected:
         VideoCaptureFactory() = default;
@@ -143,13 +142,15 @@ public:
 
     bool muted() const { return m_muted; }
     void setMuted(bool);
-    
-    bool enabled() const { return m_enabled; }
-    void setEnabled(bool);
+
+    bool captureDidFail() const { return m_captureDidFailed; }
+
+    virtual bool interrupted() const { return m_interrupted; }
+    virtual void setInterrupted(bool, bool);
 
     const String& name() const { return m_name; }
     void setName(const String& name) { m_name = name; }
-    
+
     unsigned fitnessScore() const { return m_fitnessScore; }
 
     WEBCORE_EXPORT void addObserver(Observer&);
@@ -191,8 +192,8 @@ public:
     virtual const RealtimeMediaSourceCapabilities& capabilities() const = 0;
     virtual const RealtimeMediaSourceSettings& settings() const = 0;
 
-    using SuccessHandler = std::function<void()>;
-    using FailureHandler = std::function<void(const String& badConstraint, const String& errorString)>;
+    using SuccessHandler = WTF::Function<void()>;
+    using FailureHandler = WTF::Function<void(const String& badConstraint, const String& errorString)>;
     virtual void applyConstraints(const MediaConstraints&, SuccessHandler&&, FailureHandler&&);
     std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
@@ -207,7 +208,7 @@ public:
 
     virtual void monitorOrientation(OrientationNotifier&) { }
 
-    virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
+    void captureFailed();
 
     // Testing only
     virtual void delaySamples(float) { };
@@ -215,7 +216,7 @@ public:
 protected:
     RealtimeMediaSource(const String& id, Type, const String& name);
 
-    void scheduleDeferredTask(std::function<void()>&&);
+    void scheduleDeferredTask(WTF::Function<void()>&&);
 
     virtual void beginConfiguration() { }
     virtual void commitConfiguration() { }
@@ -238,15 +239,14 @@ protected:
 
     void videoSampleAvailable(MediaSample&);
     void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t);
-    
-private:
+
     WeakPtr<RealtimeMediaSource> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
+private:
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
 
     bool m_muted { false };
-    bool m_enabled { true };
 
     WeakPtrFactory<RealtimeMediaSource> m_weakPtrFactory;
     String m_id;
@@ -265,8 +265,9 @@ private:
 
     bool m_echoCancellation { false };
     bool m_pendingSettingsDidChangeNotification { false };
-    bool m_suppressNotifications { true };
     bool m_isProducingData { false };
+    bool m_interrupted { false };
+    bool m_captureDidFailed { false };
 };
 
 struct CaptureSourceOrError {

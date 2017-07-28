@@ -43,7 +43,14 @@
 #include <wtf/Vector.h>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
+#if USE(EGL) && USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#endif
 #include <cairo-gl.h>
+#endif
+
+#if OS(WINDOWS)
+#include <cairo-win32.h>
 #endif
 
 namespace WebCore {
@@ -308,6 +315,13 @@ IntSize cairoSurfaceSize(cairo_surface_t* surface)
 #if ENABLE(ACCELERATED_2D_CANVAS)
     case CAIRO_SURFACE_TYPE_GL:
         return IntSize(cairo_gl_surface_get_width(surface), cairo_gl_surface_get_height(surface));
+#endif
+#if OS(WINDOWS)
+    case CAIRO_SURFACE_TYPE_WIN32:
+        surface = cairo_win32_surface_get_image(surface);
+        ASSERT(surface);
+        ASSERT(cairo_surface_get_type(surface) == CAIRO_SURFACE_TYPE_IMAGE);
+        return IntSize(cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
 #endif
     default:
         ASSERT_NOT_REACHED();

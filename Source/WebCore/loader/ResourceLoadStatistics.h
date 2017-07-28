@@ -25,7 +25,9 @@
 
 #pragma once
 
+#include "URL.h"
 #include <wtf/HashCountedSet.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -35,56 +37,46 @@ class KeyedDecoder;
 class KeyedEncoder;
 
 struct ResourceLoadStatistics {
-    ResourceLoadStatistics(const String& primaryDomain)
+    explicit ResourceLoadStatistics(const String& primaryDomain)
         : highLevelDomain(primaryDomain)
     {
     }
 
     ResourceLoadStatistics() = default;
 
-    void encode(KeyedEncoder&) const;
-    bool decode(KeyedDecoder&, unsigned version);
+    ResourceLoadStatistics(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics& operator=(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics(ResourceLoadStatistics&&) = default;
+    ResourceLoadStatistics& operator=(ResourceLoadStatistics&&) = default;
+
+    WEBCORE_EXPORT static String primaryDomain(const URL&);
+    WEBCORE_EXPORT static String primaryDomain(const String& host);
+
+    WEBCORE_EXPORT void encode(KeyedEncoder&) const;
+    WEBCORE_EXPORT bool decode(KeyedDecoder&);
 
     String toString() const;
 
-    void merge(const ResourceLoadStatistics&);
+    WEBCORE_EXPORT void merge(const ResourceLoadStatistics&);
 
     String highLevelDomain;
 
+    WallTime lastSeen;
+    
     // User interaction
     bool hadUserInteraction { false };
     // Timestamp. Default value is negative, 0 means it was reset.
-    double mostRecentUserInteraction { -1 };
+    WallTime mostRecentUserInteractionTime { WallTime::fromRawSeconds(-1) };
     bool grandfathered { false };
-
-    // Top frame stats
-    unsigned topFrameHasBeenRedirectedTo { 0 };
-    unsigned topFrameHasBeenRedirectedFrom { 0 };
-    unsigned topFrameInitialLoadCount { 0 };
-    unsigned topFrameHasBeenNavigatedTo { 0 };
-    unsigned topFrameHasBeenNavigatedFrom { 0 };
-    bool topFrameHasBeenNavigatedToBefore { false };
     
     // Subframe stats
     HashCountedSet<String> subframeUnderTopFrameOrigins;
-    unsigned subframeHasBeenRedirectedTo { 0 };
-    unsigned subframeHasBeenRedirectedFrom { 0 };
-    HashCountedSet<String> subframeUniqueRedirectsTo;
-    unsigned subframeSubResourceCount { 0 };
-    unsigned subframeHasBeenNavigatedTo { 0 };
-    unsigned subframeHasBeenNavigatedFrom { 0 };
-    bool subframeHasBeenLoadedBefore { false };
     
     // Subresource stats
     HashCountedSet<String> subresourceUnderTopFrameOrigins;
-    unsigned subresourceHasBeenSubresourceCount { 0 };
-    double subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited { 0.0 };
-    unsigned subresourceHasBeenRedirectedFrom { 0 };
-    unsigned subresourceHasBeenRedirectedTo { 0 };
     HashCountedSet<String> subresourceUniqueRedirectsTo;
     
     // Prevalent resource stats
-    HashCountedSet<String> redirectedToOtherPrevalentResourceOrigins;
     bool isPrevalentResource { false };
     unsigned dataRecordsRemoved { 0 };
 

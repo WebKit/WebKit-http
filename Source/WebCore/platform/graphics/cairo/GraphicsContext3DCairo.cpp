@@ -47,11 +47,16 @@
 #include <ANGLE/ShaderLang.h>
 #endif
 
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif !USE(OPENGL_ES_2)
+#include "OpenGLShims.h"
+#endif
+
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"
 #else
 #include "Extensions3DOpenGL.h"
-#include "OpenGLShims.h"
 #endif
 
 #if USE(TEXTURE_MAPPER)
@@ -64,36 +69,33 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
 {
     // This implementation doesn't currently support rendering directly to the HostWindow.
     if (renderStyle == RenderDirectlyToHostWindow)
-        return 0;
+        return nullptr;
 
     static bool initialized = false;
     static bool success = true;
     if (!initialized) {
-#if !USE(OPENGL_ES_2)
+#if !USE(OPENGL_ES_2) && !USE(LIBEPOXY)
         success = initializeOpenGLShims();
 #endif
         initialized = true;
     }
     if (!success)
-        return 0;
+        return nullptr;
 
-    return adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+    // Create the GraphicsContext3D object first in order to establist a current context on this thread.
+    auto context = adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+
+#if USE(LIBEPOXY) && USE(OPENGL_ES_2)
+    // Bail if GLES3 was requested but cannot be provided.
+    if (attributes.useGLES3 && !epoxy_is_desktop_gl() && epoxy_gl_version() < 30)
+        return nullptr;
+#endif
+
+    return context;
 }
 
 GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
-    : m_currentWidth(0)
-    , m_currentHeight(0)
-    , m_attrs(attributes)
-    , m_texture(0)
-    , m_compositorTexture(0)
-    , m_fbo(0)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_intermediateTexture(0)
-#endif
-    , m_layerComposited(false)
-    , m_multisampleFBO(0)
-    , m_multisampleDepthStencilBuffer(0)
-    , m_multisampleColorBuffer(0)
+    : m_attrs(attributes)
 {
 #if USE(TEXTURE_MAPPER)
     m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
@@ -188,7 +190,8 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
         ::glEnable(GL_POINT_SPRITE);
     }
 #else
-    m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT);
+    // Adjust the shader specification depending on whether GLES3 (i.e. WebGL2 support) was requested.
+    m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT, m_attrs.useGLES3 ? SH_WEBGL2_SPEC : SH_WEBGL_SPEC);
 #endif
 
     // ANGLE initialization.
@@ -228,8 +231,10 @@ GraphicsContext3D::~GraphicsContext3D()
     makeContextCurrent();
     if (m_texture)
         ::glDeleteTextures(1, &m_texture);
+#if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_compositorTexture)
         ::glDeleteTextures(1, &m_compositorTexture);
+#endif
 
     if (m_attrs.antialias) {
         ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
@@ -377,7 +382,7 @@ bool GraphicsContext3D::makeContextCurrent()
     return false;
 }
 
-void GraphicsContext3D::checkGPUStatusIfNecessary()
+void GraphicsContext3D::checkGPUStatus()
 {
 }
 

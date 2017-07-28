@@ -26,7 +26,6 @@
 #include "config.h"
 #include "DOMTokenList.h"
 
-#include "ExceptionCode.h"
 #include "HTMLParserIdioms.h"
 #include "SpaceSplitString.h"
 #include <wtf/HashSet.h>
@@ -51,10 +50,10 @@ static inline bool tokenContainsHTMLSpace(const String& token)
 ExceptionOr<void> DOMTokenList::validateToken(const String& token)
 {
     if (token.isEmpty())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (tokenContainsHTMLSpace(token))
-        return Exception { INVALID_CHARACTER_ERR };
+        return Exception { InvalidCharacterError };
 
     return { };
 }
@@ -162,10 +161,10 @@ ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, std::optional<
 ExceptionOr<void> DOMTokenList::replace(const AtomicString& item, const AtomicString& replacement)
 {
     if (item.isEmpty() || replacement.isEmpty())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (tokenContainsHTMLSpace(item) || tokenContainsHTMLSpace(replacement))
-        return Exception { INVALID_CHARACTER_ERR };
+        return Exception { InvalidCharacterError };
 
     auto& tokens = this->tokens();
 
@@ -179,7 +178,7 @@ ExceptionOr<void> DOMTokenList::replace(const AtomicString& item, const AtomicSt
 
     tokens[index] = replacement;
     tokens.removeFirstMatching(matchesItemOrReplacement, index + 1);
-    ASSERT(tokens.find(item) == notFound);
+    ASSERT(item == replacement || tokens.find(item) == notFound);
     ASSERT(tokens.reverseFind(replacement) == index);
 
     updateAssociatedAttributeFromTokens();

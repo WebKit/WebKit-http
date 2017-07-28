@@ -32,6 +32,7 @@
 #include "DiagnosticLoggingClient.h"
 #include "EditorClient.h"
 #include "LibWebRTCProvider.h"
+#include "PerformanceLoggingClient.h"
 #include "PluginInfoProvider.h"
 #include "SocketProvider.h"
 #include "StorageNamespaceProvider.h"

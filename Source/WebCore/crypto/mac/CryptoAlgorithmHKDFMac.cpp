@@ -31,7 +31,6 @@
 #include "CommonCryptoUtilities.h"
 #include "CryptoAlgorithmHkdfParams.h"
 #include "CryptoKeyRaw.h"
-#include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
 
 namespace WebCore {
@@ -46,6 +45,7 @@ void CryptoAlgorithmHKDF::platformDeriveBits(std::unique_ptr<CryptoAlgorithmPara
         Vector<uint8_t> result(length / 8);
         CCDigestAlgorithm digestAlgorithm;
         getCommonCryptoDigestAlgorithm(hkdfParameters.hashIdentifier, digestAlgorithm);
+        // <rdar://problem/32439455> Currently, when rawKey is null, CCKeyDerivationHMac will bail out.
         if (CCKeyDerivationHMac(kCCKDFAlgorithmHKDF, digestAlgorithm, 0, rawKey.key().data(), rawKey.key().size(), 0, 0, hkdfParameters.infoVector().data(), hkdfParameters.infoVector().size(), 0, 0, hkdfParameters.saltVector().data(), hkdfParameters.saltVector().size(), result.data(), result.size())) {
             // We should only dereference callbacks after being back to the Document/Worker threads.
             context.postTask([exceptionCallback = WTFMove(exceptionCallback), callback = WTFMove(callback)](ScriptExecutionContext& context) {

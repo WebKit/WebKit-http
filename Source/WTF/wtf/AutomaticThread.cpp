@@ -27,6 +27,7 @@
 #include "AutomaticThread.h"
 
 #include "DataLog.h"
+#include "Threading.h"
 
 namespace WTF {
 
@@ -79,6 +80,11 @@ void AutomaticThreadCondition::notifyAll(const AbstractLocker& locker)
 void AutomaticThreadCondition::wait(Lock& lock)
 {
     m_condition.wait(lock);
+}
+
+bool AutomaticThreadCondition::waitFor(Lock& lock, Seconds time)
+{
+    return m_condition.waitFor(lock, time);
 }
 
 void AutomaticThreadCondition::add(const AbstractLocker&, AutomaticThread* thread)
@@ -194,10 +200,11 @@ void AutomaticThread::start(const AbstractLocker&)
                         if (result == PollResult::Stop)
                             return stopPermanently(locker);
                         RELEASE_ASSERT(result == PollResult::Wait);
-                        // Shut the thread down after one second.
+
+                        // Shut the thread down after a timeout.
                         m_isWaiting = true;
                         bool awokenByNotify =
-                            m_waitCondition.waitFor(*m_lock, 1_s);
+                            m_waitCondition.waitFor(*m_lock, 10_s);
                         if (verbose && !awokenByNotify && !m_isWaiting)
                             dataLog(RawPointer(this), ": waitFor timed out, but notified via m_isWaiting flag!\n");
                         if (m_isWaiting) {

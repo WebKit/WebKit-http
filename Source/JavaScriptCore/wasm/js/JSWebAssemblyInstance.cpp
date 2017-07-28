@@ -69,7 +69,6 @@ void JSWebAssemblyInstance::finishCreation(VM& vm, JSWebAssemblyModule* module, 
 
     m_moduleNamespaceObject.set(vm, this, moduleNamespaceObject);
     m_callee.set(vm, this, module->callee());
-    putDirect(vm, Identifier::fromString(&vm, "exports"), moduleNamespaceObject, None);
 }
 
 void JSWebAssemblyInstance::destroy(JSCell* cell)
@@ -113,6 +112,10 @@ void JSWebAssemblyInstance::finalizeCreation(VM& vm, ExecState* exec, Ref<Wasm::
         m_codeBlock.set(vm, this, codeBlock);
     } else {
         codeBlock = JSWebAssemblyCodeBlock::create(vm, wasmCodeBlock.copyRef(), m_module.get());
+        if (UNLIKELY(!codeBlock->runnable())) {
+            throwException(exec, scope, JSWebAssemblyLinkError::create(exec, vm, globalObject()->WebAssemblyLinkErrorStructure(), codeBlock->errorMessage()));
+            return;
+        }
         m_codeBlock.set(vm, this, codeBlock);
         module()->setCodeBlock(vm, memoryMode(), codeBlock);
     }
@@ -136,6 +139,13 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
     auto exception = [&] (JSObject* error) {
         throwException(exec, throwScope, error);
         return nullptr;
+    };
+
+    if (!globalObject->webAssemblyEnabled())
+        return exception(createEvalError(exec, globalObject->webAssemblyDisabledErrorMessage()));
+
+    auto importFailMessage = [&] (const Wasm::Import& import, const char* before, const char* after) {
+        return makeString(before, " ", String::fromUTF8(import.module), ":", String::fromUTF8(import.field), " ", after);
     };
 
     // If the list of module.imports is not empty and Type(importObject) is not Object, a TypeError is thrown.
@@ -162,15 +172,15 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
     // For each import i in module.imports:
     for (auto& import : moduleInformation.imports) {
         // 1. Let o be the resultant value of performing Get(importObject, i.module_name).
-        JSValue importModuleValue = importObject->get(exec, Identifier::fromString(&vm, import.module));
+        JSValue importModuleValue = importObject->get(exec, Identifier::fromString(&vm, String::fromUTF8(import.module)));
         RETURN_IF_EXCEPTION(throwScope, nullptr);
         // 2. If Type(o) is not Object, throw a TypeError.
         if (!importModuleValue.isObject())
-            return exception(createTypeError(exec, ASCIILiteral("import must be an object"), defaultSourceAppender, runtimeTypeForValue(importModuleValue)));
+            return exception(createTypeError(exec, importFailMessage(import, "import", "must be an object"), defaultSourceAppender, runtimeTypeForValue(importModuleValue)));
 
         // 3. Let v be the value of performing Get(o, i.item_name)
         JSObject* object = jsCast<JSObject*>(importModuleValue);
-        JSValue value = object->get(exec, Identifier::fromString(&vm, import.field));
+        JSValue value = object->get(exec, Identifier::fromString(&vm, String::fromUTF8(import.field)));
         RETURN_IF_EXCEPTION(throwScope, nullptr);
 
         switch (import.kind) {
@@ -178,7 +188,7 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
             // 4. If i is a function import:
             // i. If IsCallable(v) is false, throw a WebAssembly.LinkError.
             if (!value.isFunction())
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("import function must be callable")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "import function", "must be callable")));
 
             JSObject* function = jsCast<JSObject*>(value);
             // ii. If v is an Exported Function Exotic Object:
@@ -196,7 +206,7 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
                 }
                 Wasm::SignatureIndex expectedSignatureIndex = moduleInformation.importFunctionSignatureIndices[import.kindIndex];
                 if (importedSignatureIndex != expectedSignatureIndex)
-                    return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("imported function's signature doesn't match the provided WebAssembly function's signature")));
+                    return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "imported function", "signature doesn't match the provided WebAssembly function's signature")));
             }
             // iii. Otherwise:
             // a. Let closure be a new host function of the given signature which calls v by coercing WebAssembly arguments to JavaScript arguments via ToJSValue and returns the result, if any, by coercing via ToWebAssemblyValue.
@@ -216,19 +226,19 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
             JSWebAssemblyTable* table = jsDynamicCast<JSWebAssemblyTable*>(vm, value);
             // i. If v is not a WebAssembly.Table object, throw a WebAssembly.LinkError.
             if (!table)
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Table import is not an instance of WebAssembly.Table")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Table import", "is not an instance of WebAssembly.Table")));
 
             uint32_t expectedInitial = moduleInformation.tableInformation.initial();
             uint32_t actualInitial = table->size();
             if (actualInitial < expectedInitial)
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Table import provided an 'initial' that is too small")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Table import", "provided an 'initial' that is too small")));
 
             if (std::optional<uint32_t> expectedMaximum = moduleInformation.tableInformation.maximum()) {
                 std::optional<uint32_t> actualMaximum = table->maximum();
                 if (!actualMaximum)
-                    return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Table import does not have a 'maximum' but the module requires that it does")));
+                    return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Table import", "does not have a 'maximum' but the module requires that it does")));
                 if (*actualMaximum > *expectedMaximum)
-                    return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Imported Table's 'maximum' is larger than the module's expected 'maximum'")));
+                    return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Imported Table", "'maximum' is larger than the module's expected 'maximum'")));
             }
 
             // ii. Append v to tables.
@@ -245,20 +255,20 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
             JSWebAssemblyMemory* memory = jsDynamicCast<JSWebAssemblyMemory*>(vm, value);
             // i. If v is not a WebAssembly.Memory object, throw a WebAssembly.LinkError.
             if (!memory)
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Memory import is not an instance of WebAssembly.Memory")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Memory import", "is not an instance of WebAssembly.Memory")));
 
             Wasm::PageCount declaredInitial = moduleInformation.memory.initial();
             Wasm::PageCount importedInitial = memory->memory().initial();
             if (importedInitial < declaredInitial)
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Memory import provided an 'initial' that is smaller than the module's declared 'initial' import memory size")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Memory import", "provided an 'initial' that is smaller than the module's declared 'initial' import memory size")));
 
             if (Wasm::PageCount declaredMaximum = moduleInformation.memory.maximum()) {
                 Wasm::PageCount importedMaximum = memory->memory().maximum();
                 if (!importedMaximum)
-                    return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Memory import did not have a 'maximum' but the module requires that it does")));
+                    return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Memory import", "did not have a 'maximum' but the module requires that it does")));
 
                 if (importedMaximum > declaredMaximum)
-                    return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Memory import provided a 'maximum' that is larger than the module's declared 'maximum' import memory size")));
+                    return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Memory import", "provided a 'maximum' that is larger than the module's declared 'maximum' import memory size")));
             }
 
             // ii. Append v to memories.
@@ -274,9 +284,9 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
             ASSERT(moduleInformation.globals[import.kindIndex].mutability == Wasm::Global::Immutable);
             // ii. If the global_type of i is i64 or Type(v) is not Number, throw a WebAssembly.LinkError.
             if (moduleInformation.globals[import.kindIndex].type == Wasm::I64)
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("imported global cannot be an i64")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "imported global", "cannot be an i64")));
             if (!value.isNumber())
-                return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("imported global must be a number")));
+                return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "imported global", "must be a number")));
             // iii. Append ToWebAssemblyValue(v) to imports.
             ASSERT(numImportGlobals == import.kindIndex);
             switch (moduleInformation.globals[import.kindIndex].type) {
@@ -312,7 +322,7 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
                 return exception(createOutOfMemoryError(exec));
 
             instance->m_memory.set(vm, instance,
-                JSWebAssemblyMemory::create(vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure(), memory.releaseNonNull()));
+                JSWebAssemblyMemory::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure(), memory.releaseNonNull()));
             RETURN_IF_EXCEPTION(throwScope, nullptr);
         }
     }
@@ -338,7 +348,8 @@ JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, ExecState* exec, JS
     
     if (!instance->memory()) {
         // Make sure we have a dummy memory, so that wasm -> wasm thunks avoid checking for a nullptr Memory when trying to set pinned registers.
-        instance->m_memory.set(vm, instance, JSWebAssemblyMemory::create(vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure(), adoptRef(*(new Wasm::Memory()))));
+        instance->m_memory.set(vm, instance, JSWebAssemblyMemory::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure(), adoptRef(*(new Wasm::Memory()))));
+        RETURN_IF_EXCEPTION(throwScope, nullptr);
     }
     
     // Globals

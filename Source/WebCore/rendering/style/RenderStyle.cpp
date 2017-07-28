@@ -127,6 +127,9 @@ RenderStyle RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle&
     return style;
 }
 
+RenderStyle::RenderStyle(RenderStyle&&) = default;
+RenderStyle& RenderStyle::operator=(RenderStyle&&) = default;
+
 RenderStyle::RenderStyle(CreateDefaultStyleTag)
     : m_boxData(StyleBoxData::create())
     , m_visualData(StyleVisualData::create())
@@ -1130,24 +1133,20 @@ void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRec
 {
     auto& operations = m_rareNonInheritedData->transform->operations.operations();
     bool applyTransformOrigin = requireTransformOrigin(operations, applyOrigin);
-
-    float offsetX = transformOriginX().isPercent() ? boundingBox.x() : 0;
-    float offsetY = transformOriginY().isPercent() ? boundingBox.y() : 0;
-
+    
+    FloatPoint3D originTranslate;
     if (applyTransformOrigin) {
-        transform.translate3d(floatValueForLength(transformOriginX(), boundingBox.width()) + offsetX,
-                              floatValueForLength(transformOriginY(), boundingBox.height()) + offsetY,
-                              transformOriginZ());
+        originTranslate.setX(boundingBox.x() + floatValueForLength(transformOriginX(), boundingBox.width()));
+        originTranslate.setY(boundingBox.y() + floatValueForLength(transformOriginY(), boundingBox.height()));
+        originTranslate.setZ(transformOriginZ());
+        transform.translate3d(originTranslate.x(), originTranslate.y(), originTranslate.z());
     }
 
     for (auto& operation : operations)
         operation->apply(transform, boundingBox.size());
 
-    if (applyTransformOrigin) {
-        transform.translate3d(-floatValueForLength(transformOriginX(), boundingBox.width()) - offsetX,
-                              -floatValueForLength(transformOriginY(), boundingBox.height()) - offsetY,
-                              -transformOriginZ());
-    }
+    if (applyTransformOrigin)
+        transform.translate3d(-originTranslate.x(), -originTranslate.y(), -originTranslate.z());
 }
 
 void RenderStyle::setPageScaleTransform(float scale)
@@ -1331,7 +1330,7 @@ const AtomicString& RenderStyle::textEmphasisMarkString() const
 {
     switch (textEmphasisMark()) {
     case TextEmphasisMarkNone:
-        return nullAtom;
+        return nullAtom();
     case TextEmphasisMarkCustom:
         return textEmphasisCustomMark();
     case TextEmphasisMarkDot: {
@@ -1361,11 +1360,11 @@ const AtomicString& RenderStyle::textEmphasisMarkString() const
     }
     case TextEmphasisMarkAuto:
         ASSERT_NOT_REACHED();
-        return nullAtom;
+        return nullAtom();
     }
 
     ASSERT_NOT_REACHED();
-    return nullAtom;
+    return nullAtom();
 }
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -1499,9 +1498,9 @@ float RenderStyle::computedFontSize() const
     return fontDescription().computedSize();
 }
 
-int RenderStyle::fontSize() const
+unsigned RenderStyle::computedFontPixelSize() const
 {
-    return m_inheritedData->fontCascade.pixelSize();
+    return fontDescription().computedPixelSize();
 }
 
 const Length& RenderStyle::wordSpacing() const
@@ -1560,7 +1559,7 @@ int RenderStyle::computedLineHeight() const
         return fontMetrics().lineSpacing();
 
     if (lh.isPercentOrCalculated())
-        return minimumValueForLength(lh, fontSize());
+        return minimumValueForLength(lh, computedFontPixelSize());
 
     return clampTo<int>(lh.value());
 }

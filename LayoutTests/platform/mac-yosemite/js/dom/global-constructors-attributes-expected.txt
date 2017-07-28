@@ -1288,6 +1288,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'RTCSessionDescription').hasOwnProp
 PASS Object.getOwnPropertyDescriptor(global, 'RTCSessionDescription').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCSessionDescription').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCSessionDescription').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'RTCStatsReport').value is RTCStatsReport
+PASS Object.getOwnPropertyDescriptor(global, 'RTCStatsReport').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCStatsReport').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCStatsReport').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCStatsReport').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'RTCTrackEvent').value is RTCTrackEvent
 PASS Object.getOwnPropertyDescriptor(global, 'RTCTrackEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCTrackEvent').hasOwnProperty('set') is false
@@ -1343,11 +1348,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'SQLError').hasOwnProperty('get') i
 PASS Object.getOwnPropertyDescriptor(global, 'SQLError').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SQLError').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SQLError').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'SQLException').value is SQLException
-PASS Object.getOwnPropertyDescriptor(global, 'SQLException').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SQLException').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SQLException').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'SQLException').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SQLResultSet').value is SQLResultSet
 PASS Object.getOwnPropertyDescriptor(global, 'SQLResultSet').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SQLResultSet').hasOwnProperty('set') is false
@@ -1518,11 +1518,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').hasOwnProperty
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'SVGException').value is SVGException
-PASS Object.getOwnPropertyDescriptor(global, 'SVGException').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGException').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGException').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGException').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SVGFEBlendElement').value is SVGFEBlendElement
 PASS Object.getOwnPropertyDescriptor(global, 'SVGFEBlendElement').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGFEBlendElement').hasOwnProperty('set') is false
@@ -2528,11 +2523,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'XPathEvaluator').hasOwnProperty('g
 PASS Object.getOwnPropertyDescriptor(global, 'XPathEvaluator').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'XPathEvaluator').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'XPathEvaluator').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'XPathException').value is XPathException
-PASS Object.getOwnPropertyDescriptor(global, 'XPathException').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'XPathException').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'XPathException').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'XPathException').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'XPathExpression').value is XPathExpression
 PASS Object.getOwnPropertyDescriptor(global, 'XPathExpression').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'XPathExpression').hasOwnProperty('set') is false

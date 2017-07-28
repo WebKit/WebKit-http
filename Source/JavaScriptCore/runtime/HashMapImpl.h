@@ -150,6 +150,18 @@ public:
         return OBJECT_OFFSETOF(HashMapBucket, m_data) + OBJECT_OFFSETOF(Data, value);
     }
 
+    template <typename T = Data>
+    ALWAYS_INLINE static typename std::enable_if<std::is_same<T, HashMapBucketDataKeyValue>::value, JSValue>::type extractValue(const HashMapBucket& bucket)
+    {
+        return bucket.value();
+    }
+
+    template <typename T = Data>
+    ALWAYS_INLINE static typename std::enable_if<std::is_same<T, HashMapBucketDataKey>::value, JSValue>::type extractValue(const HashMapBucket&)
+    {
+        return JSValue();
+    }
+
 private:
     Data m_data;
     WriteBarrier<HashMapBucket> m_next;
@@ -269,51 +281,16 @@ ALWAYS_INLINE std::optional<uint32_t> concurrentJSMapHash(JSValue key)
 }
 
 template <typename HashMapBucketType>
-class HashMapImpl : public JSCell {
-    typedef JSCell Base;
-    typedef HashMapBuffer<HashMapBucketType> HashMapBufferType;
-
-    template <typename T = HashMapBucketType>
-    static typename std::enable_if<std::is_same<T, HashMapBucket<HashMapBucketDataKey>>::value, Structure*>::type selectStructure(VM& vm)
-    {
-        return vm.hashMapImplSetStructure.get();
-    }
-
-    template <typename T = HashMapBucketType>
-    static typename std::enable_if<std::is_same<T, HashMapBucket<HashMapBucketDataKeyValue>>::value, Structure*>::type selectStructure(VM& vm)
-    {
-        return vm.hashMapImplMapStructure.get();
-    }
+class HashMapImpl : public JSNonFinalObject {
+    using Base = JSNonFinalObject;
+    using HashMapBufferType = HashMapBuffer<HashMapBucketType>;
 
 public:
-    static const ClassInfo s_info; // This is never accessed directly, since that would break linkage on some compilers.
-
-    static const ClassInfo* info()
-    {
-        switch (HashMapBucketType::Type) {
-        case HashTableType::Key:
-            return getHashMapImplKeyClassInfo();
-        case HashTableType::KeyValue:
-            return getHashMapImplKeyValueClassInfo();
-        }
-        RELEASE_ASSERT_NOT_REACHED();
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-    static HashMapImpl* create(ExecState* exec, VM& vm)
-    {
-        ASSERT_WITH_MESSAGE(HashMapBucket<HashMapBucketDataKey>::offsetOfKey() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey(), "We assume this to be true in the DFG and FTL JIT.");
-
-        HashMapImpl* impl = new (NotNull, allocateCell<HashMapImpl>(vm.heap)) HashMapImpl(vm, selectStructure(vm));
-        impl->finishCreation(exec, vm);
-        return impl;
-    }
+    using BucketType = HashMapBucketType;
 
     static void visitChildren(JSCell*, SlotVisitor&);
+
+    static size_t estimatedSize(JSCell*);
 
     HashMapImpl(VM& vm, Structure* structure)
         : Base(vm, structure)
@@ -330,20 +307,41 @@ public:
 
     void finishCreation(ExecState* exec, VM& vm)
     {
+        ASSERT_WITH_MESSAGE(HashMapBucket<HashMapBucketDataKey>::offsetOfKey() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey(), "We assume this to be true in the DFG and FTL JIT.");
+
         auto scope = DECLARE_THROW_SCOPE(vm);
         Base::finishCreation(vm);
 
         makeAndSetNewBuffer(exec, vm);
         RETURN_IF_EXCEPTION(scope, void());
 
-        m_head.set(vm, this, HashMapBucketType::create(vm));
-        m_tail.set(vm, this, HashMapBucketType::create(vm));
+        setUpHeadAndTail(exec, vm);
+    }
 
-        m_head->setNext(vm, m_tail.get());
-        m_tail->setPrev(vm, m_head.get());
-        m_head->setDeleted(true);
-        m_tail->setDeleted(true);
+    void finishCreation(ExecState* exec, VM& vm, HashMapImpl* base)
+    {
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        Base::finishCreation(vm);
 
+        // This size should be the same to the case when you clone the map by calling add() repeatedly.
+        uint32_t capacity = ((Checked<uint32_t>(base->m_keyCount) * 2) + 1).unsafeGet();
+        RELEASE_ASSERT(capacity <= (1U << 31));
+        capacity = std::max<uint32_t>(WTF::roundUpToPowerOfTwo(capacity), 4U);
+        m_capacity = capacity;
+        makeAndSetNewBuffer(exec, vm);
+        RETURN_IF_EXCEPTION(scope, void());
+
+        setUpHeadAndTail(exec, vm);
+
+        HashMapBucketType* bucket = base->m_head.get()->next();
+        while (bucket) {
+            if (!bucket->deleted()) {
+                addNormalizedNonExistingForCloning(exec, bucket->key(), HashMapBucketType::extractValue(*bucket));
+                RETURN_IF_EXCEPTION(scope, void());
+            }
+            bucket = bucket->next();
+        }
+        checkConsistency();
     }
 
     static HashMapBucketType* emptyValue()
@@ -382,7 +380,8 @@ public:
         return findBucketAlreadyHashedAndNormalized(exec, key, hash);
     }
 
-    ALWAYS_INLINE JSValue get(ExecState* exec, JSValue key)
+    template <typename T = HashMapBucketType>
+    ALWAYS_INLINE typename std::enable_if<std::is_same<T, HashMapBucket<HashMapBucketDataKeyValue>>::value, JSValue>::type get(ExecState* exec, JSValue key)
     {
         if (HashMapBucketType** bucket = findBucket(exec, key))
             return (*bucket)->value();
@@ -397,37 +396,9 @@ public:
     ALWAYS_INLINE void add(ExecState* exec, JSValue key, JSValue value = JSValue())
     {
         key = normalizeMapKey(key);
-
-        VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-
-        const uint32_t mask = m_capacity - 1;
-        uint32_t index = jsMapHash(exec, vm, key) & mask;
-        RETURN_IF_EXCEPTION(scope, void());
-        HashMapBucketType** buffer = this->buffer();
-        HashMapBucketType* bucket = buffer[index];
-        while (!isEmpty(bucket)) {
-            if (!isDeleted(bucket) && areKeysEqual(exec, key, bucket->key())) {
-                bucket->setValue(vm, value);
-                return;
-            }
-            index = (index + 1) & mask;
-            bucket = buffer[index];
-        }
-
-        HashMapBucketType* newEntry = m_tail.get();
-        buffer[index] = newEntry;
-        newEntry->setKey(vm, key);
-        newEntry->setValue(vm, value);
-        newEntry->setDeleted(false);
-        HashMapBucketType* newTail = HashMapBucketType::create(vm);
-        m_tail.set(vm, this, newTail);
-        newTail->setPrev(vm, newEntry);
-        newTail->setDeleted(true);
-        newEntry->setNext(vm, newTail);
-
-        ++m_keyCount;
-
+        addNormalizedInternal(exec, key, value, [&] (HashMapBucketType* bucket) {
+            return !isDeleted(bucket) && areKeysEqual(exec, key, bucket->key());
+        });
         if (shouldRehashAfterAdd())
             rehash(exec);
     }
@@ -519,6 +490,60 @@ private:
     ALWAYS_INLINE uint32_t shouldShrink() const
     {
         return 8 * m_keyCount <= m_capacity && m_capacity > 4;
+    }
+
+    ALWAYS_INLINE void setUpHeadAndTail(ExecState*, VM& vm)
+    {
+        m_head.set(vm, this, HashMapBucketType::create(vm));
+        m_tail.set(vm, this, HashMapBucketType::create(vm));
+
+        m_head->setNext(vm, m_tail.get());
+        m_tail->setPrev(vm, m_head.get());
+        m_head->setDeleted(true);
+        m_tail->setDeleted(true);
+    }
+
+    ALWAYS_INLINE void addNormalizedNonExistingForCloning(ExecState* exec, JSValue key, JSValue value = JSValue())
+    {
+        addNormalizedInternal(exec, key, value, [&] (HashMapBucketType*) {
+            return false;
+        });
+    }
+
+    template<typename CanUseBucket>
+    ALWAYS_INLINE void addNormalizedInternal(ExecState* exec, JSValue key, JSValue value, const CanUseBucket& canUseBucket)
+    {
+        ASSERT_WITH_MESSAGE(normalizeMapKey(key) == key, "We expect normalized values flowing into this function.");
+
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        const uint32_t mask = m_capacity - 1;
+        uint32_t index = jsMapHash(exec, vm, key) & mask;
+        RETURN_IF_EXCEPTION(scope, void());
+        HashMapBucketType** buffer = this->buffer();
+        HashMapBucketType* bucket = buffer[index];
+        while (!isEmpty(bucket)) {
+            if (canUseBucket(bucket)) {
+                bucket->setValue(vm, value);
+                return;
+            }
+            index = (index + 1) & mask;
+            bucket = buffer[index];
+        }
+
+        HashMapBucketType* newEntry = m_tail.get();
+        buffer[index] = newEntry;
+        newEntry->setKey(vm, key);
+        newEntry->setValue(vm, value);
+        newEntry->setDeleted(false);
+        HashMapBucketType* newTail = HashMapBucketType::create(vm);
+        m_tail.set(vm, this, newTail);
+        newTail->setPrev(vm, newEntry);
+        newTail->setDeleted(true);
+        newEntry->setNext(vm, newTail);
+
+        ++m_keyCount;
     }
 
     ALWAYS_INLINE HashMapBucketType** findBucketAlreadyHashedAndNormalized(ExecState* exec, JSValue key, uint32_t hash)

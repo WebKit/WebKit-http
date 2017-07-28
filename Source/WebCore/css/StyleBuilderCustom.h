@@ -31,6 +31,7 @@
 #include "CSSFontFamily.h"
 #include "CSSFontValue.h"
 #include "CSSGradientValue.h"
+#include "CSSGridTemplateAreasValue.h"
 #include "CSSShadowValue.h"
 #include "Counter.h"
 #include "CounterContent.h"
@@ -41,7 +42,6 @@
 #include "Frame.h"
 #include "HTMLElement.h"
 #include "Rect.h"
-#include "RenderTheme.h"
 #include "SVGElement.h"
 #include "SVGRenderStyle.h"
 #include "StyleBuilderConverter.h"
@@ -81,6 +81,7 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Fill);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontFamily);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontSize);
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(FontStyle);
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     DECLARE_PROPERTY_CUSTOM_HANDLERS(ImageResolution);
 #endif
@@ -649,14 +650,70 @@ inline void StyleBuilderCustom::applyInitialLineHeight(StyleResolver& styleResol
     styleResolver.style()->setSpecifiedLineHeight(RenderStyle::initialSpecifiedLineHeight());
 }
 
+static inline float computeBaseSpecifiedFontSize(const Document& document, const RenderStyle& style, bool percentageAutosizingEnabled)
+{
+    float result = style.specifiedFontSize();
+    auto* frame = document.frame();
+    if (frame && style.textZoom() != TextZoomReset)
+        result *= frame->textZoomFactor();
+    result *= style.effectiveZoom();
+    if (percentageAutosizingEnabled)
+        result *= style.textSizeAdjust().multiplier();
+    return result;
+}
+
+static inline float computeLineHeightMultiplierDueToFontSize(const Document& document, const RenderStyle& style, const CSSPrimitiveValue& value)
+{
+    bool percentageAutosizingEnabled = document.settings().textAutosizingEnabled() && style.textSizeAdjust().isPercentage();
+
+    if (value.isLength()) {
+        auto minimumFontSize = document.settings().minimumFontSize();
+        if (minimumFontSize > 0) {
+            auto specifiedFontSize = computeBaseSpecifiedFontSize(document, style, percentageAutosizingEnabled);
+            if (specifiedFontSize < minimumFontSize) {
+                // FIXME: There are two settings which are relevant here: minimum font size, and minimum logical font size (as
+                // well as things like the zoom property, text zoom on the page, and text autosizing). The minimum logical font
+                // size is nonzero by default, and already incorporated into the computed font size, so if we just use the ratio
+                // of the computed : specified font size, it will be > 1 in the cases where the minimum logical font size kicks
+                // in. In general, this is the right thing to do, however, this kind of blanket change is too risky to perform
+                // right now. https://bugs.webkit.org/show_bug.cgi?id=174570 tracks turning this on. For now, we can just pretend
+                // that the minimum font size is the only thing affecting the computed font size.
+
+                // This calculation matches the line-height computed size calculation in
+                // TextAutoSizingValue::adjustTextNodeSizes().
+                auto scaleChange = minimumFontSize / specifiedFontSize;
+                return scaleChange;
+            }
+        }
+    }
+
+    if (percentageAutosizingEnabled)
+        return style.textSizeAdjust().multiplier();
+    return 1;
+}
+
 inline void StyleBuilderCustom::applyValueLineHeight(StyleResolver& styleResolver, CSSValue& value)
 {
-    float multiplier = styleResolver.style()->textSizeAdjust().isPercentage() ? styleResolver.style()->textSizeAdjust().multiplier() : 1.f;
-    std::optional<Length> lineHeight = StyleBuilderConverter::convertLineHeight(styleResolver, value, multiplier);
+    std::optional<Length> lineHeight = StyleBuilderConverter::convertLineHeight(styleResolver, value, 1);
     if (!lineHeight)
         return;
 
-    styleResolver.style()->setLineHeight(Length { lineHeight.value() });
+    Length computedLineHeight;
+    if (lineHeight.value().isNegative())
+        computedLineHeight = lineHeight.value();
+    else {
+        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+        auto multiplier = computeLineHeightMultiplierDueToFontSize(styleResolver.document(), *styleResolver.style(), primitiveValue);
+        if (multiplier == 1)
+            computedLineHeight = lineHeight.value();
+        else {
+            std::optional<Length> lineHeight = StyleBuilderConverter::convertLineHeight(styleResolver, value, multiplier);
+            ASSERT(static_cast<bool>(lineHeight));
+            computedLineHeight = lineHeight.value();
+        }
+    }
+
+    styleResolver.style()->setLineHeight(WTFMove(computedLineHeight));
     styleResolver.style()->setSpecifiedLineHeight(WTFMove(lineHeight.value()));
 }
 
@@ -721,7 +778,7 @@ inline void StyleBuilderCustom::applyValueWebkitLocale(StyleResolver& styleResol
 
     FontCascadeDescription fontDescription = styleResolver.style()->fontDescription();
     if (primitiveValue.valueID() == CSSValueAuto)
-        fontDescription.setLocale(nullAtom);
+        fontDescription.setLocale(nullAtom());
     else
         fontDescription.setLocale(primitiveValue.stringValue());
     styleResolver.setFontDescription(fontDescription);
@@ -732,7 +789,7 @@ inline void StyleBuilderCustom::applyValueWritingMode(StyleResolver& styleResolv
     styleResolver.setWritingMode(downcast<CSSPrimitiveValue>(value));
     styleResolver.style()->setHasExplicitlySetWritingMode(true);
 }
-    
+
 inline void StyleBuilderCustom::applyValueWebkitTextOrientation(StyleResolver& styleResolver, CSSValue& value)
 {
     styleResolver.setTextOrientation(downcast<CSSPrimitiveValue>(value));
@@ -1054,7 +1111,7 @@ inline void StyleBuilderCustom::applyValueWebkitTextEmphasisStyle(StyleResolver&
             else
                 styleResolver.style()->setTextEmphasisMark(value);
         }
-        styleResolver.style()->setTextEmphasisCustomMark(nullAtom);
+        styleResolver.style()->setTextEmphasisCustomMark(nullAtom());
         return;
     }
 
@@ -1066,7 +1123,7 @@ inline void StyleBuilderCustom::applyValueWebkitTextEmphasisStyle(StyleResolver&
         return;
     }
 
-    styleResolver.style()->setTextEmphasisCustomMark(nullAtom);
+    styleResolver.style()->setTextEmphasisCustomMark(nullAtom());
 
     if (primitiveValue.valueID() == CSSValueFilled || primitiveValue.valueID() == CSSValueOpen) {
         styleResolver.style()->setTextEmphasisFill(primitiveValue);
@@ -1209,10 +1266,10 @@ inline void StyleBuilderCustom::applyValueFill(StyleResolver& styleResolver, CSS
         url = downcast<CSSPrimitiveValue>(list.item(0))->stringValue();
         localValue = downcast<CSSPrimitiveValue>(list.item(1));
     }
-    
+
     if (!localValue)
         return;
-    
+
     Color color;
     auto paintType = SVG_PAINTTYPE_RGBCOLOR;
     if (localValue->isURI()) {
@@ -1253,10 +1310,10 @@ inline void StyleBuilderCustom::applyValueStroke(StyleResolver& styleResolver, C
         url = downcast<CSSPrimitiveValue>(list.item(0))->stringValue();
         localValue = downcast<CSSPrimitiveValue>(list.item(1));
     }
-    
+
     if (!localValue)
         return;
-    
+
     Color color;
     auto paintType = SVG_PAINTTYPE_RGBCOLOR;
     if (localValue->isURI()) {
@@ -1351,7 +1408,7 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
         styleResolver.style()->clearContent();
         return;
     }
-    
+
     bool didSet = false;
     for (auto& item : downcast<CSSValueList>(value)) {
         if (is<CSSImageGeneratorValue>(item.get())) {
@@ -1384,9 +1441,9 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
                 styleResolver.style()->setHasAttrContent();
             else
                 const_cast<RenderStyle*>(styleResolver.parentStyle())->setHasAttrContent();
-            QualifiedName attr(nullAtom, contentValue.stringValue().impl(), nullAtom);
+            QualifiedName attr(nullAtom(), contentValue.stringValue().impl(), nullAtom());
             const AtomicString& value = styleResolver.element()->getAttribute(attr);
-            styleResolver.style()->setContent(value.isNull() ? emptyAtom : value.impl(), didSet);
+            styleResolver.style()->setContent(value.isNull() ? emptyAtom() : value.impl(), didSet);
             didSet = true;
             // Register the fact that the attribute value affects the style.
             styleResolver.ruleSets().mutableFeatures().attributeCanonicalLocalNamesInRules.add(attr.localName().impl());
@@ -1582,6 +1639,31 @@ inline float StyleBuilderCustom::determineRubyTextSizeMultiplier(StyleResolver& 
     return 0.25f;
 }
 
+inline void StyleBuilderCustom::applyInitialFontStyle(StyleResolver& styleResolver)
+{
+    auto fontDescription = styleResolver.fontDescription();
+    fontDescription.setItalic(FontCascadeDescription::initialItalic());
+    fontDescription.setFontStyleAxis(FontCascadeDescription::initialFontStyleAxis());
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyInheritFontStyle(StyleResolver& styleResolver)
+{
+    auto fontDescription = styleResolver.fontDescription();
+    fontDescription.setItalic(styleResolver.parentFontDescription().italic());
+    fontDescription.setFontStyleAxis(styleResolver.parentFontDescription().fontStyleAxis());
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyValueFontStyle(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& fontStyleValue = downcast<CSSFontStyleValue>(value);
+    auto fontDescription = styleResolver.fontDescription();
+    fontDescription.setItalic(StyleBuilderConverter::convertFontStyleFromValue(fontStyleValue));
+    fontDescription.setFontStyleAxis(fontStyleValue.fontStyleValue->valueID() == CSSValueItalic ? FontStyleAxis::ital : FontStyleAxis::slnt);
+    styleResolver.setFontDescription(fontDescription);
+}
+
 inline void StyleBuilderCustom::applyValueFontSize(StyleResolver& styleResolver, CSSValue& value)
 {
     auto fontDescription = styleResolver.style()->fontDescription();
@@ -1757,15 +1839,15 @@ void StyleBuilderCustom::applyValueAlt(StyleResolver& styleResolver, CSSValue& v
         else
             const_cast<RenderStyle*>(styleResolver.parentStyle())->setUnique();
 
-        QualifiedName attr(nullAtom, primitiveValue.stringValue(), nullAtom);
+        QualifiedName attr(nullAtom(), primitiveValue.stringValue(), nullAtom());
         const AtomicString& value = styleResolver.element()->getAttribute(attr);
-        styleResolver.style()->setContentAltText(value.isNull() ? emptyAtom : value);
+        styleResolver.style()->setContentAltText(value.isNull() ? emptyAtom() : value);
 
         // Register the fact that the attribute value affects the style.
         styleResolver.ruleSets().mutableFeatures().attributeCanonicalLocalNamesInRules.add(attr.localName().impl());
         styleResolver.ruleSets().mutableFeatures().attributeLocalNamesInRules.add(attr.localName().impl());
     } else
-        styleResolver.style()->setContentAltText(emptyAtom);
+        styleResolver.style()->setContentAltText(emptyAtom());
 }
 
 inline void StyleBuilderCustom::applyValueWillChange(StyleResolver& styleResolver, CSSValue& value)

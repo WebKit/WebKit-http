@@ -57,7 +57,6 @@ RealtimeMediaSource::RealtimeMediaSource(const String& id, Type type, const Stri
     if (m_id.isEmpty())
         m_id = createCanonicalUUIDString();
     m_persistentID = m_id;
-    m_suppressNotifications = false;
 }
 
 void RealtimeMediaSource::addObserver(RealtimeMediaSource::Observer& observer)
@@ -75,12 +74,28 @@ void RealtimeMediaSource::removeObserver(RealtimeMediaSource::Observer& observer
         stop();
 }
 
+void RealtimeMediaSource::setInterrupted(bool interrupted, bool pageMuted)
+{
+    if (interrupted == m_interrupted)
+        return;
+
+    m_interrupted = interrupted;
+    if (!interrupted && pageMuted)
+        return;
+
+    setMuted(interrupted);
+}
+
 void RealtimeMediaSource::setMuted(bool muted)
 {
     if (muted)
         stop();
-    else
+    else {
+        if (interrupted())
+            return;
+
         start();
+    }
 
     notifyMutedChange(muted);
 }
@@ -101,22 +116,11 @@ void RealtimeMediaSource::notifyMutedObservers() const
         observer.sourceMutedChanged();
 }
 
-void RealtimeMediaSource::setEnabled(bool enabled)
-{
-    if (m_enabled == enabled)
-        return;
-
-    m_enabled = enabled;
-
-    for (Observer& observer : m_observers)
-        observer.sourceEnabledChanged();
-}
-
 void RealtimeMediaSource::settingsDidChange()
 {
     ASSERT(isMainThread());
 
-    if (m_pendingSettingsDidChangeNotification || m_suppressNotifications)
+    if (m_pendingSettingsDidChangeNotification)
         return;
 
     m_pendingSettingsDidChangeNotification = true;
@@ -147,6 +151,12 @@ void RealtimeMediaSource::start()
 
     m_isProducingData = true;
     startProducingData();
+
+    if (!m_isProducingData)
+        return;
+
+    for (Observer& observer : m_observers)
+        observer.sourceStarted();
 }
 
 void RealtimeMediaSource::stop()
@@ -174,6 +184,15 @@ void RealtimeMediaSource::requestStop(Observer* callingObserver)
         if (&observer != callingObserver)
             observer.sourceStopped();
     }
+}
+
+void RealtimeMediaSource::captureFailed()
+{
+    m_isProducingData = false;
+    m_captureDidFailed = true;
+
+    for (Observer& observer : m_observers)
+        observer.sourceStopped();
 }
 
 bool RealtimeMediaSource::supportsSizeAndFrameRate(std::optional<int>, std::optional<int>, std::optional<double>)
@@ -484,7 +503,7 @@ void RealtimeMediaSource::applyConstraint(const MediaConstraint& constraint)
             return false;
         };
 
-        auto modeString = downcast<StringConstraint>(constraint).find(filter);
+        auto modeString = downcast<StringConstraint>(constraint).find(WTFMove(filter));
         if (!modeString.isEmpty())
             setFacingMode(RealtimeMediaSourceSettings::videoFacingModeEnum(modeString));
         break;
@@ -875,7 +894,7 @@ void RealtimeMediaSource::setEchoCancellation(bool echoCancellation)
     settingsDidChange();
 }
 
-void RealtimeMediaSource::scheduleDeferredTask(std::function<void()>&& function)
+void RealtimeMediaSource::scheduleDeferredTask(WTF::Function<void()>&& function)
 {
     ASSERT(function);
     callOnMainThread([weakThis = createWeakPtr(), function = WTFMove(function)] {

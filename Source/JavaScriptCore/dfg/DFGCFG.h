@@ -59,7 +59,7 @@ public:
     unsigned index(Node node) const { return node->index; }
     Node node(unsigned index) const { return m_graph.block(index); }
     unsigned numNodes() const { return m_graph.numBlocks(); }
-
+    
     PointerDump<BasicBlock> dump(Node node) const { return pointerDump(node); }
 
     void dump(PrintStream& out) const

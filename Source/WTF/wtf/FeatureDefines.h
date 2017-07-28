@@ -181,10 +181,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_DASHBOARD_SUPPORT 1
 #endif
 
-#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
-#define ENABLE_LEGACY_ENCRYPTED_MEDIA 1
-#endif
-
 #if !defined(ENABLE_FULLSCREEN_API)
 #define ENABLE_FULLSCREEN_API 1
 #endif
@@ -252,7 +248,11 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #if PLATFORM(COCOA)
 
 #if !defined(ENABLE_DATA_DETECTION)
-#define ENABLE_DATA_DETECTION 1
+#define ENABLE_DATA_DETECTION 0
+#endif
+
+#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#define ENABLE_LEGACY_ENCRYPTED_MEDIA 1
 #endif
 
 #if !defined(ENABLE_FILE_REPLACEMENT)
@@ -322,8 +322,8 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #endif /* PLATFORM(WIN_CAIRO) */
 
-/* --------- Gtk port (Unix, Windows, Mac) --------- */
-#if PLATFORM(GTK)
+/* --------- Gtk port (Unix, Windows, Mac) and WPE --------- */
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
 #define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
 #endif
@@ -331,7 +331,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
 #define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
 #endif
-#endif /* PLATFORM(GTK) */
+#endif /* PLATFORM(GTK) || PLATFORM(WPE) */
 
 /* ENABLE macro defaults for WebCore */
 /* Do not use PLATFORM() tests in this section ! */
@@ -440,10 +440,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_FILTERS_LEVEL_2 0
 #endif
 
-#if !defined(ENABLE_FONT_LOAD_EVENTS)
-#define ENABLE_FONT_LOAD_EVENTS 0
-#endif
-
 #if !defined(ENABLE_FTPDIR)
 #define ENABLE_FTPDIR 1
 #endif
@@ -534,10 +530,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_LEGACY_CSS_VENDOR_PREFIXES 0
 #endif
 
-#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
-#define ENABLE_LEGACY_ENCRYPTED_MEDIA 0
-#endif
-
 #if !defined(ENABLE_LEGACY_VENDOR_PREFIXES)
 #define ENABLE_LEGACY_VENDOR_PREFIXES 0
 #endif
@@ -592,10 +584,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_NAVIGATOR_CONTENT_UTILS)
 #define ENABLE_NAVIGATOR_CONTENT_UTILS 0
-#endif
-
-#if !defined(ENABLE_NAVIGATOR_HWCONCURRENCY)
-#define ENABLE_NAVIGATOR_HWCONCURRENCY 1
 #endif
 
 #if !defined(ENABLE_NETSCAPE_PLUGIN_API)
@@ -724,20 +712,8 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_WEB_AUDIO 0
 #endif
 
-#if !defined(ENABLE_WEB_REPLAY)
-#define ENABLE_WEB_REPLAY 0
-#endif
-
 #if !defined(ENABLE_WEB_SOCKETS)
 #define ENABLE_WEB_SOCKETS 1
-#endif
-
-#if !defined(ENABLE_WEB_TIMING)
-#define ENABLE_WEB_TIMING 0
-#endif
-
-#if !defined(ENABLE_WILL_REVEAL_EDGE_EVENTS)
-#define ENABLE_WILL_REVEAL_EDGE_EVENTS 1
 #endif
 
 #if !defined(ENABLE_XSLT)
@@ -776,6 +752,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if ENABLE(WEBGL) && !ENABLE(GRAPHICS_CONTEXT_3D)
 #error "ENABLE(WEBGL) requires ENABLE(GRAPHICS_CONTEXT_3D)"
+#endif
+
+#if ENABLE(WEBGL2) && !ENABLE(WEBGL)
+#error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
 #endif
 
 #endif /* WTF_FeatureDefines_h */

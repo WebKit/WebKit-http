@@ -34,7 +34,6 @@
 #include "SlotVisitor.h"
 #include "TypedArrayType.h"
 #include "WriteBarrier.h"
-#include <wtf/Noncopyable.h>
 
 namespace JSC {
 
@@ -176,6 +175,7 @@ public:
     const MethodTable* methodTable(VM&) const;
     static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
+    bool putInline(ExecState*, PropertyName, JSValue, PutPropertySlot&);
         
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
@@ -265,6 +265,8 @@ private:
     friend class LLIntOffsetsExtractor;
 
     JS_EXPORT_PRIVATE JSObject* toObjectSlow(ExecState*, JSGlobalObject*) const;
+    JS_EXPORT_PRIVATE void lockSlow();
+    JS_EXPORT_PRIVATE void unlockSlow();
 
     StructureID m_structureID;
     IndexingType m_indexingTypeAndMisc; // DO NOT store to this field. Always CAS.

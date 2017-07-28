@@ -768,20 +768,20 @@ static bool shouldEnableDeveloperExtras(const char* pathOrURL)
 
 static void enableExperimentalFeatures(IWebPreferences* preferences)
 {
-    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, preferences);    
+    COMPtr<IWebPreferencesPrivate5> prefsPrivate { Query, preferences };
 
     // FIXME: CSSGridLayout
     // FIXME: SpringTimingFunction
     // FIXME: Gamepads
-    prefsPrivate4->setLinkPreloadEnabled(TRUE);
+    prefsPrivate->setLinkPreloadEnabled(TRUE);
+    prefsPrivate->setMediaPreloadingEnabled(TRUE);
     // FIXME: ModernMediaControls
     // FIXME: InputEvents
-    prefsPrivate4->setResourceTimingEnabled(TRUE);
     // FIXME: SubtleCrypto
-    prefsPrivate4->setUserTimingEnabled(TRUE);
-    prefsPrivate4->setWebAnimationsEnabled(TRUE);
+    prefsPrivate->setWebAnimationsEnabled(TRUE);
     // FIXME: WebGL2
     // FIXME: WebRTC
+    prefsPrivate->setIsSecureContextAttributeEnabled(TRUE);
 }
 
 static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
@@ -880,6 +880,8 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate4->setShadowDOMEnabled(TRUE);
     prefsPrivate4->setCustomElementsEnabled(TRUE);
     prefsPrivate4->setModernMediaControlsEnabled(FALSE);
+    prefsPrivate4->setResourceTimingEnabled(TRUE);
+    prefsPrivate4->setUserTimingEnabled(TRUE);
     prefsPrivate4->clearNetworkLoaderSession();
 
     setAlwaysAcceptCookies(false);
@@ -928,9 +930,6 @@ static void setDefaultsToConsistentValuesForTesting()
     CFPreferencesSetAppValue(WebDatabaseDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "Databases").createCFString().get(), appId.get());
     CFPreferencesSetAppValue(WebStorageDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalStorage").createCFString().get(), appId.get());
     CFPreferencesSetAppValue(WebKitLocalCacheDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalCache").createCFString().get(), appId.get());
-
-    // Create separate cache for each DRT instance
-    setCacheFolder();
 #endif
 }
 
@@ -1013,6 +1012,9 @@ static void resetWebViewToConsistentStateBeforeTesting()
     COMPtr<IWebFramePrivate> framePrivate;
     if (SUCCEEDED(frame->QueryInterface(&framePrivate)))
         framePrivate->clearOpener();
+
+    COMPtr<IWebViewPrivate5> webViewPrivate5(Query, webView);
+    webViewPrivate5->exitFullscreenIfNeeded();
 }
 
 static void sizeWebViewForCurrentTest()
@@ -1464,6 +1466,14 @@ static void prepareConsistentTestingEnvironment(IWebPreferences* standardPrefere
     ASSERT(standardPreferencesPrivate);
     standardPreferences->setAutosaves(FALSE);
 
+#if USE(CFURLCONNECTION)
+    auto newCache = adoptCF(CFURLCacheCreate(kCFAllocatorDefault, 1024 * 1024, 0, nullptr));
+    CFURLCacheSetSharedURLCache(newCache.get());
+#endif
+
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, standardPreferences);
+    prefsPrivate4->switchNetworkLoaderToNewTestingSession();
+
     standardPreferences->setJavaScriptEnabled(TRUE);
     standardPreferences->setDefaultFontSize(16);
 #if USE(CG)
@@ -1556,12 +1566,6 @@ int main(int argc, const char* argv[])
     if (!webView)
         return -4;
 
-    COMPtr<IWebIconDatabase> iconDatabase;
-    COMPtr<IWebIconDatabase> tmpIconDatabase;
-    if (FAILED(WebKitCreateInstance(CLSID_WebIconDatabase, 0, IID_IWebIconDatabase, (void**)&tmpIconDatabase)))
-        return -5;
-    if (FAILED(tmpIconDatabase->sharedIconDatabase(&iconDatabase)))
-        return -6;
     if (FAILED(webView->mainFrame(&frame)))
         return -7;
 

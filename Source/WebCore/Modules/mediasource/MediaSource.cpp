@@ -38,7 +38,6 @@
 #include "ContentType.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "HTMLMediaElement.h"
 #include "Logging.h"
 #include "MediaSourcePrivate.h"
@@ -233,6 +232,7 @@ void MediaSource::seekToTime(const MediaTime& time)
     // ↳ Otherwise
     // Continue
 
+    m_private->waitForSeekCompleted();
     completeSeek();
 }
 
@@ -307,7 +307,7 @@ ExceptionOr<void> MediaSource::setLiveSeekableRange(double start, double end)
 
     // If the readyState attribute is not "open" then throw an InvalidStateError exception and abort these steps.
     if (!isOpen())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // If start is negative or greater than end, then throw a TypeError exception and abort these steps.
     if (start < 0 || start > end)
@@ -327,7 +327,7 @@ ExceptionOr<void> MediaSource::clearLiveSeekableRange()
 
     // If the readyState attribute is not "open" then throw an InvalidStateError exception and abort these steps.
     if (!isOpen())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     m_liveSeekable = nullptr;
     return { };
 }
@@ -476,13 +476,13 @@ ExceptionOr<void> MediaSource::setDuration(double duration)
 
     // 2. If the readyState attribute is not "open" then throw an InvalidStateError exception and abort these steps.
     if (!isOpen())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // 3. If the updating attribute equals true on any SourceBuffer in sourceBuffers, then throw an InvalidStateError
     // exception and abort these steps.
     for (auto& sourceBuffer : *m_sourceBuffers) {
         if (sourceBuffer->updating())
-            return Exception { INVALID_STATE_ERR };
+            return Exception { InvalidStateError };
     }
 
     // 4. Run the duration change algorithm with new duration set to the value being assigned to this attribute.
@@ -525,7 +525,7 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
         highestEndTime = std::max(highestEndTime, sourceBuffer->bufferedInternal().ranges().maximumBufferedTime());
     }
     if (highestPresentationTimestamp.isValid() && newDuration < highestPresentationTimestamp)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // 4. If new duration is less than highest end time, then
     // 4.1. Update new duration to equal highest end time.
@@ -559,14 +559,14 @@ ExceptionOr<void> MediaSource::endOfStream(std::optional<EndOfStreamError> error
 {
     // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#widl-MediaSource-endOfStream-void-EndOfStreamError-error
     // 1. If the readyState attribute is not in the "open" state then throw an
-    // INVALID_STATE_ERR exception and abort these steps.
+    // InvalidStateError exception and abort these steps.
     if (!isOpen())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // 2. If the updating attribute equals true on any SourceBuffer in sourceBuffers, then throw an
-    // INVALID_STATE_ERR exception and abort these steps.
+    // InvalidStateError exception and abort these steps.
     if (std::any_of(m_sourceBuffers->begin(), m_sourceBuffers->end(), [](auto& sourceBuffer) { return sourceBuffer->updating(); }))
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // 3. Run the end of stream algorithm with the error parameter set to error.
     streamEndedWithError(error);
@@ -647,22 +647,22 @@ ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
         return Exception { TypeError };
 
     // 2. If type contains a MIME type that is not supported ..., then throw a
-    // NOT_SUPPORTED_ERR exception and abort these steps.
+    // NotSupportedError exception and abort these steps.
     if (!isTypeSupported(type))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     // 4. If the readyState attribute is not in the "open" state then throw an
-    // INVALID_STATE_ERR exception and abort these steps.
+    // InvalidStateError exception and abort these steps.
     if (!isOpen())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     // 5. Create a new SourceBuffer object and associated resources.
     ContentType contentType(type);
     auto sourceBufferPrivate = createSourceBufferPrivate(contentType);
 
     if (sourceBufferPrivate.hasException()) {
-        // 2. If type contains a MIME type that is not supported ..., then throw a NOT_SUPPORTED_ERR exception and abort these steps.
-        // 3. If the user agent can't handle any more SourceBuffer objects then throw a QUOTA_EXCEEDED_ERR exception and abort these steps
+        // 2. If type contains a MIME type that is not supported ..., then throw a NotSupportedError exception and abort these steps.
+        // 3. If the user agent can't handle any more SourceBuffer objects then throw a QuotaExceededError exception and abort these steps
         return sourceBufferPrivate.releaseException();
     }
 
@@ -672,7 +672,7 @@ ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
     // column of the byte stream format registry [MSE-REGISTRY] entry that is associated with type.
     // NOTE: In the current byte stream format registry <http://www.w3.org/2013/12/byte-stream-format-registry/>
     // only the "MPEG Audio Byte Stream Format" has the "Generate Timestamps Flag" value set.
-    bool shouldGenerateTimestamps = contentType.type() == "audio/aac" || contentType.type() == "audio/mpeg";
+    bool shouldGenerateTimestamps = contentType.containerType() == "audio/aac" || contentType.containerType() == "audio/mpeg";
     buffer->setShouldGenerateTimestamps(shouldGenerateTimestamps);
 
     // 7. If the generate timestamps flag equals true:
@@ -697,9 +697,9 @@ ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)
     Ref<SourceBuffer> protect(buffer);
 
     // 2. If sourceBuffer specifies an object that is not in sourceBuffers then
-    // throw a NOT_FOUND_ERR exception and abort these steps.
+    // throw a NotFoundError exception and abort these steps.
     if (!m_sourceBuffers->length() || !m_sourceBuffers->contains(buffer))
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
 
     // 3. If the sourceBuffer.updating attribute equals true, then run the following steps: ...
     buffer.abortIfUpdating();
@@ -852,7 +852,7 @@ bool MediaSource::isTypeSupported(const String& type)
     String codecs = contentType.parameter("codecs");
 
     // 2. If type does not contain a valid MIME type string, then return false.
-    if (contentType.type().isEmpty())
+    if (contentType.containerType().isEmpty())
         return false;
 
     // 3. If type contains a media type or media subtype that the MediaSource does not support, then return false.
@@ -860,8 +860,7 @@ bool MediaSource::isTypeSupported(const String& type)
     // 5. If the MediaSource does not support the specified combination of media type, media subtype, and codecs then return false.
     // 6. Return true.
     MediaEngineSupportParameters parameters;
-    parameters.type = contentType.type();
-    parameters.codecs = codecs;
+    parameters.type = contentType;
     parameters.isMediaSource = true;
     MediaPlayer::SupportsType supported = MediaPlayer::supportsType(parameters, 0);
 
@@ -1001,17 +1000,17 @@ ExceptionOr<Ref<SourceBufferPrivate>> MediaSource::createSourceBufferPrivate(con
         // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type
         // Step 2: If type contains a MIME type ... that is not supported with the types
         // specified for the other SourceBuffer objects in sourceBuffers, then throw
-        // a NOT_SUPPORTED_ERR exception and abort these steps.
-        return Exception { NOT_SUPPORTED_ERR };
+        // a NotSupportedError exception and abort these steps.
+        return Exception { NotSupportedError };
     case MediaSourcePrivate::ReachedIdLimit:
         // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type
         // Step 3: If the user agent can't handle any more SourceBuffer objects then throw
-        // a QUOTA_EXCEEDED_ERR exception and abort these steps.
-        return Exception { QUOTA_EXCEEDED_ERR };
+        // a QuotaExceededError exception and abort these steps.
+        return Exception { QuotaExceededError };
     }
 
     ASSERT_NOT_REACHED();
-    return Exception { QUOTA_EXCEEDED_ERR };
+    return Exception { QuotaExceededError };
 }
 
 void MediaSource::scheduleEvent(const AtomicString& eventName)

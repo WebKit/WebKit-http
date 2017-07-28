@@ -26,6 +26,7 @@
 #include "JSGlobalObjectFunctions.h"
 
 #include "CallFrame.h"
+#include "CatchScope.h"
 #include "EvalExecutable.h"
 #include "Exception.h"
 #include "IndirectEvalExecutable.h"
@@ -795,6 +796,22 @@ EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
     promise->resolve(exec, internalPromise);
 
     return JSValue::encode(promise->promise());
+}
+
+EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    RELEASE_ASSERT(exec->argumentCount() == 2);
+    JSObject* object = jsCast<JSObject*>(exec->uncheckedArgument(0));
+    auto propertyName = exec->uncheckedArgument(1).toPropertyKey(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    scope.release();
+    PropertyDescriptor descriptor;
+    bool enumerable = object->getOwnPropertyDescriptor(exec, propertyName, descriptor) && descriptor.enumerable();
+    return JSValue::encode(jsBoolean(enumerable));
 }
 
 } // namespace JSC

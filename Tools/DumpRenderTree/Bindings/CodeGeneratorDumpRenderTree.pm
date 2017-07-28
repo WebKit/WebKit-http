@@ -173,10 +173,10 @@ private:
     static const JSStaticValue* staticValues();
 EOF
 
-    if (my @functions = @{$interface->functions}) {
+    if (my @operations = @{$interface->operations}) {
         push(@contents, "\n    // Functions\n\n");
-        foreach my $function (@functions) {
-            push(@contents, "    static JSValueRef @{[$function->name]}(JSContextRef, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*);\n");
+        foreach my $operation (@operations) {
+            push(@contents, "    static JSValueRef @{[$operation->name]}(JSContextRef, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*);\n");
         }
     }
 
@@ -264,13 +264,13 @@ EOF
     push(@contents, $self->_staticFunctionsGetterImplementation($interface), "\n");
     push(@contents, $self->_staticValuesGetterImplementation($interface));
 
-    if (my @functions = @{$interface->functions}) {
+    if (my @operations = @{$interface->operations}) {
         push(@contents, "\n// Functions\n");
 
-        foreach my $function (@functions) {
+        foreach my $operation (@operations) {
             push(@contents, <<EOF);
 
-JSValueRef ${className}::@{[$function->name]}(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+JSValueRef ${className}::@{[$operation->name]}(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     ${implementationClassName}* impl = to${implementationClassName}(context, thisObject);
     if (!impl)
@@ -278,15 +278,15 @@ JSValueRef ${className}::@{[$function->name]}(JSContextRef context, JSObjectRef,
 
 EOF
             my $functionCall;
-            if ($function->extendedAttributes->{"CustomArgumentHandling"}) {
-                $functionCall = "impl->" . $function->name . "(context, argumentCount, arguments, exception)";
+            if ($operation->extendedAttributes->{"CustomArgumentHandling"}) {
+                $functionCall = "impl->" . $operation->name . "(context, argumentCount, arguments, exception)";
             } else {
                 my @arguments = ();
-                my @specifiedArguments = @{$function->arguments};
+                my @specifiedArguments = @{$operation->arguments};
 
-                $self->_includeHeaders(\%contentsIncludes, $function->type);
+                $self->_includeHeaders(\%contentsIncludes, $operation->type);
 
-                if ($function->extendedAttributes->{"PassContext"}) {
+                if ($operation->extendedAttributes->{"PassContext"}) {
                     push(@arguments, "context");
                 }
 
@@ -300,11 +300,11 @@ EOF
                     push(@arguments, $self->_argumentExpression($argument));
                 }
 
-                $functionCall = "impl->" . $function->name . "(" . join(", ", @arguments) . ")";
+                $functionCall = "impl->" . $operation->name . "(" . join(", ", @arguments) . ")";
             }
             
-            push(@contents, "    ${functionCall};\n\n") if $function->type->name eq "void";
-            push(@contents, "    return " . $self->_returnExpression($function->type, $functionCall) . ";\n}\n");
+            push(@contents, "    ${functionCall};\n\n") if $operation->type->name eq "void";
+            push(@contents, "    return " . $self->_returnExpression($operation->type, $functionCall) . ";\n}\n");
         }
     }
 
@@ -378,7 +378,7 @@ sub _includeHeaders
     return unless defined $type;
     return if $type->name eq "boolean";
     return if $type->name eq "object";
-    return if $$self{codeGenerator}->IsNonPointerType($type);
+    return if $$self{codeGenerator}->IsPrimitiveType($type);
     return if $$self{codeGenerator}->IsStringType($type);
 
     $$headers{_className($type) . ".h"} = 1;
@@ -423,7 +423,7 @@ sub _platformType
     return "bool" if $type->name eq "boolean";
     return "JSValueRef" if $type->name eq "object";
     return "JSRetainPtr<JSStringRef>" if $$self{codeGenerator}->IsStringType($type);
-    return "double" if $$self{codeGenerator}->IsNonPointerType($type);
+    return "double" if $$self{codeGenerator}->IsPrimitiveType($type);
     return _implementationClassName($type);
 }
 
@@ -435,7 +435,7 @@ sub _platformTypeConstructor
     return "JSValueToBoolean(context, $argumentName)" if $type->name eq "boolean";
     return "$argumentName" if $type->name eq "object";
     return "JSRetainPtr<JSStringRef>(Adopt, JSValueToStringCopy(context, $argumentName, 0))" if $$self{codeGenerator}->IsStringType($type);
-    return "JSValueToNumber(context, $argumentName, 0)" if $$self{codeGenerator}->IsNonPointerType($type);
+    return "JSValueToNumber(context, $argumentName, 0)" if $$self{codeGenerator}->IsPrimitiveType($type);
     return "to" . _implementationClassName($type) . "(context, $argumentName)";
 }
 
@@ -475,7 +475,7 @@ sub _returnExpression
     return "JSValueMakeBooleanOrNull(context, ${expression})" if $returnType->name eq "boolean" && $returnType->isNullable;
     return "JSValueMakeBoolean(context, ${expression})" if $returnType->name eq "boolean";
     return "${expression}" if $returnType->name eq "object";
-    return "JSValueMakeNumber(context, ${expression})" if $$self{codeGenerator}->IsNonPointerType($returnType);
+    return "JSValueMakeNumber(context, ${expression})" if $$self{codeGenerator}->IsPrimitiveType($returnType);
     return "JSValueMakeStringOrNull(context, ${expression}.get())" if $$self{codeGenerator}->IsStringType($returnType);
     return "toJS(context, WTF::getPtr(${expression}))";
 }
@@ -512,12 +512,12 @@ sub _staticFunctionsGetterImplementation
         return  "{ \"$name\", $name, " . join(" | ", @attributes) . " }";
     };
 
-    return $self->_staticFunctionsOrValuesGetterImplementation($interface, "function", "{ 0, 0, 0 }", $mapFunction, $interface->functions);
+    return $self->_staticFunctionsOrValuesGetterImplementation($interface, "function", "{ 0, 0, 0 }", $mapFunction, $interface->operations);
 }
 
 sub _staticFunctionsOrValuesGetterImplementation
 {
-    my ($self, $interface, $functionOrValue, $arrayTerminator, $mapFunction, $functionsOrAttributes) = @_;
+    my ($self, $interface, $functionOrValue, $arrayTerminator, $mapFunction, $operationsOrAttributes) = @_;
 
     my $className = _className($interface->type);
     my $uppercaseFunctionOrValue = $$self{codeGenerator}->WK_ucfirst($functionOrValue);
@@ -527,7 +527,7 @@ const JSStatic${uppercaseFunctionOrValue}* ${className}::static${uppercaseFuncti
 {
 EOF
 
-    my @initializers = map(&$mapFunction, @{$functionsOrAttributes});
+    my @initializers = map(&$mapFunction, @{$operationsOrAttributes});
     return $result . "    return 0;\n}\n" unless @initializers;
 
     $result .= <<EOF

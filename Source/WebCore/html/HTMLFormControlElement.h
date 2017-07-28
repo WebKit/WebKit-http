@@ -102,6 +102,7 @@ public:
     WEBCORE_EXPORT bool checkValidity(Vector<RefPtr<HTMLFormControlElement>>* unhandledInvalidControls = nullptr);
     bool reportValidity();
     void focusAndShowValidationMessage();
+    bool isShowingValidationMessage() const;
     // This must be called when a validation constraint or control value is changed.
     void updateValidity();
     void setCustomValidity(const String&) override;
@@ -138,7 +139,7 @@ protected:
     InsertionNotificationRequest insertedInto(ContainerNode&) override;
     void finishedInsertingSubtree() override;
     void removedFrom(ContainerNode&) override;
-    void didMoveToNewDocument(Document& oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     bool supportsFocus() const override;
     bool isKeyboardFocusable(KeyboardEvent&) const override;

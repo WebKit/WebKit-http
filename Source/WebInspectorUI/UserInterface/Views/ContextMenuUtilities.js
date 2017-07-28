@@ -98,3 +98,138 @@ WebInspector.appendContextMenuItemsForSourceCode = function(contextMenu, sourceC
         contextMenu.appendSeparator();
     }
 };
+
+WebInspector.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {})
+{
+    console.assert(contextMenu instanceof WebInspector.ContextMenu);
+    if (!(contextMenu instanceof WebInspector.ContextMenu))
+        return;
+
+    console.assert(domNode instanceof WebInspector.DOMNode);
+    if (!(domNode instanceof WebInspector.DOMNode))
+        return;
+
+    let isElement = domNode.nodeType() === Node.ELEMENT_NODE;
+    if (isElement) {
+        contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), () => {
+            domNode.scrollIntoView();
+        });
+    }
+
+    contextMenu.appendSeparator();
+
+    if (domNode.ownerDocument && isElement) {
+        contextMenu.appendItem(WebInspector.UIString("Copy Selector Path"), () => {
+            let cssPath = WebInspector.cssPath(domNode);
+            InspectorFrontendHost.copyText(cssPath);
+        });
+    }
+
+    if (domNode.ownerDocument && !domNode.isPseudoElement()) {
+        contextMenu.appendItem(WebInspector.UIString("Copy XPath"), () => {
+            let xpath = WebInspector.xpath(domNode);
+            InspectorFrontendHost.copyText(xpath);
+        });
+    }
+
+    if (domNode.isCustomElement()) {
+        contextMenu.appendSeparator();
+        contextMenu.appendItem(WebInspector.UIString("Jump to Definition"), () => {
+            function didGetFunctionDetails(error, response) {
+                if (error)
+                    return;
+
+                let location = response.location;
+                let sourceCode = WebInspector.debuggerManager.scriptForIdentifier(location.scriptId, WebInspector.mainTarget);
+                if (!sourceCode)
+                    return;
+
+                let sourceCodeLocation = sourceCode.createSourceCodeLocation(location.lineNumber, location.columnNumber || 0);
+                WebInspector.showSourceCodeLocation(sourceCodeLocation, {
+                    ignoreNetworkTab: true,
+                    ignoreSearchTab: true,
+                });
+            }
+
+            function didGetProperty(error, result, wasThrown) {
+                if (error || result.type !== "function")
+                    return;
+
+                DebuggerAgent.getFunctionDetails(result.objectId, didGetFunctionDetails);
+                result.release();
+            }
+
+            function didResolveNode(remoteObject) {
+                if (!remoteObject)
+                    return;
+
+                remoteObject.getProperty("constructor", didGetProperty);
+                remoteObject.release();
+            }
+
+            WebInspector.RemoteObject.resolveNode(domNode, "", didResolveNode);
+        });
+    }
+
+    if (WebInspector.domDebuggerManager.supported && isElement && !domNode.isPseudoElement() && domNode.ownerDocument) {
+        contextMenu.appendSeparator();
+
+        const allowEditing = false;
+        WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems(contextMenu, domNode, allowEditing);
+    }
+
+    contextMenu.appendSeparator();
+
+    if (!options.excludeRevealElement && domNode.ownerDocument) {
+        contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), () => {
+            WebInspector.domTreeManager.inspectElement(domNode.id);
+        });
+    }
+
+    if (!options.excludeLogElement && !domNode.isInUserAgentShadowTree() && !domNode.isPseudoElement()) {
+        let label = isElement ? WebInspector.UIString("Log Element") : WebInspector.UIString("Log Node");
+        contextMenu.appendItem(label, () => {
+            WebInspector.RemoteObject.resolveNode(domNode, WebInspector.RuntimeManager.ConsoleObjectGroup, (remoteObject) => {
+                if (!remoteObject)
+                    return;
+
+                let text = isElement ? WebInspector.UIString("Selected Element") : WebInspector.UIString("Selected Node");
+                const addSpecialUserLogClass = true;
+                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass);
+            });
+        });
+    }
+
+    if (window.PageAgent) {
+        contextMenu.appendItem(WebInspector.UIString("Capture Element Screenshot"), () => {
+            PageAgent.snapshotNode(domNode.id, (error, dataURL) => {
+                if (error) {
+                    const target = WebInspector.mainTarget;
+                    const source = WebInspector.ConsoleMessage.MessageSource.Other;
+                    const level = WebInspector.ConsoleMessage.MessageLevel.Error;
+                    let consoleMessage = new WebInspector.ConsoleMessage(target, source, level, error);
+                    consoleMessage.shouldRevealConsole = true;
+
+                    WebInspector.consoleLogViewController.appendConsoleMessage(consoleMessage);
+                    return;
+                }
+
+                let date = new Date;
+                let values = [
+                    date.getFullYear(),
+                    Number.zeroPad(date.getMonth() + 1, 2),
+                    Number.zeroPad(date.getDate(), 2),
+                    Number.zeroPad(date.getHours(), 2),
+                    Number.zeroPad(date.getMinutes(), 2),
+                    Number.zeroPad(date.getSeconds(), 2),
+                ];
+                let filename = WebInspector.UIString("Screen Shot %s-%s-%s at %s.%s.%s").format(...values);
+                WebInspector.saveDataToFile({
+                    url: encodeURI(`web-inspector:///${filename}.png`),
+                    content: parseDataURL(dataURL).data,
+                    base64Encoded: true,
+                });
+            });
+        });
+    }
+};

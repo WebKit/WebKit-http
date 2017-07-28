@@ -85,6 +85,9 @@ GtkTargetList* PasteboardHelper::targetList() const
 
 static String selectionDataToUTF8String(GtkSelectionData* data)
 {
+    if (!gtk_selection_data_get_length(data))
+        return String();
+
     // g_strndup guards against selection data that is not null-terminated.
     GUniquePtr<gchar> markupString(g_strndup(reinterpret_cast<const char*>(gtk_selection_data_get_data(data)), gtk_selection_data_get_length(data)));
     return String::fromUTF8(markupString.get());
@@ -206,7 +209,7 @@ void PasteboardHelper::fillSelectionData(const SelectionData& selection, unsigne
 
 void PasteboardHelper::fillSelectionData(GtkSelectionData* data, unsigned /* info */, SelectionData& selection)
 {
-    if (!gtk_selection_data_get_data(data))
+    if (!gtk_selection_data_get_length(data))
         return;
 
     GdkAtom target = gtk_selection_data_get_target(data);
@@ -265,7 +268,7 @@ Vector<GdkAtom> PasteboardHelper::dropAtomsForContext(GtkWidget* widget, GdkDrag
 static SelectionData* settingClipboardSelection;
 
 struct ClipboardSetData {
-    ClipboardSetData(SelectionData& selection, std::function<void()>&& selectionClearedCallback)
+    ClipboardSetData(SelectionData& selection, WTF::Function<void()>&& selectionClearedCallback)
         : selectionData(selection)
         , selectionClearedCallback(WTFMove(selectionClearedCallback))
     {
@@ -276,7 +279,7 @@ struct ClipboardSetData {
     }
 
     Ref<SelectionData> selectionData;
-    std::function<void()> selectionClearedCallback;
+    WTF::Function<void()> selectionClearedCallback;
 };
 
 static void getClipboardContentsCallback(GtkClipboard*, GtkSelectionData *selectionData, guint info, gpointer userData)
@@ -292,7 +295,7 @@ static void clearClipboardContentsCallback(GtkClipboard*, gpointer userData)
         data->selectionClearedCallback();
 }
 
-void PasteboardHelper::writeClipboardContents(GtkClipboard* clipboard, const SelectionData& selection, std::function<void()>&& primarySelectionCleared)
+void PasteboardHelper::writeClipboardContents(GtkClipboard* clipboard, const SelectionData& selection, WTF::Function<void()>&& primarySelectionCleared)
 {
     GRefPtr<GtkTargetList> list = targetListForSelectionData(selection);
 

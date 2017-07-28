@@ -36,7 +36,6 @@
 #include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 #include <wtf/Variant.h>
 
 namespace WebCore {
@@ -73,7 +72,7 @@ void CryptoAlgorithmRSA_OAEP::encrypt(std::unique_ptr<CryptoAlgorithmParameters>
 {
     ASSERT(parameters);
     if (key->type() != CryptoKeyType::Public) {
-        exceptionCallback(INVALID_ACCESS_ERR);
+        exceptionCallback(InvalidAccessError);
         return;
     }
     platformEncrypt(WTFMove(parameters), WTFMove(key), WTFMove(plainText), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
@@ -83,7 +82,7 @@ void CryptoAlgorithmRSA_OAEP::decrypt(std::unique_ptr<CryptoAlgorithmParameters>
 {
     ASSERT(parameters);
     if (key->type() != CryptoKeyType::Private) {
-        exceptionCallback(INVALID_ACCESS_ERR);
+        exceptionCallback(InvalidAccessError);
         return;
     }
     platformDecrypt(WTFMove(parameters), WTFMove(key), WTFMove(cipherText), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
@@ -94,7 +93,7 @@ void CryptoAlgorithmRSA_OAEP::generateKey(const CryptoAlgorithmParameters& param
     const auto& rsaParameters = downcast<CryptoAlgorithmRsaHashedKeyGenParams>(parameters);
 
     if (usages & (CryptoKeyUsageSign | CryptoKeyUsageVerify | CryptoKeyUsageDeriveKey | CryptoKeyUsageDeriveBits)) {
-        exceptionCallback(SYNTAX_ERR);
+        exceptionCallback(SyntaxError);
         return;
     }
 
@@ -131,7 +130,7 @@ void CryptoAlgorithmRSA_OAEP::importKey(SubtleCrypto::KeyFormat format, KeyData&
         }
         isUsagesAllowed = isUsagesAllowed || !usages;
         if (!isUsagesAllowed) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
 
@@ -170,7 +169,7 @@ void CryptoAlgorithmRSA_OAEP::importKey(SubtleCrypto::KeyFormat format, KeyData&
     }
     case SubtleCrypto::KeyFormat::Spki: {
         if (usages && (usages ^ CryptoKeyUsageEncrypt) && (usages ^ CryptoKeyUsageWrapKey) && (usages ^ (CryptoKeyUsageEncrypt | CryptoKeyUsageWrapKey))) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
         // FIXME: <webkit.org/b/165436>
@@ -179,7 +178,7 @@ void CryptoAlgorithmRSA_OAEP::importKey(SubtleCrypto::KeyFormat format, KeyData&
     }
     case SubtleCrypto::KeyFormat::Pkcs8: {
         if (usages && (usages ^ CryptoKeyUsageDecrypt) && (usages ^ CryptoKeyUsageUnwrapKey) && (usages ^ (CryptoKeyUsageDecrypt | CryptoKeyUsageUnwrapKey))) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
         // FIXME: <webkit.org/b/165436>
@@ -187,7 +186,7 @@ void CryptoAlgorithmRSA_OAEP::importKey(SubtleCrypto::KeyFormat format, KeyData&
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
     if (!result) {
@@ -254,7 +253,7 @@ void CryptoAlgorithmRSA_OAEP::exportKey(SubtleCrypto::KeyFormat format, Ref<Cryp
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
 
@@ -265,7 +264,7 @@ ExceptionOr<void> CryptoAlgorithmRSA_OAEP::encrypt(const CryptoAlgorithmParamete
 {
     auto& rsaOAEPParameters = downcast<CryptoAlgorithmRsaOaepParamsDeprecated>(parameters);
     if (!keyAlgorithmMatches(rsaOAEPParameters, key))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     return platformEncrypt(rsaOAEPParameters, downcast<CryptoKeyRSA>(key), data, WTFMove(callback), WTFMove(failureCallback));
 }
 
@@ -273,7 +272,7 @@ ExceptionOr<void> CryptoAlgorithmRSA_OAEP::decrypt(const CryptoAlgorithmParamete
 {
     auto& rsaOAEPParameters = downcast<CryptoAlgorithmRsaOaepParamsDeprecated>(parameters);
     if (!keyAlgorithmMatches(rsaOAEPParameters, key))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     return platformDecrypt(rsaOAEPParameters, downcast<CryptoKeyRSA>(key), data, WTFMove(callback), WTFMove(failureCallback));
 }
 

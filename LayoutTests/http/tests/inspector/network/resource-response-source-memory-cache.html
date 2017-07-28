@@ -15,7 +15,7 @@ function test()
         suite.addTestCase({
             name, description,
             test(resolve, reject) {
-                InspectorTest.reloadPage(ignoreCache);
+                InspectorTest.reloadPage({ignoreCache});
                 InspectorTest.awaitEvent("LoadComplete").then((event) => {
                     let resource = null;
                     for (let item of WebInspector.frameResourceManager.mainFrame.resourceCollection.items) {
@@ -31,7 +31,7 @@ function test()
                     }
                     InspectorTest.expectThat(resource instanceof WebInspector.Resource, "Resource should be exist.");
                     InspectorTest.expectEqual(resource.statusCode, statusCode, `statusCode should be ${statusCode}`);
-                    InspectorTest.expectEqual(resource.responseSource, responseSource, `responseSource should be ${String(responseSource)}`);                    
+                    InspectorTest.expectEqual(resource.responseSource, responseSource, `responseSource should be ${String(responseSource)}`);
                 }).then(resolve, reject);
             }
         });
@@ -43,7 +43,7 @@ function test()
         pattern: /cached-script\.js$/,
         ignoreCache: false,
         responseSource: WebInspector.Resource.ResponseSource.MemoryCache,
-        statusCode: 304,
+        statusCode: 200,
     });
 
     suite.runTestCasesAndFinish();

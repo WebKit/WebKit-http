@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2011, 2013, 2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,7 +22,6 @@
 #define WTF_HashSet_h
 
 #include <initializer_list>
-#include <wtf/FastMalloc.h>
 #include <wtf/GetPtr.h>
 #include <wtf/HashTable.h>
 
@@ -86,7 +85,8 @@ namespace WTF {
         // and an isNewEntry bool that indicates if it is a new or existing entry in the set.
         AddResult add(const ValueType&);
         AddResult add(ValueType&&);
-        
+        void add(std::initializer_list<std::reference_wrapper<const ValueType>>);
+
         void addVoid(const ValueType&);
         void addVoid(ValueType&&);
 
@@ -123,6 +123,9 @@ namespace WTF {
 
         template<typename OtherCollection>
         bool operator==(const OtherCollection&) const;
+        
+        template<typename OtherCollection>
+        bool operator!=(const OtherCollection&) const;
 
     private:
         HashTableType m_impl;
@@ -355,15 +358,9 @@ namespace WTF {
     template<typename C, typename W>
     inline void copyToVector(const C& collection, W& vector)
     {
-        typedef typename C::const_iterator iterator;
-        
         vector.resize(collection.size());
-        
-        iterator it = collection.begin();
-        iterator end = collection.end();
-        for (unsigned i = 0; it != end; ++it, ++i)
-            vector[i] = *it;
-    }  
+        std::copy(collection.begin(), collection.end(), vector.begin());
+    }
 
     template<typename T, typename U, typename V>
     template<typename OtherCollection>
@@ -376,6 +373,20 @@ namespace WTF {
                 return false;
         }
         return true;
+    }
+    
+    template<typename T, typename U, typename V>
+    template<typename OtherCollection>
+    inline bool HashSet<T, U, V>::operator!=(const OtherCollection& otherCollection) const
+    {
+        return !(*this == otherCollection);
+    }
+
+    template<typename T, typename U, typename V>
+    void HashSet<T, U, V>::add(std::initializer_list<std::reference_wrapper<const ValueType>> list)
+    {
+        for (auto& value : list)
+            add(value);
     }
 
 } // namespace WTF

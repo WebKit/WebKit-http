@@ -1,3 +1,602 @@
+2017-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype._updateCommitLogViewer):
+
+2017-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. It looks like the code here is racy.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.configure):
+        (ChartPaneBase.prototype.setOpenRepository):
+
+2017-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Show the roots built by perf try bots on results page
+        https://bugs.webkit.org/show_bug.cgi?id=174305
+
+        Reviewed by Joseph Pecoraro.
+
+        Show build products created by a perf try bots so that we can download them for local testing.
+
+        * public/v3/components/test-group-revision-table.js:
+        (TestGroupRevisionTable.prototype._renderTable): Find the set of repositories for which a patch is applied.
+        Show build products for all commit sets for such a repository since when WebKit is built with a patch in
+        one configuration, the other configuration also needs to be built for consistency.
+        (TestGroupRevisionTable.prototype._buildCommitCell): Added the hyperlink for build products.
+        (TestGroupRevisionTable.prototype._buildFileInfo): Takes a string to override the file's label. Since all
+        build products made by bots tend to have the same filename, we show the label of "Build product" instead.
+        (TestGroupRevisionTable.prototype._mergeCellsWithSameCommitsAcrossRows): Fixed a bug that any entry with
+        a patch wasn't getting merged since it was comparing against the result commit set, which does not contain
+        the patch (only requested commit set contains a patch).
+
+2017-07-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Address Antti's review comment.
+
+        * public/v3/models/analysis-results.js:
+        (AnalysisResults.prototype.containsTest):
+
+2017-07-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A/B testing results page show results for the top-level tests instead of the one being analyzed
+        https://bugs.webkit.org/show_bug.cgi?id=174304
+
+        Reviewed by Antti Koivisto.
+
+        When a specific subtest is analyzed (e.g. Images subtest of MotionMark), then TestGroupResultsViewer
+        should expand and highlight that specific subtest instead of simply showing the top-level test's score.
+        This is especially misleading since AnalysisResultsViewer (stacking bars for each test group) uses
+        the score of the specific subtest being analyzed.
+
+        Fixed the bug by passing in the metric associated with the analysis task from AnalysisTaskPage to
+        TestGroupResultsViewer via AnalysisTaskTestGroupPane. Also made TestGroupResultsViewer.setAnalysisResults
+        auto-expand the tests that are ancestors of the specified metric. Without that, the test won't be shown
+        to the user until the ancestor tests are expanded by the user.
+
+        Also fixed the bug that we were always listing sub-tests regardless of whether they have results or not.
+        Since tests tend to change over time, we shouldn't show a test if it doesn't have any results associated.
+
+        * public/v3/components/test-group-results-viewer.js:
+        (TestGroupResultsViewer.prototype.setAnalysisResults): Expand the ancestor tests of the metric.
+        (TestGroupResultsViewer.prototype._buildRowsForTest): Exit early if this test doesn't have any results.
+        * public/v3/models/analysis-results.js:
+        (AnalysisResults.prototype.containsTest): Added.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskTestGroupPane.prototype.setAnalysisResults): Takes a metric to pass it to the results viewer.
+        (AnalysisTaskPage.prototype._assignTestResultsIfPossible):
+
+2017-07-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Safari 10.1 fails to upload a patch on perf try bots page
+        https://bugs.webkit.org/show_bug.cgi?id=174214
+
+        Reviewed by Chris Dumez.
+
+        Added the workaround to make the analysis task page work on Safari 10.1
+
+        * public/v3/components/instant-file-uploader.js:
+        (InstantFileUploader.prototype._uploadFiles): Convert files to an array since for-of doesn't work otherwise on Safari 10.1.
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile._computeSHA256Hash): Fallback to crypto.webkitSubtle since crypto.subtle isn't available on Safari 10.1 or 11.
+
+2017-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix a typo pointed out by Andreas Kling.
+
+        * public/v3/components/instant-file-uploader.js:
+        (InstantFileUploader.prototype._uploadFiles):
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile.fetchUploadedFileWithIdenticalHash): Renamed from fetchUnloadedFileWithIdenticalHash.
+
+2017-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add an admin page to manage uploaded files
+        https://bugs.webkit.org/show_bug.cgi?id=174089
+
+        Reviewed by Andreas Kling.
+
+        Add an admin page to see the disk usage per user as well as the total, and to prune any zombie files (ones marked
+        as deleted but aren't actually deleted in the filesystem).
+
+        * public/admin/files.php: Added.
+        (format_size): Added.
+        * public/include/admin-header.php:
+
+2017-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Roots uploaded by bots don't get author specified properly
+        https://bugs.webkit.org/show_bug.cgi?id=174087
+
+        Reviewed by Andreas Kling.
+
+        When a root file is uploaded from the bot, we manually specify the remote user to upload_file_in_transaction.
+        However, this was getting ignored by create_uploaded_file_from_form_data since it was always calling
+        remote_user_name to get the user name off of $_SERVER.
+
+        Fixed the bug by passing in the user name from upload_file_in_transaction to create_uploaded_file_from_form_data.
+
+        * public/include/uploaded-file-helpers.php:
+        (create_uploaded_file_from_form_data): Take the remote user as an argument instead of calling remote_user_name.
+        (upload_file_in_transaction):
+        * server-tests/api-upload-root-tests.js: Updated an existing test cases to make sure root files' author is set.
+        (createTestGroupWihPatch): Manually override the author of a test group for testing.
+
+2017-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Prune unused uploaded files when the file quota is reached
+        https://bugs.webkit.org/show_bug.cgi?id=174086
+
+        Reviewed by Andreas Kling.
+
+        Made /privileged-api/uploaded-file and /api/upload-root automatically delete old uploaded files when
+        uploading a new file results in the file quota to be exceeded. Also added the notion of the total quota
+        to avoid running out of a disk when there are hundreds of users each uploading near their quota.
+
+        * config.json: Added a sample total disk quota of 100GB.
+        * public/include/uploaded-file-helpers.php:
+        (query_file_usage_for_user): Renamed from query_total_file_size.
+        (query_total_file_usage): Added.
+        (upload_file_in_transaction):
+        (delete_file): Added.
+        (prune_old_files): Added.
+        * server-tests/privileged-api-upload-file-tests.js: Added tests for deleting old uploaded files as well as
+        tests for the total quota.
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype.testConfig): Added uploadTotalQuotaInMB to the test configuration.
+
+2017-06-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        UploadedFile should include the file extension in its url
+        https://bugs.webkit.org/show_bug.cgi?id=174009
+
+        Reviewed by Chris Dumez.
+
+        Some command line tools such as darwinup use the file extension to determine the file type.
+        Include the file extension in the URL of an uploaded file to make it work with these tools.
+
+        * public/include/uploaded-file-helpers.php:
+        (format_uploaded_file): Include the file extension.
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile):
+        (UploadedFile.prototype.url): Return the URL with hthe file extension specified. /api/uploaded-file
+        already supports having the file extension specified.
+        * server-tests/tools-sync-buildbot-integration-tests.js: Updated test cases.
+        * unit-tests/buildbot-syncer-tests.js: Ditto.
+
+2017-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't shouldn't create a request to build a patch if there is no patch to build
+        https://bugs.webkit.org/show_bug.cgi?id=172791
+
+        Reviewed by Chris Dumez.
+
+        When a commit set doesn't have a patch specified, don't create a request to build. For example, when we're comparing
+        WebKit in the system to WebKit with a patch, there is nothing to build for the first commit set.
+
+        However, when conducting an A/B testing, it's advisible to compare WebKit built with and without a patch on a single
+        machine with the same version of Xcode, etc... For this reason, we still create a request to build for a commit set
+        if there is another commit set with a patch which uses the same repository group.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Fixed the bug. Only create a build request to build if there is a matching repository group with a patch.
+        * server-tests/privileged-api-create-test-group-tests.js: Added a test case.
+
+2017-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Allow sync-buildbot.js to set a buildbot property only when patches are built
+        https://bugs.webkit.org/show_bug.cgi?id=172743
+
+        Rubber-stamped by Chris Dumez.
+
+        Added the ability to specify a buildbot property only when there are build requests to build a patch.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype.scheduleRequest): Pass in the list of build requests that belong to the same test group.
+        (BuildbotSyncer.prototype.scheduleRequestInGroupIfAvailable): Ditto.
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Added the support for specifying a conditional property.
+        For the condition type of "built", we check if there was any other 
+        (BuildbotSyncer._parseRepositoryGroup): Added the support for "ifBuilt" conditional.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._scheduleRequestIfSlaveIsAvailable): Pass in the list of build requests that
+        belong to the same test group.
+        (BuildbotTriggerable.prototype._scheduleRequestWithLog): Ditto.
+
+        * unit-tests/buildbot-syncer-tests.js:  Added test case for newly added "ifBuilt" as well as specifying a patch.
+        Updated the various test cases per the addition of new argument to scheduleRequest, _propertiesForBuildRequest,
+        and scheduleRequestInGroupIfAvailable.
+        (createSampleBuildRequestWithPatch): Added.
+
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject): Made "ios-svn-webkit" accept a WebKit patch and roots to allow new testing.
+
+2017-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        sync-builedbot.js fails to schedule the second request to test with a patch
+        https://bugs.webkit.org/show_bug.cgi?id=172701
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by an assertion failure in BuildbotTriggerable's _pullBuildbotOnAllSyncers failing to
+        take into account that for a test group with a patch could be associated with two syncers, one to build
+        a patch and another to run tests. Fixed the bug by differentiating the two types of syncers by buildSyncer
+        and testSyncer per test group.
+
+        * server-tests/tools-sync-buildbot-integration-tests.js: Extended a test case so that it would hit the
+        assertion without the fix.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce): Use the right kind of the syncer to schedule a build or a test.
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers): Associate a given syncer based on the kind of
+        the build request it processed, and assert accordingly.
+
+2017-05-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix UI glitches with a custom analysis test group with a patch
+        https://bugs.webkit.org/show_bug.cgi?id=172694
+
+        Reviewed by Sam Weinig.
+
+        Fix the following UI glitches with perf try bots:
+         - Retrying an A/B testing with a patch fails.
+         - A patch specified in an test group does not get specified in the configurator.
+         - Drag & dropping a patch doesn't work.
+         - Results for custom analysis tasks don't get shown.
+
+        * public/api/test-groups.php:
+        (main): Fix a bug that test group's platform does not match that of the request'ed platform. Since each test
+        group is associated with platform, just use that instead of querying test_configurations. This resulted in
+        the configurator not being able to find a triggerable in some cases.
+
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator):
+        (CustomAnalysisTaskConfigurator.prototype.setCommitSets): Add patches in the commit set.
+        (CustomAnalysisTaskConfigurator.prototype._setUploadedFilesToUploader): Now clears the exiting uploaded files
+        Also renamed from _setUploadedFilesIfEmpty.
+        (CustomAnalysisTaskConfigurator.prototype._setPatchFiles): Added.
+        (CustomAnalysisTaskConfigurator.prototype.didConstructShadowTree): We no longer update the list of roots
+        for the comparsion when a new root is added to the baseline.
+        (CustomAnalysisTaskConfigurator.prototype._configureComparison): Copy over the list of patches and roots when
+        starting to configure the comparsion.
+
+        * public/v3/components/instant-file-uploader.js:
+        (InstantFileUploader.prototype.clear): Added.
+        (InstantFileUploader.prototype.didConstructShadowTree): Added event handlers for dragover & drop events to
+        allow specifying a patch and root using drag & drop. Unfortunately, this still doesn't work in WebKit due to
+        a bug in our shadow DOM implementation.
+        (InstantFileUploader.prototype._didFileInputChange):
+        (InstantFileUploader.prototype._uploadFiles): Extracted from _didFileInputChange.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskTestGroupPane.prototype.setAnalysisResults): No longer takes metric.
+        (AnalysisTaskTestGroupPane.cssTemplate): Removed unused rules. Also disallow flexing on the list of test groups
+        to avoid the name of a test froup from overflowing on top of the results pane.
+        (AnalysisTaskPage.prototype._assignTestResultsIfPossible): Set setAnalysisResults even when metric is not set
+        as is the case for a custom analysis task.
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup): Use createWithCustomConfiguration to allow retrying of
+        an A/B testing with a patch in a custom analysis task.
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingCommitSetList):
+
+2017-05-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Show patches applied in each A/B testing build requests
+        https://bugs.webkit.org/show_bug.cgi?id=172636
+
+        Reviewed by Antti Koivisto.
+
+        List patches applied along side revisions inn the list of revisions for an A/B tesing build requests if there
+        are any patches applied.
+
+        * public/v3/components/test-group-revision-table.js:
+        (TestGroupRevisionTable.prototype._renderTable): Indicate which request is to build a patch and which one is
+        to run tests.
+        (TestGroupRevisionTable.prototype._buildCommitCell): Include the patch file's information when there is one.
+        We need to use the requested commit set instead of the one reported by testers or builders since they don't
+        include patch or root information.
+        (TestGroupRevisionTable.prototype._buildCustomRootsCell):
+        (TestGroupRevisionTable.prototype._buildFileInfo): Extracted from _buildCustomRootsCell.
+
+2017-05-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The queue page is broke when there is a custom analysis task
+        https://bugs.webkit.org/show_bug.cgi?id=172631
+
+        Reviewed by Antti Koivisto.
+
+        Fix the bug that we were always assuming each build request to have a test associated.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.createAndRefetchTestGroups): Fixed the bug that we were referring to a non-existent variable task.
+        * public/v3/pages/build-request-queue-page.js:
+        (BuildRequestQueuePage.prototype._constructBuildRequestTable): Fixed the bug. Collect every request in the group
+        and then find the first test request's test name. Make it clear that we're waiting for a build as needed.
+
+2017-05-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Syncing script shouldn't schedule a build request when there is a build from another test group in progress
+        https://bugs.webkit.org/show_bug.cgi?id=172577
+        <rdar://problem/32395049>
+
+        Reviewed by Chris Dumez.
+
+        When a buildbot master gets restarted while there is an in-progress build and a pending build, the master will
+        re-schedule the currently running build, and this can result in multiple build requests from different test
+        groups being scheduled simultaneously.
+
+        sync-buildbot.js was supposed to recover from this state by only processing build requests from one test group
+        at a time and eventually come back to a state where only a single test group is running per buildbot slave.
+
+        We had a test for this particular case but it wasn't testing what it claimed to test. Rewriten the test case
+        and fixed the bug by explicitly checking this condition and treating it as if there is a pending build already
+        scheduled in the builder in this case.
+
+        * public/api/test-groups.php:
+        (main): Fixed a regression from r217397. Return the platform ID of the first request when none of the requets
+        have been processed yet or all of them had failed.
+        * server-tests/tools-buildbot-triggerable-tests.js: Rewritten a test case intended to cover this bug.
+        (.assertRequestAndResolve): Added.
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype.scheduleRequestInGroupIfAvailable): Fixed the bug. Avoid scheduling a new request on
+        this syncer if there is a build in progress for a test group different from that of the new request. Reuse the
+        code we had to deal with a pending build for this purpose.
+
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Opening an analysis task from the queue page is broken
+        https://bugs.webkit.org/show_bug.cgi?id=172559
+        <rdar://problem/32389708>
+
+        Rubber-stamped by Chris Dumez.
+
+        Fix the bug that opening the analysis task page from the queue page results in multiple assertion failures
+        as well as the list of test groups in the analysis task page not getting updated.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.updateSingleton): Because /api/build-requests/ do not include test groups, it's
+        possible for testGroup to be dynamically updated upon loading an analysis task page. Update _testGroup in
+        such instances instead of asserting that it doesn't happen.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.cachedFetch): Because various code to create model objects from the result of a JSON API
+        modify the fetched content in irreversible manner, e.g. `object.platform = Platform.findById(object.platform)`
+        we must return a fresh new content each time even if the result had been cached.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.platform): Return this._platform as that's not available.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage):
+        (AnalysisTaskPage.prototype._resetVariables): Extracted from the constructor.
+        (AnalysisTaskPage.prototype.updateFromSerializedState): Reset all instance variables when opening a new
+        analysis task page. This would avoid showing the stale result even when fetching new test groups had failed.
+
+        * unit-tests/test-groups-tests.js: Added a test case for fetching the same test group twice. This used to hit
+        a problem in BuildRequest.constructBuildRequestsFromData which overrode platform property of each raw content
+        with a Platform model object because in the case of a cached fetch, we end up trying to look up the platform
+        again using the result of stringifying the Platform object instead of the platform ID included in the original
+        fetched content.
+        (sampleTestGroup): Added "platform" as included in the JSON API's response now.
+
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The commit log viewer can overlap the analysis results viewer
+        https://bugs.webkit.org/show_bug.cgi?id=172534
+
+        Rubber-stamped by Chris Dumez.
+
+        Allocate the padding on the right for the commit log viewer, and add a horizontal scrollbar
+        to the analysis results viewer instead of letting it expand beneath the commit log viewer.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskResultsPane.htmlTemplate):
+        (AnalysisTaskResultsPane.cssTemplate):
+
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sycning script build fix after r217378.
+
+        * tools/sync-buildbot.js:
+        (syncLoop):
+
+2017-05-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for perf try bots to sync-buildbot.js
+        https://bugs.webkit.org/show_bug.cgi?id=172529
+
+        Rubber-stamped by Chris Dumez.
+
+        Make sync-buildbot.js schedule an A/B testing job with a patch or roots to buildbot.
+
+        Change the buildbot property format in the syncing script's configuration again to use a dictionary
+        with a single key of "revision", "patch", or "roots" to specify a revision, a patch, or a set of roots,
+        and simplified the structure of the configuration by always having "types" and "builders", and
+        make each entry in "configurations" refer to a list of types, platforms, and builders.
+
+        Since now there are build requests to build patches and run tests, "configurations" has been renamed to
+        "testConfigurations" and "buildConfigurations" have been added. Each entry in "buildConfigurations"
+        specifies a list of platforms and builders. Similarly in repository group configurations, the buildbot
+        properties for testing is now specified as "testProperties" and ones for building a patch is specified
+        in newly introduced "buildProperties".
+
+        * public/api/build-requests.php:
+        (update_builds): When a build request to build a patch fails, mark all subsequent requests as failed
+        since there is no way to run tests without a successful build.
+
+        * public/api/update-triggerable.php:
+        (main): Re-generate manifest.json after updating the triggerable. The lack of this re-generation was
+        the reason we had to manually GET /api/manifest in api-update-triggerable-tests.js.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.hasCompleted): Added.
+
+        * public/v3/models/manifest.js:
+        (Manifest.reset): Added. Extracted from MockData.resetV3Models in unit-tests/mock-data.js and
+        syncLoop in tools/sync-buildbot.js
+        (Manifest.fetch): Reset V3 models before fetching the manifest. This eliminates the need to manually
+        reset V3 models in syncLoop.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile.prototype.url): Use RemoteAPI.url to get the full URL instead of just a path.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.url): Added. Constructs the full URL.
+
+        * server-tests/api-update-triggerable-tests.js:
+        (.refetchManifest): Deleted. Now that /api/manifest re-generates manifest.json, we can simply call
+        Manifest.fetch instead.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.resetV3Models): Calls Manifest.reset().
+        (MockData.addMockConfiguration): Extracted from addMockData.
+        (MockData.addMockData): Updated per the format change.
+        (MockData.mockTestSyncConfigWithSingleBuilder): Ditto.
+        (MockData.mockTestSyncConfigWithTwoBuilders): Ditto.
+        (MockData.runningBuild): Make buildNumber specifiable.
+        (MockData.finishedBuild): Ditto.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Updated configurations per the format change.
+        Now that now acceptsCustomRoots() for "system-and-webkit" must be true since we can't have a
+        repository group that which accepts a patch and not take roots.
+
+        * server-tests/tools-sync-buildbot-integration-tests.js: Added.
+        (createTriggerable): Added.
+        (createTestGroupWihPatch): Added.
+        (uploadRoot): Added.
+        (.assertAndResolveRequest): Added.
+        (.assertTestBuildHasFailed): Added.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer): Added. _type as an instance variable to identify whether this buildbot builder
+        is a "builder" which builds a patch, builder, or a "tester" which runs a test. Also renamed
+        _testConfigurations to _configurations.
+        (BuildbotSyncer.prototype.addTestConfiguration): Assert that either the type of this syncer hasn't
+        been set or it's a tester.
+        (BuildbotSyncer.prototype.testConfigurations): Return [] when it's a builder.
+        (BuildbotSyncer.prototype.addBuildConfiguration): Added. Adds a platform to a builder.
+        (BuildbotSyncer.prototype.buildConfigurations): Added. Returns the list of configurations if this
+        syncer is a builder. Otherwise returns [].
+        (BuildbotSyncer.prototype.isTester): Added.
+        (BuildbotSyncer.prototype.matchesConfiguration):
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Updated to support the new format.
+        (BuildbotSyncer._loadConfig): Ditto. Optionally parse buildConfigurations.
+        (BuildbotSyncer._resolveBuildersWithPlatforms): Added. For each test or build configuration entry,
+        creates the list of configurations per builder and platform.
+        (BuildbotSyncer._parseRepositoryGroup): Added the support for parsing the new format with revision,
+        roots, and patch option types with a lot of validations as we're seeing a bit of combinatorial
+        explosion in the number of things that can go wrong. Also parse buildProperties optionally.
+        (BuildbotSyncer._parseRepositoryGroupPropertyTemplate): Added. A helper function to parse a set of
+        buildbot properties, validates its content, and invokes a callback if it's an dynamically resolved
+        type such as "revision" and "patch".
+        (BuildbotSyncer._validateAndMergeConfig): Updated per the format change. No longer allows "types",
+        "type", "platforms", and "platform" as they're explicity resolved in _resolveBuildersWithPlatforms.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce):
+        (BuildbotTriggerable.prototype._validateRequests): Handle the case when a build request is not
+        associated with any test.
+        (BuildbotTriggerable.prototype._nextRequestInGroup): Return null when there is a build request to
+        build a patch which has not been completed (pending, scheduled, running, or failed). Since all
+        requests to build a patch has a negative order, those requests should all show up at the beginning.
+        (BuildbotTriggerable.prototype._scheduleRequestIfSlaveIsAvailable): Pick a new buildbot syncer when
+        scheduling the first request to build a patch or the first request to run a test. The first request
+        to run a test will always have order of 0, so it's a sufficient condition to find such a request.
+        On the other hand, the first request to build a patch can have a negative order number so we must
+        explicitly check if it's the first item in the ordered list of requests in the test group.
+
+        * tools/remote-server-relay.log: Added.
+
+        * tools/sync-buildbot.js:
+        (syncLoop): Fixed a bug we were not re-fetching the triggerable after updating the triggerable so
+        that Triggerable and related objects we have in the memory may not reflect what we just synced to
+        the perf dashboard. Also, we don't reset V3 models manually any more since Manifest.fetch does that.
+
+        * unit-tests/buildbot-syncer-tests.js: Added more test cases and updated existing test cases to test
+        exception messages explicitly since allowing any exception was resulting in some tests passing a
+        result of unrelated parsing error being thrown, etc...
+        (sampleiOSConfig): Updated per the format change.
+        (sampleiOSConfigWithExpansions): Ditto.
+        (smallConfiguration): Ditto.
+
+2017-05-22  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix the bug that sometimes analysis task results pane is missing.
+        https://bugs.webkit.org/show_bug.cgi?id=172404
+
+        Reviewed by Ryosuke Niwa.
+
+        AnalysisTaskPage._didFetchTask and AnalaysisTaskPage._fetchRelatedInfoForTaskId should be called in order.
+        The race between those two functions causes the analysis task results pane sometimes missing.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype.render): Fix the bug in r217173 that commitSet can be undefined.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.updateFromSerializedState): Use arrow function to get rid of self variable.
+        Use `const` instead of var for constant variable. And call _didFetchTask before calling _fetchRelatedInfoForTaskId.
+        (AnalysisTaskPage.prototype._renderTaskNameAndStatus):
+        (AnalysisTaskPage.cssTemplate):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a commit log viewer next to the analysis results viewer
+        https://bugs.webkit.org/show_bug.cgi?id=172399
+
+        Reviewed by Chris Dumez.
+
+        Add a commit log viewer next to the analysis results viewer, which visualizes the A/B testing results.
+
+        Also linkify the revisions in the table that shows the status of each A/B testing job,
+        and allow the prefix of "r" when associating a Subversion revision.
+
+        Finally, Fixed a bug that the list of commits associated with the analysis task were not re-rendered
+        when the list was updated by the user.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer): Added _selectorRadioButtonList as an instance variable. It's a list of radio
+        buttons to select a configuration (A/B) with a commit set. It's added to update the checked status of
+        radio buttons upon changing the currently selected test group.
+        (AnalysisResultsViewer.prototype.setTestGroups): Update the selected range to that of the currently
+        selected group.
+        (AnalysisResultsViewer.prototype.render): Fill _selectorRadioButtonList with radio buttons.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer): Added _showRepositoryName as an instance variable.
+        (CommitLogViewer.prototype.setShowRepositoryName): Added.
+        (CommitLogViewer.prototype.render): Hide the repository name when _showRepositoryName is false. This
+        is used in the newly added commit log viewer for the analysis results since we're showing a select
+        element with all the names of repositories above this component.
+
+        * public/v3/components/test-group-revision-table.js:
+        (TestGroupRevisionTable.prototype._buildCommitCell): Linkify the revisions if possible.
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.prototype.associateCommit): Strip "r" at the beginning for a Subversion like r12345
+        since that's the format we use to show to the user. This makes copy & paste easier.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskResultsPane): Added a bunch of new instance variables to show and update the commit log
+        viewer next to the analysis results viewer.
+        (AnalysisTaskResultsPane.prototype.setPoints): Create the list of repositories to show details.
+        (AnalysisTaskResultsPane.prototype.didConstructShadowTree): Re-render when the current selected test
+        group changes since that may have updated the selected range for A/B testing. Also re-render when
+        a new repository is selected to show details.
+        (AnalysisTaskResultsPane.prototype.render): Update the list of repositories and the commit log viewer.
+        (AnalysisTaskResultsPane.prototype._renderRepositoryList): Renders the list of repositories.
+        (AnalysisTaskResultsPane.prototype._updateCommitViewer): Updates the commit log viewer given the range
+        selected in the analysis results viewer.
+        (AnalysisTaskResultsPane.htmlTemplate): Updated the template.
+        (AnalysisTaskResultsPane.cssTemplate): Ditto.
+        (AnalysisTaskTestGroupPane.cssTemplate): Add a little space between the list of results and the table
+        of A/B testing jobs with revisions.
+        (AnalysisTaskPage.prototype.render): Fixed the bug that the list of commits associated with the task
+        is not updated when the list changes the task or the start point never changed when the list of commits
+        associated with the task changed. Make the lazily evaluated function compare the actual list of commits
+        so that it will invoke _renderCauseAndFixes when the list changes.
+        (AnalysisTaskPage.prototype._renderCauseAndFixes): Now renders a specific list.
+
 2017-05-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         Another build fix. Added a missing null check.

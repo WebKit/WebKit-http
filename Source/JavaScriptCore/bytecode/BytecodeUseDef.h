@@ -26,7 +26,6 @@
 #pragma once
 
 #include "CodeBlock.h"
-#include "Interpreter.h"
 
 namespace JSC {
 
@@ -54,6 +53,8 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_get_rest_length:
     case op_check_traps:
     case op_get_argument:
+    case op_nop:
+    case op_unreachable:
         return;
     case op_assert:
     case op_get_scope:
@@ -364,6 +365,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_log_shadow_chicken_prologue:
     case op_log_shadow_chicken_tail:
     case op_yield:
+    case op_nop:
+    case op_unreachable:
 #define LLINT_HELPER_OPCODES(opcode, length) case opcode:
         FOR_EACH_LLINT_OPCODE_EXTENSION(LLINT_HELPER_OPCODES);
 #undef LLINT_HELPER_OPCODES

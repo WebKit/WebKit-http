@@ -23,6 +23,7 @@
 import logging
 
 from webkitpy.common.memoized import memoized
+from webkitpy.common.system.crashlogs import CrashLogs
 from webkitpy.port.config import apple_additions
 from webkitpy.port.ios import IOSPort
 
@@ -67,20 +68,51 @@ class IOSDevicePort(IOSPort):
             port_name = port_name + '-' + major_version_number
         return port_name
 
-    # FIXME: These need device implementations <rdar://problem/30497991>.
     def path_to_crash_logs(self):
-        raise NotImplementedError
+        if not apple_additions():
+            raise RuntimeError(self.NO_ON_DEVICE_TESTING)
+        return apple_additions().ios_crash_log_path()
 
+    def _look_for_all_crash_logs_in_log_dir(self, newer_than):
+        log_list = {}
+        for device in self._device_for_worker_number_map():
+            crash_log = CrashLogs(device, self.path_to_crash_logs(), crash_logs_to_skip=self._crash_logs_to_skip_for_host.get(device, []))
+            log_list.update(crash_log.find_all_logs(include_errors=True, newer_than=newer_than))
+        return log_list
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True, target_host=None):
+        if target_host:
+            return super(IOSDevicePort, self)._get_crash_log(name, pid, stdout, stderr, newer_than, time_fn=time_fn, sleep_fn=sleep_fn, wait_for_log=wait_for_log, target_host=target_host)
+
+        # We need to search every device since one was not specified.
+        for device in self._device_for_worker_number_map():
+            stderr_out, crashlog = super(IOSDevicePort, self)._get_crash_log(name, pid, stdout, stderr, newer_than, time_fn=time_fn, sleep_fn=sleep_fn, wait_for_log=False, target_host=device)
+            if crashlog:
+                return (stderr, crashlog)
+        return (stderr, None)
+
+    @memoized
+    def ios_version(self):
+        if self.get_option('version'):
+            return self.get_option('version')
+
+        if not apple_additions():
+            raise RuntimeError(self.NO_ON_DEVICE_TESTING)
+
+        if not self._device_for_worker_number_map():
+            raise RuntimeError('No devices are available')
+        version = None
+        for device in self._device_for_worker_number_map():
+            if not version:
+                version = device.platform.os_version
+            else:
+                if device.platform.os_version != version:
+                    raise RuntimeError('Multiple connected devices have different iOS versions')
+
+        return version
+
+    # FIXME: These need device implementations <rdar://problem/30497991>.
     def check_for_leaks(self, process_name, process_pid):
-        pass
-
-    def look_for_new_crash_logs(self, crashed_processes, start_time):
-        return {}
-
-    def look_for_new_samples(self, unresponsive_processes, start_time):
-        return {}
-
-    def sample_process(self, name, pid, target_host=None):
         pass
 
     # Despite their names, these flags do not actually get passed all the way down to webkit-build.
@@ -89,9 +121,6 @@ class IOSDevicePort(IOSPort):
 
     def operating_system(self):
         return 'ios-device'
-
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
-        return (stderr, None)
 
     def _create_devices(self, device_class):
         if not apple_additions():

@@ -60,7 +60,9 @@ from error_handlers import DefaultStyleErrorHandler
 from filter import FilterConfiguration
 from optparser import ArgumentParser
 from optparser import DefaultCommandOptionValues
+from webkitpy.common.host import Host
 from webkitpy.common.system.logutils import configure_logging as _configure_logging
+from webkitpy.port.config import apple_additions
 
 
 _log = logging.getLogger(__name__)
@@ -146,10 +148,15 @@ _PATH_RULES_SPECIFIER = [
       os.path.join('Tools', 'TestWebKitAPI')],
      ["-readability/naming"]),
 
-    ([# The GTK+ API use upper case, underscore separated, words in
+    ([# The GTK+ and WPE APIs use upper case, underscore separated, words in
       # certain types of enums (e.g. signals, properties).
+      os.path.join('Source', 'WebKit2', 'Shared', 'API', 'glib'),
+      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'glib'),
       os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk')],
+      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'glib'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe')],
      ["-readability/enum_casing"]),
 
     ([# To use GStreamer GL without conflicts of GL symbols,
@@ -170,23 +177,6 @@ _PATH_RULES_SPECIFIER = [
       os.path.join('JavaScriptCore', 'jit', 'JITStubs.cpp')],
      ["-readability/parameter_name",
       "-whitespace/parens"]),
-
-    ([# The EFL APIs use EFL naming style, which includes
-      # both lower-cased and camel-cased, underscore-sparated
-      # values.
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'efl'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'efl')],
-     ["-readability/naming",
-      "-readability/parameter_name"]),
-    ([# MiniBrowser/efl are EFL simple application.
-      # They need to use efl coding style and they don't have config.h.
-      os.path.join('Tools', 'MiniBrowser', 'efl')],
-     ["-readability/naming",
-      "-readability/parameter_name",
-      "-runtime/ctype_function",
-      "-whitespace/declaration",
-      "-whitespace/indent",
-      "-build/include_order"]),
 
     # WebKit2 rules:
     # WebKit2 and certain directories have idiosyncracies.
@@ -322,15 +312,19 @@ _NEVER_SKIPPED_FILES = _NEVER_SKIPPED_JS_FILES + [
 _SKIPPED_FILES_WITH_WARNING = [
     os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKitGtk'),
 
-    # WebKit*.h files in Source/WebKit2/UIProcess/API/gtk, except those ending in Private.h are GTK+ API headers, which do not follow WebKit coding style.
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    # WebKit*.h files in Source/WebKit/UIProcess/API/[gtk|wpe], except those ending in Private.h are API headers, which do not follow WebKit coding style.
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
 
     # GObject DOM bindings copied from generated code using different coding style.
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
 
-    os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h')]
+    os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
+    os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'wpe', 'webkit.h'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'webkit-web-extension.h')]
 
 # Files to skip that are more common or obvious.
 #
@@ -381,6 +375,9 @@ def _all_categories():
     #        (which validate the consistency of the configuration
     #        settings against the known categories, etc).
     categories = categories.union(["pep8/W191", "pep8/W291", "pep8/E501"])
+
+    if apple_additions():
+        categories = categories.union(apple_additions().all_categories())
 
     return categories
 
@@ -651,7 +648,10 @@ class CheckerDispatcher(object):
             else:
                 checker = JSONChecker(file_path, handle_style_error)
         elif file_type == FileType.PYTHON:
-            checker = PythonChecker(file_path, handle_style_error)
+            if apple_additions():
+                checker = apple_additions().python_checker(file_path, handle_style_error)
+            else:
+                checker = PythonChecker(file_path, handle_style_error)
         elif file_type == FileType.XML:
             checker = XMLChecker(file_path, handle_style_error)
         elif file_type == FileType.XCODEPROJ:
@@ -812,6 +812,22 @@ class ProcessorBase(object):
         """
         raise NotImplementedError('Subclasses should implement.')
 
+    def do_association_check(self, files, cwd, host=Host()):
+        """It may be the case that changes in a file cause style errors to
+        occur elsewhere in the modified file or in other files (most notably,
+        this is the case for the test expectations linter). The association check
+        is designed to take find issues which require parsing of files outside
+        those provided to the processor.
+
+        Args:
+            files: A dictionary of file names to lists of lines modified in the provided
+            file.  Files which have been removed will also be in the dictionary, they
+            will map to 'None'
+            cwd: Current working directory, assumed to be the root of the scm repository
+            host: Current host for testing
+        """
+        raise NotImplementedError('Subclasses should implement.')
+
 
 class StyleProcessor(ProcessorBase):
 
@@ -919,3 +935,7 @@ class StyleProcessor(ProcessorBase):
         _log.debug("Using class: " + checker.__class__.__name__)
 
         checker.check(lines)
+
+    def do_association_check(self, files, cwd, host=Host()):
+        _log.debug("Running TestExpectations linter")
+        TestExpectationsChecker.lint_test_expectations(files, self._configuration, cwd, self._increment_error_count, host=host)

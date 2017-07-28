@@ -26,16 +26,18 @@
 #include "config.h"
 
 #import "PlatformUtilities.h"
+#import "TestNavigationDelegate.h"
 #import <WebKit/WKFoundation.h>
 #import <WebKit/WKHTTPCookieStore.h>
 #import <WebKit/WKWebsiteDataStorePrivate.h>
+#import <WebKit/_WKWebsiteDataStoreConfiguration.h>
 #import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
 static bool gotFlag;
-uint64_t observerCallbacks;
-RetainPtr<WKHTTPCookieStore> globalCookieStore;
+static uint64_t observerCallbacks;
+static RetainPtr<WKHTTPCookieStore> globalCookieStore;
 
 @interface CookieObserver : NSObject<WKHTTPCookieStoreObserver>
 - (void)cookiesDidChangeInCookieStore:(WKHTTPCookieStore *)cookieStore;
@@ -51,12 +53,25 @@ RetainPtr<WKHTTPCookieStore> globalCookieStore;
 
 @end
 
-TEST(WebKit2, WKHTTPCookieStore)
+static void runTestWithWebsiteDataStore(WKWebsiteDataStore* dataStore)
 {
-    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
-    [webView loadHTMLString:@"Oh hello" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+    observerCallbacks = 0;
 
-    globalCookieStore = [WKWebsiteDataStore defaultDataStore].httpCookieStore;
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    configuration.get().websiteDataStore = dataStore;
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+
+    [webView loadHTMLString:@"Oh hello" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+    [webView _test_waitForDidFinishNavigation];
+
+    [dataStore removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:[] {
+        gotFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+    globalCookieStore = dataStore.httpCookieStore;
     RetainPtr<CookieObserver> observer1 = adoptNS([[CookieObserver alloc] init]);
     RetainPtr<CookieObserver> observer2 = adoptNS([[CookieObserver alloc] init]);
     [globalCookieStore addObserver:observer1.get()];
@@ -167,6 +182,66 @@ TEST(WebKit2, WKHTTPCookieStore)
     [globalCookieStore removeObserver:observer2.get()];
 }
 
+TEST(WebKit2, WKHTTPCookieStore)
+{
+    runTestWithWebsiteDataStore([WKWebsiteDataStore defaultDataStore]);
+}
+
+TEST(WebKit2, WKHTTPCookieStoreNonPersistent)
+{
+    RetainPtr<WKWebsiteDataStore> nonPersistentDataStore;
+    @autoreleasepool {
+        nonPersistentDataStore = [WKWebsiteDataStore nonPersistentDataStore];
+    }
+
+    runTestWithWebsiteDataStore(nonPersistentDataStore.get());
+}
+
+TEST(WebKit2, WKHTTPCookieStoreCustom)
+{
+    NSURL *cookieStorageFile = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/CookieStorage/Cookie.File" stringByExpandingTildeInPath] isDirectory:NO];
+    NSURL *idbPath = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/CustomWebsiteData/IndexedDB/" stringByExpandingTildeInPath] isDirectory:YES];
+
+    [[NSFileManager defaultManager] removeItemAtURL:cookieStorageFile error:nil];
+    [[NSFileManager defaultManager] removeItemAtURL:idbPath error:nil];
+
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:cookieStorageFile.path]);
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:idbPath.path]);
+
+    auto websiteDataStoreConfiguration = adoptNS([[_WKWebsiteDataStoreConfiguration alloc] init]);
+    websiteDataStoreConfiguration.get()._indexedDBDatabaseDirectory = idbPath;
+    websiteDataStoreConfiguration.get()._cookieStorageFile = cookieStorageFile;
+
+    auto customDataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()]);
+    runTestWithWebsiteDataStore(customDataStore.get());
+}
+
+TEST(WebKit2, CookieObserverCrash)
+{
+    RetainPtr<WKWebsiteDataStore> nonPersistentDataStore;
+    @autoreleasepool {
+        nonPersistentDataStore = [WKWebsiteDataStore nonPersistentDataStore];
+    }
+
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    configuration.get().websiteDataStore = nonPersistentDataStore.get();
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+
+    [webView loadHTMLString:@"Oh hello" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+    [webView _test_waitForDidFinishNavigation];
+
+    globalCookieStore = nonPersistentDataStore.get().httpCookieStore;
+    RetainPtr<CookieObserver> observer = adoptNS([[CookieObserver alloc] init]);
+    [globalCookieStore addObserver:observer.get()];
+
+    [globalCookieStore getAllCookies:[](NSArray<NSHTTPCookie *> *) {
+        gotFlag = true;
+    }];
+
+    TestWebKitAPI::Util::run(&gotFlag);
+}
+
 static bool finished;
 
 @interface CookieUIDelegate : NSObject <WKUIDelegate>
@@ -203,7 +278,7 @@ TEST(WebKit2, WKHTTPCookieStoreWithoutProcessPool)
     }];
     TestWebKitAPI::Util::run(&finished);
     
-    // FIXME: Investigate why this doesn't work on iOS with the default persistent storage. rdar://problem/32260156
+    // FIXME: Get this to work on iOS. <rdar://problem/32260156>
 #if !PLATFORM(IOS)
     finished = false;
     WKWebsiteDataStore *defaultStore = [WKWebsiteDataStore defaultDataStore];

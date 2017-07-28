@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,66 +25,79 @@
 
 #pragma once
 
+#include <wtf/Noncopyable.h>
 #include <wtf/PrintStream.h>
 
 namespace JSC {
 
-struct FreeCell {
-    FreeCell* next;
-};
-        
-// This representation of a FreeList is convenient for the MarkedAllocator.
+class HeapCell;
 
-struct FreeList {
-    FreeCell* head { nullptr };
-    char* payloadEnd { nullptr };
-    unsigned remaining { 0 };
-    unsigned originalSize { 0 };
-    
-    FreeList()
+struct FreeCell {
+    static uintptr_t scramble(FreeCell* cell, uintptr_t secret)
     {
+        return bitwise_cast<uintptr_t>(cell) ^ secret;
     }
     
-    static FreeList list(FreeCell* head, unsigned bytes)
+    static FreeCell* descramble(uintptr_t cell, uintptr_t secret)
     {
-        FreeList result;
-        result.head = head;
-        result.remaining = 0;
-        result.originalSize = bytes;
-        return result;
+        return bitwise_cast<FreeCell*>(cell ^ secret);
     }
     
-    static FreeList bump(char* payloadEnd, unsigned remaining)
+    void setNext(FreeCell* next, uintptr_t secret)
     {
-        FreeList result;
-        result.payloadEnd = payloadEnd;
-        result.remaining = remaining;
-        result.originalSize = remaining;
-        return result;
+        scrambledNext = scramble(next, secret);
     }
     
-    bool operator==(const FreeList& other) const
+    FreeCell* next(uintptr_t secret) const
     {
-        return head == other.head
-            && payloadEnd == other.payloadEnd
-            && remaining == other.remaining
-            && originalSize == other.originalSize;
+        return descramble(scrambledNext, secret);
     }
     
-    bool operator!=(const FreeList& other) const
-    {
-        return !(*this == other);
-    }
+    uintptr_t scrambledNext;
+};
+
+class FreeList {
+    WTF_MAKE_NONCOPYABLE(FreeList);
     
-    explicit operator bool() const
-    {
-        return *this != FreeList();
-    }
+public:
+    FreeList(unsigned cellSize);
+    ~FreeList();
     
-    bool allocationWillFail() const { return !head && !remaining; }
+    void clear();
+    
+    void initializeList(FreeCell* head, uintptr_t secret, unsigned bytes);
+    void initializeBump(char* payloadEnd, unsigned remaining);
+    
+    bool allocationWillFail() const { return !head() && !m_remaining; }
     bool allocationWillSucceed() const { return !allocationWillFail(); }
     
+    template<typename Func>
+    HeapCell* allocate(const Func& slowPath);
+    
+    bool contains(HeapCell*) const;
+    
+    template<typename Func>
+    void forEach(const Func&) const;
+    
+    unsigned originalSize() const { return m_originalSize; }
+
+    static ptrdiff_t offsetOfScrambledHead() { return OBJECT_OFFSETOF(FreeList, m_scrambledHead); }
+    static ptrdiff_t offsetOfSecret() { return OBJECT_OFFSETOF(FreeList, m_secret); }
+    static ptrdiff_t offsetOfPayloadEnd() { return OBJECT_OFFSETOF(FreeList, m_payloadEnd); }
+    static ptrdiff_t offsetOfRemaining() { return OBJECT_OFFSETOF(FreeList, m_remaining); }
+    static ptrdiff_t offsetOfOriginalSize() { return OBJECT_OFFSETOF(FreeList, m_originalSize); }
+    
     void dump(PrintStream&) const;
+    
+private:
+    FreeCell* head() const { return FreeCell::descramble(m_scrambledHead, m_secret); }
+    
+    uintptr_t m_scrambledHead { 0 };
+    uintptr_t m_secret { 0 };
+    char* m_payloadEnd { nullptr };
+    unsigned m_remaining { 0 };
+    unsigned m_originalSize { 0 };
+    unsigned m_cellSize { 0 };
 };
 
 } // namespace JSC

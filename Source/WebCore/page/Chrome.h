@@ -41,6 +41,7 @@ class DateTimeChooserClient;
 class FileChooser;
 class FileIconLoader;
 class FloatRect;
+class FrameLoadRequest;
 class Element;
 class Frame;
 class Geolocation;
@@ -55,7 +56,6 @@ class PopupOpeningObserver;
 class SearchPopupMenu;
 
 struct DateTimeChooserParameters;
-struct FrameLoadRequest;
 struct ViewportArguments;
 struct WindowFeatures;
     
@@ -85,7 +85,7 @@ public:
     void setCursor(const Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
 
-    void scheduleAnimation() override;
+    void scheduleAnimation() override { }
 
     PlatformDisplayID displayID() const override;
     void windowScreenDidChange(PlatformDisplayID) override;

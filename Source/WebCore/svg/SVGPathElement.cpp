@@ -23,6 +23,7 @@
 
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGMPathElement.h"
 #include "SVGNames.h"
 #include "SVGPathSegArcAbs.h"
@@ -210,13 +211,13 @@ Ref<SVGPathSegCurvetoQuadraticSmoothRel> SVGPathElement::createSVGPathSegCurveto
 
 bool SVGPathElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        SVGLangSpace::addSupportedAttributes(supportedAttributes);
-        SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
-        supportedAttributes.get().add(SVGNames::dAttr);
-        supportedAttributes.get().add(SVGNames::pathLengthAttr);
-    }
+    static const auto supportedAttributes = makeNeverDestroyed([] {
+        HashSet<QualifiedName> set;
+        SVGLangSpace::addSupportedAttributes(set);
+        SVGExternalResourcesRequired::addSupportedAttributes(set);
+        set.add({ SVGNames::dAttr, SVGNames::pathLengthAttr });
+        return set;
+    }());
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 

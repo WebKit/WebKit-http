@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ParserModes.h"
 #include <limits.h>
 #include <stdint.h>
 
@@ -188,6 +187,7 @@ enum JSTokenType {
     UNTERMINATED_TEMPLATE_LITERAL_ERRORTOK = 13 | ErrorTokenFlag | UnterminatedErrorTokenFlag,
     UNTERMINATED_REGEXP_LITERAL_ERRORTOK = 14 | ErrorTokenFlag | UnterminatedErrorTokenFlag,
     INVALID_TEMPLATE_LITERAL_ERRORTOK = 15 | ErrorTokenFlag,
+    UNEXPECTED_ESCAPE_ERRORTOK = 16 | ErrorTokenFlag,
 };
 
 struct JSTextPosition {

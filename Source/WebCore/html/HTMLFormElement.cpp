@@ -133,20 +133,12 @@ Node::InsertionNotificationRequest HTMLFormElement::insertedInto(ContainerNode& 
     return InsertionDone;
 }
 
-static inline Node* findRoot(Node* n)
-{
-    Node* root = n;
-    for (; n; n = n->parentNode())
-        root = n;
-    return root;
-}
-
 void HTMLFormElement::removedFrom(ContainerNode& insertionPoint)
 {
-    Node* root = findRoot(this);
+    Node& root = traverseToRootNode(); // Do not rely on rootNode() because our IsInTreeScope is outdated.
     Vector<FormAssociatedElement*> associatedElements(m_associatedElements);
     for (auto& associatedElement : associatedElements)
-        associatedElement->formRemovedFromTree(root);
+        associatedElement->formOwnerRemovedFromTree(root);
     HTMLElement::removedFrom(insertionPoint);
 }
 
@@ -867,14 +859,14 @@ void HTMLFormElement::resumeFromDocumentSuspension()
     resetAssociatedFormControlElements();
 }
 
-void HTMLFormElement::didMoveToNewDocument(Document& oldDocument)
+void HTMLFormElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     if (!shouldAutocomplete()) {
         oldDocument.unregisterForDocumentSuspensionCallbacks(this);
         document().registerForDocumentSuspensionCallbacks(this);
     }
 
-    HTMLElement::didMoveToNewDocument(oldDocument);
+    HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
 }
 
 bool HTMLFormElement::shouldAutocomplete() const

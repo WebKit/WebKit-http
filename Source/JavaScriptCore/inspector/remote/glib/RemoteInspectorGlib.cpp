@@ -36,12 +36,10 @@
 #include <wtf/RunLoop.h>
 #include <wtf/glib/GUniquePtr.h>
 
-#if PLATFORM(GTK)
-#define REMOTE_INSPECTOR_DBUS_INTERFACE "org.webkitgtk.RemoteInspector"
-#define REMOTE_INSPECTOR_DBUS_OBJECT_PATH "/org/webkitgtk/RemoteInspector"
-#define INSPECTOR_DBUS_INTERFACE "org.webkitgtk.Inspector"
-#define INSPECTOR_DBUS_OBJECT_PATH "/org/webkitgtk/Inspector"
-#endif
+#define REMOTE_INSPECTOR_DBUS_INTERFACE "org.webkit.RemoteInspector"
+#define REMOTE_INSPECTOR_DBUS_OBJECT_PATH "/org/webkit/RemoteInspector"
+#define INSPECTOR_DBUS_INTERFACE "org.webkit.Inspector"
+#define INSPECTOR_DBUS_OBJECT_PATH "/org/webkit/Inspector"
 
 namespace Inspector {
 
@@ -307,16 +305,19 @@ void RemoteInspector::receivedDataMessage(unsigned targetIdentifier, const char*
 
 void RemoteInspector::receivedCloseMessage(unsigned targetIdentifier)
 {
-    std::lock_guard<Lock> lock(m_mutex);
-    RemoteControllableTarget* target = m_targetMap.get(targetIdentifier);
-    if (!target)
-        return;
+    RefPtr<RemoteConnectionToTarget> connectionToTarget;
+    {
+        std::lock_guard<Lock> lock(m_mutex);
+        RemoteControllableTarget* target = m_targetMap.get(targetIdentifier);
+        if (!target)
+            return;
 
-    auto connectionToTarget = m_targetConnectionMap.take(targetIdentifier);
+        connectionToTarget = m_targetConnectionMap.take(targetIdentifier);
+        updateHasActiveDebugSession();
+    }
+
     if (connectionToTarget)
         connectionToTarget->close();
-
-    updateHasActiveDebugSession();
 }
 
 void RemoteInspector::setup(unsigned targetIdentifier)

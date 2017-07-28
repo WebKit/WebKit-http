@@ -48,18 +48,14 @@
 #include "MacroAssemblerCodeRef.h"
 #include "Microtask.h"
 #include "NumericStrings.h"
-#include "PrivateName.h"
 #include "PrototypeMap.h"
 #include "SmallStrings.h"
-#include "SourceCode.h"
 #include "Strong.h"
 #include "Subspace.h"
 #include "TemplateRegistryKeyTable.h"
-#include "ThunkGenerators.h"
 #include "VMEntryRecord.h"
 #include "VMTraps.h"
 #include "Watchpoint.h"
-#include <wtf/Bag.h>
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/DateMath.h>
@@ -96,6 +92,7 @@ class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
 class CustomGetterSetter;
+class DOMAttributeGetterSetter;
 class ExecState;
 class Exception;
 class ExceptionScope;
@@ -109,6 +106,7 @@ class Interpreter;
 class JSCustomGetterSetterFunction;
 class JSGlobalObject;
 class JSObject;
+class JSRunLoopTimer;
 class JSWebAssemblyInstance;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
@@ -279,6 +277,11 @@ public:
 
 private:
     RefPtr<JSLock> m_apiLock;
+#if USE(CF)
+    // These need to be initialized before heap below.
+    HashSet<JSRunLoopTimer*> m_runLoopTimers;
+    RetainPtr<CFRunLoopRef> m_runLoop;
+#endif
 
 public:
     Heap heap;
@@ -312,16 +315,14 @@ public:
     Strong<Structure> propertyNameIteratorStructure;
     Strong<Structure> propertyNameEnumeratorStructure;
     Strong<Structure> customGetterSetterStructure;
+    Strong<Structure> domAttributeGetterSetterStructure;
     Strong<Structure> scopedArgumentsTableStructure;
     Strong<Structure> apiWrapperStructure;
-    Strong<Structure> JSScopeStructure;
-    Strong<Structure> executableStructure;
     Strong<Structure> nativeExecutableStructure;
     Strong<Structure> evalExecutableStructure;
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
 #if ENABLE(WEBASSEMBLY)
-    Strong<Structure> webAssemblyToJSCalleeStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
 #endif
     Strong<Structure> moduleProgramExecutableStructure;
@@ -356,10 +357,7 @@ public:
     Strong<Structure> functionCodeBlockStructure;
     Strong<Structure> hashMapBucketSetStructure;
     Strong<Structure> hashMapBucketMapStructure;
-    Strong<Structure> hashMapImplSetStructure;
-    Strong<Structure> hashMapImplMapStructure;
 
-    Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
     std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
@@ -526,9 +524,6 @@ public:
     void* lastStackTop() { return m_lastStackTop; }
     void setLastStackTop(void*);
 
-    const ClassInfo* const jsArrayClassInfo;
-    const ClassInfo* const jsFinalObjectClassInfo;
-
     JSValue hostCallReturnValue;
     unsigned varargsLength;
     ExecState* newCallFrameReturnValue;
@@ -677,6 +672,13 @@ public:
     StackTrace* nativeStackTraceOfLastThrow() const { return m_nativeStackTraceOfLastThrow.get(); }
     ThreadIdentifier throwingThread() const { return m_throwingThread; }
 #endif
+
+#if USE(CF)
+    CFRunLoopRef runLoop() const { return m_runLoop.get(); }
+    void registerRunLoopTimer(JSRunLoopTimer*);
+    void unregisterRunLoopTimer(JSRunLoopTimer*);
+    JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
+#endif // USE(CF)
 
 private:
     friend class LLIntOffsetsExtractor;

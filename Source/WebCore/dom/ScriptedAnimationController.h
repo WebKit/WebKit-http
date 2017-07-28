@@ -25,21 +25,14 @@
 
 #pragma once
 
-#include "DOMTimeStamp.h"
 #include "PlatformScreen.h"
+#include "Timer.h"
 #include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
 
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
-#include "Timer.h"
-#endif
-
-#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-#include "Chrome.h"
-#include "ChromeClient.h"
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include "DisplayRefreshMonitorClient.h"
 #endif
 
@@ -98,15 +91,11 @@ private:
     int m_suspendCount { 0 };
 
     void scheduleAnimation();
-    void dispatchLoggingEventIfRequired(const AtomicString&);
-
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
     void animationTimerFired();
     Timer m_animationTimer;
     double m_lastAnimationFrameTimestamp { 0 };
-#endif
 
-#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // Override for DisplayRefreshMonitorClient
     void displayRefreshFired() override;
     RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;

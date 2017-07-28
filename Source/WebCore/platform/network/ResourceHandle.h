@@ -26,10 +26,11 @@
 #pragma once
 
 #include "AuthenticationClient.h"
-#include "HTTPHeaderMap.h"
 #include "ResourceHandleTypes.h"
-#include "ResourceLoadPriority.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
+#include <wtf/text/AtomicString.h>
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
 #include <wtf/RetainPtr.h>
@@ -128,15 +129,15 @@ public:
     id delegate();
     void releaseDelegate();
 #endif
-        
-#if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
+
+#if PLATFORM(COCOA)
 #if USE(CFURLCONNECTION)
     static void getConnectionTimingData(CFURLConnectionRef, NetworkLoadMetrics&);
 #else
     static void getConnectionTimingData(NSURLConnection *, NetworkLoadMetrics&);
 #endif
 #endif
-        
+
 #if PLATFORM(COCOA)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
@@ -151,12 +152,12 @@ public:
     static void setClientCertificate(const String& host, CFDataRef);
 #endif
 
-#if PLATFORM(WIN) && USE(CURL)
+#if OS(WINDOWS) && USE(CURL)
     static void setHostAllowsAnyHTTPSCertificate(const String&);
     static void setClientCertificateInfo(const String&, const String&, const String&);
 #endif
 
-#if PLATFORM(WIN) && USE(CURL) && USE(CF)
+#if OS(WINDOWS) && USE(CURL) && USE(CF)
     static void setClientCertificate(const String& host, CFDataRef);
 #endif
 

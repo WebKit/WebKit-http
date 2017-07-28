@@ -112,22 +112,32 @@ BenchmarkRunner.prototype._waitAndWarmUp = function () {
     return promise;
 }
 
+BenchmarkRunner.prototype._writeMark = function(name) {
+    if (window.performance && window.performance.mark)
+        window.performance.mark(name);
+}
+
 // This function ought be as simple as possible. Don't even use SimplePromise.
-BenchmarkRunner.prototype._runTest = function(suite, testFunction, prepareReturnValue, callback)
+BenchmarkRunner.prototype._runTest = function(suite, test, prepareReturnValue, callback)
 {
+    var self = this;
     var now = window.performance && window.performance.now ? function () { return window.performance.now(); } : Date.now;
 
-    var contentWindow = this._frame.contentWindow;
-    var contentDocument = this._frame.contentDocument;
+    var contentWindow = self._frame.contentWindow;
+    var contentDocument = self._frame.contentDocument;
 
+    self._writeMark(`${suite.name}.${test.name}-start`);
     var startTime = now();
-    testFunction(prepareReturnValue, contentWindow, contentDocument);
+    test.run(prepareReturnValue, contentWindow, contentDocument);
     var endTime = now();
+    self._writeMark(`${suite.name}.${test.name}-sync-end`);
+
     var syncTime = endTime - startTime;
 
     var startTime = now();
     setTimeout(function () {
         var endTime = now();
+        self._writeMark(`${suite.name}.${test.name}-async-end`);
         callback(syncTime, endTime - startTime);
     }, 0);
 }
@@ -192,6 +202,7 @@ BenchmarkRunner.prototype.step = function (state) {
     }
 
     if (state.isFirstTest()) {
+        this._removeFrame();
         this._masuredValuesForCurrentSuite = {};
         var self = this;
         return state.prepareCurrentSuite(this, this._appendFrame()).then(function (prepareReturnValue) {
@@ -239,7 +250,7 @@ BenchmarkRunner.prototype._runTestAndRecordResults = function (state) {
 
     var self = this;
     setTimeout(function () {
-        self._runTest(suite, test.run, self._prepareReturnValue, function (syncTime, asyncTime) {
+        self._runTest(suite, test, self._prepareReturnValue, function (syncTime, asyncTime) {
             var suiteResults = self._measuredValues.tests[suite.name] || {tests:{}, total: 0};
             var total = syncTime + asyncTime;
             self._measuredValues.tests[suite.name] = suiteResults;
@@ -251,8 +262,6 @@ BenchmarkRunner.prototype._runTestAndRecordResults = function (state) {
                 self._client.didRunTest(suite, test);
 
             state.next();
-            if (state.currentSuite() != suite)
-                self._removeFrame();
             promise.resolve(state);
         });
     }, 0);

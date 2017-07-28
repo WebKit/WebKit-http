@@ -31,7 +31,6 @@
 
 #import "DocumentLoader.h"
 #import "GraphicsContext.h"
-#import "URL.h"
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
 #import "MediaTimeQTKit.h"
@@ -39,11 +38,12 @@
 #import "PlatformTimeRanges.h"
 #import "QTKitSPI.h"
 #import "SecurityOrigin.h"
-#import "SoftLinking.h"
+#import "URL.h"
 #import "WebCoreSystemInterface.h"
 #import <objc/runtime.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(QTKit)
 
@@ -305,8 +305,8 @@ static void disableComponentsOnce()
         {'imdc', 'pdf ', 'appl', 0, 0},  
     };
 
-    for (size_t i = 0; i < WTF_ARRAY_LENGTH(componentsToDisable); ++i) 
-        wkQTMovieDisableComponent(componentsToDisable[i]);
+    for (auto& component : componentsToDisable)
+        wkQTMovieDisableComponent(component);
 }
 
 void MediaPlayerPrivateQTKit::createQTMovie(NSURL *url, NSDictionary *movieAttributes)
@@ -1235,18 +1235,19 @@ static bool shouldRejectMIMEType(const String& type)
     return !type.startsWith("video/", false) && !type.startsWith("audio/", false);
 }
 
-static void addFileTypesToCache(NSArray *fileTypes, HashSet<String, ASCIICaseInsensitiveHash> &cache)
+static HashSet<String, ASCIICaseInsensitiveHash> createFileTypesSet(NSArray *fileTypes)
 {
-    for (NSString *fileType : fileTypes) {
+    HashSet<String, ASCIICaseInsensitiveHash> set;
+    for (NSString *fileType in fileTypes) {
         CFStringRef ext = reinterpret_cast<CFStringRef>(fileType);
-        RetainPtr<CFStringRef> uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext, NULL));
+        auto uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, ext, NULL));
         if (!uti)
             continue;
-        RetainPtr<CFStringRef> mime = adoptCF(UTTypeCopyPreferredTagWithClass(uti.get(), kUTTagClassMIMEType));
+        auto mime = adoptCF(UTTypeCopyPreferredTagWithClass(uti.get(), kUTTagClassMIMEType));
         if (shouldRejectMIMEType(mime.get()))
             continue;
         if (mime)
-            cache.add(mime.get());
+            set.add(mime.get());
 
         // -movieFileTypes: returns both file extensions and OSTypes. The later are surrounded by single
         // quotes, eg. 'MooV', so don't bother looking at those.
@@ -1256,37 +1257,22 @@ static void addFileTypesToCache(NSArray *fileTypes, HashSet<String, ASCIICaseIns
             // has a type for this extension add any types in hard coded table in the MIME type registry.
             for (auto& type : MIMETypeRegistry::getMediaMIMETypesForExtension(ext)) {
                 if (!shouldRejectMIMEType(type))
-                    cache.add(type);
+                    set.add(type);
             }
         }
-    }    
+    }
+    return set;
 }
 
-static HashSet<String, ASCIICaseInsensitiveHash> mimeCommonTypesCache()
+static const HashSet<String, ASCIICaseInsensitiveHash>& mimeCommonTypesCache()
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
-    static bool typeListInitialized = false;
-
-    if (!typeListInitialized) {
-        typeListInitialized = true;
-        NSArray* fileTypes = [QTMovie movieFileTypes:QTIncludeCommonTypes];
-        addFileTypesToCache(fileTypes, cache);
-    }
-    
+    static const auto cache = makeNeverDestroyed(createFileTypesSet([QTMovie movieFileTypes:QTIncludeCommonTypes]));
     return cache;
 } 
 
-static HashSet<String, ASCIICaseInsensitiveHash> mimeModernTypesCache()
+static const HashSet<String, ASCIICaseInsensitiveHash>& mimeModernTypesCache()
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
-    static bool typeListInitialized = false;
-    
-    if (!typeListInitialized) {
-        typeListInitialized = true;
-        NSArray* fileTypes = [QTMovie movieFileTypes:(QTMovieFileTypeOptions)wkQTIncludeOnlyModernMediaFileTypes()];
-        addFileTypesToCache(fileTypes, cache);
-    }
-    
+    static const auto cache = makeNeverDestroyed(createFileTypesSet([QTMovie movieFileTypes:(QTMovieFileTypeOptions)wkQTIncludeOnlyModernMediaFileTypes()]));
     return cache;
 }
 
@@ -1317,12 +1303,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateQTKit::supportsType(const MediaEngin
 
     // Due to <rdar://problem/10777059>, avoid calling the mime types cache functions if at
     // all possible:
-    if (shouldRejectMIMEType(parameters.type))
+    auto containerType = parameters.type.containerType();
+    if (shouldRejectMIMEType(containerType))
         return MediaPlayer::IsNotSupported;
 
     // We check the "modern" type cache first, as it doesn't require QTKitServer to start.
-    if (mimeModernTypesCache().contains(parameters.type) || mimeCommonTypesCache().contains(parameters.type))
-        return parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+    if (mimeModernTypesCache().contains(containerType) || mimeCommonTypesCache().contains(containerType))
+        return parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
 
     return MediaPlayer::IsNotSupported;
 }
@@ -1369,8 +1356,8 @@ void MediaPlayerPrivateQTKit::disableUnsupportedTracks()
         return;
     }
     
-    static NeverDestroyed<HashSet<String>> allowedTrackTypes = []() {
-        NSString *types[] = {
+    static NeverDestroyed<HashSet<String>> allowedTrackTypes = [] {
+        static NSString * const types[] = {
             QTMediaTypeVideo,
             QTMediaTypeSound,
             QTMediaTypeText,

@@ -204,36 +204,6 @@ bool IOSApplication::isWebApp()
     return isWebApp;
 }
 
-bool IOSApplication::isOkCupid()
-{
-    static bool isOkCupid = applicationBundleIsEqualTo("com.okcupid.app");
-    return isOkCupid;
-}
-
-bool IOSApplication::isFacebook()
-{
-    static bool isFacebook = applicationBundleIsEqualTo("com.facebook.Facebook");
-    return isFacebook;
-}
-
-bool IOSApplication::isDaijisenDictionary()
-{
-    static bool isDaijisenDictionary = applicationBundleIsEqualTo("jp.co.shogakukan.daijisen2009i");
-    return isDaijisenDictionary;
-}
-
-bool IOSApplication::isNASAHD()
-{
-    static bool isNASAHD = applicationBundleIsEqualTo("gov.nasa.NASAHD");
-    return isNASAHD;
-}
-
-bool IOSApplication::isTheEconomistOnIphone()
-{
-    static bool isTheEconomistOnIphone = applicationBundleIsEqualTo("com.economist.iphone");
-    return isTheEconomistOnIphone;
-}
-
 // FIXME: this needs to be changed when the WebProcess is changed to an XPC service.
 bool IOSApplication::isWebProcess()
 {
@@ -247,6 +217,12 @@ bool IOSApplication::isIBooks()
 {
     static bool isIBooks = applicationBundleIsEqualTo("com.apple.iBooks");
     return isIBooks;
+}
+
+bool IOSApplication::isIBooksStorytime()
+{
+    static bool isIBooksStorytime = applicationBundleIsEqualTo("com.apple.TVBooks");
+    return isIBooksStorytime;
 }
 
 bool IOSApplication::isTheSecretSocietyHiddenMystery()

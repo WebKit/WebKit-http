@@ -28,10 +28,7 @@
 #if ENABLE(JIT)
 
 #include "JITMathICForwards.h"
-#include "MacroAssemblerCodeRef.h"
-#include "PropertyOffset.h"
 #include "SlowPathReturnType.h"
-#include "TypedArrayType.h"
 #include <wtf/Platform.h>
 #include <wtf/text/UniquedStringImpl.h>
 
@@ -124,7 +121,7 @@ typedef char* UnusedPtr;
 typedef CallFrame* (JIT_OPERATION *F_JITOperation_EFJZZ)(ExecState*, CallFrame*, EncodedJSValue, int32_t, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_E)(ExecState*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EA)(ExecState*, JSArray*);
-typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EAZ)(ExecState*, JSArray*, int32_t);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EOZ)(ExecState*, JSObject*, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EAapJ)(ExecState*, ArrayAllocationProfile*, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EAapJcpZ)(ExecState*, ArrayAllocationProfile*, const JSValue*, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EC)(ExecState*, JSCell*);
@@ -233,6 +230,8 @@ typedef int32_t (JIT_OPERATION *Z_JITOperation_EJZ)(ExecState*, EncodedJSValue, 
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EJZZ)(ExecState*, EncodedJSValue, int32_t, int32_t);
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EOI)(ExecState*, JSObject*, UniquedStringImpl*);
 typedef int32_t (JIT_OPERATION *Z_JITOperation_EOJ)(ExecState*, JSObject*, EncodedJSValue);
+typedef int32_t (JIT_OPERATION *Z_JITOperation_EBJssZ)(ExecState*, Butterfly*, JSString*, int32_t);
+typedef int32_t (JIT_OPERATION *Z_JITOperation_EBJZ)(ExecState*, Butterfly*, EncodedJSValue, int32_t);
 typedef size_t (JIT_OPERATION *S_JITOperation_EO)(ExecState*, JSObject*);
 typedef size_t (JIT_OPERATION *S_JITOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef size_t (JIT_OPERATION *S_JITOperation_EGC)(ExecState*, JSGlobalObject*, JSCell*);

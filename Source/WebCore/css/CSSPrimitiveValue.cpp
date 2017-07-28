@@ -26,7 +26,6 @@
 #include "CSSFontFamily.h"
 #include "CSSHelper.h"
 #include "CSSMarkup.h"
-#include "CSSParserSelector.h"
 #include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyNames.h"
 #include "CSSToLengthConversionData.h"
@@ -35,15 +34,12 @@
 #include "Color.h"
 #include "Counter.h"
 #include "DeprecatedCSSOMPrimitiveValue.h"
-#include "ExceptionCode.h"
 #include "FontCascade.h"
 #include "Node.h"
 #include "Pair.h"
 #include "RGBColor.h"
 #include "Rect.h"
 #include "RenderStyle.h"
-#include "StyleSheetContents.h"
-#include <wtf/ASCIICType.h>
 #include <wtf/DecimalNumber.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -285,7 +281,7 @@ static const AtomicString& valueName(CSSValueID valueID)
     ASSERT_ARG(valueID, valueID < numCSSValueKeywords);
 
     if (valueID < 0)
-        return nullAtom;
+        return nullAtom();
 
     static AtomicString* keywordStrings = new AtomicString[numCSSValueKeywords]; // Leaked intentionally.
     AtomicString& keywordString = keywordStrings[valueID];
@@ -726,7 +722,7 @@ ExceptionOr<void> CSSPrimitiveValue::setFloatValue(unsigned short, double)
     // Keeping values immutable makes optimizations easier and allows sharing of the primitive value objects.
     // No other engine supports mutating style through this API. Computed style is always read-only anyway.
     // Supporting setter would require making primitive value copy-on-write and taking care of style invalidation.
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 double CSSPrimitiveValue::conversionToCanonicalUnitsScaleFactor(UnitType unitType)
@@ -785,7 +781,7 @@ ExceptionOr<float> CSSPrimitiveValue::getFloatValue(unsigned short unitType) con
 {
     auto result = doubleValueInternal(static_cast<UnitType>(unitType));
     if (!result)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
     return clampTo<float>(result.value());
 }
 
@@ -878,7 +874,7 @@ ExceptionOr<void> CSSPrimitiveValue::setStringValue(unsigned short, const String
     // Keeping values immutable makes optimizations easier and allows sharing of the primitive value objects.
     // No other engine supports mutating style through this API. Computed style is always read-only anyway.
     // Supporting setter would require making primitive value copy-on-write and taking care of style invalidation.
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 ExceptionOr<String> CSSPrimitiveValue::getStringValue() const
@@ -895,7 +891,7 @@ ExceptionOr<String> CSSPrimitiveValue::getStringValue() const
     case CSS_PROPERTY_ID:
         return String { propertyName(m_value.propertyID).string() };
     default:
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
     }
 }
 
@@ -920,21 +916,21 @@ String CSSPrimitiveValue::stringValue() const
 ExceptionOr<Counter&> CSSPrimitiveValue::getCounterValue() const
 {
     if (m_primitiveUnitType != CSS_COUNTER)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
     return *m_value.counter;
 }
 
 ExceptionOr<Rect&> CSSPrimitiveValue::getRectValue() const
 {
     if (m_primitiveUnitType != CSS_RECT)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
     return *m_value.rect;
 }
 
 ExceptionOr<Ref<RGBColor>> CSSPrimitiveValue::getRGBColorValue() const
 {
     if (m_primitiveUnitType != CSS_RGBCOLOR)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     // FIXME: This should not return a new object for each invocation.
     return RGBColor::create(m_value.color->rgb());
@@ -1219,9 +1215,9 @@ bool CSSPrimitiveValue::equals(const CSSPrimitiveValue& other) const
     return false;
 }
 
-Ref<DeprecatedCSSOMPrimitiveValue> CSSPrimitiveValue::createDeprecatedCSSOMPrimitiveWrapper() const
+Ref<DeprecatedCSSOMPrimitiveValue> CSSPrimitiveValue::createDeprecatedCSSOMPrimitiveWrapper(CSSStyleDeclaration& styleDeclaration) const
 {
-    return DeprecatedCSSOMPrimitiveValue::create(*this);
+    return DeprecatedCSSOMPrimitiveValue::create(*this, styleDeclaration);
 }
 
 } // namespace WebCore

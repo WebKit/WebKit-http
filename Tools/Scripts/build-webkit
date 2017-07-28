@@ -89,6 +89,7 @@ my $usage = <<EOF;
 Usage: $programName [options] [options to pass to build system]
   --help                            Show this help message
   --clean                           Cleanup the build directory
+  --generate-project-only           Only generate project files
   --debug                           Compile with Debug configuration
   --release                         Compile with Release configuration
   --sdk=<sdk>                       Use a specific Xcode SDK (iOS and Mac only)
@@ -151,7 +152,7 @@ setConfiguration();
 my $productDir = productDir();
 
 # Check that all the project directories are there.
-my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKit");
+my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKitLegacy");
 
 # Build WTF as a separate static library on ports which support it.
 splice @projects, 0, 0, "Source/WTF" if isAppleWebKit() or isWinCairo();
@@ -194,13 +195,13 @@ if (isAppleCocoaWebKit()) {
         splice @projects, 0, 0, ("Source/ThirdParty/libwebrtc");
     }
 
-    push @projects, ("Source/WebKit2");
+    push @projects, ("Source/WebKit");
 
     if (!isIOSWebKit()) {
         push @projects, ("Tools/MiniBrowser");
 
         # WebInspectorUI must come after JavaScriptCore and WebCore but before WebKit and WebKit2
-        my $webKitIndex = first { $projects[$_] eq "Source/WebKit" } 0..$#projects;
+        my $webKitIndex = first { $projects[$_] eq "Source/WebKitLegacy" } 0..$#projects;
         splice(@projects, $webKitIndex, 0, "Source/WebInspectorUI");
 
         # Copy library and header from WebKitLibraries to a findable place in the product directory.
@@ -228,7 +229,7 @@ if (isAppleCocoaWebKit()) {
 # If asked to build just the WebKit project, overwrite the projects
 # list after all of the port specific tweaks have been made to
 # build options, etc.
-@projects = ("Source/WebKit") if $onlyWebKitProject;
+@projects = ("Source/WebKitLegacy") if $onlyWebKitProject;
 
 my $result = 0;
 
@@ -261,6 +262,9 @@ if (isAppleWinWebKit() || isWinCairo()) {
     if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs))) {
         die "Run \"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcvarsall.bat\" before build-webkit when using ninja";
     }
+
+    exit 0 if isGenerateProjectOnly();
+
     chdirWebKit();
     if (canUseNinja()) {
         chdir File::Spec->catdir($baseProductDir, configuration());
@@ -278,6 +282,8 @@ if (isAppleWinWebKit() || isWinCairo()) {
         exit exitStatus($result);
     }
 } elsif (isAppleCocoaWebKit() && !isCMakeBuild()) {
+    exit 0 if isGenerateProjectOnly();
+
     # Build, and abort if the build fails.
     for my $dir (@projects) {
         chdir $dir or die;

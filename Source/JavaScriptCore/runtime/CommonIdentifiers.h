@@ -37,12 +37,14 @@
     macro(Boolean) \
     macro(Collator) \
     macro(Credential) \
+    macro(CredentialsContainer) \
     macro(CustomElementRegistry) \
     macro(Date) \
     macro(DateTimeFormat) \
     macro(DocumentTimeline) \
     macro(Error) \
     macro(EvalError) \
+    macro(FederatedCredential) \
     macro(Function) \
     macro(Gamepad) \
     macro(GamepadButton) \
@@ -78,9 +80,15 @@
     macro(MediaKeyStatusMap) \
     macro(MediaKeySystemAccess) \
     macro(MediaKeys) \
+    macro(WebKitMediaKeyError) \
+    macro(WebKitMediaKeyNeededEvent) \
+    macro(WebKitMediaKeySession) \
+    macro(WebKitMediaKeys) \
+    macro(WebKitMediaKeyMessageEvent) \
     macro(MediaStreamEvent) \
     macro(ModernMediaControls) \
     macro(NaN) \
+    macro(NavigatorCredentials) \
     macro(NavigatorMediaDevices) \
     macro(NavigatorUserMedia) \
     macro(Number) \
@@ -104,6 +112,7 @@
     macro(Response) \
     macro(RTCDataChannel) \
     macro(RTCDataChannelEvent) \
+    macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCIceCandidate) \
     macro(RTCIceTransport) \
@@ -112,12 +121,12 @@
     macro(RTCRtpSender) \
     macro(RTCRtpTransceiver) \
     macro(RTCSessionDescription) \
+    macro(RTCStatsReport) \
     macro(RTCTrackEvent) \
     macro(Set)\
     macro(SetIterator)\
     macro(ShadowRoot) \
     macro(SharedArrayBuffer) \
-    macro(SiteBoundCredential) \
     macro(StaticRange) \
     macro(String) \
     macro(Symbol) \
@@ -237,6 +246,7 @@
     macro(isArray) \
     macro(isEnabled) \
     macro(isPrototypeOf) \
+    macro(isSecureContext) \
     macro(isView) \
     macro(isWatchpoint) \
     macro(jettisonReason) \

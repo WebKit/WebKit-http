@@ -138,16 +138,28 @@ WebInspector.RemoteObject = class RemoteObject
         });
     }
 
-    static type(remoteObject)
+    static resolveWebSocket(webSocketResource, objectGroup, callback)
     {
-        if (remoteObject === null)
-            return "null";
+        console.assert(typeof callback === "function");
 
-        var type = typeof remoteObject;
-        if (type !== "object" && type !== "function")
-            return type;
+        NetworkAgent.resolveWebSocket(webSocketResource.requestIdentifier, objectGroup, (error, object) => {
+            if (error || !object)
+                callback(null);
+            else
+                callback(WebInspector.RemoteObject.fromPayload(object, webSocketResource.target));
+        });
+    }
 
-        return remoteObject.type;
+    static resolveCanvasContext(canvas, objectGroup, callback)
+    {
+        console.assert(typeof callback === "function");
+
+        CanvasAgent.resolveCanvasContext(canvas.identifier, objectGroup, (error, object) => {
+            if (error || !object)
+                callback(null);
+            else
+                callback(WebInspector.RemoteObject.fromPayload(object, WebInspector.mainTarget));
+        });
     }
 
     // Public
@@ -217,6 +229,45 @@ WebInspector.RemoteObject = class RemoteObject
     hasValue()
     {
         return "_value" in this;
+    }
+
+    canLoadPreview()
+    {
+        if (this._failedToLoadPreview)
+            return false;
+
+        if (this._type !== "object")
+            return false;
+
+        if (!this._objectId || this._isSymbol() || this._isFakeObject())
+            return false;
+
+        return true;
+    }
+
+    updatePreview(callback)
+    {
+        if (!this.canLoadPreview()) {
+            callback(null);
+            return;
+        }
+
+        if (!RuntimeAgent.getPreview) {
+            this._failedToLoadPreview = true;
+            callback(null);
+            return;
+        }
+
+        this._target.RuntimeAgent.getPreview(this._objectId, (error, payload) => {
+            if (error) {
+                this._failedToLoadPreview = true;
+                callback(null);
+                return;
+            }
+
+            this._preview = WebInspector.ObjectPreview.fromPayload(payload);
+            callback(this._preview);
+        });
     }
 
     getOwnPropertyDescriptors(callback)

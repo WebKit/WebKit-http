@@ -28,11 +28,13 @@
 
 #include "RegExpKey.h"
 #include <wtf/CheckedArithmetic.h>
+#include <wtf/PrintStream.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace JSC { namespace Yarr {
 
+struct YarrPattern;
 struct PatternDisjunction;
 
 struct CharacterRange {
@@ -222,6 +224,9 @@ struct PatternTerm {
         quantityMaxCount = maxCount;
         quantityType = type;
     }
+
+    void dumpQuantifier(PrintStream&);
+    void dump(PrintStream&, YarrPattern*, unsigned);
 };
 
 struct PatternAlternative {
@@ -258,6 +263,8 @@ public:
         return m_onceThrough;
     }
 
+    void dump(PrintStream&, YarrPattern*, unsigned);
+
     Vector<PatternTerm> m_terms;
     PatternDisjunction* m_parent;
     unsigned m_minimumSize;
@@ -281,6 +288,8 @@ public:
         m_alternatives.append(std::make_unique<PatternAlternative>(this));
         return static_cast<PatternAlternative*>(m_alternatives.last().get());
     }
+
+    void dump(PrintStream&, YarrPattern*, unsigned);
 
     Vector<std::unique_ptr<PatternAlternative>> m_alternatives;
     PatternAlternative* m_parent;
@@ -343,11 +352,13 @@ struct YarrPattern {
     {
         m_numSubpatterns = 0;
         m_maxBackReference = 0;
+        m_initialStartValueFrameLocation = 0;
 
         m_containsBackreferences = false;
         m_containsBOL = false;
         m_containsUnsignedLengthPattern = false;
         m_hasCopiedParenSubexpressions = false;
+        m_saveInitialStartValue = false;
 
         newlineCached = 0;
         digitsCached = 0;
@@ -446,6 +457,10 @@ struct YarrPattern {
         return nonwordUnicodeIgnoreCasecharCached;
     }
 
+    void dumpPattern(const String& pattern);
+    void dumpPattern(PrintStream& out, const String& pattern);
+
+    bool global() const { return m_flags & FlagGlobal; }
     bool ignoreCase() const { return m_flags & FlagIgnoreCase; }
     bool multiline() const { return m_flags & FlagMultiline; }
     bool sticky() const { return m_flags & FlagSticky; }
@@ -455,9 +470,11 @@ struct YarrPattern {
     bool m_containsBOL : 1;
     bool m_containsUnsignedLengthPattern : 1;
     bool m_hasCopiedParenSubexpressions : 1;
+    bool m_saveInitialStartValue : 1;
     RegExpFlags m_flags;
     unsigned m_numSubpatterns;
     unsigned m_maxBackReference;
+    unsigned m_initialStartValueFrameLocation;
     PatternDisjunction* m_body;
     Vector<std::unique_ptr<PatternDisjunction>, 4> m_disjunctions;
     Vector<std::unique_ptr<CharacterClass>> m_userCharacterClasses;

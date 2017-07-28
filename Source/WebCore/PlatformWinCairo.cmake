@@ -1,8 +1,9 @@
+include(platform/Cairo.cmake)
+include(platform/Curl.cmake)
 include(platform/ImageDecoders.cmake)
 include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
-    ${CAIRO_INCLUDE_DIRS}
     "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
     "${DirectX_INCLUDE_DIRS}"
     "${WEBKIT_LIBRARIES_DIR}/include"
@@ -10,8 +11,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBKIT_LIBRARIES_DIR}/include/zlib"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/platform/graphics/cairo"
-    "${WEBCORE_DIR}/platform/network/curl"
 )
 
 list(APPEND WebCore_SOURCES
@@ -19,25 +18,6 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/GLContext.cpp
     platform/graphics/PlatformDisplay.cpp
-
-    platform/graphics/cairo/CairoUtilities.cpp
-    platform/graphics/cairo/FloatRectCairo.cpp
-    platform/graphics/cairo/FontCairo.cpp
-    platform/graphics/cairo/GradientCairo.cpp
-    platform/graphics/cairo/GraphicsContext3DCairo.cpp
-    platform/graphics/cairo/GraphicsContextCairo.cpp
-    platform/graphics/cairo/ImageBufferCairo.cpp
-    platform/graphics/cairo/ImageCairo.cpp
-    platform/graphics/cairo/IntRectCairo.cpp
-    platform/graphics/cairo/NativeImageCairo.cpp
-    platform/graphics/cairo/PathCairo.cpp
-    platform/graphics/cairo/PatternCairo.cpp
-    platform/graphics/cairo/PlatformContextCairo.cpp
-    platform/graphics/cairo/PlatformPathCairo.cpp
-    platform/graphics/cairo/RefPtrCairo.cpp
-    platform/graphics/cairo/TransformationMatrixCairo.cpp
-
-    platform/graphics/texmap/TextureMapperTiledBackingStore.cpp
 
     platform/graphics/win/FontCustomPlatformDataCairo.cpp
     platform/graphics/win/FontPlatformDataCairoWin.cpp
@@ -47,23 +27,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
     platform/graphics/win/SimpleFontDataCairoWin.cpp
 
-    platform/image-decoders/cairo/ImageBackingStoreCairo.cpp
-
     platform/network/NetworkStorageSessionStub.cpp
-
-    platform/network/curl/CookieJarCurl.cpp
-    platform/network/curl/CredentialStorageCurl.cpp
-    platform/network/curl/CurlCacheEntry.cpp
-    platform/network/curl/CurlCacheManager.cpp
-    platform/network/curl/CurlDownload.cpp
-    platform/network/curl/DNSCurl.cpp
-    platform/network/curl/FormDataStreamCurl.cpp
-    platform/network/curl/MultipartHandle.cpp
-    platform/network/curl/ProxyServerCurl.cpp
-    platform/network/curl/ResourceHandleCurl.cpp
-    platform/network/curl/ResourceHandleManager.cpp
-    platform/network/curl/SSLHandle.cpp
-    platform/network/curl/SocketStreamHandleImplCurl.cpp
 
     platform/text/win/LocaleWin.cpp
 
@@ -75,7 +39,6 @@ list(APPEND WebCore_SOURCES
 )
 
 list(APPEND WebCore_LIBRARIES
-    ${CAIRO_LIBRARIES}
     ${DirectX_LIBRARIES}
     CFLite
     SQLite3

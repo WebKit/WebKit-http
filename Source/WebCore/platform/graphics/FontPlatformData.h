@@ -26,9 +26,7 @@
 
 #include "TextFlags.h"
 #include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
-#include <wtf/text/StringImpl.h>
 
 
 #if PLATFORM(WIN)
@@ -38,14 +36,12 @@
 
 #if USE(CAIRO)
 #include "RefPtrCairo.h"
-#include <wtf/HashFunctions.h>
 #include <cairo.h>
 #endif
 
 #if USE(FREETYPE)
 #include "FcUniquePtr.h"
 #include "HarfBuzzFace.h"
-#include "OpenTypeVerticalData.h"
 #endif
 
 #if USE(APPKIT)
@@ -90,7 +86,7 @@ public:
     static FontPlatformData cloneWithSyntheticOblique(const FontPlatformData&, bool);
     static FontPlatformData cloneWithSize(const FontPlatformData&, float);
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000))
+#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
     FontPlatformData(CGFontRef, float size, bool syntheticBold, bool syntheticOblique, FontOrientation, FontWidthVariant, TextRenderingMode);
 #endif
 
@@ -142,7 +138,7 @@ public:
 
     bool hasVariations() const { return m_hasVariations; }
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000))
+#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
     CGFontRef cgFont() const { return m_cgFont.get(); }
 #endif
 
@@ -231,7 +227,7 @@ private:
     RefPtr<SharedGDIObject<HFONT>> m_font;
 #endif
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000))
+#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
     RetainPtr<CGFontRef> m_cgFont;
 #endif
 

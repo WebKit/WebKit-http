@@ -90,6 +90,15 @@ TestOptions::TestOptions(NSURL *testURL, const TestCommand& command)
             this->enableCredentialManagement = parseBooleanTestHeaderValue(value);
         else if (key == "enableDragDestinationActionLoad")
             this->enableDragDestinationActionLoad = parseBooleanTestHeaderValue(value);
+        else if (key == "layerBackedWebView")
+            this->layerBackedWebView = parseBooleanTestHeaderValue(value);
+        else if (key == "enableIsSecureContextAttribute")
+            this->enableIsSecureContextAttribute = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
+}
+
+bool TestOptions::webViewIsCompatibleWithOptions(const TestOptions& other) const
+{
+    return other.layerBackedWebView == layerBackedWebView;
 }

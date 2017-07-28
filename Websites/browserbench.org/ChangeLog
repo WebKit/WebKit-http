@@ -1,3 +1,133 @@
+2017-07-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Merge r219640 into Speedometer 1.0.
+
+        * Speedometer/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._writeMark):
+        (BenchmarkRunner.prototype._runTest):
+        (BenchmarkRunner.prototype._runTestAndRecordResults):
+
+2017-07-14  Saam Barati  <sbarati@apple.com>
+
+        Fix ambiguous description text in ARES-6 about the data the benchmark measures
+        https://bugs.webkit.org/show_bug.cgi?id=174510
+
+        Rubber stamped by Filip Pizlo.
+
+        * ARES-6/about.html:
+
+2017-06-07  Saam Barati  <sbarati@apple.com>
+
+        ARES-6 incorrectly measures Worst 4 Iterations
+        https://bugs.webkit.org/show_bug.cgi?id=172960
+
+        Reviewed by Mark Lam.
+
+        Version 1.0 of ARES-6 was accidentally measuring the first
+        4 iterations, instead of the worst 4. This patch fixes the
+        bug and bumps the version to 1.0.1.
+
+        * ARES-6/glue.js:
+        (driver.reportResult):
+        * ARES-6/results.js:
+        (Results.prototype.reportResult):
+
+2017-06-06  Saam Barati  <sbarati@apple.com>
+
+        Add a version number to ARES-6
+        https://bugs.webkit.org/show_bug.cgi?id=172962
+
+        Reviewed by Yusuke Suzuki.
+
+        * ARES-6/glue.js:
+        (driver.reportResult):
+
+2017-06-05  Saam Barati  <sbarati@apple.com>
+
+        Update index.html to include ARES-6.
+
+        Rubber stamped by Ryosuke Niwa.
+
+        * index.html:
+
+2017-06-01  Saam Barati  <sbarati@apple.com>
+
+        Ensure a good experience for ARES-6 error reporting
+        https://bugs.webkit.org/show_bug.cgi?id=171699
+
+        Reviewed by Filip Pizlo and Jon Davis.
+
+        This patch fixes a bug where we would silently fail running ARES-6. The bug
+        was that we were calling reportError with the wrong |this| value.
+        I also cleaned up a bit of the code around error reporting. We
+        now indicate which test failed, and update the status to reflect
+        that a failure happened.
+        
+        This patch also modifies the CSS a bit to work better on smaller
+        screened devices. The CSS prevents the status from having a line
+        break both when an error is reported and when we're running the 
+        benchmark.
+
+        * ARES-6/driver.js:
+        (Driver):
+        (Driver.prototype.reportError):
+        * ARES-6/results.js:
+        (Results.prototype.reportError):
+        (Results):
+        * ARES-6/styles.css:
+        (.start):
+        (#status):
+        (.failed):
+        (#status.failed):
+        (.test .failed:before):
+        (#magic):
+        (@media only screen and (max-width: 784px)):
+        (.test):
+        (p):
+        (@media only screen and (max-width: 320px)):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r217118): Speedometer 2.0: Flight.js test is broken
+        https://bugs.webkit.org/show_bug.cgi?id=172394
+
+        Reviewed by Chris Dumez.
+
+        Merge the fix.
+
+        * Speedometer2.0/resources/todomvc/dependency-examples/flight/flight/node_modules/requirejs/require.js:
+        (newContext.checkLoaded):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Merge Speedometer 2.0 fixes up to r217121 to browserbench.org
+        https://bugs.webkit.org/show_bug.cgi?id=172389
+
+        Rubber-stamped by Chris Dumez.
+
+        Merged the various fixes for Speedometer 2.0 starting from r217107 through r217121.
+
+        * Speedometer2.0/InteractiveRunner.html:
+        * Speedometer2.0/resources/benchmark-runner.js:
+        * Speedometer2.0/resources/tests.js:
+        * Speedometer2.0/resources/todomvc/dependency-examples/flight/flight/app/js/main.js:
+        * Speedometer2.0/resources/todomvc/dependency-examples/flight/flight/node_modules/requirejs/require.js:
+        * Speedometer2.0/resources/todomvc/functional-prog-examples/elm/dist/elm.js:
+        * Speedometer2.0/resources/todomvc/vanilla-examples/vanillajs/js/store.js:
+
+2017-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add Speedometer 2.0 to browserbench.org for final testing
+        https://bugs.webkit.org/show_bug.cgi?id=172335
+
+        Rubber-stamped by Chris Dumez.
+
+        Stage Speedometer 2.0 here for the final testing before we call it official.
+
+        * Speedometer2.0: Copied from PerformanceTests/Speedometer.
+        * Speedometer2.0/Full.html: Removed.
+        * Speedometer2.0/index.html: Copied from PerformanceTests/Speedometer/index.html.
+
 2017-05-15  Ryosuke Niwa  <rniwa@webkit.org>
 
         browserbench.org/Speedometer/ should show the benchmark not an index of files

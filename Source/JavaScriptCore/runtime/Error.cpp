@@ -30,11 +30,11 @@
 #include "FunctionPrototype.h"
 #include "Interpreter.h"
 #include "JSArray.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
 #include "JSString.h"
-#include "JSCInlines.h"
 #include "NativeErrorConstructor.h"
 #include "SourceCode.h"
 #include "StackFrame.h"
@@ -60,8 +60,13 @@ JSObject* createEvalError(ExecState* exec, const String& message, ErrorInstance:
 
 JSObject* createRangeError(ExecState* exec, const String& message, ErrorInstance::SourceAppender appender)
 {
-    ASSERT(!message.isEmpty());
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    return createRangeError(exec, globalObject, message, appender);
+}
+
+JSObject* createRangeError(ExecState* exec, JSGlobalObject* globalObject, const String& message, ErrorInstance::SourceAppender appender)
+{
+    ASSERT(!message.isEmpty());
     return ErrorInstance::create(exec, globalObject->vm(), globalObject->rangeErrorConstructor()->errorStructure(), message, appender, TypeNothing, true);
 }
 
@@ -182,7 +187,7 @@ bool addErrorInfoAndGetBytecodeOffset(ExecState* exec, VM& vm, JSObject* obj, bo
             callFrame = functor.foundCallFrame();
             unsigned stackIndex = functor.index();
             *bytecodeOffset = 0;
-            if (stackTrace.at(stackIndex).hasBytecodeOffset())
+            if (stackIndex < stackTrace.size() && stackTrace.at(stackIndex).hasBytecodeOffset())
                 *bytecodeOffset = stackTrace.at(stackIndex).bytecodeOffset();
         }
         
@@ -253,6 +258,11 @@ JSObject* throwSyntaxError(ExecState* exec, ThrowScope& scope, const String& mes
     return throwException(exec, scope, createSyntaxError(exec, message));
 }
 
+JSValue throwDOMAttributeGetterTypeError(ExecState* exec, ThrowScope& scope, const ClassInfo* classInfo, PropertyName propertyName)
+{
+    return throwTypeError(exec, scope, makeString("The ", classInfo->className, '.', String(propertyName.uid()), " getter can only be used on instances of ", classInfo->className));
+}
+
 JSObject* createError(ExecState* exec, const String& message)
 {
     return createError(exec, message, nullptr);
@@ -266,6 +276,11 @@ JSObject* createEvalError(ExecState* exec, const String& message)
 JSObject* createRangeError(ExecState* exec, const String& message)
 {
     return createRangeError(exec, message, nullptr);
+}
+
+JSObject* createRangeError(ExecState* exec, JSGlobalObject* globalObject, const String& message)
+{
+    return createRangeError(exec, globalObject, message, nullptr);
 }
 
 JSObject* createReferenceError(ExecState* exec, const String& message)
@@ -300,7 +315,9 @@ JSObject* createURIError(ExecState* exec, const String& message)
 
 JSObject* createOutOfMemoryError(ExecState* exec)
 {
-    return createError(exec, ASCIILiteral("Out of memory"), nullptr);
+    auto* error = createError(exec, ASCIILiteral("Out of memory"), nullptr);
+    jsCast<ErrorInstance*>(error)->setOutOfMemoryError();
+    return error;
 }
 
 

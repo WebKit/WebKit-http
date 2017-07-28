@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2013 Apple Inc.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Kenneth Rohde Christiansen
  *
  * This library is free software; you can redistribute it and/or
@@ -24,6 +24,7 @@
 
 #include "CSSValueKeywords.h"
 #include "Element.h"
+#include "FileSystem.h"
 #include "FontMetrics.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -34,10 +35,10 @@
 #include "RenderMeter.h"
 #include "RenderSlider.h"
 #include "Settings.h"
-#include "SoftLinking.h"
 #include "SystemInfo.h"
 #include "UserAgentStyleSheets.h"
 #include "WebCoreBundleWin.h"
+#include <wtf/SoftLinking.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/win/GDIObject.h>
 
@@ -183,15 +184,10 @@ void RenderThemeWin::setWebKitIsBeingUnloaded()
     gWebKitIsBeingUnloaded = true;
 }
 
-Ref<RenderTheme> RenderThemeWin::create()
-{
-    return adoptRef(*new RenderThemeWin);
-}
-
 RenderTheme& RenderTheme::singleton()
 {
-    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeWin::create());
-    return theme.get();
+    static NeverDestroyed<RenderThemeWin> theme;
+    return theme;
 }
 
 RenderThemeWin::RenderThemeWin()
@@ -899,7 +895,7 @@ bool RenderThemeWin::paintSearchFieldCancelButton(const RenderBox& o, const Pain
 void RenderThemeWin::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int cancelButtonSize = lroundf(min(max(minCancelButtonSize, defaultCancelButtonSize * fontScale), maxCancelButtonSize));
     style.setWidth(Length(cancelButtonSize, Fixed));
     style.setHeight(Length(cancelButtonSize, Fixed));
@@ -915,7 +911,7 @@ void RenderThemeWin::adjustSearchFieldDecorationPartStyle(StyleResolver&, Render
 void RenderThemeWin::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the decoration size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int magnifierSize = lroundf(min(max(minSearchFieldResultsDecorationSize, defaultSearchFieldResultsDecorationSize * fontScale), 
                                      maxSearchFieldResultsDecorationSize));
     style.setWidth(Length(magnifierSize, Fixed));
@@ -947,7 +943,7 @@ bool RenderThemeWin::paintSearchFieldResultsDecorationPart(const RenderBox& o, c
 void RenderThemeWin::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int magnifierHeight = lroundf(min(max(minSearchFieldResultsDecorationSize, defaultSearchFieldResultsDecorationSize * fontScale), 
                                    maxSearchFieldResultsDecorationSize));
     int magnifierWidth = lroundf(magnifierHeight * defaultSearchFieldResultsButtonWidth / defaultSearchFieldResultsDecorationSize);

@@ -29,6 +29,7 @@
 #include "AssemblerCommon.h"
 #include "LLIntCommon.h"
 #include "LLIntData.h"
+#include "MinimumReservedZoneSize.h"
 #include "SigillCrashAnalyzer.h"
 #include <algorithm>
 #include <limits>
@@ -43,6 +44,7 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/threads/Signals.h>
 
 #if PLATFORM(COCOA)
 #include <crt_externs.h>
@@ -360,6 +362,10 @@ static void overrideDefaults()
 #if !ENABLE(WEBASSEMBLY_FAST_MEMORY)
     Options::useWebAssemblyFastMemory() = false;
 #endif
+
+#if !HAVE(MACH_EXCEPTIONS)
+    Options::useMachForExceptions() = false;
+#endif
 }
 
 static void recomputeDependentOptions()
@@ -428,6 +434,7 @@ static void recomputeDependentOptions()
         || Options::reportFTLCompileTimes()
         || Options::reportDFGPhaseTimes()
         || Options::verboseCFA()
+        || Options::verboseDFGFailure()
         || Options::verboseFTLFailure())
         Options::alwaysComputeHash() = true;
     
@@ -453,7 +460,7 @@ static void recomputeDependentOptions()
         Options::useOSREntryToFTL() = false;
     }
     
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
     // Override globally for now. Longer term we'll just make the default
     // be to have this option enabled, and have platforms that don't support
     // it just silently use a single mapping.
@@ -492,6 +499,11 @@ static void recomputeDependentOptions()
 
     if (Options::useSigillCrashAnalyzer())
         enableSigillCrashAnalyzer();
+
+    if (Options::reservedZoneSize() < minimumReservedZoneSize)
+        Options::reservedZoneSize() = minimumReservedZoneSize;
+    if (Options::softReservedZoneSize() < Options::reservedZoneSize() + minimumReservedZoneSize)
+        Options::softReservedZoneSize() = Options::reservedZoneSize() + minimumReservedZoneSize;
 }
 
 void Options::initialize()
@@ -552,6 +564,11 @@ void Options::initialize()
 
             dumpOptionsIfNeeded();
             ensureOptionsAreCoherent();
+
+#if HAVE(MACH_EXCEPTIONS)
+            if (Options::useMachForExceptions())
+                handleSignalsWithMach();
+#endif
         });
 }
 

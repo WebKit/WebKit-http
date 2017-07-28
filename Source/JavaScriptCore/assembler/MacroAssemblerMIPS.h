@@ -33,7 +33,7 @@
 
 namespace JSC {
 
-class MacroAssemblerMIPS : public AbstractMacroAssembler<MIPSAssembler, MacroAssemblerMIPS> {
+class MacroAssemblerMIPS : public AbstractMacroAssembler<MIPSAssembler> {
 public:
     typedef MIPSRegisters::FPRegisterID FPRegisterID;
     static const unsigned numGPRs = 32;
@@ -647,6 +647,12 @@ public:
     void xor32(RegisterID op1, RegisterID op2, RegisterID dest)
     {
         m_assembler.xorInsn(dest, op1, op2);
+    }
+
+    void xor32(Address src, RegisterID dest)
+    {
+        load32(src, dataTempRegister);
+        xor32(dataTempRegister, dest);
     }
 
     void xor32(TrustedImm32 imm, RegisterID dest)
@@ -3071,11 +3077,6 @@ public:
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(MIPSAssembler::readCallTarget(call.dataLocation())));
-    }
-
-    static void replaceWithBreakpoint(CodeLocationLabel instructionStart)
-    {
-        MIPSAssembler::replaceWithBkpt(instructionStart.executableAddress());
     }
 
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)

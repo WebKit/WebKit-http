@@ -30,10 +30,7 @@
 #pragma once
 
 #include "ArgList.h"
-#include "CatchScope.h"
-#include "FrameTracers.h"
 #include "JSCJSValue.h"
-#include "JSCell.h"
 #include "JSObject.h"
 #include "Opcode.h"
 #include "StackAlignment.h"
@@ -59,6 +56,7 @@ namespace JSC {
     class ModuleProgramExecutable;
     class Register;
     class JSScope;
+    class SourceCode;
     class StackFrame;
     struct CallFrameClosure;
     struct HandlerInfo;
@@ -97,43 +95,25 @@ namespace JSC {
         Interpreter(VM &);
         ~Interpreter();
         
-        void initialize();
-
 #if !ENABLE(JIT)
         CLoopStack& cloopStack() { return m_cloopStack; }
 #endif
         
-        Opcode getOpcode(OpcodeID id)
-        {
-            ASSERT(m_initialized);
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-            return m_opcodeTable[id];
-#else
-            return id;
+        static inline Opcode getOpcode(OpcodeID);
+
+        static inline OpcodeID getOpcodeID(Opcode);
+        static inline OpcodeID getOpcodeID(const Instruction&);
+        static inline OpcodeID getOpcodeID(const UnlinkedInstruction&);
+
+#if !ASSERT_DISABLED
+        static bool isOpcode(Opcode);
 #endif
-        }
-
-        OpcodeID getOpcodeID(Opcode opcode)
-        {
-            ASSERT(m_initialized);
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-            ASSERT(isOpcode(opcode));
-            return m_opcodeIDTable.get(opcode);
-#else
-            return opcode;
-#endif
-        }
-
-        OpcodeID getOpcodeID(const Instruction&);
-        OpcodeID getOpcodeID(const UnlinkedInstruction&);
-
-        bool isOpcode(Opcode);
 
         JSValue executeProgram(const SourceCode&, CallFrame*, JSObject* thisObj);
+        JSValue executeModuleProgram(ModuleProgramExecutable*, CallFrame*, JSModuleEnvironment*);
         JSValue executeCall(CallFrame*, JSObject* function, CallType, const CallData&, JSValue thisValue, const ArgList&);
         JSObject* executeConstruct(CallFrame*, JSObject* function, ConstructType, const ConstructData&, const ArgList&, JSValue newTarget);
         JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*);
-        JSValue execute(ModuleProgramExecutable*, CallFrame*, JSModuleEnvironment*);
 
         void getArgumentsData(CallFrame*, JSFunction*&, ptrdiff_t& firstParameterIndex, Register*& argv, int& argc);
         
@@ -162,21 +142,16 @@ namespace JSC {
 
         void dumpRegisters(CallFrame*);
         
-        bool isCallBytecode(Opcode opcode) { return opcode == getOpcode(op_call) || opcode == getOpcode(op_construct) || opcode == getOpcode(op_call_eval) || opcode == getOpcode(op_tail_call); }
-
         VM& m_vm;
 #if !ENABLE(JIT)
         CLoopStack m_cloopStack;
 #endif
         
 #if ENABLE(COMPUTED_GOTO_OPCODES)
-        Opcode* m_opcodeTable; // Maps OpcodeID => Opcode for compiling
-        HashMap<Opcode, OpcodeID> m_opcodeIDTable; // Maps Opcode => OpcodeID for decompiling
-#endif
-
-#if !ASSERT_DISABLED
-        bool m_initialized;
-#endif
+#if !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
+        static HashMap<Opcode, OpcodeID>& opcodeIDTable(); // Maps Opcode => OpcodeID.
+#endif // !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
+#endif // ENABLE(COMPUTED_GOTO_OPCODES)
     };
 
     JSValue eval(CallFrame*);

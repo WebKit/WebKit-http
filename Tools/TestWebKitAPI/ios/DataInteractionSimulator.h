@@ -23,10 +23,55 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #if ENABLE(DATA_INTERACTION)
 
 #import "TestWKWebView.h"
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <UIKit/NSString+UIItemProvider.h>
+#import <UIKit/NSURL+UIItemProvider.h>
+#import <UIKit/UIImage+UIItemProvider.h>
 #import <UIKit/UIItemProvider.h>
+#import <UIKit/UIItemProvider_Private.h>
+#else
+
+@interface NSURL ()
+@property (nonatomic, copy, setter=_setTitle:) NSString *_title;
+@end
+
+@interface UIItemProvider : NSItemProvider
+@property (nonatomic) CGSize estimatedDisplayedSize;
+@end
+
+#define UIItemProviderRepresentationOptionsVisibilityAll NSItemProviderRepresentationVisibilityAll
+
+@protocol UIItemProviderReading <NSItemProviderReading>
+
+@required
+- (instancetype)initWithItemProviderData:(NSData *)data typeIdentifier:(NSString *)typeIdentifier error:(NSError **)outError;
+
+@end
+
+@protocol UIItemProviderWriting <NSItemProviderWriting>
+
+@required
+- (NSProgress *)loadDataWithTypeIdentifier:(NSString *)typeIdentifier forItemProviderCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
+
+@end
+
+@interface NSAttributedString () <UIItemProviderReading, UIItemProviderWriting>
+@end
+@interface NSString () <UIItemProviderReading, UIItemProviderWriting>
+@end
+@interface NSURL () <UIItemProviderReading, UIItemProviderWriting>
+@end
+@interface UIImage () <UIItemProviderReading, UIItemProviderWriting>
+@end
+
+#endif
+
 #import <UIKit/UIKit.h>
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/_WKInputDelegate.h>
@@ -60,6 +105,7 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
     RetainPtr<NSArray *> _finalSelectionRects;
     CGPoint _startLocation;
     CGPoint _endLocation;
+    CGRect _lastKnownDragCaretRect;
 
     bool _isDoneWaitingForInputSession;
     BOOL _shouldPerformOperation;
@@ -74,8 +120,10 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
 
 @property (nonatomic) BOOL allowsFocusToStartInputSession;
 @property (nonatomic) BOOL shouldEnsureUIApplication;
+@property (nonatomic) BOOL shouldAllowMoveOperation;
 @property (nonatomic) BlockPtr<BOOL(_WKActivatedElementInfo *)> showCustomActionSheetBlock;
-@property (nonatomic) BlockPtr<NSArray *(NSArray *)> convertItemProvidersBlock;
+@property (nonatomic) BlockPtr<NSArray *(UIItemProvider *, NSArray *, NSDictionary *)> convertItemProvidersBlock;
+@property (nonatomic) BlockPtr<NSArray *(id <UIDropSession>)> overridePerformDropBlock;
 @property (nonatomic, strong) NSArray *externalItemProviders;
 @property (nonatomic) BlockPtr<NSUInteger(NSUInteger, id)> overrideDataInteractionOperationBlock;
 @property (nonatomic) BlockPtr<void(BOOL, NSArray *)> dataInteractionOperationCompletionBlock;
@@ -84,6 +132,7 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
 @property (nonatomic, readonly) NSArray *observedEventNames;
 @property (nonatomic, readonly) NSArray *finalSelectionRects;
 @property (nonatomic, readonly) DataInteractionPhase phase;
+@property (nonatomic, readonly) CGRect lastKnownDragCaretRect;
 
 @end
 

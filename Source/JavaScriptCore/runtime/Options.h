@@ -112,7 +112,8 @@ typedef const char* optionString;
     v(optionString, configFile, nullptr, Normal, "file to configure JSC options and logging location") \
     \
     v(bool, useLLInt,  true, Normal, "allows the LLINT to be used if true") \
-    v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
+    v(bool, useJIT,    true, Normal, "allows the executable pages to be allocated for JIT and thunks if true") \
+    v(bool, useBaselineJIT, true, Normal, "allows the baseline JIT to be used if true") \
     v(bool, useDFGJIT, true, Normal, "allows the DFG JIT to be used if true") \
     v(bool, useRegExpJIT, true, Normal, "allows the RegExp JIT to be used if true") \
     v(bool, useDOMJIT, true, Normal, "allows the DOMJIT to be used if true") \
@@ -157,6 +158,7 @@ typedef const char* optionString;
     v(optionRange, bytecodeRangeToFTLCompile, 0, Normal, "bytecode size range to allow FTL compilation on, e.g. 1:100") \
     v(optionString, jitWhitelist, nullptr, Normal, "file with list of function signatures to allow compilation on") \
     v(optionString, dfgWhitelist, nullptr, Normal, "file with list of function signatures to allow DFG compilation on") \
+    v(optionString, ftlWhitelist, nullptr, Normal, "file with list of function signatures to allow FTL compilation on") \
     v(bool, dumpSourceAtDFGTime, false, Normal, "dumps source code of JS function being DFG compiled") \
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
     v(bool, dumpGraphAfterParsing, false, Normal, nullptr) \
@@ -175,6 +177,7 @@ typedef const char* optionString;
     v(bool, validateGraphAtEachPhase, false, Normal, nullptr) \
     v(bool, verboseValidationFailure, false, Normal, nullptr) \
     v(bool, verboseOSR, false, Normal, nullptr) \
+    v(bool, verboseDFGOSRExit, false, Normal, nullptr) \
     v(bool, verboseFTLOSRExit, false, Normal, nullptr) \
     v(bool, verboseCallLink, false, Normal, nullptr) \
     v(bool, verboseCompilationQueue, false, Normal, nullptr) \
@@ -186,6 +189,7 @@ typedef const char* optionString;
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
+    v(bool, verboseDFGFailure, false, Normal, nullptr) \
     v(bool, verboseFTLToJSThunk, false, Normal, nullptr) \
     v(bool, verboseFTLFailure, false, Normal, nullptr) \
     v(bool, alwaysComputeHash, false, Normal, nullptr) \
@@ -206,7 +210,7 @@ typedef const char* optionString;
     v(double, mediumHeapRAMFraction, 0.5, Normal, nullptr) \
     v(double, mediumHeapGrowthFactor, 1.5, Normal, nullptr) \
     v(double, largeHeapGrowthFactor, 1.24, Normal, nullptr) \
-    v(double, criticalGCMemoryThreshold, 0.88, Normal, "percent memory in use the GC considers critical.  The collector is much more aggressive above this threshold") \
+    v(double, criticalGCMemoryThreshold, 0.80, Normal, "percent memory in use the GC considers critical.  The collector is much more aggressive above this threshold") \
     v(double, minimumMutatorUtilization, 0, Normal, nullptr) \
     v(double, maximumMutatorUtilization, 0.7, Normal, nullptr) \
     v(double, epsilonMutatorUtilization, 0.01, Normal, nullptr) \
@@ -363,7 +367,7 @@ typedef const char* optionString;
     v(gcLogLevel, logGC, GCLogging::None, Normal, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, Normal, nullptr) \
     v(bool, gcAtEnd, false, Normal, "If true, the jsc CLI will do a GC before exiting") \
-    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.")\
+    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.") \
     v(unsigned, gcMaxHeapSize, 0, Normal, nullptr) \
     v(unsigned, forceRAMSize, 0, Normal, nullptr) \
     v(bool, recordGCPauseTimes, false, Normal, nullptr) \
@@ -424,9 +428,13 @@ typedef const char* optionString;
     v(unsigned, watchdog, 0, Normal, "watchdog timeout (0 = Disabled, N = a timeout period of N milliseconds)") \
     v(bool, usePollingTraps, false, Normal, "use polling (instead of signalling) VM traps") \
     \
+    v(bool, useMachForExceptions, true, Normal, "Use mach exceptions rather than signals to handle faults and pass thread messages. (This does nothing on platforms without mach)") \
+    \
     v(bool, useICStats, false, Normal, nullptr) \
     \
     v(unsigned, prototypeHitCountForLLIntCaching, 2, Normal, "Number of prototype property hits before caching a prototype in the LLInt. A count of 0 means never cache.") \
+    \
+    v(bool, dumpCompiledRegExpPatterns, false, Normal, nullptr) \
     \
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \
@@ -447,6 +455,7 @@ typedef const char* optionString;
     v(unsigned, webAssemblyBBQOptimizationLevel, 1, Normal, "B3 Optimization level for BBQ Web Assembly module compilations.") \
     v(unsigned, webAssemblyOMGOptimizationLevel, Options::defaultB3OptLevel(), Normal, "B3 Optimization level for OMG Web Assembly module compilations.") \
     \
+    v(bool, useBBQTierUpChecks, true, Normal, "Enables tier up checks for our BBQ code.") \
     v(unsigned, webAssemblyOMGTierUpCount, 5000, Normal, "The countdown before we tier up a function to OMG.") \
     v(unsigned, webAssemblyLoopDecrement, 15, Normal, "The amount the tier up countdown is decremented on each loop backedge.") \
     v(unsigned, webAssemblyFunctionEntryDecrement, 1, Normal, "The amount the tier up countdown is decremented on each function entry.") \
@@ -457,7 +466,10 @@ typedef const char* optionString;
     v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
     v(unsigned, webAssemblyFastMemoryPreallocateCount, 0, Normal, "WebAssembly fast memories can be pre-allocated at program startup and remain cached to avoid fragmentation leading to bounds-checked memory. This number is an upper bound on initial allocation as well as total count of fast memories. Zero means no pre-allocation, no caching, and no limit to the number of runtime allocations.") \
     v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.") \
-    v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.")
+    v(bool, useFastTLSForWasmContext, true, Normal, "If true (and fast TLS is enabled), we will store context in fast TLS. If false, we will pin it to a register.") \
+    v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \
+    v(bool, useObjectRestSpread, true, Normal, "If true, we will enable Object Rest/Spread feature.") \
+    v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.")
 
 
 enum OptionEquivalence {

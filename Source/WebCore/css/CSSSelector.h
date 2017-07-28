@@ -23,7 +23,6 @@
 
 #include "QualifiedName.h"
 #include "RenderStyleConstants.h"
-#include <wtf/Noncopyable.h>
 
 namespace WebCore {
     class CSSSelectorList;
@@ -236,7 +235,7 @@ namespace WebCore {
         const AtomicString& serializingValue() const;
         const QualifiedName& attribute() const;
         const AtomicString& attributeCanonicalLocalName() const;
-        const AtomicString& argument() const { return m_hasRareData ? m_data.m_rareData->m_argument : nullAtom; }
+        const AtomicString& argument() const { return m_hasRareData ? m_data.m_rareData->m_argument : nullAtom(); }
         bool attributeValueMatchingIsCaseInsensitive() const;
         const Vector<AtomicString>* langArgumentList() const { return m_hasRareData ? m_data.m_rareData->m_langArgumentList.get() : nullptr; }
         const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : nullptr; }

@@ -38,9 +38,10 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "IntRect.h"
+#include "Logging.h"
 #include "MediaSampleAVFObjC.h"
-#include <webrtc/common_video/include/corevideo_frame_buffer.h>
 #include <webrtc/common_video/libyuv/include/webrtc_libyuv.h>
+#include <webrtc/sdk/objc/Framework/Classes/Video/corevideo_frame_buffer.h>
 #include <wtf/MainThread.h>
 
 #include "CoreMediaSoftLink.h"
@@ -97,7 +98,7 @@ void RealtimeIncomingVideoSource::stopProducingData()
 
 CVPixelBufferRef RealtimeIncomingVideoSource::pixelBufferFromVideoFrame(const webrtc::VideoFrame& frame)
 {
-    if (muted() || !enabled()) {
+    if (muted()) {
         if (!m_blackFrame || m_blackFrameWidth != frame.width() || m_blackFrameHeight != frame.height()) {
             CVPixelBufferRef pixelBuffer = nullptr;
             auto status = CVPixelBufferCreate(kCFAllocatorDefault, frame.width(), frame.height(), kCVPixelFormatType_420YpCbCr8Planar, nullptr, &pixelBuffer);
@@ -120,13 +121,19 @@ CVPixelBufferRef RealtimeIncomingVideoSource::pixelBufferFromVideoFrame(const we
         return m_blackFrame.get();
     }
     auto buffer = frame.video_frame_buffer();
-    return static_cast<CVPixelBufferRef>(buffer->native_handle());
+    ASSERT(buffer->type() == webrtc::VideoFrameBuffer::Type::kNative);
+    return static_cast<webrtc::CoreVideoFrameBuffer&>(*buffer).pixel_buffer();
 }
 
 void RealtimeIncomingVideoSource::OnFrame(const webrtc::VideoFrame& frame)
 {
     if (!isProducingData())
         return;
+
+#if !RELEASE_LOG_DISABLED
+    if (!(++m_numberOfFrames % 30))
+        RELEASE_LOG(MediaStream, "RealtimeIncomingVideoSource::OnFrame %zu frame", m_numberOfFrames);
+#endif
 
     auto pixelBuffer = pixelBufferFromVideoFrame(frame);
 

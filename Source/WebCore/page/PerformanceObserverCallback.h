@@ -25,8 +25,7 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,9 +36,7 @@ class PerformanceObserverEntryList;
 class PerformanceObserverCallback : public RefCounted<PerformanceObserverCallback> {
 public:
     virtual ~PerformanceObserverCallback() { }
-    virtual bool handleEvent(PerformanceObserverEntryList*, PerformanceObserver*) = 0;
+    virtual CallbackResult<void> handleEvent(PerformanceObserverEntryList&, PerformanceObserver&) = 0;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

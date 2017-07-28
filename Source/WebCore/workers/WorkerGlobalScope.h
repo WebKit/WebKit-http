@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "Base64Utilities.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
+#include "Supplementable.h"
 #include "URL.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
@@ -82,12 +83,13 @@ public:
     virtual ExceptionOr<void> importScripts(const Vector<String>& urls);
     WorkerNavigator& navigator() const;
 
-    int setTimeout(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setTimeout(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearTimeout(int timeoutId);
-    int setInterval(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setInterval(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearInterval(int timeoutId);
 
     bool isContextThread() const final;
+    bool isSecureContext() const final;
 
     WorkerNavigator* optionalNavigator() const { return m_navigator.get(); }
     WorkerLocation* optionalLocation() const { return m_location.get(); }
@@ -97,13 +99,10 @@ public:
 
     bool isClosing() { return m_closing; }
 
-    void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&);
+    void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
     Crypto& crypto();
-
-#if ENABLE(WEB_TIMING)
     Performance& performance() const;
-#endif
 
     void removeAllEventListeners() final;
 
@@ -120,6 +119,9 @@ private:
     void derefEventTarget() final { deref(); }
 
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) final;
+
+    // The following addMessage and addConsoleMessage functions are deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState*, unsigned long requestIdentifier) final;
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier) final;
 
@@ -129,6 +131,7 @@ private:
     URL completeURL(const String&) const final;
     String userAgent(const URL&) const final;
     void disableEval(const String& errorMessage) final;
+    void disableWebAssembly(const String& errorMessage) final;
     EventTarget* errorEventTarget() final;
     WorkerEventQueue& eventQueue() const final;
     String resourceRequestIdentifier() const final { return m_identifier; }
@@ -179,10 +182,7 @@ private:
     RefPtr<SocketProvider> m_socketProvider;
 #endif
 
-#if ENABLE(WEB_TIMING)
     RefPtr<Performance> m_performance;
-#endif
-
     mutable RefPtr<Crypto> m_crypto;
 };
 

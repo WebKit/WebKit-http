@@ -894,6 +894,16 @@ public:
         m_assembler.movq_rm(scratchRegister(), address.offset, address.base, address.index, address.scale);
     }
     
+    void storeZero64(ImplicitAddress address)
+    {
+        store64(TrustedImm32(0), address);
+    }
+    
+    void storeZero64(BaseIndex address)
+    {
+        store64(TrustedImm32(0), address);
+    }
+    
     DataLabel32 store64WithAddressOffsetPatch(RegisterID src, Address address)
     {
         padBeforePatch();
@@ -1447,6 +1457,16 @@ public:
         return MacroAssemblerX86Common::branchTest8(cond, Address(scratchRegister()), mask8);
     }
     
+    void xchg64(RegisterID reg, Address address)
+    {
+        m_assembler.xchgq_rm(reg, address.offset, address.base);
+    }
+    
+    void xchg64(RegisterID reg, BaseIndex address)
+    {
+        m_assembler.xchgq_rm(reg, address.offset, address.base, address.index, address.scale);
+    }
+    
     void atomicStrongCAS64(StatusCondition cond, RegisterID expectedAndResult, RegisterID newValue, Address address, RegisterID result)
     {
         atomicStrongCAS(cond, expectedAndResult, result, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
@@ -1683,36 +1703,6 @@ public:
     {
         m_assembler.lock();
         m_assembler.xchgq_rm(reg, address.offset, address.base, address.index, address.scale);
-    }
-    
-    void loadAcq64(Address src, RegisterID dest)
-    {
-        load64(src, dest);
-    }
-    
-    void loadAcq64(BaseIndex src, RegisterID dest)
-    {
-        load64(src, dest);
-    }
-    
-    void storeRel64(RegisterID src, Address dest)
-    {
-        store64(src, dest);
-    }
-    
-    void storeRel64(RegisterID src, BaseIndex dest)
-    {
-        store64(src, dest);
-    }
-    
-    void storeRel64(TrustedImm32 imm, Address dest)
-    {
-        store64(imm, dest);
-    }
-    
-    void storeRel64(TrustedImm32 imm, BaseIndex dest)
-    {
-        store64(imm, dest);
     }
     
 #if ENABLE(FAST_TLS_JIT)

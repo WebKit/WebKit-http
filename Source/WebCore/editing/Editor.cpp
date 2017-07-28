@@ -48,6 +48,7 @@
 #include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
@@ -64,7 +65,6 @@
 #include "InsertListCommand.h"
 #include "InsertTextCommand.h"
 #include "KeyboardEvent.h"
-#include "KillRing.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "ModifySelectionListLevel.h"
@@ -83,7 +83,6 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SimplifyMarkupCommand.h"
-#include "Sound.h"
 #include "SpellChecker.h"
 #include "SpellingCorrectionCommand.h"
 #include "StyleProperties.h"
@@ -97,6 +96,8 @@
 #include "UserTypingGestureIndicator.h"
 #include "VisibleUnits.h"
 #include "markup.h"
+#include <pal/system/Sound.h>
+#include <pal/text/KillRing.h>
 #include <wtf/unicode/CharacterNames.h>
 
 #if PLATFORM(MAC)
@@ -182,6 +183,44 @@ void ClearTextCommand::CreateAndApply(const RefPtr<Frame> frame)
 using namespace HTMLNames;
 using namespace WTF;
 using namespace Unicode;
+
+TemporarySelectionChange::TemporarySelectionChange(Frame& frame, std::optional<VisibleSelection> temporarySelection, TemporarySelectionOptions options)
+    : m_frame(frame)
+    , m_options(options)
+    , m_wasIgnoringSelectionChanges(frame.editor().ignoreSelectionChanges())
+#if PLATFORM(IOS)
+    , m_appearanceUpdatesWereEnabled(frame.selection().isUpdateAppearanceEnabled())
+#endif
+{
+#if PLATFORM(IOS)
+    if (options & TemporarySelectionOptionEnableAppearanceUpdates)
+        frame.selection().setUpdateAppearanceEnabled(true);
+#endif
+
+    if (options & TemporarySelectionOptionIgnoreSelectionChanges)
+        frame.editor().setIgnoreSelectionChanges(true);
+
+    if (temporarySelection) {
+        m_selectionToRestore = frame.selection().selection();
+        frame.selection().setSelection(temporarySelection.value());
+    }
+}
+
+TemporarySelectionChange::~TemporarySelectionChange()
+{
+    if (m_selectionToRestore)
+        m_frame->selection().setSelection(m_selectionToRestore.value());
+
+    if (m_options & TemporarySelectionOptionIgnoreSelectionChanges) {
+        auto revealSelection = m_options & TemporarySelectionOptionRevealSelection ? Editor::RevealSelection::Yes : Editor::RevealSelection::No;
+        m_frame->editor().setIgnoreSelectionChanges(m_wasIgnoringSelectionChanges, revealSelection);
+    }
+
+#if PLATFORM(IOS)
+    if (m_options & TemporarySelectionOptionEnableAppearanceUpdates)
+        m_frame->selection().setUpdateAppearanceEnabled(m_appearanceUpdatesWereEnabled);
+#endif
+}
 
 // When an event handler has moved the selection outside of a text control
 // we should use the target control's selection for this editing operation.
@@ -424,7 +463,7 @@ void Editor::clearText()
 
 void Editor::pasteAsPlainText(const String& pastingText, bool smartReplace)
 {
-    Node* target = findEventTargetFromSelection();
+    Element* target = findEventTargetFromSelection();
     if (!target)
         return;
     target->dispatchEvent(TextEvent::createForPlainTextPaste(document().domWindow(), pastingText, smartReplace));
@@ -432,7 +471,7 @@ void Editor::pasteAsPlainText(const String& pastingText, bool smartReplace)
 
 void Editor::pasteAsFragment(Ref<DocumentFragment>&& pastingFragment, bool smartReplace, bool matchStyle, MailBlockquoteHandling respectsMailBlockquote)
 {
-    Node* target = findEventTargetFromSelection();
+    Element* target = findEventTargetFromSelection();
     if (!target)
         return;
     target->dispatchEvent(TextEvent::createForFragmentPaste(document().domWindow(), WTFMove(pastingFragment), smartReplace, matchStyle, respectsMailBlockquote));
@@ -740,7 +779,7 @@ void Editor::clearLastEditCommand()
 // the event handler NOT setting the return value to false
 bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessPolicy policy)
 {
-    Node* target = findEventTargetFromSelection();
+    Element* target = findEventTargetFromSelection();
     if (!target)
         return true;
 
@@ -765,9 +804,9 @@ bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessP
     return !noDefaultProcessing;
 }
 
-Node* Editor::findEventTargetFrom(const VisibleSelection& selection) const
+Element* Editor::findEventTargetFrom(const VisibleSelection& selection) const
 {
-    Node* target = selection.start().element();
+    Element* target = selection.start().element();
     if (!target)
         target = document().bodyOrFrameset();
     if (!target)
@@ -776,7 +815,7 @@ Node* Editor::findEventTargetFrom(const VisibleSelection& selection) const
     return target;
 }
 
-Node* Editor::findEventTargetFromSelection() const
+Element* Editor::findEventTargetFromSelection() const
 {
     return findEventTargetFrom(m_frame.selection().selection());
 }
@@ -1042,7 +1081,7 @@ void Editor::reappliedEditing(EditCommandComposition& composition)
 
 Editor::Editor(Frame& frame)
     : m_frame(frame)
-    , m_killRing(std::make_unique<KillRing>())
+    , m_killRing(std::make_unique<PAL::KillRing>())
     , m_spellChecker(std::make_unique<SpellChecker>(frame))
     , m_alternativeTextController(std::make_unique<AlternativeTextController>(frame))
     , m_editorUIUpdateTimer(*this, &Editor::editorUIUpdateTimerFired)
@@ -1195,7 +1234,7 @@ void Editor::cut()
     if (tryDHTMLCut())
         return; // DHTML did the whole operation
     if (!canCut()) {
-        systemBeep();
+        PAL::systemBeep();
         return;
     }
 
@@ -1207,7 +1246,7 @@ void Editor::copy()
     if (tryDHTMLCopy())
         return; // DHTML did the whole operation
     if (!canCopy()) {
-        systemBeep();
+        PAL::systemBeep();
         return;
     }
 
@@ -1303,7 +1342,7 @@ void Editor::pasteAsPlainText()
 void Editor::performDelete()
 {
     if (!canDelete()) {
-        systemBeep();
+        PAL::systemBeep();
         return;
     }
 
@@ -2743,11 +2782,16 @@ void Editor::updateMarkersForWordsAffectedByEditing(bool doNotRemoveIfSelectionA
     for (auto* marker : markers)
         m_alternativeTextController->removeDictationAlternativesForMarker(*marker);
 
-#if PLATFORM(IOS)
-    document().markers().removeMarkers(wordRange.ptr(), DocumentMarker::Spelling | DocumentMarker::CorrectionIndicator | DocumentMarker::SpellCheckingExemption | DocumentMarker::DictationAlternatives | DocumentMarker::DictationPhraseWithAlternatives, DocumentMarkerController::RemovePartiallyOverlappingMarker);
-#else
-    document().markers().removeMarkers(wordRange.ptr(), DocumentMarker::Spelling | DocumentMarker::Grammar | DocumentMarker::CorrectionIndicator | DocumentMarker::SpellCheckingExemption | DocumentMarker::DictationAlternatives, DocumentMarkerController::RemovePartiallyOverlappingMarker);
+    OptionSet<DocumentMarker::MarkerType> markerTypesToRemove {
+        DocumentMarker::CorrectionIndicator,
+        DocumentMarker::DictationAlternatives,
+        DocumentMarker::SpellCheckingExemption,
+        DocumentMarker::Spelling,
+#if !PLATFORM(IOS)
+        DocumentMarker::Grammar,
 #endif
+    };
+    document().markers().removeMarkers(wordRange.ptr(), markerTypesToRemove, DocumentMarkerController::RemovePartiallyOverlappingMarker);
     document().markers().clearDescriptionOnMarkersIntersectingRange(wordRange, DocumentMarker::Replacement);
 }
 

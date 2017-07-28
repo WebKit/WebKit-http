@@ -28,6 +28,7 @@
 #include "Chrome.h"
 #include "CommonVM.h"
 #include "DOMWindow.h"
+#include "Document.h"
 #include "Frame.h"
 #include "InspectorController.h"
 #include "JSDOMBindingSecurity.h"
@@ -77,35 +78,28 @@ const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = {
     &defaultLanguage
 };
 
-JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSDOMWindowShell* shell)
-    : JSDOMGlobalObject(vm, structure, shell->world(), &s_globalObjectMethodTable)
+JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSDOMWindowProxy* proxy)
+    : JSDOMGlobalObject(vm, structure, proxy->world(), &s_globalObjectMethodTable)
     , m_windowCloseWatchpoints((window && window->frame()) ? IsWatched : IsInvalidated)
     , m_wrapped(WTFMove(window))
-    , m_shell(shell)
+    , m_proxy(proxy)
 {
 }
 
-void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowShell* shell)
+void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowProxy* proxy)
 {
-    Base::finishCreation(vm, shell);
+    Base::finishCreation(vm, proxy);
     ASSERT(inherits(vm, info()));
 
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->document, jsNull(), DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->window, m_shell, DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->window, m_proxy, DontDelete | ReadOnly),
     };
 
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
 
     if (m_wrapped && m_wrapped->frame() && m_wrapped->frame()->settings().needsSiteSpecificQuirks())
         setNeedsSiteSpecificQuirks(true);
-}
-
-void JSDOMWindowBase::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    JSDOMWindowBase* thisObject = jsCast<JSDOMWindowBase*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
 }
 
 void JSDOMWindowBase::destroy(JSCell* cell)
@@ -242,56 +236,56 @@ void JSDOMWindowBase::queueTaskToEventLoop(JSGlobalObject& object, Ref<JSC::Micr
     MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
 }
 
-void JSDOMWindowBase::willRemoveFromWindowShell()
+void JSDOMWindowBase::willRemoveFromWindowProxy()
 {
     setCurrentEvent(0);
 }
 
-JSDOMWindowShell* JSDOMWindowBase::shell() const
+JSDOMWindowProxy* JSDOMWindowBase::proxy() const
 {
-    return m_shell;
+    return m_proxy;
 }
 
 // JSDOMGlobalObject* is ignored, accessing a window in any context will
 // use that DOMWindow's prototype chain.
-JSValue toJS(ExecState* exec, JSDOMGlobalObject*, DOMWindow& domWindow)
+JSValue toJS(ExecState* state, JSDOMGlobalObject*, DOMWindow& domWindow)
 {
-    return toJS(exec, domWindow);
+    return toJS(state, domWindow);
 }
 
-JSValue toJS(ExecState* exec, DOMWindow& domWindow)
+JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject*, Frame& frame)
 {
-    Frame* frame = domWindow.frame();
-    if (!frame)
-        return jsNull();
-    return frame->script().windowShell(currentWorld(exec));
+    return toJS(state, frame);
 }
 
-JSDOMWindow* toJSDOMWindow(Frame* frame, DOMWrapperWorld& world)
+JSValue toJS(ExecState* state, DOMWindow& domWindow)
 {
-    if (!frame)
-        return 0;
-    return frame->script().windowShell(world)->window();
+    return toJS(state, domWindow.frame());
+}
+
+JSDOMWindow* toJSDOMWindow(Frame& frame, DOMWrapperWorld& world)
+{
+    return frame.script().windowProxy(world)->window();
 }
 
 JSDOMWindow* toJSDOMWindow(JSC::VM& vm, JSValue value)
 {
     if (!value.isObject())
-        return 0;
+        return nullptr;
 
     while (!value.isNull()) {
         JSObject* object = asObject(value);
         const ClassInfo* classInfo = object->classInfo(vm);
         if (classInfo == JSDOMWindow::info())
             return jsCast<JSDOMWindow*>(object);
-        if (classInfo == JSDOMWindowShell::info())
-            return jsCast<JSDOMWindowShell*>(object)->window();
+        if (classInfo == JSDOMWindowProxy::info())
+            return jsCast<JSDOMWindowProxy*>(object)->window();
         value = object->getPrototypeDirect();
     }
-    return 0;
+    return nullptr;
 }
 
-DOMWindow& incumbentDOMWindow(ExecState* exec)
+DOMWindow& incumbentDOMWindow(ExecState& state)
 {
     class GetCallerGlobalObjectFunctor {
     public:
@@ -325,18 +319,28 @@ DOMWindow& incumbentDOMWindow(ExecState* exec)
     };
 
     GetCallerGlobalObjectFunctor iter;
-    exec->iterate(iter);
-    return iter.globalObject() ? asJSDOMWindow(iter.globalObject())->wrapped() : firstDOMWindow(exec);
+    state.iterate(iter);
+    return iter.globalObject() ? asJSDOMWindow(iter.globalObject())->wrapped() : firstDOMWindow(state);
 }
 
-DOMWindow& activeDOMWindow(ExecState* exec)
+DOMWindow& activeDOMWindow(ExecState& state)
 {
-    return asJSDOMWindow(exec->lexicalGlobalObject())->wrapped();
+    return asJSDOMWindow(state.lexicalGlobalObject())->wrapped();
 }
 
-DOMWindow& firstDOMWindow(ExecState* exec)
+DOMWindow& firstDOMWindow(ExecState& state)
 {
-    return asJSDOMWindow(exec->vmEntryGlobalObject())->wrapped();
+    return asJSDOMWindow(state.vmEntryGlobalObject())->wrapped();
+}
+
+Document* responsibleDocument(ExecState& state)
+{
+    CallerFunctor functor;
+    state.iterate(functor);
+    auto* callerFrame = functor.callerFrame();
+    if (!callerFrame)
+        return nullptr;
+    return asJSDOMWindow(callerFrame->lexicalGlobalObject())->wrapped().document();
 }
 
 void JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(DOMWindow* window)
@@ -346,7 +350,7 @@ void JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(DOMWindow* window)
     Vector<Ref<DOMWrapperWorld>> wrapperWorlds;
     clientData->getAllWorlds(wrapperWorlds);
     for (unsigned i = 0; i < wrapperWorlds.size(); ++i) {
-        DOMObjectWrapperMap& wrappers = wrapperWorlds[i]->m_wrappers;
+        auto& wrappers = wrapperWorlds[i]->wrappers();
         auto result = wrappers.find(window);
         if (result == wrappers.end())
             continue;

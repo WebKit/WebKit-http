@@ -35,6 +35,7 @@ namespace WebCore {
 
 static RefPtr<UserGestureToken>& currentToken()
 {
+    ASSERT(isMainThread());
     static NeverDestroyed<RefPtr<UserGestureToken>> token;
     return token;
 }
@@ -45,7 +46,7 @@ UserGestureToken::~UserGestureToken()
         observer(*this);
 }
 
-UserGestureIndicator::UserGestureIndicator(std::optional<ProcessingUserGestureState> state, Document* document)
+UserGestureIndicator::UserGestureIndicator(std::optional<ProcessingUserGestureState> state, Document* document, UserGestureType gestureType)
     : m_previousToken(currentToken())
 {
     // Silently ignore UserGestureIndicators on non main threads.
@@ -53,20 +54,22 @@ UserGestureIndicator::UserGestureIndicator(std::optional<ProcessingUserGestureSt
         return;
 
     if (state)
-        currentToken() = UserGestureToken::create(state.value());
+        currentToken() = UserGestureToken::create(state.value(), gestureType);
 
     if (document && currentToken()->processingUserGesture()) {
         document->updateLastHandledUserGestureTimestamp(MonotonicTime::now());
-        ResourceLoadObserver::sharedObserver().logUserInteractionWithReducedTimeResolution(*document);
+        ResourceLoadObserver::shared().logUserInteractionWithReducedTimeResolution(document->topDocument());
         document->topDocument().setUserDidInteractWithPage(true);
     }
 }
 
 UserGestureIndicator::UserGestureIndicator(RefPtr<UserGestureToken> token)
-    : m_previousToken(currentToken())
 {
     if (!isMainThread())
         return;
+
+    // It is only safe to use currentToken() on the main thread.
+    m_previousToken = currentToken();
 
     if (token)
         currentToken() = token;

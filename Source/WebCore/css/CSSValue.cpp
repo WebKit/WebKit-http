@@ -101,7 +101,7 @@ CSSValue::Type CSSValue::cssValueType() const
     return CSS_CUSTOM;
 }
 
-bool CSSValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (is<CSSValueList>(*this))
         return downcast<CSSValueList>(*this).traverseSubresources(handler);
@@ -452,15 +452,15 @@ void CSSValue::destroy()
     ASSERT_NOT_REACHED();
 }
 
-Ref<DeprecatedCSSOMValue> CSSValue::createDeprecatedCSSOMWrapper() const
+Ref<DeprecatedCSSOMValue> CSSValue::createDeprecatedCSSOMWrapper(CSSStyleDeclaration& styleDeclaration) const
 {
     if (isImageValue() || isCursorImageValue())
-        return downcast<CSSImageValue>(this)->createDeprecatedCSSOMWrapper();
+        return downcast<CSSImageValue>(this)->createDeprecatedCSSOMWrapper(styleDeclaration);
     if (isPrimitiveValue())
-        return DeprecatedCSSOMPrimitiveValue::create(downcast<CSSPrimitiveValue>(*this));
+        return DeprecatedCSSOMPrimitiveValue::create(downcast<CSSPrimitiveValue>(*this), styleDeclaration);
     if (isValueList())
-        return DeprecatedCSSOMValueList::create(downcast<CSSValueList>(*this));
-    return DeprecatedCSSOMComplexValue::create(*this);
+        return DeprecatedCSSOMValueList::create(downcast<CSSValueList>(*this), styleDeclaration);
+    return DeprecatedCSSOMComplexValue::create(*this, styleDeclaration);
 }
 
 bool CSSValue::treatAsInheritedValue(CSSPropertyID propertyID) const

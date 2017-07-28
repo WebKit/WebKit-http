@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CommonVM.h"
 
+#include "Frame.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "WebCoreJSClientData.h"
@@ -54,7 +55,7 @@ VM& commonVMSlow()
     g_commonVMOrNull = &VM::createLeaked(LargeHeap).leakRef();
     g_commonVMOrNull->heap.acquireAccess(); // At any time, we may do things that affect the GC.
 #if PLATFORM(IOS)
-    g_commonVMOrNull->heap.setRunLoop(WebThreadRunLoop());
+    g_commonVMOrNull->setRunLoop(WebThreadRunLoop());
     g_commonVMOrNull->heap.machineThreads().addCurrentThread();
 #endif
     
@@ -63,6 +64,20 @@ VM& commonVMSlow()
     JSVMClientData::initNormalWorld(g_commonVMOrNull);
     
     return *g_commonVMOrNull;
+}
+
+Frame* lexicalFrameFromCommonVM()
+{
+    if (auto* topCallFrame = commonVM().topCallFrame) {
+        if (auto* globalObject = JSC::jsCast<JSDOMGlobalObject*>(topCallFrame->lexicalGlobalObject())) {
+            if (auto* window = jsDynamicDowncast<JSDOMWindow*>(commonVM(), globalObject)) {
+                if (auto* frame = window->wrapped().frame())
+                    return frame;
+            }
+        }
+    }
+
+    return nullptr;
 }
 
 void addImpureProperty(const AtomicString& propertyName)

@@ -164,3 +164,9 @@ if (USE_HOLE_PUNCH_EXTERNAL)
         "${WEBCORE_DIR}/platform/graphics/holepunch"
     )
 endif ()
+
+if (USE_CAIRO)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/gstreamer/ImageGStreamerCairo.cpp
+    )
+endif ()

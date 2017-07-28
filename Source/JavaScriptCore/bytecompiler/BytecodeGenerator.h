@@ -45,7 +45,6 @@
 #include "UnlinkedCodeBlock.h"
 #include <functional>
 #include <wtf/CheckedArithmetic.h>
-#include <wtf/HashTraits.h>
 #include <wtf/SegmentedVector.h>
 #include <wtf/SetForScope.h>
 #include <wtf/Vector.h>
@@ -204,6 +203,8 @@ namespace JSC {
 
     class StructureForInContext : public ForInContext {
     public:
+        using GetInst = std::tuple<unsigned, int, UnlinkedValueProfile>;
+
         StructureForInContext(RegisterID* localRegister, RegisterID* indexRegister, RegisterID* propertyRegister, RegisterID* enumeratorRegister)
             : ForInContext(localRegister)
             , m_indexRegister(indexRegister)
@@ -221,10 +222,18 @@ namespace JSC {
         RegisterID* property() const { return m_propertyRegister.get(); }
         RegisterID* enumerator() const { return m_enumeratorRegister.get(); }
 
+        void addGetInst(unsigned instIndex, int propertyRegIndex, UnlinkedValueProfile valueProfile)
+        {
+            m_getInsts.append(GetInst { instIndex, propertyRegIndex, valueProfile });
+        }
+
+        void finalize(BytecodeGenerator&);
+
     private:
         RefPtr<RegisterID> m_indexRegister;
         RefPtr<RegisterID> m_propertyRegister;
         RefPtr<RegisterID> m_enumeratorRegister;
+        Vector<GetInst> m_getInsts;
     };
 
     class IndexedForInContext : public ForInContext {
@@ -242,8 +251,12 @@ namespace JSC {
 
         RegisterID* index() const { return m_indexRegister.get(); }
 
+        void finalize(BytecodeGenerator&);
+        void addGetInst(unsigned instIndex, int propertyIndex) { m_getInsts.append({ instIndex, propertyIndex }); }
+
     private:
         RefPtr<RegisterID> m_indexRegister;
+        Vector<std::pair<unsigned, int>> m_getInsts;
     };
 
     struct TryData {
@@ -504,6 +517,20 @@ namespace JSC {
             return emitNodeInTailPosition(nullptr, n);
         }
 
+        RegisterID* emitNodeForProperty(RegisterID* dst, ExpressionNode* node)
+        {
+            if (node->isString()) {
+                if (std::optional<uint32_t> index = parseIndex(static_cast<StringNode*>(node)->value()))
+                    return emitLoad(dst, jsNumber(index.value()));
+            }
+            return emitNode(dst, node);
+        }
+
+        RegisterID* emitNodeForProperty(ExpressionNode* n)
+        {
+            return emitNodeForProperty(nullptr, n);
+        }
+
         void emitNodeInConditionContext(ExpressionNode* n, Label& trueTarget, Label& falseTarget, FallThroughMode fallThroughMode)
         {
             if (UNLIKELY(!m_vm->isSafeToRecurse())) {
@@ -562,6 +589,17 @@ namespace JSC {
             return emitNode(n);
         }
 
+        ALWAYS_INLINE RefPtr<RegisterID> emitNodeForLeftHandSideForProperty(ExpressionNode* n, bool rightHasAssignments, bool rightIsPure)
+        {
+            if (leftHandSideNeedsCopy(rightHasAssignments, rightIsPure)) {
+                RefPtr<RegisterID> dst = newTemporary();
+                emitNodeForProperty(dst.get(), n);
+                return dst;
+            }
+
+            return emitNodeForProperty(n);
+        }
+
         void hoistSloppyModeFunctionIfNecessary(const Identifier& functionName);
 
     private:
@@ -584,9 +622,11 @@ namespace JSC {
         void emitLoadThisFromArrowFunctionLexicalEnvironment();
         RegisterID* emitLoadNewTargetFromArrowFunctionLexicalEnvironment();
 
+        unsigned addConstantIndex();
         RegisterID* emitLoad(RegisterID* dst, bool);
         RegisterID* emitLoad(RegisterID* dst, const Identifier&);
         RegisterID* emitLoad(RegisterID* dst, JSValue, SourceCodeRepresentation = SourceCodeRepresentation::Other);
+        RegisterID* emitLoad(RegisterID* dst, IdentifierSet& excludedList);
         RegisterID* emitLoadGlobalObject(RegisterID* dst);
 
         RegisterID* emitUnaryOp(OpcodeID, RegisterID* dst, RegisterID* src);
@@ -646,6 +686,7 @@ namespace JSC {
         RegisterID* emitPutByIndex(RegisterID* base, unsigned index, RegisterID* value);
 
         RegisterID* emitAssert(RegisterID* condition, int line);
+        void emitUnreachable();
 
         void emitPutGetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* getter);
         void emitPutSetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* setter);
@@ -683,7 +724,7 @@ namespace JSC {
         RegisterID* emitReturn(RegisterID* src, ReturnFrom = ReturnFrom::Normal);
         RegisterID* emitEnd(RegisterID* src) { return emitUnaryNoDstOp(op_end, src); }
 
-        RegisterID* emitConstruct(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+        RegisterID* emitConstruct(RegisterID* dst, RegisterID* func, RegisterID* lazyThis, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitStrcat(RegisterID* dst, RegisterID* src, int count);
         void emitToPrimitive(RegisterID* dst, RegisterID* src);
 
@@ -917,6 +958,7 @@ namespace JSC {
         void popLexicalScope(VariableEnvironmentNode*);
         void prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode*, RegisterID* loopSymbolTable);
         int labelScopeDepth() const;
+        UnlinkedArrayProfile newArrayProfile();
 
     private:
         ParserError generate();
@@ -926,7 +968,6 @@ namespace JSC {
         void emitOpcode(OpcodeID);
         UnlinkedArrayAllocationProfile newArrayAllocationProfile();
         UnlinkedObjectAllocationProfile newObjectAllocationProfile();
-        UnlinkedArrayProfile newArrayProfile();
         UnlinkedValueProfile emitProfiledOpcode(OpcodeID);
         int kill(RegisterID* dst)
         {
@@ -994,7 +1035,7 @@ namespace JSC {
         {
             DerivedContextType newDerivedContextType = DerivedContextType::None;
 
-            if (SourceParseModeSet(SourceParseMode::ArrowFunctionMode, SourceParseMode::AsyncArrowFunctionMode).contains(metadata->parseMode())) {
+            if (SourceParseModeSet(SourceParseMode::ArrowFunctionMode, SourceParseMode::AsyncArrowFunctionMode, SourceParseMode::AsyncArrowFunctionBodyMode).contains(metadata->parseMode())) {
                 if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
                     newDerivedContextType = DerivedContextType::DerivedConstructorContext;
                 else if (m_codeBlock->isClassContext() || isDerivedClassContext())

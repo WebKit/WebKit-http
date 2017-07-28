@@ -3,5 +3,162 @@
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 #
 
+css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+fast/frames/flattening/scrolling-in-object.html [ ImageOnlyFailure ]
+fast/frames/sandboxed-iframe-close-top-noclose.html [ Failure ]
 fast/multicol/flexbox-rows.html [ Skip ]
+workers/wasm-mem-post-message.html [ Failure ]
 
+http/tests/preload/viewport [ Pass ]
+webkit.org/b/172518 http/tests/preload/viewport/meta-viewport-link-headers.php [ Pass Failure ]
+
+fast/forms/input-text-word-wrap.html [ Skip ]
+fast/forms/search-rtl.html [ Skip ]
+fast/forms/search-vertical-alignment.html [ Skip ]
+fast/forms/searchfield-heights.html [ Skip ]
+fast/forms/visual-hebrew-text-field.html [ Skip ]
+
+# -webkit-flex off-by-one px
+webkit.org/b/126898 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
+
+css3/blending/blend-mode-clip-accelerated-blending-canvas.html [ Failure ]
+fast/block/positioning/rtl-fixed-positioning.html [ Failure ]
+fast/canvas/canvas-blending-global-alpha.html [ Failure ]
+fast/css/cursor-parsing-image-set.html [ Failure ]
+fast/dom/Window/open-invalid-url.html [ Failure ]
+fast/events/before-input-delete-empty-list-target-ranges.html [ Failure ]
+fast/events/before-input-events-prevent-insert-composition.html [ Failure ]
+fast/events/before-input-events-prevent-recomposition.html [ Failure ]
+fast/events/document-elementFromPoint.html [ Failure ]
+fast/events/input-events-forecolor-data.html [ Failure ]
+fast/events/input-events-ime-composition.html [ Failure ]
+fast/events/input-events-selection-forecolor-data.html [ Failure ]
+fast/events/input-events-spell-checking-datatransfer.html [ Failure ]
+css3/scroll-snap/scroll-snap-offsets.html [ Failure ]
+fast/canvas/canvas-ellipse-zero-lineto.html [ Failure ]
+fast/css/font-face-locally-installed.html [ Failure ]
+fast/events/fire-scroll-event.html [ Failure ]
+
+css3/font-variant-synthesis-jdaggett.html [ ImageOnlyFailure ]
+fast/css/word-spacing-characters.html [ ImageOnlyFailure ]
+fast/css/sticky/inflow-sticky.html [ ImageOnlyFailure ]
+fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure ]
+fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-as-positioning-container.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-left.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-side-margins.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-table-row-top.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-table-thead-top.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-top-margins.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
+fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
+ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
+
+media/track/track-in-band-legacy-api.html [ Failure ]
+media/track/video-track-alternate-groups.html [ Failure ]
+
+svg/filters/filter-hidden-content.svg [ Failure ]
+
+transforms/hittest-translated-content-off-to-infinity-and-back.html [ Pass ImageOnlyFailure ]
+
+# The modern-media-controls tests are disabled due to past flakiness and some major code changes.
+# As a result, a host of tests need to be updated and being turned on selectively here.
+media/modern-media-controls/airplay-button [ Pass ]
+media/modern-media-controls/airplay-placard [ Pass ]
+media/modern-media-controls/audio [ Pass ]
+media/modern-media-controls/background-tint [ Pass ]
+media/modern-media-controls/button [ Pass ]
+media/modern-media-controls/buttons-container [ Pass ]
+media/modern-media-controls/controls-bar [ Pass ]
+media/modern-media-controls/controls-visibility-support [ Pass ]
+media/modern-media-controls/css [ Pass ]
+media/modern-media-controls/forward-button [ Pass ]
+media/modern-media-controls/fullscreen-button [ Pass ]
+media/modern-media-controls/fullscreen-support [ Pass ]
+media/modern-media-controls/icon-service [ Pass ]
+media/modern-media-controls/invalid-placard [ Pass ]
+media/modern-media-controls/layout-item [ Pass ]
+media/modern-media-controls/layout-node [ Pass ]
+media/modern-media-controls/media-controls/media-controls-display-above-captions.html [ Pass ]
+media/modern-media-controls/media-documents [ Pass ]
+media/modern-media-controls/mute-button [ Pass ]
+media/modern-media-controls/mute-support [ Pass ]
+media/modern-media-controls/pip-button [ Pass ]
+media/modern-media-controls/pip-placard [ Pass ]
+media/modern-media-controls/pip-support/ipad [ Pass ]
+media/modern-media-controls/placard [ Pass ]
+media/modern-media-controls/placard-support [ Pass ]
+media/modern-media-controls/play-pause-button [ Pass ]
+media/modern-media-controls/playback-support [ Pass ]
+media/modern-media-controls/rewind-button [ Pass ]
+media/modern-media-controls/scheduler [ Pass ]
+media/modern-media-controls/scrubber [ Pass ]
+media/modern-media-controls/scrubber-support [ Pass ]
+media/modern-media-controls/skip-back-button [ Pass ]
+media/modern-media-controls/skip-forward-button [ Pass ]
+media/modern-media-controls/slider [ Pass ]
+media/modern-media-controls/status-label [ Pass ]
+media/modern-media-controls/status-support [ Pass ]
+media/modern-media-controls/time-control [ Pass ]
+media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/time-labels-support [ Pass ]
+
+# accessibilityController.role cannot be tested on iOS
+media/modern-media-controls/time-label/time-label.html [ Skip ]
+media/modern-media-controls/tracks-button [ Pass ]
+
+# AirPlay cannot be tested on iOS
+webkit.org/b/166062 media/modern-media-controls/airplay-support [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/placard-support/placard-support-airplay.html [ Skip ]
+
+# These tests use touch events and don't work in OpenSource
+media/modern-media-controls/button/button.html [ Skip ]
+media/modern-media-controls/button/button-active-state.html [ Skip ]
+media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Skip ]
+media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
+media/modern-media-controls/placard-support/ipad [ Skip ]
+media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+
+# These tests rely on fullscreen which do not use the WebKit media controls on iOS
+media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
+media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Skip ]
+media/modern-media-controls/css/webkit-cursor-visibility-auto-hide.html [ Skip ]
+media/modern-media-controls/placard-support/placard-support-airplay-fullscreen.html [ Skip ]
+
+# These tests specifically test iOS-only media controls features
+media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-button-padding.html [ Pass ]
+
+# These tests are designed to work only on macOS
+media/modern-media-controls/button/button-click-on-edges.html [ Skip ]
+media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html [ Skip ]
+media/modern-media-controls/media-documents/media-document-video-mac-sizing.html [ Skip ]
+media/modern-media-controls/playback-support/playback-support-button-click.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
+
+webkit.org/b/172965 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Failure ]
+
+webkit.org/b/156718 storage/websql/alter-to-info-table.html [ Failure ]
+
+# This test relies on Arial being used to draw Arabic. However, on iOS,
+# we explicitly disallow this because this font is too slow.
+fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
+
+# Simulator doesn't support WebAssembly.
+http/tests/security/contentSecurityPolicy/WebAssembly-allowed.html [ Failure ]
+http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-about-blank-iframe.html [ Failure ]
+http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-external-script.html [ Failure ]
+http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-subframe.html [ Failure ]
+http/tests/security/contentSecurityPolicy/WebAssembly-blocked.html [ Failure ]
+
+# WebGL tests which need triaging https://bugs.webkit.org/b/174100
+webgl/1.0.2/conformance/uniforms/uniform-default-values.html [ Failure ]
+
+# This test requires Skia, which isn't available on iOS.
+webkit.org/b/174079 fast/text/variations/skia-postscript-name.html [ ImageOnlyFailure ]

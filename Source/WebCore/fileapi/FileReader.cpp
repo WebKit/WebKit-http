@@ -32,7 +32,6 @@
 #include "FileReader.h"
 
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "File.h"
 #include "Logging.h"
 #include "ProgressEvent.h"
@@ -42,6 +41,8 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+using namespace std::literals::chrono_literals;
 
 // Fire the progress event at least every 50ms.
 static const auto progressNotificationInterval = 50ms;
@@ -127,9 +128,9 @@ ExceptionOr<void> FileReader::readAsDataURL(Blob* blob)
 
 ExceptionOr<void> FileReader::readInternal(Blob& blob, FileReaderLoader::ReadType type)
 {
-    // If multiple concurrent read methods are called on the same FileReader, INVALID_STATE_ERR should be thrown when the state is LOADING.
+    // If multiple concurrent read methods are called on the same FileReader, InvalidStateError should be thrown when the state is LOADING.
     if (m_state == LOADING)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     setPendingActivity(this);
 

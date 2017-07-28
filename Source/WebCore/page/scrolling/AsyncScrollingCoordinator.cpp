@@ -37,6 +37,7 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
+#include "PerformanceLoggingClient.h"
 #include "ScrollAnimator.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingStateFixedNode.h"
@@ -340,7 +341,7 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
     FrameView& frameView = *frameViewPtr;
 
     if (scrollingNodeID == frameView.scrollLayerID()) {
-        reconcileScrollingState(frameView, scrollPosition, layoutViewportOrigin, programmaticScroll, true, scrollingLayerPositionAction);
+        reconcileScrollingState(frameView, scrollPosition, layoutViewportOrigin, programmaticScroll, ViewportRectStability::Stable, scrollingLayerPositionAction);
 
 #if PLATFORM(COCOA)
         if (m_page->expectsWheelEventTriggers()) {
@@ -371,10 +372,12 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
     }
 }
 
-void AsyncScrollingCoordinator::reconcileScrollingState(FrameView& frameView, const FloatPoint& scrollPosition, const LayoutViewportOriginOrOverrideRect& layoutViewportOriginOrOverrideRect, bool programmaticScroll, bool inStableState, ScrollingLayerPositionAction scrollingLayerPositionAction)
+void AsyncScrollingCoordinator::reconcileScrollingState(FrameView& frameView, const FloatPoint& scrollPosition, const LayoutViewportOriginOrOverrideRect& layoutViewportOriginOrOverrideRect, bool programmaticScroll, ViewportRectStability viewportRectStability, ScrollingLayerPositionAction scrollingLayerPositionAction)
 {
     bool oldProgrammaticScroll = frameView.inProgrammaticScroll();
     frameView.setInProgrammaticScroll(programmaticScroll);
+
+    LOG_WITH_STREAM(Scrolling, stream << getpid() << " AsyncScrollingCoordinator " << this << " reconcileScrollingState scrollPosition " << scrollPosition << " programmaticScroll " << programmaticScroll << " stability " << viewportRectStability << " " << scrollingLayerPositionAction);
 
     std::optional<FloatRect> layoutViewportRect;
 
@@ -382,16 +385,17 @@ void AsyncScrollingCoordinator::reconcileScrollingState(FrameView& frameView, co
         [&frameView](std::optional<FloatPoint> origin) {
             if (origin)
                 frameView.setBaseLayoutViewportOrigin(LayoutPoint(origin.value()), FrameView::TriggerLayoutOrNot::No);
-        }, [&frameView, &layoutViewportRect, inStableState, visualViewportEnabled = visualViewportEnabled()](std::optional<FloatRect> overrideRect) {
+        }, [&frameView, &layoutViewportRect, viewportRectStability, visualViewportEnabled = visualViewportEnabled()](std::optional<FloatRect> overrideRect) {
+            if (!overrideRect)
+                return;
+
             layoutViewportRect = overrideRect;
-            if (overrideRect && inStableState) {
-                if (visualViewportEnabled)
-                    frameView.setLayoutViewportOverrideRect(LayoutRect(overrideRect.value()));
+            if (visualViewportEnabled && viewportRectStability != ViewportRectStability::ChangingObscuredInsetsInteractively)
+                frameView.setLayoutViewportOverrideRect(LayoutRect(overrideRect.value()), viewportRectStability == ViewportRectStability::Stable ? FrameView::TriggerLayoutOrNot::Yes : FrameView::TriggerLayoutOrNot::No);
 #if PLATFORM(IOS)
-                else
-                    frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(overrideRect.value()));
+            else if (viewportRectStability == ViewportRectStability::Stable)
+                frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(overrideRect.value()));
 #endif
-            }
         }
     );
 
@@ -401,7 +405,7 @@ void AsyncScrollingCoordinator::reconcileScrollingState(FrameView& frameView, co
     frameView.setInProgrammaticScroll(oldProgrammaticScroll);
 
     if (!programmaticScroll && scrollingLayerPositionAction != ScrollingLayerPositionAction::Set) {
-        if (inStableState)
+        if (viewportRectStability == ViewportRectStability::Stable)
             reconcileViewportConstrainedLayerPositions(frameView.rectForFixedPositionLayout(), scrollingLayerPositionAction);
         else if (layoutViewportRect)
             reconcileViewportConstrainedLayerPositions(LayoutRect(layoutViewportRect.value()), scrollingLayerPositionAction);
@@ -500,7 +504,7 @@ void AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions(const
     if (!children)
         return;
 
-    LOG_WITH_STREAM(Scrolling, stream << "AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions for viewport rect " << viewportRect);
+    LOG_WITH_STREAM(Scrolling, stream << getpid() << " AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions for viewport rect " << viewportRect);
 
     // FIXME: We'll have to traverse deeper into the tree at some point.
     for (auto& child : *children)
@@ -559,7 +563,16 @@ void AsyncScrollingCoordinator::updateOverflowScrollingNode(ScrollingNodeID node
     }
 }
 
-void AsyncScrollingCoordinator::updateViewportConstrainedNode(ScrollingNodeID nodeID, const ViewportConstraints& constraints, GraphicsLayer* graphicsLayer)
+void AsyncScrollingCoordinator::updateNodeLayer(ScrollingNodeID nodeID, GraphicsLayer* graphicsLayer)
+{
+    ScrollingStateNode* node = m_scrollingStateTree->stateNodeForID(nodeID);
+    if (!node)
+        return;
+
+    node->setLayer(graphicsLayer);
+}
+
+void AsyncScrollingCoordinator::updateNodeViewportConstraints(ScrollingNodeID nodeID, const ViewportConstraints& constraints)
 {
     ScrollingStateNode* node = m_scrollingStateTree->stateNodeForID(nodeID);
     if (!node)
@@ -568,13 +581,11 @@ void AsyncScrollingCoordinator::updateViewportConstrainedNode(ScrollingNodeID no
     switch (constraints.constraintType()) {
     case ViewportConstraints::FixedPositionConstraint: {
         ScrollingStateFixedNode& fixedNode = downcast<ScrollingStateFixedNode>(*node);
-        fixedNode.setLayer(graphicsLayer);
         fixedNode.updateConstraints((const FixedPositionViewportConstraints&)constraints);
         break;
     }
     case ViewportConstraints::StickyPositionConstraint: {
         ScrollingStateStickyNode& stickyNode = downcast<ScrollingStateStickyNode>(*node);
-        stickyNode.setLayer(graphicsLayer);
         stickyNode.updateConstraints((const StickyPositionViewportConstraints&)constraints);
         break;
     }
@@ -694,7 +705,19 @@ void AsyncScrollingCoordinator::updateScrollSnapPropertiesWithFrameView(const Fr
     }
 }
 #endif
-    
+
+void AsyncScrollingCoordinator::reportExposedUnfilledArea(MonotonicTime timestamp, unsigned unfilledArea)
+{
+    if (m_page && m_page->performanceLoggingClient())
+        m_page->performanceLoggingClient()->logScrollingEvent(PerformanceLoggingClient::ScrollingEvent::ExposedTilelessArea, timestamp, unfilledArea);
+}
+
+void AsyncScrollingCoordinator::reportSynchronousScrollingReasonsChanged(MonotonicTime timestamp, SynchronousScrollingReasons reasons)
+{
+    if (m_page && m_page->performanceLoggingClient())
+        m_page->performanceLoggingClient()->logScrollingEvent(PerformanceLoggingClient::ScrollingEvent::SwitchedScrollingMode, timestamp, reasons);
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(ASYNC_SCROLLING)

@@ -263,7 +263,7 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
         return this._pendingRefreshTask;
     }
 
-    addRule(selector, text)
+    addRule(selector, text, styleSheetId)
     {
         selector = selector || this._node.appropriateSelectorFor(true);
 
@@ -302,10 +302,16 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
 
         function inspectorStyleSheetAvailable(styleSheet)
         {
+            if (!styleSheet)
+                return;
+
             CSSAgent.addRule(styleSheet.id, selector, addedRule.bind(this));
         }
 
-        WebInspector.cssStyleManager.preferredInspectorStyleSheetForFrame(this._node.frame, inspectorStyleSheetAvailable.bind(this));
+        if (styleSheetId)
+            inspectorStyleSheetAvailable.call(this, WebInspector.cssStyleManager.styleSheetForIdentifier(styleSheetId));
+        else
+            WebInspector.cssStyleManager.preferredInspectorStyleSheetForFrame(this._node.frame, inspectorStyleSheetAvailable.bind(this));
     }
 
     rulesForSelector(selector)
@@ -765,8 +771,12 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
             sourceCodeLocation = this._createSourceCodeLocation(payload.sourceURL, payload.sourceLine);
         }
 
-        if (styleSheet)
+        if (styleSheet) {
+            if (!sourceCodeLocation && styleSheet.isInspectorStyleSheet())
+                sourceCodeLocation = styleSheet.createSourceCodeLocation(sourceRange.startLine, sourceRange.startColumn)
+
             sourceCodeLocation = styleSheet.offsetSourceCodeLocation(sourceCodeLocation);
+        }
 
         var mediaList = [];
         for (var i = 0; payload.media && i < payload.media.length; ++i) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Apple Inc.  All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,51 +37,15 @@
 #include <winsock2.h>
 #endif
 
-#include <curl/curl.h>
+#include "CurlContext.h"
+#include "CurlJobManager.h"
 
 namespace WebCore {
-
-class CurlDownloadManager {
-public:
-    CurlDownloadManager();
-    ~CurlDownloadManager();
-
-    bool add(CURL* curlHandle);
-    bool remove(CURL* curlHandle);
-
-    int getActiveDownloadCount() const;
-    int getPendingDownloadCount() const;
-
-private:
-    void startThreadIfNeeded();
-    void stopThread();
-    void stopThreadIfIdle();
-
-    void updateHandleList();
-
-    CURLM* getMultiHandle() const { return m_curlMultiHandle; }
-
-    bool runThread() const { LockHolder locker(m_mutex); return m_runThread; }
-    void setRunThread(bool runThread) { LockHolder locker(m_mutex); m_runThread = runThread; }
-
-    bool addToCurl(CURL* curlHandle);
-    bool removeFromCurl(CURL* curlHandle);
-
-    static void downloadThread(void* data);
-
-    RefPtr<Thread> m_thread;
-    CURLM* m_curlMultiHandle { nullptr };
-    Vector<CURL*> m_pendingHandleList;
-    Vector<CURL*> m_activeHandleList;
-    Vector<CURL*> m_removedHandleList;
-    mutable Lock m_mutex;
-    bool m_runThread { false };
-};
 
 class CurlDownloadListener {
 public:
     virtual void didReceiveResponse() { }
-    virtual void didReceiveDataOfLength(int size) { }
+    virtual void didReceiveDataOfLength(int) { }
     virtual void didFinish() { }
     virtual void didFail() { }
 };
@@ -124,7 +89,7 @@ private:
     void didFinish();
     void didFail();
 
-    static size_t writeCallback(void* ptr, size_t, size_t nmemb, void* data);
+    static size_t writeCallback(char* ptr, size_t, size_t nmemb, void* data);
     static size_t headerCallback(char* ptr, size_t, size_t nmemb, void* data);
 
     static void downloadFinishedCallback(CurlDownload*);
@@ -132,9 +97,8 @@ private:
     static void receivedDataCallback(CurlDownload*, int size);
     static void receivedResponseCallback(CurlDownload*);
 
-    CURL* m_curlHandle { nullptr };
-    struct curl_slist* m_customHeaders { nullptr };
-    char* m_url { nullptr };
+    CurlHandle m_curlHandle;
+    CurlJobTicket m_job;
     String m_tempPath;
     String m_destination;
     WebCore::PlatformFileHandle m_tempHandle { invalidPlatformFileHandle };
@@ -142,10 +106,6 @@ private:
     bool m_deletesFileUponFailure { false };
     mutable Lock m_mutex;
     CurlDownloadListener* m_listener { nullptr };
-
-    static CurlDownloadManager m_downloadManager;
-
-    friend class CurlDownloadManager;
 };
 
 }

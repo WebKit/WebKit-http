@@ -225,23 +225,22 @@ void InspectorFrontendClientLocal::changeAttachedWindowWidth(unsigned width)
 
 void InspectorFrontendClientLocal::openInNewTab(const String& url)
 {
-    UserGestureIndicator indicator(ProcessingUserGesture);
+    UserGestureIndicator indicator { ProcessingUserGesture };
     Frame& mainFrame = m_inspectedPageController->inspectedPage().mainFrame();
-    FrameLoadRequest request(mainFrame.document()->securityOrigin(), ResourceRequest(), "_blank", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    FrameLoadRequest frameLoadRequest { *mainFrame.document(), mainFrame.document()->securityOrigin(), { }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
 
     bool created;
-    WindowFeatures windowFeatures;
-    RefPtr<Frame> frame = WebCore::createWindow(mainFrame, mainFrame, request, windowFeatures, created);
+    RefPtr<Frame> frame = WebCore::createWindow(mainFrame, mainFrame, WTFMove(frameLoadRequest), { }, created);
     if (!frame)
         return;
 
     frame->loader().setOpener(&mainFrame);
     frame->page()->setOpenedByDOM();
 
-    // FIXME: Why does one use mainFrame and the other frame?
-    ResourceRequest resourceRequest(frame->document()->completeURL(url));
-    FrameLoadRequest frameRequest(mainFrame.document()->securityOrigin(), resourceRequest, "_self", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
-    frame->loader().changeLocation(frameRequest);
+    // FIXME: Why do we compute the absolute URL with respect to |frame| instead of |mainFrame|?
+    ResourceRequest resourceRequest { frame->document()->completeURL(url) };
+    FrameLoadRequest frameLoadRequest2 { *mainFrame.document(), mainFrame.document()->securityOrigin(), resourceRequest, ASCIILiteral("_self"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    frame->loader().changeLocation(WTFMove(frameLoadRequest2));
 }
 
 void InspectorFrontendClientLocal::moveWindowBy(float x, float y)

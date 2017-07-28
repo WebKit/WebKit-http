@@ -33,7 +33,6 @@
 
 #include <atomic>
 #include <wtf/MonotonicTime.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Platform.h>
 #include <wtf/PrintStream.h>
 #include <wtf/VMTags.h>
@@ -53,13 +52,7 @@ NEVER_INLINE NO_RETURN_DUE_TO_CRASH void webAssemblyCouldntUnprotectMemory() { C
 
 void* mmapBytes(size_t bytes)
 {
-#if OS(DARWIN)
-    int fd = VM_TAG_FOR_WEBASSEMBLY_MEMORY;
-#else
-    int fd = -1;
-#endif
-
-    void* location = mmap(nullptr, bytes, PROT_NONE, MAP_PRIVATE | MAP_ANON, fd, 0);
+    void* location = mmap(nullptr, bytes, PROT_NONE, MAP_PRIVATE | MAP_ANON, VM_TAG_FOR_WEBASSEMBLY_MEMORY, 0);
     return location == MAP_FAILED ? nullptr : location;
 }
 
@@ -413,6 +406,8 @@ RefPtr<Memory> Memory::create(VM& vm, PageCount initial, PageCount maximum)
 
     // We're stuck with a slow memory which may be slower or impossible to grow.
     if (!memory) {
+        if (!initialBytes)
+            return adoptRef(new Memory(initial, maximum));
         memory = tryGetSlowMemory(initialBytes);
         if (memory) {
             mappedCapacityBytes = initialBytes;

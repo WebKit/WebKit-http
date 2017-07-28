@@ -41,18 +41,6 @@ extern "C" void GlobalToLocal(Point*);
 
 using namespace std;
 
-#if defined(__GNUC__)
-#define CRASH() do { \
-    *(int *)(uintptr_t)0xbbadbeef = 0; \
-    __builtin_trap(); /* More reliable, but doesn't say BBADBEEF. */ \
-} while (false)
-#else
-#define CRASH() do { \
-    *(int *)(uintptr_t)0xbbadbeef = 0; \
-    ((void(*)())0)(); /* More reliable, but doesn't say BBADBEEF */ \
-} while (false)
-#endif
-
 static bool getEntryPointsWasCalled;
 static bool initializeWasCalled;
 
@@ -264,6 +252,8 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, int16_t argc
 #endif
         } else if (!strcasecmp(argn[i], "src") && strstr(argv[i], "plugin-document-has-focus.pl"))
             obj->testKeyboardFocusForPlugins = TRUE;
+        else if (!strcasecmp(argn[i], "src") && strstr(argv[i], "plugin-document-alert-and-notify-done.pl"))
+            executeScript(obj, "alert('Plugin Loaded!'); testRunner.notifyDone();");
         else if (!strcasecmp(argn[i], "evaluatescript")) {
             char* script = argv[i];
             if (script == strstr(script, "mouse::")) {

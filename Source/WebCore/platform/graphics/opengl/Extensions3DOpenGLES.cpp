@@ -33,7 +33,12 @@
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
+
+#if USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#else
 #include <EGL/egl.h>
+#endif
 
 namespace WebCore {
 

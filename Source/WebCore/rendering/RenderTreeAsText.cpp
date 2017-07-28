@@ -190,7 +190,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
         String tagName = getTagName(o.node());
         // FIXME: Temporary hack to make tests pass by simulating the old generated content output.
         if (o.isPseudoElement() || (o.parent() && o.parent()->isPseudoElement()))
-            tagName = emptyAtom;
+            tagName = emptyAtom();
         if (!tagName.isEmpty()) {
             ts << " {" << tagName << "}";
             // flag empty or unstyled AppleStyleSpan because we never
@@ -571,7 +571,7 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
         if (auto layout = text.simpleLineLayout()) {
             ASSERT(!text.firstTextBox());
             auto resolver = runResolver(downcast<RenderBlockFlow>(*text.parent()), *layout);
-            for (const auto& run : resolver.rangeForRenderer(text)) {
+            for (auto run : resolver.rangeForRenderer(text)) {
                 writeIndent(ts, indent + 1);
                 writeSimpleLine(ts, text, run);
             }

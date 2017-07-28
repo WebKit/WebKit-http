@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2017 Caio Lima <ticaiolima@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +31,7 @@ function toInteger(target)
 {
     "use strict";
 
-    var numberValue = @Number(target);
+    var numberValue = +target;
 
     // isNaN(numberValue)
     if (numberValue !== numberValue)
@@ -45,7 +46,7 @@ function toLength(target)
 
     var length = @toInteger(target);
     // originally Math.min(Math.max(length, 0), maxSafeInteger));
-    return length > 0 ? (length < @MAX_SAFE_INTEGER ? length : @MAX_SAFE_INTEGER) : 0;
+    return +(length > 0 ? (length < @MAX_SAFE_INTEGER ? length : @MAX_SAFE_INTEGER) : 0);
 }
 
 @globalPrivate
@@ -78,4 +79,52 @@ function speciesConstructor(obj, defaultConstructor)
     if (@isConstructor(constructor))
         return constructor;
     @throwTypeError("|this|.constructor[Symbol.species] is not a constructor");
+}
+
+@globalPrivate
+function copyDataProperties(target, source, excludedSet)
+{
+    if (!@isObject(target))
+        @throwTypeError("target needs to be an object");
+
+    if (source == null) 
+        return target;
+
+    let from = @Object(source); 
+    let keys = @Reflect.@ownKeys(from); 
+    let keysLength = keys.length;
+    for (let i = 0; i < keysLength; i++) {
+        let nextKey = keys[i];
+        if (!excludedSet.@has(nextKey)) {
+            if (@propertyIsEnumerable(from, nextKey)) {
+                let propValue = from[nextKey];
+                @defineEnumerableWritableConfigurableDataProperty(target, nextKey, propValue);
+            }
+        }
+    }
+
+    return target;
+}
+
+@globalPrivate
+function copyDataPropertiesNoExclusions(target, source)
+{
+    if (!@isObject(target))
+        @throwTypeError("target needs to be an object");
+
+    if (source == null) 
+        return target;
+
+    let from = @Object(source); 
+    let keys = @Reflect.@ownKeys(from); 
+    let keysLength = keys.length;
+    for (let i = 0; i < keysLength; i++) {
+        let nextKey = keys[i];
+        if (@propertyIsEnumerable(from, nextKey)) {
+            let propValue = from[nextKey];
+            @defineEnumerableWritableConfigurableDataProperty(target, nextKey, propValue);
+        }
+    }
+
+    return target;
 }

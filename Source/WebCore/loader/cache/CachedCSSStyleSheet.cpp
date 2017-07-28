@@ -64,7 +64,6 @@ void CachedCSSStyleSheet::didAddClient(CachedResourceClient& client)
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
 {
-    ASSERT(m_decodedSheetText.isNull());
     m_decoder->setEncoding(chs, TextResourceDecoder::EncodingFromHTTPHeader);
 }
 
@@ -126,25 +125,21 @@ String CachedCSSStyleSheet::responseMIMEType() const
     return extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType));
 }
 
-#if ENABLE(NOSNIFF)
 bool CachedCSSStyleSheet::mimeTypeAllowedByNosniff() const
 {
     return parseContentTypeOptionsHeader(m_response.httpHeaderField(HTTPHeaderName::XContentTypeOptions)) != ContentTypeOptionsNosniff || equalLettersIgnoringASCIICase(responseMIMEType(), "text/css");
 }
-#endif
 
 bool CachedCSSStyleSheet::canUseSheet(MIMETypeCheckHint mimeTypeCheckHint, bool* hasValidMIMEType) const
 {
     if (errorOccurred())
         return false;
 
-#if ENABLE(NOSNIFF)
     if (!mimeTypeAllowedByNosniff()) {
         if (hasValidMIMEType)
             *hasValidMIMEType = false;
         return false;
     }
-#endif
 
     if (mimeTypeCheckHint == MIMETypeCheckHint::Lax)
         return true;
@@ -174,11 +169,11 @@ void CachedCSSStyleSheet::destroyDecodedData()
     setDecodedSize(0);
 }
 
-RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy)
+RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy, FrameLoader& loader)
 {
     if (!m_parsedStyleSheetCache)
         return nullptr;
-    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy)) {
+    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy, loader)) {
         m_parsedStyleSheetCache->removedFromMemoryCache();
         m_parsedStyleSheetCache = nullptr;
         return nullptr;

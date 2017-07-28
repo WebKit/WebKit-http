@@ -6,22 +6,15 @@ add_definitions(-DHAVE_CONFIG_H=1)
 # WebCore. Investigating whether make_names.pl should be changed instead is left as an exercise to
 # the reader.
 if (MSVC)
-    # FIXME: Some codegenerators don't support paths with spaces. So use the executable name only.
-    get_filename_component(CODE_GENERATOR_PREPROCESSOR_EXECUTABLE ${CMAKE_CXX_COMPILER} ABSOLUTE)
-
     set(CODE_GENERATOR_PREPROCESSOR_ARGUMENTS "/nologo /EP /TP")
-    set(CODE_GENERATOR_PREPROCESSOR "\"${CODE_GENERATOR_PREPROCESSOR_EXECUTABLE}\" ${CODE_GENERATOR_PREPROCESSOR_ARGUMENTS}")
-
-    set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS ${CODE_GENERATOR_PREPROCESSOR})
+    set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS_ARGUMENTS ${CODE_GENERATOR_PREPROCESSOR_ARGUMENTS})
 else ()
-    set(CODE_GENERATOR_PREPROCESSOR_EXECUTABLE ${CMAKE_CXX_COMPILER})
-
     set(CODE_GENERATOR_PREPROCESSOR_ARGUMENTS "-E -P -x c++")
-    set(CODE_GENERATOR_PREPROCESSOR "${CODE_GENERATOR_PREPROCESSOR_EXECUTABLE} ${CODE_GENERATOR_PREPROCESSOR_ARGUMENTS}")
-
     set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS_ARGUMENTS "-E -x c++")
-    set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS "${CODE_GENERATOR_PREPROCESSOR_EXECUTABLE} ${CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS_ARGUMENTS}")
 endif ()
+
+set(CODE_GENERATOR_PREPROCESSOR "\"${CMAKE_CXX_COMPILER}\" ${CODE_GENERATOR_PREPROCESSOR_ARGUMENTS}")
+set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS "\"${CMAKE_CXX_COMPILER}\" ${CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS_ARGUMENTS}")
 
 option(USE_THIN_ARCHIVES "Produce all static libraries as thin archives" ON)
 if (USE_THIN_ARCHIVES)
@@ -37,20 +30,53 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 define_property(TARGET PROPERTY FOLDER INHERITED BRIEF_DOCS "folder" FULL_DOCS "IDE folder name")
 
+if (CMAKE_GENERATOR STREQUAL "Ninja")
+    if (COMPILER_IS_CLANG)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
+    else ()
+        if (CMAKE_COMPILER_IS_GNUCC)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=always")
+        endif ()
+        if (CMAKE_COMPILER_IS_GNUCXX)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+        endif ()
+    endif ()
+endif ()
+
+# FIXME: Some warning flags should probably be set in WEBKIT_SET_EXTRA_COMPILER_FLAGS instead.
+# But language-specific warnings probably cannot be moved there.
 if (COMPILER_IS_GCC_OR_CLANG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fno-exceptions -fno-strict-aliasing")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-strict-aliasing -fno-rtti")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
-endif ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
 
-if (COMPILER_IS_CLANG AND CMAKE_GENERATOR STREQUAL "Ninja")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
-endif ()
+    if (COMPILER_IS_CLANG_CL)
+        # clang-cl.exe impersonates cl.exe so some clang arguments like -fno-rtti are
+        # represented using cl.exe's options and should not be passed as flags, so 
+        # we do not add -fno-rtti or -fno-exceptions for clang-cl
 
-if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas")
-    add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
+        # FIXME: These warnings should be addressed
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-undef -Wno-macro-redefined -Wno-unknown-pragmas -Wno-nonportable-include-path -Wno-unknown-argument")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-undef -Wno-macro-redefined -Wno-unknown-pragmas -Wno-nonportable-include-path -Wno-unknown-argument")
+    else ()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fno-exceptions")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -fno-exceptions -fno-rtti")
+
+        if (WIN32)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas")
+            add_definitions(-D{CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas)
+            add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
+        endif ()
+    endif ()
+
+    if (NOT (COMPILER_IS_CLANG AND "${CLANG_VERSION}" VERSION_LESS 4.0.0))
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-expansion-to-defined")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-expansion-to-defined")
+    endif ()
+
+    if (CMAKE_COMPILER_IS_GNUCXX AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER "7.0")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-noexcept-type")
+    endif ()
 endif ()
 
 # Ensure that the default include system directories are added to the list of CMake implicit includes.
@@ -101,7 +127,6 @@ if (WTF_CPU_ARM64_CORTEXA53)
     if (NOT WTF_CPU_ARM64)
         message(FATAL_ERROR "WTF_CPU_ARM64_CORTEXA53 set without WTF_CPU_ARM64")
     endif ()
-    include(TestCXXAcceptsFlag)
     CHECK_CXX_ACCEPTS_FLAG(-mfix-cortex-a53-835769 CXX_ACCEPTS_MFIX_CORTEX_A53_835769)
     if (CXX_ACCEPTS_MFIX_CORTEX_A53_835769)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfix-cortex-a53-835769")
@@ -122,7 +147,6 @@ if (WTF_CPU_ARM)
     int main() {}
    ")
 
-    include(CheckCXXSourceCompiles)
     CHECK_CXX_SOURCE_COMPILES("${ARM_THUMB2_TEST_SOURCE}" ARM_THUMB2_DETECTED)
     if (NOT ARM_THUMB2_DETECTED)
         set(ARM_TRADITIONAL_DETECTED TRUE)
@@ -132,7 +156,6 @@ if (WTF_CPU_ARM)
 endif ()
 
 # Use ld.gold if it is available and isn't disabled explicitly
-include(CMakeDependentOption)
 CMAKE_DEPENDENT_OPTION(USE_LD_GOLD "Use GNU gold linker" ON
                        "NOT CXX_ACCEPTS_MFIX_CORTEX_A53_835769;NOT ARM_TRADITIONAL_DETECTED;NOT WIN32;NOT APPLE" OFF)
 if (USE_LD_GOLD)
@@ -148,7 +171,6 @@ endif ()
 
 set(ENABLE_DEBUG_FISSION_DEFAULT OFF)
 if (USE_LD_GOLD AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-    include(TestCXXAcceptsFlag)
     CHECK_CXX_ACCEPTS_FLAG(-gsplit-dwarf CXX_ACCEPTS_GSPLIT_DWARF)
     if (CXX_ACCEPTS_GSPLIT_DWARF)
         set(ENABLE_DEBUG_FISSION_DEFAULT ON)
@@ -173,7 +195,7 @@ if (COMPILER_IS_CLANG)
 endif ()
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86|armhf)")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "x86_64")
     # To avoid out of memory when building with debug option in 32bit system.
     # See https://bugs.webkit.org/show_bug.cgi?id=77327
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "-Wl,--no-keep-memory ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
@@ -212,27 +234,7 @@ if (ENABLE_ALLOCATION_LOGGING)
     add_definitions(-DENABLE_ALLOCATION_LOGGING=1)
 endif ()
 
-# The Ninja generator does not yet know how to build archives in pieces, and so response
-# files must be used to deal with very long linker command lines.
-# See https://bugs.webkit.org/show_bug.cgi?id=129771
-# The Apple Toolchain doesn't support response files.
-if (NOT APPLE)
-   # If using Ninja with cmake >= 3.6.0 and icecream, then the build is broken
-   # if enable the response files. See https://bugs.webkit.org/show_bug.cgi?id=168770
-   if (NOT ((((${CMAKE_CXX_COMPILER} MATCHES ".*ccache.*") AND ($ENV{CCACHE_PREFIX} MATCHES ".*icecc.*"))
-        OR (${CMAKE_CXX_COMPILER} MATCHES ".*icecc.*")
-        OR (${AR_VERSION} MATCHES "^BSD ar [^ ]* - libarchive"))
-       AND (CMAKE_GENERATOR STREQUAL "Ninja") AND (${CMAKE_VERSION} VERSION_GREATER 3.5)))
-      set(CMAKE_NINJA_FORCE_RESPONSE_FILE 1)
-   endif ()
-endif ()
-
 # Macros for determining HAVE values.
-include(CheckIncludeFile)
-include(CheckFunctionExists)
-include(CheckSymbolExists)
-include(CheckStructHasMember)
-
 macro(_HAVE_CHECK_INCLUDE _variable _header)
     check_include_file(${_header} ${_variable}_value)
     SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
@@ -284,3 +286,10 @@ _HAVE_CHECK_SYMBOL(HAVE_SIGNAL_H SIGTRAP signal.h)
 _HAVE_CHECK_STRUCT(HAVE_STAT_BIRTHTIME "struct stat" st_birthtime sys/stat.h)
 _HAVE_CHECK_STRUCT(HAVE_TM_GMTOFF "struct tm" tm_gmtoff time.h)
 _HAVE_CHECK_STRUCT(HAVE_TM_ZONE "struct tm" tm_zone time.h)
+
+# Check for int types
+check_type_size("__int128_t" INT128_VALUE)
+
+if (HAVE_INT128_VALUE)
+  SET_AND_EXPOSE_TO_BUILD(HAVE_INT128_T INT128_VALUE)
+endif ()

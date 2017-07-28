@@ -33,8 +33,6 @@
 
 #if ENABLE(WEB_RTC)
 
-#include "ExceptionCode.h"
-
 namespace WebCore {
 
 Ref<RTCRtpSender> RTCRtpSender::create(Ref<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, Backend& backend)
@@ -75,7 +73,7 @@ void RTCRtpSender::setTrack(Ref<MediaStreamTrack>&& track)
 void RTCRtpSender::replaceTrack(RefPtr<MediaStreamTrack>&& withTrack, DOMPromiseDeferred<void>&& promise)
 {
     if (isStopped()) {
-        promise.reject(INVALID_STATE_ERR);
+        promise.reject(InvalidStateError);
         return;
     }
 

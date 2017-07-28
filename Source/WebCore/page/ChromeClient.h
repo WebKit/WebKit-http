@@ -74,6 +74,7 @@ class FileChooser;
 class FileIconLoader;
 class FloatRect;
 class Frame;
+class FrameLoadRequest;
 class Geolocation;
 class GraphicsLayer;
 class GraphicsLayerFactory;
@@ -96,7 +97,6 @@ class MediaPlayerRequestInstallMissingPluginsCallback;
 #endif
 
 struct DateTimeChooserParameters;
-struct FrameLoadRequest;
 struct GraphicsDeviceAdapter;
 struct ViewportArguments;
 struct WindowFeatures;
@@ -166,6 +166,7 @@ public:
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void delegatedScrollRequested(const IntPoint&) = 0;
+    virtual void resetUpdateAtlasForTesting() = 0;
 #endif
 
     virtual IntPoint screenToRootView(const IntPoint&) const = 0;
@@ -182,10 +183,6 @@ public:
 #if ENABLE(CURSOR_SUPPORT)
     virtual void setCursor(const Cursor&) = 0;
     virtual void setCursorHiddenUntilMouseMoves(bool) = 0;
-#endif
-
-#if !USE(REQUEST_ANIMATION_FRAME_TIMER)
-    virtual void scheduleAnimation() = 0;
 #endif
 
     virtual FloatSize screenSize() const { return const_cast<ChromeClient&>(*this).windowRect().size(); }
@@ -317,7 +314,7 @@ public:
         CanvasTrigger = 1 << 3,
         AnimationTrigger = 1 << 4,
         FilterTrigger = 1 << 5,
-        ScrollableInnerFrameTrigger = 1 << 6,
+        ScrollableNonMainFrameTrigger = 1 << 6,
         AnimatedOpacityTrigger = 1 << 7,
         AllTriggers = 0xFFFFFFFF
     };

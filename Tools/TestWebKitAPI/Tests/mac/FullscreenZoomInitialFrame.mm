@@ -88,12 +88,15 @@ public:
     void setPageScale(WKView *, double);
     void sendMouseDownEvent(WebView *, NSEvent *);
     void sendMouseDownEvent(WKView *, NSEvent *);
+
+private:
+    RetainPtr<id <WebUIDelegate>> m_delegate;
 };
 
 void FullscreenZoomInitialFrame::initializeView(WebView *webView)
 {
-    // Released in teardownView.
-    webView.UIDelegate = [[FullscreenStateDelegate alloc] init];
+    m_delegate = adoptNS([[FullscreenStateDelegate alloc] init]);
+    webView.UIDelegate = m_delegate.get();
 
     RetainPtr<WebPreferences> customPreferences = adoptNS([[WebPreferences alloc] initWithIdentifier:@"FullscreenZoomInitialFramePreferences"]);
     [customPreferences setFullScreenEnabled:YES];
@@ -102,9 +105,9 @@ void FullscreenZoomInitialFrame::initializeView(WebView *webView)
 
 void FullscreenZoomInitialFrame::teardownView(WebView *webView)
 {
-    id uiDelegate = webView.UIDelegate;
+    EXPECT_TRUE(webView.UIDelegate == m_delegate.get());
     webView.UIDelegate = nil;
-    [uiDelegate release];
+    m_delegate = nil;
 }
 
 void FullscreenZoomInitialFrame::initializeView(WKView *wkView)
@@ -186,12 +189,8 @@ TEST_F(FullscreenZoomInitialFrame, WebKit)
     runWebKit1Test();
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
 // FIXME:<rdar://problem/20504403>
 TEST_F(FullscreenZoomInitialFrame, DISABLED_WebKit2)
-#else
-TEST_F(FullscreenZoomInitialFrame, WebKit2)
-#endif
 {
     runWebKit2Test();
 }

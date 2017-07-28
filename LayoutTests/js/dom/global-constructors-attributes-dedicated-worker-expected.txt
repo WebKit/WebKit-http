@@ -59,6 +59,11 @@ PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMPointReadOnly').hasOwn
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMPointReadOnly').hasOwnProperty('set') is false
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMPointReadOnly').enumerable is false
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMPointReadOnly').configurable is true
+PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMQuad').value is DOMQuad
+PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMQuad').hasOwnProperty('get') is false
+PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMQuad').hasOwnProperty('set') is false
+PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMQuad').enumerable is false
+PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMQuad').configurable is true
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMRect').value is DOMRect
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMRect').hasOwnProperty('get') is false
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'DOMRect').hasOwnProperty('set') is false
@@ -389,11 +394,6 @@ PASS [Worker] Object.getOwnPropertyDescriptor(global, 'XMLHttpRequestEventTarget
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'XMLHttpRequestEventTarget').hasOwnProperty('set') is false
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'XMLHttpRequestEventTarget').enumerable is false
 PASS [Worker] Object.getOwnPropertyDescriptor(global, 'XMLHttpRequestEventTarget').configurable is true
-PASS [Worker] Object.getOwnPropertyDescriptor(global, 'webkitURL').value is webkitURL
-PASS [Worker] Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('get') is false
-PASS [Worker] Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('set') is false
-PASS [Worker] Object.getOwnPropertyDescriptor(global, 'webkitURL').enumerable is false
-PASS [Worker] Object.getOwnPropertyDescriptor(global, 'webkitURL').configurable is true
 PASS successfullyParsed is true
 
 TEST COMPLETE

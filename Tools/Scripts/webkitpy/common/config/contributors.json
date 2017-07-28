@@ -1137,6 +1137,14 @@
       ],
       "status" : "committer"
    },
+   "Charlie Turner" : {
+      "emails" : [
+         "cturner@igalia.com"
+      ],
+      "nicks" : [
+         "cturner"
+      ]
+   },
    "Chelsea Pugh" : {
       "emails" : [
          "cpugh@apple.com"
@@ -1722,6 +1730,16 @@
       ],
       "status" : "reviewer"
    },
+   "Don Olmstead" : {
+      "emails" : [
+         "don.olmstead@sony.com",
+         "don.olmstead@am.sony.com"
+      ],
+      "nicks" : [
+         "dolmstead"
+      ],
+      "status" : "committer"
+   },
    "Dongseong Hwang" : {
       "emails" : [
          "dongseong.hwang@intel.com",
@@ -2206,6 +2224,16 @@
       ],
       "status" : "committer"
    },
+   "Guillaume Emont" : {
+      "emails" : [
+         "guijemont@igalia.com"
+      ],
+      "expertise" : "JavaScriptCore",
+      "nicks" : [
+         "guijemont"
+      ],
+      "status" : "committer"
+   },
    "Gurpreet Kaur" : {
       "emails" : [
          "gur.trio@gmail.com",
@@ -2245,6 +2273,7 @@
    "Gyuyoung Kim" : {
       "emails" : [
          "gyuyoung.kim@webkit.org",
+         "gyuyoung@igalia.com",
          "gyuyoung.kim@navercorp.com",
          "gyuyoung@gmail.com",
          "gyuyoung.kim@samsung.com"
@@ -2780,10 +2809,11 @@
       "emails" : [
          "jiewen_tan@apple.com"
       ],
+      "expertise" : "WebCrypto API",
       "nicks" : [
          "Jiewen"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jing Zhao" : {
       "emails" : [
@@ -3450,10 +3480,11 @@
          "annulen@yandex.ru",
          "ktokarev@smartlabs.tv"
       ],
+      "expertise" : "CMake build system, Perl scripts",
       "nicks" : [
          "annulen"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Kristof Kosztyo" : {
       "emails" : [
@@ -4752,6 +4783,16 @@
       ],
       "nicks" : [
          "rtakacs"
+      ],
+      "status" : "committer"
+   },
+   "Romain Bellessort" : {
+      "emails" : [
+         "romain.wkt@gmail.com",
+         "romain.bellessort@crf.canon.fr"
+      ],
+      "nicks" : [
+         "romainb"
       ],
       "status" : "committer"
    },

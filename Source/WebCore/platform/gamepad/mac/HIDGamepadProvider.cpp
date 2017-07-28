@@ -28,9 +28,10 @@
 
 #if ENABLE(GAMEPAD) && PLATFORM(MAC)
 
-#include "GamepadProviderClient.h"
-#include "Logging.h"
-#include "PlatformGamepad.h"
+#import "GamepadProviderClient.h"
+#import "Logging.h"
+#import "PlatformGamepad.h"
+#import <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -190,7 +191,7 @@ void HIDGamepadProvider::deviceAdded(IOHIDDeviceRef device)
     std::unique_ptr<HIDGamepad> gamepad = std::make_unique<HIDGamepad>(device, index);
 
     if (m_gamepadVector.size() <= index)
-        m_gamepadVector.resize(index + 1);
+        m_gamepadVector.grow(index + 1);
 
     m_gamepadVector[index] = gamepad.get();
     m_gamepadMap.set(device, WTFMove(gamepad));

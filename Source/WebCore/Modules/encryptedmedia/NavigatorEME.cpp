@@ -60,7 +60,7 @@ void NavigatorEME::requestMediaKeySystemAccess(Navigator&, Document& document, c
         // 6.1. If keySystem is not one of the Key Systems supported by the user agent, reject promise with a NotSupportedError.
         //      String comparison is case-sensitive.
         if (!CDM::supportsKeySystem(keySystem)) {
-            promise->reject(NOT_SUPPORTED_ERR);
+            promise->reject(NotSupportedError);
             return;
         }
 
@@ -88,8 +88,8 @@ static void tryNextSupportedConfiguration(RefPtr<CDM>&& implementation, Vector<M
                 // 6.3.3.1.2. Let the configuration value be supported configuration.
                 // 6.3.3.1.3. Let the cdm implementation value be implementation.
 
-                // Copy the keySystem string from the CDM object before it's released to the MediaKeySystemAccess::create() call.
-                String keySystem = implementation->keySystem();
+                // Obtain reference to the key system string before the `implementation` RefPtr<> is cleared out.
+                const String& keySystem = implementation->keySystem();
                 auto access = MediaKeySystemAccess::create(keySystem, WTFMove(supportedConfiguration.value()), implementation.releaseNonNull());
 
                 // 6.3.3.2. Resolve promise with access and abort the parallel steps of this algorithm.
@@ -105,7 +105,7 @@ static void tryNextSupportedConfiguration(RefPtr<CDM>&& implementation, Vector<M
 
 
     // 6.4. Reject promise with a NotSupportedError.
-    promise->reject(NOT_SUPPORTED_ERR);
+    promise->reject(NotSupportedError);
 }
 
 } // namespace WebCore

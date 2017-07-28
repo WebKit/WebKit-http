@@ -47,6 +47,7 @@
 #include "RenderTableSection.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
+#include <wtf/SetForScope.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
@@ -238,7 +239,7 @@ void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
 void RenderTable::invalidateCachedColumns()
 {
     m_columnRenderersValid = false;
-    m_columnRenderers.resize(0);
+    m_columnRenderers.shrink(0);
     m_effectiveColumnIndexMap.clear();
 }
 
@@ -474,8 +475,11 @@ void RenderTable::layout()
 
     LayoutUnit totalSectionLogicalHeight = 0;
     LayoutUnit oldTableLogicalTop = 0;
-    for (unsigned i = 0; i < m_captions.size(); i++)
+    for (unsigned i = 0; i < m_captions.size(); i++) {
+        if (m_captions[i]->style().captionSide() == CAPBOTTOM)
+            continue;
         oldTableLogicalTop += m_captions[i]->logicalHeight() + m_captions[i]->marginBefore() + m_captions[i]->marginAfter();
+    }
 
     bool collapsing = collapseBorders();
 
@@ -598,8 +602,13 @@ void RenderTable::layout()
 
     bool paginated = view().layoutState() && view().layoutState()->isPaginated();
     if (sectionMoved && paginated) {
-        markForPaginationRelayoutIfNeeded();
-        layoutIfNeeded();
+        // FIXME: Table layout should always stabilize even when section moves (see webkit.org/b/174412).
+        if (!m_inRecursiveSectionMovedWithPagination) {
+            SetForScope<bool> paginatedSectionMoved(m_inRecursiveSectionMovedWithPagination, true);
+            markForPaginationRelayoutIfNeeded();
+            layoutIfNeeded();
+        } else
+            ASSERT_NOT_REACHED();
     }
     
     // FIXME: This value isn't the intrinsic content logical height, but we need
@@ -1566,7 +1575,7 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutRect boundsRect(adjustedLocation, size());
     if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - toLayoutSize(adjustedLocation)));
-        if (!result.addNodeToRectBasedTestResult(element(), request, locationInContainer, boundsRect))
+        if (result.addNodeToListBasedTestResult(element(), request, locationInContainer, boundsRect) == HitTestProgress::Stop)
             return true;
     }
 

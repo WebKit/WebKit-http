@@ -30,7 +30,6 @@
 #include "B3SparseCollection.h"
 #include "BasicBlockLocation.h"
 #include "CodeBlock.h"
-#include "DFGAbstractValue.h"
 #include "DFGAdjacencyList.h"
 #include "DFGArithMode.h"
 #include "DFGArrayMode.h"
@@ -53,7 +52,6 @@
 #include "Operands.h"
 #include "PutByIdVariant.h"
 #include "SpeculatedType.h"
-#include "StructureSet.h"
 #include "TypeLocation.h"
 #include "ValueProfile.h"
 #include <type_traits>
@@ -64,14 +62,15 @@ namespace JSC {
 
 namespace DOMJIT {
 class GetterSetter;
-class Patchpoint;
-class CallDOMGetterPatchpoint;
+class CallDOMGetterSnippet;
 class Signature;
 }
 
 namespace Profiler {
 class ExecutionCounter;
 }
+
+class Snippet;
 
 namespace DFG {
 
@@ -238,8 +237,9 @@ struct StackAccessData {
 };
 
 struct CallDOMGetterData {
-    DOMJIT::GetterSetter* domJIT { nullptr };
-    DOMJIT::CallDOMGetterPatchpoint* patchpoint { nullptr };
+    PropertySlot::GetValueFunc customAccessorGetter { nullptr };
+    const DOMJIT::GetterSetter* domJIT { nullptr };
+    DOMJIT::CallDOMGetterSnippet* snippet { nullptr };
     unsigned identifierNumber { 0 };
 };
 
@@ -1308,6 +1308,24 @@ public:
         return false;
     }
 
+    // As is described in DFGNodeType.h's ForceOSRExit, this is a pseudo-terminal.
+    // It means that execution should fall out of DFG at this point, but execution
+    // does continue in the basic block - just in a different compiler.
+    // FIXME: This is used for lightweight reachability decision. But this should
+    // be replaced with AI-based reachability ideally.
+    bool isPseudoTerminal()
+    {
+        switch (op()) {
+        case ForceOSRExit:
+        case CheckBadCell:
+        case Throw:
+        case ThrowStaticError:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     unsigned targetBytecodeOffsetDuringParsing()
     {
         ASSERT(isJump());
@@ -1804,6 +1822,7 @@ public:
         switch (op()) {
         case GetIndexedPropertyStorage:
         case GetArrayLength:
+        case GetVectorLength:
         case In:
         case PutByValDirect:
         case PutByVal:
@@ -1816,6 +1835,7 @@ public:
         case ArrayifyToStructure:
         case ArrayPush:
         case ArrayPop:
+        case ArrayIndexOf:
         case HasIndexedProperty:
         case AtomicsAdd:
         case AtomicsAnd:

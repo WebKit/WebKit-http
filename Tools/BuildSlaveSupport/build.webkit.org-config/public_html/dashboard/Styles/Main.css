@@ -180,12 +180,26 @@ table.queue-grid tr.platform.ios-10 img.logo {
     content: -webkit-image-set(url(../Images/IOS10@2x.png) 2x, url(../Images/IOS10.png) 1x);
 }
 
+table.queue-grid tr.platform.ios-simulator-11 img.logo {
+    background: linear-gradient(155deg, #b1a8ed 16%,#aa3daa 50%);
+    content: -webkit-image-set(url(../Images/IOS11Simulator@2x.png) 2x, url(../Images/IOS11Simulator.png) 1x);
+}
+
+table.queue-grid tr.platform.ios-11 img.logo {
+    background: linear-gradient(155deg, #b1a8ed 16%,#aa3daa 50%);
+    content: -webkit-image-set(url(../Images/IOS11@2x.png) 2x, url(../Images/IOS11.png) 1x);
+}
+
 table.queue-grid tr.platform.mac-os-x-elcapitan img.logo {
     content: -webkit-image-set(url(../Images/ElCapitan@2x.png) 2x, url(../Images/ElCapitan.png) 1x);
 }
 
 table.queue-grid tr.platform.macos-sierra img.logo {
     content: -webkit-image-set(url(../Images/Sierra@2x.png) 2x, url(../Images/Sierra.png) 1x);
+}
+
+table.queue-grid tr.platform.macos-highsierra img.logo {
+    content: -webkit-image-set(url(../Images/HighSierra@2x.png) 2x, url(../Images/HighSierra.png) 1x);
 }
 
 table.queue-grid tr.platform.windows-8 img.logo {
@@ -202,6 +216,10 @@ table.queue-grid tr.platform.windows-xp img.logo {
 
 table.queue-grid tr.platform.linux-gtk img.logo {
     content: -webkit-image-set(url(../Images/GTK@2x.png) 2x, url(../Images/GTK.png) 1x);
+}
+
+table.queue-grid tr.platform.linux-wpe img.logo {
+    content: -webkit-image-set(url(../Images/WPE@2x.png) 2x, url(../Images/WPE.png) 1x);
 }
 
 .popover-tracking:hover {

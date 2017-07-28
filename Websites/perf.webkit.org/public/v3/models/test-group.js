@@ -49,11 +49,7 @@ class TestGroup extends LabeledObject {
         return request ? request.test() : null;
     }
 
-    platform()
-    {
-        const request = this._lastRequest();
-        return request ? request.platform() : null;
-    }
+    platform() { return this._platform; }
 
     _lastRequest()
     {
@@ -223,7 +219,7 @@ class TestGroup extends LabeledObject {
             name: name,
             repetitionCount: repetitionCount,
             revisionSets: revisionSets,
-        }).then((data) => this.fetchForTask(task.id(), true));
+        }).then((data) => this.fetchForTask(data['taskId'], true));
     }
 
     static _revisionSetsFromCommitSets(commitSets)

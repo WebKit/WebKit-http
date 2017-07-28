@@ -86,7 +86,10 @@ SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandl
     if (url.protocolIs("ws")
         && !sessionID.isEphemeral()
         && _CFNetworkIsKnownHSTSHostWithSession(m_httpsURL.get(), nullptr)) {
-        m_client.didFailSocketStream(*this, SocketStreamError(0, m_url.string(), "WebSocket connection failed because it violates HTTP Strict Transport Security."));
+        // Call this asynchronously because the socket stream is not fully constructed at this point.
+        callOnMainThread([this, protectedThis = makeRef(*this)] {
+            m_client.didFailSocketStream(*this, SocketStreamError(0, m_url.string(), "WebSocket connection failed because it violates HTTP Strict Transport Security."));
+        });
         return;
     }
 #endif
@@ -144,7 +147,7 @@ CFStringRef SocketStreamHandleImpl::copyPACExecutionDescription(void*)
     return CFSTR("WebSocket proxy PAC file execution");
 }
 
-static void callOnMainThreadAndWait(std::function<void()> function)
+static void callOnMainThreadAndWait(WTF::Function<void()>&& function)
 {
     if (isMainThread()) {
         function();
@@ -156,7 +159,7 @@ static void callOnMainThreadAndWait(std::function<void()> function)
 
     bool isFinished = false;
 
-    callOnMainThread([&] {
+    callOnMainThread([&, function = WTFMove(function)] {
         function();
 
         std::lock_guard<Lock> lock(mutex);

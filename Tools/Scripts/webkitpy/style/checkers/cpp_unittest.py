@@ -1792,12 +1792,23 @@ class CppStyleTest(CppStyleTestBase):
             'int foo() override {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
+            'int foo() const final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'int foo() final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
             'int foo() const\n'
             '{\n'
             '}\n',
             '')
         self.assert_multi_line_lint(
             'int foo() override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() final\n'
             '{\n'
             '}\n',
             '')
@@ -1818,6 +1829,11 @@ class CppStyleTest(CppStyleTestBase):
             '')
         self.assert_multi_line_lint(
             'int foo() const override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() const final\n'
             '{\n'
             '}\n',
             '')
@@ -2916,7 +2932,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
         self.assert_language_rules_check('FooSoftLink.cpp',
                                          '#include "config.h"\n'
                                          '\n'
-                                         '#include "SoftLinking.h"\n',
+                                         '#include <wtf/SoftLinking.h>\n',
                                          '')
         # Having include for existing primary header -> no error.
         self.assert_language_rules_check('foo.cpp',

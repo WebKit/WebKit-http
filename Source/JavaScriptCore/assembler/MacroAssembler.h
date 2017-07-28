@@ -83,19 +83,9 @@ public:
         return static_cast<FPRegisterID>(reg + 1);
     }
     
-    static constexpr unsigned numberOfRegisters()
-    {
-        return lastRegister() - firstRegister() + 1;
-    }
-    
     static constexpr unsigned registerIndex(RegisterID reg)
     {
         return reg - firstRegister();
-    }
-    
-    static constexpr unsigned numberOfFPRegisters()
-    {
-        return lastFPRegister() - firstFPRegister() + 1;
     }
     
     static constexpr unsigned fpRegisterIndex(FPRegisterID reg)
@@ -643,6 +633,10 @@ public:
         xor32(imm, srcDest);
     }
 
+    void xorPtr(Address src, RegisterID dest)
+    {
+        xor32(src, dest);
+    }
 
     void loadPtr(ImplicitAddress address, RegisterID dest)
     {
@@ -949,6 +943,11 @@ public:
     }
 
     void xorPtr(RegisterID src, RegisterID dest)
+    {
+        xor64(src, dest);
+    }
+    
+    void xorPtr(Address src, RegisterID dest)
     {
         xor64(src, dest);
     }
@@ -1327,6 +1326,14 @@ public:
         else
             move(imm.asTrustedImm64(), dest);
     }
+
+#if CPU(X86_64) || CPU(ARM64)
+    void moveDouble(Imm64 imm, FPRegisterID dest)
+    {
+        move(imm, scratchRegister());
+        move64ToDouble(scratchRegister(), dest);
+    }
+#endif
 
     void and64(Imm32 imm, RegisterID dest)
     {
@@ -1818,10 +1825,30 @@ public:
     }
 
 #if ENABLE(MASM_PROBE)
-    using MacroAssemblerBase::probe;
+    struct CPUState;
 
-    void probe(std::function<void(ProbeContext*)>);
-#endif
+    // This function emits code to preserve the CPUState (e.g. registers),
+    // call a user supplied probe function, and restore the CPUState before
+    // continuing with other JIT generated code.
+    //
+    // The user supplied probe function will be called with a single pointer to
+    // a ProbeContext struct (defined below) which contains, among other things,
+    // the preserved CPUState. This allows the user probe function to inspect
+    // the CPUState at that point in the JIT generated code.
+    //
+    // If the user probe function alters the register values in the ProbeContext,
+    // the altered values will be loaded into the CPU registers when the probe
+    // returns.
+    //
+    // The ProbeContext is stack allocated and is only valid for the duration
+    // of the call to the user probe function.
+    //
+    // Note: this version of probe() should be implemented by the target specific
+    // MacroAssembler.
+    void probe(ProbeFunction, void* arg);
+
+    JS_EXPORT_PRIVATE void probe(std::function<void(ProbeContext*)>);
+#endif // ENABLE(MASM_PROBE)
 
     // Let's you print from your JIT generated code.
     // This only works if ENABLE(MASM_PROBE). Otherwise, print() is a no-op.
@@ -1833,9 +1860,91 @@ public:
 };
 
 #if ENABLE(MASM_PROBE)
+
+struct MacroAssembler::CPUState {
+    static inline const char* gprName(RegisterID id) { return MacroAssembler::gprName(id); }
+    static inline const char* sprName(SPRegisterID id) { return MacroAssembler::sprName(id); }
+    static inline const char* fprName(FPRegisterID id) { return MacroAssembler::fprName(id); }
+    inline uintptr_t& gpr(RegisterID);
+    inline uintptr_t& spr(SPRegisterID);
+    inline double& fpr(FPRegisterID);
+    
+    inline void*& pc();
+    inline void*& fp();
+    inline void*& sp();
+    
+    uintptr_t gprs[MacroAssembler::numberOfRegisters()];
+    uintptr_t sprs[MacroAssembler::numberOfSPRegisters()];
+    double fprs[MacroAssembler::numberOfFPRegisters()];
+};
+
+inline uintptr_t& MacroAssembler::CPUState::gpr(RegisterID id)
+{
+    ASSERT(id >= MacroAssembler::firstRegister() && id <= MacroAssembler::lastRegister());
+    return gprs[id];
+}
+
+inline uintptr_t& MacroAssembler::CPUState::spr(SPRegisterID id)
+{
+    ASSERT(id >= MacroAssembler::firstSPRegister() && id <= MacroAssembler::lastSPRegister());
+    return sprs[id];
+}
+
+inline double& MacroAssembler::CPUState::fpr(FPRegisterID id)
+{
+    ASSERT(id >= MacroAssembler::firstFPRegister() && id <= MacroAssembler::lastFPRegister());
+    return fprs[id];
+}
+
+inline void*& MacroAssembler::CPUState::pc()
+{
+#if CPU(X86) || CPU(X86_64)
+    return *reinterpret_cast<void**>(&spr(X86Registers::eip));
+#elif CPU(ARM64)
+    return *reinterpret_cast<void**>(&spr(ARM64Registers::pc));
+#elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
+    return *reinterpret_cast<void**>(&gpr(ARMRegisters::pc));
+#elif CPU(MIPS)
+    RELEASE_ASSERT_NOT_REACHED();
+#else
+#error "Unsupported CPU"
+#endif
+}
+
+inline void*& MacroAssembler::CPUState::fp()
+{
+#if CPU(X86) || CPU(X86_64)
+    return *reinterpret_cast<void**>(&gpr(X86Registers::ebp));
+#elif CPU(ARM64)
+    return *reinterpret_cast<void**>(&gpr(ARM64Registers::fp));
+#elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
+    return *reinterpret_cast<void**>(&gpr(ARMRegisters::fp));
+#elif CPU(MIPS)
+    return *reinterpret_cast<void**>(&gpr(MIPSRegisters::fp));
+#else
+#error "Unsupported CPU"
+#endif
+}
+
+inline void*& MacroAssembler::CPUState::sp()
+{
+#if CPU(X86) || CPU(X86_64)
+    return *reinterpret_cast<void**>(&gpr(X86Registers::esp));
+#elif CPU(ARM64)
+    return *reinterpret_cast<void**>(&gpr(ARM64Registers::sp));
+#elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
+    return *reinterpret_cast<void**>(&gpr(ARMRegisters::sp));
+#elif CPU(MIPS)
+    return *reinterpret_cast<void**>(&gpr(MIPSRegisters::sp));
+#else
+#error "Unsupported CPU"
+#endif
+}
+
 struct ProbeContext {
     using CPUState = MacroAssembler::CPUState;
     using RegisterID = MacroAssembler::RegisterID;
+    using SPRegisterID = MacroAssembler::SPRegisterID;
     using FPRegisterID = MacroAssembler::FPRegisterID;
 
     ProbeFunction probeFunction;
@@ -1843,10 +1952,16 @@ struct ProbeContext {
     CPUState cpu;
 
     // Convenience methods:
-    void*& gpr(RegisterID regID) { return cpu.gpr(regID); }
-    double& fpr(FPRegisterID regID) { return cpu.fpr(regID); }
-    const char* gprName(RegisterID regID) { return cpu.gprName(regID); }
-    const char* fprName(FPRegisterID regID) { return cpu.fprName(regID); }
+    uintptr_t& gpr(RegisterID id) { return cpu.gpr(id); }
+    uintptr_t& spr(SPRegisterID id) { return cpu.spr(id); }
+    double& fpr(FPRegisterID id) { return cpu.fpr(id); }
+    const char* gprName(RegisterID id) { return cpu.gprName(id); }
+    const char* sprName(SPRegisterID id) { return cpu.sprName(id); }
+    const char* fprName(FPRegisterID id) { return cpu.fprName(id); }
+
+    void*& pc() { return cpu.pc(); }
+    void*& fp() { return cpu.fp(); }
+    void*& sp() { return cpu.sp(); }
 };
 #endif // ENABLE(MASM_PROBE)
     

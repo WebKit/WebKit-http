@@ -24,12 +24,17 @@
 
 #include "JSTestStandaloneDictionary.h"
 
+#include "JSDOMConvertBoolean.h"
+#include "JSDOMConvertStrings.h"
+#include <runtime/JSCInlines.h>
 #include <runtime/JSString.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace JSC;
 
 namespace WebCore {
+
+#if ENABLE(Condition1)
 
 template<> DictionaryImplName convertDictionary<DictionaryImplName>(ExecState& state, JSValue value)
 {
@@ -38,10 +43,6 @@ template<> DictionaryImplName convertDictionary<DictionaryImplName>(ExecState& s
     bool isNullOrUndefined = value.isUndefinedOrNull();
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
-        throwTypeError(&state, throwScope);
-        return { };
-    }
-    if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
         return { };
     }
@@ -64,11 +65,13 @@ template<> DictionaryImplName convertDictionary<DictionaryImplName>(ExecState& s
     return result;
 }
 
+#endif
+
 template<> JSString* convertEnumerationToJS(ExecState& state, TestStandaloneDictionary::EnumInStandaloneDictionaryFile enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
-        ASCIILiteral("enumValue1"),
-        ASCIILiteral("enumValue2"),
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("enumValue1"),
+        MAKE_STATIC_STRING_IMPL("enumValue2"),
     };
     static_assert(static_cast<size_t>(TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue1) == 0, "TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue1 is not 0 as expected");
     static_assert(static_cast<size_t>(TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue2) == 1, "TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue2 is not 1 as expected");
@@ -84,18 +87,6 @@ template<> std::optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFil
     if (stringValue == "enumValue2")
         return TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue2;
     return std::nullopt;
-}
-
-template<> TestStandaloneDictionary::EnumInStandaloneDictionaryFile convertEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(ExecState& state, JSValue value)
-{
-    VM& vm = state.vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto result = parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(state, value);
-    if (UNLIKELY(!result)) {
-        throwTypeError(&state, throwScope);
-        return { };
-    }
-    return result.value();
 }
 
 template<> const char* expectedEnumerationValues<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>()

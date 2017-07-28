@@ -26,6 +26,7 @@
 #include "config.h"
 #include "FunctionOverrides.h"
 
+#include "Options.h"
 #include <stdio.h>
 #include <string.h>
 #include <wtf/DataLog.h>
@@ -202,7 +203,7 @@ static String parseClause(const char* keyword, size_t keywordLength, FILE* file,
         FAIL_WITH_ERROR(SYNTAX_ERROR, ("Delimiter '", delimiter, "' cannot have '{', '}', or whitespace:\n", line, "\n"));
     
     String terminatorString;
-    terminatorString.append("}");
+    terminatorString.append('}');
     terminatorString.append(delimiter);
 
     CString terminatorCString = terminatorString.ascii();

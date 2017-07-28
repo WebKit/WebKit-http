@@ -1,3 +1,369 @@
+2017-07-27  Mathias Bynens  <mathias@chromium.org>
+
+        Speedometer 2.0: Document Angular 4 build process
+        https://bugs.webkit.org/show_bug.cgi?id=174896
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch documents the build process for the Angular 4 example, pins the dependencies (so
+        that builds are deterministic), and updates the generated files accordingly.
+
+        * Speedometer/resources/todomvc/architecture-examples/angular/README.md: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angular/dist/*: Update per build instructions.
+        * Speedometer/resources/todomvc/architecture-examples/angular/e2e/app.e2e-spec.ts: Removed unused file.
+        * Speedometer/resources/todomvc/architecture-examples/angular/e2e/app.po.ts: Removed unused file.
+        * Speedometer/resources/todomvc/architecture-examples/angular/e2e/tsconfig.e2e.json: Removed unused file.
+        * Speedometer/resources/todomvc/architecture-examples/angular/package.json: Remove unneeded scripts.
+        * Speedometer/resources/todomvc/architecture-examples/angular/package-lock.json: Added to pin dependencies.
+        * Speedometer/resources/todomvc/architecture-examples/angular/src/app/app.component.ts: Updated.
+        * Speedometer/resources/todomvc/architecture-examples/angular/src/environments/environment.ts: Updated.
+        * Speedometer/resources/todomvc/architecture-examples/angular/src/index.html: Made title consistent.
+
+2017-07-25  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer 2.0: Document es2015-babel-webpack build process
+        https://bugs.webkit.org/show_bug.cgi?id=174252
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/vanilla-examples/es2015-babel-webpack/README.md: Added build docs.
+        * Speedometer/resources/todomvc/vanilla-examples/es2015-babel-webpack/dist/*: Update generated build files.
+        * Speedometer/resources/todomvc/vanilla-examples/es2015-babel-webpack/package.json: Remove unused items.
+        * Speedometer/resources/todomvc/vanilla-examples/es2015-babel-webpack/package-lock.json: Added lockfile.
+        * Speedometer/resources/todomvc/vanilla-examples/es2015-babel-webpack/src/index.html: Make title consistent.
+
+2017-07-18  Matt Kotsenas  <mattkot@microsoft.com>
+
+        Add performance.mark()s around each test step
+        https://bugs.webkit.org/show_bug.cgi?id=174530
+
+        Reviewed by Ryosuke Niwa.
+
+        Add `performance.mark()` around each test step to make analysis
+        simpler. Now each test step can be investigated via dev tools, ETW, etc.
+
+        * Speedometer/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._writeMark):
+        (BenchmarkRunner.prototype._runTest):
+        (BenchmarkRunner.prototype._runTestAndRecordResults):
+
+2017-07-14  Saam Barati  <sbarati@apple.com>
+
+        Fix ambiguous description text in ARES-6 about the data the benchmark measures
+        https://bugs.webkit.org/show_bug.cgi?id=174510
+
+        Rubber stamped by Filip Pizlo.
+
+        * ARES-6/about.html:
+
+2017-07-07  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer 2.0: Fix vanilla JS example
+        https://bugs.webkit.org/show_bug.cgi?id=174246
+
+        Reviewed by Ryosuke Niwa.
+
+        Previously, all TODO items were assigned an ID of `null`. This patch
+        fixes that bug. Manually deleting items now works again.
+
+        * Speedometer/resources/todomvc/vanilla-examples/vanillajs/index.html: Made title consistent.
+        * Speedometer/resources/todomvc/vanilla-examples/vanillajs/js/store.js: Fixed bug with deleting items.
+        * Speedometer/resources/todomvc/vanilla-examples/vanillajs/readme.md: Added docs.
+
+2017-07-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Improve performance of font lookups
+        https://bugs.webkit.org/show_bug.cgi?id=173960
+        <rdar://problem/31996891>
+
+        Reviewed by Darin Adler.
+
+        * Layout/font-fallback-font-family.html: Added.
+        * Layout/resources/font-fallback-font-family.html: Added.
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * MediaTime/Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * MediaTime/Configurations/DebugRelease.xcconfig:
+
+2017-06-07  Saam Barati  <sbarati@apple.com>
+
+        ARES-6 incorrectly measures Worst 4 Iterations
+        https://bugs.webkit.org/show_bug.cgi?id=172960
+
+        Reviewed by Mark Lam.
+
+        Version 1.0 of ARES-6 was accidentally measuring the first
+        4 iterations, instead of the worst 4. This patch fixes the
+        bug and bumps the version to 1.0.1.
+
+        * ARES-6/glue.js:
+        (driver.reportResult):
+        * ARES-6/results.js:
+        (Results.prototype.reportResult):
+
+2017-06-06  Saam Barati  <sbarati@apple.com>
+
+        Add a version number to ARES-6
+        https://bugs.webkit.org/show_bug.cgi?id=172962
+
+        Reviewed by Yusuke Suzuki.
+
+        * ARES-6/glue.js:
+        (driver.reportResult):
+
+2017-06-01  Saam Barati  <sbarati@apple.com>
+
+        Ensure a good experience for ARES-6 error reporting
+        https://bugs.webkit.org/show_bug.cgi?id=171699
+
+        Reviewed by Filip Pizlo and Jon Davis.
+
+        This patch fixes a bug where we would silently fail running ARES-6. The bug
+        was that we were calling reportError with the wrong |this| value.
+        I also cleaned up a bit of the code around error reporting. We
+        now indicate which test failed, and update the status to reflect
+        that a failure happened.
+        
+        This patch also modifies the CSS a bit to work better on smaller
+        screened devices. The CSS prevents the status from having a line
+        break both when an error is reported and when we're running the 
+        benchmark.
+
+        * ARES-6/driver.js:
+        (Driver):
+        (Driver.prototype.reportError):
+        * ARES-6/results.js:
+        (Results.prototype.reportError):
+        (Results):
+        * ARES-6/styles.css:
+        (.start):
+        (#status):
+        (.failed):
+        (#status.failed):
+        (.test .failed:before):
+        (#magic):
+        (@media only screen and (max-width: 784px)):
+        (.test):
+        (p):
+        (@media only screen and (max-width: 320px)):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r217118): Speedometer 2.0: Flight.js test is broken
+        https://bugs.webkit.org/show_bug.cgi?id=172394
+
+        Reviewed by Chris Dumez.
+
+        Fixed the bug that we were never clearing window.checkLoadedTimeoutId.
+
+        * Speedometer/resources/todomvc/dependency-examples/flight/flight/node_modules/requirejs/require.js:
+        (newContext.checkLoaded):
+
+2017-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add SixSpeed benchmark to PerformanceTests
+        https://bugs.webkit.org/show_bug.cgi?id=172326
+
+        Reviewed by Sam Weinig.
+
+        This patch imports SixSpeed benchmark into WebKit tree.
+        It is a collection of ES6 microbenchmarks. While the scripts are very tiny,
+        it sometimes hits our missing care for optimization. So including it is useful.
+
+        The benchmark is released under MIT license.
+
+        * SixSpeed/LICENSE: Added.
+        * SixSpeed/REVISION: Added.
+        * SixSpeed/ReadMe.md: Added.
+        * SixSpeed/tests/.eslintrc: Added.
+        * SixSpeed/tests/arrow-args/arrow-args.es5: Added.
+        * SixSpeed/tests/arrow-args/arrow-args.es6: Added.
+        * SixSpeed/tests/arrow-declare/arrow-declare.es5: Added.
+        * SixSpeed/tests/arrow-declare/arrow-declare.es6: Added.
+        * SixSpeed/tests/arrow/arrow.es5: Added.
+        * SixSpeed/tests/arrow/arrow.es6: Added.
+        * SixSpeed/tests/bindings-compound/bindings-compound.es5: Added.
+        * SixSpeed/tests/bindings-compound/bindings-compound.es6: Added.
+        * SixSpeed/tests/bindings/bindings.es5: Added.
+        * SixSpeed/tests/bindings/bindings.es6: Added.
+        * SixSpeed/tests/classes/classes.es5: Added.
+        * SixSpeed/tests/classes/classes.es6: Added.
+        * SixSpeed/tests/defaults/defaults.es5: Added.
+        * SixSpeed/tests/defaults/defaults.es6: Added.
+        * SixSpeed/tests/destructuring-simple/destructuring-simple.es5: Added.
+        * SixSpeed/tests/destructuring-simple/destructuring-simple.es6: Added.
+        * SixSpeed/tests/destructuring/destructuring.es5: Added.
+        * SixSpeed/tests/destructuring/destructuring.es6: Added.
+        * SixSpeed/tests/for-of-array/for-of-array.es5: Added.
+        * SixSpeed/tests/for-of-array/for-of-array.es6: Added.
+        * SixSpeed/tests/for-of-object/for-of-object.es5: Added.
+        * SixSpeed/tests/for-of-object/for-of-object.es6: Added.
+        * SixSpeed/tests/generator/generator.es5: Added.
+        * SixSpeed/tests/generator/generator.es6: Added.
+        * SixSpeed/tests/map-set-lookup/map-set-lookup.es5: Added.
+        * SixSpeed/tests/map-set-lookup/map-set-lookup.es6: Added.
+        * SixSpeed/tests/map-set-object/map-set-object.es5: Added.
+        * SixSpeed/tests/map-set-object/map-set-object.es6: Added.
+        * SixSpeed/tests/map-set/map-set.es5: Added.
+        * SixSpeed/tests/map-set/map-set.es6: Added.
+        * SixSpeed/tests/map-string/map-string.es5: Added.
+        * SixSpeed/tests/map-string/map-string.es6: Added.
+        * SixSpeed/tests/new-target/defaults.es5: Added.
+        * SixSpeed/tests/new-target/defaults.es6: Added.
+        * SixSpeed/tests/object-assign/object-assign.es5: Added.
+        * SixSpeed/tests/object-assign/object-assign.es6: Added.
+        * SixSpeed/tests/object-literal-ext/object-literal-ext.es5: Added.
+        * SixSpeed/tests/object-literal-ext/object-literal-ext.es6: Added.
+        * SixSpeed/tests/regex-u/regex-u.es5: Added.
+        * SixSpeed/tests/regex-u/regex-u.es6: Added.
+        * SixSpeed/tests/rest/rest.es5: Added.
+        * SixSpeed/tests/rest/rest.es6: Added.
+        * SixSpeed/tests/spread-generator/spread-generator.es5: Added.
+        * SixSpeed/tests/spread-generator/spread-generator.es6: Added.
+        * SixSpeed/tests/spread-literal/spread-literal.es5: Added.
+        * SixSpeed/tests/spread-literal/spread-literal.es6: Added.
+        * SixSpeed/tests/spread/spread.es5: Added.
+        * SixSpeed/tests/spread/spread.es6: Added.
+        * SixSpeed/tests/super/super.es5: Added.
+        * SixSpeed/tests/super/super.es6: Added.
+        * SixSpeed/tests/template_string/template_string.es5: Added.
+        * SixSpeed/tests/template_string/template_string.es6: Added.
+        * SixSpeed/tests/template_string_tag/template_string_tag.es5: Added.
+        * SixSpeed/tests/template_string_tag/template_string_tag.es6: Added.
+        * SixSpeed/wrappers/wrapper.js:
+        (test):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Speedometer 2.0: Angular v1 test only deletes the second item
+        https://bugs.webkit.org/show_bug.cgi?id=172353
+
+        Reviewed by Antti Koivisto.
+
+        Like jQuery and Inferno, run querySelector after removing each todo item.
+
+        * Speedometer/InteractiveRunner.html: Tweaked CSS again.
+        * Speedometer/resources/tests.js:
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Speedometer 2.0: Elem test isn't updating DOM during the measurement
+        https://bugs.webkit.org/show_bug.cgi?id=172343
+
+        Reviewed by Antti Koivisto.
+
+        Elem test wasn't doing much work because it simply enqueues items into the work queue, which doesn't get
+        executed until the next requestAnimationFrame or setTimeout callback happens.
+
+        Expose elm's work function as contentWindow.elemWork and make the first use of rAF a synchronous callback
+        just as it would when requestAnimationFrame isn't defined, and make the second use of rAF queue up to
+        an array of callbacks, and have the test runner manually invoke each callback.
+
+        This increases the runtime of the Elm suite from 100ms to 300ms on Safari.
+
+        * Speedometer/resources/tests.js:
+        (processElmWorkQueue): Added. A helper which processes Elm's work queue and manually invokes render callbacks.
+        * Speedometer/resources/todomvc/functional-prog-examples/elm/dist/elm.js:
+
+2017-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Speedometer 2.0: Flight.js test is sometime broken
+        https://bugs.webkit.org/show_bug.cgi?id=172347
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by the test runner only waiting for #new-todo, which happens before all other states are
+        updated in the Flight.js dependency example. As done in Speedometer v1, insert a dummy element with id set
+        to appIsReady and wait for this element to appear in the benchmark harness.
+
+        * Speedometer/resources/tests.js: Wait for #appIsReady.
+        * Speedometer/resources/todomvc/dependency-examples/flight/flight/app/js/main.js: Removed the superflous call
+        to console.log.
+        (checkReady): Added. Insert #appIsReady if checkLoaded is no longer running at 50ms interval. Because this
+        could happen asynchronously, we check the absense of checkLoadedTimeoutId Ωevery 10ms for 5 times for
+        the total duration of 50ms. If checkLoadedTimeoutId was never present, we call it ready. If we ever observed
+        the presence of checkLoadedTimeoutId, wait another 50ms and start over.
+        * Speedometer/resources/todomvc/dependency-examples/flight/flight/node_modules/requirejs/require.js:
+        (.newContext.checkLoaded): Expose checkLoadedTimeoutId which is a timer ID used to check the dependency.
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Speedometer 2.0: jQuery and Inferno tests don't delete all ToDo items
+        https://bugs.webkit.org/show_bug.cgi?id=172341
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by the fact TodoMVC examples for jQuery and Inferno JS create a new button
+        to delete the todo item each time todo items are rendered.
+
+        Fixed the bug by dynamically look for .destroy using querySelector for each item.
+
+        Also moved the deletion of the iframe from the end of each test suite to the beginning of each suite.
+        This will make debugging the issue like this easier on InteractiveRunner.html since the iframe
+        will stick around after stepping the last item in the suite.
+
+        * Speedometer/InteractiveRunner.html: Tweaked the CSS to make buttons to "Step" and "Run" always visible
+        even if the list of suites and subtests are too long to fit in the viewport.
+
+        * Speedometer/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype.step):
+        (BenchmarkRunner.prototype._runTestAndRecordResults):
+
+        * Speedometer/resources/tests.js: Fixed the bug for jQuery and Inferno. In the case of jQuery
+        we also have to fix the code for checking every ToDo item as completed as well.
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Speedometer 2.0: Vanilla JS test doesn't mark all todo items as completed
+        https://bugs.webkit.org/show_bug.cgi?id=172348
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by the in-memory store class using the milisecond precision timestamp as an ID.
+        Because we inserts 50 items all at once, this can result in multiple data items sharing a single ID.
+
+        Fixed the bug by using a mononotically increasing ID instead.
+
+        * Speedometer/resources/todomvc/vanilla-examples/vanillajs/js/store.js:
+        (Store.prototype.save):
+
+2017-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r216694 - 216712): Performance test Speedometer/Full.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=172077
+
+        Reviewed by Chris Dumez.
+
+        Rename Full.html to index.html to match the convention of other benchmarks.
+
+        * Speedometer/index.html: Renamed from PerformanceTests/Speedometer/Full.html.
+
+2017-05-18  Addy Osmani  <addyosmani@gmail.com>
+
+        Speedometer: check-in missing React TodoMVC dependency
+        https://bugs.webkit.org/show_bug.cgi?id=172213
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/react/index.html: fix director.min.js path.
+        * Speedometer/resources/todomvc/architecture-examples/react/node_modules/director/director.min.js: Added.
+
 2017-05-17  Addy Osmani  <addyosmani@gmail.com>
 
         Speedometer: adjust Ember TodoMVC to use full path

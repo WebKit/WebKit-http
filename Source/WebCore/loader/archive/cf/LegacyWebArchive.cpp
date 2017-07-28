@@ -41,7 +41,6 @@
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
-#include "IconDatabase.h"
 #include "Image.h"
 #include "URLHash.h"
 #include "Logging.h"
@@ -406,7 +405,7 @@ RetainPtr<CFDataRef> LegacyWebArchive::createPropertyListRepresentation(const Re
 
 #endif
 
-RefPtr<LegacyWebArchive> LegacyWebArchive::create(Node& node, std::function<bool (Frame&)> frameFilter)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(Node& node, WTF::Function<bool (Frame&)>&& frameFilter)
 {
     Frame* frame = node.document().frame();
     if (!frame)
@@ -465,7 +464,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(Range* range)
     return create(markupString, *frame, nodeList, nullptr);
 }
 
-RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Frame& frame, const Vector<Node*>& nodes, std::function<bool (Frame&)> frameFilter)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Frame& frame, const Vector<Node*>& nodes, WTF::Function<bool (Frame&)>&& frameFilter)
 {
     auto& response = frame.loader().documentLoader()->response();
     URL responseURL = response.url();
@@ -490,7 +489,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
             && (childFrame = downcast<HTMLFrameOwnerElement>(node).contentFrame())) {
             if (frameFilter && !frameFilter(*childFrame))
                 continue;
-            if (auto subframeArchive = create(*childFrame->document(), frameFilter))
+            if (auto subframeArchive = create(*childFrame->document(), WTFMove(frameFilter)))
                 subframeArchives.append(subframeArchive.releaseNonNull());
             else
                 LOG_ERROR("Unabled to archive subframe %s", childFrame->tree().uniqueName().string().utf8().data());
@@ -529,14 +528,13 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
         }
     }
 
-    // Add favicon if one exists for this page, if we are archiving the entire page.
-    if (!nodes.isEmpty() && nodes[0]->isDocumentNode() && iconDatabase().isEnabled()) {
-        auto iconURL = iconDatabase().synchronousIconURLForPageURL(responseURL);
-        if (!iconURL.isEmpty() && iconDatabase().synchronousIconDataKnownForIconURL(iconURL)) {
-            if (auto* iconImage = iconDatabase().synchronousIconForPageURL(responseURL, IntSize(16, 16))) {
-                if (auto resource = ArchiveResource::create(iconImage->data(), URL(ParsedURLString, iconURL), "image/x-icon", "", ""))
-                    subresources.append(resource.releaseNonNull());
-            }
+    // If we are archiving the entire page, add any link icons that we have data for.
+    if (!nodes.isEmpty() && nodes[0]->isDocumentNode()) {
+        auto* documentLoader = frame.loader().documentLoader();
+        ASSERT(documentLoader);
+        for (auto& icon : documentLoader->linkIcons()) {
+            if (auto resource = documentLoader->subresource(icon.url))
+                subresources.append(resource.releaseNonNull());
         }
     }
 

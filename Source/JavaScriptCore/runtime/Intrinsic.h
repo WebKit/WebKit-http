@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,6 +51,7 @@ enum Intrinsic {
     ArrayPushIntrinsic,
     ArrayPopIntrinsic,
     ArraySliceIntrinsic,
+    ArrayIndexOfIntrinsic,
     CharCodeAtIntrinsic,
     CharAtIntrinsic,
     FromCharCodeIntrinsic,
@@ -111,4 +112,16 @@ enum Intrinsic {
     FiatInt52Intrinsic,
 };
 
+const char* intrinsicName(Intrinsic);
+
 } // namespace JSC
+
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::Intrinsic);
+
+} // namespace WTF
+
+

@@ -32,10 +32,12 @@
 #include "Color.h"
 #include "CounterDirectives.h"
 #include "DataRef.h"
+#include "FilterOperations.h"
 #include "FontDescription.h"
 #include "GraphicsTypes.h"
 #include "Length.h"
 #include "LengthBox.h"
+#include "LengthFunctions.h"
 #include "LengthPoint.h"
 #include "LengthSize.h"
 #include "LineClampValue.h"
@@ -101,7 +103,6 @@ class BorderData;
 class ContentData;
 class CounterContent;
 class CursorList;
-class FilterOperations;
 class FontCascade;
 class FontMetrics;
 class IntRect;
@@ -129,8 +130,8 @@ private:
     enum CreateDefaultStyleTag { CreateDefaultStyle };
 
 public:
-    RenderStyle(RenderStyle&&) = default;
-    RenderStyle& operator=(RenderStyle&&) = default;
+    RenderStyle(RenderStyle&&);
+    RenderStyle& operator=(RenderStyle&&);
     ~RenderStyle();
 
     RenderStyle replace(RenderStyle&&) WARN_UNUSED_RETURN;
@@ -347,7 +348,7 @@ public:
     WEBCORE_EXPORT const FontCascadeDescription& fontDescription() const;
     float specifiedFontSize() const;
     float computedFontSize() const;
-    int fontSize() const;
+    unsigned computedFontPixelSize() const;
     std::pair<FontOrientation, NonCJKGlyphOrientation> fontAndGlyphOrientation();
 
 #if ENABLE(VARIATION_FONTS)
@@ -608,10 +609,11 @@ public:
     ColumnSpan columnSpan() const { return static_cast<ColumnSpan>(m_rareNonInheritedData->multiCol->columnSpan); }
 
     const TransformOperations& transform() const { return m_rareNonInheritedData->transform->operations; }
+    bool hasTransform() const { return !m_rareNonInheritedData->transform->operations.operations().isEmpty(); }
     const Length& transformOriginX() const { return m_rareNonInheritedData->transform->x; }
     const Length& transformOriginY() const { return m_rareNonInheritedData->transform->y; }
     float transformOriginZ() const { return m_rareNonInheritedData->transform->z; }
-    bool hasTransform() const { return !m_rareNonInheritedData->transform->operations.operations().isEmpty(); }
+    TransformBox transformBox() const { return m_rareNonInheritedData->transform->transformBox; }
 
     TextEmphasisFill textEmphasisFill() const { return static_cast<TextEmphasisFill>(m_rareInheritedData->textEmphasisFill); }
     TextEmphasisMark textEmphasisMark() const;
@@ -1135,10 +1137,13 @@ public:
     void resetColumnRule() { SET_NESTED_VAR(m_rareNonInheritedData, multiCol, rule, BorderValue()); }
     void setColumnSpan(ColumnSpan columnSpan) { SET_NESTED_VAR(m_rareNonInheritedData, multiCol, columnSpan, columnSpan); }
     void inheritColumnPropertiesFrom(const RenderStyle& parent) { m_rareNonInheritedData.access().multiCol = parent.m_rareNonInheritedData->multiCol; }
+
     void setTransform(const TransformOperations& ops) { SET_NESTED_VAR(m_rareNonInheritedData, transform, operations, ops); }
     void setTransformOriginX(Length&& length) { SET_NESTED_VAR(m_rareNonInheritedData, transform, x, WTFMove(length)); }
     void setTransformOriginY(Length&& length) { SET_NESTED_VAR(m_rareNonInheritedData, transform, y, WTFMove(length)); }
     void setTransformOriginZ(float f) { SET_NESTED_VAR(m_rareNonInheritedData, transform, z, f); }
+    void setTransformBox(TransformBox box) { SET_NESTED_VAR(m_rareNonInheritedData, transform, transformBox, box); }
+
     void setSpeak(ESpeak s) { SET_VAR(m_rareInheritedData, speak, s); }
     void setTextCombine(TextCombine v) { SET_VAR(m_rareNonInheritedData, textCombine, v); }
     void setTextDecorationColor(const Color& c) { SET_VAR(m_rareNonInheritedData, textDecorationColor, c); }
@@ -1262,6 +1267,7 @@ public:
     const Length& strokeWidth() const { return m_rareInheritedData->strokeWidth; }
     void setStrokeWidth(Length&& w) { SET_VAR(m_rareInheritedData, strokeWidth, WTFMove(w)); }
     bool hasVisibleStroke() const { return svgStyle().hasStroke() && !strokeWidth().isZero(); }
+    static Length initialStrokeWidth() { return initialOneLength(); }
 
     float computedStrokeWidth(const IntSize& viewportSize) const;
     void setHasExplicitlySetStrokeWidth(bool v) { SET_VAR(m_rareInheritedData, hasSetStrokeWidth, static_cast<unsigned>(v)); }
@@ -1274,6 +1280,7 @@ public:
     const Color& visitedLinkStrokeColor() const { return m_rareInheritedData->visitedLinkStrokeColor; }
     void setHasExplicitlySetStrokeColor(bool v) { SET_VAR(m_rareInheritedData, hasSetStrokeColor, static_cast<unsigned>(v)); }
     bool hasExplicitlySetStrokeColor() const { return m_rareInheritedData->hasSetStrokeColor; };
+    static Color initialStrokeColor() { return Color(Color::transparent); }
     
     float strokeMiterLimit() const { return m_rareInheritedData->miterLimit; }
     void setStrokeMiterLimit(float f) { SET_VAR(m_rareInheritedData, miterLimit, f); }
@@ -1517,7 +1524,7 @@ public:
     static short initialHyphenationLimitBefore() { return -1; }
     static short initialHyphenationLimitAfter() { return -1; }
     static short initialHyphenationLimitLines() { return -1; }
-    static const AtomicString& initialHyphenationString() { return nullAtom; }
+    static const AtomicString& initialHyphenationString() { return nullAtom(); }
     static EBorderFit initialBorderFit() { return BorderFitBorder; }
     static EResize initialResize() { return RESIZE_NONE; }
     static ControlPart initialAppearance() { return NoControlPart; }
@@ -1532,6 +1539,7 @@ public:
     static const TransformOperations& initialTransform() { static NeverDestroyed<TransformOperations> ops; return ops; }
     static Length initialTransformOriginX() { return Length(50.0f, Percent); }
     static Length initialTransformOriginY() { return Length(50.0f, Percent); }
+    static TransformBox initialTransformBox() { return TransformBox::BorderBox; }
     static EPointerEvents initialPointerEvents() { return PE_AUTO; }
     static float initialTransformOriginZ() { return 0; }
     static ETransformStyle3D initialTransformStyle3D() { return TransformStyle3DFlat; }
@@ -1543,7 +1551,7 @@ public:
     static Color initialTextEmphasisColor() { return TextEmphasisFillFilled; }
     static TextEmphasisFill initialTextEmphasisFill() { return TextEmphasisFillFilled; }
     static TextEmphasisMark initialTextEmphasisMark() { return TextEmphasisMarkNone; }
-    static const AtomicString& initialTextEmphasisCustomMark() { return nullAtom; }
+    static const AtomicString& initialTextEmphasisCustomMark() { return nullAtom(); }
     static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver | TextEmphasisPositionRight; }
     static RubyPosition initialRubyPosition() { return RubyPositionBefore; }
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
@@ -1556,7 +1564,7 @@ public:
     static StyleImage* initialMaskBoxImageSource() { return nullptr; }
     static PrintColorAdjust initialPrintColorAdjust() { return PrintColorAdjustEconomy; }
     static QuotesData* initialQuotes() { return nullptr; }
-    static const AtomicString& initialContentAltText() { return emptyAtom; }
+    static const AtomicString& initialContentAltText() { return emptyAtom(); }
 
 #if ENABLE(CSS3_TEXT)
     static TextIndentLine initialTextIndentLine() { return TextIndentFirstLine; }
@@ -1631,12 +1639,12 @@ public:
 
     static unsigned initialTabSize() { return 8; }
 
-    static const AtomicString& initialLineGrid() { return nullAtom; }
+    static const AtomicString& initialLineGrid() { return nullAtom(); }
     static LineSnap initialLineSnap() { return LineSnapNone; }
     static LineAlign initialLineAlign() { return LineAlignNone; }
 
-    static const AtomicString& initialFlowThread() { return nullAtom; }
-    static const AtomicString& initialRegionThread() { return nullAtom; }
+    static const AtomicString& initialFlowThread() { return nullAtom(); }
+    static const AtomicString& initialRegionThread() { return nullAtom(); }
     static RegionFragment initialRegionFragment() { return AutoRegionFragment; }
 
     static IntSize initialInitialLetter() { return IntSize(); }

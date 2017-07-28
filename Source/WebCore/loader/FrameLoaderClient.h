@@ -32,7 +32,6 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LinkIcon.h"
-#include "ResourceLoadPriority.h"
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
@@ -99,7 +98,7 @@ class Widget;
 
 struct StringWithDirection;
 
-typedef std::function<void (PolicyAction)> FramePolicyFunction;
+typedef WTF::Function<void (PolicyAction)> FramePolicyFunction;
 
 class WEBCORE_EXPORT FrameLoaderClient {
 public:
@@ -152,13 +151,15 @@ public:
     virtual void dispatchDidChangeProvisionalURL() { }
     virtual void dispatchDidCancelClientRedirect() = 0;
     virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) = 0;
+    virtual void dispatchDidPerformClientRedirect() { }
+    virtual void dispatchDidChangeMainDocument() { }
     virtual void dispatchDidNavigateWithinPage() { }
     virtual void dispatchDidChangeLocationWithinPage() = 0;
     virtual void dispatchDidPushStateWithinPage() = 0;
     virtual void dispatchDidReplaceStateWithinPage() = 0;
     virtual void dispatchDidPopStateWithinPage() = 0;
     virtual void dispatchWillClose() = 0;
-    virtual void dispatchDidReceiveIcon() = 0;
+    virtual void dispatchDidReceiveIcon() { }
     virtual void dispatchDidStartProvisionalLoad() = 0;
     virtual void dispatchDidReceiveTitle(const StringWithDirection&) = 0;
     virtual void dispatchDidCommitLoad(std::optional<HasInsecureContent>) = 0;
@@ -176,15 +177,15 @@ public:
     virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
     virtual void dispatchShow() = 0;
 
-    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) = 0;
-    virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, FramePolicyFunction) = 0;
-    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction) = 0;
+    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction&&) = 0;
     virtual void cancelPolicyCheck() = 0;
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&) = 0;
 
     virtual void dispatchWillSendSubmitEvent(Ref<FormState>&&) = 0;
-    virtual void dispatchWillSubmitForm(FormState&, FramePolicyFunction) = 0;
+    virtual void dispatchWillSubmitForm(FormState&, FramePolicyFunction&&) = 0;
 
     virtual void revertToProvisionalState(DocumentLoader*) = 0;
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&) = 0;
@@ -286,7 +287,7 @@ public:
 
     virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) = 0;
 
-    virtual void registerForIconNotification(bool listen = true) = 0;
+    virtual void registerForIconNotification() { }
 
 #if PLATFORM(COCOA)
     // Allow an accessibility object to retrieve a Frame parent if there's no PlatformWidget.
@@ -353,8 +354,7 @@ public:
 
     virtual void didRestoreScrollPosition() { }
 
-    virtual bool useIconLoadingClient() { return false; }
-    virtual void getLoadDecisionForIcon(const LinkIcon&, uint64_t) { }
+    virtual void getLoadDecisionForIcons(const Vector<std::pair<WebCore::LinkIcon&, uint64_t>>&) { }
     virtual void finishedLoadingIcon(uint64_t, SharedBuffer*) { }
 };
 

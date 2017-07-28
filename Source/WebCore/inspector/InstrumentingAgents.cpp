@@ -55,9 +55,6 @@ void InstrumentingAgents::reset()
     m_inspectorTimelineAgent = nullptr;
     m_persistentInspectorTimelineAgent = nullptr;
     m_inspectorDOMStorageAgent = nullptr;
-#if ENABLE(WEB_REPLAY)
-    m_inspectorReplayAgent = nullptr;
-#endif
 #if ENABLE(RESOURCE_USAGE)
     m_inspectorMemoryAgent = nullptr;
 #endif
@@ -67,6 +64,7 @@ void InstrumentingAgents::reset()
     m_pageDebuggerAgent = nullptr;
     m_pageHeapAgent = nullptr;
     m_inspectorDOMDebuggerAgent = nullptr;
+    m_inspectorCanvasAgent = nullptr;
 }
 
 } // namespace WebCore

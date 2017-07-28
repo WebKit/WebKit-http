@@ -98,7 +98,6 @@ bool Settings::gMockScrollAnimatorEnabled = false;
 #if ENABLE(MEDIA_STREAM)
 bool Settings::gMockCaptureDevicesEnabled = false;
 bool Settings::gMediaCaptureRequiresSecureConnection = true;
-bool Settings::gUseAVFoundationAudioCapture = false;
 #endif
 
 #if PLATFORM(WIN)
@@ -114,8 +113,8 @@ bool Settings::gAllowsAnySSLCertificate = false;
 bool Settings::gNetworkDataUsageTrackingEnabled = false;
 bool Settings::gAVKitEnabled = false;
 bool Settings::gShouldOptOutOfNetworkStateObservation = false;
-bool Settings::gManageAudioSession = false;
 #endif
+bool Settings::gManageAudioSession = false;
 
 // NOTEs
 //  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well as QtWebKit when built on Mac;
@@ -625,19 +624,6 @@ void Settings::setMediaCaptureRequiresSecureConnection(bool mediaCaptureRequires
 {
     gMediaCaptureRequiresSecureConnection = mediaCaptureRequiresSecureConnection;
 }
-
-bool Settings::useAVFoundationAudioCapture()
-{
-    return gUseAVFoundationAudioCapture;
-}
-
-void Settings::setUseAVFoundationAudioCapture(bool useAVFoundationAudioCapture)
-{
-    gUseAVFoundationAudioCapture = useAVFoundationAudioCapture;
-#if USE(AVFOUNDATION)
-    RealtimeMediaSourceCenterMac::singleton().setUseAVFoundationAudioCapture(useAVFoundationAudioCapture);
-#endif
-}
 #endif
 
 void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
@@ -807,5 +793,23 @@ bool Settings::allowsAnySSLCertificate()
 {
     return gAllowsAnySSLCertificate;
 }
+
+#if !PLATFORM(COCOA)
+const String& Settings::defaultMediaContentTypesRequiringHardwareSupport()
+{
+    return emptyString();
+}
+#endif
+
+void Settings::setMediaContentTypesRequiringHardwareSupport(const String& contentTypes)
+{
+    m_mediaContentTypesRequiringHardwareSupport = contentTypes.split(":").map(ContentType::create);
+}
+
+void Settings::setMediaContentTypesRequiringHardwareSupport(const Vector<ContentType>& contentTypes)
+{
+    m_mediaContentTypesRequiringHardwareSupport = contentTypes;
+}
+
 
 } // namespace WebCore

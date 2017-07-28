@@ -66,24 +66,35 @@ ThreadHolder* ThreadHolder::current()
     }
 
     // After FLS is destroyed, this map offers the value until the second thread exit callback is called.
-    std::unique_lock<std::mutex> locker(threadMapMutex());
+    std::lock_guard<std::mutex> locker(threadMapMutex());
     return threadMap().get(currentThread());
 }
 
 // FIXME: Remove this workaround code once <rdar://problem/31793213> is fixed.
 RefPtr<Thread> ThreadHolder::get(ThreadIdentifier id)
 {
-    std::unique_lock<std::mutex> locker(threadMapMutex());
+    std::lock_guard<std::mutex> locker(threadMapMutex());
     ThreadHolder* holder = threadMap().get(id);
     if (holder)
         return &holder->thread();
     return nullptr;
 }
 
-void ThreadHolder::platformInitialize(ThreadHolder* holder)
+void ThreadHolder::initialize(Thread& thread)
 {
-    std::unique_lock<std::mutex> locker(threadMapMutex());
-    threadMap().add(holder->thread().id(), holder);
+    if (!current()) {
+        // Ideally we'd have this as a release assert everywhere, but that would hurt performance.
+        // Having this release assert here means that we will catch "didn't call
+        // WTF::initializeThreading() soon enough" bugs in release mode.
+        ASSERT(m_key != InvalidThreadSpecificKey);
+        // FIXME: Remove this workaround code once <rdar://problem/31793213> is fixed.
+        auto* holder = new ThreadHolder(thread);
+        threadSpecificSet(m_key, holder);
+        {
+            std::lock_guard<std::mutex> locker(threadMapMutex());
+            threadMap().add(thread.id(), holder);
+        }
+    }
 }
 
 void ThreadHolder::destruct(void* data)
@@ -114,7 +125,7 @@ void ThreadHolder::destruct(void* data)
 
     if (holder->m_isDestroyedOnce) {
         {
-            std::unique_lock<std::mutex> locker(threadMapMutex());
+            std::lock_guard<std::mutex> locker(threadMapMutex());
             ASSERT(threadMap().contains(holder->m_thread->id()));
             threadMap().remove(holder->m_thread->id());
         }

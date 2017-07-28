@@ -139,6 +139,7 @@ my $osXVersion;
 my $iosVersion;
 my $generateDsym;
 my $isCMakeBuild;
+my $isGenerateProjectOnly;
 my $isWin64;
 my $isInspectorFrontend;
 my $portName;
@@ -1529,12 +1530,10 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk()) {
+    if (isGtk() || isWPE()) {
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
-    } elsif (isWPE()) {
-        return "$relativeScriptsPath/run-wpe";
     }
 }
 
@@ -1547,7 +1546,7 @@ sub launcherName()
     } elsif (isAppleWinWebKit()) {
         return "MiniBrowser";
     } elsif (isWPE()) {
-        return "WPELauncher";
+        return "dyz";
     }
 }
 
@@ -1900,6 +1899,11 @@ sub wrapperPrefixIfNeeded()
     return ();
 }
 
+sub shouldUseJhbuild()
+{
+    return ((isGtk() or isWPE()) and -e getJhbuildPath());
+}
+
 sub cmakeCachePath()
 {
     return File::Spec->catdir(baseProductDir(), configuration(), "CMakeCache.txt");
@@ -2132,6 +2136,7 @@ sub buildCMakeProjectOrExit($$$@)
 
     $returnCode = exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs));
     exit($returnCode) if $returnCode;
+    exit 0 if isGenerateProjectOnly();
 
     $returnCode = exitStatus(buildCMakeGeneratedProject($makeArgs));
     exit($returnCode) if $returnCode;
@@ -2159,6 +2164,18 @@ sub isCMakeBuild()
     return 1 unless isAppleCocoaWebKit();
     determineIsCMakeBuild();
     return $isCMakeBuild;
+}
+
+sub determineIsGenerateProjectOnly()
+{
+    return if defined($isGenerateProjectOnly);
+    $isGenerateProjectOnly = checkForArgumentAndRemoveFromARGV("--generate-project-only");
+}
+
+sub isGenerateProjectOnly()
+{
+    determineIsGenerateProjectOnly();
+    return $isGenerateProjectOnly;
 }
 
 sub promptUser

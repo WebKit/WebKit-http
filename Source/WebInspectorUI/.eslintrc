@@ -34,20 +34,21 @@
         // Agents
         "ApplicationCacheAgent": true,
         "CSSAgent": true,
+        "CanvasAgent": true,
         "ConsoleAgent": true,
         "DOMAgent": true,
         "DOMDebuggerAgent": true,
         "DOMStorageAgent": true,
         "DatabaseAgent": true,
         "DebuggerAgent": true,
-        "HeapAgent",
+        "HeapAgent": true,
         "IndexedDBAgent": true,
         "InspectorAgent": true,
         "LayerTreeAgent": true,
         "MemoryAgent": true,
         "NetworkAgent": true,
         "PageAgent": true,
-        "ReplayAgent": true,
+        "RecordingAgent": true,
         "RuntimeAgent": true,
         "ScriptProfilerAgent": true,
         "TimelineAgent": true,
@@ -80,7 +81,6 @@
         // DOM
         "CSSPrimitiveValue": true,
         "Exception": true,
-        "SQLException": true,
         "WebKitPoint": true,
 
         // Utilities

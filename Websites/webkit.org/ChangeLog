@@ -1,3 +1,148 @@
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, minor adjustments to the previous demo.
+
+        * demos/frames/index.html: Added. Index page for the list of demos.
+        * demos/frames/sandboxing/index.html: Minor fixes.
+
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, add demos (frame sandboxing and scrolling) for a blog post.
+
+        * demos/frames/sandboxing/am-i-sandboxed.html: Added.
+        * demos/frames/sandboxing/framebusting-success.html: Added.
+        * demos/frames/sandboxing/framebusting-without-user-activation.html: Added.
+        * demos/frames/sandboxing/index.html: Added.
+        * demos/frames/scrollable-iframes.html: Added.
+        * demos/frames/scrollingElement.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add the final demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/pbkdf2.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add yet another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html:
+        * demos/webcrypto/alice.png: Added.
+        * demos/webcrypto/bob.png: Added.
+        * demos/webcrypto/ecdh.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html: Added.
+        * demos/webcrypto/asynchronous-execution.html:
+        * demos/webcrypto/common.js: Added.
+
+2017-07-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add a demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/asynchronous-execution-worker.js: Added.
+        * demos/webcrypto/asynchronous-execution.html: Added.
+
+2017-06-30  Jon Lee  <jonlee@apple.com>
+
+        Add a WebRTC example for a blog post
+        https://bugs.webkit.org/show_bug.cgi?id=174049
+
+        Reviewed by Youenn Fablet.
+
+        Example does a typical WebRTC video call, but uses canvas to do some image effects.
+        Image effects will last for 30 seconds.
+        After that time, the video stream is directly sent.
+        This illustrates using RTCPeerConnection, replaceTrack and canvas capture.
+
+        * blog-files/webrtc/pc-with-effects/LICENSE: Added.
+        * blog-files/webrtc/pc-with-effects/glfx.js: Added.
+        * blog-files/webrtc/pc-with-effects/index.html: Added.
+        * blog-files/webrtc/pc-with-effects/main.css: Added.
+        * blog-files/webrtc/pc-with-effects/main.js: Added.
+
+2017-06-28  Saam Barati  <sbarati@apple.com>
+
+        Add a Object rest/spread test to the experimental features test page
+        https://bugs.webkit.org/show_bug.cgi?id=173947
+
+        Rubber stamped by Dean Jackson.
+
+        * experimental-features.html:
+
+2017-06-07  Jon Davis  <jond@apple.com>
+
+        Update the design of the WebKit Feature Status page
+        https://bugs.webkit.org/show_bug.cgi?id=173036
+
+        Reviewed by Simon Fraser.
+
+        * wp-content/themes/webkit/functions.php: Fixed a bad function call.
+        * wp-content/themes/webkit/status.php: Implemented redesign with saved search.
+        * wp-content/themes/webkit/style.css:
+        (.feature-header:after):
+        (@media only screen and (max-width: 920px)):
+        (@media only screen and (max-width: 600px)):
+        (.feature-filters): Deleted.
+        (.feature-filters.opened): Deleted.
+        (.feature-filters:after): Deleted.
+        (.feature-filters.opened:after): Deleted.
+
+2017-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add a WebGPU test to the experimental features test page
+        https://bugs.webkit.org/show_bug.cgi?id=172953
+
+        Reviewed by Darin Adler.
+
+        * experimental-features.html:
+
+2017-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Move Resource Timing / User Timing from experimental features into main preferences
+        https://bugs.webkit.org/show_bug.cgi?id=172950
+
+        Reviewed by Darin Adler.
+
+        * experimental-features.html:
+        Remove no longer experimental features.
+
+2017-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.load and Atomics.store need to be fully fenced
+        https://bugs.webkit.org/show_bug.cgi?id=172844
+
+        Reviewed by Keith Miller.
+        
+        Update documentation to say that the canonical way to do fully fenced loads and stores is
+        AtomicXchgAdd(0, ptr) and AtomicXchg(value, ptr), respectively.
+
+        * docs/b3/intermediate-representation.html:
+
+2017-05-31  Jon Davis  <jond@apple.com>
+
+        Reduce Safari Technology Preview Release Notes posts shown on homepage
+        https://bugs.webkit.org/show_bug.cgi?id=172364
+
+        Reviewed by Daniel Bates.
+
+        * wp-content/themes/webkit/functions.php: Load some extra posts.
+        * wp-content/themes/webkit/widgets/post.php: Show STP blog posts when it is the current featured post.
+
+2017-05-18  Jon Davis  <jond@apple.com>
+
+        Add an Accessibility icon to webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=172298
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wp-content/themes/webkit/images/icons.svg: Added accessibility icon to the sprite.
+        * wp-content/themes/webkit/style.css: New rule to use the accessibility icon from the icons sprite.
+        (.tile.category-accessibility .background-image):
+
 2017-05-15  James Craig  <jcraig@apple.com>
 
         AX: Inaccessible content on webkit.org main page

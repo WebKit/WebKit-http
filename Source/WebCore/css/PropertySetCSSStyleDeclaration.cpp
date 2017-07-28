@@ -22,7 +22,6 @@
 #include "config.h"
 #include "PropertySetCSSStyleDeclaration.h"
 
-#include "CSSCustomPropertyValue.h"
 #include "CSSPropertyParser.h"
 #include "CSSRule.h"
 #include "CSSStyleSheet.h"
@@ -36,8 +35,6 @@
 #include "StyledElement.h"
 
 namespace WebCore {
-
-namespace {
 
 class StyleAttributeMutationScope {
     WTF_MAKE_NONCOPYABLE(StyleAttributeMutationScope);
@@ -88,19 +85,19 @@ public:
                 m_mutationRecipients->enqueueMutationRecord(WTFMove(mutation));
             }
             if (m_customElement) {
-                AtomicString newValue = m_customElement->getAttribute(HTMLNames::styleAttr);
+                auto& newValue = m_customElement->getAttribute(HTMLNames::styleAttr);
                 CustomElementReactionQueue::enqueueAttributeChangedCallbackIfNeeded(*m_customElement, HTMLNames::styleAttr, m_oldValue, newValue);
             }
         }
 
         s_shouldDeliver = false;
         if (!s_shouldNotifyInspector) {
-            s_currentDecl = 0;
+            s_currentDecl = nullptr;
             return;
         }
         // We have to clear internal state before calling Inspector's code.
         PropertySetCSSStyleDeclaration* localCopyStyleDecl = s_currentDecl;
-        s_currentDecl = 0;
+        s_currentDecl = nullptr;
         s_shouldNotifyInspector = false;
         if (localCopyStyleDecl->parentElement())
             InspectorInstrumentation::didInvalidateStyleAttr(localCopyStyleDecl->parentElement()->document(), *localCopyStyleDecl->parentElement());
@@ -128,11 +125,9 @@ private:
 };
 
 unsigned StyleAttributeMutationScope::s_scopeCount = 0;
-PropertySetCSSStyleDeclaration* StyleAttributeMutationScope::s_currentDecl = 0;
+PropertySetCSSStyleDeclaration* StyleAttributeMutationScope::s_currentDecl = nullptr;
 bool StyleAttributeMutationScope::s_shouldNotifyInspector = false;
 bool StyleAttributeMutationScope::s_shouldDeliver = false;
-
-} // namespace
 
 void PropertySetCSSStyleDeclaration::ref()
 { 
@@ -254,7 +249,7 @@ ExceptionOr<void> PropertySetCSSStyleDeclaration::setProperty(const String& prop
     didMutate(changed ? PropertyChanged : NoChanges);
 
     if (changed) {
-        // CSS DOM requires raising SYNTAX_ERR of parsing failed, but this is too dangerous for compatibility,
+        // CSS DOM requires raising SyntaxError of parsing failed, but this is too dangerous for compatibility,
         // see <http://bugs.webkit.org/show_bug.cgi?id=7296>.
         mutationScope.enqueueMutationRecord();
     }
@@ -316,7 +311,7 @@ ExceptionOr<bool> PropertySetCSSStyleDeclaration::setPropertyInternal(CSSPropert
 DeprecatedCSSOMValue* PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSSValue* internalValue)
 {
     if (!internalValue)
-        return 0;
+        return nullptr;
 
     // The map is here to maintain the object identity of the CSSValues over multiple invocations.
     // FIXME: It is likely that the identity is not important for web compatibility and this code should be removed.
@@ -325,14 +320,14 @@ DeprecatedCSSOMValue* PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSS
     
     RefPtr<DeprecatedCSSOMValue>& clonedValue = m_cssomValueWrappers->add(internalValue, RefPtr<DeprecatedCSSOMValue>()).iterator->value;
     if (!clonedValue)
-        clonedValue = internalValue->createDeprecatedCSSOMWrapper();
+        clonedValue = internalValue->createDeprecatedCSSOMWrapper(*this);
     return clonedValue.get();
 }
 
 StyleSheetContents* PropertySetCSSStyleDeclaration::contextStyleSheet() const
 { 
     CSSStyleSheet* cssStyleSheet = parentStyleSheet();
-    return cssStyleSheet ? &cssStyleSheet->contents() : 0;
+    return cssStyleSheet ? &cssStyleSheet->contents() : nullptr;
 }
 
 CSSParserContext PropertySetCSSStyleDeclaration::cssParserContext() const

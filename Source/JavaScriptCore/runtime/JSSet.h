@@ -25,15 +25,15 @@
 
 #pragma once
 
+#include "HashMapImpl.h"
 #include "JSObject.h"
-#include "MapBase.h"
 
 namespace JSC {
 
 class JSSetIterator;
 
-class JSSet : public MapBase<HashMapBucket<HashMapBucketDataKey>> {
-    typedef MapBase<HashMapBucket<HashMapBucketDataKey>> Base;
+class JSSet final : public HashMapImpl<HashMapBucket<HashMapBucketDataKey>> {
+    using Base = HashMapImpl<HashMapBucket<HashMapBucketDataKey>>;
 public:
 
     friend class JSSetIterator;
@@ -52,10 +52,9 @@ public:
         return instance;
     }
 
-    ALWAYS_INLINE void add(ExecState* exec, JSValue key)
-    {
-        m_map->add(exec, key);
-    }
+    bool isIteratorProtocolFastAndNonObservable();
+    bool canCloneFastAndNonObservable(Structure*);
+    JSSet* clone(ExecState*, VM&, Structure*);
 
 private:
     JSSet(VM& vm, Structure* structure)
@@ -65,5 +64,17 @@ private:
 
     static String toStringName(const JSObject*, ExecState*);
 };
+
+inline bool isJSSet(JSCell* from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from->type() == JSSetType;
+}
+
+inline bool isJSSet(JSValue from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from.isCell() && from.asCell()->type() == JSSetType;
+}
 
 } // namespace JSC

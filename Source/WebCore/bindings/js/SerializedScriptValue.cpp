@@ -43,7 +43,12 @@
 #include "JSBlob.h"
 #include "JSCryptoKey.h"
 #include "JSDOMBinding.h"
+#include "JSDOMConvertBufferSource.h"
 #include "JSDOMGlobalObject.h"
+#include "JSDOMMatrix.h"
+#include "JSDOMPoint.h"
+#include "JSDOMQuad.h"
+#include "JSDOMRect.h"
 #include "JSFile.h"
 #include "JSFileList.h"
 #include "JSImageData.h"
@@ -57,6 +62,7 @@
 #include <JavaScriptCore/APICast.h>
 #include <runtime/ArrayBuffer.h>
 #include <runtime/BooleanObject.h>
+#include <runtime/CatchScope.h>
 #include <runtime/DateInstance.h>
 #include <runtime/Error.h>
 #include <runtime/Exception.h>
@@ -151,6 +157,13 @@ enum SerializationTag {
 #if ENABLE(WEBASSEMBLY)
     WasmModuleTag = 35,
 #endif
+    DOMPointReadOnlyTag = 36,
+    DOMPointTag = 37,
+    DOMRectReadOnlyTag = 38,
+    DOMRectTag = 39,
+    DOMMatrixReadOnlyTag = 40,
+    DOMMatrixTag = 41,
+    DOMQuadTag = 42,
     ErrorTag = 255
 };
 
@@ -230,18 +243,15 @@ enum class CryptoAlgorithmIdentifierTag {
     ECDH = 5,
     AES_CTR = 6,
     AES_CBC = 7,
-    AES_CMAC = 8,
     AES_GCM = 9,
     AES_CFB = 10,
     AES_KW = 11,
     HMAC = 12,
-    DH = 13,
     SHA_1 = 14,
     SHA_224 = 15,
     SHA_256 = 16,
     SHA_384 = 17,
     SHA_512 = 18,
-    CONCAT = 19,
     HKDF = 20,
     PBKDF2 = 21,
 };
@@ -329,6 +339,10 @@ static const unsigned StringDataIs8BitFlag = 0x80000000;
  *    | ArrayBufferViewTag ArrayBufferViewSubtag <byteOffset:uint32_t> <byteLength:uint32_t> (ArrayBuffer | ObjectReference)
  *    | ArrayBufferTransferTag <value:uint32_t>
  *    | CryptoKeyTag <wrappedKeyLength:uint32_t> <factor:byte{wrappedKeyLength}>
+ *    | DOMPoint
+ *    | DOMRect
+ *    | DOMMatrix
+ *    | DOMQuad
  *
  * Inside wrapped crypto key, data is serialized in this format:
  *
@@ -397,6 +411,35 @@ static const unsigned StringDataIs8BitFlag = 0x80000000;
  *
  * CryptoKeyRaw :-
  *    CryptoAlgorithmIdentifierTag <keySize:uint32_t> <keyData:byte{keySize}>
+ *
+ * DOMPoint :-
+ *        DOMPointReadOnlyTag DOMPointData
+ *      | DOMPointTag DOMPointData
+ *
+ * DOMPointData :-
+ *      <x:double> <y:double> <z:double> <w:double>
+ *
+ * DOMRect :-
+ *        DOMRectReadOnlyTag DOMRectData
+ *      | DOMRectTag DOMRectData
+ *
+ * DOMRectData :-
+ *      <x:double> <y:double> <width:double> <height:double>
+ *
+ * DOMMatrix :-
+ *        DOMMatrixReadOnlyTag DOMMatrixData
+ *      | DOMMatrixTag DOMMatrixData
+ *
+ * DOMMatrixData :-
+ *        <is2D:uint8_t:true> <m11:double> <m12:double> <m21:double> <m22:double> <m41:double> <m42:double>
+ *      | <is2D:uint8_t:false> <m11:double> <m12:double> <m13:double> <m14:double> <m21:double> <m22:double> <m23:double> <m24:double> <m31:double> <m32:double> <m33:double> <m34:double> <m41:double> <m42:double> <m43:double> <m44:double>
+ *
+ * DOMQuad :-
+ *      DOMQuadTag DOMQuadData
+ *
+ * DOMQuadData :-
+ *      <p1:DOMPointData> <p2:DOMPointData> <p3:DOMPointData> <p4:DOMPointData>
+ *
  */
 
 using DeserializationResult = std::pair<JSC::JSValue, SerializationReturnCode>;
@@ -774,6 +817,89 @@ private:
         return dumpIfTerminal(bufferObj, code);
     }
 
+    void dumpDOMPoint(const DOMPointReadOnly& point)
+    {
+        write(point.x());
+        write(point.y());
+        write(point.z());
+        write(point.w());
+    }
+
+    void dumpDOMPoint(JSObject* obj)
+    {
+        VM& vm = m_exec->vm();
+        if (obj->inherits(vm, JSDOMPoint::info()))
+            write(DOMPointTag);
+        else
+            write(DOMPointReadOnlyTag);
+
+        dumpDOMPoint(jsCast<JSDOMPointReadOnly*>(obj)->wrapped());
+    }
+
+    void dumpDOMRect(JSObject* obj)
+    {
+        VM& vm = m_exec->vm();
+        if (obj->inherits(vm, JSDOMRect::info()))
+            write(DOMRectTag);
+        else
+            write(DOMRectReadOnlyTag);
+
+        auto& rect = jsCast<JSDOMRectReadOnly*>(obj)->wrapped();
+        write(rect.x());
+        write(rect.y());
+        write(rect.width());
+        write(rect.height());
+    }
+
+    void dumpDOMMatrix(JSObject* obj)
+    {
+        VM& vm = m_exec->vm();
+        if (obj->inherits(vm, JSDOMMatrix::info()))
+            write(DOMMatrixTag);
+        else
+            write(DOMMatrixReadOnlyTag);
+
+        auto& matrix = jsCast<JSDOMMatrixReadOnly*>(obj)->wrapped();
+        bool is2D = matrix.is2D();
+        write(static_cast<uint8_t>(is2D));
+        if (is2D) {
+            write(matrix.m11());
+            write(matrix.m12());
+            write(matrix.m21());
+            write(matrix.m22());
+            write(matrix.m41());
+            write(matrix.m42());
+        } else {
+            write(matrix.m11());
+            write(matrix.m12());
+            write(matrix.m13());
+            write(matrix.m14());
+            write(matrix.m21());
+            write(matrix.m22());
+            write(matrix.m23());
+            write(matrix.m24());
+            write(matrix.m31());
+            write(matrix.m32());
+            write(matrix.m33());
+            write(matrix.m34());
+            write(matrix.m41());
+            write(matrix.m42());
+            write(matrix.m43());
+            write(matrix.m44());
+        }
+    }
+
+    void dumpDOMQuad(JSObject* obj)
+    {
+        write(DOMQuadTag);
+
+        auto& quad = jsCast<JSDOMQuad*>(obj)->wrapped();
+        dumpDOMPoint(quad.p1());
+        dumpDOMPoint(quad.p2());
+        dumpDOMPoint(quad.p3());
+        dumpDOMPoint(quad.p4());
+    }
+
     bool dumpIfTerminal(JSValue value, SerializationReturnCode& code)
     {
         if (!value.isCell()) {
@@ -955,7 +1081,22 @@ private:
                 return true;
             }
 #endif
-
+            if (obj->inherits(vm, JSDOMPointReadOnly::info())) {
+                dumpDOMPoint(obj);
+                return true;
+            }
+            if (obj->inherits(vm, JSDOMRectReadOnly::info())) {
+                dumpDOMRect(obj);
+                return true;
+            }
+            if (obj->inherits(vm, JSDOMMatrixReadOnly::info())) {
+                dumpDOMMatrix(obj);
+                return true;
+            }
+            if (obj->inherits(vm, JSDOMQuad::info())) {
+                dumpDOMQuad(obj);
+                return true;
+            }
             return false;
         }
         // Any other types are expected to serialize as null.
@@ -1137,9 +1278,6 @@ private:
         case CryptoAlgorithmIdentifier::AES_CBC:
             write(CryptoAlgorithmIdentifierTag::AES_CBC);
             break;
-        case CryptoAlgorithmIdentifier::AES_CMAC:
-            write(CryptoAlgorithmIdentifierTag::AES_CMAC);
-            break;
         case CryptoAlgorithmIdentifier::AES_GCM:
             write(CryptoAlgorithmIdentifierTag::AES_GCM);
             break;
@@ -1151,9 +1289,6 @@ private:
             break;
         case CryptoAlgorithmIdentifier::HMAC:
             write(CryptoAlgorithmIdentifierTag::HMAC);
-            break;
-        case CryptoAlgorithmIdentifier::DH:
-            write(CryptoAlgorithmIdentifierTag::DH);
             break;
         case CryptoAlgorithmIdentifier::SHA_1:
             write(CryptoAlgorithmIdentifierTag::SHA_1);
@@ -1169,9 +1304,6 @@ private:
             break;
         case CryptoAlgorithmIdentifier::SHA_512:
             write(CryptoAlgorithmIdentifierTag::SHA_512);
-            break;
-        case CryptoAlgorithmIdentifier::CONCAT:
-            write(CryptoAlgorithmIdentifierTag::CONCAT);
             break;
         case CryptoAlgorithmIdentifier::HKDF:
             write(CryptoAlgorithmIdentifierTag::HKDF);
@@ -2039,9 +2171,6 @@ private:
         case CryptoAlgorithmIdentifierTag::AES_CBC:
             result = CryptoAlgorithmIdentifier::AES_CBC;
             break;
-        case CryptoAlgorithmIdentifierTag::AES_CMAC:
-            result = CryptoAlgorithmIdentifier::AES_CMAC;
-            break;
         case CryptoAlgorithmIdentifierTag::AES_GCM:
             result = CryptoAlgorithmIdentifier::AES_GCM;
             break;
@@ -2053,9 +2182,6 @@ private:
             break;
         case CryptoAlgorithmIdentifierTag::HMAC:
             result = CryptoAlgorithmIdentifier::HMAC;
-            break;
-        case CryptoAlgorithmIdentifierTag::DH:
-            result = CryptoAlgorithmIdentifier::DH;
             break;
         case CryptoAlgorithmIdentifierTag::SHA_1:
             result = CryptoAlgorithmIdentifier::SHA_1;
@@ -2071,9 +2197,6 @@ private:
             break;
         case CryptoAlgorithmIdentifierTag::SHA_512:
             result = CryptoAlgorithmIdentifier::SHA_512;
-            break;
-        case CryptoAlgorithmIdentifierTag::CONCAT:
-            result = CryptoAlgorithmIdentifier::CONCAT;
             break;
         case CryptoAlgorithmIdentifierTag::HKDF:
             result = CryptoAlgorithmIdentifier::HKDF;
@@ -2350,7 +2473,162 @@ private:
     template<class T>
     JSValue getJSValue(T& nativeObj)
     {
-        return getJSValue(&nativeObj);
+        return toJS(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), nativeObj);
+    }
+
+    template<class T>
+    JSValue readDOMPoint()
+    {
+        double x;
+        if (!read(x))
+            return { };
+        double y;
+        if (!read(y))
+            return { };
+        double z;
+        if (!read(z))
+            return { };
+        double w;
+        if (!read(w))
+            return { };
+
+        return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), T::create(x, y, z, w));
+    }
+
+    template<class T>
+    JSValue readDOMMatrix()
+    {
+        uint8_t is2D;
+        if (!read(is2D))
+            return { };
+
+        if (is2D) {
+            double m11;
+            if (!read(m11))
+                return { };
+            double m12;
+            if (!read(m12))
+                return { };
+            double m21;
+            if (!read(m21))
+                return { };
+            double m22;
+            if (!read(m22))
+                return { };
+            double m41;
+            if (!read(m41))
+                return { };
+            double m42;
+            if (!read(m42))
+                return { };
+
+            TransformationMatrix matrix(m11, m12, m21, m22, m41, m42);
+            return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), T::create(WTFMove(matrix), DOMMatrixReadOnly::Is2D::Yes));
+        } else {
+            double m11;
+            if (!read(m11))
+                return { };
+            double m12;
+            if (!read(m12))
+                return { };
+            double m13;
+            if (!read(m13))
+                return { };
+            double m14;
+            if (!read(m14))
+                return { };
+            double m21;
+            if (!read(m21))
+                return { };
+            double m22;
+            if (!read(m22))
+                return { };
+            double m23;
+            if (!read(m23))
+                return { };
+            double m24;
+            if (!read(m24))
+                return { };
+            double m31;
+            if (!read(m31))
+                return { };
+            double m32;
+            if (!read(m32))
+                return { };
+            double m33;
+            if (!read(m33))
+                return { };
+            double m34;
+            if (!read(m34))
+                return { };
+            double m41;
+            if (!read(m41))
+                return { };
+            double m42;
+            if (!read(m42))
+                return { };
+            double m43;
+            if (!read(m43))
+                return { };
+            double m44;
+            if (!read(m44))
+                return { };
+
+            TransformationMatrix matrix(m11, m12, m13, m14, m21, m22, m23, m24, m31, m32, m33, m34, m41, m42, m43, m44);
+            return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), T::create(WTFMove(matrix), DOMMatrixReadOnly::Is2D::No));
+        }
+    }
+
+    template<class T>
+    JSValue readDOMRect()
+    {
+        double x;
+        if (!read(x))
+            return { };
+        double y;
+        if (!read(y))
+            return { };
+        double width;
+        if (!read(width))
+            return { };
+        double height;
+        if (!read(height))
+            return { };
+
+        return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), T::create(x, y, width, height));
+    }
+
+    std::optional<DOMPointInit> readDOMPointInit()
+    {
+        DOMPointInit point;
+        if (!read(point.x))
+            return std::nullopt;
+        if (!read(point.y))
+            return std::nullopt;
+        if (!read(point.z))
+            return std::nullopt;
+        if (!read(point.w))
+            return std::nullopt;
+
+        return WTFMove(point);
+    }
+
+    JSValue readDOMQuad()
+    {
+        auto p1 = readDOMPointInit();
+        if (!p1)
+            return JSValue();
+        auto p2 = readDOMPointInit();
+        if (!p2)
+            return JSValue();
+        auto p3 = readDOMPointInit();
+        if (!p3)
+            return JSValue();
+        auto p4 = readDOMPointInit();
+        if (!p4)
+            return JSValue();
+
+        return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), DOMQuad::create(p1.value(), p2.value(), p3.value(), p4.value()));
     }
 
     JSValue readTerminal()
@@ -2627,6 +2905,20 @@ private:
             return cryptoKey;
         }
 #endif
+        case DOMPointReadOnlyTag:
+            return readDOMPoint<DOMPointReadOnly>();
+        case DOMPointTag:
+            return readDOMPoint<DOMPoint>();
+        case DOMRectReadOnlyTag:
+            return readDOMRect<DOMRectReadOnly>();
+        case DOMRectTag:
+            return readDOMRect<DOMRect>();
+        case DOMMatrixReadOnlyTag:
+            return readDOMMatrix<DOMMatrixReadOnly>();
+        case DOMMatrixTag:
+            return readDOMMatrix<DOMMatrix>();
+        case DOMQuadTag:
+            return readDOMQuad();
         default:
             m_ptr--; // Push the tag back
             return JSValue();
@@ -2941,7 +3233,7 @@ static Exception exceptionForSerializationFailure(SerializationReturnCode code)
     case SerializationReturnCode::ValidationError:
         return Exception { TypeError };
     case SerializationReturnCode::DataCloneError:
-        return Exception { DATA_CLONE_ERR };
+        return Exception { DataCloneError };
     case SerializationReturnCode::ExistingExceptionError:
         return Exception { ExistingExceptionError };
     case SerializationReturnCode::UnspecifiedError:
@@ -2995,9 +3287,12 @@ ExceptionOr<Ref<SerializedScriptValue>> SerializedScriptValue::create(ExecState&
     for (auto& transferable : transferList) {
         if (auto arrayBuffer = toPossiblySharedArrayBuffer(vm, transferable.get())) {
             if (arrayBuffer->isNeutered())
-                return Exception { DATA_CLONE_ERR };
-            if (arrayBuffer->isShared())
-                return Exception { TypeError };
+                return Exception { DataCloneError };
+            if (arrayBuffer->isLocked()) {
+                auto scope = DECLARE_THROW_SCOPE(vm);
+                throwVMTypeError(&state, scope, errorMesasgeForTransfer(arrayBuffer));
+                return Exception { ExistingExceptionError };
+            }
             arrayBuffers.append(WTFMove(arrayBuffer));
             continue;
         }
@@ -3007,7 +3302,7 @@ ExceptionOr<Ref<SerializedScriptValue>> SerializedScriptValue::create(ExecState&
             continue;
         }
 
-        return Exception { DATA_CLONE_ERR };
+        return Exception { DataCloneError };
     }
 
     Vector<uint8_t> buffer;

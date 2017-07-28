@@ -32,8 +32,6 @@
 #include "CSSRuleList.h"
 #include "CSSStyleSheet.h"
 #include "Document.h"
-#include "StyleProperties.h"
-#include "StyleSheet.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -104,6 +102,9 @@ size_t StyleRuleKeyframes::findKeyframeIndex(const String& key) const
     parseDeferredRulesIfNeeded();
 
     auto keys = CSSParser::parseKeyframeKeyList(key);
+
+    if (!keys)
+        return notFound;
 
     for (size_t i = m_keyframes.size(); i--; ) {
         if (m_keyframes[i]->keys() == *keys)

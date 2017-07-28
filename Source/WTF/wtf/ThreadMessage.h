@@ -25,18 +25,12 @@
 
 #pragma once
 
-#include <wtf/Ref.h>
 #include <wtf/ScopedLambda.h>
 #include <wtf/Threading.h>
 
-#if USE(PTHREADS)
-
 namespace WTF {
 
-void initializeThreadMessages();
-
-class ThreadMessageData;
-using ThreadMessage = ScopedLambda<void(siginfo_t*, ucontext_t*)>;
+using ThreadMessage = ScopedLambda<void(PlatformRegisters&)>;
 
 enum class MessageStatus {
     MessageRan,
@@ -46,17 +40,15 @@ enum class MessageStatus {
 // This method allows us to send a message which will be run in a signal handler on the desired thread.
 // There are several caveates to this method however, This function uses signals so your message should
 // be sync signal safe.
-MessageStatus sendMessageScoped(Thread&, const ThreadMessage&);
+WTF_EXPORT_PRIVATE MessageStatus sendMessageScoped(Thread&, const ThreadMessage&);
 
 template<typename Functor>
 MessageStatus sendMessage(Thread& targetThread, const Functor& func)
 {
-    auto lambda = scopedLambdaRef<void(siginfo_t*, ucontext_t*)>(func);
+    auto lambda = scopedLambdaRef<void(PlatformRegisters&)>(func);
     return sendMessageScoped(targetThread, lambda);
 }
 
 } // namespace WTF
 
 using WTF::sendMessage;
-
-#endif // USE(PTHREADS)

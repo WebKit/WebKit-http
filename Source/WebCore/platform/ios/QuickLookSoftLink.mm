@@ -27,7 +27,7 @@
 #if USE(QUICK_LOOK)
 
 #import "QuickLookSPI.h"
-#import "SoftLinking.h"
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_SOURCE(WebCore, QuickLook)
 

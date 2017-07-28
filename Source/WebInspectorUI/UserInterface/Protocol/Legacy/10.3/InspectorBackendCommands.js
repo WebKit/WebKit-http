@@ -241,9 +241,7 @@ InspectorBackend.activateDomain("IndexedDB", "web");
 InspectorBackend.registerInspectorDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "Inspector");
 InspectorBackend.registerEvent("Inspector.evaluateForTestInFrontend", ["script"]);
 InspectorBackend.registerEvent("Inspector.inspect", ["object", "hints"]);
-InspectorBackend.registerEvent("Inspector.detached", ["reason"]);
 InspectorBackend.registerEvent("Inspector.activateExtraDomains", ["domains"]);
-InspectorBackend.registerEvent("Inspector.targetCrashed", []);
 InspectorBackend.registerCommand("Inspector.enable", [], []);
 InspectorBackend.registerCommand("Inspector.disable", [], []);
 InspectorBackend.registerCommand("Inspector.initialized", [], []);
@@ -310,8 +308,6 @@ InspectorBackend.registerEvent("Page.frameScheduledNavigation", ["frameId", "del
 InspectorBackend.registerEvent("Page.frameClearedScheduledNavigation", ["frameId"]);
 InspectorBackend.registerCommand("Page.enable", [], []);
 InspectorBackend.registerCommand("Page.disable", [], []);
-InspectorBackend.registerCommand("Page.addScriptToEvaluateOnLoad", [{"name": "scriptSource", "type": "string", "optional": false}], ["identifier"]);
-InspectorBackend.registerCommand("Page.removeScriptToEvaluateOnLoad", [{"name": "identifier", "type": "string", "optional": false}], []);
 InspectorBackend.registerCommand("Page.reload", [{"name": "ignoreCache", "type": "boolean", "optional": true}, {"name": "scriptToEvaluateOnLoad", "type": "string", "optional": true}], []);
 InspectorBackend.registerCommand("Page.navigate", [{"name": "url", "type": "string", "optional": false}], []);
 InspectorBackend.registerCommand("Page.getCookies", [], ["cookies"]);

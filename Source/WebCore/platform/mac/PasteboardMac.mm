@@ -48,6 +48,7 @@
 #import "Text.h"
 #import "URL.h"
 #import "WebCoreNSStringExtras.h"
+#import "WebCoreSystemInterface.h"
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
 #import <wtf/RetainPtr.h>
@@ -101,6 +102,11 @@ static Vector<String> writableTypesForImage()
     types.appendVector(writableTypesForURL());
     types.append(String(NSRTFDPboardType));
     return types;
+}
+
+NSArray *Pasteboard::supportedFileUploadPasteboardTypes()
+{
+    return @[ (NSString *)NSFilesPromisePboardType, (NSString *)NSFilenamesPboardType ];
 }
 
 Pasteboard::Pasteboard()

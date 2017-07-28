@@ -29,9 +29,7 @@
 #include <wtf/Box.h>
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
-#include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Threading.h>
 #include <wtf/Vector.h>
 
 namespace WTF {
@@ -54,14 +52,14 @@ namespace WTF {
 // to this thread sitting around even when it is not needed.
 //
 // AutomaticThread is here to help you in these situations. It encapsulates a lock, a condition
-// variable, and a thread. It will automatically shut the thread down after 1 second of inactivity.
+// variable, and a thread. It will automatically shut the thread down after a timeout of inactivity.
 // You use AutomaticThread by subclassing it, and put any state that is needed between [1] and [2]
 // in the subclass.
 //
 // The terminology we use is:
 //
 // [1] PollResult AutomaticThread::poll()
-// [2] WordResult AutomaticThread::work()
+// [2] WorkResult AutomaticThread::work()
 //
 // Note that poll() and work() may not be called on the same thread every time, since this will shut
 // down the thread as necessary. This is legal since m_condition.wait(m_lock) can drop the lock, and
@@ -84,6 +82,7 @@ public:
     // threads. In such cases, the thread doing the notifyAll() can wake up at most one thread -
     // its partner.
     WTF_EXPORT_PRIVATE void wait(Lock&);
+    WTF_EXPORT_PRIVATE bool waitFor(Lock&, Seconds);
     
 private:
     friend class AutomaticThread;
@@ -101,7 +100,7 @@ private:
 class WTF_EXPORT_PRIVATE AutomaticThread : public ThreadSafeRefCounted<AutomaticThread> {
 public:
     // Note that if you drop all of your references to an AutomaticThread then as soon as there is a
-    // second during which it doesn't get woken up, it will simply die on its own. This is a
+    // timeout during which it doesn't get woken up, it will simply die on its own. This is a
     // permanent kind of death where the AutomaticThread object goes away, rather than the temporary
     // kind of death where AutomaticThread lives but its underlying thread dies. All you have to do
     // to prevent permanent death is keep a ref to AutomaticThread. At time of writing, every user of

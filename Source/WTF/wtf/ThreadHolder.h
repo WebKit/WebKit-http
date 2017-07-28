@@ -75,10 +75,6 @@ private:
     // Thread from the threadMap, completing the cleanup.
     static void THREAD_SPECIFIC_CALL destruct(void* data);
 
-#if OS(WINDOWS)
-    static void platformInitialize(ThreadHolder*);
-#endif
-
     Ref<Thread> m_thread;
     bool m_isDestroyedOnce;
     static ThreadSpecificKey m_key;

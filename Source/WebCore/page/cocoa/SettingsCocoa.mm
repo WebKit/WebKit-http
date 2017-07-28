@@ -26,10 +26,12 @@
 #include "config.h"
 #include "Settings.h"
 
+#include <wtf/NeverDestroyed.h>
+
 #if PLATFORM(IOS)
 #include "Device.h"
-#include "SoftLinking.h"
 #include "UIKitSPI.h"
+#include <wtf/SoftLinking.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -132,5 +134,11 @@ bool Settings::defaultTextAutosizingEnabled()
 }
 
 #endif
+
+const String& Settings::defaultMediaContentTypesRequiringHardwareSupport()
+{
+    static NeverDestroyed<String> defaultMediaContentTypes { "video/mp4;codecs=hvc1:video/mp4;codecs=hev1" };
+    return defaultMediaContentTypes;
+}
 
 } // namespace WebCore

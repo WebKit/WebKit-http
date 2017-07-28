@@ -78,6 +78,7 @@ FontDescription::FontDescription()
     , m_variantEastAsianWidth(static_cast<unsigned>(FontVariantEastAsianWidth::Normal))
     , m_variantEastAsianRuby(static_cast<unsigned>(FontVariantEastAsianRuby::Normal))
     , m_opticalSizing(static_cast<unsigned>(FontOpticalSizing::Enabled))
+    , m_fontStyleAxis(FontCascadeDescription::initialFontStyleAxis() == FontStyleAxis::ital)
 {
 }
 
@@ -95,6 +96,22 @@ FontCascadeDescription::FontCascadeDescription()
     , m_isSpecifiedFont(false)
 {
 }
+
+#if !USE_PLATFORM_SYSTEM_FALLBACK_LIST
+void FontDescription::invalidateCaches()
+{
+}
+
+unsigned FontCascadeDescription::effectiveFamilyCount() const
+{
+    return familyCount();
+}
+
+FontFamilySpecification FontCascadeDescription::effectiveFamilyAt(unsigned i) const
+{
+    return familyAt(i);
+}
+#endif
 
 FontSelectionValue FontCascadeDescription::lighterWeight(FontSelectionValue weight)
 {

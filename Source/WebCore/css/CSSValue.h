@@ -20,10 +20,9 @@
 
 #pragma once
 
-#include "ExceptionOr.h"
 #include "URLHash.h"
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
-#include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -31,6 +30,7 @@
 namespace WebCore {
 
 class CSSCustomPropertyValue;
+class CSSStyleDeclaration;
 class CachedResource;
 class DeprecatedCSSOMValue;
 class StyleSheetContents;
@@ -119,9 +119,9 @@ public:
     
     bool hasVariableReferences() const { return isVariableReferenceValue() || isPendingSubstitutionValue(); }
 
-    Ref<DeprecatedCSSOMValue> createDeprecatedCSSOMWrapper() const;
+    Ref<DeprecatedCSSOMValue> createDeprecatedCSSOMWrapper(CSSStyleDeclaration&) const;
 
-    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
+    bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
     bool equals(const CSSValue&) const;
     bool operator==(const CSSValue& other) const { return equals(other); }

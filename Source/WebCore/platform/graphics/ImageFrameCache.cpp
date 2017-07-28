@@ -176,8 +176,9 @@ void ImageFrameCache::didDecodeProperties(unsigned decodedPropertiesSize)
 void ImageFrameCache::growFrames()
 {
     ASSERT(isSizeAvailable());
-    ASSERT(m_frames.size() <= frameCount());
-    m_frames.grow(frameCount());
+    auto newSize = frameCount();
+    if (newSize > m_frames.size())
+        m_frames.grow(newSize);
 }
 
 void ImageFrameCache::setNativeImage(NativeImagePtr&& nativeImage)
@@ -189,19 +190,19 @@ void ImageFrameCache::setNativeImage(NativeImagePtr&& nativeImage)
 
     frame.m_nativeImage = WTFMove(nativeImage);
 
-    frame.m_decodingStatus = ImageFrame::DecodingStatus::Complete;
+    frame.m_decodingStatus = DecodingStatus::Complete;
     frame.m_size = nativeImageSize(frame.m_nativeImage);
     frame.m_hasAlpha = nativeImageHasAlpha(frame.m_nativeImage);
 }
 
-void ImageFrameCache::cacheMetadataAtIndex(size_t index, SubsamplingLevel subsamplingLevel, ImageFrame::DecodingStatus decodingStatus)
+void ImageFrameCache::cacheMetadataAtIndex(size_t index, SubsamplingLevel subsamplingLevel, DecodingStatus decodingStatus)
 {
     ASSERT(index < m_frames.size());
     ImageFrame& frame = m_frames[index];
 
     ASSERT(isDecoderAvailable());
-    if (decodingStatus == ImageFrame::DecodingStatus::Invalid)
-        frame.m_decodingStatus = m_decoder->frameIsCompleteAtIndex(index) ? ImageFrame::DecodingStatus::Complete : ImageFrame::DecodingStatus::Partial;
+    if (decodingStatus == DecodingStatus::Invalid)
+        frame.m_decodingStatus = m_decoder->frameIsCompleteAtIndex(index) ? DecodingStatus::Complete : DecodingStatus::Partial;
     else
         frame.m_decodingStatus = decodingStatus;
 
@@ -223,7 +224,7 @@ void ImageFrameCache::cacheMetadataAtIndex(size_t index, SubsamplingLevel subsam
         frame.m_duration = m_decoder->frameDurationAtIndex(index);
 }
 
-void ImageFrameCache::cacheNativeImageAtIndex(NativeImagePtr&& nativeImage, size_t index, SubsamplingLevel subsamplingLevel, const DecodingOptions& decodingOptions, ImageFrame::DecodingStatus decodingStatus)
+void ImageFrameCache::cacheNativeImageAtIndex(NativeImagePtr&& nativeImage, size_t index, SubsamplingLevel subsamplingLevel, const DecodingOptions& decodingOptions, DecodingStatus decodingStatus)
 {
     ASSERT(index < m_frames.size());
     ImageFrame& frame = m_frames[index];
@@ -245,7 +246,7 @@ void ImageFrameCache::cacheNativeImageAtIndex(NativeImagePtr&& nativeImage, size
     decodedSizeIncreased(frame.frameBytes());
 }
 
-void ImageFrameCache::cacheNativeImageAtIndexAsync(NativeImagePtr&& nativeImage, size_t index, SubsamplingLevel subsamplingLevel, const DecodingOptions& decodingOptions, ImageFrame::DecodingStatus decodingStatus)
+void ImageFrameCache::cacheNativeImageAtIndexAsync(NativeImagePtr&& nativeImage, size_t index, SubsamplingLevel subsamplingLevel, const DecodingOptions& decodingOptions, DecodingStatus decodingStatus)
 {
     if (!isDecoderAvailable())
         return;
@@ -276,12 +277,8 @@ void ImageFrameCache::startAsyncDecodingQueue()
 
     m_frameRequestQueue.open();
 
-    Ref<ImageFrameCache> protectedThis = Ref<ImageFrameCache>(*this);
-    Ref<WorkQueue> protectedQueue = decodingQueue();
-    Ref<ImageDecoder> protectedDecoder = Ref<ImageDecoder>(*m_decoder);
-
     // We need to protect this, m_decodingQueue and m_decoder from being deleted while we are in the decoding loop.
-    decodingQueue()->dispatch([protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedQueue), protectedDecoder = WTFMove(protectedDecoder)] {
+    decodingQueue()->dispatch([protectedThis = makeRef(*this), protectedQueue = decodingQueue(), protectedDecoder = makeRef(*m_decoder), sourceURL = sourceURL().string().isolatedCopy()] {
         ImageFrameRequest frameRequest;
 
         while (protectedThis->m_frameRequestQueue.dequeue(frameRequest)) {
@@ -290,21 +287,21 @@ void ImageFrameCache::startAsyncDecodingQueue()
             // Get the frame NativeImage on the decoding thread.
             NativeImagePtr nativeImage = protectedDecoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, frameRequest.decodingOptions);
             if (nativeImage)
-                LOG(Images, "ImageFrameCache::%s - %p - url: %s [frame %ld has been decoded]", __FUNCTION__, protectedThis.ptr(), protectedThis->sourceURL().string().utf8().data(), frameRequest.index);
+                LOG(Images, "ImageFrameCache::%s - %p - url: %s [frame %ld has been decoded]", __FUNCTION__, protectedThis.ptr(), sourceURL.utf8().data(), frameRequest.index);
             else {
-                LOG(Images, "ImageFrameCache::%s - %p - url: %s [decoding for frame %ld has failed]", __FUNCTION__, protectedThis.ptr(), protectedThis->sourceURL().string().utf8().data(), frameRequest.index);
+                LOG(Images, "ImageFrameCache::%s - %p - url: %s [decoding for frame %ld has failed]", __FUNCTION__, protectedThis.ptr(), sourceURL.utf8().data(), frameRequest.index);
                 continue;
             }
 
             // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
-            callOnMainThread([protectedThis = protectedThis.copyRef(), protectedQueue = protectedQueue.copyRef(), protectedDecoder = protectedDecoder.copyRef(), nativeImage = WTFMove(nativeImage), frameRequest] () mutable {
+            callOnMainThread([protectedThis = protectedThis.copyRef(), protectedQueue = protectedQueue.copyRef(), protectedDecoder = protectedDecoder.copyRef(), sourceURL = sourceURL.isolatedCopy(), nativeImage = WTFMove(nativeImage), frameRequest] () mutable {
                 // The queue may have been closed if after we got the frame NativeImage, stopAsyncDecodingQueue() was called.
                 if (protectedQueue.ptr() == protectedThis->m_decodingQueue && protectedDecoder.ptr() == protectedThis->m_decoder) {
                     ASSERT(protectedThis->m_frameCommitQueue.first() == frameRequest);
                     protectedThis->m_frameCommitQueue.removeFirst();
                     protectedThis->cacheNativeImageAtIndexAsync(WTFMove(nativeImage), frameRequest.index, frameRequest.subsamplingLevel, frameRequest.decodingOptions, frameRequest.decodingStatus);
                 } else
-                    LOG(Images, "ImageFrameCache::%s - %p - url: %s [frame %ld will not cached]", __FUNCTION__, protectedThis.ptr(), protectedThis->sourceURL().string().utf8().data(), frameRequest.index);
+                    LOG(Images, "ImageFrameCache::%s - %p - url: %s [frame %ld will not cached]", __FUNCTION__, protectedThis.ptr(), sourceURL.utf8().data(), frameRequest.index);
             });
         }
     });
@@ -317,7 +314,7 @@ void ImageFrameCache::requestFrameAsyncDecodingAtIndex(size_t index, Subsampling
         startAsyncDecodingQueue();
     
     ASSERT(index < m_frames.size());
-    ImageFrame::DecodingStatus decodingStatus = m_decoder->frameIsCompleteAtIndex(index) ? ImageFrame::DecodingStatus::Complete : ImageFrame::DecodingStatus::Partial;
+    DecodingStatus decodingStatus = m_decoder->frameIsCompleteAtIndex(index) ? DecodingStatus::Complete : DecodingStatus::Partial;
 
     LOG(Images, "ImageFrameCache::%s - %p - url: %s [enqueuing frame %ld for decoding]", __FUNCTION__, this, sourceURL().string().utf8().data(), index);
     m_frameRequestQueue.enqueue({ index, subsamplingLevel, sizeForDrawing, decodingStatus });
@@ -382,6 +379,7 @@ const ImageFrame& ImageFrameCache::frameAtIndexCacheIfNeeded(size_t index, Image
 void ImageFrameCache::clearMetadata()
 {
     m_frameCount = std::nullopt;
+    m_repetitionCount = std::nullopt;
     m_singlePixelSolidColor = std::nullopt;
     m_encodedDataStatus = std::nullopt;
     m_uti = std::nullopt;
@@ -501,9 +499,9 @@ bool ImageFrameCache::frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(size_
     return it != m_frameCommitQueue.end();
 }
 
-ImageFrame::DecodingStatus ImageFrameCache::frameDecodingStatusAtIndex(size_t index)
+DecodingStatus ImageFrameCache::frameDecodingStatusAtIndex(size_t index)
 {
-    return frameMetadataAtIndex<ImageFrame::DecodingStatus>(index, (&ImageFrame::decodingStatus));
+    return frameMetadataAtIndex<DecodingStatus>(index, (&ImageFrame::decodingStatus));
 }
 
 bool ImageFrameCache::frameHasAlphaAtIndex(size_t index)

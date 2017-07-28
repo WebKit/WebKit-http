@@ -37,6 +37,7 @@
 #include "PlatformLayer.h"
 #include "TransformOperations.h"
 #include "WindRule.h"
+#include <wtf/Function.h>
 #include <wtf/TypeCasts.h>
 
 #if ENABLE(CSS_COMPOSITING)
@@ -442,7 +443,7 @@ public:
 
     // Transitions are identified by a special animation name that cannot clash with a keyframe identifier.
     static String animationNameForTransition(AnimatedPropertyID);
-    
+
     // Return true if the animation is handled by the compositing system. If this returns
     // false, the animation will be run by CSSAnimationController.
     // These methods handle both transitions and keyframe animations.
@@ -452,7 +453,7 @@ public:
 
     WEBCORE_EXPORT virtual void suspendAnimations(double time);
     WEBCORE_EXPORT virtual void resumeAnimations();
-    
+
     // Layer contents
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
@@ -465,11 +466,11 @@ public:
     virtual bool usesContentsLayer() const { return false; }
 
     // Callback from the underlying graphics system to draw layer contents.
-    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip);
-    
+    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip, GraphicsLayerPaintBehavior = GraphicsLayerPaintNormal);
+
     // For hosting this GraphicsLayer in a native layer hierarchy.
     virtual PlatformLayer* platformLayer() const { return 0; }
-    
+
     enum CompositingCoordinatesOrientation { CompositingCoordinatesTopDown, CompositingCoordinatesBottomUp };
 
     // Flippedness of the contents of this layer. Does not affect sublayer geometry.
@@ -546,6 +547,11 @@ public:
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;
 
+    virtual bool backingStoreAttached() const { return true; }
+
+    void setCanDetachBackingStore(bool b) { m_canDetachBackingStore = b; }
+    bool canDetachBackingStore() const { return m_canDetachBackingStore; }
+
     virtual TiledBacking* tiledBacking() const { return 0; }
 
     void resetTrackedRepaints();
@@ -565,7 +571,10 @@ public:
     virtual bool isGraphicsLayerTextureMapper() const { return false; }
     virtual bool isCoordinatedGraphicsLayer() const { return false; }
 
-    static void traverse(GraphicsLayer&, std::function<void (GraphicsLayer&)>);
+    const std::optional<FloatRect>& animationExtent() const { return m_animationExtent; }
+    void setAnimationExtent(std::optional<FloatRect> animationExtent) { m_animationExtent = animationExtent; }
+
+    static void traverse(GraphicsLayer&, const WTF::Function<void (GraphicsLayer&)>&);
 
 protected:
     WEBCORE_EXPORT explicit GraphicsLayer(Type, GraphicsLayerClient&);
@@ -649,6 +658,7 @@ protected:
     bool m_isMaskLayer : 1;
     bool m_isTrackingDisplayListReplay : 1;
     bool m_userInteractionEnabled : 1;
+    bool m_canDetachBackingStore : 1;
     
     GraphicsLayerPaintingPhase m_paintingPhase;
     CompositingCoordinatesOrientation m_contentsOrientation; // affects orientation of layer contents
@@ -669,6 +679,7 @@ protected:
     FloatSize m_contentsTilePhase;
     FloatSize m_contentsTileSize;
     FloatRoundedRect m_backdropFiltersRect;
+    std::optional<FloatRect> m_animationExtent;
 
     int m_repaintCount;
     CustomAppearance m_customAppearance;

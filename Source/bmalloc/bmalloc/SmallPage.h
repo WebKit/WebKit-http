@@ -34,13 +34,10 @@
 
 namespace bmalloc {
 
+class SmallLine;
+
 class SmallPage : public ListNode<SmallPage> {
 public:
-    SmallPage()
-        : m_hasFreeLines(true)
-    {
-    }
-
     void ref(std::lock_guard<StaticMutex>&);
     bool deref(std::lock_guard<StaticMutex>&);
     unsigned refCount(std::lock_guard<StaticMutex>&) { return m_refCount; }
@@ -51,6 +48,9 @@ public:
     bool hasFreeLines(std::lock_guard<StaticMutex>&) const { return m_hasFreeLines; }
     void setHasFreeLines(std::lock_guard<StaticMutex>&, bool hasFreeLines) { m_hasFreeLines = hasFreeLines; }
     
+    bool hasPhysicalPages() { return m_hasPhysicalPages; }
+    void setHasPhysicalPages(bool hasPhysicalPages) { m_hasPhysicalPages = hasPhysicalPages; }
+    
     SmallLine* begin();
 
     unsigned char slide() const { return m_slide; }
@@ -58,6 +58,7 @@ public:
     
 private:
     unsigned char m_hasFreeLines: 1;
+    unsigned char m_hasPhysicalPages: 1;
     unsigned char m_refCount: 7;
     unsigned char m_sizeClass;
     unsigned char m_slide;
@@ -66,6 +67,8 @@ static_assert(
     sizeClassCount <= std::numeric_limits<decltype(m_sizeClass)>::max(),
     "Largest size class must fit in SmallPage metadata");
 };
+
+using LineCache = std::array<List<SmallPage>, sizeClassCount>;
 
 inline void SmallPage::ref(std::lock_guard<StaticMutex>&)
 {

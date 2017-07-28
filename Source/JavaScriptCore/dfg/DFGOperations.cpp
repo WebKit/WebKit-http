@@ -42,6 +42,7 @@
 #include "DirectArguments.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLOSREntry.h"
+#include "FrameTracers.h"
 #include "HasOwnPropertyCache.h"
 #include "HostCallReturnValue.h"
 #include "Interpreter.h"
@@ -573,7 +574,7 @@ ALWAYS_INLINE EncodedJSValue getByValCellInt(ExecState* exec, JSCell* base, int3
     return JSValue::encode(JSValue(base).get(exec, static_cast<unsigned>(index)));
 }
 
-EncodedJSValue JIT_OPERATION operationGetByValArrayInt(ExecState* exec, JSArray* base, int32_t index)
+EncodedJSValue JIT_OPERATION operationGetByValObjectInt(ExecState* exec, JSObject* base, int32_t index)
 {
     return getByValCellInt(exec, base, index);
 }
@@ -1903,6 +1904,70 @@ int32_t JIT_OPERATION operationHasOwnProperty(ExecState* exec, JSObject* thisObj
     ASSERT(hasOwnPropertyCache);
     hasOwnPropertyCache->tryAdd(vm, slot, thisObject, propertyName.impl(), result);
     return result;
+}
+
+int32_t JIT_OPERATION operationArrayIndexOfString(ExecState* exec, Butterfly* butterfly, JSString* searchElement, int32_t index)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    int32_t length = butterfly->publicLength();
+    auto data = butterfly->contiguous().data();
+    for (; index < length; ++index) {
+        JSValue value = data[index].get();
+        if (!value || !value.isString())
+            continue;
+        auto* string = asString(value);
+        if (string == searchElement)
+            return index;
+        if (string->equal(exec, searchElement))
+            return index;
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    return -1;
+}
+
+int32_t JIT_OPERATION operationArrayIndexOfValueInt32OrContiguous(ExecState* exec, Butterfly* butterfly, EncodedJSValue encodedValue, int32_t index)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSValue searchElement = JSValue::decode(encodedValue);
+
+    int32_t length = butterfly->publicLength();
+    auto data = butterfly->contiguous().data();
+    for (; index < length; ++index) {
+        JSValue value = data[index].get();
+        if (!value)
+            continue;
+        if (JSValue::strictEqual(exec, searchElement, value))
+            return index;
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    return -1;
+}
+
+int32_t JIT_OPERATION operationArrayIndexOfValueDouble(ExecState* exec, Butterfly* butterfly, EncodedJSValue encodedValue, int32_t index)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    JSValue searchElement = JSValue::decode(encodedValue);
+
+    if (!searchElement.isNumber())
+        return -1;
+    double number = searchElement.asNumber();
+
+    int32_t length = butterfly->publicLength();
+    const double* data = butterfly->contiguousDouble().data();
+    for (; index < length; ++index) {
+        // This comparison ignores NaN.
+        if (data[index] == number)
+            return index;
+    }
+    return -1;
 }
 
 void JIT_OPERATION operationLoadVarargs(ExecState* exec, int32_t firstElementDest, EncodedJSValue encodedArguments, int32_t offset, int32_t length, int32_t mandatoryMinimum)

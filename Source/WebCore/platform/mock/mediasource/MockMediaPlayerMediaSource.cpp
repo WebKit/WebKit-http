@@ -40,21 +40,17 @@ namespace WebCore {
 // MediaPlayer Enigne Support
 void MockMediaPlayerMediaSource::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar([](MediaPlayer* player) { return std::make_unique<MockMediaPlayerMediaSource>(player); }, getSupportedTypes,
+    registrar([] (MediaPlayer* player) { return std::make_unique<MockMediaPlayerMediaSource>(player); }, getSupportedTypes,
         supportsType, 0, 0, 0, 0);
 }
 
+// FIXME: What does the word "cache" mean here?
 static const HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
-    static bool isInitialized = false;
-
-    if (!isInitialized) {
-        isInitialized = true;
-        cache.get().add(ASCIILiteral("video/mock"));
-        cache.get().add(ASCIILiteral("audio/mock"));
-    }
-
+    static const auto cache = makeNeverDestroyed(HashSet<String, ASCIICaseInsensitiveHash> {
+        "video/mock",
+        "audio/mock",
+    });
     return cache;
 }
 
@@ -68,13 +64,15 @@ MediaPlayer::SupportsType MockMediaPlayerMediaSource::supportsType(const MediaEn
     if (!parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
 
-    if (parameters.type.isEmpty() || !mimeTypeCache().contains(parameters.type))
+    auto containerType = parameters.type.containerType();
+    if (containerType.isEmpty() || !mimeTypeCache().contains(containerType))
         return MediaPlayer::IsNotSupported;
 
-    if (parameters.codecs.isEmpty())
+    auto codecs = parameters.type.parameter(ContentType::codecsParameter());
+    if (codecs.isEmpty())
         return MediaPlayer::MayBeSupported;
 
-    return parameters.codecs == "mock" ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
+    return codecs == "mock" ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
 }
 
 MockMediaPlayerMediaSource::MockMediaPlayerMediaSource(MediaPlayer* player)

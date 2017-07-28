@@ -275,6 +275,13 @@ public:
         return node;
     }
 
+    ExpressionNode* createObjectSpreadExpression(const JSTokenLocation& location, ExpressionNode* expression, const JSTextPosition& start, const JSTextPosition& divot, const JSTextPosition& end)
+    {
+        auto node = new (m_parserArena) ObjectSpreadExpressionNode(location, expression);
+        setExceptionLocation(node, start, divot, end);
+        return node;
+    }
+
     TemplateStringNode* createTemplateString(const JSTokenLocation& location, const Identifier* cooked, const Identifier* raw)
     {
         return new (m_parserArena) TemplateStringNode(location, cooked, raw);
@@ -494,6 +501,10 @@ public:
                 static_cast<ClassExprNode*>(node)->setEcmaName(*propertyName);
         }
         return new (m_parserArena) PropertyNode(*propertyName, node, type, putType, superBinding, isClassProperty);
+    }
+    PropertyNode* createProperty(ExpressionNode* node, PropertyNode::Type type, PropertyNode::PutType putType, bool, SuperBinding superBinding, bool isClassProperty)
+    {
+        return new (m_parserArena) PropertyNode(node, type, putType, superBinding, isClassProperty);
     }
     PropertyNode* createProperty(VM* vm, ParserArena& parserArena, double propertyName, ExpressionNode* node, PropertyNode::Type type, PropertyNode::PutType putType, bool, SuperBinding superBinding, bool isClassProperty)
     {
@@ -843,7 +854,7 @@ public:
     {
         operandStackDepth -= amount;
         ASSERT(operandStackDepth >= 0);
-        m_binaryOperandStack.resize(m_binaryOperandStack.size() - amount);
+        m_binaryOperandStack.shrink(m_binaryOperandStack.size() - amount);
     }
     void appendBinaryOperation(const JSTokenLocation& location, int& operandStackDepth, int&, const BinaryOperand& lhs, const BinaryOperand& rhs)
     {
@@ -944,14 +955,29 @@ public:
     
     void appendObjectPatternEntry(ObjectPattern node, const JSTokenLocation& location, bool wasString, const Identifier& identifier, DestructuringPattern pattern, ExpressionNode* defaultValue)
     {
-        node->appendEntry(location, identifier, wasString, pattern, defaultValue);
+        node->appendEntry(location, identifier, wasString, pattern, defaultValue, ObjectPatternNode::BindingType::Element);
         tryInferNameInPattern(pattern, defaultValue);
     }
 
-    void appendObjectPatternEntry(ObjectPattern node, const JSTokenLocation& location, ExpressionNode* propertyExpression, DestructuringPattern pattern, ExpressionNode* defaultValue)
+    void appendObjectPatternEntry(VM& vm, ObjectPattern node, const JSTokenLocation& location, ExpressionNode* propertyExpression, DestructuringPattern pattern, ExpressionNode* defaultValue)
     {
-        node->appendEntry(location, propertyExpression, pattern, defaultValue);
+        node->appendEntry(vm, location, propertyExpression, pattern, defaultValue, ObjectPatternNode::BindingType::Element);
         tryInferNameInPattern(pattern, defaultValue);
+    }
+    
+    void appendObjectPatternRestEntry(VM& vm, ObjectPattern node, const JSTokenLocation& location, DestructuringPattern pattern)
+    {
+        node->appendEntry(vm, location, nullptr, pattern, nullptr, ObjectPatternNode::BindingType::RestElement);
+    }
+
+    void setContainsObjectRestElement(ObjectPattern node, bool containsRestElement)
+    {
+        node->setContainsRestElement(containsRestElement);
+    }
+    
+    void setContainsComputedProperty(ObjectPattern node, bool containsComputedProperty)
+    {
+        node->setContainsComputedProperty(containsComputedProperty);
     }
 
     BindingPattern createBindingLocation(const JSTokenLocation&, const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end, AssignmentContext context)

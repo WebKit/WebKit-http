@@ -429,6 +429,7 @@ $numPasses = 0
 # We force all tests to use a smaller (1.5M) stack so that stack overflow tests can run faster.
 BASE_OPTIONS = ["--useFTLJIT=false", "--useFunctionDotArguments=true", "--maxPerThreadStackUsage=1572864"]
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
+# NOTE: Tests rely on this using scribbleFreeCells.
 NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
 B3O1_OPTIONS = ["--defaultB3OptLevel=1"]
 FTL_OPTIONS = ["--useFTLJIT=true"]
@@ -836,6 +837,7 @@ def runNoLLInt(*optionalTestSpecificOptions)
     end
 end
 
+# NOTE: Tests rely on this using scribbleFreeCells.
 def runNoCJITValidate(*optionalTestSpecificOptions)
     run("no-cjit", "--validateBytecode=true", "--validateGraph=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
@@ -857,7 +859,7 @@ def runFTLNoCJIT(*optionalTestSpecificOptions)
 end
 
 def runFTLNoCJITB3O1(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-b3o1", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-b3o1", "--useArrayAllocationProfiling=false", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITValidate(*optionalTestSpecificOptions)
@@ -886,6 +888,11 @@ end
 
 def runFTLEager(*optionalTestSpecificOptions)
     run("ftl-eager", "--airForceBriggsAllocator=true", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runFTLEagerWatchdog(*optionalTestSpecificOptions)
+    timeout = rand(100)
+    run("ftl-eager-watchdog-#{timeout}", "--watchdog=#{timeout}", "--watchdog-exception-ok", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEagerNoCJITValidate(*optionalTestSpecificOptions)
@@ -1164,6 +1171,8 @@ def runES6(mode)
         errorHandler = simpleErrorHandler
     when :fail
         errorHandler = expectedFailErrorHandler
+    when :failDueToOutdatedOrBadTest
+        errorHandler = expectedFailErrorHandler
     else
         raise "Invalid mode: #{mode}"
     end
@@ -1199,9 +1208,12 @@ def runWebAssembly
     prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
     prepareExtraRelativeFiles(modules.map { |f| "../" + f }, $collection)
     run("default-wasm", "-m", *FTL_OPTIONS)
-    run("wasm-no-cjit", "-m", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-    run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
-    run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+    if !$quickMode
+        run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+        run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+    end
 end
 
 def runWebAssemblyEmscripten(mode)
@@ -1214,9 +1226,12 @@ def runWebAssemblyEmscripten(mode)
     wasm = $benchmark.to_s.sub! '.js', '.wasm'
     prepareExtraRelativeFiles([Pathname('..') + wasm], $collection)
     run("default-wasm", *FTL_OPTIONS)
-    run("wasm-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-    run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
-    run("wasm-no-call-ic", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+    if !$quickMode
+        run("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-no-call-ic", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+        run("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+    end
 end
 
 def runWebAssemblySpecTest(mode)
@@ -1224,7 +1239,6 @@ def runWebAssemblySpecTest(mode)
     when :skip
         return
     end
-
     return if !$jitTests
     return if !$isFTLPlatform
     prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
@@ -1236,9 +1250,22 @@ def runWebAssemblySpecTest(mode)
     prepareExtraRelativeFiles(harness.map { |f| "../../spec-harness/" + f }, $collection)
 
     runWithOutputHandler("default-wasm", noisyOutputHandler, "../spec-harness.js", *FTL_OPTIONS)
-    runWithOutputHandler("wasm-no-cjit", noisyOutputHandler, "../spec-harness.js", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
-    runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
-    runWithOutputHandler("wasm-no-call-ic", noisyOutputHandler, "../spec-harness.js", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+    if !$quickMode
+      runWithOutputHandler("wasm-no-cjit-yes-tls-context", noisyOutputHandler, "../spec-harness.js",  "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+      runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-no-call-ic", noisyOutputHandler, "../spec-harness.js", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-no-tls-context", noisyOutputHandler, "../spec-harness.js", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+    end
+end
+
+def runWebAssemblyLowExecutableMemory(*optionalTestSpecificOptions)
+    return if !$jitTests
+    return if !$isFTLPlatform
+    modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
+    prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
+    prepareExtraRelativeFiles(modules.map { |f| "../" + f }, $collection)
+    # Only let WebAssembly get executable memory.
+    run("default-wasm", "--useConcurrentGC=0" , "--useConcurrentJIT=0", "--jitMemoryReservationSize=15000", "--useBaselineJIT=0", "--useDFGJIT=0", "--useFTLJIT=0", "-m")
 end
 
 def runChakra(mode, exception, baselineFile, extraFiles)
@@ -1264,6 +1291,8 @@ def runChakra(mode, exception, baselineFile, extraFiles)
     when :pass
         errorHandler = chakraPassFailErrorHandler
         outputHandler = noisyOutputHandler
+    when :skipDueToOutdatedOrBadTest
+        return
     when :skip
         return
     else

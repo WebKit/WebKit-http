@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "FontBaseline.h"
 #include "LayoutRect.h"
 #include "RenderLayerModelObject.h"
 
@@ -266,6 +267,8 @@ protected:
 
     bool hasAutoHeightOrContainingBlockWithAutoHeight() const;
 
+    DecodingMode decodingModeForImageDraw(const Image&, const PaintInfo&) const;
+
 public:
     // For RenderBlocks and RenderInlines with m_style->styleType() == FIRST_LETTER, this tracks their remaining text fragments
     RenderTextFragment* firstLetterRemainingText() const;
@@ -297,6 +300,8 @@ public:
     enum ScaleByEffectiveZoomOrNot { ScaleByEffectiveZoom, DoNotScaleByEffectiveZoom };
     LayoutSize calculateImageIntrinsicDimensions(StyleImage*, const LayoutSize& scaledPositioningAreaSize, ScaleByEffectiveZoomOrNot) const;
 
+    RenderBlock* containingBlockForAutoHeightDetection(Length logicalHeight) const;
+
 private:
     LayoutUnit computedCSSPadding(const Length&) const;
     
@@ -324,8 +329,6 @@ private:
         float thickness, float drawThickness, BoxSide, const RenderStyle&,
         Color, EBorderStyle, BackgroundBleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge);
     void paintMaskForTextFillBox(ImageBuffer*, const IntRect&, InlineFlowBox*, const LayoutRect&);
-    
-    RenderBlock* containingBlockForAutoHeightDetection(Length logicalHeight) const;
 };
 
 } // namespace WebCore

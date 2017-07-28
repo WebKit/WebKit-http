@@ -98,10 +98,17 @@ JS_BINDING_IDLS = \
 	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/credentials/BasicCredential.idl \
+    $(WebCore)/Modules/credentials/CredentialCreationOptions.idl \
     $(WebCore)/Modules/credentials/CredentialData.idl \
+    $(WebCore)/Modules/credentials/CredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/CredentialUserData.idl \
+    $(WebCore)/Modules/credentials/CredentialsContainer.idl \
+    $(WebCore)/Modules/credentials/FederatedCredential.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialInit.idl \
+    $(WebCore)/Modules/credentials/NavigatorCredentials.idl \
     $(WebCore)/Modules/credentials/PasswordCredential.idl \
-    $(WebCore)/Modules/credentials/SiteBoundCredential.idl \
-    $(WebCore)/Modules/credentials/SiteBoundCredentialData.idl \
+    $(WebCore)/Modules/credentials/PasswordCredentialData.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySessionType.idl \
@@ -260,7 +267,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/Database.idl \
     $(WebCore)/Modules/webdatabase/DatabaseCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLError.idl \
-    $(WebCore)/Modules/webdatabase/SQLException.idl \
     $(WebCore)/Modules/webdatabase/SQLResultSet.idl \
     $(WebCore)/Modules/webdatabase/SQLResultSetRowList.idl \
     $(WebCore)/Modules/webdatabase/SQLStatementCallback.idl \
@@ -300,7 +306,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaOaepParams.idl \
-    $(WebCore)/css/CSSFontFaceLoadEvent.idl \
+    $(WebCore)/crypto/parameters/RsaPssParams.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
     $(WebCore)/css/CSSImportRule.idl \
     $(WebCore)/css/CSSKeyframeRule.idl \
@@ -350,15 +356,18 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/CompositionEvent.idl \
     $(WebCore)/dom/CustomElementRegistry.idl \
     $(WebCore)/dom/CustomEvent.idl \
-    $(WebCore)/dom/DOMCoreException.idl \
     $(WebCore)/dom/DOMError.idl \
+    $(WebCore)/dom/DOMException.idl \
     $(WebCore)/dom/DOMImplementation.idl \
     $(WebCore)/dom/DOMNamedFlowCollection.idl \
     $(WebCore)/dom/DOMPoint.idl \
     $(WebCore)/dom/DOMPointInit.idl \
     $(WebCore)/dom/DOMPointReadOnly.idl \
+    $(WebCore)/dom/DOMQuad.idl \
+    $(WebCore)/dom/DOMQuadInit.idl \
     $(WebCore)/dom/DOMRect.idl \
     $(WebCore)/dom/DOMRectInit.idl \
+    $(WebCore)/dom/DOMRectList.idl \
     $(WebCore)/dom/DOMRectReadOnly.idl \
     $(WebCore)/dom/DOMStringList.idl \
     $(WebCore)/dom/DOMStringMap.idl \
@@ -433,7 +442,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/fileapi/BlobPropertyBag.idl \
     $(WebCore)/fileapi/File.idl \
     $(WebCore)/fileapi/FileError.idl \
-    $(WebCore)/fileapi/FileException.idl \
     $(WebCore)/fileapi/FileList.idl \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
@@ -628,7 +636,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/IntersectionObserverEntry.idl \
     $(WebCore)/page/Location.idl \
     $(WebCore)/page/Navigator.idl \
-    $(WebCore)/page/NavigatorConcurrentHardware.idl \
     $(WebCore)/page/NavigatorID.idl \
     $(WebCore)/page/NavigatorLanguage.idl \
     $(WebCore)/page/NavigatorOnLine.idl \
@@ -688,7 +695,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/svg/SVGDocument.idl \
     $(WebCore)/svg/SVGElement.idl \
     $(WebCore)/svg/SVGEllipseElement.idl \
-    $(WebCore)/svg/SVGException.idl \
     $(WebCore)/svg/SVGExternalResourcesRequired.idl \
     $(WebCore)/svg/SVGFEBlendElement.idl \
     $(WebCore)/svg/SVGFEColorMatrixElement.idl \
@@ -823,7 +829,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/xml/XMLHttpRequestUpload.idl \
     $(WebCore)/xml/XMLSerializer.idl \
     $(WebCore)/xml/XPathEvaluator.idl \
-    $(WebCore)/xml/XPathException.idl \
     $(WebCore)/xml/XPathExpression.idl \
     $(WebCore)/xml/XPathNSResolver.idl \
     $(WebCore)/xml/XPathResult.idl \
@@ -888,6 +893,7 @@ endif
 ifeq ($(WTF_PLATFORM_IOS), 1)
 ifeq ($(findstring ENABLE_IOS_TOUCH_EVENTS,$(FEATURE_DEFINES)), ENABLE_IOS_TOUCH_EVENTS)
 ADDITIONAL_BINDING_IDLS += \
+    DocumentTouch.idl \
     Touch.idl \
     TouchEvent.idl \
     TouchList.idl
@@ -912,6 +918,7 @@ endif # MACOS
 
 ifneq ($(WTF_PLATFORM_IOS), 1)
 JS_BINDING_IDLS += \
+    $(WebCore)/dom/DocumentTouch.idl \
     $(WebCore)/dom/Touch.idl \
     $(WebCore)/dom/TouchEvent.idl \
     $(WebCore)/dom/TouchList.idl
@@ -940,7 +947,6 @@ all : \
     DOMJITAbstractHeapRepository.h \
     EventInterfaces.h \
     EventTargetInterfaces.h \
-    ExceptionCodeDescription.cpp \
     HTMLElementFactory.cpp \
     HTMLElementFactory.h \
     HTMLElementTypeHelpers.h \
@@ -1097,8 +1103,8 @@ endif
 ifdef WEBCORE_SDP_PROCESSOR_SCRIPTS
 all : SDPProcessorScriptsData.h
 
-SDPProcessorScriptsData.h : Scripts/make-js-file-arrays.py $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
-	PYTHONPATH=$(JavaScriptCore_SCRIPTS_DIR) $(PYTHON) $< $@ SDPProcessorScriptsData.cpp $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+SDPProcessorScriptsData.h : $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py -n WebCore $@ SDPProcessorScriptsData.cpp $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
 endif
 
 # --------
@@ -1152,8 +1158,8 @@ endif
 ifdef USER_AGENT_SCRIPTS
 all : UserAgentScripts.h
 
-UserAgentScripts.h : Scripts/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
-	PYTHONPATH=$(JavaScriptCore_SCRIPTS_DIR) $(PYTHON) $< $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
+UserAgentScripts.h : $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py -n WebCore $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
 endif
 
 # --------
@@ -1266,10 +1272,6 @@ all : EventTargetHeaders.h EventTargetInterfaces.h
 EventTargetHeaders%h EventTargetInterfaces%h : dom/make_event_factory.pl $(EVENT_TARGET_FACTORY)
 	$(PERL) $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
 
-all : ExceptionCodeDescription.cpp ExceptionCodeDescription.h ExceptionHeaders.h ExceptionInterfaces.h
-ExceptionCodeDescription%cpp ExceptionCodeDescription%h ExceptionHeaders%h ExceptionInterfaces%h : dom/make_dom_exceptions.pl dom/DOMExceptions.in
-	$(PERL) $< --input $(WebCore)/dom/DOMExceptions.in
-
 # --------
 
 # MathML tag and attribute names, and element factory
@@ -1368,23 +1370,6 @@ CommandLineAPIModuleSource.h : CommandLineAPIModuleSource.js
 	$(PERL) $(JavaScriptCore_SCRIPTS_DIR)/xxd.pl CommandLineAPIModuleSource_js ./CommandLineAPIModuleSource.min.js CommandLineAPIModuleSource.h
 	$(DELETE) CommandLineAPIModuleSource.min.js
 
-# Web Replay inputs generator
-
-INPUT_GENERATOR_SCRIPTS = \
-    $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputs.py \
-    $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputsTemplates.py \
-#
-
-INPUT_GENERATOR_SPECIFICATIONS = \
-    $(WebCore)/replay/WebInputs.json \
-    $(JavaScriptCore_SCRIPTS_DIR)/JSInputs.json \
-#
-
-all : WebReplayInputs.h
-
-WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
-	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputs.py --outputDir . --framework WebCore $(INPUT_GENERATOR_SPECIFICATIONS)
-
 -include $(JS_DOM_HEADERS:.h=.dep)
 
 # WebCore JS Builtins
@@ -1413,7 +1398,6 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/streams/WritableStream.js \
     $(WebCore)/Modules/streams/WritableStreamInternals.js \
     $(WebCore)/bindings/js/JSDOMBindingInternals.js \
-    $(WebCore)/xml/XMLHttpRequest.js \
 #
 
 BUILTINS_GENERATOR_SCRIPTS = \
@@ -1482,15 +1466,3 @@ CharsetData.cpp : platform/text/mac/make-charset-table.pl platform/text/mac/char
 
 endif # MACOS
 
-# ------------------------
-
-# Header detection
-
-ifeq ($(OS),Windows_NT)
-
-all : WebCoreHeaderDetection.h
-
-WebCoreHeaderDetection.h : $(WebCore)/AVFoundationSupport.py DerivedSources.make
-	$(PYTHON) $(WebCore)/AVFoundationSupport.py $(WEBKIT_LIBRARIES) > $@
-
-endif # Windows_NT

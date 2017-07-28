@@ -21,6 +21,7 @@
         if (!enable) {
             testRunner.statisticsResetToConsistentState();
         }
+        testRunner.setStatisticsNotifyPagesWhenDataRecordsWereScanned(enable);
         internals.setResourceLoadStatisticsEnabled(enable);
         testRunner.setCookieStoragePartitioningEnabled(enable);
     }
@@ -72,7 +73,7 @@
     if (document.location.host === partitionHost && document.location.hash == "" && window.testRunner && window.internals) {
         setEnableFeature(true);
 
-        testRunner.statisticsFireShouldPartitionCookiesHandlerForOneDomain("localhost", true);
+        testRunner.statisticsSetShouldPartitionCookiesForHost("localhost", true);
 
         testRunner.waitUntilDone();
         testRunner.dumpChildFramesAsText();

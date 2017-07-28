@@ -27,7 +27,7 @@
 
 #include "IDLTypes.h"
 #include "JSDOMConvertBase.h"
-#include "JSDOMExceptionHandling.h"
+#include <runtime/Error.h>
 
 namespace WebCore {
 
@@ -49,15 +49,6 @@ template<typename T> struct Converter<IDLInterface<T>> : DefaultConverter<IDLInt
     }
 };
 
-namespace Detail {
-
-template <typename T> inline T* getPtrOrRef(const T* p) { return const_cast<T*>(p); }
-template <typename T> inline T& getPtrOrRef(const T& p) { return const_cast<T&>(p); }
-template <typename T> inline T* getPtrOrRef(const RefPtr<T>& p) { return p.get(); }
-template <typename T> inline T& getPtrOrRef(const Ref<T>& p) { return p.get(); }
-
-}
-
 template<typename T> struct JSConverter<IDLInterface<T>> {
     static constexpr bool needsState = true;
     static constexpr bool needsGlobalObject = true;
@@ -75,5 +66,16 @@ template<typename T> struct JSConverter<IDLInterface<T>> {
     }
 };
 
+template<typename T> struct VariadicConverter<IDLInterface<T>> {
+    using Item = std::reference_wrapper<T>;
+
+    static std::optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        auto* result = Converter<IDLInterface<T>>::convert(state, value);
+        if (!result)
+            return std::nullopt;
+        return std::optional<Item> { *result };
+    }
+};
 
 } // namespace WebCore

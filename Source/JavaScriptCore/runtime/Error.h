@@ -52,6 +52,7 @@ enum class ErrorType : uint8_t {
 JSObject* createError(ExecState*, const String&, ErrorInstance::SourceAppender);
 JSObject* createEvalError(ExecState*, const String&, ErrorInstance::SourceAppender);
 JSObject* createRangeError(ExecState*, const String&, ErrorInstance::SourceAppender);
+JSObject* createRangeError(ExecState*, JSGlobalObject*, const String&, ErrorInstance::SourceAppender);
 JSObject* createReferenceError(ExecState*, const String&, ErrorInstance::SourceAppender);
 JSObject* createSyntaxError(ExecState*, const String&, ErrorInstance::SourceAppender);
 JSObject* createTypeError(ExecState*, const String&, ErrorInstance::SourceAppender, RuntimeType);
@@ -62,6 +63,7 @@ JSObject* createURIError(ExecState*, const String&, ErrorInstance::SourceAppende
 JS_EXPORT_PRIVATE JSObject* createError(ExecState*, const String&);
 JS_EXPORT_PRIVATE JSObject* createEvalError(ExecState*, const String&);
 JS_EXPORT_PRIVATE JSObject* createRangeError(ExecState*, const String&);
+JS_EXPORT_PRIVATE JSObject* createRangeError(ExecState*, JSGlobalObject*, const String&);
 JS_EXPORT_PRIVATE JSObject* createReferenceError(ExecState*, const String&);
 JS_EXPORT_PRIVATE JSObject* createSyntaxError(ExecState*, const String&);
 JS_EXPORT_PRIVATE JSObject* createTypeError(ExecState*);
@@ -88,6 +90,7 @@ JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&, const String
 JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*, ThrowScope&);
 JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*, ThrowScope&, const String& errorMessage);
 inline JSObject* throwRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return throwException(state, scope, createRangeError(state, errorMessage)); }
+JS_EXPORT_PRIVATE JSValue throwDOMAttributeGetterTypeError(ExecState*, ThrowScope&, const ClassInfo*, PropertyName);
 
 // Convenience wrappers, wrap result as an EncodedJSValue.
 inline void throwVMError(ExecState* exec, ThrowScope& scope, Exception* exception) { throwException(exec, scope, exception); }
@@ -97,6 +100,7 @@ inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope) { ret
 inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope, ASCIILiteral errorMessage) { return JSValue::encode(throwTypeError(exec, scope, errorMessage)); }
 inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwTypeError(exec, scope, errorMessage)); }
 inline EncodedJSValue throwVMRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwRangeError(state, scope, errorMessage)); }
+inline EncodedJSValue throwVMDOMAttributeGetterTypeError(ExecState* state, ThrowScope& scope, const ClassInfo* classInfo, PropertyName propertyName) { return JSValue::encode(throwDOMAttributeGetterTypeError(state, scope, classInfo, propertyName)); }
 
 class StrictModeTypeErrorFunction : public InternalFunction {
 private:

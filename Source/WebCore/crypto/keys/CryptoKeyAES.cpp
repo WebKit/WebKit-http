@@ -31,7 +31,6 @@
 #include "CryptoAlgorithmAesKeyParams.h"
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyDataOctetSequence.h"
-#include "ExceptionCode.h"
 #include "ExceptionOr.h"
 #include "JsonWebKey.h"
 #include <wtf/text/Base64.h>
@@ -66,7 +65,6 @@ bool CryptoKeyAES::isValidAESAlgorithm(CryptoAlgorithmIdentifier algorithm)
 {
     return algorithm == CryptoAlgorithmIdentifier::AES_CTR
         || algorithm == CryptoAlgorithmIdentifier::AES_CBC
-        || algorithm == CryptoAlgorithmIdentifier::AES_CMAC
         || algorithm == CryptoAlgorithmIdentifier::AES_GCM
         || algorithm == CryptoAlgorithmIdentifier::AES_CFB
         || algorithm == CryptoAlgorithmIdentifier::AES_KW;

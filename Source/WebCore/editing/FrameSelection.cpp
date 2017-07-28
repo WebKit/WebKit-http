@@ -101,6 +101,19 @@ bool DragCaretController::isContentRichlyEditable() const
     return isRichlyEditablePosition(m_position.deepEquivalent());
 }
 
+IntRect DragCaretController::caretRectInRootViewCoordinates() const
+{
+    if (!hasCaret())
+        return { };
+
+    if (auto* document = m_position.deepEquivalent().document()) {
+        if (auto* documentView = document->view())
+            return documentView->contentsToRootView(m_position.absoluteCaretBounds());
+    }
+
+    return { };
+}
+
 static inline bool shouldAlwaysUseDirectionalSelection(Frame* frame)
 {
     return !frame || frame->editor().behavior().shouldConsiderSelectionAsDirectional();
@@ -111,6 +124,7 @@ FrameSelection::FrameSelection(Frame* frame)
     , m_xPosForVerticalArrowNavigation(NoXPosForVerticalArrowNavigation())
     , m_granularity(CharacterGranularity)
     , m_caretBlinkTimer(*this, &FrameSelection::caretBlinkTimerFired)
+    , m_appearanceUpdateTimer(*this, &FrameSelection::appearanceUpdateTimerFired)
     , m_caretInsidePositionFixed(false)
     , m_absCaretBoundsDirty(true)
     , m_caretPaint(true)
@@ -332,6 +346,7 @@ bool FrameSelection::setSelectionWithoutUpdatingAppearance(const VisibleSelectio
 
 void FrameSelection::setSelection(const VisibleSelection& selection, SetSelectionOptions options, AXTextStateChangeIntent intent, CursorAlignOnScroll align, TextGranularity granularity)
 {
+    RefPtr<Frame> protectedFrame(m_frame);
     if (!setSelectionWithoutUpdatingAppearance(selection, options, align, granularity))
         return;
 
@@ -2395,6 +2410,22 @@ void FrameSelection::setShouldShowBlockCursor(bool shouldShowBlockCursor)
 }
 
 void FrameSelection::updateAppearanceAfterLayout()
+{
+    m_appearanceUpdateTimer.stop();
+    updateAppearanceAfterLayoutOrStyleChange();
+}
+
+void FrameSelection::scheduleAppearanceUpdateAfterStyleChange()
+{
+    m_appearanceUpdateTimer.startOneShot(0_s);
+}
+
+void FrameSelection::appearanceUpdateTimerFired()
+{
+    updateAppearanceAfterLayoutOrStyleChange();
+}
+
+void FrameSelection::updateAppearanceAfterLayoutOrStyleChange()
 {
     if (auto* client = m_frame->editor().client())
         client->updateEditorStateAfterLayoutIfEditabilityChanged();

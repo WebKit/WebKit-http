@@ -62,13 +62,21 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     Structure* setStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->setStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    JSSet* set = JSSet::create(exec, vm, setStructure);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())
-        return JSValue::encode(set);
+        return JSValue::encode(JSSet::create(exec, vm, setStructure));
 
-    JSValue adderFunction = set->get(exec, vm.propertyNames->add);
+    if (isJSSet(iterable)) {
+        JSSet* iterableSet = jsCast<JSSet*>(iterable);
+        if (iterableSet->canCloneFastAndNonObservable(setStructure))
+            return JSValue::encode(iterableSet->clone(exec, vm, setStructure));
+    }
+
+    JSSet* set = JSSet::create(exec, vm, setStructure);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    JSValue adderFunction = set->JSObject::get(exec, vm.propertyNames->add);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;

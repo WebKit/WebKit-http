@@ -175,7 +175,8 @@ snapshotAllPlugIns initial=false
 autostartOriginPlugInSnapshottingEnabled initial=true
 primaryPlugInSnapshotDetectionEnabled initial=true
 maximumPlugInSnapshotAttempts type=unsigned, initial=20
-frameFlatteningEnabled initial=false
+frameFlattening type=FrameFlattening, initial=FrameFlatteningDisabled
+asyncFrameScrollingEnabled initial=false
 
 webSecurityEnabled initial=true
 spatialNavigationEnabled initial=false
@@ -215,6 +216,7 @@ mediaSourceEnabled initial=true, conditional=MEDIA_SOURCE
 allowMultiElementImplicitSubmission initial=false
 
 allowsAirPlayForMediaPlayback initial=true, conditional=WIRELESS_PLAYBACK_TARGET
+mediaDocumentEntersFullscreenAutomatically initial=false
 
 shouldConvertPositionStyleOnCopy initial=false
 
@@ -222,8 +224,6 @@ maxParseDuration type=double, initial=-1
 standalone initial=false
 telephoneNumberParsingEnabled initial=false
 mediaDataLoadsAutomatically initial=defaultMediaDataLoadsAutomatically
-shouldTransformsAffectOverflow initial=true
-shouldDispatchJavaScriptWindowOnErrorEvents initial=false
 alwaysUseAcceleratedOverflowScroll initial=false
 imageControlsEnabled initial=false, conditional=SERVICE_CONTROLS
 
@@ -270,12 +270,12 @@ springTimingFunctionEnabled initial=false
 
 treatIPAddressAsDomain initial=false
 
+mediaPreloadingEnabled initial=false
+
 # Runtime-enabled features
 visualViewportEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
 inputEventsEnabled initial=true
-
-shouldDispatchRequestAnimationFrameEvents initial=false
 
 quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
 youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled
@@ -297,3 +297,5 @@ subresourceIntegrityEnabled initial=true
 constantPropertiesEnabled initial=false
 
 viewportFitEnabled initial=false
+
+allowMediaContentTypesRequiringHardwareSupportAsFallback initial=false

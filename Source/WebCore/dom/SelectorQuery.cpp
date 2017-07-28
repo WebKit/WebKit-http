@@ -29,7 +29,6 @@
 
 #include "CSSParser.h"
 #include "ElementDescendantIterator.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "SelectorChecker.h"
 #include "StaticNodeList.h"
@@ -336,8 +335,8 @@ ALWAYS_INLINE void SelectorDataList::executeSingleTagNameSelectorData(const Cont
     const AtomicString& selectorLowercaseLocalName = selectorData.selector->tagLowercaseLocalName();
     const AtomicString& selectorNamespaceURI = tagQualifiedName.namespaceURI();
 
-    if (selectorNamespaceURI == starAtom) {
-        if (selectorLocalName != starAtom) {
+    if (selectorNamespaceURI == starAtom()) {
+        if (selectorLocalName != starAtom()) {
             // Common case: name defined, selectorNamespaceURI is a wildcard.
             elementsForLocalName<SelectorQueryTrait>(rootNode, selectorLocalName, selectorLowercaseLocalName, output);
         } else {
@@ -345,7 +344,7 @@ ALWAYS_INLINE void SelectorDataList::executeSingleTagNameSelectorData(const Cont
             anyElement<SelectorQueryTrait>(rootNode, output);
         }
     } else {
-        // Fallback: NamespaceURI is set, selectorLocalName may be starAtom.
+        // Fallback: NamespaceURI is set, selectorLocalName may be starAtom().
         for (auto& element : elementDescendants(const_cast<ContainerNode&>(rootNode))) {
             if (element.namespaceURI() == selectorNamespaceURI && localNameMatches(element, selectorLocalName, selectorLowercaseLocalName)) {
                 SelectorQueryTrait::appendOutputForElement(output, &element);
@@ -627,10 +626,10 @@ ExceptionOr<SelectorQuery&> SelectorQueryCache::add(const String& selectors, Doc
     parser.parseSelector(selectors, selectorList);
 
     if (!selectorList.first() || selectorList.hasInvalidSelector())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (selectorList.selectorsNeedNamespaceResolution())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     const int maximumSelectorQueryCacheSize = 256;
     if (m_entries.size() == maximumSelectorQueryCacheSize)

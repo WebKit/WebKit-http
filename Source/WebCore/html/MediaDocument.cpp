@@ -67,17 +67,15 @@ public:
     
 private:
     MediaDocumentParser(MediaDocument& document)
-        : RawDataDocumentParser(document)
-        , m_mediaElement(0)
+        : RawDataDocumentParser { document }
+        , m_outgoingReferrer { document.outgoingReferrer() }
     {
-        m_outgoingReferrer = document.outgoingReferrer();
     }
 
-    void appendBytes(DocumentWriter&, const char*, size_t) override;
-
+    void appendBytes(DocumentWriter&, const char*, size_t) final;
     void createDocumentStructure();
 
-    HTMLMediaElement* m_mediaElement;
+    HTMLMediaElement* m_mediaElement { nullptr };
     String m_outgoingReferrer;
 };
     
@@ -108,10 +106,9 @@ void MediaDocumentParser::createDocumentStructure()
 
     auto videoElement = HTMLVideoElement::create(document);
     m_mediaElement = videoElement.ptr();
-    videoElement->setAttributeWithoutSynchronization(controlsAttr, emptyAtom);
-    videoElement->setAttributeWithoutSynchronization(autoplayAttr, emptyAtom);
-    videoElement->setAttributeWithoutSynchronization(playsinlineAttr, emptyAtom);
-    videoElement->setSrc(document.url());
+    videoElement->setAttributeWithoutSynchronization(controlsAttr, emptyAtom());
+    videoElement->setAttributeWithoutSynchronization(autoplayAttr, emptyAtom());
+    videoElement->setAttributeWithoutSynchronization(srcAttr, document.url().string());
     if (auto* loader = document.loader())
         videoElement->setAttributeWithoutSynchronization(typeAttr, loader->responseMIMEType());
 

@@ -20,16 +20,15 @@
 
 #pragma once
 
-#if ENABLE(SPEECH_SYNTHESIS)
-
 #include "ActiveDOMCallback.h"
+#include "IDLTypes.h"
 #include "JSCallbackData.h"
 #include "TestCallbackFunction.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
-class JSTestCallbackFunction : public TestCallbackFunction, public ActiveDOMCallback {
+class JSTestCallbackFunction final : public TestCallbackFunction, public ActiveDOMCallback {
 public:
     static Ref<JSTestCallbackFunction> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -42,7 +41,7 @@ public:
     JSCallbackDataStrong* callbackData() { return m_data; }
 
     // Functions
-    virtual bool handleEvent(RefPtr<Float32Array> arrayParam, RefPtr<SerializedScriptValue>&& srzParam, const String& strArg, bool boolParam, int32_t longParam, TestNode* testNodeParam);
+    virtual CallbackResult<typename IDLDOMString::ImplementationType> handleEvent(typename IDLLong::ParameterType argument) override;
 
 private:
     JSTestCallbackFunction(JSC::JSObject*, JSDOMGlobalObject*);
@@ -54,5 +53,3 @@ JSC::JSValue toJS(TestCallbackFunction&);
 inline JSC::JSValue toJS(TestCallbackFunction* impl) { return impl ? toJS(*impl) : JSC::jsNull(); }
 
 } // namespace WebCore
-
-#endif // ENABLE(SPEECH_SYNTHESIS)

@@ -20,7 +20,8 @@
 
 #pragma once
 
-#include "JSDOMConvert.h"
+#include "JSDOMConvertDictionary.h"
+#include "JSDOMConvertEnumeration.h"
 #include "JSDOMWrapper.h"
 #include "TestObj.h"
 #include <runtime/CallData.h>
@@ -43,6 +44,9 @@ public:
     static TestObj* toWrapped(JSC::VM&, JSC::JSValue);
     static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     static bool getOwnPropertySlotByIndex(JSC::JSObject*, JSC::ExecState*, unsigned propertyName, JSC::PropertySlot&);
+    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());
+    static JSC::CallType getCallData(JSC::JSCell*, JSC::CallData&);
+
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -52,11 +56,8 @@ public:
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 
-    static JSC::CallType getCallData(JSC::JSCell*, JSC::CallData&);
-
-    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static JSC::JSObject* serialize(JSC::ExecState*, JSTestObj* thisObject, JSC::ThrowScope&);
+    static JSC::JSObject* serialize(JSC::ExecState&, JSTestObj& thisObject, JSDOMGlobalObject&, JSC::ThrowScope&);
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedAttribute1;
     mutable JSC::WriteBarrier<JSC::Unknown> m_cachedAttribute2;
     static void visitChildren(JSCell*, JSC::SlotVisitor&);
@@ -70,7 +71,9 @@ public:
     JSC::JSValue customMethod(JSC::ExecState&);
     JSC::JSValue customMethodWithArgs(JSC::ExecState&);
     static JSC::JSValue classMethod2(JSC::ExecState&);
-    JSC::JSValue testCustomPromiseFunction(JSC::ExecState&);
+    JSC::JSValue testCustomPromiseFunction(JSC::ExecState&, Ref<DeferredPromise>&&);
+    static JSC::JSValue testStaticCustomPromiseFunction(JSC::ExecState&, Ref<DeferredPromise>&&);
+    JSC::JSValue testCustomReturnsOwnPromiseFunction(JSC::ExecState&);
 public:
     static const unsigned StructureFlags = JSC::HasStaticPropertyTable | JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::OverridesGetOwnPropertySlot | JSC::OverridesGetPropertyNames | JSC::TypeOfShouldCallGetCallData | Base::StructureFlags;
 protected:
@@ -108,19 +111,16 @@ template<> struct JSDOMWrapperConverterTraits<TestObj> {
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumType);
 
 template<> std::optional<TestObj::EnumType> parseEnumeration<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumType convertEnumeration<TestObj::EnumType>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumType>();
 
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Optional);
 
 template<> std::optional<TestObj::Optional> parseEnumeration<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Optional convertEnumeration<TestObj::Optional>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Optional>();
 
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, AlternateEnumName);
 
 template<> std::optional<AlternateEnumName> parseEnumeration<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
-template<> AlternateEnumName convertEnumeration<AlternateEnumName>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<AlternateEnumName>();
 
 #if ENABLE(Condition1)
@@ -128,7 +128,6 @@ template<> const char* expectedEnumerationValues<AlternateEnumName>();
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumA);
 
 template<> std::optional<TestObj::EnumA> parseEnumeration<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumA convertEnumeration<TestObj::EnumA>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumA>();
 
 #endif
@@ -138,7 +137,6 @@ template<> const char* expectedEnumerationValues<TestObj::EnumA>();
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumB);
 
 template<> std::optional<TestObj::EnumB> parseEnumeration<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumB convertEnumeration<TestObj::EnumB>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumB>();
 
 #endif
@@ -148,7 +146,6 @@ template<> const char* expectedEnumerationValues<TestObj::EnumB>();
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::EnumC);
 
 template<> std::optional<TestObj::EnumC> parseEnumeration<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::EnumC convertEnumeration<TestObj::EnumC>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::EnumC>();
 
 #endif
@@ -156,19 +153,16 @@ template<> const char* expectedEnumerationValues<TestObj::EnumC>();
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Kind);
 
 template<> std::optional<TestObj::Kind> parseEnumeration<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Kind convertEnumeration<TestObj::Kind>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Kind>();
 
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Size);
 
 template<> std::optional<TestObj::Size> parseEnumeration<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Size convertEnumeration<TestObj::Size>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Size>();
 
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestObj::Confidence);
 
 template<> std::optional<TestObj::Confidence> parseEnumeration<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
-template<> TestObj::Confidence convertEnumeration<TestObj::Confidence>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestObj::Confidence>();
 
 template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(JSC::ExecState&, JSC::JSValue);

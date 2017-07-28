@@ -79,7 +79,7 @@ namespace WebCore {
 // Create <html><body (style="...")></body></html> doing minimal amount of work.
 void Frame::initWithSimpleHTMLDocument(const String& style, const URL& url)
 {
-    m_loader.initForSynthesizedDocument(url);
+    m_loader->initForSynthesizedDocument(url);
 
     RefPtr<HTMLDocument> document = HTMLDocument::createSynthesizedDocument(this, url);
     document->setCompatibilityMode(DocumentCompatibilityMode::LimitedQuirksMode);
@@ -652,7 +652,7 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     Node* pastLastNode = rangeOfRootContents->pastLastNode();
     for (Node* node = rangeOfRootContents->firstNode(); node != pastLastNode; node = NodeTraversal::next(*node)) {
-        for (auto* marker : document()->markers().markersFor(node, DocumentMarker::MarkerTypes(DocumentMarker::DictationPhraseWithAlternatives))) {
+        for (auto* marker : document()->markers().markersFor(node, DocumentMarker::DictationPhraseWithAlternatives)) {
             // First, add text that precede the marker.
             if (precedingTextStartPosition != createLegacyEditingPosition(node, marker->startOffset())) {
                 RefPtr<Range> precedingTextRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(node, marker->startOffset()));

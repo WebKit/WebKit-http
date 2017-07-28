@@ -30,9 +30,13 @@
 
 #if USE(OPENGL_ES_2)
 
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#else
 #define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif
 
 #ifndef GL_EXT_robustness
 /* reuse GL_NO_ERROR */
@@ -59,8 +63,8 @@ typedef void (GL_APIENTRYP PFNGLGETNUNIFORMFVEXTPROC) (GLuint program, GLint loc
 typedef void (GL_APIENTRYP PFNGLGETNUNIFORMIVEXTPROC) (GLuint program, GLint location, GC3Dsizei bufSize, GLint *params);
 #endif
 
-#ifndef GL_IMG_multisampled_render_to_texture_typedefs
-#define GL_IMG_multisampled_render_to_texture_typedefs 1
+#ifndef GL_IMG_multisampled_render_to_texture
+#define GL_IMG_multisampled_render_to_texture 1
 typedef void (GL_APIENTRYP PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC) (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
 typedef void (GL_APIENTRYP PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLsizei samples);
 #endif /* GL_IMG_multisampled_render_to_texture */

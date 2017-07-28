@@ -27,7 +27,6 @@
 #include "Storage.h"
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "Page.h"
 #include "SchemeRegistry.h"
@@ -61,7 +60,7 @@ Storage::~Storage()
 ExceptionOr<unsigned> Storage::length() const
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return m_storageArea->length();
 }
@@ -69,7 +68,7 @@ ExceptionOr<unsigned> Storage::length() const
 ExceptionOr<String> Storage::key(unsigned index) const
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return m_storageArea->key(index);
 }
@@ -77,7 +76,7 @@ ExceptionOr<String> Storage::key(unsigned index) const
 ExceptionOr<String> Storage::getItem(const String& key) const
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return m_storageArea->item(key);
 }
@@ -85,19 +84,19 @@ ExceptionOr<String> Storage::getItem(const String& key) const
 ExceptionOr<void> Storage::setItem(const String& key, const String& value)
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     bool quotaException = false;
     m_storageArea->setItem(m_frame, key, value, quotaException);
     if (quotaException)
-        return Exception { QUOTA_EXCEEDED_ERR };
+        return Exception { QuotaExceededError };
     return { };
 }
 
 ExceptionOr<void> Storage::removeItem(const String& key)
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     m_storageArea->removeItem(m_frame, key);
     return { };
@@ -106,7 +105,7 @@ ExceptionOr<void> Storage::removeItem(const String& key)
 ExceptionOr<void> Storage::clear()
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     m_storageArea->clear(m_frame);
     return { };
@@ -115,9 +114,17 @@ ExceptionOr<void> Storage::clear()
 ExceptionOr<bool> Storage::contains(const String& key) const
 {
     if (!m_storageArea->canAccessStorage(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return m_storageArea->contains(key);
+}
+
+bool Storage::isSupportedPropertyName(const String& propertyName) const
+{
+    if (!m_storageArea->canAccessStorage(m_frame))
+        return false;
+
+    return m_storageArea->contains(propertyName);
 }
 
 } // namespace WebCore

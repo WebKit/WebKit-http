@@ -28,6 +28,7 @@
 
 #if ENABLE(ASYNC_SCROLLING)
 
+#include "Logging.h"
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingTree.h"
 #include "TextStream.h"
@@ -70,12 +71,23 @@ static inline CGPoint operator*(CGPoint& a, const CGSize& b)
 void ScrollingTreeFixedNode::updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta)
 {
     FloatPoint layerPosition = m_constraints.layerPositionForViewportRect(fixedPositionRect);
+
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollingTreeFixedNode " << scrollingNodeID() << " updateLayersAfterAncestorChange: new viewport " << fixedPositionRect << " viewportRectAtLastLayout " << m_constraints.viewportRectAtLastLayout() << " last layer pos " << m_constraints.layerPositionAtLastLayout() << " new offset from bottom " << (fixedPositionRect.maxY() - layerPosition.y()));
+
     layerPosition -= cumulativeDelta;
 
     CGRect layerBounds = [m_layer bounds];
     CGPoint anchorPoint = [m_layer anchorPoint];
     CGPoint newPosition = layerPosition - m_constraints.alignmentOffset() + anchorPoint * layerBounds.size;
-    
+
+    if (isnan(newPosition.x) || isnan(newPosition.y)) {
+        WTFLogAlways("Attempt to call [CALayer setPosition] with NaN: newPosition=(%f, %f) layerPosition=(%f, %f) alignmentOffset=(%f, %f)",
+            newPosition.x, newPosition.y, layerPosition.x(), layerPosition.y(),
+            m_constraints.alignmentOffset().width(), m_constraints.alignmentOffset().height());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
     [m_layer setPosition:newPosition];
 
     if (!m_children)

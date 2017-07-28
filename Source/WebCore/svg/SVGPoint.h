@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "FloatPoint.h"
 #include "SVGMatrix.h"
 #include "SVGPropertyTearOff.h"
@@ -64,7 +63,7 @@ public:
     ExceptionOr<void> setX(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setX(xValue);
         commitChange();
@@ -80,7 +79,7 @@ public:
     ExceptionOr<void> setY(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setY(xValue);
         commitChange();
@@ -91,7 +90,7 @@ public:
     ExceptionOr<Ref<SVGPoint>> matrixTransform(SVGMatrix& matrix)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto newPoint = propertyReference().matrixTransform(matrix.propertyReference());
         commitChange();

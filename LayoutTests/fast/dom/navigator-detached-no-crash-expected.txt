@@ -5,7 +5,6 @@ navigator.appName is OK
 navigator.appVersion is OK
 navigator.cookieEnabled is OK
 navigator.getStorageUpdates() is OK
-navigator.hardwareConcurrency is OK
 navigator.javaEnabled() is OK
 navigator.language is OK
 navigator.languages is OK
@@ -18,12 +17,12 @@ navigator.productSub is OK
 navigator.userAgent is OK
 navigator.vendor is OK
 navigator.vendorSub is OK
+navigator.webdriver is OK
 navigator.appCodeName is OK
 navigator.appName is OK
 navigator.appVersion is OK
 navigator.cookieEnabled is OK
 navigator.getStorageUpdates() is OK
-navigator.hardwareConcurrency is OK
 navigator.javaEnabled() is OK
 navigator.language is OK
 navigator.languages is OK
@@ -36,4 +35,5 @@ navigator.productSub is OK
 navigator.userAgent is OK
 navigator.vendor is OK
 navigator.vendorSub is OK
+navigator.webdriver is OK
 

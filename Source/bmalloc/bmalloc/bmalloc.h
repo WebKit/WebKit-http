@@ -76,8 +76,8 @@ inline void scavenge()
 {
     scavengeThisThread();
 
-    std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
-    PerProcess<Heap>::get()->scavenge(lock, Sync);
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    PerProcess<Heap>::get()->scavenge(lock);
 }
 
 inline bool isEnabled()
@@ -94,12 +94,12 @@ inline size_t availableMemory()
 #if BPLATFORM(IOS)
 inline size_t memoryFootprint()
 {
-    return PerProcess<Heap>::get()->memoryFootprint();
+    return bmalloc::memoryFootprint();
 }
 
 inline double percentAvailableMemoryInUse()
 {
-    return PerProcess<Heap>::get()->percentAvailableMemoryInUse();
+    return bmalloc::percentAvailableMemoryInUse();
 }
 #endif
 

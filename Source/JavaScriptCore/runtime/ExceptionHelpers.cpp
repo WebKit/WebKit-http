@@ -29,14 +29,15 @@
 #include "config.h"
 #include "ExceptionHelpers.h"
 
-#include "CodeBlock.h"
 #include "CallFrame.h"
+#include "CatchScope.h"
+#include "CodeBlock.h"
 #include "ErrorHandlingScope.h"
 #include "Exception.h"
-#include "JSGlobalObjectFunctions.h"
 #include "Interpreter.h"
-#include "Nodes.h"
 #include "JSCInlines.h"
+#include "JSGlobalObjectFunctions.h"
+#include "Nodes.h"
 #include "RuntimeType.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringView.h>
@@ -69,7 +70,14 @@ bool isTerminatedExecutionException(VM& vm, Exception* exception)
 
 JSObject* createStackOverflowError(ExecState* exec)
 {
-    return createRangeError(exec, ASCIILiteral("Maximum call stack size exceeded."));
+    return createStackOverflowError(exec, exec->lexicalGlobalObject());
+}
+
+JSObject* createStackOverflowError(ExecState* exec, JSGlobalObject* globalObject)
+{
+    auto* error = createRangeError(exec, globalObject, ASCIILiteral("Maximum call stack size exceeded."));
+    jsCast<ErrorInstance*>(error)->setStackOverflowError();
+    return error;
 }
 
 JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)

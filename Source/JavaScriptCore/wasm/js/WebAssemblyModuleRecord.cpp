@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ void WebAssemblyModuleRecord::finishCreation(ExecState* exec, VM& vm, const Wasm
     Base::finishCreation(exec, vm);
     ASSERT(inherits(vm, info()));
     for (const auto& exp : moduleInformation.exports) {
-        Identifier field = Identifier::fromString(&vm, exp.field);
+        Identifier field = Identifier::fromString(&vm, String::fromUTF8(exp.field));
         addExportEntry(ExportEntry::createLocal(field, field));
     }
 }
@@ -98,8 +98,6 @@ void WebAssemblyModuleRecord::link(ExecState* exec, JSWebAssemblyModule* module,
 
     SymbolTable* exportSymbolTable = module->exportSymbolTable();
     unsigned functionImportCount = codeBlock->functionImportCount();
-
-    // FIXME wire up the imports. https://bugs.webkit.org/show_bug.cgi?id=165118
 
     // Let exports be a list of (string, JS value) pairs that is mapped from each external value e in instance.exports as follows:
     JSModuleEnvironment* moduleEnvironment = JSModuleEnvironment::create(vm, globalObject, nullptr, exportSymbolTable, JSValue(), this);
@@ -179,7 +177,7 @@ void WebAssemblyModuleRecord::link(ExecState* exec, JSWebAssemblyModule* module,
         bool shouldThrowReadOnlyError = false;
         bool ignoreReadOnlyErrors = true;
         bool putResult = false;
-        symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, Identifier::fromString(&vm, exp.field), exportedValue, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult);
+        symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, Identifier::fromString(&vm, String::fromUTF8(exp.field)), exportedValue, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult);
         RELEASE_ASSERT(putResult);
     }
 
@@ -218,97 +216,128 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    {
-        JSWebAssemblyModule* module = m_instance->module();
-        JSWebAssemblyCodeBlock* codeBlock = m_instance->codeBlock();
-        const Wasm::ModuleInformation& moduleInformation = module->moduleInformation();
-        JSWebAssemblyTable* table = m_instance->table();
+    JSWebAssemblyModule* module = m_instance->module();
+    JSWebAssemblyCodeBlock* codeBlock = m_instance->codeBlock();
+    const Wasm::ModuleInformation& moduleInformation = module->moduleInformation();
+    JSWebAssemblyTable* table = m_instance->table();
+
+    const Vector<Wasm::Segment::Ptr>& data = m_instance->module()->moduleInformation().data;
+    JSWebAssemblyMemory* jsMemory = m_instance->memory();
+
+    std::optional<JSValue> exception;
+
+    auto forEachElement = [&] (auto fn) {
         for (const Wasm::Element& element : moduleInformation.elements) {
             // It should be a validation error to have any elements without a table.
             // Also, it could be that a table wasn't imported, or that the table
             // imported wasn't compatible. However, those should error out before
             // getting here.
             ASSERT(!!table);
+
             if (!element.functionIndices.size())
                 continue;
 
-            uint32_t tableIndex;
+            uint32_t tableIndex = element.offset.isGlobalImport()
+                ? static_cast<uint32_t>(m_instance->loadI32Global(element.offset.globalImportIndex()))
+                : element.offset.constValue();
 
-            if (element.offset.isGlobalImport())
-                tableIndex = static_cast<uint32_t>(m_instance->loadI32Global(element.offset.globalImportIndex()));
-            else
-                tableIndex = element.offset.constValue();
+            fn(element, tableIndex);
 
-            uint64_t lastWrittenIndex = static_cast<uint64_t>(tableIndex) + static_cast<uint64_t>(element.functionIndices.size()) - 1;
-            if (lastWrittenIndex >= table->size())
-                return throwException(exec, scope, createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Element is trying to set an out of bounds table index")));
+            if (exception)
+                break;
+        }
+    };
 
-            for (uint32_t i = 0; i < element.functionIndices.size(); ++i) {
-                // FIXME: This essentially means we're exporting an import.
-                // We need a story here. We need to create a WebAssemblyFunction
-                // for the import.
-                // https://bugs.webkit.org/show_bug.cgi?id=165510
-                uint32_t functionIndex = element.functionIndices[i];
-                Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(functionIndex);
-                if (functionIndex < codeBlock->functionImportCount()) {
-                    JSObject* functionImport = jsCast<JSObject*>(m_instance->importFunction(functionIndex));
-                    if (isWebAssemblyHostFunction(vm, functionImport)) {
-                        WebAssemblyFunction* wasmFunction = jsDynamicCast<WebAssemblyFunction*>(vm, functionImport);
-                        // If we ever import a WebAssemblyWrapperFunction, we set the import as the unwrapped value.
-                        // Because a WebAssemblyWrapperFunction can never wrap another WebAssemblyWrapperFunction,
-                        // the only type this could be is WebAssemblyFunction.
-                        RELEASE_ASSERT(wasmFunction);
-                        table->setFunction(vm, tableIndex, wasmFunction);
-                        ++tableIndex;
-                        continue;
-                    }
+    auto forEachSegment = [&] (auto fn) {
+        uint8_t* memory = reinterpret_cast<uint8_t*>(jsMemory->memory().memory());
+        uint64_t sizeInBytes = jsMemory->memory().size();
 
-                    table->setFunction(vm, tableIndex,
-                        WebAssemblyWrapperFunction::create(vm, m_instance->globalObject(), functionImport, functionIndex, m_instance.get(), signatureIndex));
+        for (const Wasm::Segment::Ptr& segment : data) {
+            uint32_t offset = segment->offset.isGlobalImport()
+                ? static_cast<uint32_t>(m_instance->loadI32Global(segment->offset.globalImportIndex()))
+                : segment->offset.constValue();
+
+            fn(memory, sizeInBytes, segment, offset);
+
+            if (exception)
+                break;
+        }
+    };
+
+    // Validation of all element ranges comes before all Table and Memory initialization.
+    forEachElement([&] (const Wasm::Element& element, uint32_t tableIndex) {
+        uint64_t lastWrittenIndex = static_cast<uint64_t>(tableIndex) + static_cast<uint64_t>(element.functionIndices.size()) - 1;
+        if (UNLIKELY(lastWrittenIndex >= table->size()))
+            exception = JSValue(throwException(exec, scope, createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("Element is trying to set an out of bounds table index"))));
+    });
+
+    if (UNLIKELY(exception))
+        return exception.value();
+
+    // Validation of all segment ranges comes before all Table and Memory initialization.
+    forEachSegment([&] (uint8_t*, uint64_t sizeInBytes, const Wasm::Segment::Ptr& segment, uint32_t offset) {
+        if (UNLIKELY(sizeInBytes < segment->sizeInBytes))
+            exception = dataSegmentFail(exec, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment is too big"));
+        else if (UNLIKELY(offset > sizeInBytes - segment->sizeInBytes))
+            exception = dataSegmentFail(exec, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment writes outside of memory"));
+    });
+
+    if (UNLIKELY(exception))
+        return exception.value();
+
+    forEachElement([&] (const Wasm::Element& element, uint32_t tableIndex) {
+        for (uint32_t i = 0; i < element.functionIndices.size(); ++i) {
+            // FIXME: This essentially means we're exporting an import.
+            // We need a story here. We need to create a WebAssemblyFunction
+            // for the import.
+            // https://bugs.webkit.org/show_bug.cgi?id=165510
+            uint32_t functionIndex = element.functionIndices[i];
+            Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(functionIndex);
+            if (functionIndex < codeBlock->functionImportCount()) {
+                JSObject* functionImport = jsCast<JSObject*>(m_instance->importFunction(functionIndex));
+                if (isWebAssemblyHostFunction(vm, functionImport)) {
+                    WebAssemblyFunction* wasmFunction = jsDynamicCast<WebAssemblyFunction*>(vm, functionImport);
+                    // If we ever import a WebAssemblyWrapperFunction, we set the import as the unwrapped value.
+                    // Because a WebAssemblyWrapperFunction can never wrap another WebAssemblyWrapperFunction,
+                    // the only type this could be is WebAssemblyFunction.
+                    RELEASE_ASSERT(wasmFunction);
+                    table->setFunction(vm, tableIndex, wasmFunction);
                     ++tableIndex;
                     continue;
                 }
 
-                Wasm::Callee& jsEntrypointCallee = codeBlock->jsEntrypointCalleeFromFunctionIndexSpace(functionIndex);
-                Wasm::WasmEntrypointLoadLocation wasmEntrypointLoadLocation = codeBlock->wasmEntrypointLoadLocationFromFunctionIndexSpace(functionIndex);
-                const Wasm::Signature& signature = Wasm::SignatureInformation::get(signatureIndex);
-                // FIXME: Say we export local function "foo" at function index 0.
-                // What if we also set it to the table an Element w/ index 0.
-                // Does (new Instance(...)).exports.foo === table.get(0)?
-                // https://bugs.webkit.org/show_bug.cgi?id=165825
-                WebAssemblyFunction* function = WebAssemblyFunction::create(
-                    vm, m_instance->globalObject(), signature.argumentCount(), String(), m_instance.get(), jsEntrypointCallee, wasmEntrypointLoadLocation, signatureIndex);
-
-                table->setFunction(vm, tableIndex, function);
+                table->setFunction(vm, tableIndex,
+                    WebAssemblyWrapperFunction::create(vm, m_instance->globalObject(), functionImport, functionIndex, m_instance.get(), signatureIndex));
                 ++tableIndex;
+                continue;
             }
-        }
-    }
 
-    {
-        const Vector<Wasm::Segment::Ptr>& data = m_instance->module()->moduleInformation().data;
-        JSWebAssemblyMemory* jsMemory = m_instance->memory();
-        if (!data.isEmpty()) {
-            uint8_t* memory = reinterpret_cast<uint8_t*>(jsMemory->memory().memory());
-            uint64_t sizeInBytes = jsMemory->memory().size();
-            for (auto& segment : data) {
-                if (segment->sizeInBytes) {
-                    uint32_t offset;
-                    if (segment->offset.isGlobalImport())
-                        offset = static_cast<uint32_t>(m_instance->loadI32Global(segment->offset.globalImportIndex()));
-                    else
-                        offset = segment->offset.constValue();
+            Wasm::Callee& jsEntrypointCallee = codeBlock->jsEntrypointCalleeFromFunctionIndexSpace(functionIndex);
+            Wasm::WasmEntrypointLoadLocation wasmEntrypointLoadLocation = codeBlock->wasmEntrypointLoadLocationFromFunctionIndexSpace(functionIndex);
+            const Wasm::Signature& signature = Wasm::SignatureInformation::get(signatureIndex);
+            // FIXME: Say we export local function "foo" at function index 0.
+            // What if we also set it to the table an Element w/ index 0.
+            // Does (new Instance(...)).exports.foo === table.get(0)?
+            // https://bugs.webkit.org/show_bug.cgi?id=165825
+            WebAssemblyFunction* function = WebAssemblyFunction::create(
+                vm, m_instance->globalObject(), signature.argumentCount(), String(), m_instance.get(), jsEntrypointCallee, wasmEntrypointLoadLocation, signatureIndex);
 
-                    if (UNLIKELY(sizeInBytes < segment->sizeInBytes))
-                        return dataSegmentFail(exec, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment is too big"));
-                    if (UNLIKELY(offset > sizeInBytes - segment->sizeInBytes))
-                        return dataSegmentFail(exec, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment writes outside of memory"));
-                    RELEASE_ASSERT(memory);
-                    memcpy(memory + offset, &segment->byte(0), segment->sizeInBytes);
-                }
-            }
+            table->setFunction(vm, tableIndex, function);
+            ++tableIndex;
         }
-    }
+    });
+
+    ASSERT(!exception);
+
+    forEachSegment([&] (uint8_t* memory, uint64_t, const Wasm::Segment::Ptr& segment, uint32_t offset) {
+        // Empty segments are valid, but only if memory isn't present, which would be undefined behavior in memcpy.
+        if (segment->sizeInBytes) {
+            RELEASE_ASSERT(memory);
+            memcpy(memory + offset, &segment->byte(0), segment->sizeInBytes);
+        }
+    });
+
+    ASSERT(!exception);
 
     if (JSObject* startFunction = m_startFunction.get()) {
         CallData callData;

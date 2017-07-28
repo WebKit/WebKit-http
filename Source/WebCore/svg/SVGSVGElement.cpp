@@ -35,6 +35,7 @@
 #include "RenderView.h"
 #include "SMILTimeContainer.h"
 #include "SVGAngle.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGLength.h"
 #include "SVGMatrix.h"
 #include "SVGNumber.h"
@@ -99,11 +100,11 @@ SVGSVGElement::~SVGSVGElement()
     document().accessSVGExtensions().removeTimeContainer(this);
 }
 
-void SVGSVGElement::didMoveToNewDocument(Document& oldDocument)
+void SVGSVGElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     oldDocument.unregisterForDocumentSuspensionCallbacks(this);
     document().registerForDocumentSuspensionCallbacks(this);
-    SVGGraphicsElement::didMoveToNewDocument(oldDocument);
+    SVGGraphicsElement::didMoveToNewDocument(oldDocument, newDocument);
 }
 
 const AtomicString& SVGSVGElement::contentScriptType() const

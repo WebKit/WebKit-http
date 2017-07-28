@@ -33,13 +33,12 @@ namespace WebCore {
     
 class RenderStyle;
 class GraphicsContext;
+
 struct AttachmentLayout;
 
 class RenderThemeIOS final : public RenderThemeCocoa {
 public:
-    static Ref<RenderTheme> create();
-
-    LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
+    friend NeverDestroyed<RenderThemeIOS>;
 
     static void adjustRoundBorderRadius(RenderStyle&, RenderBox&);
 
@@ -48,6 +47,8 @@ public:
     WEBCORE_EXPORT static void setContentSizeCategory(const String&);
 
 protected:
+    LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
+    
     FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const override;
     void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
     int baselinePosition(const RenderBox&) const override;
@@ -118,6 +119,9 @@ protected:
     bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 
+    bool shouldMockBoldSystemFontForAccessibility() const override { return m_shouldMockBoldSystemFontForAccessibility; }
+    void setShouldMockBoldSystemFontForAccessibility(bool shouldMockBoldSystemFontForAccessibility) override { m_shouldMockBoldSystemFontForAccessibility = shouldMockBoldSystemFontForAccessibility; }
+
 private:
     RenderThemeIOS();
     virtual ~RenderThemeIOS() { }
@@ -135,6 +139,8 @@ private:
     String m_mediaControlsStyleSheet;
 
     mutable HashMap<int, Color> m_systemColorCache;
+
+    bool m_shouldMockBoldSystemFontForAccessibility { false };
 };
 
 }

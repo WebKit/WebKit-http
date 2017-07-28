@@ -33,7 +33,7 @@
 #import "StringFunctions.h"
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
-#import "UIKitSPI.h"
+#import "UIKitTestSPI.h"
 #import "UIScriptContext.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/OpaqueJSString.h>
@@ -475,6 +475,22 @@ void UIScriptController::keyboardAccessoryBarPrevious()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView keyboardAccessoryBarPrevious];
+}
+
+void UIScriptController::applyAutocorrection(JSStringRef newString, JSStringRef oldString, JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView applyAutocorrection:toWTFString(toWK(newString)) toString:toWTFString(toWK(oldString)) withCompletionHandler:^ {
+        // applyAutocorrection can call its completion handler synchronously,
+        // which makes UIScriptController unhappy (see bug 172884).
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            if (!m_context)
+                return;
+            m_context->asyncTaskComplete(callbackID);
+        });
+    }];
 }
 
 double UIScriptController::minimumZoomScale() const

@@ -27,22 +27,16 @@
 #import "PlatformPasteboard.h"
 
 #import "Color.h"
-#import "URL.h"
 #import "Image.h"
 #import "Pasteboard.h"
 #import "SharedBuffer.h"
-#import "SoftLinking.h"
+#import "UIKitSPI.h"
+#import "URL.h"
 #import "WebItemProviderPasteboard.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIImage.h>
 #import <UIKit/UIPasteboard.h>
-
-#if ENABLE(DATA_INTERACTION)
-#import <UIKit/NSAttributedString+UIItemProvider.h>
-#import <UIKit/NSString+UIItemProvider.h>
-#import <UIKit/NSURL+UIItemProvider.h>
-#import <UIKit/UIImage+UIItemProvider.h>
-#endif
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIImage)
@@ -118,6 +112,9 @@ String PlatformPasteboard::stringForType(const String& type)
     for (id value in values) {
         if ([value isKindOfClass:[NSURL class]])
             return [(NSURL *)value absoluteString];
+
+        if ([value isKindOfClass:[NSAttributedString class]])
+            return [(NSAttributedString *)value string];
 
         if ([value isKindOfClass:[NSString class]])
             return (NSString *)value;
@@ -212,6 +209,24 @@ static void addRepresentationsForPlainText(WebItemProviderRegistrationInfoList *
     [itemsToRegister addData:[(NSString *)plainText dataUsingEncoding:NSUTF8StringEncoding] forType:(NSString *)kUTTypeUTF8PlainText];
 }
 
+bool PlatformPasteboard::allowReadingURLAtIndex(const URL& url, int index) const
+{
+    NSItemProvider *itemProvider = (NSUInteger)index < [m_pasteboard itemProviders].count ? [[m_pasteboard itemProviders] objectAtIndex:index] : nil;
+    for (NSString *type in itemProvider.registeredTypeIdentifiers) {
+        if (UTTypeConformsTo((CFStringRef)type, kUTTypeURL))
+            return true;
+    }
+
+    return url.isValid();
+}
+
+#else
+
+bool PlatformPasteboard::allowReadingURLAtIndex(const URL&, int) const
+{
+    return true;
+}
+
 #endif
 
 void PlatformPasteboard::writeObjectRepresentations(const PasteboardWebContent& content)
@@ -253,9 +268,17 @@ void PlatformPasteboard::write(const PasteboardWebContent& content)
 
     RetainPtr<NSMutableDictionary> representations = adoptNS([[NSMutableDictionary alloc] init]);
     [representations addEntriesFromDictionary:richTextRepresentationsForPasteboardWebContent(content).autorelease()];
-    [representations setValue:content.dataInStringFormat forKey:(NSString *)kUTTypeText];
 
-    [m_pasteboard setItems:@[representations.get()]];
+    NSString *textAsString = content.dataInStringFormat;
+    [representations setValue:[textAsString dataUsingEncoding:NSUTF8StringEncoding] forKey:(NSString *)kUTTypeUTF8PlainText];
+    [representations setValue:[textAsString dataUsingEncoding:NSUTF16StringEncoding] forKey:(NSString *)kUTTypeUTF16PlainText];
+    // FIXME: We vend "public.text" here for backwards compatibility with pre-iOS 11 apps. In the future, we should stop vending this UTI,
+    // and instead set data for concrete plain text types. See <https://bugs.webkit.org/show_bug.cgi?id=173317>.
+    [representations setValue:textAsString forKey:(NSString *)kUTTypeText];
+
+    // Explicitly cast m_pasteboard to UIPasteboard * to work around rdar://problem/33383354.
+    ASSERT([m_pasteboard isKindOfClass:getUIPasteboardClass()]);
+    [(UIPasteboard *)m_pasteboard setItems:@[representations.get()]];
 }
 
 void PlatformPasteboard::writeObjectRepresentations(const PasteboardImage& pasteboardImage)
@@ -263,13 +286,21 @@ void PlatformPasteboard::writeObjectRepresentations(const PasteboardImage& paste
 #if ENABLE(DATA_INTERACTION)
     RetainPtr<WebItemProviderRegistrationInfoList> itemsToRegister = adoptNS([[WebItemProviderRegistrationInfoList alloc] init]);
 
-    if (!pasteboardImage.resourceMIMEType.isNull())
-        [itemsToRegister addData:pasteboardImage.resourceData->createNSData().get() forType:pasteboardImage.resourceMIMEType];
+    auto& types = pasteboardImage.clientTypes;
+    auto& data = pasteboardImage.clientData;
+    ASSERT(types.size() == data.size());
+    for (size_t i = 0, size = types.size(); i < size; ++i)
+        [itemsToRegister addData:data[i]->createNSData().get() forType:types[i]];
 
-    if (auto nativeImage = pasteboardImage.image->nativeImage()) {
-        UIImage *uiImage = (UIImage *)[getUIImageClass() imageWithCGImage:nativeImage.get()];
-        if (uiImage)
-            [itemsToRegister addRepresentingObject:uiImage];
+    if (pasteboardImage.resourceData && !pasteboardImage.resourceMIMEType.isEmpty()) {
+        auto utiOrMIMEType = pasteboardImage.resourceMIMEType.createCFString();
+        if (!UTTypeIsDeclared(utiOrMIMEType.get()))
+            utiOrMIMEType = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, utiOrMIMEType.get(), nil);
+
+        auto imageData = pasteboardImage.resourceData->createNSData();
+        [itemsToRegister addData:imageData.get() forType:(NSString *)utiOrMIMEType.get()];
+        [itemsToRegister setEstimatedDisplayedSize:pasteboardImage.imageSize];
+        [itemsToRegister setSuggestedName:pasteboardImage.suggestedName];
     }
 
     if (!pasteboardImage.url.url.isEmpty()) {
@@ -294,9 +325,13 @@ void PlatformPasteboard::write(const PasteboardImage& pasteboardImage)
     RetainPtr<NSMutableDictionary> representations = adoptNS([[NSMutableDictionary alloc] init]);
     if (!pasteboardImage.resourceMIMEType.isNull()) {
         [representations setObject:pasteboardImage.resourceData->createNSData().get() forKey:pasteboardImage.resourceMIMEType];
-        [representations setObject:(NSURL *)pasteboardImage.url.url forKey:(NSString *)kUTTypeURL];
+        if (!pasteboardImage.url.url.isNull())
+            [representations setObject:(NSURL *)pasteboardImage.url.url forKey:(NSString *)kUTTypeURL];
     }
-    [m_pasteboard setItems:@[representations.get()]];
+
+    // Explicitly cast m_pasteboard to UIPasteboard * to work around rdar://problem/33383354.
+    ASSERT([m_pasteboard isKindOfClass:getUIPasteboardClass()]);
+    [(UIPasteboard *)m_pasteboard setItems:@[representations.get()]];
 }
 
 void PlatformPasteboard::writeObjectRepresentations(const String& pasteboardType, const String& text)
@@ -326,12 +361,22 @@ void PlatformPasteboard::write(const String& pasteboardType, const String& text)
 
     RetainPtr<NSDictionary> representations = adoptNS([[NSMutableDictionary alloc] init]);
 
+    NSString *textAsString = text;
     if (pasteboardType == String(kUTTypeURL)) {
         [representations setValue:adoptNS([[NSURL alloc] initWithString:text]).get() forKey:pasteboardType];
-        [representations setValue:text forKey:(NSString *)kUTTypeText];
+        [representations setValue:textAsString forKey:(NSString *)kUTTypeText];
     } else if (!pasteboardType.isNull())
-        [representations setValue:text forKey:pasteboardType];
-    [m_pasteboard setItems:@[representations.get()]];
+        [representations setValue:textAsString forKey:pasteboardType];
+
+    auto cfPasteboardType = pasteboardType.createCFString();
+    if (UTTypeConformsTo(cfPasteboardType.get(), kUTTypeText) || UTTypeConformsTo(cfPasteboardType.get(), kUTTypeURL)) {
+        [representations setValue:[textAsString dataUsingEncoding:NSUTF8StringEncoding] forKey:(NSString *)kUTTypeUTF8PlainText];
+        [representations setValue:[textAsString dataUsingEncoding:NSUTF16StringEncoding] forKey:(NSString *)kUTTypeUTF16PlainText];
+    }
+
+    // Explicitly cast m_pasteboard to UIPasteboard * to work around rdar://problem/33383354.
+    ASSERT([m_pasteboard isKindOfClass:getUIPasteboardClass()]);
+    [(UIPasteboard *)m_pasteboard setItems:@[representations.get()]];
 }
 
 void PlatformPasteboard::writeObjectRepresentations(const PasteboardURL& url)
@@ -388,13 +433,19 @@ String PlatformPasteboard::readString(int index, const String& type)
 
     id value = [pasteboardItem objectAtIndex:0];
     
-    if (type == String(kUTTypeText) || type == String(kUTTypePlainText)) {
+    if (type == String(kUTTypePlainText) || type == String(kUTTypeHTML)) {
         ASSERT([value isKindOfClass:[NSString class]]);
+        return [value isKindOfClass:[NSString class]] ? value : nil;
+    }
+    if (type == String(kUTTypeText)) {
+        ASSERT([value isKindOfClass:[NSString class]] || [value isKindOfClass:[NSAttributedString class]]);
         if ([value isKindOfClass:[NSString class]])
-            return String(value);
+            return value;
+        if ([value isKindOfClass:[NSAttributedString class]])
+            return [(NSAttributedString *)value string];
     } else if (type == String(kUTTypeURL)) {
         ASSERT([value isKindOfClass:[NSURL class]]);
-        if ([value isKindOfClass:[NSURL class]])
+        if ([value isKindOfClass:[NSURL class]] && allowReadingURLAtIndex((NSURL *)value, index))
             return [(NSURL *)value absoluteString];
     }
 
@@ -415,6 +466,9 @@ URL PlatformPasteboard::readURL(int index, const String& type, String& title)
     if (![value isKindOfClass:[NSURL class]])
         return URL();
 
+    if (!allowReadingURLAtIndex((NSURL *)value, index))
+        return { };
+
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     title = [value _title];
 #else
@@ -424,16 +478,16 @@ URL PlatformPasteboard::readURL(int index, const String& type, String& title)
     return (NSURL *)value;
 }
 
-void PlatformPasteboard::updatePreferredTypeIdentifiers(const Vector<String>& types)
+void PlatformPasteboard::updateSupportedTypeIdentifiers(const Vector<String>& types)
 {
-    if (![m_pasteboard respondsToSelector:@selector(updatePreferredTypeIdentifiers:)])
+    if (![m_pasteboard respondsToSelector:@selector(updateSupportedTypeIdentifiers:)])
         return;
 
     NSMutableArray *typesArray = [NSMutableArray arrayWithCapacity:types.size()];
     for (auto type : types)
         [typesArray addObject:(NSString *)type];
 
-    [m_pasteboard updatePreferredTypeIdentifiers:typesArray];
+    [m_pasteboard updateSupportedTypeIdentifiers:typesArray];
 }
 
 }

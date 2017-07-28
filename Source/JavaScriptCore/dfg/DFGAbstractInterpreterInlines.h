@@ -131,7 +131,7 @@ void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
     if (!(forNode(edge).m_type & ~typeFilterFor(edge.useKind())))
         return;
     
-    DFG_CRASH(m_graph, node, toCString("Edge verification error: ", node, "->", edge, " was expected to have type ", SpeculationDump(typeFilterFor(edge.useKind())), " but has type ", SpeculationDump(forNode(edge).m_type), " (", forNode(edge).m_type, ")").data());
+    DFG_CRASH(m_graph, node, toCString("Edge verification error: ", node, "->", edge, " was expected to have type ", SpeculationDump(typeFilterFor(edge.useKind())), " but has type ", SpeculationDump(forNode(edge).m_type), " (", forNode(edge).m_type, ")").data(), AbstractInterpreterInvalidType, node->op(), edge->op(), edge.useKind(), forNode(edge).m_type);
 }
 
 template<typename AbstractStateType>
@@ -1708,6 +1708,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(m_graph, structureSet);
         break;
     }
+
+    case ArrayIndexOf: {
+        forNode(node).setType(SpecInt32Only);
+        break;
+    }
             
     case ArrayPop:
         clobberWorld(node->origin.semantic, clobberLimit);
@@ -2279,6 +2284,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case GetVectorLength: {
+        forNode(node).setType(SpecInt32Only);
+        break;
+    }
+
     case DeleteById:
     case DeleteByVal: {
         // FIXME: This could decide if the delete will be successful based on the set of structures that
@@ -2401,10 +2411,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
     case CallDOMGetter: {
         CallDOMGetterData* callDOMGetterData = node->callDOMGetterData();
-        DOMJIT::CallDOMGetterPatchpoint* patchpoint = callDOMGetterData->patchpoint;
-        if (patchpoint->effect.writes)
+        DOMJIT::CallDOMGetterSnippet* snippet = callDOMGetterData->snippet;
+        if (!snippet || snippet->effect.writes)
             clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).setType(m_graph, callDOMGetterData->domJIT->resultType());
+        if (callDOMGetterData->domJIT)
+            forNode(node).setType(m_graph, callDOMGetterData->domJIT->resultType());
+        else
+            forNode(node).makeBytecodeTop();
         break;
     }
     case CallDOM: {

@@ -1,3 +1,73 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Add Mac architecture for Simulator.
+        * WebKitPrivateFrameworkStubs/iOS/10: Ditto..
+        * WebKitPrivateFrameworkStubs/iOS/11: Added.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework/AppSupport.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework/AssertionServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework/CorePDF.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework/GraphicsServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework/IOSurface.tbd: Removed.
+
+2017-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitSystemInterface for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173936
+
+        Reviewed by Lucas Forschler.
+
+        * libWebKitSystemInterfaceIOSDevice11.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator11.a: Added.
+
+2017-06-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Ensure that GraphicsServices is initialized before calling GSFontPurgeFontCache().
+        https://bugs.webkit.org/show_bug.cgi?id=173616
+        <rdar://problem/30780050>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd:
+
+2017-06-09  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/32683422>
+        
+        Update existing WebKitSystemInterface libraries.
+        Add macOS 10.13 libraries.
+        Remove macOS 10.10 libraries.
+        Remove iOS 10.9 libraries.
+        
+        Reviewed by Conrad Schultz.
+
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice10.a:
+        * libWebKitSystemInterfaceIOSDevice9.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator10.a:
+        * libWebKitSystemInterfaceIOSSimulator9.a: Removed.
+        * libWebKitSystemInterfaceOSX10.12.a:
+        * libWebKitSystemInterfaceOSX10.13.a: Added.
+        * libWebKitSystemInterfaceYosemite.a: Removed.
+
 2017-04-11  Dan Bernstein  <mitz@apple.com>
 
         [Cocoa] WebKit unnecessarily soft-links CorePrediction

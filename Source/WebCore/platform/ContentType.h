@@ -31,18 +31,24 @@
 
 namespace WebCore {
 
-    class ContentType {
-    public:
-        explicit ContentType(const String& type);
-        ContentType() = default;
+class ContentType {
+public:
+    static ContentType create(const String& type) { return ContentType(type); }
+    explicit ContentType(const String& type);
+    ContentType() = default;
 
-        String parameter(const String& parameterName) const;
-        String type() const;
-        Vector<String> codecs() const;
-        const String& raw() const { return m_type; }
-    private:
-        String m_type;
-    };
+    static const String& codecsParameter();
+    static const String& profilesParameter();
+
+    String parameter(const String& parameterName) const;
+    String containerType() const;
+    Vector<String> codecs() const;
+    Vector<String> profiles() const;
+    const String& raw() const { return m_type; }
+    bool isEmpty() const { return m_type.isEmpty(); }
+private:
+    String m_type;
+};
 
 } // namespace WebCore
 

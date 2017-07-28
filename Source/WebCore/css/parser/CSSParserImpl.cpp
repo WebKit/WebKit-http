@@ -46,6 +46,7 @@
 #include "CSSVariableParser.h"
 #include "Document.h"
 #include "Element.h"
+#include "MediaList.h"
 #include "MediaQueryParser.h"
 #include "StyleProperties.h"
 #include "StyleRuleImport.h"
@@ -279,7 +280,7 @@ CSSSelectorList CSSParserImpl::parsePageSelector(CSSParserTokenRange range, Styl
 
     std::unique_ptr<CSSParserSelector> selector;
     if (!typeSelector.isNull() && pseudo.isNull())
-        selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector(QualifiedName(nullAtom, typeSelector, styleSheet->defaultNamespace())));
+        selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector(QualifiedName(nullAtom(), typeSelector, styleSheet->defaultNamespace())));
     else {
         selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector);
         if (!pseudo.isNull()) {
@@ -288,7 +289,7 @@ CSSSelectorList CSSParserImpl::parsePageSelector(CSSParserTokenRange range, Styl
                 return CSSSelectorList();
         }
         if (!typeSelector.isNull())
-            selector->prependTagSelector(QualifiedName(nullAtom, typeSelector, styleSheet->defaultNamespace()));
+            selector->prependTagSelector(QualifiedName(nullAtom(), typeSelector, styleSheet->defaultNamespace()));
     }
 
     selector->setForPage();
@@ -562,7 +563,7 @@ RefPtr<StyleRuleMedia> CSSParserImpl::consumeMediaRule(CSSParserTokenRange prelu
 
 RefPtr<StyleRuleSupports> CSSParserImpl::consumeSupportsRule(CSSParserTokenRange prelude, CSSParserTokenRange block)
 {
-    CSSSupportsParser::SupportsResult supported = CSSSupportsParser::supportsCondition(prelude, *this);
+    CSSSupportsParser::SupportsResult supported = CSSSupportsParser::supportsCondition(prelude, *this, CSSSupportsParser::ForAtRule);
     if (supported == CSSSupportsParser::Invalid)
         return nullptr; // Parse error, invalid @supports condition
 
