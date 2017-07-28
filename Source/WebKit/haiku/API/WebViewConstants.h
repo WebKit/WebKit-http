@@ -50,7 +50,8 @@ enum {
     MAIN_DOCUMENT_ERROR =                               318,
     LOAD_STARTED =                                      319,
     RESPONSE_RECEIVED =                                 320,
-    ICON_CHANGED =                                      321
+    ICON_CHANGED =                                      321,
+    SSL_CERT_ERROR =                                    322
 };
 
 enum {

@@ -246,30 +246,48 @@ void BWebWindow::MessageReceived(BMessage* message)
         break;
     }
     case AUTHENTICATION_CHALLENGE: {
-	    BString text;
-	    bool rememberCredentials = false;
-	    uint32 failureCount = 0;
-	    BString user;
-	    BString password;
+        BString text;
+        bool rememberCredentials = false;
+        uint32 failureCount = 0;
+        BString user;
+        BString password;
 
-	    message->FindString("text", &text);
-	    message->FindString("user", &user);
-	    message->FindString("password", &password);
-	    message->FindUInt32("failureCount", &failureCount);
+        message->FindString("text", &text);
+        message->FindString("user", &user);
+        message->FindString("password", &password);
+        message->FindUInt32("failureCount", &failureCount);
 
         if (!AuthenticationChallenge(text, user, password, rememberCredentials,
-        		failureCount, _WebViewForMessage(message))) {
-        	message->SendReply((uint32)0);
-        	break;
+                failureCount, _WebViewForMessage(message))) {
+            message->SendReply((uint32)0);
+            break;
         }
 
-	    BMessage reply;
-	    reply.AddString("user", user);
-	    reply.AddString("password", password);
-	    reply.AddBool("rememberCredentials", rememberCredentials);
-	    message->SendReply(&reply);
+        BMessage reply;
+        reply.AddString("user", user);
+        reply.AddString("password", password);
+        reply.AddBool("rememberCredentials", rememberCredentials);
+        message->SendReply(&reply);
         break;
     }
+    case SSL_CERT_ERROR: {
+        BString text;
+
+        message->FindString("text", &text);
+
+        BAlert* alert = new BAlert("Unsecure SSL certificate", text,
+            "Continue", "Stop", NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+        // TODO add information about the certificate to the alert
+        // (in a "details" area or so)
+        // (but this can be done in WebPositive as well)
+
+        int button = alert->Go();
+        BMessage reply;
+        reply.AddBool("continue", button == 0);
+        message->SendReply(&reply);
+        break;
+    }
+
 
     case TOOLBARS_VISIBILITY: {
         bool flag;
