@@ -331,25 +331,24 @@ void CDMInstanceOpenCDM::loadSession(LicenseType licenseType, const String& sess
     std::string responseMessage;
     SessionLoadFailure sessionFailure = SessionLoadFailure::None;
     int ret = m_openCdmSession->Load(responseMessage);
-    if (ret) {
+    if (!ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
             size_t length = checkMessageLength(responseMessage, request);
             GST_TRACE("message length %u", length);
-
-            Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
-            CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
-            callback(std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded, sessionFailure);
+            auto message = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
+            callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
             return;
         }
+
+        SharedBuffer* initData = sessionIdMap.get(sessionId);
+        KeyStatusVector knownKeys;
+        MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+        knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
+        callback(WTFMove(knownKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
+        return;
     }
-    //FIXME:Check the working of loadSession sequence from OpenCDMi and make the required change for KeyStatus
-    #if 0
-    SharedBuffer* initData = sessionIdMap.get(sessionId);
-    KeyStatusVector knownKeys;
-    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-    knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-    #endif
+
     sessionFailure = getSessionLoadStatus(responseMessage);
     callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed, sessionFailure);
 }
