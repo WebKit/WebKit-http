@@ -1,3 +1,353 @@
+2016-02-08  Chris Dumez  <cdumez@apple.com>
+
+        Attribute getters should not require an explicit 'this' value for Window properties
+        https://bugs.webkit.org/show_bug.cgi?id=153968
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Object.getOwnPropertyDescriptor() returns incomplete descriptor for instance properties
+        https://bugs.webkit.org/show_bug.cgi?id=153817
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C HTML test now that more checks are passing. Some checks are still
+        failing because getter.call(undefined) / getter.call() currently throws an exception
+        for Window properties but shouldn't. Global object property getters should not require
+        an explicit |this|.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add support for iterating over Headers
+        https://bugs.webkit.org/show_bug.cgi?id=153787
+
+        Reviewed by Darin Adler.
+
+        Relanding.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/headers/headers-structure-expected.txt:
+        * web-platform-tests/fetch/api/request/request-clone.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/resources/utils.js:
+        (checkRequest):
+        (readTextStream):
+
+2016-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Merge DOMTokenList and DOMSettableTokenList
+        https://bugs.webkit.org/show_bug.cgi?id=153677
+        <rdar://problem/24419675>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+        * web-platform-tests/html/dom/interfaces.html:
+        Update HTMLAreaElement.relList to match the specification.
+
+2016-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add support for iterating over Headers
+        https://bugs.webkit.org/show_bug.cgi?id=153787
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/headers/headers-structure-expected.txt:
+        * web-platform-tests/fetch/api/request/request-clone.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/resources/utils.js: fixed typo in test.
+
+2016-02-03  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync W3C HTML web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=153832
+
+        Reviewed by Sam Weinig.
+
+        Re-sync W3C HTML web-platform-tests from:
+        https://github.com/w3c/web-platform-tests/tree/master/html
+
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-writeln/document.writeln-03-expected.txt: Added.
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-writeln/document.writeln-03.html: Added.
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-writeln/w3c-import.log:
+        * web-platform-tests/html/dom/elements-obsolete.js:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/semantics/document-metadata/styling/LinkStyle-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/styling/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/playing-the-media-resource/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-processing-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-processing.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-shape-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/area-shape.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/support/hit-test.js: Added.
+        (onload):
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/support/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/the-area-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/toDataURL.nocontext.html:
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_01-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_01.htm: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_script-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_script.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_01-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_01.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_03-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_03.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_04-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_04.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/blank.htm: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/sandbox_allow_script.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-object-element/w3c-import.log.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/form-submission-0/url-encoded-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/form-submission-0/url-encoded.html: Added.
+        * web-platform-tests/html/semantics/forms/form-submission-0/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/textfieldselection/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-button-element/button-activate-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-button-element/button-activate-frame.html: Added.
+        * web-platform-tests/html/semantics/forms/the-button-element/button-activate.html: Added.
+        * web-platform-tests/html/semantics/forms/the-button-element/button-events-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-button-element/button-events.html:
+        * web-platform-tests/html/semantics/forms/the-button-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-sameobject-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-sameobject.html: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-input-element/checkbox-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/checkbox.html:
+        * web-platform-tests/html/semantics/forms/the-input-element/maxlength-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-input-element/maxlength.html: Added.
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio.html:
+        * web-platform-tests/html/semantics/forms/the-input-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-option-element/option-selected-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-option-element/option-selected.html: Added.
+        * web-platform-tests/html/semantics/forms/the-option-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-select-element/select-ask-for-reset-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/select-ask-for-reset.html: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/w3c-import.log:
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/w3c-import.log:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-text-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-text.html:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/w3c-import.log:
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/rows-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/rows.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/w3c-import.log:
+        * web-platform-tests/html/semantics/tabular-data/the-tfoot-element/rows-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tfoot-element/rows.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tfoot-element/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/w3c-import.log.
+        * web-platform-tests/html/semantics/tabular-data/the-thead-element/rows-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-thead-element/rows.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-thead-element/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/w3c-import.log.
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/cells-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/cells.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/w3c-import.log:
+
+2016-02-03  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync W3C DOM web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=153831
+
+        Reviewed by Darin Adler.
+
+        Re-sync W3C DOM web-platform-tests from:
+        https://github.com/w3c/web-platform-tests/tree/master/dom
+
+        * web-platform-tests/dom/collections/domstringmap-supported-property-names-expected.txt: Added.
+        * web-platform-tests/dom/collections/domstringmap-supported-property-names.html: Added.
+        * web-platform-tests/dom/collections/namednodemap-supported-property-names-expected.txt: Added.
+        * web-platform-tests/dom/collections/namednodemap-supported-property-names.html: Added.
+        * web-platform-tests/dom/collections/w3c-import.log:
+        * web-platform-tests/dom/events/Event-dispatch-propagation-stopped-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-propagation-stopped.html: Added.
+        * web-platform-tests/dom/events/w3c-import.log:
+        * web-platform-tests/dom/historical-expected.txt:
+        * web-platform-tests/dom/historical.html:
+        * web-platform-tests/dom/interface-objects-expected.txt:
+        * web-platform-tests/dom/interface-objects.html:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces.html:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument.html:
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.html: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.svg: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.xhtml: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.xml: Added.
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+        * web-platform-tests/dom/nodes/Element-classlist.html:
+        * web-platform-tests/dom/nodes/Node-contains-xhtml-expected.txt: Added.
+        * web-platform-tests/dom/nodes/Node-contains-xhtml.xhtml: Added.
+        * web-platform-tests/dom/nodes/Node-isEqualNode-expected.txt:
+        * web-platform-tests/dom/nodes/Node-isEqualNode-xhtml-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Node-isEqualNode-expected.txt.
+        * web-platform-tests/dom/nodes/Node-isEqualNode-xhtml.xhtml: Renamed from LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Node-isEqualNode.xhtml.
+        * web-platform-tests/dom/nodes/Node-isEqualNode.html: Added.
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+        * web-platform-tests/dom/nodes/attributes.html:
+        * web-platform-tests/dom/nodes/w3c-import.log:
+        * web-platform-tests/dom/ranges/Range-constructor-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-constructor.html: Added.
+        * web-platform-tests/dom/ranges/w3c-import.log:
+        * web-platform-tests/dom/w3c-import.log:
+
+2016-02-01  Chris Dumez  <cdumez@apple.com>
+
+        Native Bindings Descriptors are Incomplete
+        https://bugs.webkit.org/show_bug.cgi?id=140575
+        <rdar://problem/19506502>
+
+        Reviewed by Oliver Hunt.
+
+        Rebaseline several W3C tests now that a lot more checks are passing.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-01  Chris Dumez  <cdumez@apple.com>
+
+        Move properties that use custom bindings to the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=153735
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+
+2016-02-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Implement Fetch API Request
+        https://bugs.webkit.org/show_bug.cgi?id=153437
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/request/request-clone.sub-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-clone.sub.html: Added.
+        * web-platform-tests/fetch/api/request/request-consume-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-consume.html: Added.
+        * web-platform-tests/fetch/api/request/request-disturbed-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-disturbed.html: Added.
+        * web-platform-tests/fetch/api/request/request-error-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-error.html: Added.
+        * web-platform-tests/fetch/api/request/request-headers-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-headers.html: Added.
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-idl.html: Added.
+        * web-platform-tests/fetch/api/request/request-init-001.sub-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-init-001.sub.html: Added.
+        * web-platform-tests/fetch/api/request/request-init-002-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-init-002.html: Added.
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-init-003.sub.html: Added.
+        * web-platform-tests/fetch/api/request/request-structure-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-structure.html: Added.
+        * web-platform-tests/fetch/api/resources/authentication.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/clean-stash.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/inspect-headers.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/method.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/preflight.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/redirect.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/top.txt: Added.
+        * web-platform-tests/fetch/api/resources/trickle.py: Added.
+        (main):
+        * web-platform-tests/fetch/api/resources/utils.js: Added.
+        (catch):
+        (dirname):
+        (checkRequest):
+        (readTextStream):
+
+2016-01-31  Jeremy Jones  <jeremyj@apple.com>
+
+        Add resize event for HTMLMediaElement
+        https://bugs.webkit.org/show_bug.cgi?id=125715
+
+        Reviewed by Darin Adler.
+
+        Rebaselined test after moving 'resize' from DOMWindow.idl to GlobalEventHandlers.idl
+        per https://html.spec.whatwg.org/multipage/webappapis.html#globaleventhandlers
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-01-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        imported/w3c/web-platform-tests/streams-api/readable-streams/garbage-collection.html asserts frequently
+        https://bugs.webkit.org/show_bug.cgi?id=152436
+
+        Reviewed by Darin Adler.
+
+        GCController is not available in Worker environments, explaining probably why garbage-collection-2.html is not crashing at all.
+        Inlining half of the tests in garbage-collection-2.html (runned in window) to compare with garbage-collection-1.html.
+
+        * web-platform-tests/streams-api/readable-streams/garbage-collection-2-expected.txt:
+        * web-platform-tests/streams-api/readable-streams/garbage-collection-2.html:
+
+2016-01-30  Chris Dumez  <cdumez@apple.com>
+
+        [JS Bindings] prototype.constructor should be writable
+        https://bugs.webkit.org/show_bug.cgi?id=149412
+        <rdar://problem/22545096>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-idl-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Move more 'constructor' properties to the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=153667
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing. A lot of
+        the 'constructor' attributes checks are still failing because the
+        attribute is not writable. This is being addressed via Bug 149412.
+
+        * web-platform-tests/dom/collections/HTMLCollection-supported-property-names-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Element-getElementsByTagName-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.forms-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
 2016-01-28  Chris Dumez  <cdumez@apple.com>
 
         Move attributes to the prototype for List types / and types with indexed/named property getters

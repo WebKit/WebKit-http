@@ -30,6 +30,7 @@
 #include "B3BasicBlockInlines.h"
 #include "B3CCallValue.h"
 #include "B3Compilation.h"
+#include "B3ComputeDivisionMagic.h"
 #include "B3Const32Value.h"
 #include "B3ConstPtrValue.h"
 #include "B3ControlValue.h"
@@ -4982,14 +4983,48 @@ void testFramePointer()
     CHECK(fp >= bitwise_cast<char*>(&proc) - 10000);
 }
 
+void testOverrideFramePointer()
+{
+    {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        // Add a stack slot to make the frame non trivial.
+        root->appendNew<SlotBaseValue>(proc, Origin(), proc.addStackSlot(8));
+
+        // Sub on x86 UseDef the source. If FP is not protected correctly, it will be overridden since it is the last visible use.
+        Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* fp = root->appendNew<Value>(proc, FramePointer, Origin());
+        Value* result = root->appendNew<Value>(proc, Sub, Origin(), fp, offset);
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        CHECK(compileAndRun<int64_t>(proc, 1));
+    }
+    {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        root->appendNew<SlotBaseValue>(proc, Origin(), proc.addStackSlot(8));
+
+        Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* fp = root->appendNew<Value>(proc, FramePointer, Origin());
+        Value* offsetFP = root->appendNew<Value>(proc, BitAnd, Origin(), offset, fp);
+        Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* offsetArg = root->appendNew<Value>(proc, Add, Origin(), offset, arg);
+        Value* result = root->appendNew<Value>(proc, Add, Origin(), offsetArg, offsetFP);
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        CHECK(compileAndRun<int64_t>(proc, 1, 2));
+    }
+}
+
 void testStackSlot()
 {
     Procedure proc;
     BasicBlock* root = proc.addBlock();
     root->appendNew<ControlValue>(
         proc, Return, Origin(),
-        root->appendNew<SlotBaseValue>(
-            proc, Origin(), proc.addStackSlot(1, StackSlotKind::Anonymous)));
+        root->appendNew<SlotBaseValue>(proc, Origin(), proc.addStackSlot(1)));
 
     void* stackSlot = compileAndRun<void*>(proc);
     CHECK(stackSlot < &proc);
@@ -5017,8 +5052,8 @@ void testStoreLoadStackSlot(int value)
     Procedure proc;
     BasicBlock* root = proc.addBlock();
 
-    SlotBaseValue* stack = root->appendNew<SlotBaseValue>(
-        proc, Origin(), proc.addStackSlot(sizeof(int), StackSlotKind::Anonymous));
+    SlotBaseValue* stack =
+        root->appendNew<SlotBaseValue>(proc, Origin(), proc.addStackSlot(sizeof(int)));
 
     root->appendNew<MemoryValue>(
         proc, Store, Origin(),
@@ -9983,6 +10018,53 @@ void testSShrShl64(int64_t value, int32_t sshrAmount, int32_t shlAmount)
         == ((value << (shlAmount & 63)) >> (sshrAmount & 63)));
 }
 
+template<typename T>
+void testComputeDivisionMagic(T value, T magicMultiplier, unsigned shift)
+{
+    DivisionMagic<T> magic = computeDivisionMagic(value);
+    CHECK(magic.magicMultiplier == magicMultiplier);
+    CHECK(magic.shift == shift);
+}
+
+void testTrivialInfiniteLoop()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* loop = proc.addBlock();
+    root->appendNew<ControlValue>(proc, Jump, Origin(), FrequentedBlock(loop));
+    loop->appendNew<ControlValue>(proc, Jump, Origin(), FrequentedBlock(loop));
+
+    compile(proc);
+}
+
+void testFoldPathEqual()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenBlock = proc.addBlock();
+    BasicBlock* elseBlock = proc.addBlock();
+
+    Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(), arg, FrequentedBlock(thenBlock), FrequentedBlock(elseBlock));
+
+    thenBlock->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenBlock->appendNew<Value>(
+            proc, Equal, Origin(), arg, thenBlock->appendNew<ConstPtrValue>(proc, Origin(), 0)));
+
+    elseBlock->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseBlock->appendNew<Value>(
+            proc, Equal, Origin(), arg, elseBlock->appendNew<ConstPtrValue>(proc, Origin(), 0)));
+
+    auto code = compile(proc);
+    CHECK(invoke<intptr_t>(*code, 0) == 1);
+    CHECK(invoke<intptr_t>(*code, 1) == 0);
+    CHECK(invoke<intptr_t>(*code, 42) == 0);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -10757,6 +10839,7 @@ void run(const char* filter)
     RUN(testLoadAddrShift(2));
     RUN(testLoadAddrShift(3));
     RUN(testFramePointer());
+    RUN(testOverrideFramePointer());
     RUN(testStackSlot());
     RUN(testLoadFromFramePointer());
     RUN(testStoreLoadStackSlot(50));
@@ -11380,6 +11463,9 @@ void run(const char* filter)
     RUN(testSShrShl64(-42000000000, 8, 8));
 
     RUN(testCheckMul64SShr());
+    RUN(testComputeDivisionMagic<int32_t>(2, -2147483647, 0));
+    RUN(testTrivialInfiniteLoop());
+    RUN(testFoldPathEqual());
 
     if (tasks.isEmpty())
         usage();

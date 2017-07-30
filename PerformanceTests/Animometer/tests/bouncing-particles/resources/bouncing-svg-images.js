@@ -7,7 +7,7 @@ BouncingSvgImage = Utilities.createSubclass(BouncingSvgParticle,
 
         var attrs = { x: 0, y: 0, width: this.size.x, height: this.size.y };
         var xlinkAttrs = { href: stage.imageSrc };
-        this.element = DocumentExtension.createSvgElement("image", attrs, xlinkAttrs, stage.element);
+        this.element = Utilities.createSVGElement("image", attrs, xlinkAttrs, stage.element);
         this._move();
     }
 );
@@ -18,10 +18,10 @@ BouncingSvgImagesStage = Utilities.createSubclass(BouncingSvgParticlesStage,
         BouncingSvgParticlesStage.call(this);
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        BouncingSvgParticlesStage.prototype.initialize.call(this, benchmark);
-        this.imageSrc = benchmark.options["imageSrc"] || "resources/yin-yang.svg";
+        BouncingSvgParticlesStage.prototype.initialize.call(this, benchmark, options);
+        this.imageSrc = options["imageSrc"] || "resources/yin-yang.svg";
     },
 
     createParticle: function()

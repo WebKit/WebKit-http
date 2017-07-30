@@ -21,10 +21,10 @@ Properties:
   __proto__ function function () {
     [native code]
 }
-  arguments
-  caller
+  arguments object TypeError: Type error
+  caller object TypeError: Type error
   length number 0
-  name string Number
+  name string bound Number
 Internal properties:
   boundArgs object Array
   boundThis object Object

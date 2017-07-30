@@ -231,7 +231,7 @@
 #include <WebCore/MediaPlayerRequestInstallMissingPluginsCallback.h>
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageIncludes.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageIncludes.h>
 #endif
 
@@ -398,7 +398,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.userContentController = m_userContentController ? &m_userContentController->userContentController() : &m_pageGroup->userContentController();
     pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageInitialization.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageInitialization.h>
 #endif
 
@@ -463,7 +463,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setPaginationBehavesLikeColumns(parameters.paginationBehavesLikeColumns);
     setPageLength(parameters.pageLength);
     setGapBetweenPages(parameters.gapBetweenPages);
-
+    setPaginationLineGridEnabled(parameters.paginationLineGridEnabled);
+    
     // If the page is created off-screen, its visibilityState should be prerender.
     m_page->setViewState(m_viewState);
     if (!isVisible())
@@ -1679,6 +1680,11 @@ void WebPage::setGapBetweenPages(double gap)
     Pagination pagination = m_page->pagination();
     pagination.gap = gap;
     m_page->setPagination(pagination);
+}
+
+void WebPage::setPaginationLineGridEnabled(bool lineGridEnabled)
+{
+    m_page->setPaginationLineGridEnabled(lineGridEnabled);
 }
 
 void WebPage::postInjectedBundleMessage(const String& messageName, const UserData& userData)

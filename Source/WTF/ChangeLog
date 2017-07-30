@@ -1,3 +1,236 @@
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Make sure that locking code that relies on module boundaries for compiler fences uses NEVER_INLINE
+        https://bugs.webkit.org/show_bug.cgi?id=153972
+
+        Reviewed by Andreas Kling.
+
+        When this code was written, we assumed that module boundaries were compiler fences. That might
+        not be the case if we ever do LTO.
+
+        * wtf/Lock.cpp:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkAll):
+        (WTF::ParkingLot::forEach):
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::lockSlow):
+        (WTF::WordLock::unlockSlow):
+
+2016-02-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][EFL] Enable SamplingProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153638
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
+2016-02-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Replace __has_include guards around inclusion of Apple-internal-SDK headers with USE(APPLE_INTERNAL_SDK)
+        https://bugs.webkit.org/show_bug.cgi?id=153963
+
+        Reviewed by Sam Weinig.
+
+        * wtf/SystemTracing.h:
+        * wtf/WTFThreadData.h:
+        * wtf/spi/darwin/CommonCryptoSPI.h:
+
+2016-02-06  Darin Adler  <darin@apple.com>
+
+        Finish auditing call sites of upper() and lower(), eliminate many, and rename the functions
+        https://bugs.webkit.org/show_bug.cgi?id=153905
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::lower): Deleted.
+        * wtf/text/AtomicString.h: Deleted the lower function.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::convertToLowercaseWithoutLocale): Renamed from lower.
+        (WTF::StringImpl::convertToUppercaseWithoutLocale): Renamed from upper.
+        (WTF::StringImpl::convertToLowercaseWithLocale): Renamed from lower.
+        (WTF::StringImpl::convertToUppercaseWithLocale): Renamed from upper.
+        (WTF::StringImpl::foldCase): Added fast cases for ASCII since this is
+        now used in some more-performance-critical code.
+        * wtf/text/StringImpl.h: Renamed lower and upper.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::convertToLowercaseWithoutLocale): Renamed from lower.
+        (WTF::String::convertToUppercaseWithoutLocale): Renamed from upper.
+        (WTF::String::convertToLowercaseWithLocale): Renamed from lower.
+        (WTF::String::convertToUppercaseWithLocale): Renamed from upper.
+        * wtf/text/WTFString.h: Renamed lower and upper. Removed unneeded comment.
+
+2016-02-03  Darin Adler  <darin@apple.com>
+
+        Convert another batch of String::lower callsites to something better, typically convertToASCIILowercase
+        https://bugs.webkit.org/show_bug.cgi?id=153789
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::toInt): Added an overload without the out parameter.
+
+2016-02-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][EFL] Switch FTL to B3
+        https://bugs.webkit.org/show_bug.cgi?id=153478
+
+        Reviewed by Csaba Osztrogonác.
+
+        Enable B3 by default on all x86.
+
+        * wtf/Platform.h:
+
+2016-02-03  Anders Carlsson  <andersca@apple.com>
+
+        Fix BlockPtr's call operator
+        https://bugs.webkit.org/show_bug.cgi?id=153836
+
+        Reviewed by Enrica Casucci.
+
+        * wtf/BlockPtr.h:
+
+2016-02-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Cache the Path instead of creating it every time it is required
+        https://bugs.webkit.org/show_bug.cgi?id=152939
+
+        Reviewed by Darin Adler.
+
+        If the key type of an LRU cache can't to be strongly tided to a specific
+        data type; e.g. FloatRect -> Path, we need to be able to pass the policy
+        type to the TinyLRUCache template instead of just specializing it. This
+        will make the code more readable and will allow different caches for the
+        same key type.
+
+        * wtf/TinyLRUCache.h:
+        (WebCore::TinyLRUCache::get):
+
+2016-02-01  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] WTFHeaderDetection.h no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=153753
+        rdar://problem/24434627
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+
+2016-01-31  Darin Adler  <darin@apple.com>
+
+        Cut down on calls to String::lower; mostly replace with convertToASCIILowercase
+        https://bugs.webkit.org/show_bug.cgi?id=153732
+
+        Reviewed by Dean Jackson.
+
+        * wtf/text/StringView.h: Added toIntStrict. Not thrilled about the name of this
+        function, but generally it seems likely to be useful more often than toInt.
+        And it's needed for one call site in WebCore that was using String::lower.
+
+2016-01-31  Darin Adler  <darin@apple.com>
+
+        Get rid of most calls to String::upper; mostly replace them with convertToASCIIUppercase
+        https://bugs.webkit.org/show_bug.cgi?id=153715
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::upper): Deleted.
+
+2016-01-31  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Remove unused definition of HAVE_HEADER_DETECTION_H
+        https://bugs.webkit.org/show_bug.cgi?id=153729
+
+        Reviewed by Sam Weinig.
+
+        After r141700, HAVE_HEADER_DETECTION_H is no longer used.
+
+        * Configurations/Base.xcconfig:
+
+2016-01-31  Darin Adler  <darin@apple.com>
+
+        Replace CaseFoldingHash with ASCIICaseInsensitiveHash
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/text/StringHash.h: Renamed CaseFoldingHash to ASCIICaseInsensitiveHash.
+        (WTF::ASCIICaseInsensitiveHash::foldCase): Use toASCIILower.
+        (WTF::ASCIICaseInsensitiveHash::equal): Use equalIgnoringASCIICase.
+        Also added some assertions.
+
+        * wtf/text/StringImpl.cpp: Made the latin1CaseFoldTable private to this file,
+        since it's no longer needed by CaseFoldingHash. Moved it up before its first use.
+        (WTF::equalCompatibilityCaseless): Fixed typo in the name of this function.
+        (WTF::equalCompatibiltyCaselessNonNull): Deleted.
+
+        * wtf/text/StringImpl.h: Removed declarations of latin1CaseFoldTable and
+        equalCompatibiltyCaselessNonNull
+
+2016-01-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195911.
+        https://bugs.webkit.org/show_bug.cgi?id=153723
+
+        Caused frequent assertion failures on bots (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Replace CaseFoldingHash with ASCIICaseInsensitiveHash"
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+        http://trac.webkit.org/changeset/195911
+
+2016-01-30  Darin Adler  <darin@apple.com>
+
+        Replace CaseFoldingHash with ASCIICaseInsensitiveHash
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/text/StringHash.h: Renamed CaseFoldingHash to ASCIICaseInsensitiveHash.
+        (WTF::ASCIICaseInsensitiveHash::foldCase): Use toASCIILower.
+        (WTF::ASCIICaseInsensitiveHash::equal): Use equalIgnoringASCIICase.
+        Also added some assertions.
+
+        * wtf/text/StringImpl.cpp: Made the latin1CaseFoldTable private to this file,
+        since it's no longer needed by CaseFoldingHash. Moved it up before its first use.
+        (WTF::equalCompatibilityCaseless): Fixed typo in the name of this function.
+        (WTF::equalCompatibiltyCaselessNonNull): Deleted.
+
+        * wtf/text/StringImpl.h: Removed declarations of latin1CaseFoldTable and
+        equalCompatibiltyCaselessNonNull
+
+2016-01-29  Ada Chan  <adachan@apple.com>
+
+        Enable VIDEO_PRESENTATION_MODE only in Debug and Release builds on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=153665
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+        Remove this as the flag is already defined in FeatureDefines.xcconfig files.
+
+2016-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Enable SamplingProfiler on POSIX environment
+        https://bugs.webkit.org/show_bug.cgi?id=153584
+
+        Reviewed by Michael Saboff.
+
+        Use __GLIBC__ since mcontext_t layout depends on it.
+
+        * wtf/Platform.h:
+
 2016-01-28  Darin Adler  <darin@apple.com>
 
         Remove equalIgnoringCase since all callers really wanted equalIgnoringASCIICase

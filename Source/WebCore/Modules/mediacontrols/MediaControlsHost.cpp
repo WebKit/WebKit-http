@@ -61,6 +61,13 @@ const AtomicString& MediaControlsHost::alwaysOnKeyword()
     return alwaysOn;
 }
 
+const AtomicString& MediaControlsHost::manualKeyword()
+{
+    static NeverDestroyed<const AtomicString> alwaysOn("manual", AtomicString::ConstructFromLiteral);
+    return alwaysOn;
+}
+
+
 Ref<MediaControlsHost> MediaControlsHost::create(HTMLMediaElement* mediaElement)
 {
     return adoptRef(*new MediaControlsHost(mediaElement));
@@ -85,8 +92,7 @@ Vector<RefPtr<TextTrack>> MediaControlsHost::sortedTrackListForMenu(TextTrackLis
     if (!page)
         return Vector<RefPtr<TextTrack>>();
 
-    CaptionUserPreferences* captionPreferences = page->group().captionPreferences();
-    return captionPreferences->sortedTrackListForMenu(trackList);
+    return page->group().captionPreferences().sortedTrackListForMenu(trackList);
 }
 
 Vector<RefPtr<AudioTrack>> MediaControlsHost::sortedTrackListForMenu(AudioTrackList* trackList)
@@ -98,8 +104,7 @@ Vector<RefPtr<AudioTrack>> MediaControlsHost::sortedTrackListForMenu(AudioTrackL
     if (!page)
         return Vector<RefPtr<AudioTrack>>();
 
-    CaptionUserPreferences* captionPreferences = page->group().captionPreferences();
-    return captionPreferences->sortedTrackListForMenu(trackList);
+    return page->group().captionPreferences().sortedTrackListForMenu(trackList);
 }
 
 String MediaControlsHost::displayNameForTrack(TextTrack* track)
@@ -111,8 +116,7 @@ String MediaControlsHost::displayNameForTrack(TextTrack* track)
     if (!page)
         return emptyString();
 
-    CaptionUserPreferences* captionPreferences = page->group().captionPreferences();
-    return captionPreferences->displayNameForTrack(track);
+    return page->group().captionPreferences().displayNameForTrack(track);
 }
 
 String MediaControlsHost::displayNameForTrack(AudioTrack* track)
@@ -124,8 +128,7 @@ String MediaControlsHost::displayNameForTrack(AudioTrack* track)
     if (!page)
         return emptyString();
 
-    CaptionUserPreferences* captionPreferences = page->group().captionPreferences();
-    return captionPreferences->displayNameForTrack(track);
+    return page->group().captionPreferences().displayNameForTrack(track);
 }
 
 TextTrack* MediaControlsHost::captionMenuOffItem()
@@ -144,13 +147,15 @@ AtomicString MediaControlsHost::captionDisplayMode()
     if (!page)
         return emptyAtom;
 
-    switch (page->group().captionPreferences()->captionDisplayMode()) {
+    switch (page->group().captionPreferences().captionDisplayMode()) {
     case CaptionUserPreferences::Automatic:
         return automaticKeyword();
     case CaptionUserPreferences::ForcedOnly:
         return forcedOnlyKeyword();
     case CaptionUserPreferences::AlwaysOn:
         return alwaysOnKeyword();
+    case CaptionUserPreferences::Manual:
+        return manualKeyword();
     default:
         ASSERT_NOT_REACHED();
         return emptyAtom;

@@ -688,12 +688,20 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 @end
 
 #if !PLATFORM(IOS)
-static IMP oldSetNeedsDisplayInRectIMP;
 
-static void setNeedsDisplayInRect(NSView *self, SEL cmd, NSRect invalidRect)
+@interface NSView (WebSetNeedsDisplayInRect)
+- (void)_web_setNeedsDisplayInRect:(NSRect)invalidRect;
+@end
+
+@implementation NSView (WebSetNeedsDisplayInRect)
+
+- (void)_web_setNeedsDisplayInRect:(NSRect)invalidRect
 {
+    // Note that we call method_exchangeImplementations below, so any calls
+    // to _web_setNeedsDisplayInRect: will actually call -[NSView setNeedsDisplayInRect:].
+
     if (![NSThread isMainThread] || ![self _drawnByAncestor]) {
-        wtfCallIMP<id>(oldSetNeedsDisplayInRectIMP, self, cmd, invalidRect);
+        [self _web_setNeedsDisplayInRect:invalidRect];
         return;
     }
 
@@ -703,14 +711,14 @@ static void setNeedsDisplayInRect(NSView *self, SEL cmd, NSRect invalidRect)
         enclosingWebFrameView = (WebFrameView *)[enclosingWebFrameView superview];
 
     if (!enclosingWebFrameView) {
-        wtfCallIMP<id>(oldSetNeedsDisplayInRectIMP, self, cmd, invalidRect);
+        [self _web_setNeedsDisplayInRect:invalidRect];
         return;
     }
 
     Frame* coreFrame = core([enclosingWebFrameView webFrame]);
     FrameView* frameView = coreFrame ? coreFrame->view() : 0;
     if (!frameView || !frameView->isEnclosedInCompositingLayer()) {
-        wtfCallIMP<id>(oldSetNeedsDisplayInRectIMP, self, cmd, invalidRect);
+        [self _web_setNeedsDisplayInRect:invalidRect];
         return;
     }
 
@@ -721,6 +729,8 @@ static void setNeedsDisplayInRect(NSView *self, SEL cmd, NSRect invalidRect)
 
     frameView->invalidateRect(invalidRectInFrameViewCoordinates);
 }
+
+@end
 
 @interface NSApplication (WebNSApplicationDetails)
 - (void)speakString:(NSString *)string;
@@ -1026,15 +1036,8 @@ static NSCellStateValue kit(TriState state)
         ASSERT(oldSetCursorForMouseLocationIMP);
     }
 
-    if (!oldSetNeedsDisplayInRectIMP) {
-        Method setNeedsDisplayInRectMethod = class_getInstanceMethod([NSView class], @selector(setNeedsDisplayInRect:));
-        ASSERT(setNeedsDisplayInRectMethod);
-        oldSetNeedsDisplayInRectIMP = method_setImplementation(setNeedsDisplayInRectMethod, (IMP)setNeedsDisplayInRect);
-        ASSERT(oldSetNeedsDisplayInRectIMP);
-    }
-
+    method_exchangeImplementations(class_getInstanceMethod([NSView class], @selector(setNeedsDisplayInRect:)), class_getInstanceMethod([NSView class], @selector(_web_setNeedsDisplayInRect:)));
 #endif
-
 }
 
 - (void)dealloc
@@ -1326,7 +1329,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 
     DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
     if (fragment && [self _shouldInsertFragment:fragment replacingDOMRange:range givenAction:WebViewInsertActionPasted])
-        coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
+        coreFrame->editor().pasteAsFragment(*core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
 
     [webView _setInsertionPasteboard:nil];
     [webView release];
@@ -1349,7 +1352,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 {
     NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved location:flagsChangedEvent.window.mouseLocationOutsideOfEventStream
         modifierFlags:flagsChangedEvent.modifierFlags timestamp:flagsChangedEvent.timestamp windowNumber:flagsChangedEvent.windowNumber
-        context:flagsChangedEvent.context eventNumber:0 clickCount:0 pressure:0];
+        context:nullptr eventNumber:0 clickCount:0 pressure:0];
 
     [self mouseMoved:fakeEvent];
 }
@@ -1659,7 +1662,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
-        context:[[NSApp currentEvent] context]
+        context:nullptr
         eventNumber:0 clickCount:0 pressure:0];
 #pragma clang diagnostic pop
 
@@ -2115,7 +2118,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
             modifierFlags:[[NSApp currentEvent] modifierFlags]
             timestamp:[NSDate timeIntervalSinceReferenceDate]
             windowNumber:[[view window] windowNumber]
-            context:[[NSApp currentEvent] context]
+            context:nullptr
             eventNumber:0 clickCount:0 pressure:0];
         if (Frame* lastHitCoreFrame = core([lastHitView _frame]))
             lastHitCoreFrame->eventHandler().mouseMoved(event, [[self _webView] _pressureEvent]);
@@ -2305,7 +2308,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
-        context:[[NSApp currentEvent] context]
+        context:nullptr
         eventNumber:0 clickCount:0 pressure:0];
 #pragma clang diagnostic pop
     [self mouseDragged:fakeEvent];
@@ -4593,7 +4596,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
                                        modifierFlags:[[NSApp currentEvent] modifierFlags]
                                            timestamp:[NSDate timeIntervalSinceReferenceDate]
                                         windowNumber:[[self window] windowNumber]
-                                             context:[[NSApp currentEvent] context]
+                                             context:nullptr
                                          eventNumber:0 clickCount:0 pressure:0];
     [self mouseUp:fakeEvent]; // This will also update the mouseover state.
 }

@@ -66,6 +66,7 @@
 #include "FrameNetworkingContext.h"
 #include "FrameTree.h"
 #include "FrameView.h"
+#include "GCController.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
@@ -685,21 +686,7 @@ void FrameLoader::didBeginDocument(bool dispatch)
         if (!dnsPrefetchControl.isEmpty())
             m_frame.document()->parseDNSPrefetchControlHeader(dnsPrefetchControl);
 
-        String policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentSecurityPolicy);
-        if (!policyValue.isEmpty())
-            m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Enforce);
-
-        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentSecurityPolicyReportOnly);
-        if (!policyValue.isEmpty())
-            m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Report);
-
-        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::XWebKitCSP);
-        if (!policyValue.isEmpty())
-            m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedEnforce);
-
-        policyValue = m_documentLoader->response().httpHeaderField(HTTPHeaderName::XWebKitCSPReportOnly);
-        if (!policyValue.isEmpty())
-            m_frame.document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedReport);
+        m_frame.document()->contentSecurityPolicy()->didReceiveHeaders(ContentSecurityPolicyResponseHeaders(m_documentLoader->response()));
 
         String headerContentLanguage = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentLanguage);
         if (!headerContentLanguage.isEmpty()) {
@@ -1770,10 +1757,17 @@ void FrameLoader::commitProvisionalLoad()
 
     willTransitionToCommitted();
 
-    // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
-    // We are doing this here because we know for sure that a new page is about to be loaded.
-    if (!m_frame.tree().parent() && history().currentItem())
+    if (!m_frame.tree().parent() && history().currentItem()) {
+        // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
+        // We are doing this here because we know for sure that a new page is about to be loaded.
         PageCache::singleton().addIfCacheable(*history().currentItem(), m_frame.page());
+
+#if PLATFORM(IOS)
+        // For top-level navigations, have JSC throw away all code used by the current page.
+        // The immediate memory savings far outweigh the cost of recompiling in the case of a future backwards navigation.
+        GCController::singleton().deleteAllCodeExceptCaches();
+#endif
+    }
 
     if (m_loadType != FrameLoadType::Replace)
         closeOldDataSources();

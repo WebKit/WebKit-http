@@ -51,18 +51,11 @@ function toLength(target)
     return length > 0 ? (length < maxSafeInteger ? length : maxSafeInteger) : 0;
 }
 
-function isObject(object)
-{
-    "use strict";
-
-    return (object !== null && typeof object === "object") || typeof object === "function";
-}
-
 function isDictionary(object)
 {
     "use strict";
 
-    return typeof object === "undefined" || object == null || typeof object === "object";
+    return object === @undefined || object == null || typeof object === "object";
 }
 
 // FIXME: this needs to have it's name changed to "get [Symbol.species]".

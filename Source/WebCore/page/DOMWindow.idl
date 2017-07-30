@@ -25,6 +25,7 @@
  */
 
 [
+    ImplicitThis,
     CheckSecurity,
     JSCustomDefineOwnProperty,
     CustomDeleteProperty,
@@ -36,13 +37,12 @@
     CustomPutFunction,
     EventTarget,
     JSGenerateToNativeObject,
-    ReplaceableConstructor,
     JSLegacyParent=JSDOMWindowBase,
     InterfaceName=Window,
 ] interface DOMWindow {
     // DOM Level 0
     [Replaceable] readonly attribute Screen screen;
-    [Replaceable, DoNotCheckSecurityOnGetter] readonly attribute History history;
+    [Replaceable] readonly attribute History history;
     [Replaceable] readonly attribute BarProp locationbar;
     [Replaceable] readonly attribute BarProp menubar;
     [Replaceable] readonly attribute BarProp personalbar;
@@ -197,6 +197,7 @@
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // Additional constructors.
     [CustomGetter, CustomConstructor] attribute HTMLImageElementNamedConstructor Image; // Usable with new operator
+    attribute DOMTokenListConstructor DOMSettableTokenList; // Map DOMSettableTokenList to DOMTokenList for backward compatibility.
 
     [Conditional=IOS_TOUCH_EVENTS, CustomGetter] attribute TouchConstructor Touch; // Usable with the new operator
     [Conditional=IOS_TOUCH_EVENTS, CustomGetter] attribute TouchListConstructor TouchList; // Usable with the new operator
@@ -215,9 +216,6 @@
 
 
     // Event Handlers
-
-    // FIXME: This should be in GlobalEventHandlers.idl according to HTML5 - https://html.spec.whatwg.org/multipage/webappapis.html#globaleventhandlers
-    [NotEnumerable] attribute EventHandler onresize;
 
     // Unique to Element and DOMWindow
     // FIXME: Should these be exposed on Document as well (and therefore moved to GlobalEventHandlers.idl)?

@@ -31,6 +31,7 @@
 #include "config.h"
 #include "DedicatedWorkerGlobalScope.h"
 
+#include "ContentSecurityPolicyResponseHeaders.h"
 #include "DOMWindow.h"
 #include "DedicatedWorkerThread.h"
 #include "MessageEvent.h"
@@ -39,15 +40,16 @@
 
 namespace WebCore {
 
-Ref<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, const String& userAgent, DedicatedWorkerThread& thread, const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType, PassRefPtr<SecurityOrigin> topOrigin)
+Ref<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, const String& userAgent, DedicatedWorkerThread& thread, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, PassRefPtr<SecurityOrigin> topOrigin)
 {
-    Ref<DedicatedWorkerGlobalScope> context = adoptRef(*new DedicatedWorkerGlobalScope(url, userAgent, thread, topOrigin));
-    context->applyContentSecurityPolicyFromString(contentSecurityPolicy, contentSecurityPolicyType);
+    Ref<DedicatedWorkerGlobalScope> context = adoptRef(*new DedicatedWorkerGlobalScope(url, userAgent, thread, shouldBypassMainWorldContentSecurityPolicy, topOrigin));
+    if (!shouldBypassMainWorldContentSecurityPolicy)
+        context->applyContentSecurityPolicyResponseHeaders(contentSecurityPolicyResponseHeaders);
     return context;
 }
 
-DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, const String& userAgent, DedicatedWorkerThread& thread, PassRefPtr<SecurityOrigin> topOrigin)
-    : WorkerGlobalScope(url, userAgent, thread, topOrigin)
+DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, const String& userAgent, DedicatedWorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, PassRefPtr<SecurityOrigin> topOrigin)
+    : WorkerGlobalScope(url, userAgent, thread, shouldBypassMainWorldContentSecurityPolicy, topOrigin)
 {
 }
 

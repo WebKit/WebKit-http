@@ -1,3 +1,437 @@
+2016-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        tests fail if display sleeps while run-webkit-tests is running
+        https://bugs.webkit.org/show_bug.cgi?id=153919
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (addDisplaySleepAssertion): Add the assertion so that the display doesn't turn off.
+        (releaseDisplaySleepAssertion): Release the DisplaySleep Assertion.
+        (simpleSignalHandler): Release the DisplaySleepAssertion in case of any iterrupt.
+
+2016-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS API tests after r196082
+        https://bugs.webkit.org/show_bug.cgi?id=153900
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        [WebView initialize] doesn't call JSC::initializeThreading on iOS.
+
+2016-02-04  Jason Marcell  <jmarcell@apple.com>
+
+        The status message for passing combined builder queues should say "all builds succeeded" when expanded.
+        https://bugs.webkit.org/show_bug.cgi?id=153882
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Set status to "all builds succeeded" for combined builder queues
+        when expanded.
+
+2016-02-03  Filip Pizlo  <fpizlo@apple.com>
+
+        run-jsc-stress-tests should be better at telling you details about test failures
+        https://bugs.webkit.org/show_bug.cgi?id=153845
+
+        Reviewed by Geoffrey Garen.
+
+        Here's an example of the contents of results/resultsByFamily, one of the new files that this
+        generates, for some local testing I'm doing.  Notice how it groups families of tests together.
+
+        You won't see this unless you cat results/resultsByFamily.
+
+        regress.yaml/Regress/radar-24289839.js:
+            regress.yaml/Regress/radar-24289839.js.default: PASS
+            regress.yaml/Regress/radar-24289839.js.ftl: PASS
+            regress.yaml/Regress/radar-24289839.js.ftl-no-cjit: FAIL
+            regress.yaml/Regress/radar-24289839.js.ftl-eager-no-cjit: FAIL
+        
+        regress.yaml/Regress/radar-24290639.js:
+            regress.yaml/Regress/radar-24290639.js.default: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl-no-cjit: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl-eager-no-cjit: FAIL
+        
+        regress.yaml/Regress/radar-24290670.js: FAILED
+        
+        * Scripts/run-jsc-stress-tests:
+
+2016-02-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WTR] Crash in EventSendingController::contextClick() when context menu event is not handled
+        https://bugs.webkit.org/show_bug.cgi?id=153835
+
+        Reviewed by Martin Robinson.
+
+        WKBundlePageCopyContextMenuAtPointInWindow() returns nullptr when
+        the context menu event is not handled, but we are using the
+        returned value without null checking it.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick):
+
+2016-02-03  Jason Marcell  <jmarcell@apple.com>
+
+        Format revisions for display according to repository type
+        https://bugs.webkit.org/show_bug.cgi?id=153818
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Use new _formatRevisionForDisplay to display revisions according
+        to repository type.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        (BuildbotQueueView.prototype._formatRevisionForDisplay): Formats revisions for display according to repository type.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit tests to test new
+        _formatRevisionForDisplay function.
+
+2016-02-03  Aakash Jain  <aakash_jain@apple.com>
+
+        Logs/CoreSimulator filling up OS disk on WebKit testers
+        https://bugs.webkit.org/show_bug.cgi?id=153853
+        <rdar://problem/24496003>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): Delete Logs during cleanup.
+
+2016-02-03  Brian Burg  <bburg@apple.com>
+
+        git-add-reviewer should work when run from a subdirectory within the repository
+        https://bugs.webkit.org/show_bug.cgi?id=153842
+
+        Reviewed by David Kilzer.
+
+        There are two problems that needed to be fixed:
+
+         - We can't assume .git is in $PWD/.git
+         - We can't specify absolute paths to `git commit`
+
+        Fix these problems using the helpers in VCSUtils that were added to
+        fix this same issue for prepare-changeCogs.
+
+        * Scripts/VCSUtils.pm: Export gitDirectory()
+        * Scripts/git-add-reviewer:
+        (nonInteractive): Cache gitDirectory() result.
+        (addReviewer):
+        (commit):
+        (changeLogsForCommit): Make paths relative.
+
+2016-02-03  Jer Noble  <jer.noble@apple.com>
+
+        Yet another Yosemite build fix.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+
+2016-02-03  Jer Noble  <jer.noble@apple.com>
+
+        iOS build fix after Yosemite build fix broke iOS build.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+
+2016-02-03  Jer Noble  <jer.noble@apple.com>
+
+        Yosemite build fix; hide the entire WebCoreNSURLSessionDataTask class from Yosemite and prior.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+
+2016-02-03  Joonghun Park  <jh718.park@samsung.com>
+
+        [Tools] Remove $additionalCMakeArgs variable because without this variable --cmakeargs options works well
+        https://bugs.webkit.org/show_bug.cgi?id=153827
+
+        Reviewed by Michael Catanzaro.
+
+        When an array is passed to subroutines as argument in perl,
+        a list containing its element is returned from the array.
+        Currently @$ arguments are being passed, then it is going to be one list
+        including all the elements not only from @ but also from $.
+        As a result, --cmakeargs option's value is included in @cmakeArgs
+        at generateBuildSystemFromCMakeProject subroutine,
+        so $additionalCMakeArgs doesn't needed anymore.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2016-02-03  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Wrap a resource and resource loader in a NSURLSession-like object for use by lower level frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=153669
+
+        Reviewed by Alex Christensen.
+
+        Add an API test for WebCoreNSURLSession, testing that it behaves like a regulare NSURLSession, including
+        calling appropriate NSURLSessionDelegate callbacks.
+
+        Drive-by fix: Add a FeatureDefines.xcconfig to TestWebKitAPI.  Without this, the ENABLE macros in WebCore
+        header files will not match the one used when compiling WebCore, leading to strange crashes and weird
+        inconsistencies when calling, e.g., inline methods.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Added.
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm: Added.
+        (-[TestNSURLSessionLoaderDelegate webView:didCommitLoadForFrame:]):
+        (-[TestNSURLSessionDataDelegate URLSession:task:didCompleteWithError:]):
+        (-[TestNSURLSessionDataDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        (-[TestNSURLSessionDataDelegate URLSession:dataTask:didReceiveData:]):
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        (TestWebKitAPI::WebCoreNSURLSessionTest::TearDown):
+        (TestWebKitAPI::TEST_F):
+
+2016-02-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Clarify logic behind is{PortName} functions.
+        https://bugs.webkit.org/show_bug.cgi?id=153554
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitdirs.pm:
+        (prohibitUnknownPort): This function makes determinePortName()
+        failure fatal.
+        (determinePortName): Added new function which decides which port are
+        we building based on command line switches and platform defaults.
+        (portName): Added getter for determined $portName.
+        (isEfl): Modified to use portName().
+        (isGtk): Ditto.
+        (isWinCairo): Ditto.
+        (isAppleMacWebKit): Ditto.
+        (isAppleWinWebKit): Ditto.
+        (isIOSWebKit): Ditto.
+        (cmakeBasedPortName): Return portName() with capitalized first letter.
+        (determineIsEfl): Deleted.
+        (determineIsGtk): Deleted.
+        (determineIsWinCairo): Deleted.
+
+        * Scripts/build-jsc: Call prohibitUnknownPort().
+        * Scripts/run-minibrowser: Ditto.
+        * Scripts/webkitperl/FeatureList.pm: Ditto.
+        * Scripts/update-webkit: Call determinePortName() instead of
+        determineIsWinCairo().
+
+2016-02-02  Dan Bernstein  <mitz@apple.com>
+
+        Better fix for Layout Test fast/parser/external-entities-in-xslt.xml is flaky on El Capitan (but fails most of the time)
+        https://bugs.webkit.org/show_bug.cgi?id=153683
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): Reverted change from r196013. DUMPRENDERTREE_TEMP is not
+          used by any code in the Web Content process. If that ever changed, we should send it over
+          as a bundle parameter.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server): Reverted change from r196013.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.setup_environ_for_server): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/ios/InjectedBundleIOS.mm:
+        (WTR::InjectedBundle::platformInitialize): Set XML_CATALOG_FILES in the Web Process
+          environment. This is early enough that libxml2 has not been initialized yet.
+
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize): Ditto.
+
+2016-02-02  Dan Bernstein  <mitz@apple.com>
+
+        Layout Test fast/parser/external-entities-in-xslt.xml is flaky on El Capitan (but fails most of the time)
+        https://bugs.webkit.org/show_bug.cgi?id=153683
+
+        Reviewed by Alexey Proskuryakov.
+
+        Ensure that XML_CATALOG_FILES is set in the Web Content service’s environment as well.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): Also set __XPC_DUMPRENDERTREE_TEMP.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server): Set __XPC_XML_CATALOG_FILES.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.setup_environ_for_server): Ditto.
+
+2016-01-29 Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] Virtual Keyboard overlaps MiniBrowser's WebView
+        https://bugs.webkit.org/show_bug.cgi?id=153009
+
+        Reviewed by Gyuyoung Kim.
+
+        On mobile, virtual keyboard represented by ecore_imf module appears on
+        the top of application layer usually covering bottom part of the screen.
+        If the web page contains the editable content on the bottom of the page
+        it will be overlapped by keyboard which prevents user from seeing the
+        typed text.
+
+        Pack MiniBrowser layout into conformant widget to allow EFL to guess
+        the space that will be required by the keyboard, finally resizing it
+        to the desired size. As a result, webview gets resized and scrolled
+        into focused elements which makes the editable elements visible while
+        typing.
+
+        More details about elm_conformant widger can be found at:
+        https://docs.enlightenment.org/elementary/1.15.0/group__Conformant.html
+        https://docs.enlightenment.org/elementary/1.15.0/conformant_example.html
+
+        * MiniBrowser/efl/main.c:
+        (window_create): pack a box into conformant widget.
+
+2016-02-02  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][EFL] Upgrade OpenWebRTC dependency
+        https://bugs.webkit.org/show_bug.cgi?id=153489
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Avoid running the mediastream API test.
+        * Scripts/webkitperl/FeatureList.pm: Stop compiling mediastream by
+        default for gtk and efl.
+        * gtk/jhbuild-webrtc.modules: Added modules files with
+        dependencies required to compile and test the mediastream.
+
+2016-02-01  Jason Marcell  <jmarcell@apple.com>
+
+        Add code to parse the git branches out of the Trac RSS feed
+        https://bugs.webkit.org/show_bug.cgi?id=153624
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype.commitsOnBranch): Update filter to check for Git branches.
+        (Trac.prototype._convertCommitInfoElementToObject): Parse Git branches from the Trac RSS feed. Also changed "branchName" to
+        "branches" and updated the code to work with an array instead of a string.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac): Refactored example commits out into a constant, MockTrac.EXAMPLE_TRAC_COMMITS.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/test-fixture-git-trac-rss.xml: Added. Test
+        fixture that contains XML with a Git branch.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit test to test parsing Git
+        branches from Trac RSS feed. Also updated code to work with the new MockTrac.EXAMPLE_TRAC_COMMITS constant.
+
+2016-02-01  Brady Eidson  <beidson@apple.com>
+
+        Add command line flag to DRT to output the number of tests completed in server mode.
+        https://bugs.webkit.org/show_bug.cgi?id=153750
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (initializeGlobalsFromCommandLineOptions):
+        (runTestingServerLoop):
+
+2016-02-01  Jason Marcell  <jmarcell@apple.com>
+
+        Improvements to botwatcher's dashboard unit tests.
+        https://bugs.webkit.org/show_bug.cgi?id=153621
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/PopoverTracker.js:
+        (PopoverTracker): Retain a reference to the PopoverTracker so that we can make assertions about it in the unit tests.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac): Changing revision 33019 to be on a different branch so that _appendPendingRevisionCount and
+        _popoverLinesForCommitRange have to traverse commits from different branches.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Changing equal to strictEqual
+        in unit test for _appendPendingRevisionCount. Also added assertions for Popover in test for
+        _revisionContentWithPopoverForIteration.
+
+2016-02-01  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor to add event listeners and start periodic updates for all trac instances.
+        https://bugs.webkit.org/show_bug.cgi?id=153609
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView): Adding event listeners for all trac instances.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js: Starting periodic updates
+        for all trac instances.
+
+2016-01-31  Darin Adler  <darin@apple.com>
+
+        Replace CaseFoldingHash with ASCIICaseInsensitiveHash
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/do-webcore-rename: Use script to do this rename.
+
+2016-01-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195911.
+        https://bugs.webkit.org/show_bug.cgi?id=153723
+
+        Caused frequent assertion failures on bots (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Replace CaseFoldingHash with ASCIICaseInsensitiveHash"
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+        http://trac.webkit.org/changeset/195911
+
+2016-01-30  Darin Adler  <darin@apple.com>
+
+        Replace CaseFoldingHash with ASCIICaseInsensitiveHash
+        https://bugs.webkit.org/show_bug.cgi?id=153639
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/do-webcore-rename: Use script to do this rename.
+
+2016-01-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        TouchList should be retargeted
+        https://bugs.webkit.org/show_bug.cgi?id=149592
+
+        Reviewed by Antti Koivisto.
+
+        Added touchDownAtPoint and liftUpAtPoint to UIScriptController so that we can test touch events with
+        multiple touch targets on iOS. fast/shadow-dom/touch-event-ios.html uses this new testing feature.
+
+        * WebKitTestRunner/UIScriptContext/Bindings/UIScriptController.idl:
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::touchDownAtPoint): Added.
+        (WTR::UIScriptController::liftUpAtPoint): Added.
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator touchDown:touchCount:completionBlock:]): Added. Sends touch down and waits.
+        (-[HIDEventGenerator liftUp:touchCount:completionBlock:]): Ditto for lift up.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::touchDownAtPoint): Added.
+        (WTR::UIScriptController::liftUpAtPoint): Added.
+
+2016-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Enable SamplingProfiler on POSIX environment
+        https://bugs.webkit.org/show_bug.cgi?id=153584
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-01-29  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        update-webkit-dependency fails to fetch updates through firewall on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=153619
+
+        Reviewed by Myles C. Maxfield.
+
+        On Windows, when a firewall is present we need to read proxy settings
+        from environment variables.
+
+        This patch relies on the following environment variables being set:
+        HTTP_PROXY
+        HTTPS_PROXY
+
+        * Scripts/update-webkit-dependency:
+
 2016-01-28  Dan Bernstein  <mitz@apple.com>
 
         [Cocoa] Use the non-Development variants of XPC services for development

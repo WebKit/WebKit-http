@@ -295,7 +295,7 @@
 #import <WebCore/WebMediaSessionManagerMac.h>
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebViewIncludes.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WebViewIncludes.h>
 #endif
 
@@ -973,7 +973,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebViewInitialization.mm>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WebViewInitialization.mm>
 #endif
 
@@ -1217,7 +1217,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.dragClient = new WebDragClient(self);
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebViewInitialization.mm>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WebViewInitialization.mm>
 #endif
 
@@ -4450,6 +4450,24 @@ static Vector<String> toStringVector(NSArray* patterns)
         return 0;
 
     return page->pagination().gap;
+}
+
+- (void)_setPaginationLineGridEnabled:(BOOL)lineGridEnabled
+{
+    Page* page = core(self);
+    if (!page)
+        return;
+    
+    page->setPaginationLineGridEnabled(lineGridEnabled);
+}
+
+- (BOOL)_paginationLineGridEnabled
+{
+    Page* page = core(self);
+    if (!page)
+        return NO;
+    
+    return page->paginationLineGridEnabled();
 }
 
 - (NSUInteger)_pageCount

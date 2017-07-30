@@ -90,7 +90,7 @@ void JITCode::reconstruct(
 RegisterSet JITCode::liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock* codeBlock, CallSiteIndex callSiteIndex)
 {
     for (OSRExit& exit : osrExit) {
-        if (exit.m_isExceptionHandler && exit.m_exceptionHandlerCallSiteIndex.bits() == callSiteIndex.bits()) {
+        if (exit.isExceptionHandler() && exit.m_exceptionHandlerCallSiteIndex.bits() == callSiteIndex.bits()) {
             Operands<ValueRecovery> valueRecoveries;
             reconstruct(codeBlock, exit.m_codeOrigin, exit.m_streamIndex, valueRecoveries);
             RegisterSet liveAtOSRExit;
@@ -213,6 +213,18 @@ void JITCode::validateReferences(const TrackedReferences& trackedReferences)
     }
     
     minifiedDFG.validateReferences(trackedReferences);
+}
+
+Optional<CodeOrigin> JITCode::findPC(CodeBlock*, void* pc)
+{
+    for (OSRExit& exit : osrExit) {
+        if (ExecutableMemoryHandle* handle = exit.m_code.executableMemory()) {
+            if (handle->start() <= pc && pc < handle->end())
+                return Optional<CodeOrigin>(exit.m_codeOriginForExitProfile);
+        }
+    }
+
+    return Nullopt;
 }
 
 } } // namespace JSC::DFG

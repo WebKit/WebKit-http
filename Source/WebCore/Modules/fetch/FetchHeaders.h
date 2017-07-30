@@ -48,6 +48,7 @@ public:
     };
 
     static Ref<FetchHeaders> create(Guard guard = Guard::None) { return adoptRef(*new FetchHeaders(guard)); }
+    static Ref<FetchHeaders> create(const FetchHeaders& headers) { return adoptRef(*new FetchHeaders(headers.m_guard, headers.m_headers)); }
 
     void append(const String& name, const String& value, ExceptionCode&);
     void remove(const String&, ExceptionCode&);
@@ -56,9 +57,31 @@ public:
     void set(const String& name, const String& value, ExceptionCode&);
 
     void initializeWith(const FetchHeaders*, ExceptionCode&);
+    void fill(const FetchHeaders*);
+
+    String fastGet(HTTPHeaderName name) const { return m_headers.get(name); }
+    void fastSet(HTTPHeaderName name, const String& value) { m_headers.set(name, value); }
+
+    class Iterator {
+    public:
+        explicit Iterator(FetchHeaders&);
+
+        // FIXME: Binding generator should be able to generate iterator key and value types.
+        using Key = String;
+        using Value = String;
+
+        bool next(String& nextKey, String& nextValue);
+
+    private:
+        Ref<FetchHeaders> m_headers;
+        size_t m_currentIndex = 0;
+        Vector<String> m_keys;
+    };
+    Iterator createIterator() { return Iterator(*this); }
 
 private:
     FetchHeaders(Guard guard) : m_guard(guard) { }
+    FetchHeaders(Guard guard, const HTTPHeaderMap& headers) : m_guard(guard), m_headers(headers) { }
 
     Guard m_guard;
     HTTPHeaderMap m_headers;

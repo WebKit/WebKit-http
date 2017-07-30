@@ -561,8 +561,6 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
         else
             repaintRect = LayoutRect(repaintLogicalTop, repaintLogicalLeft, repaintLogicalBottom - repaintLogicalTop, repaintLogicalRight - repaintLogicalLeft);
 
-        repaintRect.inflate(view().maximalOutlineSize());
-        
         if (hasOverflowClip()) {
             // Adjust repaint rect for scroll offset
             repaintRect.move(-scrolledContentOffset());
@@ -1490,9 +1488,9 @@ LayoutUnit RenderBlockFlow::applyBeforeBreak(RenderBox& child, LayoutUnit logica
     bool checkColumnBreaks = flowThread && flowThread->shouldCheckColumnBreaks();
     bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight; // FIXME: Once columns can print we have to check this.
     bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
-    bool checkBeforeAlways = (checkColumnBreaks && child.style().columnBreakBefore() == PBALWAYS)
-        || (checkPageBreaks && child.style().pageBreakBefore() == PBALWAYS)
-        || (checkRegionBreaks && child.style().regionBreakBefore() == PBALWAYS);
+    bool checkBeforeAlways = (checkColumnBreaks && child.style().breakBefore() == ColumnBreakBetween)
+        || (checkPageBreaks && alwaysPageBreak(child.style().breakBefore()))
+        || (checkRegionBreaks && child.style().breakBefore() == RegionBreakBetween);
     if (checkBeforeAlways && inNormalFlow(child) && hasNextPage(logicalOffset, IncludePageBoundary)) {
         if (checkColumnBreaks) {
             if (isInsideMulticolFlowThread)
@@ -1516,9 +1514,9 @@ LayoutUnit RenderBlockFlow::applyAfterBreak(RenderBox& child, LayoutUnit logical
     bool checkColumnBreaks = flowThread && flowThread->shouldCheckColumnBreaks();
     bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight; // FIXME: Once columns can print we have to check this.
     bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
-    bool checkAfterAlways = (checkColumnBreaks && child.style().columnBreakAfter() == PBALWAYS)
-        || (checkPageBreaks && child.style().pageBreakAfter() == PBALWAYS)
-        || (checkRegionBreaks && child.style().regionBreakAfter() == PBALWAYS);
+    bool checkAfterAlways = (checkColumnBreaks && child.style().breakAfter() == ColumnBreakBetween)
+        || (checkPageBreaks && alwaysPageBreak(child.style().breakAfter()))
+        || (checkRegionBreaks && child.style().breakAfter() == RegionBreakBetween);
     if (checkAfterAlways && inNormalFlow(child) && hasNextPage(logicalOffset, IncludePageBoundary)) {
         LayoutUnit marginOffset = marginInfo.canCollapseWithMarginBefore() ? LayoutUnit() : marginInfo.margin();
 
@@ -3462,9 +3460,6 @@ VisiblePosition RenderBlockFlow::positionForPoint(const LayoutPoint& point, cons
 void RenderBlockFlow::addFocusRingRectsForInlineChildren(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*)
 {
     ASSERT(childrenInline());
-
-    ensureLineBoxes();
-
     for (RootInlineBox* curr = firstRootBox(); curr; curr = curr->nextRootBox()) {
         LayoutUnit top = std::max<LayoutUnit>(curr->lineTop(), curr->top());
         LayoutUnit bottom = std::min<LayoutUnit>(curr->lineBottom(), curr->top() + curr->height());

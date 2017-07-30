@@ -1882,8 +1882,10 @@ bool EventHandler::handleMouseMoveEvent(const PlatformMouseEvent& platformMouseE
         if (!m_mousePressed && scrollbar)
             scrollbar->mouseMoved(platformMouseEvent); // Handle hover effects on platforms that support visual feedback on scrollbar hovering.
 #endif
-        if (onlyUpdateScrollbars)
+        if (onlyUpdateScrollbars) {
+            updateMouseEventTargetNode(mouseEvent.targetNode(), platformMouseEvent, true);
             return true;
+        }
     }
 
     bool swallowEvent = false;
@@ -2166,27 +2168,16 @@ static bool findDropZone(Node* target, DataTransfer* dataTransfer)
     ASSERT(target);
     Element* element = is<Element>(*target) ? downcast<Element>(target) : target->parentElement();
     for (; element; element = element->parentElement()) {
+        SpaceSplitString keywords(element->fastGetAttribute(webkitdropzoneAttr), true);
         bool matched = false;
-        String dropZoneStr = element->fastGetAttribute(webkitdropzoneAttr);
-
-        if (dropZoneStr.isEmpty())
-            continue;
-        
-        dropZoneStr = dropZoneStr.lower();
-        
-        SpaceSplitString keywords(dropZoneStr, false);
-        if (keywords.isEmpty())
-            continue;
-        
         DragOperation dragOperation = DragOperationNone;
-        for (unsigned int i = 0; i < keywords.size(); i++) {
+        for (unsigned i = 0, size = keywords.size(); i < size; ++i) {
             DragOperation op = convertDropZoneOperationToDragOperation(keywords[i]);
             if (op != DragOperationNone) {
                 if (dragOperation == DragOperationNone)
                     dragOperation = op;
             } else
                 matched = matched || hasDropZoneType(*dataTransfer, keywords[i].string());
-
             if (matched && dragOperation != DragOperationNone)
                 break;
         }
@@ -2703,20 +2694,23 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
 bool EventHandler::sendContextMenuEvent(const PlatformMouseEvent& event)
 {
     Document* doc = m_frame.document();
-    FrameView* v = m_frame.view();
-    if (!v)
+    FrameView* view = m_frame.view();
+    if (!view)
         return false;
-    
+
     // Clear mouse press state to avoid initiating a drag while context menu is up.
     m_mousePressed = false;
     bool swallowEvent;
-    LayoutPoint viewportPos = v->windowToContents(event.position());
+    LayoutPoint viewportPos = view->windowToContents(event.position());
     HitTestRequest request(HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
     MouseEventWithHitTestResults mouseEvent = doc->prepareMouseEvent(request, viewportPos, event);
 
+    // Do not show context menus when clicking on scrollbars.
+    if (mouseEvent.scrollbar() || view->scrollbarAtPoint(event.position()))
+        return false;
+
     if (m_frame.editor().behavior().shouldSelectOnContextualMenuClick()
         && !m_frame.selection().contains(viewportPos)
-        && !mouseEvent.scrollbar()
         // FIXME: In the editable case, word selection sometimes selects content that isn't underneath the mouse.
         // If the selection is non-editable, we do word selection to make it easier to use the contextual menu items
         // available for text selections.  But only if we're above text.
@@ -2913,20 +2907,19 @@ void EventHandler::hoverTimerFired()
     }
 }
 
-bool EventHandler::handleAccessKey(const PlatformKeyboardEvent& evt)
+bool EventHandler::handleAccessKey(const PlatformKeyboardEvent& event)
 {
     // FIXME: Ignoring the state of Shift key is what neither IE nor Firefox do.
     // IE matches lower and upper case access keys regardless of Shift key state - but if both upper and
     // lower case variants are present in a document, the correct element is matched based on Shift key state.
     // Firefox only matches an access key if Shift is not pressed, and does that case-insensitively.
     ASSERT(!(accessKeyModifiers() & PlatformEvent::ShiftKey));
-    if ((evt.modifiers() & ~PlatformEvent::ShiftKey) != accessKeyModifiers())
+    if ((event.modifiers() & ~PlatformEvent::ShiftKey) != accessKeyModifiers())
         return false;
-    String key = evt.unmodifiedText();
-    Element* elem = m_frame.document()->getElementByAccessKey(key.lower());
-    if (!elem)
+    Element* element = m_frame.document()->getElementByAccessKey(event.unmodifiedText());
+    if (!element)
         return false;
-    elem->accessKeyAction(false);
+    element->accessKeyAction(false);
     return true;
 }
 

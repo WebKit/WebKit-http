@@ -35,6 +35,7 @@ namespace WebCore {
 
 JSC::EncodedJSValue jsattributeReadonly(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsattributeConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSattributeConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSattributePrototype : public JSC::JSNonFinalObject {
 public:
@@ -76,7 +77,7 @@ template<> const ClassInfo JSattributeConstructor::s_info = { "attributeConstruc
 
 static const HashTableValue JSattributePrototypeTableValues[] =
 {
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSattributeConstructor) } },
     { "readonly", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsattributeReadonly), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
@@ -116,9 +117,11 @@ EncodedJSValue jsattributeReadonly(ExecState* state, JSObject* slotBase, Encoded
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSattribute* castedThis = jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSattribute*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "attribute", "readonly");
+    }
     auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.readonly());
     return JSValue::encode(result);
@@ -131,6 +134,19 @@ EncodedJSValue jsattributeConstructor(ExecState* state, JSObject* baseValue, Enc
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSattribute::getConstructor(state->vm(), domObject->globalObject()));
+}
+
+void setJSattributeConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(thisValue);
+    JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(baseValue);
+    if (UNLIKELY(!domObject)) {
+        throwVMTypeError(state);
+        return;
+    }
+    // Shadowing a built-in constructor
+    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
 JSValue JSattribute::getConstructor(VM& vm, JSGlobalObject* globalObject)

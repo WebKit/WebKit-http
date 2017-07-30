@@ -157,7 +157,7 @@ void InspectorScriptProfilerAgent::addEvent(double startTime, double endTime, Pr
 }
 
 #if ENABLE(SAMPLING_PROFILER)
-static Ref<Protocol::ScriptProfiler::Samples> buildSamples(Vector<SamplingProfiler::StackTrace>& samplingProfilerStackTraces, double totalTime)
+static Ref<Protocol::ScriptProfiler::Samples> buildSamples(VM& vm, Vector<SamplingProfiler::StackTrace>&& samplingProfilerStackTraces, double totalTime)
 {
     Ref<Protocol::Array<Protocol::ScriptProfiler::StackTrace>> stackTraces = Protocol::Array<Protocol::ScriptProfiler::StackTrace>::create();
     for (SamplingProfiler::StackTrace& stackTrace : samplingProfilerStackTraces) {
@@ -165,11 +165,20 @@ static Ref<Protocol::ScriptProfiler::Samples> buildSamples(Vector<SamplingProfil
         for (SamplingProfiler::StackFrame& stackFrame : stackTrace.frames) {
             Ref<Protocol::ScriptProfiler::StackFrame> frame = Protocol::ScriptProfiler::StackFrame::create()
                 .setSourceID(String::number(stackFrame.sourceID()))
-                .setName(stackFrame.displayName())
-                .setLine(stackFrame.startLine())
-                .setColumn(stackFrame.startColumn())
+                .setName(stackFrame.displayName(vm))
+                .setLine(stackFrame.functionStartLine())
+                .setColumn(stackFrame.functionStartColumn())
                 .setUrl(stackFrame.url())
                 .release();
+
+            if (stackFrame.hasExpressionInfo()) {
+                Ref<Protocol::ScriptProfiler::ExpressionLocation> expressionLocation = Protocol::ScriptProfiler::ExpressionLocation::create()
+                    .setLine(stackFrame.lineNumber)
+                    .setColumn(stackFrame.columnNumber)
+                    .release();
+                frame->setExpressionLocation(WTFMove(expressionLocation));
+            }
+
             frames->addItem(WTFMove(frame));
         }
         Ref<Protocol::ScriptProfiler::StackTrace> inspectorStackTrace = Protocol::ScriptProfiler::StackTrace::create()
@@ -190,12 +199,13 @@ void InspectorScriptProfilerAgent::trackingComplete()
 {
 #if ENABLE(SAMPLING_PROFILER)
     if (m_enabledSamplingProfiler) {
+        JSLockHolder lock(m_environment.scriptDebugServer().vm());
         SamplingProfiler* samplingProfiler = m_environment.scriptDebugServer().vm().samplingProfiler();
         RELEASE_ASSERT(samplingProfiler);
         LockHolder locker(samplingProfiler->getLock());
         samplingProfiler->stop(locker);
-        Ref<Protocol::ScriptProfiler::Samples> samples = buildSamples(samplingProfiler->stackTraces(locker), samplingProfiler->totalTime(locker));
-        samplingProfiler->clearData(locker);
+        Vector<SamplingProfiler::StackTrace> stackTraces = samplingProfiler->releaseStackTraces(locker);
+        Ref<Protocol::ScriptProfiler::Samples> samples = buildSamples(m_environment.scriptDebugServer().vm(), WTFMove(stackTraces), samplingProfiler->totalTime(locker));
 
         locker.unlockEarly();
 

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013, 2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2009 Torch Mobile, Inc.
  *  Copyright (C) 2015 Jordan Harband (ljharb@gmail.com)
  *
@@ -996,6 +996,13 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncMatch(ExecState* exec)
     // return array of matches
     MarkedArgumentBuffer list;
     while (result) {
+        // We defend ourselves from crazy.
+        const size_t maximumReasonableMatchSize = 1000000000;
+        if (list.size() > maximumReasonableMatchSize) {
+            throwOutOfMemoryError(exec);
+            return JSValue::encode(jsUndefined());
+        }
+        
         size_t end = result.end;
         size_t length = end - result.start;
         list.append(jsSubstring(exec, s, result.start, length));
@@ -1406,17 +1413,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncToLowerCase(ExecState* exec)
         return throwVMTypeError(exec);
     JSString* sVal = thisValue.toString(exec);
     const String& s = sVal->value(exec);
-
-    int sSize = s.length();
-    if (!sSize)
+    String lowercasedString = s.convertToLowercaseWithoutLocale();
+    if (lowercasedString.impl() == s.impl())
         return JSValue::encode(sVal);
-    RELEASE_ASSERT(sSize >= 0);
-
-    StringImpl* ourImpl = s.impl();
-    RefPtr<StringImpl> lower = ourImpl->lower();
-    if (ourImpl == lower)
-        return JSValue::encode(sVal);
-    return JSValue::encode(jsString(exec, String(lower.release())));
+    return JSValue::encode(jsString(exec, lowercasedString));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncToUpperCase(ExecState* exec)
@@ -1426,16 +1426,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncToUpperCase(ExecState* exec)
         return throwVMTypeError(exec);
     JSString* sVal = thisValue.toString(exec);
     const String& s = sVal->value(exec);
-
-    int sSize = s.length();
-    if (!sSize)
+    String uppercasedString = s.convertToUppercaseWithoutLocale();
+    if (uppercasedString.impl() == s.impl())
         return JSValue::encode(sVal);
-
-    StringImpl* sImpl = s.impl();
-    RefPtr<StringImpl> upper = sImpl->upper();
-    if (sImpl == upper)
-        return JSValue::encode(sVal);
-    return JSValue::encode(jsString(exec, String(upper.release())));
+    return JSValue::encode(jsString(exec, uppercasedString));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLocaleCompare(ExecState* exec)

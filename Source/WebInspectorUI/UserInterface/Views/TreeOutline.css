@@ -68,7 +68,7 @@
     display: none;
 }
 
-.tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) .icon {
+.tree-outline:not(.hide-disclosure-buttons) .item:not(.parent) > .icon {
     margin-left: 16px;
 }
 
@@ -128,6 +128,7 @@
 
 .tree-outline.large .item .icon {
     width: 32px;
+    margin-right: 6px;
 }
 
 .tree-outline .item .status {

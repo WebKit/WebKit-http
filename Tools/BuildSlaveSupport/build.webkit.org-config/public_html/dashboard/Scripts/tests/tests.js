@@ -31,11 +31,11 @@ module("Trac", {
 
 test("_loaded", function()
 {
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
     var client = new XMLHttpRequest();
     client.open('GET', 'test-fixture-trac-rss.xml', false);
-    client.onreadystatechange = function () {
-        if (client.readyState === client.DONE)
-            this.trac._loaded(client.responseXML);
+    client.onload = function () {
+        this.trac._loaded(client.responseXML);
     }.bind(this);
     client.send();
     var commits = this.trac.recordedCommits;
@@ -45,6 +45,24 @@ test("_loaded", function()
         var secondRevision = commits[i].revisionNumber;
         strictEqual(secondRevision - firstRevision, 1, "commits should be in order " + firstRevision + ", " + secondRevision);
     }
+});
+
+test("parse gitBranches", function()
+{
+    var client = new XMLHttpRequest();
+    client.open("GET", "test-fixture-git-trac-rss.xml", false);
+    client.onload = function () {
+        this.trac._loaded(client.responseXML);
+    }.bind(this);
+    client.send();
+    var commits = this.trac.recordedCommits;
+    strictEqual(commits.length, 3, "should have 3 commits");
+    strictEqual(commits[0].branches.length, 0, "should have no branches");
+    strictEqual(commits[1].branches.length, 1, "should have one branch");
+    strictEqual(commits[1].branches.includes("master"), true, "should contain branch master");
+    strictEqual(commits[2].branches.length, 2, "should have two branches");
+    strictEqual(commits[2].branches.includes("master"), true, "should contain branch master");
+    strictEqual(commits[2].branches.includes("someOtherBranch"), true, "should contain branch someOtherBranch");
 });
 
 test("_parseRevisionFromURL", function()
@@ -57,6 +75,7 @@ test("_parseRevisionFromURL", function()
 module("BuildBotQueueView", {
     setup: function() {
         this.trac = new MockTrac();
+        this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
         this.queue = new MockBuildbotQueue();
         this.trunkBranch = {
             name: "trunk",
@@ -76,13 +95,13 @@ test("_appendPendingRevisionCount", function()
 {
     this.view._appendPendingRevisionCount(this.queue);
     var revisionsBehind = this.view.element.getElementsByClassName("message")[0].innerHTML.match(/.*(\d+) revision(|s) behind/)[1];
-    equal(revisionsBehind, "1", "assert revisions behind");
+    strictEqual(revisionsBehind, "1", "assert revisions behind");
 });
 
 test("_popoverLinesForCommitRange", function()
 {
     var lines = this.view._popoverLinesForCommitRange(this.trac, this.trunkBranch, 33018, 33020);
-    strictEqual(lines.length, 3, "has 3 lines");
+    strictEqual(lines.length, 2, "has 2 lines");
 });
 
 test("_presentPopoverForPendingCommits", function()
@@ -106,7 +125,7 @@ test("_presentPopoverForRevisionRange", function()
     };
     this.view._presentPopoverForRevisionRange(element, popover, context);
     var nodeList = popover._element.getElementsByClassName("pending-commit");
-    strictEqual(nodeList.length, 3, "has 3 commits");
+    strictEqual(nodeList.length, 2, "has 2 commits");
 });
 
 test("_presentPopoverForRevisionRange no commits", function()
@@ -147,6 +166,27 @@ test("_revisionContentWithPopoverForIteration has previousIteration", function()
     strictEqual(content.innerHTML, "r33022", "should have correct revision number.");
     strictEqual(content.classList.contains("revision-number"), true, "should have class 'revision-number'.");
     strictEqual(content.classList.contains("popover-tracking"), true, "should have class 'popover-tracking'.");
+    var element = document.createElement("div");
+    var popover = new Dashboard.Popover();
+    this.view._presentPopoverForRevisionRange(element, popover, content.popoverTracker._context);
+    var nodeList = popover._element.getElementsByClassName("pending-commit");
+    strictEqual(nodeList.length, 2, "has 2 commits");
+});
+
+test("_formatRevisionForDisplay Subversion", function()
+{
+    var repository = this.trunkBranch.repository;
+    repository.isSVN = true;
+    repository.isGit = false;
+    strictEqual(this.view._formatRevisionForDisplay(33018, repository), "r33018", "Should be r33018")
+});
+
+test("_formatRevisionForDisplay Git", function()
+{
+    var repository = this.trunkBranch.repository;
+    repository.isSVN = false;
+    repository.isGit = true;
+    strictEqual(this.view._formatRevisionForDisplay("0e498db5d8e5b5a342631", repository), "0e498db", "Should be 0e498db");
 });
 
 module("BuildBotQueue", {

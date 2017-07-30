@@ -235,6 +235,8 @@ public:
 
     void suspendAnimations(double time = 0);
 
+    RenderBoxModelObject* continuation() const;
+
 protected:
     RenderBoxModelObject(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
     RenderBoxModelObject(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
@@ -251,9 +253,8 @@ protected:
     RoundedRect backgroundRoundedRectAdjustedForBleedAvoidance(const GraphicsContext&, const LayoutRect&, BackgroundBleedAvoidance, InlineFlowBox*, const LayoutSize&, bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
     LayoutRect borderInnerRectAdjustedForBleedAvoidance(const GraphicsContext&, const LayoutRect&, BackgroundBleedAvoidance) const;
 
-    bool shouldPaintAtLowQuality(GraphicsContext&, Image&, const void*, const LayoutSize&);
+    InterpolationQuality chooseInterpolationQuality(GraphicsContext&, Image&, const void*, const LayoutSize&);
 
-    RenderBoxModelObject* continuation() const;
     void setContinuation(RenderBoxModelObject*);
 
     LayoutRect localCaretRectForEmptyElement(LayoutUnit width, LayoutUnit textIndentOffset);

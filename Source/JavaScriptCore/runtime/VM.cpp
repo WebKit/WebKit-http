@@ -32,6 +32,7 @@
 #include "ArgList.h"
 #include "ArrayBufferNeuteringWatchpoint.h"
 #include "BuiltinExecutables.h"
+#include "BytecodeIntrinsicRegistry.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
 #include "CommonIdentifiers.h"
@@ -157,6 +158,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
     , emptyList(new MarkedArgumentBuffer)
+    , customGetterSetterFunctionMap(*this)
     , stringCache(*this)
     , prototypeMap(*this)
     , interpreter(0)
@@ -306,16 +308,22 @@ VM::VM(VMType vmType, HeapType heapType)
     // won't use this.
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
 
+    m_bytecodeIntrinsicRegistry = std::make_unique<BytecodeIntrinsicRegistry>(*this);
+
     if (Options::useTypeProfiler())
         enableTypeProfiler();
     if (Options::useControlFlowProfiler())
         enableControlFlowProfiler();
 #if ENABLE(SAMPLING_PROFILER)
     if (Options::useSamplingProfiler()) {
+        setShouldBuildPCToCodeOriginMapping();
         m_samplingProfiler = adoptRef(new SamplingProfiler(*this, Stopwatch::create()));
         m_samplingProfiler->start();
     }
 #endif // ENABLE(SAMPLING_PROFILER)
+
+    if (Options::alwaysGeneratePCToCodeOriginMap())
+        setShouldBuildPCToCodeOriginMapping();
 
     if (Options::watchdog()) {
         std::chrono::milliseconds timeoutMillis(Options::watchdog());
@@ -532,6 +540,15 @@ void VM::whenIdle(std::function<void()> callback)
     }
 
     entryScope->addDidPopListener(callback);
+}
+
+void VM::deleteAllCodeExceptCaches()
+{
+    whenIdle([this]() {
+        heap.deleteAllCodeBlocks();
+        heap.deleteAllUnlinkedCodeBlocks();
+        heap.reportAbandonedObjectGraph();
+    });
 }
 
 void VM::deleteAllCode()

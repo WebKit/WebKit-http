@@ -36,8 +36,6 @@ namespace JSC { namespace B3 { namespace Air {
 const char* const Special::dumpPrefix = "&";
 
 Special::Special()
-    : m_index(UINT_MAX)
-    , m_code(nullptr)
 {
 }
 

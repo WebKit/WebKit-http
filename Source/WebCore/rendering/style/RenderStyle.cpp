@@ -35,6 +35,7 @@
 #include "Pagination.h"
 #include "QuotesData.h"
 #include "RenderObject.h"
+#include "RenderTheme.h"
 #include "ScaleTransformOperation.h"
 #include "ShadowData.h"
 #include "StyleImage.h"
@@ -42,6 +43,7 @@
 #include "StyleResolver.h"
 #include "StyleScrollSnapPoints.h"
 #include "StyleSelfAlignmentData.h"
+#include "StyleTreeResolver.h"
 #include "WillChangeData.h"
 #include <wtf/MathExtras.h>
 #include <wtf/PointerComparison.h>
@@ -54,10 +56,6 @@
 
 #if ENABLE(TEXT_AUTOSIZING)
 #include "TextAutosizer.h"
-#endif
-
-#if ENABLE(TOUCH_EVENTS)
-#include "RenderTheme.h"
 #endif
 
 namespace WebCore {
@@ -293,7 +291,7 @@ bool RenderStyle::operator==(const RenderStyle& o) const
 
 bool RenderStyle::isStyleAvailable() const
 {
-    return this != StyleResolver::styleNotYetAvailable();
+    return !Style::isPlaceholderStyle(*this);
 }
 
 bool RenderStyle::hasUniquePseudoStyle() const
@@ -366,21 +364,19 @@ bool RenderStyle::inheritedNotEqual(const RenderStyle* other) const
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
-inline unsigned computeFontHash(const FontCascade& font)
+
+static inline unsigned computeFontHash(const FontCascade& font)
 {
-    unsigned hashCodes[2] = {
-        CaseFoldingHash::hash(font.fontDescription().firstFamily().impl()),
-        static_cast<unsigned>(font.fontDescription().specifiedSize())
-    };
-    return StringHasher::computeHash(reinterpret_cast<UChar*>(hashCodes), 2 * sizeof(unsigned) / sizeof(UChar));
+    IntegerHasher hasher;
+    hasher.add(ASCIICaseInsensitiveHash::hash(font.fontDescription().firstFamily()));
+    hasher.add(font.fontDescription().specifiedSize());
+    return hasher.hash();
 }
 
-uint32_t RenderStyle::hashForTextAutosizing() const
+unsigned RenderStyle::hashForTextAutosizing() const
 {
     // FIXME: Not a very smart hash. Could be improved upon. See <https://bugs.webkit.org/show_bug.cgi?id=121131>.
-    uint32_t hash = 0;
-    
-    hash ^= rareNonInheritedData->m_appearance;
+    unsigned hash = rareNonInheritedData->m_appearance;
     hash ^= rareNonInheritedData->marginBeforeCollapse;
     hash ^= rareNonInheritedData->marginAfterCollapse;
     hash ^= rareNonInheritedData->lineClamp.value();
@@ -421,6 +417,7 @@ bool RenderStyle::equalForTextAutosizing(const RenderStyle* other) const
         && noninherited_flags.floating() == other->noninherited_flags.floating()
         && rareNonInheritedData->textOverflow == other->rareNonInheritedData->textOverflow;
 }
+
 #endif // ENABLE(IOS_TEXT_AUTOSIZING)
 
 bool RenderStyle::inheritedDataShared(const RenderStyle* other) const
@@ -480,6 +477,8 @@ inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) c
         return visualOverflowForDecorations(*this, nullptr) != visualOverflowForDecorations(other, nullptr);
     }
 
+    if (hasOutlineInVisualOverflow() != other.hasOutlineInVisualOverflow())
+        return true;
     return false;
 }
 
@@ -613,6 +612,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
 #endif
             || rareInheritedData->m_lineSnap != other.rareInheritedData->m_lineSnap
             || rareInheritedData->m_lineAlign != other.rareInheritedData->m_lineAlign
+            || rareInheritedData->m_hangingPunctuation != other.rareInheritedData->m_hangingPunctuation
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
             || rareInheritedData->useTouchOverflowScrolling != other.rareInheritedData->useTouchOverflowScrolling
 #endif
@@ -684,6 +684,12 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
 
     // Check text combine mode.
     if (rareNonInheritedData->m_textCombine != other.rareNonInheritedData->m_textCombine)
+        return true;
+
+    // Check breaks.
+    if (rareNonInheritedData->m_breakBefore != other.rareNonInheritedData->m_breakBefore
+        || rareNonInheritedData->m_breakAfter != other.rareNonInheritedData->m_breakAfter
+        || rareNonInheritedData->m_breakInside != other.rareNonInheritedData->m_breakInside)
         return true;
 
     // Overflow returns a layout hint.
@@ -2017,6 +2023,24 @@ void RenderStyle::checkVariablesInCustomProperties()
         customProperties.set(resolvedValue->name(), resolvedValue->value());
 
     rareInheritedData.access()->m_customProperties.access()->setContainsVariables(false);
+}
+
+float RenderStyle::outlineWidth() const
+{
+    if (m_background->outline().style() == BNONE)
+        return 0;
+    if (outlineStyleIsAuto())
+        return std::max(m_background->outline().width(), RenderTheme::platformFocusRingWidth());
+    return m_background->outline().width();
+}
+
+float RenderStyle::outlineOffset() const
+{
+    if (m_background->outline().style() == BNONE)
+        return 0;
+    if (outlineStyleIsAuto())
+        return (m_background->outline().offset() + RenderTheme::platformFocusRingOffset(outlineWidth()));
+    return m_background->outline().offset();
 }
 
 } // namespace WebCore

@@ -27,7 +27,6 @@
 #ifndef WorkerGlobalScope_h
 #define WorkerGlobalScope_h
 
-#include "ContentSecurityPolicy.h"
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
@@ -45,6 +44,7 @@
 namespace WebCore {
 
     class Blob;
+    class ContentSecurityPolicyResponseHeaders;
     class ScheduledAction;
     class WorkerLocation;
     class WorkerNavigator;
@@ -66,6 +66,8 @@ namespace WebCore {
         virtual String userAgent(const URL&) const override;
 
         virtual void disableEval(const String& errorMessage) override;
+
+        bool shouldBypassMainWorldContentSecurityPolicy() const override final { return m_shouldBypassMainWorldContentSecurityPolicy; }
 
         WorkerScriptController* script() { return m_script.get(); }
         void clearScript() { m_script = nullptr; }
@@ -130,8 +132,8 @@ namespace WebCore {
 #endif
 
     protected:
-        WorkerGlobalScope(const URL&, const String& userAgent, WorkerThread&, PassRefPtr<SecurityOrigin> topOrigin);
-        void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType);
+        WorkerGlobalScope(const URL&, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, PassRefPtr<SecurityOrigin> topOrigin);
+        void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
         virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) override;
         void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
@@ -159,6 +161,7 @@ namespace WebCore {
         WorkerThread& m_thread;
 
         bool m_closing;
+        bool m_shouldBypassMainWorldContentSecurityPolicy;
 
         HashSet<Observer*> m_workerObservers;
 

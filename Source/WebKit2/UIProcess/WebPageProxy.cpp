@@ -165,7 +165,7 @@
 #include <WebCore/MediaSessionMetadata.h>
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyIncludes.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageProxyIncludes.h>
 #endif
 
@@ -362,6 +362,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_paginationBehavesLikeColumns(false)
     , m_pageLength(0)
     , m_gapBetweenPages(0)
+    , m_paginationLineGridEnabled(false)
     , m_isValid(true)
     , m_isClosed(false)
     , m_canRunModal(false)
@@ -474,7 +475,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_vibration = WebVibrationProxy::create(this);
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyInitialization.cpp>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageProxyInitialization.cpp>
 #endif
 
@@ -485,7 +486,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
 #if PLATFORM(COCOA)
     const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
-    m_viewStateChangeDispatcher = RunLoopObserver::create(viewStateChangeRunLoopOrder, [this] {
+    m_viewStateChangeDispatcher = std::make_unique<RunLoopObserver>(viewStateChangeRunLoopOrder, [this] {
         this->dispatchViewStateChange();
     });
 #endif
@@ -706,7 +707,7 @@ void WebPageProxy::reattachToWebProcess()
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyInitialization.cpp>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageProxyInitialization.cpp>
 #endif
 
@@ -1862,7 +1863,7 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 
     MESSAGE_CHECK_URL(urlString);
 
-    newMimeType = mimeType.lower();
+    newMimeType = mimeType.convertToASCIILowercase();
     pluginLoadPolicy = PluginModuleLoadNormally;
 
     PluginData::AllowedPluginTypes allowedPluginTypes = allowOnlyApplicationPlugins ? PluginData::OnlyApplicationPlugins : PluginData::AllPlugins;
@@ -2550,6 +2551,18 @@ void WebPageProxy::setGapBetweenPages(double gap)
     if (!isValid())
         return;
     m_process->send(Messages::WebPage::SetGapBetweenPages(gap), m_pageID);
+}
+
+void WebPageProxy::setPaginationLineGridEnabled(bool lineGridEnabled)
+{
+    if (lineGridEnabled == m_paginationLineGridEnabled)
+        return;
+    
+    m_paginationLineGridEnabled = lineGridEnabled;
+    
+    if (!isValid())
+        return;
+    m_process->send(Messages::WebPage::SetPaginationLineGridEnabled(lineGridEnabled), m_pageID);
 }
 
 void WebPageProxy::pageScaleFactorDidChange(double scaleFactor)
@@ -4563,10 +4576,8 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
     case WebEvent::MouseMove:
         m_processingMouseMoveEvent = false;
-        if (m_nextMouseMoveEvent) {
-            handleMouseEvent(*m_nextMouseMoveEvent);
-            m_nextMouseMoveEvent = nullptr;
-        }
+        if (m_nextMouseMoveEvent)
+            handleMouseEvent(*std::exchange(m_nextMouseMoveEvent, nullptr));
         break;
     case WebEvent::MouseDown:
         break;
@@ -5045,8 +5056,8 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_pageClient.mediaSessionManager().removeAllPlaybackTargetPickerClients(*this);
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyInvalidation.h>)
-#include <WebKitAdditions/WebPageProxyInvalidation.h>
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/WebPageProxyInvalidation.cpp>
 #endif
 
     CallbackBase::Error error;
@@ -5143,6 +5154,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.paginationBehavesLikeColumns = m_paginationBehavesLikeColumns;
     parameters.pageLength = m_pageLength;
     parameters.gapBetweenPages = m_gapBetweenPages;
+    parameters.paginationLineGridEnabled = m_paginationLineGridEnabled;
     parameters.userAgent = userAgent();
     parameters.itemStates = m_backForwardList->itemStates();
     parameters.sessionID = m_sessionID;

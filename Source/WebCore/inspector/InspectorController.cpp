@@ -46,6 +46,7 @@
 #include "InspectorIndexedDBAgent.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorLayerTreeAgent.h"
+#include "InspectorMemoryAgent.h"
 #include "InspectorNetworkAgent.h"
 #include "InspectorPageAgent.h"
 #include "InspectorReplayAgent.h"
@@ -143,6 +144,10 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
 
 #if ENABLE(INDEXED_DATABASE)
     m_agents.append(std::make_unique<InspectorIndexedDBAgent>(pageContext, pageAgent));
+#endif
+
+#if ENABLE(RESOURCE_USAGE)
+    m_agents.append(std::make_unique<InspectorMemoryAgent>(pageContext));
 #endif
 
 #if ENABLE(WEB_REPLAY)
@@ -412,8 +417,16 @@ void InspectorController::setLegacyProfilerEnabled(bool enable)
 {
     m_legacyProfilerEnabled = enable;
 
-    m_instrumentingAgents->setPersistentInspectorTimelineAgent(enable ? m_timelineAgent : nullptr);
-    m_scriptDebugServer.recompileAllJSFunctions();
+    ErrorString unused;
+    if (enable) {
+        m_instrumentingAgents->setPersistentInspectorTimelineAgent(m_timelineAgent);
+        m_scriptDebugServer.recompileAllJSFunctions();
+        m_timelineAgent->start(unused);
+    } else {
+        m_instrumentingAgents->setPersistentInspectorTimelineAgent(nullptr);
+        m_scriptDebugServer.recompileAllJSFunctions();
+        m_timelineAgent->stop(unused);
+    }
 }
 
 bool InspectorController::developerExtrasEnabled() const

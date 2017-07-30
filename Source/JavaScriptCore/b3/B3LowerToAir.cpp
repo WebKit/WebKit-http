@@ -53,6 +53,8 @@
 #include "B3UpsilonValue.h"
 #include "B3UseCounts.h"
 #include "B3ValueInlines.h"
+#include "B3Variable.h"
+#include "B3VariableValue.h"
 #include <wtf/ListDump.h>
 
 #if COMPILER(GCC) && ASSERT_DISABLED
@@ -102,6 +104,8 @@ public:
 
         for (B3::StackSlot* stack : m_procedure.stackSlots())
             m_stackToStack.add(stack, m_code.addStackSlot(stack));
+        for (Variable* variable : m_procedure.variables())
+            m_variableToTmp.add(variable, m_code.newTmp(Arg::typeForB3Type(variable->type())));
 
         // Figure out which blocks are not rare.
         m_fastWorklist.push(m_procedure[0]);
@@ -304,6 +308,10 @@ private:
         if (!tmp) {
             while (shouldCopyPropagate(value))
                 value = value->child(0);
+
+            if (value->opcode() == FramePointer)
+                return Tmp(GPRInfo::callFrameRegister);
+
             Tmp& realTmp = m_valueToTmp[value];
             if (!realTmp) {
                 realTmp = m_code.newTmp(Arg::typeForB3Type(value->type()));
@@ -855,8 +863,25 @@ private:
         switch (type) {
         case Int32:
         case Int64:
+            // For Int32, we could return Move or Move32. It's a trade-off.
+            //
+            // Move32: Using Move32 guarantees that we use the narrower move, but in cases where the
+            //     register allocator can't prove that the variables involved are 32-bit, this will
+            //     disable coalescing.
+            //
+            // Move: Using Move guarantees that the register allocator can coalesce normally, but in
+            //     cases where it can't prove that the variables are 32-bit and it doesn't coalesce,
+            //     this will force us to use a full 64-bit Move instead of the slightly cheaper
+            //     32-bit Move32.
+            //
+            // Coalescing is a lot more profitable than turning Move into Move32. So, it's better to
+            // use Move here because in cases where the register allocator cannot prove that
+            // everything is 32-bit, we still get coalescing.
             return Move;
         case Float:
+            // MoveFloat is always coalescable and we never convert MoveDouble to MoveFloat, so we
+            // should use MoveFloat when we know that the temporaries involved are 32-bit.
+            return MoveFloat;
         case Double:
             return MoveDouble;
         case Void:
@@ -1924,7 +1949,7 @@ private:
         }
 
         case FramePointer: {
-            append(Move, Tmp(GPRInfo::callFrameRegister), tmp(m_value));
+            ASSERT(tmp(m_value) == Tmp(GPRInfo::callFrameRegister));
             return;
         }
 
@@ -2208,6 +2233,21 @@ private:
             return;
         }
 
+        case Set: {
+            Value* value = m_value->child(0);
+            append(
+                relaxedMoveForType(value->type()), immOrTmp(value),
+                m_variableToTmp.get(m_value->as<VariableValue>()->variable()));
+            return;
+        }
+
+        case Get: {
+            append(
+                relaxedMoveForType(m_value->type()),
+                m_variableToTmp.get(m_value->as<VariableValue>()->variable()), tmp(m_value));
+            return;
+        }
+
         case Branch: {
             m_insts.last().append(createBranch(m_value->child(0)));
             return;
@@ -2299,6 +2339,7 @@ private:
     IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
     IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
     HashMap<B3::StackSlot*, Air::StackSlot*> m_stackToStack;
+    HashMap<Variable*, Tmp> m_variableToTmp;
 
     UseCounts m_useCounts;
     PhiChildren m_phiChildren;

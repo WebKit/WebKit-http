@@ -304,26 +304,25 @@ void WebInspectorProxy::togglePageProfiling()
     m_isProfilingPage = !m_isProfilingPage;
 }
 
-static WebProcessPool* s_processPool;
+static WebProcessPool* s_mainInspectorProcessPool;
+static WebProcessPool* s_nestedInspectorProcessPool;
 
-WebProcessPool& WebInspectorProxy::inspectorProcessPool()
+WebProcessPool& WebInspectorProxy::inspectorProcessPool(unsigned inspectionLevel)
 {
     // Having our own process pool removes us from the main process pool and
     // guarantees no process sharing for our user interface.
-    if (!s_processPool) {
+    WebProcessPool*& pool = inspectionLevel == 1 ? s_mainInspectorProcessPool : s_nestedInspectorProcessPool;
+    if (!pool) {
         auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
-        s_processPool = &WebProcessPool::create(configuration.get()).leakRef();
-    };
-
-    return *s_processPool;
+        pool = &WebProcessPool::create(configuration.get()).leakRef();
+    }
+    return *pool;
 }
 
 bool WebInspectorProxy::isInspectorProcessPool(WebProcessPool& processPool)
 {
-    if (!s_processPool)
-        return false;
-
-    return s_processPool == &processPool;
+    return (s_mainInspectorProcessPool && s_mainInspectorProcessPool == &processPool)
+        || (s_nestedInspectorProcessPool && s_nestedInspectorProcessPool == &processPool);
 }
 
 bool WebInspectorProxy::isInspectorPage(WebPageProxy& webPage)
@@ -573,7 +572,6 @@ void WebInspectorProxy::didClose()
         return;
 
     m_inspectorPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
-    m_inspectorPage = nullptr;
 
     m_isVisible = false;
     m_isProfilingPage = false;
@@ -582,9 +580,14 @@ void WebInspectorProxy::didClose()
 
     if (m_isAttached)
         platformDetach();
+
+    // Null out m_inspectorPage after platformDetach(), so the views can be cleaned up correctly.
+    m_inspectorPage = nullptr;
+
     m_isAttached = false;
     m_canAttach = false;
     m_underTest = false;
+
     m_connectionIdentifier = IPC::Attachment();
 
     platformDidClose();

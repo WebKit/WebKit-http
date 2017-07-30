@@ -48,7 +48,7 @@ using namespace std;
 namespace WebCore {
 
 typedef LCID (WINAPI* LocaleNameToLCIDPtr)(LPCWSTR, DWORD);
-typedef HashMap<String, LCID> NameToLCIDMap;
+typedef HashMap<String, LCID, ASCIICaseInsensitiveHash> NameToLCIDMap;
 
 static String extractLanguageCode(const String& locale)
 {
@@ -107,7 +107,7 @@ static LCID WINAPI convertLocaleNameToLCID(LPCWSTR name, DWORD)
         return LOCALE_USER_DEFAULT;
     DEPRECATED_DEFINE_STATIC_LOCAL(NameToLCIDMap, map, ());
     ensureNameToLCIDMap(map);
-    String localeName = String(name).replace('_', '-').lower();
+    String localeName = String(name).replace('_', '-');
     do {
         NameToLCIDMap::const_iterator iterator = map.find(localeName);
         if (iterator != map.end())
@@ -119,7 +119,7 @@ static LCID WINAPI convertLocaleNameToLCID(LPCWSTR name, DWORD)
 
 static LCID LCIDFromLocaleInternal(LCID userDefaultLCID, const String& userDefaultLanguageCode, LocaleNameToLCIDPtr localeNameToLCID, String& locale)
 {
-    if (equalLettersIgnoringASCIICase(extractLanguageCode(locale), userDefaultLanguageCode))
+    if (equalIgnoringASCIICase(extractLanguageCode(locale), userDefaultLanguageCode))
         return userDefaultLCID;
     return localeNameToLCID(locale.charactersWithNullTermination().data(), 0);
 }

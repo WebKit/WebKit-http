@@ -23,9 +23,12 @@
 #include "MachineStackMarker.h"
 
 #include "ConservativeRoots.h"
+#include "GPRInfo.h"
 #include "Heap.h"
 #include "JSArray.h"
 #include "JSCInlines.h"
+#include "LLIntPCRanges.h"
+#include "MacroAssembler.h"
 #include "VM.h"
 #include <setjmp.h>
 #include <stdlib.h>
@@ -63,17 +66,47 @@
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
 #include <signal.h>
 
+// We use SIGUSR2 to suspend and resume machine threads in JavaScriptCore.
 static const int SigThreadSuspendResume = SIGUSR2;
+static StaticLock globalSignalLock;
+thread_local static std::atomic<JSC::MachineThreads::Thread*> threadLocalCurrentThread;
 
-#if defined(SA_RESTART)
-static void pthreadSignalHandlerSuspendResume(int)
+static void pthreadSignalHandlerSuspendResume(int, siginfo_t*, void* ucontext)
 {
-    sigset_t signalSet;
-    sigemptyset(&signalSet);
-    sigaddset(&signalSet, SigThreadSuspendResume);
-    sigsuspend(&signalSet);
+    // Touching thread local atomic types from signal handlers is allowed.
+    JSC::MachineThreads::Thread* thread = threadLocalCurrentThread.load();
+
+    if (thread->suspended.load(std::memory_order_acquire)) {
+        // This is signal handler invocation that is intended to be used to resume sigsuspend.
+        // So this handler invocation itself should not process.
+        //
+        // When signal comes, first, the system calls signal handler. And later, sigsuspend will be resumed. Signal handler invocation always precedes.
+        // So, the problem never happens that suspended.store(true, ...) will be executed before the handler is called.
+        // http://pubs.opengroup.org/onlinepubs/009695399/functions/sigsuspend.html
+        return;
+    }
+
+    struct ucontext* userContext = static_cast<struct ucontext*>(ucontext);
+    thread->suspendedMachineContext = userContext->uc_mcontext;
+
+    // Allow suspend caller to see that this thread is suspended.
+    // sem_post is async-signal-safe function. It means that we can call this from a signal handler.
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/xsh_chap02_04.html#tag_02_04_03
+    //
+    // And sem_post emits memory barrier that ensures that suspendedMachineContext is correctly saved.
+    // http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_11
+    sem_post(&thread->semaphoreForSuspendResume);
+
+    // Reaching here, SigThreadSuspendResume is blocked in this handler (this is configured by sigaction's sa_mask).
+    // So before calling sigsuspend, SigThreadSuspendResume to this thread is deferred. This ensures that the handler is not executed recursively.
+    sigset_t blockedSignalSet;
+    sigfillset(&blockedSignalSet);
+    sigdelset(&blockedSignalSet, SigThreadSuspendResume);
+    sigsuspend(&blockedSignalSet);
+
+    // Allow resume caller to see that this thread is resumed.
+    sem_post(&thread->semaphoreForSuspendResume);
 }
-#endif // defined(SA_RESTART)
 #endif // USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
 
 #endif
@@ -305,24 +338,35 @@ MachineThreads::Thread::Thread(const PlatformThread& platThread, void* base, voi
     , stackBase(base)
     , stackEnd(end)
 {
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && defined(SA_RESTART)
-    // if we have SA_RESTART, enable SIGUSR2 debugging mechanism
-    struct sigaction action;
-    action.sa_handler = pthreadSignalHandlerSuspendResume;
-    sigemptyset(&action.sa_mask);
-    action.sa_flags = SA_RESTART;
-    sigaction(SigThreadSuspendResume, &action, 0);
-
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SigThreadSuspendResume);
-    pthread_sigmask(SIG_UNBLOCK, &mask, 0);
-#elif OS(WINDOWS)
+#if OS(WINDOWS)
     ASSERT(platformThread == GetCurrentThreadId());
     bool isSuccessful =
         DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
             &platformThreadHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
     RELEASE_ASSERT(isSuccessful);
+#elif USE(PTHREADS) && !OS(DARWIN)
+    threadLocalCurrentThread.store(this);
+
+    // Signal handlers are process global configuration.
+    static std::once_flag initializeSignalHandler;
+    std::call_once(initializeSignalHandler, [] {
+        // Intentionally block SigThreadSuspendResume in the handler.
+        // SigThreadSuspendResume will be allowed in the handler by sigsuspend.
+        struct sigaction action;
+        sigemptyset(&action.sa_mask);
+        sigaddset(&action.sa_mask, SigThreadSuspendResume);
+
+        action.sa_sigaction = pthreadSignalHandlerSuspendResume;
+        action.sa_flags = SA_RESTART | SA_SIGINFO;
+        sigaction(SigThreadSuspendResume, &action, 0);
+    });
+
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SigThreadSuspendResume);
+    pthread_sigmask(SIG_UNBLOCK, &mask, 0);
+
+    sem_init(&semaphoreForSuspendResume, /* Only available in this process. */ 0, /* Initial value for the semaphore. */ 0);
 #endif
 }
 
@@ -330,6 +374,8 @@ MachineThreads::Thread::~Thread()
 {
 #if OS(WINDOWS)
     CloseHandle(platformThreadHandle);
+#elif USE(PTHREADS) && !OS(DARWIN)
+    sem_destroy(&semaphoreForSuspendResume);
 #endif
 }
 
@@ -346,7 +392,27 @@ bool MachineThreads::Thread::suspend()
     ASSERT(threadIsSuspended);
     return threadIsSuspended;
 #elif USE(PTHREADS)
-    pthread_kill(platformThread, SigThreadSuspendResume);
+    ASSERT_WITH_MESSAGE(getCurrentPlatformThread() != platformThread, "Currently we don't support suspend the current thread itself.");
+    {
+        // During suspend, suspend or resume should not be executed from the other threads.
+        // We use global lock instead of per thread lock.
+        // Consider the following case, there are threads A and B.
+        // And A attempt to suspend B and B attempt to suspend A.
+        // A and B send signals. And later, signals are delivered to A and B.
+        // In that case, both will be suspended.
+        LockHolder lock(globalSignalLock);
+        if (!suspendCount) {
+            // Ideally, we would like to use pthread_sigqueue. It allows us to pass the argument to the signal handler.
+            // But it can be used in a few platforms, like Linux.
+            // Instead, we use Thread* stored in the thread local storage to pass it to the signal handler.
+            if (pthread_kill(platformThread, SigThreadSuspendResume) == ESRCH)
+                return false;
+            sem_wait(&semaphoreForSuspendResume);
+            // Release barrier ensures that this operation is always executed after all the above processing is done.
+            suspended.store(true, std::memory_order_release);
+        }
+        ++suspendCount;
+    }
     return true;
 #else
 #error Need a way to suspend threads on this platform
@@ -362,7 +428,25 @@ void MachineThreads::Thread::resume()
 #elif OS(WINDOWS)
     ResumeThread(platformThreadHandle);
 #elif USE(PTHREADS)
-    pthread_kill(platformThread, SigThreadSuspendResume);
+    {
+        // During resume, suspend or resume should not be executed from the other threads.
+        LockHolder lock(globalSignalLock);
+        if (suspendCount == 1) {
+            // When allowing SigThreadSuspendResume interrupt in the signal handler by sigsuspend and SigThreadSuspendResume is actually issued,
+            // the signal handler itself will be called once again.
+            // There are several ways to distinguish the handler invocation for suspend and resume.
+            // 1. Use different signal numbers. And check the signal number in the handler.
+            // 2. Use some arguments to distinguish suspend and resume in the handler. If pthread_sigqueue can be used, we can take this.
+            // 3. Use thread local storage with atomic variables in the signal handler.
+            // In this implementaiton, we take (3). suspended flag is used to distinguish it.
+            if (pthread_kill(platformThread, SigThreadSuspendResume) == ESRCH)
+                return;
+            sem_wait(&semaphoreForSuspendResume);
+            // Release barrier ensures that this operation is always executed after all the above processing is done.
+            suspended.store(false, std::memory_order_release);
+        }
+        --suspendCount;
+    }
 #else
 #error Need a way to resume threads on this platform
 #endif
@@ -411,16 +495,17 @@ size_t MachineThreads::Thread::getRegisters(Thread::Registers& registers)
 	get_thread_info(platformThread, &regs);
 	return sizeof(thread_info);
 #elif USE(PTHREADS)
-    pthread_attr_init(&regs);
+    pthread_attr_init(&regs.attribute);
 #if HAVE(PTHREAD_NP_H) || OS(NETBSD)
 #if !OS(OPENBSD)
     // e.g. on FreeBSD 5.4, neundorf@kde.org
-    pthread_attr_get_np(platformThread, &regs);
+    pthread_attr_get_np(platformThread, &regs.attribute);
 #endif
 #else
     // FIXME: this function is non-portable; other POSIX systems may have different np alternatives
-    pthread_getattr_np(platformThread, &regs);
+    pthread_getattr_np(platformThread, &regs.attribute);
 #endif
+    regs.machineContext = suspendedMachineContext;
     return 0;
 #else
 #error Need a way to get thread registers on this platform
@@ -480,6 +565,24 @@ void* MachineThreads::Thread::Registers::stackPointer() const
 #endif
 
 #elif USE(PTHREADS)
+
+#if defined(__GLIBC__) && ENABLE(JIT)
+
+#if CPU(X86)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_ESP]);
+#elif CPU(X86_64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RSP]);
+#elif CPU(ARM)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_sp);
+#elif CPU(ARM64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.sp);
+#elif CPU(MIPS)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[29]);
+#else
+#error Unknown Architecture
+#endif
+
+#else
     void* stackBase = 0;
     size_t stackSize = 0;
 #if OS(OPENBSD)
@@ -488,11 +591,13 @@ void* MachineThreads::Thread::Registers::stackPointer() const
     stackBase = (void*)((size_t) ss.ss_sp - ss.ss_size);
     stackSize = ss.ss_size;
 #else
-    int rc = pthread_attr_getstack(&regs, &stackBase, &stackSize);
+    int rc = pthread_attr_getstack(&regs.attribute, &stackBase, &stackSize);
 #endif
     (void)rc; // FIXME: Deal with error code somehow? Seems fatal.
     ASSERT(stackBase);
     return static_cast<char*>(stackBase) + stackSize;
+#endif
+
 #else
 #error Need a way to get the stack pointer for another thread on this platform
 #endif
@@ -540,6 +645,23 @@ void* MachineThreads::Thread::Registers::framePointer() const
     return reinterpret_cast<void*>((uintptr_t) regs.Ebp);
 #elif CPU(X86_64)
     return reinterpret_cast<void*>((uintptr_t) regs.Rbp);
+#else
+#error Unknown Architecture
+#endif
+
+#elif defined(__GLIBC__)
+
+// The following sequence depends on glibc's sys/ucontext.h.
+#if CPU(X86)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_EBP]);
+#elif CPU(X86_64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RBP]);
+#elif CPU(ARM)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_fp);
+#elif CPU(ARM64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.regs[29]);
+#elif CPU(MIPS)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[30]);
 #else
 #error Unknown Architecture
 #endif
@@ -593,8 +715,100 @@ void* MachineThreads::Thread::Registers::instructionPointer() const
 #error Unknown Architecture
 #endif
 
+#elif defined(__GLIBC__)
+
+// The following sequence depends on glibc's sys/ucontext.h.
+#if CPU(X86)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_EIP]);
+#elif CPU(X86_64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_RIP]);
+#elif CPU(ARM)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_pc);
+#elif CPU(ARM64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.pc);
+#elif CPU(MIPS)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.pc);
+#else
+#error Unknown Architecture
+#endif
+
 #else
 #error Need a way to get the instruction pointer for another thread on this platform
+#endif
+}
+void* MachineThreads::Thread::Registers::llintPC() const
+{
+    // LLInt uses regT4 as PC.
+#if OS(DARWIN)
+
+#if __DARWIN_UNIX03
+
+#if CPU(X86)
+    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.__esi);
+#elif CPU(X86_64)
+    static_assert(LLInt::LLIntPC == X86Registers::r8, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.__r8);
+#elif CPU(ARM)
+    static_assert(LLInt::LLIntPC == ARMRegisters::r8, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.__r[8]);
+#elif CPU(ARM64)
+    static_assert(LLInt::LLIntPC == ARM64Registers::x4, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.__x[4]);
+#else
+#error Unknown Architecture
+#endif
+
+#else // !__DARWIN_UNIX03
+#if CPU(X86)
+    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.esi);
+#elif CPU(X86_64)
+    static_assert(LLInt::LLIntPC == X86Registers::r8, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>(regs.r8);
+#else
+#error Unknown Architecture
+#endif
+
+#endif // __DARWIN_UNIX03
+
+// end OS(DARWIN)
+#elif OS(WINDOWS)
+
+#if CPU(ARM)
+    static_assert(LLInt::LLIntPC == ARMRegisters::r8, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>((uintptr_t) regs.R8);
+#elif CPU(MIPS)
+#error Dont know what to do with mips. Do we even need this?
+#elif CPU(X86)
+    static_assert(LLInt::LLIntPC == X86Registers::esi, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>((uintptr_t) regs.Esi);
+#elif CPU(X86_64)
+    static_assert(LLInt::LLIntPC == X86Registers::r10, "Wrong LLInt PC.");
+    return reinterpret_cast<void*>((uintptr_t) regs.R10);
+#else
+#error Unknown Architecture
+#endif
+
+#elif defined(__GLIBC__)
+
+// The following sequence depends on glibc's sys/ucontext.h.
+#if CPU(X86)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_ESI]);
+#elif CPU(X86_64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[REG_R8]);
+#elif CPU(ARM)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.arm_r8);
+#elif CPU(ARM64)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.regs[4]);
+#elif CPU(MIPS)
+    return reinterpret_cast<void*>((uintptr_t) regs.machineContext.gregs[12]);
+#else
+#error Unknown Architecture
+#endif
+
+#else
+#error Need a way to get the LLIntPC for another thread on this platform
 #endif
 }
 #endif // ENABLE(SAMPLING_PROFILER)
@@ -603,7 +817,7 @@ void MachineThreads::Thread::freeRegisters(Thread::Registers& registers)
 {
     Thread::Registers::PlatformRegisters& regs = registers.regs;
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU)
-    pthread_attr_destroy(&regs);
+    pthread_attr_destroy(&regs.attribute);
 #else
     UNUSED_PARAM(regs);
 #endif

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2006, 2008, 2009, 2012-2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2006, 2008, 2009, 2012-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel (eric@webkit.org)
  *
  *  This library is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@
 #include "Executable.h"
 #include "GetterSetter.h"
 #include "IndexingHeaderInlines.h"
+#include "JSBoundSlotBaseFunction.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "Lookup.h"
@@ -104,7 +105,7 @@ ALWAYS_INLINE void JSObject::copyButterfly(CopyVisitor& visitor, Butterfly* butt
     size_t capacityInBytes = Butterfly::totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
     if (visitor.checkIfShouldCopy(butterfly->base(preCapacity, propertyCapacity))) {
         Butterfly* newButterfly = Butterfly::createUninitializedDuringCollection(visitor, preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
-        
+
         // Copy the properties.
         PropertyStorage currentTarget = newButterfly->propertyStorage();
         PropertyStorage currentSource = butterfly->propertyStorage();
@@ -589,8 +590,11 @@ void JSObject::enterDictionaryIndexingMode(VM& vm)
     case ALL_DOUBLE_INDEXING_TYPES:
     case ALL_CONTIGUOUS_INDEXING_TYPES:
         // NOTE: this is horribly inefficient, as it will perform two conversions. We could optimize
-        // this case if we ever cared.
-        enterDictionaryIndexingModeWhenArrayStorageAlreadyExists(vm, ensureArrayStorageSlow(vm));
+        // this case if we ever cared. Note that ensureArrayStorage() can return null if the object
+        // doesn't support traditional indexed properties. At the time of writing, this just affects
+        // typed arrays.
+        if (ArrayStorage* storage = ensureArrayStorageSlow(vm))
+            enterDictionaryIndexingModeWhenArrayStorageAlreadyExists(vm, storage);
         break;
     case ALL_ARRAY_STORAGE_INDEXING_TYPES:
         enterDictionaryIndexingModeWhenArrayStorageAlreadyExists(vm, m_butterfly.get(this)->arrayStorage());
@@ -967,6 +971,9 @@ ContiguousJSValues JSObject::ensureInt32Slow(VM& vm)
 {
     ASSERT(inherits(info()));
     
+    if (structure(vm)->hijacksIndexingHeader())
+        return ContiguousJSValues();
+    
     switch (indexingType()) {
     case ALL_BLANK_INDEXING_TYPES:
         if (UNLIKELY(indexingShouldBeSparse() || structure(vm)->needsSlowPutIndexing()))
@@ -990,6 +997,9 @@ ContiguousJSValues JSObject::ensureInt32Slow(VM& vm)
 ContiguousDoubles JSObject::ensureDoubleSlow(VM& vm)
 {
     ASSERT(inherits(info()));
+    
+    if (structure(vm)->hijacksIndexingHeader())
+        return ContiguousDoubles();
     
     switch (indexingType()) {
     case ALL_BLANK_INDEXING_TYPES:
@@ -1016,6 +1026,9 @@ ContiguousDoubles JSObject::ensureDoubleSlow(VM& vm)
 ContiguousJSValues JSObject::ensureContiguousSlow(VM& vm)
 {
     ASSERT(inherits(info()));
+    
+    if (structure(vm)->hijacksIndexingHeader())
+        return ContiguousJSValues();
     
     switch (indexingType()) {
     case ALL_BLANK_INDEXING_TYPES:
@@ -1044,6 +1057,9 @@ ContiguousJSValues JSObject::ensureContiguousSlow(VM& vm)
 ArrayStorage* JSObject::ensureArrayStorageSlow(VM& vm)
 {
     ASSERT(inherits(info()));
+
+    if (structure(vm)->hijacksIndexingHeader())
+        return nullptr;
     
     switch (indexingType()) {
     case ALL_BLANK_INDEXING_TYPES:
@@ -1676,6 +1692,26 @@ void JSObject::reifyStaticFunctionsForDelete(ExecState* exec)
         for (auto iter = hashTable->begin(); iter != hashTable->end(); ++iter) {
             if (iter->attributes() & BuiltinOrFunctionOrAccessor)
                 setUpStaticFunctionSlot(globalObject()->globalExec(), iter.value(), this, Identifier::fromString(&vm, iter.key()), slot);
+        }
+    }
+
+    structure(vm)->setStaticFunctionsReified(true);
+}
+
+void JSObject::reifyAllStaticProperties(ExecState* exec)
+{
+    VM& vm = exec->vm();
+
+    for (const ClassInfo* info = classInfo(); info; info = info->parentClass) {
+        const HashTable* hashTable = info->staticPropHashTable;
+        if (!hashTable)
+            continue;
+
+        for (auto iter = hashTable->begin(); iter != hashTable->end(); ++iter) {
+            unsigned attributes;
+            PropertyOffset offset = getDirectOffset(vm, Identifier::fromString(&vm, iter.key()), attributes);
+            if (!isValidOffset(offset))
+                reifyStaticProperty(vm, *iter.value(), *this);
         }
     }
 
@@ -2526,8 +2562,19 @@ Butterfly* JSObject::growOutOfLineStorage(VM& vm, size_t oldSize, size_t newSize
 
     // It's important that this function not rely on structure(), for the property
     // capacity, since we might have already mutated the structure in-place.
-    
+
     return Butterfly::createOrGrowPropertyStorage(m_butterfly.get(this), vm, this, structure(vm), oldSize, newSize);
+}
+
+static JSBoundSlotBaseFunction* getBoundSlotBaseFunctionForGetterSetter(ExecState* exec, PropertyName propertyName, JSC::PropertySlot& slot, CustomGetterSetter* getterSetter, JSBoundSlotBaseFunction::Type type)
+{
+    auto key = std::make_pair(getterSetter, (int)type);
+    JSBoundSlotBaseFunction* boundSlotBase = exec->vm().customGetterSetterFunctionMap.get(key);
+    if (!boundSlotBase) {
+        boundSlotBase = JSBoundSlotBaseFunction::create(exec->vm(), exec->lexicalGlobalObject(), slot.slotBase(), getterSetter, type, propertyName.publicName());
+        exec->vm().customGetterSetterFunctionMap.set(key, boundSlotBase);
+    }
+    return boundSlotBase;
 }
 
 bool JSObject::getOwnPropertyDescriptor(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
@@ -2535,14 +2582,38 @@ bool JSObject::getOwnPropertyDescriptor(ExecState* exec, PropertyName propertyNa
     JSC::PropertySlot slot(this);
     if (!methodTable(exec->vm())->getOwnPropertySlot(this, exec, propertyName, slot))
         return false;
-    /* Workaround, JSDOMWindow::getOwnPropertySlot searches the prototype chain. :-( */
-    if (slot.slotBase() != this && slot.slotBase() && slot.slotBase()->methodTable(exec->vm())->toThis(slot.slotBase(), exec, NotStrictMode) != this)
-        return false;
+
+    // JSDOMWindow::getOwnPropertySlot() may return attributes from the prototype chain but getOwnPropertyDescriptor()
+    // should only work for 'own' properties so we exit early if we detect that the property is not an own property.
+    if (slot.slotBase() != this && slot.slotBase()) {
+        auto* proxy = jsDynamicCast<JSProxy*>(this);
+        // In the case of DOMWindow, |this| may be a JSDOMWindowShell so we also need to check the shell's target Window.
+        if (!proxy || proxy->target() != slot.slotBase())
+            return false;
+    }
+
     if (slot.isAccessor())
         descriptor.setAccessorDescriptor(slot.getterSetter(), slot.attributes());
-    else if (slot.attributes() & CustomAccessor)
+    else if (slot.attributes() & CustomAccessor) {
         descriptor.setCustomDescriptor(slot.attributes());
-    else
+
+        JSObject* thisObject = this;
+        if (auto* proxy = jsDynamicCast<JSProxy*>(this))
+            thisObject = proxy->target();
+
+        JSValue maybeGetterSetter = thisObject->getDirect(exec->vm(), propertyName);
+        if (!maybeGetterSetter) {
+            thisObject->reifyAllStaticProperties(exec);
+            maybeGetterSetter = thisObject->getDirect(exec->vm(), propertyName);
+        }
+
+        ASSERT(maybeGetterSetter);
+        auto* getterSetter = jsCast<CustomGetterSetter*>(maybeGetterSetter);
+        if (getterSetter->getter())
+            descriptor.setGetter(getBoundSlotBaseFunctionForGetterSetter(exec, propertyName, slot, getterSetter, JSBoundSlotBaseFunction::Type::Getter));
+        if (getterSetter->setter())
+            descriptor.setSetter(getBoundSlotBaseFunctionForGetterSetter(exec, propertyName, slot, getterSetter, JSBoundSlotBaseFunction::Type::Setter));
+    } else
         descriptor.setDescriptor(slot.getValue(exec, propertyName), slot.attributes());
     return true;
 }

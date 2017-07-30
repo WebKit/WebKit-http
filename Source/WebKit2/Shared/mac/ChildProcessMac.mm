@@ -41,10 +41,8 @@
 #import <wtf/cf/TypeCastsCF.h>
 #import <wtf/spi/darwin/SandboxSPI.h>
 
-#ifdef __has_include
-#if __has_include(<HIServices/ProcessesPriv.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <HIServices/ProcessesPriv.h>
-#endif
 #endif
 
 typedef bool (^LSServerConnectionAllowedBlock) ( CFDictionaryRef optionsRef );
@@ -98,39 +96,40 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
     String defaultProfilePath = [webkit2Bundle pathForResource:[[NSBundle mainBundle] bundleIdentifier] ofType:@"sb"];
 
     if (sandboxParameters.userDirectorySuffix().isNull()) {
-        auto userDirectorySuffix = parameters.extraInitializationData.find("user-directory-suffix");
-        if (userDirectorySuffix != parameters.extraInitializationData.end())
-            sandboxParameters.setUserDirectorySuffix([makeString(userDirectorySuffix->value, '/', String([[NSBundle mainBundle] bundleIdentifier])) fileSystemRepresentation]);
-        else {
-            String clientIdentifierToUse;
-            RetainPtr<SecCodeRef> code = findSecCodeForProcess(xpc_connection_get_pid(parameters.connectionIdentifier.xpcConnection.get()));
+        if (const OSObjectPtr<xpc_connection_t>& xpcConnection = parameters.connectionIdentifier.xpcConnection) {
+            pid_t clientProcessID = xpc_connection_get_pid(xpcConnection.get());
+            RetainPtr<SecCodeRef> code = findSecCodeForProcess(clientProcessID);
             RELEASE_ASSERT(code);
 
             CFStringRef appleSignedOrMacAppStoreSignedOrAppleDeveloperSignedRequirement = CFSTR("(anchor apple) or (anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.9]) or (anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] and certificate leaf[field.1.2.840.113635.100.6.1.13])");
-            SecRequirementRef signingRequirement;
+            SecRequirementRef signingRequirement = nullptr;
             OSStatus status = SecRequirementCreateWithString(appleSignedOrMacAppStoreSignedOrAppleDeveloperSignedRequirement, kSecCSDefaultFlags, &signingRequirement);
             RELEASE_ASSERT(status == errSecSuccess);
 
             status = SecCodeCheckValidity(code.get(), kSecCSDefaultFlags, signingRequirement);
             if (status == errSecSuccess) {
+                String clientIdentifierToUse;
                 CFDictionaryRef signingInfo = nullptr;
-                if (!SecCodeCopySigningInformation(code.get(), kSecCSDefaultFlags, &signingInfo)) {
-                    if (CFDictionaryRef plist = dynamic_cf_cast<CFDictionaryRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoPList)))
-                        clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(plist, kCFBundleIdentifierKey)));
-                    else
-                        clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoIdentifier)));
-                    CFRelease(signingInfo);
-                }
+                status = SecCodeCopySigningInformation(code.get(), kSecCSDefaultFlags, &signingInfo);
+                RELEASE_ASSERT(status == errSecSuccess);
+                if (CFDictionaryRef plist = dynamic_cf_cast<CFDictionaryRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoPList)))
+                    clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(plist, kCFBundleIdentifierKey)));
+                else
+                    clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoIdentifier)));
+                CFRelease(signingInfo);
+                RELEASE_ASSERT(!clientIdentifierToUse.isEmpty());
+                sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', clientIdentifierToUse));
             } else {
                 // Unsigned, signed by a third party, or has an invalid/malformed signature
-                clientIdentifierToUse = parameters.clientIdentifier;
+                auto userDirectorySuffix = parameters.extraInitializationData.find("user-directory-suffix");
+                if (userDirectorySuffix != parameters.extraInitializationData.end())
+                    sandboxParameters.setUserDirectorySuffix([makeString(userDirectorySuffix->value, '/', String([[NSBundle mainBundle] bundleIdentifier])) fileSystemRepresentation]);
+                sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier));
             }
             CFRelease(signingRequirement);
-            if (clientIdentifierToUse.isEmpty()) {
-                WTFLogAlways("%s: Couldn't get code signed identifier for client: %d\n", getprogname(), status);
-                exit(EX_NOPERM);
-            }
-            sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', clientIdentifierToUse));
+        } else {
+            // Legacy client
+            sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier));
         }
     }
 

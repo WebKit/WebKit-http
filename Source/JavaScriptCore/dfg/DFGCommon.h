@@ -37,7 +37,7 @@ namespace JSC { namespace DFG {
 
 // We are in the middle of a transition from LLVM to B3 as the backend for the FTL. This flag will go
 // away once that transition is finished. For now, we enable B3 only on some platforms.
-#if CPU(X86_64) && PLATFORM(MAC)
+#if CPU(X86_64) && ENABLE(FTL_JIT)
 #define FTL_USES_B3 1
 #else
 #define FTL_USES_B3 0
@@ -82,9 +82,11 @@ inline bool logCompilationChanges(CompilationMode mode = DFGMode)
     return verboseCompilationEnabled(mode) || Options::logCompilationChanges();
 }
 
-inline bool shouldDumpGraphAtEachPhase()
+inline bool shouldDumpGraphAtEachPhase(CompilationMode mode)
 {
-    return Options::dumpGraphAtEachPhase();
+    if (isFTL(mode))
+        return Options::dumpGraphAtEachPhase() || Options::dumpDFGFTLGraphAtEachPhase();
+    return Options::dumpGraphAtEachPhase() || Options::dumpDFGGraphAtEachPhase();
 }
 
 inline bool validationEnabled()

@@ -717,15 +717,15 @@
 - path: es6/Array_is_subclassable_Array.of.js
   cmd: runES6 :normal
 - path: es6/Array_is_subclassable_Array.prototype.concat.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Array_is_subclassable_Array.prototype.filter.js
   cmd: runES6 :fail
 - path: es6/Array_is_subclassable_Array.prototype.map.js
   cmd: runES6 :fail
 - path: es6/Array_is_subclassable_Array.prototype.slice.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Array_is_subclassable_Array.prototype.splice.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Array_is_subclassable_correct_prototype_chain.js
   cmd: runES6 :normal
 - path: es6/Array_static_methods_Array.from_generator_instances.js
@@ -793,7 +793,7 @@
 - path: es6/function_name_property_accessor_properties.js
   cmd: runES6 :fail
 - path: es6/function_name_property_bound_functions.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/function_name_property_class_expressions.js
   cmd: runES6 :fail
 - path: es6/function_name_property_class_statements.js
@@ -1195,15 +1195,15 @@
 - path: es6/well-known_symbols_Symbol.search.js
   cmd: runES6 :fail
 - path: es6/well-known_symbols_Symbol.species_Array.prototype.concat.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.species_Array.prototype.filter.js
   cmd: runES6 :fail
 - path: es6/well-known_symbols_Symbol.species_Array.prototype.map.js
   cmd: runES6 :fail
 - path: es6/well-known_symbols_Symbol.species_Array.prototype.slice.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.species_Array.prototype.splice.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.species_existence.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.species_RegExp.prototype[Symbol.split].js
@@ -1216,3 +1216,9 @@
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.toStringTag_misc._built-ins.js
   cmd: runES6 :normal
+# Late-stage proposals for a future ECMAScript standard
+# FIXME: move these to a new directory?
+- path: es6/Object_static_methods_Object.getOwnPropertyDescriptors.js
+  cmd: runES6 :normal
+- path: es6/Object_static_methods_Object.getOwnPropertyDescriptors-proxy.js
+  cmd: runES6 :fail

@@ -142,7 +142,7 @@ enum class DynamicViewportUpdateMode {
     ResizingWithDocumentHidden,
 };
 
-#if __has_include(<WebKitAdditions/RemoteLayerBackingStoreAdditions.mm>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/RemoteLayerBackingStoreAdditions.mm>
 #else
 
@@ -3356,6 +3356,16 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 - (void)_setGapBetweenPages:(CGFloat)gapBetweenPages
 {
     _page->setGapBetweenPages(gapBetweenPages);
+}
+
+- (BOOL)_paginationLineGridEnabled
+{
+    return _page->paginationLineGridEnabled();
+}
+
+- (void)_setPaginationLineGridEnabled:(BOOL)lineGridEnabled
+{
+    _page->setPaginationLineGridEnabled(lineGridEnabled);
 }
 
 - (NSUInteger)_pageCount

@@ -42,7 +42,7 @@ namespace WebKit {
 
 class NetworkLoad
 #if USE(NETWORK_SESSION)
-    : public NetworkSessionTaskClient
+    : public NetworkDataTaskClient
 #else
     : public WebCore::ResourceHandleClient
 #endif
@@ -74,6 +74,8 @@ public:
     virtual void didCompleteWithError(const WebCore::ResourceError&) final override;
     virtual void didBecomeDownload() final override;
     virtual void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) override;
+    virtual void wasBlocked() override;
+    virtual void cannotShowURL() override;
 #else
     // ResourceHandleClient
     virtual void willSendRequestAsync(WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse) override;
@@ -122,14 +124,14 @@ private:
 
     NetworkLoadClient& m_client;
     const NetworkLoadParameters m_parameters;
-    RefPtr<RemoteNetworkingContext> m_networkingContext;
 #if USE(NETWORK_SESSION)
-    std::unique_ptr<NetworkDataTask> m_task;
+    RefPtr<NetworkDataTask> m_task;
     WebCore::AuthenticationChallenge m_challenge;
     ChallengeCompletionHandler m_challengeCompletionHandler;
     ResponseCompletionHandler m_responseCompletionHandler;
     RedirectCompletionHandler m_redirectCompletionHandler;
 #else
+    RefPtr<RemoteNetworkingContext> m_networkingContext;
     RefPtr<WebCore::ResourceHandle> m_handle;
 #endif
 

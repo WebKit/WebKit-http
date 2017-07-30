@@ -77,9 +77,11 @@
 namespace JSC {
 
 class BuiltinExecutables;
+class BytecodeIntrinsicRegistry;
 class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
+class CustomGetterSetter;
 class ExecState;
 class Exception;
 class HandleStack;
@@ -87,6 +89,7 @@ class TypeProfiler;
 class TypeProfilerLog;
 class Identifier;
 class Interpreter;
+class JSBoundSlotBaseFunction;
 class JSGlobalObject;
 class JSObject;
 class LLIntOffsetsExtractor;
@@ -334,6 +337,7 @@ public:
     NumericStrings numericStrings;
     DateInstanceCache dateInstanceCache;
     WTF::SimpleStats machineCodeBytesPerBytecodeWordForBaselineJIT;
+    WeakGCMap<std::pair<CustomGetterSetter*, int>, JSBoundSlotBaseFunction> customGetterSetterFunctionMap;
     WeakGCMap<StringImpl*, JSString, PtrHash<StringImpl*>> stringCache;
     Strong<JSString> lastCachedString;
 
@@ -570,6 +574,7 @@ public:
     JS_EXPORT_PRIVATE void whenIdle(std::function<void()>);
 
     JS_EXPORT_PRIVATE void deleteAllCode();
+    JS_EXPORT_PRIVATE void deleteAllCodeExceptCaches();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
     
@@ -596,6 +601,11 @@ public:
     ALWAYS_INLINE bool shouldRewriteConstAsVar() { return m_shouldRewriteConstAsVar; }
 
     inline bool shouldTriggerTermination(ExecState*);
+
+    void setShouldBuildPCToCodeOriginMapping() { m_shouldBuildPCToCodeOriginMapping = true; }
+    bool shouldBuilderPCToCodeOriginMapping() const { return m_shouldBuildPCToCodeOriginMapping; }
+
+    BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() { return *m_bytecodeIntrinsicRegistry; }
 
 private:
     friend class LLIntOffsetsExtractor;
@@ -648,6 +658,7 @@ private:
     bool m_failNextNewCodeBlock { false };
     bool m_inDefineOwnProperty;
     bool m_shouldRewriteConstAsVar { false };
+    bool m_shouldBuildPCToCodeOriginMapping { false };
     std::unique_ptr<CodeCache> m_codeCache;
     LegacyProfiler* m_enabledProfiler;
     std::unique_ptr<BuiltinExecutables> m_builtinExecutables;
@@ -664,6 +675,7 @@ private:
 #if ENABLE(SAMPLING_PROFILER)
     RefPtr<SamplingProfiler> m_samplingProfiler;
 #endif
+    std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 };
 
 #if ENABLE(GC_VALIDATION)

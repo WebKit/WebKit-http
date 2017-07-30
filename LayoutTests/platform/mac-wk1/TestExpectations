@@ -64,8 +64,6 @@ webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeou
 
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 
-webkit.org/b/153438 imported/w3c/indexeddb/keyorder-private.html [ Pass Failure ]
-
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -253,29 +251,16 @@ inspector/script-profiler/event-type-API.html
 ########################################
 ### START OF (3) IndexedDB failures with SQLite
 
-# SQLite backend tests with text failures
+# Completes with passing results, but too slowly for our test timeouts.
 imported/w3c/indexeddb/idbindex-multientry-big.htm [ Failure ]
-storage/indexeddb/cursor-continue-validity.html [ Failure ]
-storage/indexeddb/cursor-primary-key-order.html [ Failure ]
-storage/indexeddb/get-keyrange.html [ Failure ]
-storage/indexeddb/modern/get-keyrange.html [ Failure ]
-storage/indexeddb/modern/index-3.html [ Failure ]
+imported/w3c/indexeddb/idbcursor_iterating.htm [ Failure ]
 
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
 storage/indexeddb/modern/transaction-scheduler-2.html [ Skip ]
 storage/indexeddb/modern/transaction-scheduler-5.html [ Skip ]
 storage/indexeddb/modern/transaction-scheduler-6.html [ Skip ]
-storage/indexeddb/prefetch-invalidation.html [ Skip ]
 storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
-
-# SQLite backend tests that crash or ASSERT
-storage/indexeddb/database-odd-names.html [ Skip ]
-storage/indexeddb/odd-strings.html [ Skip ]
-
-# SQLite backend tests that wedge the entire testing harness
-imported/w3c/indexeddb/keyorder.htm [ Skip ]
-storage/indexeddb/key-type-array.html [ Skip ]
 
 ### END OF (3) IndexedDB failures with SQLite
 ########################################

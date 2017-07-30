@@ -34,7 +34,6 @@
 #import "NetworkProcess.h"
 #import "SessionTracker.h"
 #import <Foundation/NSURLSession.h>
-#import <WebCore/AuthenticationChallenge.h>
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Credential.h>
 #import <WebCore/FrameLoaderTypes.h>
@@ -45,6 +44,7 @@
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/URL.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -233,12 +233,15 @@ NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID)
         if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
             configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
     }
-    m_session = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
+    m_sessionWithCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
+    configuration.URLCredentialStorage = nil;
+    m_sessionWithoutCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
 }
 
 NetworkSession::~NetworkSession()
 {
-    [m_session invalidateAndCancel];
+    [m_sessionWithCredentialStorage invalidateAndCancel];
+    [m_sessionWithoutCredentialStorage invalidateAndCancel];
 }
 
 NetworkDataTask* NetworkSession::dataTaskForIdentifier(NetworkDataTask::TaskIdentifier taskIdentifier)
@@ -268,66 +271,6 @@ DownloadID NetworkSession::takeDownloadID(NetworkDataTask::TaskIdentifier taskId
     auto downloadID = m_downloadMap.take(taskIdentifier);
     ASSERT(downloadID.downloadID());
     return downloadID;
-}
-
-NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkSessionTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials)
-    : m_session(session)
-    , m_client(client)
-{
-    ASSERT(isMainThread());
-
-    auto request = requestWithCredentials;
-    m_user = request.url().user();
-    m_password = request.url().pass();
-    request.removeCredentials();
-    
-    m_task = [m_session.m_session dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)];
-    
-    ASSERT(!m_session.m_dataTaskMap.contains(taskIdentifier()));
-    m_session.m_dataTaskMap.add(taskIdentifier(), this);
-}
-
-NetworkDataTask::~NetworkDataTask()
-{
-    ASSERT(m_session.m_dataTaskMap.contains(taskIdentifier()));
-    ASSERT(m_session.m_dataTaskMap.get(taskIdentifier()) == this);
-    ASSERT(isMainThread());
-    m_session.m_dataTaskMap.remove(taskIdentifier());
-}
-
-bool NetworkDataTask::tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge& challenge, ChallengeCompletionHandler completionHandler)
-{
-    if (!challenge.protectionSpace().isPasswordBased())
-        return false;
-
-    if (!m_user.isNull() && !m_password.isNull()) {
-        completionHandler(AuthenticationChallengeDisposition::UseCredential, WebCore::Credential(m_user, m_password, WebCore::CredentialPersistenceForSession));
-        m_user = String();
-        m_password = String();
-        return true;
-    }
-
-    return false;
-}
-    
-void NetworkDataTask::cancel()
-{
-    [m_task cancel];
-}
-
-void NetworkDataTask::resume()
-{
-    [m_task resume];
-}
-
-void NetworkDataTask::suspend()
-{
-    [m_task suspend];
-}
-    
-auto NetworkDataTask::taskIdentifier() -> TaskIdentifier
-{
-    return [m_task taskIdentifier];
 }
 
 }

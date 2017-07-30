@@ -71,6 +71,9 @@ WebInspector.Setting = class Setting extends WebInspector.Object
 
     set value(value)
     {
+        if (this._value === value)
+            return;
+
         this._value = value;
 
         if (!window.InspectorTest && window.localStorage) {
@@ -86,6 +89,12 @@ WebInspector.Setting = class Setting extends WebInspector.Object
         }
 
         this.dispatchEventToListeners(WebInspector.Setting.Event.Changed, this._value, {name: this._name});
+    }
+
+    reset()
+    {
+        // Make a copy of the default value so changes to object values don't modify the default value.
+        this.value = JSON.parse(JSON.stringify(this._defaultValue));
     }
 };
 

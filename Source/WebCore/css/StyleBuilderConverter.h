@@ -126,6 +126,17 @@ public:
     static EGlyphOrientation convertGlyphOrientationOrAuto(StyleResolver&, CSSValue&);
     static Optional<Length> convertLineHeight(StyleResolver&, CSSValue&, float multiplier = 1.f);
     static FontSynthesis convertFontSynthesis(StyleResolver&, CSSValue&);
+    
+    static BreakBetween convertPageBreakBetween(StyleResolver&, CSSValue&);
+    static BreakInside convertPageBreakInside(StyleResolver&, CSSValue&);
+    static BreakBetween convertColumnBreakBetween(StyleResolver&, CSSValue&);
+    static BreakInside convertColumnBreakInside(StyleResolver&, CSSValue&);
+#if ENABLE(CSS_REGIONS)
+    static BreakBetween convertRegionBreakBetween(StyleResolver&, CSSValue&);
+    static BreakInside convertRegionBreakInside(StyleResolver&, CSSValue&);
+#endif
+    
+    static HangingPunctuation convertHangingPunctuation(StyleResolver&, CSSValue&);
 
 private:
     friend class StyleBuilderCustom;
@@ -1211,6 +1222,72 @@ FontSynthesis StyleBuilderConverter::convertFontSynthesis(StyleResolver&, CSSVal
         }
     }
 
+    return result;
+}
+
+inline BreakBetween StyleBuilderConverter::convertPageBreakBetween(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAlways)
+        return PageBreakBetween;
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidPageBreakBetween;
+    return primitiveValue;
+}
+
+inline BreakInside StyleBuilderConverter::convertPageBreakInside(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidPageBreakInside;
+    return primitiveValue;
+}
+
+inline BreakBetween StyleBuilderConverter::convertColumnBreakBetween(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAlways)
+        return ColumnBreakBetween;
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidColumnBreakBetween;
+    return primitiveValue;
+}
+
+inline BreakInside StyleBuilderConverter::convertColumnBreakInside(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidColumnBreakInside;
+    return primitiveValue;
+}
+
+#if ENABLE(CSS_REGIONS)
+inline BreakBetween StyleBuilderConverter::convertRegionBreakBetween(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAlways)
+        return RegionBreakBetween;
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidRegionBreakBetween;
+    return primitiveValue;
+}
+
+inline BreakInside StyleBuilderConverter::convertRegionBreakInside(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueAvoid)
+        return AvoidRegionBreakInside;
+    return primitiveValue;
+}
+#endif
+
+inline HangingPunctuation StyleBuilderConverter::convertHangingPunctuation(StyleResolver&, CSSValue& value)
+{
+    HangingPunctuation result = RenderStyle::initialHangingPunctuation();
+    if (is<CSSValueList>(value)) {
+        for (auto& currentValue : downcast<CSSValueList>(value))
+            result |= downcast<CSSPrimitiveValue>(currentValue.get());
+    }
     return result;
 }
 

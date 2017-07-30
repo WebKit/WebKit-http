@@ -159,6 +159,11 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         return (contentView instanceof WebInspector.TimelineView) ? contentView : null;
     }
 
+    get timelineOverviewHeight()
+    {
+        return this._currentTimelineOverview.height;
+    }
+
     shown()
     {
         this._currentTimelineOverview.shown();
@@ -319,17 +324,6 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         return true;
     }
 
-    // Protected
-
-    layout()
-    {
-        this._currentTimelineOverview.updateLayoutForResize();
-
-        let currentContentView = this._contentViewContainer.currentContentView;
-        if (currentContentView && currentContentView.updateLayoutForResize)
-            currentContentView.updateLayoutForResize();
-    }
-
     // Private
 
     _currentContentViewDidChange(event)
@@ -347,9 +341,9 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             this.replaceSubview(this._currentTimelineOverview, newTimelineOverview);
 
             this._currentTimelineOverview = newTimelineOverview;
-            this._currentTimelineOverview.shown();
 
             this._updateTimelineOverviewHeight();
+            this._currentTimelineOverview.shown();
         }
 
         if (timelineView) {
@@ -560,21 +554,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
     _updateTimelineOverviewHeight()
     {
         const rulerHeight = 29;
-        const timelineHeight = 36;
-        const renderingFramesTimelineHeight = 108;
-
-        let overviewHeight;
-        if (this.currentTimelineView && this.currentTimelineView.representedObject.type === WebInspector.TimelineRecord.Type.RenderingFrame)
-            overviewHeight = renderingFramesTimelineHeight;
-        else {
-            let timelineCount = this._timelineViewMap.size;
-            if (this._renderingFrameTimeline)
-                timelineCount--;
-
-            overviewHeight = timelineCount * timelineHeight;
-        }
-
-        let styleValue = (overviewHeight + rulerHeight) + "px";
+        
+        let styleValue = (rulerHeight + this.timelineOverviewHeight) + "px";
         this._currentTimelineOverview.element.style.height = styleValue;
         this._contentViewContainer.element.style.top = styleValue;
     }

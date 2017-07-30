@@ -33,6 +33,11 @@
 #include <OS.h>
 #endif
 
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
+#include <semaphore.h>
+#include <signal.h>
+#endif
+
 #if OS(DARWIN)
 typedef mach_port_t PlatformThread;
 #elif OS(WINDOWS)
@@ -76,6 +81,7 @@ public:
 #if ENABLE(SAMPLING_PROFILER)
             void* framePointer() const;
             void* instructionPointer() const;
+            void* llintPC() const;
 #endif // ENABLE(SAMPLING_PROFILER)
             
 #if OS(DARWIN)
@@ -100,7 +106,10 @@ public:
 #elif OS(HAIKU)
             typedef thread_info PlatformRegisters;
 #elif USE(PTHREADS)
-            typedef pthread_attr_t PlatformRegisters;
+            struct PlatformRegisters {
+                pthread_attr_t attribute;
+                mcontext_t machineContext;
+            };
 #else
 #error Need a thread register struct for this platform
 #endif
@@ -123,6 +132,11 @@ public:
         void* stackEnd;
 #if OS(WINDOWS)
         HANDLE platformThreadHandle;
+#elif USE(PTHREADS) && !OS(DARWIN)
+        sem_t semaphoreForSuspendResume;
+        mcontext_t suspendedMachineContext;
+        int suspendCount { 0 };
+        std::atomic<bool> suspended { false };
 #endif
     };
 

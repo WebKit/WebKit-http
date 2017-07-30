@@ -1,3 +1,477 @@
+2016-02-08  Jon Lee  <jonlee@apple.com>
+
+        Address Said's comments on the benchmark, and do some clean up.
+
+        * Animometer/developer.html:
+        * Animometer/resources/debug-runner/animometer.css: Add styles for averages.
+        * Animometer/resources/debug-runner/animometer.js: Use the right
+        Strings constants.
+        * Animometer/resources/debug-runner/graph.js:
+        (_addRegressionLine): Add missing code to draw the line and standard
+        deviation highlight.
+        (onGraphTypeChanged): Remove unneeded variables
+        (onTimeGraphOptionsChanged):
+        * Animometer/resources/runner/benchmark-runner.js:
+        (_runBenchmarkAndRecordResults): Rename samplers to suiteResults and
+        _suitesSamplers to _suitesResults.
+        * Animometer/tests/resources/main.js:
+        (results): Call processSamples().
+        (update): Change sampling timestamp comparison.
+        (_animateLoop): Move shouldStop call to before the update.
+        * Animometer/tests/resources/sampler.js:
+        (process): Rename to processSamples().
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Teach Controller to measure intervals, and turn off the frame length estimator.
+
+        * Animometer/tests/resources/main.js: Default interval length is 100 ms.
+        (start): Set the first interval.
+        (_measureAndResetInterval): Reports the average frame length of the interval that just
+        completed, and sets up the next interval.
+        (update): If there is no length, then just use the estimator per frame, otherwise the
+        estimator measures per interval. Add a didFinishInterval for subclasses to process
+        prior to recording the sample. Update tune() to include whether an interval had
+        finished.
+        (StepController): Step controllers don't measure on an interval basis.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Minor refactoring. Rename Controller._estimator to Controller._frameLengthEstimator
+        and switch the parameters for start(), update(), and tune(), so that the timestamp
+        is first and stage is second.
+
+        * Animometer/tests/resources/main.js:
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Move ResultsTable functionality not needed for release tests out.
+        Move reporting of score and mean to selection of the time-based graph.
+
+        * Animometer/developer.html: Rename graph-options to time-graph-options.
+        * Animometer/resources/debug-runner/animometer.js:
+        (DeveloperResultsTable): Moved from runner/animometer.js. Switch from mean
+        values to "average" objects which can hold stdev. Move graph button and
+        calculation of noisy measurements here. Sophisticated header processing
+        is not needed in release suite.
+        (populateTable): Use DeveloperResultsTable.
+        * Animometer/resources/debug-runner/graph.js: Pull time graph creation to
+        its own function, and add a new onGraphTypeChanged handler in preparation
+        of a complexity graph to be added later.
+        * Animometer/resources/runner/animometer.js:
+        (ResultsTable): Simplify to just handle test names and scores.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Tests: reuse objects already made.
+
+        Avoid thrash of object creation and removal by maintaining an index that
+        moves along the array as the adjust values change. If the tune value
+        requires more objects than the maximum size of the object array, then create
+        new objects. This means that the object array size never decreases.
+
+        * Animometer/tests/master/resources/canvas-stage.js: Maintain a separate
+        offsetIndex. For these tests, we want to avoid drawing the oldest objects,
+        so the scene will draw the object at offsetIndex to the end of the array.
+        (tune): Reverse the logic since "removal" of objects is much simpler and
+        involves simply changing the offsetIndex.
+        (animate): Update the for loop to draw from offsetIndex to the end.
+        (complexity): Update the definition.
+        * Animometer/tests/master/resources/canvas-tests.js: Maintain a separate
+        offsetIndex. For these tests, we want to avoid drawing the newest objects,
+        so the scene will draw the object at index 0 to the object at offsetIndex.
+        (SimpleCanvasStage.animate): Fly-by removal of local stage variable,
+        which is unneeded. Update the for loop to draw from offsetIndex to the end.
+        * Animometer/tests/simple/resources/simple-canvas-paths.js:
+        (SimpleCanvasStage.animate): Update the for loop to draw from 0 to
+        offsetIndex.
+        * Animometer/tests/simple/resources/simple-canvas.js:
+        (tune): Update logic. Here, offsetIndex represents the boundary of the last
+        index to render.
+        (animate): Update the for loop to draw from 0 to offsetIndex.
+        (complexity): Update the definition.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Tests: refactor and update styles.
+
+        * Animometer/tests/resources/main.js: Add helper methods that return
+        a color that hue rotates based on the date, and a counter value that
+        increases based on the date. Fix randomInt() to not bias against the min and
+        max values.
+
+        * Animometer/tests/master/resources/canvas-tests.js: Use new helper methods.
+        * Animometer/tests/master/resources/dom-particles.js: Ditto.
+        * Animometer/tests/master/resources/particles.js: Ditto.
+        * Animometer/tests/simple/resources/simple-canvas-paths.js: Refactor to
+        use a rotating color instead of a random color. The fast switching of color
+        is too vivid to watch.
+
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-shapes.js:
+        (BouncingSvgParticlesStage.call.createGradient): Fix the gradient so
+        that the last stop is located at the end.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Refactor tune() to not return the complexity of the scene.
+
+        We have stage.complexity() now, so returning the complexity through tune
+        is unnecessary.
+
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        * Animometer/tests/master/resources/canvas-stage.js:
+        * Animometer/tests/master/resources/particles.js:
+        * Animometer/tests/misc/resources/canvas-electrons.js:
+        * Animometer/tests/misc/resources/canvas-stars.js:
+        * Animometer/tests/resources/main.js:
+        * Animometer/tests/simple/resources/simple-canvas.js:
+        * Animometer/tests/simple/resources/tiled-canvas-image.js:
+        * Animometer/tests/template/resources/template-canvas.js:
+        * Animometer/tests/template/resources/template-css.js:
+        * Animometer/tests/template/resources/template-svg.js:
+        * Animometer/tests/text/resources/layering-text.js:
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Make the fixed controller a step controller instead. Halfway through the test
+        it will bump up the complexity 4-fold. Calculate the step timestamp using options
+        instead of a separate parameter to the Controller constructor.
+
+        * Animometer/developer.html: Change value to "step"
+        * Animometer/resources/debug-runner/animometer.js:
+        (window.suitesManager.updateEditsElementsState): Show number inputs when set to "step".
+        * Animometer/tests/resources/main.js:
+        (update): Provide a hook for subclasses to tune.
+        (StepController): Maintain a flag determining whether we've stepped, and the time
+        we should step.
+        (Benchmark): Use the new StepController.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Adjust the FPS graph scale.
+
+        Instead of making the FPS graph linearly scale, scale it based on the frame length,
+        but show the data in terms of FPS. Because it is inversely proportional, and most
+        of the data never gets below 20, concentrate the axis from 20-60 FPS, since otherwise
+        over half of the available graph space ends up blank.
+
+        This means we should convert all of the FPS data to frame length data.
+
+        * Animometer/resources/debug-runner/graph.js: Update the domain to be based on
+        frame length in milliseconds instead of FPS. Update the cursor to consider all of the
+        values being shown, and then pick the min and max values to represent the length of the
+        cursor.
+        * Animometer/resources/runner/animometer.js:
+        * Animometer/resources/strings.js:
+        * Animometer/tests/resources/main.js:
+        (processSamples): Add the ability to only sample a range of the data instead of everything
+        after an offset index. Update sampler to record the frame lengths instead of the frame
+        rate.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Add option to use different methods for retrieving a timestamp.
+
+        * Animometer/developer.html: Add performance.now and Date.now options.
+        * Animometer/resources/runner/animometer.js: Default to performance.now.
+        (window.benchmarkController.startBenchmark):
+        * Animometer/tests/resources/main.js: Tie the desired method to _getTimestamp.
+        (run): Use _getTimestamp.
+        (_animateLoop): Ditto.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Allow adding any number of markers to the graph. The markers can be labeled
+        and contain timestamp and sample index data. Make it a part of the controller
+        rather than keeping it in the sampler.
+
+        * Animometer/resources/debug-runner/animometer.css: Add styles for markers
+        * Animometer/resources/debug-runner/graph.js: Create the markers and add
+        text labels.
+        * Animometer/resources/runner/animometer.js: Assume the samplingTimeOffset
+        is just one of the marks provided.
+        * Animometer/resources/strings.js: Add Strings.json.marks.
+        * Animometer/tests/resources/main.js:
+        (Controller): Keep marks here. They are keyed by the marker name, so no two
+        markers should have the same name.
+        (recordFirstSample): Refactor to use mark.
+        (mark): Allows for arbitrary data if needed later. The timestamp maintained
+        is relative to the absolute start timestamp.
+        (containsMark): Checks whether a mark with a specific comment exists.
+        (processSamples): Removes the _startTimestamp offset from the marks before
+        setting it in results.
+        * Animometer/tests/resources/sampler.js: Remove marks.
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Get rid of options member variable in Benchmark.
+
+        Options are only needed when initializing the stage or benchmark, so there's no
+        need to also keep a reference to it.
+
+        * Animometer/tests/resources/main.js: Get rid of options variable in Benchmark.
+        Pass options to Controllers and Stages.
+        (Controller.Utilities.createClass):
+        (Benchmark.Utilities.createClass):
+        (get options): Deleted.
+
+        * Animometer/tests/bouncing-particles/resources/bouncing-canvas-images.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-canvas-particles.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-canvas-shapes.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-css-images.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-css-shapes.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-images.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-shapes.js:
+        * Animometer/tests/master/resources/canvas-stage.js:
+        * Animometer/tests/master/resources/canvas-tests.js:
+        * Animometer/tests/master/resources/particles.js:
+        * Animometer/tests/misc/resources/canvas-electrons.js:
+        * Animometer/tests/misc/resources/canvas-stars.js:
+        * Animometer/tests/misc/resources/compositing-transforms.js:
+        * Animometer/tests/simple/resources/simple-canvas-paths.js:
+        * Animometer/tests/simple/resources/tiled-canvas-image.js:
+        * Animometer/tests/template/resources/template-canvas.js:
+        * Animometer/tests/template/resources/template-css.js:
+        * Animometer/tests/template/resources/template-svg.js:
+        * Animometer/tests/text/resources/layering-text.js:
+
+2016-02-07  Jon Lee  <jonlee@apple.com>
+
+        Update how the benchmark is run
+        https://bugs.webkit.org/show_bug.cgi?id=153960
+
+        Provisionally reviewed by Said Abou-Hallawa.
+
+        Introduce the notion of a Controller. It is responsible for recording, updating,
+        and processing the statistics and complexity of the benchmark. This allows
+        plugging in different Controllers.
+
+        This strips most of the functionality from Animator and BenchmarkState, so fold
+        what's left into Benchmark. Now, Benchmarks only own a stage and a controller, but
+        are responsible for driving the animation loop.
+
+        Rewrite Animator._shouldRequestAnotherFrame into two different Controllers. One
+        maintains a fixed complexity, and the other adapts the complexity to meet a
+        fixed FPS.
+
+        Fix the Kalman estimator to be modeled on a scalar variable with no model.
+
+        * Animometer/tests/resources/main.js: Remove BenchmarkState and Animator, and
+        replace it with a Controller. Add a FixedController and refactor the previous controller
+        to an AdaptiveController.
+
+        (Controller): Controllers own the estimator and the sampler. When a new frame is
+        displayed, the animation loop calls update(). The estimator and sampler record
+        stats, then tune. Samplers can track multiple series of data. The basic controller
+        tracks timestamp, complexity, and estimated frame rate.
+                The Kalman estimation is based on the frame length rather than the frame
+        rate. Because FPS is inverse proportional to frame length, in the case where the measured
+        frame length is very small, the FPS ends up being a wildly large number (in the order of
+        600-1000 "FPS"), and it pulls the estimator up drastically enough that it takes a while
+        for it to settle back down. Using frame length reduces the impact of these spikes.
+                Converging the estimation takes enough time to avoid initializing it immediately
+        when the benchmark starts. Instead, the benchmark runs for a brief period of time (100ms)
+        before running it in earnest. Allow controllers an opportunity to set the complexity
+        before starting recording.
+                When the benchmark is complete, the controller has an opportunity to process
+        the samples. The default implementation calculates the raw FPS based on the time
+        difference of the samples, and calculates the complexity score. This is moved from
+        Benchmark.processSamples.
+
+        (Controller): Initialize timestamps. These are at first relative to the start of the
+        benchmark, but are offset by the absolute start time during start(). By default maintain
+        3 data series, but subclasses can override.
+        (start): Calls recordFirstSample() for subclasses to override if needed.
+        (recordFirstSample): For basic controller, start sampling at the beginning.
+        (update): Update the frame length estimator and sample.
+        (shouldStop): Checks that the time is before _endTimestamp.
+        (results): Returns the processed samples.
+        (processSamples): Iterate through the sample data and collate them. Include scores.
+
+        (FixedComplexityController): Controller that tunes the stage to the desired complexity
+        prior to starting, and keeps it at that complexity.
+
+        (AdaptiveController): Have the estimator estimate the interval frame rate instead of the
+        raw frame rate.
+                The previous version of this controller ignored the frame that came after the
+        adjustment. The raw FPS show that whatever noise the scene change adds is negligible
+        compared to the noise of the system overall. Stop ignoring that frame and include all
+        frames in the measurements.
+
+        (Benchmark): Remove dependency on animator, and instantiate a runner based on what is
+        selected. Most of the loop's functionality is in Controller, so remove here.
+        (Benchmark.run): Remove start() since it is only called from run(), and fold it in here.
+        (Benchmark._animateLoop): Fold in from Animator.animateLoop. Let the benchmark run for
+        a brief period before calling Controller.start().
+
+        * Animometer/tests/resources/math.js: Fix the Kalman estimator. The filter estimates
+        a scalar variable, and makes basic assumptions regarding the model. As a result
+        none of the linear algebra classes are needed, so remove Matrix, Vector3, and Matrix3.
+        (SimpleKalmanEstimator): Calculate the gain based on the provided process and
+        measurement errors.
+        (KalmanEstimator): Deleted.
+        (IdentityEstimator): Deleted.
+        (PIDController): Refactor to use the Utilities.createClass() helper.
+
+        The Kalman filter algorithm is explained here http://greg.czerniak.info/guides/kalman1/.
+        The state, represented by a scalar, is the estimated frame length. There is no user
+        transition of the state, and the state is the same as the measurement. With this model,
+        the estimation error converges, so calculate the gain ahead of time.
+
+        * Animometer/developer.html: Remove fixed-after-warmup since it is not useful.
+        Replace the option to toggle the estimator, and make it possible to customize the
+        estimator's error parameters. Show raw FPS by default, and remove interval FPS,
+        which will be shown instead of the filtered raw FPS.
+        * Animometer/resources/debug-runner/animometer.css: Put the header behind the graph.
+        Remove #intervalFPS rules; move the color to #filteredFPS.
+        * Animometer/resources/debug-runner/graph.js:
+        (updateGraphData): Update the hr style to force the layout to be calculated
+        correctly. Change the tick format to be in terms of seconds, since the timestamps
+        are in milliseconds. Remove interval data.
+        * Animometer/resources/runner/animometer.js:
+        (window.benchmarkController.startBenchmark): Set Kalman parameters.
+        * Animometer/resources/runner/benchmark-runner.js:
+        (_runBenchmarkAndRecordResults): When a benchmark completes, expect it to return
+        the final data, rather than passing a sampler from the controller. This avoids
+        needing to expose the sampler variable in the benchmark.
+        * Animometer/tests/resources/sampler.js:
+        (process): Move the setting of the target frame rate to AdaptiveController.
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Code clean up: Move Rotater function closer to Stage static methods.
+        The Rotater is used together with those methods; keep them close.
+
+        * Animometer/tests/resources/main.js:
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Update the JS includes due to ResultsTable move.
+
+        * Animometer/developer.html:
+        * Animometer/index.html:
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Move createElement and createSVGElement to Utilities.
+
+        * Animometer/resources/extensions.js:
+        (Utilities.createElement): Added.
+        (Utilities.createSVGElement): Added.
+        (DocumentExtension.createElement): Deleted.
+        (DocumentExtension.createSvgElement): Deleted.
+
+        * Animometer/resources/debug-runner/animometer.js:
+        * Animometer/resources/runner/animometer.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-images.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-particles.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-shapes.js:
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Add a convenience function for creating a class.
+
+        The pattern for creating a class is common enough to add as a Utilities
+        helper function. It also makes it easy to collapse class definitions when
+        editing.
+
+        * Animometer/resources/debug-runner/animometer.js: Move ProgressBar definition,
+        since it is only used here.
+        * Animometer/resources/runner/animometer.js: Move ResultsDashboard and
+        ResultsTable definition, since it is only used here.
+        * Animometer/resources/extensions.js: Move Utilities definition to the top. Convert
+        Point, Insets, SimplePromise.
+        (ProgressBar): Moved to animometer.js.
+        (ResultsDashboard): Moved to animometer.js.
+        (ResultsTable): Moved to animometer.js.
+        * Animometer/resources/runner/benchmark-runner.js: Convert BenchmarkRunnerState,
+        BenchmarkRunner.
+        * Animometer/tests/resources/main.js: Convert Rotater, Stage, Animator, Benchmark.
+        * Animometer/tests/resources/sampler.js: Convert Experiment, Sampler.
+
+        Convert test primitives.
+        * Animometer/tests/master/resources/canvas-tests.js: Convert CanvasLineSegment,
+        CanvasArc, CanvasLinePoint.
+        * Animometer/tests/simple/resources/simple-canvas-paths.js: Convert CanvasLineSegment,
+        CanvasLinePoint, CanvasQuadraticSegment, CanvasQuadraticPoint, CanvasBezierSegment,
+        CanvasBezierPoint, CanvasArcToSegment, CanvasArcToSegmentFill, CanvasArcSegment,
+        CanvasArcSegmentFill, CanvasRect, CanvasRectFill.
+        * Animometer/tests/simple/resources/tiled-canvas-image.js: Convert CanvasImageTile.
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Minor improvements to debug harness.
+
+        * Animometer/developer.html:
+        * Animometer/resources/debug-runner/animometer.css:
+        (#suites): Put the complexity text boxes closer to the test names.
+        (#options):
+        (#rawFPS circle): Make the interval FPS appear as a separate data series, with a line.
+        (#intervalFPS path):
+        (#intervalFPS circle):
+        * Animometer/resources/debug-runner/animometer.js:
+        (window.optionsManager.updateLocalStorageFromUI): Convert number inputs from text.
+        (window.suitesManager._onChangeTestCheckbox): Refactor to take a checkbox.
+        (window.suitesManager._createTestElement): Enhance such that typing into the complexity
+        input will automatically select that test for running.
+        (window.suitesManager.updateLocalStorageFromJSON): Make the harness work for private
+        browsing.
+        * Animometer/resources/debug-runner/graph.js: Separate the intervalFPS data, and show
+        more accuracy in timestamps.
+
+2016-02-06  Jon Lee  <jonlee@apple.com>
+
+        Refactor helper methods for getting random values for a stage.
+
+        Instead of requiring a Stage instance, just attach it to the Stage object.
+
+        * Animometer/tests/bouncing-particles/resources/bouncing-canvas-shapes.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-css-shapes.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        * Animometer/tests/bouncing-particles/resources/bouncing-svg-shapes.js:
+        * Animometer/tests/master/resources/canvas-tests.js:
+        * Animometer/tests/master/resources/particles.js:
+        * Animometer/tests/misc/resources/canvas-electrons.js:
+        * Animometer/tests/misc/resources/canvas-stars.js:
+        * Animometer/tests/misc/resources/compositing-transforms.js:
+        * Animometer/tests/resources/main.js:
+        * Animometer/tests/simple/resources/simple-canvas-paths.js:
+
+2016-02-05  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add a new graphics test for CanvasRenderingContext2D functions: getImageData and putImageData
+        https://bugs.webkit.org/show_bug.cgi?id=151716
+
+        Reviewed by Darin Adler.
+
+        The purpose of this test is to measure the performance of getImageData
+        and putImageData functions. This test draws a background on the canvas
+        and then gets some random tiles from this background and draw them in
+        destinations different from their original sources.
+
+        * Animometer/resources/debug-runner/tests.js: Adding the new test to the canvas simple tests suite.
+
+        * Animometer/resources/extensions.js:
+        (Array.prototype.shuffle): Shuffles the elements of an array.
+
+        (Point.zero): Returns a new Point object whose x and y are equal zero.
+        (Point.prototype.str): Used for debugging the Point object.
+
+        * Animometer/tests/simple/resources/tiled-canvas-image.js: Added.
+        (CanvasImageTile):
+        (CanvasImageTile.prototype.getImageData):
+        (CanvasImageTile.prototype.putImageData):
+        (Stage.call.initialize):
+        (Stage.call._createTiles):
+        (Stage.call._nextTilePosition):
+        (Stage.call.tune):
+        (Stage.call._drawBackground):
+        (Stage.call.animate):
+        (Stage.call.complexity):
+        (Stage.call):
+        * Animometer/tests/simple/tiled-canvas-image.html: Added.
+
 2016-01-07  Jon Lee  <jonlee@apple.com>
 
         Fix new test.

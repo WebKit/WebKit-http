@@ -684,8 +684,9 @@ sub InterfaceRequiresAttributesOnInstance
 sub ConstructorShouldBeOnInstance
 {
     my $interface = shift;
+
     return 1 if $interface->extendedAttributes->{"CheckSecurity"};
-    return HasComplexGetOwnProperty($interface);
+    return 0;
 }
 
 sub AttributeShouldBeOnInstanceForCompatibility
@@ -703,8 +704,6 @@ sub AttributeShouldBeOnInstance
 
     return 1 if InterfaceRequiresAttributesOnInstance($interface);
     return 1 if $attribute->signature->type =~ /Constructor$/;
-    return 1 if HasCustomGetter($attribute->signature->extendedAttributes);
-    return 1 if HasCustomSetter($attribute->signature->extendedAttributes);
 
     # [Unforgeable] attributes should be on the instance.
     # https://heycam.github.io/webidl/#Unforgeable
@@ -1355,13 +1354,15 @@ sub GenerateAttributesHashTable
             push(@$hashKeys, "constructor");
             my $getter = "js" . $interfaceName . "Constructor";
             push(@$hashValue1, $getter);
-            if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-                my $setter = "setJS" . $interfaceName . "Constructor";
-                push(@$hashValue2, $setter);
+
+            my $setter = "setJS" . $interfaceName . "Constructor";
+            push(@$hashValue2, $setter);
+
+            # FIXME: Do we really need to special-case DOMWindow?
+            if ($interfaceName eq "DOMWindow") {
                 push(@$hashSpecials, "DontEnum | DontDelete");
             } else {
-                push(@$hashValue2, "0");
-                push(@$hashSpecials, "DontEnum | ReadOnly");
+                push(@$hashSpecials, "DontEnum");
             }
         }
     }
@@ -1847,10 +1848,8 @@ sub GenerateImplementation
             push(@implContent, "JSC::EncodedJSValue ${getter}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);\n");
         }
 
-        if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-            my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
-            push(@implContent, "void ${constructorFunctionName}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);\n");
-        }
+        my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
+        push(@implContent, "void ${constructorFunctionName}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);\n");
 
         push(@implContent, "\n");
     }
@@ -2285,25 +2284,33 @@ sub GenerateImplementation
             push(@implContent, "    UNUSED_PARAM(state);\n");
             push(@implContent, "    UNUSED_PARAM(slotBase);\n");
             push(@implContent, "    UNUSED_PARAM(thisValue);\n");
+
             if (!$attribute->isStatic || $attribute->signature->type =~ /Constructor$/) {
-                if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
-                    push(@implContent, "    auto* castedThis = to${className}(JSValue::decode(thisValue));\n");
-                } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
-                    push(@implContent, "    auto* castedThis = jsCast<JS${interfaceName}*>(slotBase);\n");
-                    if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
-                        push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-                        push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
-                        push(@implContent, "        reportDeprecatedGetterError(*state, \"$interfaceName\", \"$name\");\n");
-                    }
+                push(@implContent, "    JSValue decodedThisValue = JSValue::decode(thisValue);\n");
+                my $castingFunction = $interface->extendedAttributes->{"CustomProxyToJSObject"} ? "to${className}" : GetCastingHelperForThisObject($interface);
+                # http://heycam.github.io/webidl/#ImplicitThis
+                if ($interface->extendedAttributes->{"ImplicitThis"}) {
+                    push(@implContent, "    auto* castedThis = decodedThisValue.isUndefinedOrNull() ? $castingFunction(state->thisValue().toThis(state, NotStrictMode)) : $castingFunction(decodedThisValue);\n");
                 } else {
-                    push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-                    push(@implContent, "    if (UNLIKELY(!castedThis))\n");
-                    if ($attribute->signature->extendedAttributes->{"LenientThis"}) {
-                        push(@implContent, "        return JSValue::encode(jsUndefined());\n");
-                    } else {
-                        push(@implContent, "        return throwGetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
-                    }
+                    push(@implContent, "    auto* castedThis = $castingFunction(decodedThisValue);\n");
                 }
+                push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
+                if ($attribute->signature->extendedAttributes->{"LenientThis"}) {
+                    push(@implContent, "        return JSValue::encode(jsUndefined());\n");
+                } elsif (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
+                    # Fallback to trying to searching the prototype chain for compatibility reasons.
+                    push(@implContent, "        JSObject* thisObject = JSValue::decode(thisValue).getObject();\n");
+                    push(@implContent, "        for (thisObject = thisObject ? thisObject->prototype().getObject() : nullptr; thisObject; thisObject = thisObject->prototype().getObject()) {\n");
+                    push(@implContent, "            if ((castedThis = " . GetCastingHelperForThisObject($interface) . "(thisObject)))\n");
+                    push(@implContent, "                break;\n");
+                    push(@implContent, "        }\n");
+                    push(@implContent, "        if (!castedThis)\n");
+                    push(@implContent, "            return throwGetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        reportDeprecatedGetterError(*state, \"$interfaceName\", \"$name\");\n");
+                } else {
+                    push(@implContent, "        return throwGetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                }
+                push(@implContent, "    }\n");
             }
 
             my @arguments = ();
@@ -2513,39 +2520,38 @@ sub GenerateImplementation
             push(@implContent, "}\n\n");
         }
 
-        if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-            my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
+        my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
 
-            push(@implContent, "void ${constructorFunctionName}(ExecState* state, JSObject*, EncodedJSValue thisValue, EncodedJSValue encodedValue)\n");
-            push(@implContent, "{\n");
-            push(@implContent, "    JSValue value = JSValue::decode(encodedValue);");
-            if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
-                push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
-            } else {
-                push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-            }
-            push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-            push(@implContent, "        throwVMTypeError(state);\n");
-            push(@implContent, "        return;\n");
-            push(@implContent, "    }\n");
-            if ($interface->extendedAttributes->{"CheckSecurity"}) {
-                if ($interfaceName eq "DOMWindow") {
-                    push(@implContent, "    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, castedThis->wrapped()))\n");
-                } else {
-                    push(@implContent, "    if (!shouldAllowAccessToFrame(state, castedThis->wrapped().frame()))\n");
-                }
-                push(@implContent, "        return;\n");
-            }
-
-            push(@implContent, "    // Shadowing a built-in constructor\n");
-
-            if ($interfaceName eq "DOMWindow") {
-                push(@implContent, "    castedThis->putDirect(state->vm(), state->propertyNames().constructor, value);\n");
-            } else {
-                die "No way to handle interface with ReplaceableConstructor extended attribute: $interfaceName";
-            }
-            push(@implContent, "}\n\n");
+        push(@implContent, "void ${constructorFunctionName}(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)\n");
+        push(@implContent, "{\n");
+        push(@implContent, "    JSValue value = JSValue::decode(encodedValue);\n");
+        if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
+            push(@implContent, "    UNUSED_PARAM(baseValue);\n");
+            push(@implContent, "    ${className}* domObject = to${className}(JSValue::decode(thisValue));\n");
+        } elsif (ConstructorShouldBeOnInstance($interface)) {
+            push(@implContent, "    UNUSED_PARAM(baseValue);\n");
+            push(@implContent, "    ${className}* domObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+        } else {
+            push(@implContent, "    UNUSED_PARAM(thisValue);\n");
+            push(@implContent, "    ${className}Prototype* domObject = jsDynamicCast<${className}Prototype*>(baseValue);\n");
         }
+        push(@implContent, "    if (UNLIKELY(!domObject)) {\n");
+        push(@implContent, "        throwVMTypeError(state);\n");
+        push(@implContent, "        return;\n");
+        push(@implContent, "    }\n");
+        if ($interface->extendedAttributes->{"CheckSecurity"}) {
+            if ($interfaceName eq "DOMWindow") {
+                push(@implContent, "    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, domObject->wrapped()))\n");
+            } else {
+                push(@implContent, "    if (!shouldAllowAccessToFrame(state, domObject->wrapped().frame()))\n");
+            }
+            push(@implContent, "        return;\n");
+        }
+
+        push(@implContent, "    // Shadowing a built-in constructor\n");
+
+        push(@implContent, "    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);\n");
+        push(@implContent, "}\n\n");
     }
     my $hasCustomSetter = $interface->extendedAttributes->{"CustomNamedSetter"}
                           || $interface->extendedAttributes->{"CustomIndexedSetter"};
@@ -2623,26 +2629,27 @@ sub GenerateImplementation
             if (!$attribute->isStatic) {
                 if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
                     push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
-                } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
-                    push(@implContent, "    UNUSED_PARAM(thisValue);\n");
-                    push(@implContent, "    auto* castedThis = jsCast<JS${interfaceName}*>(baseObject);\n");
-                    if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
-                        push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-                        push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
-                        push(@implContent, "        reportDeprecatedSetterError(*state, \"$interfaceName\", \"$name\");\n");
-                    } else {
-                        push(@implContent, "    UNUSED_PARAM(thisValue);\n");
-                        push(@implContent, "    UNUSED_PARAM(state);\n");
-                    }
                 } else {
                     push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-                    push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-                    if (!$attribute->signature->extendedAttributes->{"LenientThis"}) {
-                        push(@implContent, "        throwSetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
-                    }
-                    push(@implContent, "        return;\n");
-                    push(@implContent, "    }\n");
                 }
+                push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
+                if ($attribute->signature->extendedAttributes->{"LenientThis"}) {
+                    push(@implContent, "        return;\n");
+                } elsif (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
+                    # Fallback to trying to searching the prototype chain for compatibility reasons.
+                    push(@implContent, "        JSObject* thisObject = JSValue::decode(thisValue).getObject();\n");
+                    push(@implContent, "        for (thisObject = thisObject ? thisObject->prototype().getObject() : nullptr; thisObject; thisObject = thisObject->prototype().getObject()) {\n");
+                    push(@implContent, "            if ((castedThis = " . GetCastingHelperForThisObject($interface) . "(thisObject)))\n");
+                    push(@implContent, "                break;\n");
+                    push(@implContent, "        }\n");
+                    push(@implContent, "        if (!castedThis)\n");
+                    push(@implContent, "            return throwSetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        reportDeprecatedSetterError(*state, \"$interfaceName\", \"$name\");\n");
+                } else {
+                    push(@implContent, "        throwSetterTypeError(*state, \"$interfaceName\", \"$name\");\n");
+                    push(@implContent, "        return;\n");
+                }
+                push(@implContent, "    }\n");
             }
             if ($interface->extendedAttributes->{"CheckSecurity"} && !$attribute->signature->extendedAttributes->{"DoNotCheckSecurity"}) {
                 if ($interfaceName eq "DOMWindow") {
@@ -4249,7 +4256,11 @@ sub NativeToJSValue
         return "toJSNewlyCreated(state, $globalObject, WTF::getPtr($value))";
     }
 
-    if ($codeGenerator->IsSVGAnimatedType($interfaceName) or $interfaceName eq "SVGViewSpec") {
+    # $type has to be used here because SVGViewSpec.transform is of type SVGTransformList.
+    if ($codeGenerator->IsSVGTypeNeedingTearOff($type) and $type =~ /(?<!String)List$/) {
+        # Convert from abstract RefPtr<ListProperty> to real type, so the right toJS() method can be invoked.
+        $value = "static_cast<" . GetNativeType($type) . ">($value" . ".get())";
+    } elsif ($codeGenerator->IsSVGAnimatedType($interfaceName) or $interfaceName eq "SVGViewSpec") {
         # Convert from abstract SVGProperty to real type, so the right toJS() method can be invoked.
         $value = "static_cast<" . GetNativeType($type) . ">($value)";
     } elsif ($codeGenerator->IsSVGTypeNeedingTearOff($type) and not $interfaceName =~ /List$/) {

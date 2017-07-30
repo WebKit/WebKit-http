@@ -29,7 +29,7 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
-#include "DOMSettableTokenList.h"
+#include "DOMTokenList.h"
 #include "DocumentFragment.h"
 #include "ElementAncestorIterator.h"
 #include "Event.h"
@@ -314,6 +314,7 @@ HTMLElement::EventHandlerNameMap HTMLElement::createEventHandlerNameMap()
         &onprogressAttr,
         &onratechangeAttr,
         &onresetAttr,
+        &onresizeAttr,
         &onscrollAttr,
         &onsearchAttr,
         &onseekedAttr,

@@ -34,7 +34,6 @@
 #import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
-#import "SafariServicesSPI.h"
 #import "SmartMagnificationController.h"
 #import "TextInputSPI.h"
 #import "UIKitSPI.h"
@@ -434,6 +433,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 {
     _doubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
     [_doubleTapGestureRecognizer setNumberOfTapsRequired:2];
+    [_doubleTapGestureRecognizer setAllowedTouchTypes:@[@(UITouchTypeDirect)]];
     [_doubleTapGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_doubleTapGestureRecognizer.get()];
     [_singleTapGestureRecognizer requireOtherGestureToFail:_doubleTapGestureRecognizer.get()];
@@ -1332,7 +1332,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     // We don't want to clear the selection if it is in editable content.
     // The selection could have been set by autofocusing on page load and not
     // reflected in the UI process since the user was not interacting with the page.
-    if (!_page->editorState().isContentEditable)
+    UITouch *touch = [gestureRecognizer.touches lastObject];
+    if (!_page->editorState().isContentEditable && touch.type == UITouchTypeDirect)
         [_webSelectionAssistant clearSelection];
 
     _lastInteractionLocation = gestureRecognizer.location;
@@ -2868,8 +2869,21 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
+- (void)handleKeyWebEvent:(WebIOSEvent *)theEvent withCompletionHandler:(void (^)(WebIOSEvent *theEvent, BOOL wasHandled))completionHandler
+{
+    _keyWebEventHandler = [completionHandler copy];
+    _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
+}
+
 - (void)_didHandleKeyEvent:(WebIOSEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
+    if (_keyWebEventHandler) {
+        _keyWebEventHandler(event, eventWasHandled);
+        [_keyWebEventHandler release];
+        _keyWebEventHandler = nil;
+        return;
+    }
+        
     if (event.type == WebEventKeyDown) {
         // FIXME: This is only for staging purposes.
         if ([[UIKeyboardImpl sharedInstance] respondsToSelector:@selector(didHandleWebKeyEvent:)])

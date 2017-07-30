@@ -71,6 +71,7 @@ Immutable
 ImplementationLacksVTable
 ImplementationNamespace=*
 ImplementedAs=*
+ImplicitThis
 InitializedByEventConstructor
 InterfaceName=*
 IsWeakCallback
@@ -111,7 +112,6 @@ RaisesException
 RaisesExceptionWithMessage
 Reflect=*
 Replaceable
-ReplaceableConstructor
 ReportExtraMemoryCost
 RequiresExistingAtomicString
 SetterRaisesException

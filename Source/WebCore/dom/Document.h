@@ -350,9 +350,9 @@ public:
     Element* getElementByAccessKey(const String& key);
     void invalidateAccessKeyMap();
 
-    void addImageElementByLowercasedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    void removeImageElementByLowercasedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    HTMLImageElement* imageElementByLowercasedUsemap(const AtomicStringImpl&) const;
+    void addImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    void removeImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    HTMLImageElement* imageElementByCaseFoldedUsemap(const AtomicStringImpl&) const;
 
     SelectorQuery* selectorQueryForString(const String&, ExceptionCode&);
     void clearSelectorQueryCache();
@@ -466,7 +466,7 @@ public:
     DOMSecurityPolicy& securityPolicy();
 #endif
 
-    RefPtr<Node> adoptNode(PassRefPtr<Node> source, ExceptionCode&);
+    RefPtr<Node> adoptNode(Node* source, ExceptionCode&);
 
     Ref<HTMLCollection> images();
     Ref<HTMLCollection> embeds();
@@ -603,6 +603,7 @@ public:
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
+    bool shouldBypassMainWorldContentSecurityPolicy() const override final;
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) override final;
     virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) override final;
     virtual void stopActiveDOMObjects() override final;
@@ -1100,7 +1101,7 @@ public:
     void enqueueOverflowEvent(Ref<Event>&&);
     void enqueuePageshowEvent(PageshowEventPersistence);
     void enqueueHashchangeEvent(const String& oldURL, const String& newURL);
-    void enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject);
+    void enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject);
     virtual DocumentEventQueue& eventQueue() const override final { return m_eventQueue; }
 
     WEBCORE_EXPORT void addMediaCanStartListener(MediaCanStartListener*);
@@ -1343,9 +1344,6 @@ private:
 
     void createRenderTree();
     void detachParser();
-
-    typedef void (*ArgumentsCallback)(const String& keyString, const String& valueString, Document*, void* data);
-    void processArguments(const String& features, void* data, ArgumentsCallback);
 
     // FontSelectorClient
     virtual void fontsNeedUpdate(FontSelector&) override final;
@@ -1613,7 +1611,7 @@ private:
     HashSet<HTMLMediaElement*> m_allowsMediaDocumentInlinePlaybackElements;
 #endif
 
-    HashMap<StringImpl*, Element*, CaseFoldingHash> m_elementsByAccessKey;
+    HashMap<StringImpl*, Element*, ASCIICaseInsensitiveHash> m_elementsByAccessKey;
     bool m_accessKeyMapValid;
 
     DocumentOrderedMap m_imagesByUsemap;

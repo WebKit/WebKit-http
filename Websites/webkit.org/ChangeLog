@@ -1,3 +1,128 @@
+2016-02-04  Jonathan Davis  <jond@apple.com>
+
+        Fix bad link on the Feature Status page.
+        https://bugs.webkit.org/show_bug.cgi?id=152086
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/status.php:
+
+2016-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of anonymous stack slots
+        https://bugs.webkit.org/show_bug.cgi?id=151128
+
+        Reviewed by Mark Lam.
+
+        This changes the documentation to account for the addition of Variables and the Get and Set
+        opcodes, and the removal of anonymous stack slots from B3 IR.
+
+        * docs/b3/intermediate-representation.html:
+
+2016-02-02  Dan Bernstein  <mitz@apple.com>
+
+        Tagline in B3 docs should match the rest of the website
+        https://bugs.webkit.org/show_bug.cgi?id=153801
+
+        Reviewed by Filip Pizlo.
+
+        Fix the tagline.
+
+        * docs/b3/assembly-intermediate-representation.html:
+        * docs/b3/index.html:
+        * docs/b3/intermediate-representation.html:
+
+2016-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Minor fixes for B3 IR documentation
+        https://bugs.webkit.org/show_bug.cgi?id=153782
+
+        Reviewed by Michael Saboff.
+
+        Fix minor issues that Geoff found.
+
+        * docs/b3/intermediate-representation.html:
+
+2016-01-30  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 documentation style shouldn't have hacks for h1
+        https://bugs.webkit.org/show_bug.cgi?id=153725
+
+        Reviewed by Alexey Proskuryakov.
+
+        * docs/b3/style.css:
+
+2016-01-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Improve the style of B3 documentation
+        https://bugs.webkit.org/show_bug.cgi?id=153674
+
+        Reviewed by Oliver Hunt.
+
+        This makes the style of the B3 documentation look like the Wiki, which I think is
+        appropriate for the kind of content that we're putting into it - in particular, the font
+        is the perfect size for dense content. The style also doesn't require much spoonfeeding
+        from the HTML side so you can write nice looking documentation by just using really
+        basic HTML constructs.
+
+        * docs/b3/assembly-intermediate-representation.html:
+        * docs/b3/index.html:
+        * docs/b3/intermediate-representation.html:
+        * docs/b3/style.css:
+
+2016-01-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Clean up the B3 documentation a bit
+        https://bugs.webkit.org/show_bug.cgi?id=153678
+
+        Reviewed by Saam Barati.
+
+        * docs/b3/index.html: Fix some links and fix small issues.
+        * docs/b3/intermediate-representation.html: Clean up some text and fix small issues.
+
+2016-01-29  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have documentation
+        https://bugs.webkit.org/show_bug.cgi?id=153658
+
+        Reviewed by Saam Barati.
+
+        Change the documentation to use HTML instead of Markdown.  Markdown has trouble with
+        definition lists.  Things go downhill when you try to add paragraphs or code blocks to
+        a definition.  That's unfortunate since we use definitions for the IR document.
+
+        Since there is no way to use our preferred styling for the IR document without doing a
+        lot of bad hacks, it's best if we just stick to HTML. It looks plain but it's highly
+        practical.
+
+        * docs/b3/assembly-intermediate-representation.html: Added.
+        * docs/b3/bare-bones-backend.md: Removed.
+        * docs/b3/index.html: Added.
+        * docs/b3/intermediate-representation.html: Added.
+        * docs/b3/style.css: Added.
+        (dd):
+        (dd:last-child):
+
+2016-01-29  Timothy Hatcher  <timothy@apple.com>
+
+        Add some defintion list styles.
+
+        * wp-content/themes/webkit/style.css:
+        (dl):
+        (dt):
+        (dd):
+
+2016-01-29  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have documentation
+        https://bugs.webkit.org/show_bug.cgi?id=153658
+
+        Reviewed by Timothy Hatcher.
+
+        * docs: Added.
+        * docs/b3: Added.
+        * docs/b3/bare-bones-backend.md: Added.
+
 2016-01-16  Timothy Hatcher  <timothy@apple.com>
 
         Fix some responsive issues on smaller screens.

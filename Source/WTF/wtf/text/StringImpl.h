@@ -681,10 +681,10 @@ public:
 
     WTF_EXPORT_STRING_API Ref<StringImpl> convertToASCIILowercase();
     WTF_EXPORT_STRING_API Ref<StringImpl> convertToASCIIUppercase();
-    WTF_EXPORT_STRING_API Ref<StringImpl> lower();
-    WTF_EXPORT_STRING_API Ref<StringImpl> upper();
-    WTF_EXPORT_STRING_API Ref<StringImpl> lower(const AtomicString& localeIdentifier);
-    WTF_EXPORT_STRING_API Ref<StringImpl> upper(const AtomicString& localeIdentifier);
+    WTF_EXPORT_STRING_API Ref<StringImpl> convertToLowercaseWithoutLocale();
+    WTF_EXPORT_STRING_API Ref<StringImpl> convertToUppercaseWithoutLocale();
+    WTF_EXPORT_STRING_API Ref<StringImpl> convertToLowercaseWithLocale(const AtomicString& localeIdentifier);
+    WTF_EXPORT_STRING_API Ref<StringImpl> convertToUppercaseWithLocale(const AtomicString& localeIdentifier);
 
     Ref<StringImpl> foldCase();
 
@@ -761,8 +761,6 @@ public:
 #if STRING_STATS
     ALWAYS_INLINE static StringStats& stringStats() { return m_stringStats; }
 #endif
-
-    WTF_EXPORT_STRING_API static const UChar latin1CaseFoldTable[256];
 
     Ref<StringImpl> extractFoldedStringInSymbol()
     {
@@ -945,9 +943,6 @@ inline bool equal(const StringImpl* a, const char* b, unsigned length) { return 
 inline bool equal(const LChar* a, StringImpl* b) { return equal(b, a); }
 inline bool equal(const char* a, StringImpl* b) { return equal(b, reinterpret_cast<const LChar*>(a)); }
 WTF_EXPORT_STRING_API bool equal(const StringImpl& a, const StringImpl& b);
-
-// FIXME: Deprecated. Used only by CaseFoldingHash, which itself is soon to be deprecated and removed, replaced by ASCIICaseFoldingHash.
-WTF_EXPORT_STRING_API bool equalCompatibiltyCaselessNonNull(const StringImpl*, const StringImpl*);
 
 WTF_EXPORT_STRING_API bool equalIgnoringNullity(StringImpl*, StringImpl*);
 WTF_EXPORT_STRING_API bool equalIgnoringNullity(const UChar*, size_t length, StringImpl*);

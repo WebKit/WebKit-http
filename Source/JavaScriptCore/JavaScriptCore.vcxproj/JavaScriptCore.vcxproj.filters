@@ -765,6 +765,9 @@
     <ClCompile Include="..\runtime\JSBoundFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSBoundSlotBaseFunction.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSCallee.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -1911,6 +1914,9 @@
     <ClCompile Include="..\jit\BinarySwitch.cpp">
       <Filter>jit</Filter>
     </ClCompile>
+    <ClCompile Include="..\jit\PCToCodeOriginMap.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
     <ClCompile Include="..\jit\PolymorphicCallStubRoutine.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -2506,9 +2512,6 @@
     <ClInclude Include="..\interpreter\CallFrame.h">
       <Filter>interpreter</Filter>
     </ClInclude>
-    <ClInclude Include="..\interpreter\CallFrameInlines.h">
-      <Filter>interpreter</Filter>
-    </ClInclude>
     <ClInclude Include="..\interpreter\CallFrameClosure.h">
       <Filter>interpreter</Filter>
     </ClInclude>
@@ -2981,6 +2984,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSBoundFunction.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSBoundSlotBaseFunction.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSCallee.h">
@@ -4595,6 +4601,9 @@
     </ClInclude>
     <ClInclude Include="..\dfg\DFGPreciseLocalClobberize.h">
       <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\PCToCodeOriginMap.h">
+      <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h">
       <Filter>jit</Filter>

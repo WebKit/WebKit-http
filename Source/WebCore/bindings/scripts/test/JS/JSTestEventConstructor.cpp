@@ -38,6 +38,7 @@ namespace WebCore {
 JSC::EncodedJSValue jsTestEventConstructorAttr1(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestEventConstructorAttr2(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestEventConstructorConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestEventConstructorConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestEventConstructorPrototype : public JSC::JSNonFinalObject {
 public:
@@ -119,7 +120,7 @@ template<> const ClassInfo JSTestEventConstructorConstructor::s_info = { "TestEv
 
 static const HashTableValue JSTestEventConstructorPrototypeTableValues[] =
 {
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestEventConstructorConstructor) } },
     { "attr1", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "attr2", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
@@ -160,9 +161,11 @@ EncodedJSValue jsTestEventConstructorAttr1(ExecState* state, JSObject* slotBase,
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestEventConstructor* castedThis = jsDynamicCast<JSTestEventConstructor*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestEventConstructor*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestEventConstructor", "attr1");
+    }
     auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.attr1());
     return JSValue::encode(result);
@@ -174,9 +177,11 @@ EncodedJSValue jsTestEventConstructorAttr2(ExecState* state, JSObject* slotBase,
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestEventConstructor* castedThis = jsDynamicCast<JSTestEventConstructor*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestEventConstructor*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestEventConstructor", "attr2");
+    }
     auto& impl = castedThis->wrapped();
     JSValue result = jsStringWithCache(state, impl.attr2());
     return JSValue::encode(result);
@@ -189,6 +194,19 @@ EncodedJSValue jsTestEventConstructorConstructor(ExecState* state, JSObject* bas
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSTestEventConstructor::getConstructor(state->vm(), domObject->globalObject()));
+}
+
+void setJSTestEventConstructorConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(thisValue);
+    JSTestEventConstructorPrototype* domObject = jsDynamicCast<JSTestEventConstructorPrototype*>(baseValue);
+    if (UNLIKELY(!domObject)) {
+        throwVMTypeError(state);
+        return;
+    }
+    // Shadowing a built-in constructor
+    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
 JSValue JSTestEventConstructor::getConstructor(VM& vm, JSGlobalObject* globalObject)

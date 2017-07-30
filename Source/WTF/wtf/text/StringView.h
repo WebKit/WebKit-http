@@ -125,7 +125,9 @@ public:
     WTF_EXPORT_STRING_API bool endsWith(const StringView&) const;
     WTF_EXPORT_STRING_API bool endsWithIgnoringASCIICase(const StringView&) const;
 
+    int toInt() const;
     int toInt(bool& isValid) const;
+    int toIntStrict(bool& isValid) const;
     float toFloat(bool& isValid) const;
 
     static void invalidate(const StringImpl&);
@@ -454,11 +456,24 @@ inline float StringView::toFloat(bool& isValid) const
     return charactersToFloat(characters16(), length(), &isValid);
 }
 
+inline int StringView::toInt() const
+{
+    bool isValid;
+    return toInt(isValid);
+}
+
 inline int StringView::toInt(bool& isValid) const
 {
     if (is8Bit())
         return charactersToInt(characters8(), m_length, &isValid);
     return charactersToInt(characters16(), length(), &isValid);
+}
+
+inline int StringView::toIntStrict(bool& isValid) const
+{
+    if (is8Bit())
+        return charactersToIntStrict(characters8(), m_length, &isValid);
+    return charactersToIntStrict(characters16(), length(), &isValid);
 }
 
 inline String StringView::toStringWithoutCopying() const

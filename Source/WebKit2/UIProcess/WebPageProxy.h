@@ -122,7 +122,7 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include <WebCore/WebMediaSessionManagerClient.h>
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyIncludes.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageProxyIncludes.h>
 #endif
 
@@ -713,6 +713,8 @@ public:
     double pageLength() const { return m_pageLength; }
     void setGapBetweenPages(double);
     double gapBetweenPages() const { return m_gapBetweenPages; }
+    void setPaginationLineGridEnabled(bool);
+    bool paginationLineGridEnabled() const { return m_paginationLineGridEnabled; }
     unsigned pageCount() const { return m_pageCount; }
 
 #if PLATFORM(COCOA)
@@ -1557,7 +1559,7 @@ private:
     RefPtr<WebVibrationProxy> m_vibration;
 #endif
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/WebPageProxyMembers.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPageProxyMembers.h>
 #endif
 
@@ -1626,7 +1628,8 @@ private:
     bool m_paginationBehavesLikeColumns;
     double m_pageLength;
     double m_gapBetweenPages;
-
+    bool m_paginationLineGridEnabled;
+        
     // If the process backing the web page is alive and kicking.
     bool m_isValid;
 

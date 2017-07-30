@@ -168,6 +168,7 @@
 #include "TreeWalker.h"
 #include "VisitedLinkState.h"
 #include "WheelEvent.h"
+#include "WindowFeatures.h"
 #include "XMLDocument.h"
 #include "XMLDocumentParser.h"
 #include "XMLNSNames.h"
@@ -765,19 +766,19 @@ void Document::invalidateAccessKeyMap()
     m_elementsByAccessKey.clear();
 }
 
-void Document::addImageElementByLowercasedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
+void Document::addImageElementByCaseFoldedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
 {
     return m_imagesByUsemap.add(name, element, *this);
 }
 
-void Document::removeImageElementByLowercasedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
+void Document::removeImageElementByCaseFoldedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
 {
     return m_imagesByUsemap.remove(name, element);
 }
 
-HTMLImageElement* Document::imageElementByLowercasedUsemap(const AtomicStringImpl& name) const
+HTMLImageElement* Document::imageElementByCaseFoldedUsemap(const AtomicStringImpl& name) const
 {
-    return m_imagesByUsemap.getElementByLowercasedUsemap(name, *this);
+    return m_imagesByUsemap.getElementByCaseFoldedUsemap(name, *this);
 }
 
 SelectorQuery* Document::selectorQueryForString(const String& selectorString, ExceptionCode& ec)
@@ -1005,7 +1006,7 @@ RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& 
 }
 
 
-RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
+RefPtr<Node> Document::adoptNode(Node* source, ExceptionCode& ec)
 {
     if (!source) {
         ec = NOT_SUPPORTED_ERR;
@@ -1044,7 +1045,7 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
         }
     }
 
-    adoptIfNeeded(source.get());
+    adoptIfNeeded(source);
 
     return source;
 }
@@ -2430,6 +2431,17 @@ void Document::resumeDeviceMotionAndOrientationUpdates()
 #endif
 }
 
+bool Document::shouldBypassMainWorldContentSecurityPolicy() const
+{
+    JSC::CallFrame* callFrame = JSDOMWindow::commonVM().topCallFrame;
+    if (callFrame == JSC::CallFrame::noCaller())
+        return false;
+    DOMWrapperWorld& domWrapperWorld = currentWorld(callFrame);
+    if (domWrapperWorld.isNormal())
+        return false;
+    return true;
+}
+
 void Document::platformSuspendOrStopActiveDOMObjects()
 {
 #if PLATFORM(IOS)
@@ -2731,8 +2743,8 @@ void Document::implicitClose()
     dispatchWindowLoadEvent();
     enqueuePageshowEvent(PageshowEventNotPersisted);
     if (m_pendingStateObject)
-        enqueuePopstateEvent(m_pendingStateObject.release());
-    
+        enqueuePopstateEvent(WTFMove(m_pendingStateObject));
+
     if (f)
         f->loader().dispatchOnloadEvents();
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
@@ -3258,79 +3270,23 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         break;
 
     case HTTPHeaderName::ContentSecurityPolicy:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::Enforce);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Enforce);
         break;
 
     case HTTPHeaderName::ContentSecurityPolicyReportOnly:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::Report);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Report);
         break;
 
     case HTTPHeaderName::XWebKitCSP:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::PrefixedEnforce);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
         break;
 
     case HTTPHeaderName::XWebKitCSPReportOnly:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicy::PrefixedReport);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedReport);
         break;
 
     default:
         break;
-    }
-}
-
-// Though isspace() considers \t and \v to be whitespace, Win IE doesn't.
-static bool isSeparator(UChar c)
-{
-    return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '=' || c == ',' || c == '\0';
-}
-
-void Document::processArguments(const String& features, void* data, ArgumentsCallback callback)
-{
-    // Tread lightly in this code -- it was specifically designed to mimic Win IE's parsing behavior.
-    unsigned keyBegin, keyEnd;
-    unsigned valueBegin, valueEnd;
-
-    String buffer = features.lower();
-    unsigned length = buffer.length();
-    for (unsigned i = 0; i < length; ) {
-        // skip to first non-separator, but don't skip past the end of the string
-        while (isSeparator(buffer[i])) {
-            if (i >= length)
-                break;
-            i++;
-        }
-        keyBegin = i;
-
-        // skip to first separator
-        while (!isSeparator(buffer[i]))
-            i++;
-        keyEnd = i;
-
-        // skip to first '=', but don't skip past a ',' or the end of the string
-        while (buffer[i] != '=') {
-            if (buffer[i] == ',' || i >= length)
-                break;
-            i++;
-        }
-
-        // skip to first non-separator, but don't skip past a ',' or the end of the string
-        while (isSeparator(buffer[i])) {
-            if (buffer[i] == ',' || i >= length)
-                break;
-            i++;
-        }
-        valueBegin = i;
-
-        // skip to first separator
-        while (!isSeparator(buffer[i]))
-            i++;
-        valueEnd = i;
-
-        ASSERT_WITH_SECURITY_IMPLICATION(i <= length);
-
-        String keyString = buffer.substring(keyBegin, keyEnd - keyBegin);
-        String valueString = buffer.substring(valueBegin, valueEnd - valueBegin);
-        callback(keyString, valueString, this, data);
     }
 }
 
@@ -3342,7 +3298,10 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
         return;
 
     m_viewportArguments = ViewportArguments(origin);
-    processArguments(features, (void*)&m_viewportArguments, setViewportFeature);
+
+    processFeaturesString(features, [this](StringView key, StringView value) {
+        setViewportFeature(m_viewportArguments, *this, key, value);
+    });
 
     updateViewportArguments();
 }
@@ -3362,17 +3321,13 @@ void Document::updateViewportArguments()
 
 #if PLATFORM(IOS)
 
-// FIXME: Find a better place for this functionality.
-void setParserFeature(const String& key, const String& value, Document* document, void*)
-{
-    if (key == "telephone" && equalLettersIgnoringASCIICase(value, "no"))
-        document->setIsTelephoneNumberParsingAllowed(false);
-}
-
 void Document::processFormatDetection(const String& features)
 {
-    ASSERT(!features.isNull());
-    processArguments(features, nullptr, setParserFeature);
+    // FIXME: Find a better place for this function.
+    processFeaturesString(features, [this](StringView key, StringView value) {
+        if (equalLettersIgnoringASCIICase(key, "telephone") && equalLettersIgnoringASCIICase(value, "no"))
+            setIsTelephoneNumberParsingAllowed(false);
+    });
 }
 
 void Document::processWebAppOrientations()
@@ -4771,7 +4726,7 @@ void Document::unregisterForPrivateBrowsingStateChangedCallbacks(Element* e)
 void Document::registerForCaptionPreferencesChangedCallbacks(Element* e)
 {
     if (page())
-        page()->group().captionPreferences()->setInterestedInCaptionPreferenceChanges();
+        page()->group().captionPreferences().setInterestedInCaptionPreferenceChanges();
 
     m_captionPreferencesChangedElements.add(e);
 }
@@ -5148,7 +5103,7 @@ void Document::initSecurityContext()
         // This can occur via document.implementation.createDocument().
         setCookieURL(URL(ParsedURLString, emptyString()));
         setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::createUnique()));
-        setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
+        setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
         return;
     }
 
@@ -5161,7 +5116,7 @@ void Document::initSecurityContext()
         applyContentDispositionAttachmentSandbox();
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
-    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
+    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
 
     if (Settings* settings = this->settings()) {
         if (!settings->webSecurityEnabled()) {
@@ -5550,9 +5505,9 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
     enqueueWindowEvent(HashChangeEvent::create(oldURL, newURL));
 }
 
-void Document::enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject)
+void Document::enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
 {
-    enqueueWindowEvent(PopStateEvent::create(stateObject, m_domWindow ? m_domWindow->history() : nullptr));
+    enqueueWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
 }
 
 void Document::addMediaCanStartListener(MediaCanStartListener* listener)
@@ -6830,7 +6785,7 @@ bool Document::hasFocus() const
 #if ENABLE(WEB_REPLAY)
 void Document::setInputCursor(PassRefPtr<InputCursor> cursor)
 {
-    m_inputCursor = cursor;
+    m_inputCursor = WTFMove(cursor);
 }
 #endif
 

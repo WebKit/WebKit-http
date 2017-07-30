@@ -164,7 +164,7 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
         return;
     }
     if (name == mediaAttr) {
-        m_media = value.string().lower();
+        m_media = value.string().convertToASCIILowercase();
         process();
         if (m_sheet && !isDisabled())
             document().styleResolverChanged(DeferRecalcStyle);
@@ -367,7 +367,7 @@ bool HTMLLinkElement::styleSheetIsLoading() const
     return m_sheet->contents().isLoading();
 }
 
-DOMSettableTokenList& HTMLLinkElement::sizes()
+DOMTokenList& HTMLLinkElement::sizes()
 {
     if (!m_sizes)
         m_sizes = std::make_unique<AttributeDOMTokenList>(*this, sizesAttr);

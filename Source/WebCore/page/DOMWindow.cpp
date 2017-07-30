@@ -40,7 +40,6 @@
 #include "Crypto.h"
 #include "DOMApplicationCache.h"
 #include "DOMSelection.h"
-#include "DOMSettableTokenList.h"
 #include "DOMStringList.h"
 #include "DOMTimer.h"
 #include "DOMTokenList.h"
@@ -2217,8 +2216,7 @@ PassRefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicStrin
         return targetFrame->document()->domWindow();
     }
 
-    WindowFeatures windowFeatures(windowFeaturesString);
-    RefPtr<Frame> result = createWindow(urlString, frameName, windowFeatures, activeWindow, *firstFrame, *m_frame);
+    RefPtr<Frame> result = createWindow(urlString, frameName, parseWindowFeatures(windowFeaturesString), activeWindow, *firstFrame, *m_frame);
     return result ? result->document()->domWindow() : nullptr;
 }
 
@@ -2245,8 +2243,7 @@ void DOMWindow::showModalDialog(const String& urlString, const String& dialogFea
     if (!canShowModalDialogNow(m_frame) || !firstWindow.allowPopUp())
         return;
 
-    WindowFeatures windowFeatures(dialogFeaturesString, screenAvailableRect(m_frame->view()));
-    RefPtr<Frame> dialogFrame = createWindow(urlString, emptyAtom, windowFeatures, activeWindow, *firstFrame, *m_frame, WTFMove(prepareDialogFunction));
+    RefPtr<Frame> dialogFrame = createWindow(urlString, emptyAtom, parseDialogFeatures(dialogFeaturesString, screenAvailableRect(m_frame->view())), activeWindow, *firstFrame, *m_frame, WTFMove(prepareDialogFunction));
     if (!dialogFrame)
         return;
     dialogFrame->page()->chrome().runModal();

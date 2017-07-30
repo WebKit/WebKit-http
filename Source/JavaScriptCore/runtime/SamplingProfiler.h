@@ -44,48 +44,79 @@ class ExecutableBase;
 class SamplingProfiler : public ThreadSafeRefCounted<SamplingProfiler> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+
+    struct UnprocessedStackFrame {
+        UnprocessedStackFrame(CodeBlock* codeBlock, EncodedJSValue callee, CallSiteIndex callSiteIndex)
+            : unverifiedCallee(callee)
+            , verifiedCodeBlock(codeBlock)
+            , callSiteIndex(callSiteIndex)
+        { }
+        UnprocessedStackFrame()
+        {
+            unverifiedCallee = JSValue::encode(JSValue());
+            verifiedCodeBlock = nullptr;
+        }
+
+        EncodedJSValue unverifiedCallee;
+        CodeBlock* verifiedCodeBlock;
+        CallSiteIndex callSiteIndex;
+    };
+
     enum class FrameType { 
-        VerifiedExecutable, 
-        UnverifiedCallee,
-        Host, 
+        Executable,
+        Host,
         Unknown 
     };
 
     struct StackFrame {
-        StackFrame(FrameType frameType, EncodedJSValue callee)
-            : frameType(frameType)
-        {
-            u.unverifiedCallee = callee;
-        }
-        StackFrame(FrameType frameType, ExecutableBase* executable)
-            : frameType(frameType)
-        {
-            u.verifiedExecutable = executable;
-        }
+        StackFrame(ExecutableBase* executable)
+            : frameType(FrameType::Executable)
+            , executable(executable)
+        { }
+
         StackFrame()
-            : frameType(FrameType::Unknown)
+        { }
+
+        FrameType frameType { FrameType::Unknown };
+        ExecutableBase* executable { nullptr };
+        JSObject* callee { nullptr };
+        // These attempt to be expression-level line and column number.
+        unsigned lineNumber { std::numeric_limits<unsigned>::max() };
+        unsigned columnNumber { std::numeric_limits<unsigned>::max() };
+
+        bool hasExpressionInfo() const
         {
-            u.verifiedExecutable = nullptr;
+            return lineNumber != std::numeric_limits<unsigned>::max()
+                && columnNumber != std::numeric_limits<unsigned>::max();
         }
 
-        FrameType frameType;
-        union {
-            EncodedJSValue unverifiedCallee;
-            ExecutableBase* verifiedExecutable;
-        } u;
-
-        String displayName();
-        String displayNameForJSONTests(); // Used for JSC stress tests because they want the "(anonymous function)" string for anonymous functions and they want "(eval)" for eval'd code.
-        int startLine();
-        unsigned startColumn();
+        // These are function-level data.
+        String nameFromCallee(VM&);
+        String displayName(VM&);
+        String displayNameForJSONTests(VM&); // Used for JSC stress tests because they want the "(anonymous function)" string for anonymous functions and they want "(eval)" for eval'd code.
+        int functionStartLine();
+        unsigned functionStartColumn();
         intptr_t sourceID();
         String url();
     };
 
+    struct UnprocessedStackTrace {
+        double timestamp;
+        void* topPC;
+        bool topFrameIsLLInt;
+        void* llintPC;
+        Vector<UnprocessedStackFrame> frames;
+    };
+
     struct StackTrace {
-        bool needsVerification;
         double timestamp;
         Vector<StackFrame> frames;
+        StackTrace()
+        { }
+        StackTrace(StackTrace&& other)
+            : timestamp(other.timestamp)
+            , frames(WTFMove(other.frames))
+        { }
     };
 
     SamplingProfiler(VM&, RefPtr<Stopwatch>&&);
@@ -100,12 +131,10 @@ public:
     void start(const LockHolder&);
     void stop();
     void stop(const LockHolder&);
-    Vector<StackTrace>& stackTraces(const LockHolder&);
+    Vector<StackTrace> releaseStackTraces(const LockHolder&);
     JS_EXPORT_PRIVATE String stackTracesAsJSON();
     JS_EXPORT_PRIVATE void noticeCurrentThreadAsJSCExecutionThread();
     void noticeCurrentThreadAsJSCExecutionThread(const LockHolder&);
-    JS_EXPORT_PRIVATE void clearData();
-    void clearData(const LockHolder&);
     void processUnverifiedStackTraces(); // You should call this only after acquiring the lock.
     double totalTime(const LockHolder&) { return m_totalTime; }
     void setStopWatch(const LockHolder&, Ref<Stopwatch>&& stopwatch) { m_stopwatch = WTFMove(stopwatch); }
@@ -114,11 +143,12 @@ private:
     void dispatchIfNecessary(const LockHolder&);
     void dispatchFunction(const LockHolder&);
     void pause();
+    void clearData(const LockHolder&);
 
     VM& m_vm;
     RefPtr<Stopwatch> m_stopwatch;
     Vector<StackTrace> m_stackTraces;
-    size_t m_indexOfNextStackTraceToVerify;
+    Vector<UnprocessedStackTrace> m_unprocessedStackTraces;
     std::chrono::microseconds m_timingInterval;
     double m_lastTime;
     double m_totalTime;
@@ -129,8 +159,8 @@ private:
     bool m_isActive;
     bool m_isPaused;
     bool m_hasDispatchedFunction;
-    HashSet<ExecutableBase*> m_seenExecutables;
-    Vector<StackFrame> m_currentFrames;
+    HashSet<JSCell*> m_liveCellPointers;
+    Vector<UnprocessedStackFrame> m_currentFrames;
 };
 
 } // namespace JSC

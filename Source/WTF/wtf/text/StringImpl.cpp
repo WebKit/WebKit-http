@@ -361,9 +361,9 @@ UChar32 StringImpl::characterStartingAt(unsigned i)
     return 0;
 }
 
-Ref<StringImpl> StringImpl::lower()
+Ref<StringImpl> StringImpl::convertToLowercaseWithoutLocale()
 {
-    // Note: This is a hot function in the Dromaeo benchmark, specifically the
+    // Note: At one time this was a hot function in the Dromaeo benchmark, specifically the
     // no-op code path up through the first 'return' statement.
 
     // First scan the string for uppercase and non-ASCII characters:
@@ -442,11 +442,12 @@ SlowPath:
     return newImpl.releaseNonNull();
 }
 
-Ref<StringImpl> StringImpl::upper()
+Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
 {
-    // This function could be optimized for no-op cases the way lower() is,
-    // but in empirical testing, few actual calls to upper() are no-ops, so
-    // it wouldn't be worth the extra time for pre-scanning.
+    // This function could be optimized for no-op cases the way
+    // convertToLowercaseWithoutLocale() is, but in empirical testing,
+    // few actual calls to upper() are no-ops, so it wouldn't be worth
+    // the extra time for pre-scanning.
 
     if (m_length > static_cast<unsigned>(std::numeric_limits<int32_t>::max()))
         CRASH();
@@ -477,7 +478,7 @@ Ref<StringImpl> StringImpl::upper()
         int numberSharpSCharacters = 0;
 
         // There are two special cases.
-        //  1. latin-1 characters when converted to upper case are 16 bit characters.
+        //  1. Some Latin-1 characters when converted to upper case are 16 bit characters.
         //  2. Lower case sharp-S converts to "SS" (two characters)
         for (int32_t i = 0; i < length; ++i) {
             LChar c = m_data8[i];
@@ -485,7 +486,7 @@ Ref<StringImpl> StringImpl::upper()
                 ++numberSharpSCharacters;
             ASSERT(u_toupper(c) <= 0xFFFF);
             UChar upper = u_toupper(c);
-            if (UNLIKELY(upper > 0xff)) {
+            if (UNLIKELY(upper > 0xFF)) {
                 // Since this upper-cased character does not fit in an 8-bit string, we need to take the 16-bit path.
                 goto upconvert;
             }
@@ -554,14 +555,14 @@ static inline bool needsTurkishCasingRules(const AtomicString& localeIdentifier)
         && (localeIdentifier.length() == 2 || localeIdentifier[2] == '-');
 }
 
-Ref<StringImpl> StringImpl::lower(const AtomicString& localeIdentifier)
+Ref<StringImpl> StringImpl::convertToLowercaseWithLocale(const AtomicString& localeIdentifier)
 {
     // Use the more-optimized code path most of the time.
     // Assuming here that the only locale-specific lowercasing is the Turkish casing rules.
     // FIXME: Could possibly optimize further by looking for the specific sequences
     // that have locale-specific lowercasing. There are only three of them.
     if (!needsTurkishCasingRules(localeIdentifier))
-        return lower();
+        return convertToLowercaseWithoutLocale();
 
     // FIXME: Could share more code with the main StringImpl::lower by factoring out
     // this last part into a shared function that takes a locale string, since this is
@@ -590,13 +591,13 @@ Ref<StringImpl> StringImpl::lower(const AtomicString& localeIdentifier)
     return newString.releaseNonNull();
 }
 
-Ref<StringImpl> StringImpl::upper(const AtomicString& localeIdentifier)
+Ref<StringImpl> StringImpl::convertToUppercaseWithLocale(const AtomicString& localeIdentifier)
 {
     // Use the more-optimized code path most of the time.
     // Assuming here that the only locale-specific lowercasing is the Turkish casing rules,
     // and that the only affected character is lowercase "i".
     if (!needsTurkishCasingRules(localeIdentifier) || find('i') == notFound)
-        return upper();
+        return convertToUppercaseWithoutLocale();
 
     if (m_length > static_cast<unsigned>(std::numeric_limits<int32_t>::max()))
         CRASH();
@@ -623,60 +624,86 @@ Ref<StringImpl> StringImpl::upper(const AtomicString& localeIdentifier)
 
 Ref<StringImpl> StringImpl::foldCase()
 {
-    // FIXME: Why doesn't this function have a preflight like the one in StringImpl::lower?
+    if (is8Bit()) {
+        unsigned failingIndex;
+        for (unsigned i = 0; i < m_length; ++i) {
+            auto character = m_data8[i];
+            if (UNLIKELY(!isASCII(character) || isASCIIUpper(character))) {
+                failingIndex = i;
+                goto SlowPath;
+            }
+        }
+        // String was all ASCII and no uppercase, so just return as-is.
+        return *this;
+
+SlowPath:
+        bool need16BitCharacters = false;
+        for (unsigned i = failingIndex; i < m_length; ++i) {
+            auto character = m_data8[i];
+            if (character == 0xB5 || character == 0xDF) {
+                need16BitCharacters = true;
+                break;
+            }
+        }
+
+        if (!need16BitCharacters) {
+            LChar* data8;
+            auto folded = createUninitializedInternalNonEmpty(m_length, data8);
+            for (unsigned i = 0; i < failingIndex; ++i)
+                data8[i] = m_data8[i];
+            for (unsigned i = failingIndex; i < m_length; ++i) {
+                auto character = m_data8[i];
+                if (isASCII(character))
+                    data8[i] = toASCIILower(character);
+                else {
+                    ASSERT(u_foldCase(character, U_FOLD_CASE_DEFAULT) <= 0xFF);
+                    data8[i] = static_cast<LChar>(u_foldCase(character, U_FOLD_CASE_DEFAULT));
+                }
+            }
+            return folded;
+        }
+    } else {
+        // FIXME: Unclear why we use goto in the 8-bit case, and a different approach in the 16-bit case.
+        bool noUpper = true;
+        unsigned ored = 0;
+        for (unsigned i = 0; i < m_length; ++i) {
+            UChar character = m_data16[i];
+            if (UNLIKELY(isASCIIUpper(character)))
+                noUpper = false;
+            ored |= character;
+        }
+        if (!(ored & ~0x7F)) {
+            if (noUpper) {
+                // String was all ASCII and no uppercase, so just return as-is.
+                return *this;
+            }
+            UChar* data16;
+            auto folded = createUninitializedInternalNonEmpty(m_length, data16);
+            for (unsigned i = 0; i < m_length; ++i)
+                data16[i] = toASCIILower(m_data16[i]);
+            return folded;
+        }
+    }
 
     if (m_length > static_cast<unsigned>(std::numeric_limits<int32_t>::max()))
         CRASH();
-    int32_t length = m_length;
 
-    if (is8Bit()) {
-        // Do a faster loop for the case where all the characters are ASCII.
-        LChar* data;
-        auto newImpl = createUninitialized(m_length, data);
-        LChar ored = 0;
+    auto upconvertedCharacters = StringView(*this).upconvertedCharacters();
 
-        for (int32_t i = 0; i < length; ++i) {
-            LChar c = m_data8[i];
-            data[i] = toASCIILower(c);
-            ored |= c;
-        }
-
-        if (!(ored & ~0x7F))
-            return newImpl;
-
-        // Do a slower implementation for cases that include non-ASCII Latin-1 characters.
-        // FIXME: Shouldn't this use u_foldCase instead of u_tolower?
-        for (int32_t i = 0; i < length; ++i) {
-            ASSERT(u_tolower(m_data8[i]) <= 0xFF);
-            data[i] = static_cast<LChar>(u_tolower(m_data8[i]));
-        }
-
-        return newImpl;
-    }
-
-    // Do a faster loop for the case where all the characters are ASCII.
     UChar* data;
-    RefPtr<StringImpl> newImpl = createUninitialized(m_length, data);
-    UChar ored = 0;
-    for (int32_t i = 0; i < length; ++i) {
-        UChar c = m_data16[i];
-        ored |= c;
-        data[i] = toASCIILower(c);
-    }
-    if (!(ored & ~0x7F))
-        return newImpl.releaseNonNull();
-
-    // Do a slower implementation for cases that include non-ASCII characters.
+    auto folded = createUninitializedInternalNonEmpty(m_length, data);
+    int32_t length = m_length;
     UErrorCode status = U_ZERO_ERROR;
-    int32_t realLength = u_strFoldCase(data, length, m_data16, m_length, U_FOLD_CASE_DEFAULT, &status);
+    int32_t realLength = u_strFoldCase(data, length, upconvertedCharacters, length, U_FOLD_CASE_DEFAULT, &status);
     if (U_SUCCESS(status) && realLength == length)
-        return newImpl.releaseNonNull();
-    newImpl = createUninitialized(realLength, data);
+        return folded;
+    ASSERT(realLength > length);
+    folded = createUninitializedInternalNonEmpty(realLength, data);
     status = U_ZERO_ERROR;
-    u_strFoldCase(data, realLength, m_data16, m_length, U_FOLD_CASE_DEFAULT, &status);
+    u_strFoldCase(data, realLength, upconvertedCharacters, length, U_FOLD_CASE_DEFAULT, &status);
     if (U_FAILURE(status))
         return *this;
-    return newImpl.releaseNonNull();
+    return folded;
 }
 
 template<StringImpl::CaseConvertType type, typename CharacterType>
@@ -950,30 +977,50 @@ float StringImpl::toFloat(bool* ok)
     return charactersToFloat(characters16(), m_length, ok);
 }
 
-static inline bool equalCompatibiltyCaseless(const LChar* a, const LChar* b, unsigned length)
+// Table is based on ftp://ftp.unicode.org/Public/UNIDATA/CaseFolding.txt
+static const UChar latin1CaseFoldTable[256] = {
+    0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x000f,
+    0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001a, 0x001b, 0x001c, 0x001d, 0x001e, 0x001f,
+    0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002a, 0x002b, 0x002c, 0x002d, 0x002e, 0x002f,
+    0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003a, 0x003b, 0x003c, 0x003d, 0x003e, 0x003f,
+    0x0040, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
+    0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x005b, 0x005c, 0x005d, 0x005e, 0x005f,
+    0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
+    0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007e, 0x007f,
+    0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008a, 0x008b, 0x008c, 0x008d, 0x008e, 0x008f,
+    0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009a, 0x009b, 0x009c, 0x009d, 0x009e, 0x009f,
+    0x00a0, 0x00a1, 0x00a2, 0x00a3, 0x00a4, 0x00a5, 0x00a6, 0x00a7, 0x00a8, 0x00a9, 0x00aa, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x00af,
+    0x00b0, 0x00b1, 0x00b2, 0x00b3, 0x00b4, 0x03bc, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x00bf,
+    0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
+    0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00d7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00df,
+    0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
+    0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff,
+};
+
+static inline bool equalCompatibilityCaseless(const LChar* a, const LChar* b, unsigned length)
 {
     while (length--) {
-        if (StringImpl::latin1CaseFoldTable[*a++] != StringImpl::latin1CaseFoldTable[*b++])
+        if (latin1CaseFoldTable[*a++] != latin1CaseFoldTable[*b++])
             return false;
     }
     return true;
 }
 
-static inline bool equalCompatibiltyCaseless(const UChar* a, const LChar* b, unsigned length)
+static inline bool equalCompatibilityCaseless(const UChar* a, const LChar* b, unsigned length)
 {
     while (length--) {
-        if (u_foldCase(*a++, U_FOLD_CASE_DEFAULT) != StringImpl::latin1CaseFoldTable[*b++])
+        if (u_foldCase(*a++, U_FOLD_CASE_DEFAULT) != latin1CaseFoldTable[*b++])
             return false;
     }
     return true;
 }
 
-static inline bool equalCompatibiltyCaseless(const LChar* a, const UChar* b, unsigned length)
+static inline bool equalCompatibilityCaseless(const LChar* a, const UChar* b, unsigned length)
 {
-    return equalCompatibiltyCaseless(b, a, length);
+    return equalCompatibilityCaseless(b, a, length);
 }
 
-static inline bool equalCompatibiltyCaseless(const UChar* a, const UChar* b, unsigned length)
+static inline bool equalCompatibilityCaseless(const UChar* a, const UChar* b, unsigned length)
 {
     return !u_memcasecmp(a, b, length, U_FOLD_CASE_DEFAULT);
 }
@@ -1082,7 +1129,7 @@ size_t StringImpl::findIgnoringCase(const LChar* matchString, unsigned index)
         const LChar* searchCharacters = characters8() + index;
 
         unsigned i = 0;
-        while (!equalCompatibiltyCaseless(searchCharacters + i, matchString, matchLength)) {
+        while (!equalCompatibilityCaseless(searchCharacters + i, matchString, matchLength)) {
             if (i == delta)
                 return notFound;
             ++i;
@@ -1093,7 +1140,7 @@ size_t StringImpl::findIgnoringCase(const LChar* matchString, unsigned index)
     const UChar* searchCharacters = characters16() + index;
 
     unsigned i = 0;
-    while (!equalCompatibiltyCaseless(searchCharacters + i, matchString, matchLength)) {
+    while (!equalCompatibilityCaseless(searchCharacters + i, matchString, matchLength)) {
         if (i == delta)
             return notFound;
         ++i;
@@ -1157,7 +1204,7 @@ ALWAYS_INLINE static size_t findIgnoringCaseInner(const SearchCharacterType* sea
 
     unsigned i = 0;
     // keep looping until we match
-    while (!equalCompatibiltyCaseless(searchCharacters + i, matchCharacters, matchLength)) {
+    while (!equalCompatibilityCaseless(searchCharacters + i, matchCharacters, matchLength)) {
         if (i == delta)
             return notFound;
         ++i;
@@ -1298,7 +1345,7 @@ ALWAYS_INLINE static size_t reverseFindIgnoringCaseInner(const SearchCharacterTy
     unsigned delta = std::min(index, length - matchLength);
 
     // keep looping until we match
-    while (!equalCompatibiltyCaseless(searchCharacters + delta, matchCharacters, matchLength)) {
+    while (!equalCompatibilityCaseless(searchCharacters + delta, matchCharacters, matchLength)) {
         if (!delta)
             return notFound;
         --delta;
@@ -1344,8 +1391,8 @@ ALWAYS_INLINE static bool equalInner(const StringImpl* stringImpl, unsigned star
         return equal(stringImpl->characters16() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
     }
     if (stringImpl->is8Bit())
-        return equalCompatibiltyCaseless(stringImpl->characters8() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
-    return equalCompatibiltyCaseless(stringImpl->characters16() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
+        return equalCompatibilityCaseless(stringImpl->characters8() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
+    return equalCompatibilityCaseless(stringImpl->characters16() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
 }
 
 ALWAYS_INLINE static bool equalInner(const StringImpl& stringImpl, unsigned startOffset, const StringImpl& matchString)
@@ -1918,30 +1965,6 @@ bool equal(const StringImpl& a, const StringImpl& b)
     return equalCommon(a, b);
 }
 
-bool equalCompatibiltyCaselessNonNull(const StringImpl* a, const StringImpl* b)
-{
-    ASSERT(a);
-    ASSERT(b);
-    if (a == b)
-        return true;
-
-    unsigned length = a->length();
-    if (length != b->length())
-        return false;
-
-    if (a->is8Bit()) {
-        if (b->is8Bit())
-            return equalCompatibiltyCaseless(a->characters8(), b->characters8(), length);
-
-        return equalCompatibiltyCaseless(b->characters16(), a->characters8(), length);
-    }
-
-    if (b->is8Bit())
-        return equalCompatibiltyCaseless(a->characters16(), b->characters8(), length);
-
-    return equalCompatibiltyCaseless(a->characters16(), b->characters16(), length);
-}
-
 bool equalIgnoringNullity(StringImpl* a, StringImpl* b)
 {
     if (!a && b && !b->length())
@@ -2140,26 +2163,6 @@ CString StringImpl::utf8(ConversionMode mode) const
 {
     return utf8ForRange(0, length(), mode);
 }
-
-// Table is based on ftp://ftp.unicode.org/Public/UNIDATA/CaseFolding.txt
-const UChar StringImpl::latin1CaseFoldTable[256] = {
-    0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x000f,
-    0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001a, 0x001b, 0x001c, 0x001d, 0x001e, 0x001f, 
-    0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002a, 0x002b, 0x002c, 0x002d, 0x002e, 0x002f, 
-    0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003a, 0x003b, 0x003c, 0x003d, 0x003e, 0x003f,
-    0x0040, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
-    0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x005b, 0x005c, 0x005d, 0x005e, 0x005f,
-    0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
-    0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007e, 0x007f,
-    0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008a, 0x008b, 0x008c, 0x008d, 0x008e, 0x008f,
-    0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009a, 0x009b, 0x009c, 0x009d, 0x009e, 0x009f,
-    0x00a0, 0x00a1, 0x00a2, 0x00a3, 0x00a4, 0x00a5, 0x00a6, 0x00a7, 0x00a8, 0x00a9, 0x00aa, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x00af,
-    0x00b0, 0x00b1, 0x00b2, 0x00b3, 0x00b4, 0x03bc, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x00bf,
-    0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
-    0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00d7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00df,
-    0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
-    0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff, 
-};
 
 bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)
 {

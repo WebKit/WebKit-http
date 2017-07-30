@@ -45,6 +45,8 @@
 #include "B3UpsilonValue.h"
 #include "B3ValueKeyInlines.h"
 #include "B3ValueInlines.h"
+#include "B3Variable.h"
+#include "B3VariableValue.h"
 #include <wtf/GraphNodeWorklist.h>
 #include <wtf/HashMap.h>
 
@@ -662,14 +664,12 @@ private:
                     // We can do this because it's precisely correct for ChillDiv and for Div we
                     // are allowed to do whatever we want.
                     m_value->replaceWithIdentity(m_value->child(1));
-                    m_changed = true;
                     break;
 
                 case 1:
                     // Turn this: Div(value, 1)
                     // Into this: value
                     m_value->replaceWithIdentity(m_value->child(0));
-                    m_changed = true;
                     break;
 
                 default:
@@ -722,12 +722,11 @@ private:
                                 m_index, ZShr, m_value->origin(), magicQuotient,
                                 m_insertionSet.insert<Const32Value>(
                                     m_index, m_value->origin(), 31))));
-                    m_changed = true;
                     break;
                 }
 
-                if (m_value->opcode() != ChillDiv && m_value->opcode() != Div)
-                    break;
+                m_changed = true;
+                break;
             }
             break;
 
@@ -736,7 +735,70 @@ private:
             // Turn this: Mod(constant1, constant2)
             // Into this: constant1 / constant2
             // Note that this uses ChillMod semantics.
-            replaceWithNewValue(m_value->child(0)->modConstant(m_proc, m_value->child(1)));
+            if (replaceWithNewValue(m_value->child(0)->modConstant(m_proc, m_value->child(1))))
+                break;
+
+            // Modulo by constant is more efficient if we turn it into Div, and then let Div get
+            // optimized.
+            if (m_value->child(1)->hasInt()) {
+                switch (m_value->child(1)->asInt()) {
+                case 0:
+                    // Turn this: Mod(value, 0)
+                    // Into this: 0
+                    // This is correct according to ChillMod semantics.
+                    m_value->replaceWithIdentity(m_value->child(1));
+                    break;
+
+                default:
+                    // Turn this: Mod(N, D)
+                    // Into this: Sub(N, Mul(Div(N, D), D))
+                    //
+                    // This is a speed-up because we use our existing Div optimizations.
+                    //
+                    // Here's an easier way to look at it:
+                    //     N % D = N - N / D * D
+                    //
+                    // Note that this does not work for D = 0 and ChillMod. The expected result is 0.
+                    // That's why we have a special-case above.
+                    //     X % 0 = X - X / 0 * 0 = X     (should be 0)
+                    //
+                    // This does work for the D = -1 special case.
+                    //     -2^31 % -1 = -2^31 - -2^31 / -1 * -1
+                    //                = -2^31 - -2^31 * -1
+                    //                = -2^31 - -2^31
+                    //                = 0
+
+                    Opcode divOpcode;
+                    switch (m_value->opcode()) {
+                    case Mod:
+                        divOpcode = Div;
+                        break;
+                    case ChillMod:
+                        divOpcode = ChillDiv;
+                        break;
+                    default:
+                        divOpcode = Oops;
+                        RELEASE_ASSERT_NOT_REACHED();
+                        break;
+                    }
+
+                    m_value->replaceWithIdentity(
+                        m_insertionSet.insert<Value>(
+                            m_index, Sub, m_value->origin(),
+                            m_value->child(0),
+                            m_insertionSet.insert<Value>(
+                                m_index, Mul, m_value->origin(),
+                                m_insertionSet.insert<Value>(
+                                    m_index, divOpcode, m_value->origin(),
+                                    m_value->child(0), m_value->child(1)),
+                                m_value->child(1))));
+                    break;
+                }
+                
+                m_changed = true;
+                break;
+            }
+            
             break;
 
         case BitAnd:
@@ -2223,13 +2285,15 @@ private:
         Vector<UpsilonValue*, 64> upsilons;
         for (BasicBlock* block : m_proc) {
             for (Value* value : *block) {
-                Effects effects = value->effects();
-                // We don't care about SSA Effects, since we model them more accurately than the
-                // effects() method does.
-                effects.writesSSAState = false;
-                effects.readsSSAState = false;
+                Effects effects;
+                // We don't care about effects of SSA operations, since we model them more
+                // accurately than the effects() method does.
+                if (value->opcode() != Phi && value->opcode() != Upsilon)
+                    effects = value->effects();
+                
                 if (effects.mustExecute())
                     worklist.push(value);
+                
                 if (UpsilonValue* upsilon = value->as<UpsilonValue>())
                     upsilons.append(upsilon);
             }
@@ -2254,7 +2318,7 @@ private:
                 break;
         }
 
-        IndexSet<StackSlot> liveStackSlots;
+        IndexSet<Variable> liveVariables;
         
         for (BasicBlock* block : m_proc) {
             size_t sourceIndex = 0;
@@ -2262,8 +2326,8 @@ private:
             while (sourceIndex < block->size()) {
                 Value* value = block->at(sourceIndex++);
                 if (worklist.saw(value)) {
-                    if (SlotBaseValue* slotBase = value->as<SlotBaseValue>())
-                        liveStackSlots.add(slotBase->slot());
+                    if (VariableValue* variableValue = value->as<VariableValue>())
+                        liveVariables.add(variableValue->variable());
                     block->at(targetIndex++) = value;
                 } else {
                     m_proc.deleteValue(value);
@@ -2278,10 +2342,9 @@ private:
             block->values().resize(targetIndex);
         }
 
-        for (StackSlot* slot : m_proc.stackSlots()) {
-            if (slot->isLocked() || liveStackSlots.contains(slot))
-                continue;
-            m_proc.deleteStackSlot(slot);
+        for (Variable* variable : m_proc.variables()) {
+            if (!liveVariables.contains(variable))
+                m_proc.deleteVariable(variable);
         }
     }
 

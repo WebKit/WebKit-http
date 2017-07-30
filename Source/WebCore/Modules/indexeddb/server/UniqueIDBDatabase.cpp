@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include "IDBServer.h"
 #include "IDBTransactionInfo.h"
 #include "Logging.h"
+#include "ScopeGuard.h"
 #include "UniqueIDBDatabaseConnection.h"
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
@@ -98,14 +99,17 @@ bool UniqueIDBDatabase::isVersionChangeInProgress()
 
 void UniqueIDBDatabase::performCurrentOpenOperation()
 {
-    LOG(IndexedDB, "(main) UniqueIDBDatabase::performCurrentOpenOperation");
+    LOG(IndexedDB, "(main) UniqueIDBDatabase::performCurrentOpenOperation (%p)", this);
 
     ASSERT(m_currentOpenDBRequest);
     ASSERT(m_currentOpenDBRequest->isOpenRequest());
 
     if (!m_databaseInfo) {
-        m_isOpeningBackingStore = true;
-        m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::openBackingStore, m_identifier));
+        if (!m_isOpeningBackingStore) {
+            m_isOpeningBackingStore = true;
+            m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::openBackingStore, m_identifier));
+        }
+
         return;
     }
 
@@ -443,7 +447,7 @@ void UniqueIDBDatabase::addOpenDatabaseConnection(Ref<UniqueIDBDatabaseConnectio
 void UniqueIDBDatabase::openBackingStore(const IDBDatabaseIdentifier& identifier)
 {
     ASSERT(!isMainThread());
-    LOG(IndexedDB, "(db) UniqueIDBDatabase::openBackingStore");
+    LOG(IndexedDB, "(db) UniqueIDBDatabase::openBackingStore (%p)", this);
 
     ASSERT(!m_backingStore);
     m_backingStore = m_server.createBackingStore(identifier);
@@ -675,37 +679,6 @@ ExecState& UniqueIDBDatabase::databaseThreadExecState()
     return *globalObject.get()->globalExec();
 }
 
-class ScopeGuard {
-public:
-    ScopeGuard()
-    {
-    }
-
-    ScopeGuard(std::function<void()> function)
-        : m_function(WTFMove(function))
-    {
-    }
-
-    ~ScopeGuard()
-    {
-        if (m_function)
-            m_function();
-    }
-
-    void enable(std::function<void()> function)
-    {
-        m_function = WTFMove(function);
-    }
-
-    void disable()
-    {
-        m_function = nullptr;
-    }
-
-private:
-    std::function<void()> m_function { nullptr };
-};
-
 void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& originalRecordValue, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     ASSERT(!isMainThread());
@@ -717,7 +690,7 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
     IDBKeyData usedKey;
     IDBError error;
 
-    auto objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
+    auto* objectStoreInfo = m_backingStore->infoForObjectStore(objectStoreIdentifier);
     if (!objectStoreInfo) {
         error = IDBError(IDBDatabaseException::InvalidStateError, ASCIILiteral("Object store cannot be found in the backing store"));
         m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));

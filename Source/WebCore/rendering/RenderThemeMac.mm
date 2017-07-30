@@ -92,15 +92,11 @@
 
 #if ENABLE(SERVICE_CONTROLS) && HAVE(APPKIT_SERVICE_CONTROLS_SUPPORT)
 
-#if __has_include(<AppKit/AppKitDefines_Private.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <AppKit/AppKitDefines_Private.h>
-#else
-#define APPKIT_PRIVATE_CLASS
-#endif
-
-#if __has_include(<AppKit/NSServicesRolloverButtonCell.h>)
 #import <AppKit/NSServicesRolloverButtonCell.h>
 #else
+#define APPKIT_PRIVATE_CLASS
 @interface NSServicesRolloverButtonCell : NSButtonCell
 @end
 #endif
@@ -2337,22 +2333,34 @@ static void paintAttachmentIconBackground(const RenderAttachment&, GraphicsConte
     }
 }
 
-static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
 {
-    RefPtr<Icon> icon;
-    String type = attachment.attachmentElement().attachmentType();
-    if (!type.isEmpty())
-        icon = Icon::createIconForMIMEType(type);
-    else {
-        Vector<String> filenames;
-        if (File* file = attachment.attachmentElement().file())
-            filenames.append(file->path());
-        icon = Icon::createIconForFiles(filenames);
+    String MIMEType = attachment.attachmentElement().attachmentType();
+    if (!MIMEType.isEmpty()) {
+        if (equalIgnoringASCIICase(MIMEType, "multipart/x-folder")) {
+            if (auto icon = Icon::createIconForUTI("public.directory"))
+                return icon;
+        } else if (auto icon = Icon::createIconForMIMEType(MIMEType))
+            return icon;
     }
 
-    if (!icon)
-        icon = Icon::createIconForUTI("public.data");
+    if (File* file = attachment.attachmentElement().file()) {
+        if (auto icon = Icon::createIconForFiles({ file->path() }))
+            return icon;
+    }
 
+    NSString *fileExtension = [static_cast<NSString *>(attachment.attachmentElement().attachmentTitle()) pathExtension];
+    if (fileExtension.length) {
+        if (auto icon = Icon::createIconForFileExtension(fileExtension))
+            return icon;
+    }
+
+    return Icon::createIconForUTI("public.data");
+}
+
+static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+{
+    auto icon = iconForAttachment(attachment);
     if (!icon)
         return;
     icon->paint(context, layout.iconRect);

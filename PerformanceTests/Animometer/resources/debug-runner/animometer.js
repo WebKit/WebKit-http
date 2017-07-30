@@ -1,3 +1,126 @@
+ProgressBar = Utilities.createClass(
+    function(element, ranges)
+    {
+        this._element = element;
+        this._ranges = ranges;
+        this._currentRange = 0;
+        this._updateElement();
+    }, {
+
+    _updateElement: function()
+    {
+        this._element.style.width = (this._currentRange * (100 / this._ranges)) + "%";
+    },
+
+    incrementRange: function()
+    {
+        ++this._currentRange;
+        this._updateElement();
+    }
+});
+
+DeveloperResultsTable = Utilities.createSubclass(ResultsTable,
+    function(element, headers)
+    {
+        ResultsTable.call(this, element, headers);
+    }, {
+
+    _addGraphButton: function(td, testName, testResults)
+    {
+        var data = testResults[Strings.json.samples];
+        if (!data)
+            return;
+
+        var button = Utilities.createElement("button", { class: "small-button" }, td);
+
+        button.addEventListener("click", function() {
+            var graphData = {
+                axes: [Strings.text.experiments.complexity, Strings.text.experiments.frameRate],
+                samples: data,
+                complexityAverageSamples: testResults[Strings.json.complexityAverageSamples],
+                averages: {},
+                marks: testResults[Strings.json.marks]
+            };
+            [Strings.json.experiments.complexity, Strings.json.experiments.frameRate].forEach(function(experiment) {
+                if (experiment in testResults)
+                    graphData.averages[experiment] = testResults[experiment];
+            });
+
+            [
+                Strings.json.score,
+                Strings.json.targetFrameLength
+            ].forEach(function(key) {
+                if (testResults[key])
+                    graphData[key] = testResults[key];
+            });
+
+            benchmarkController.showTestGraph(testName, graphData);
+        });
+
+        button.textContent = Strings.text.results.graph + "...";
+    },
+
+    _isNoisyMeasurement: function(jsonExperiment, data, measurement, options)
+    {
+        const percentThreshold = 10;
+        const averageThreshold = 2;
+
+        if (measurement == Strings.json.measurements.percent)
+            return data[Strings.json.measurements.percent] >= percentThreshold;
+
+        if (jsonExperiment == Strings.json.experiments.frameRate && measurement == Strings.json.measurements.average)
+            return Math.abs(data[Strings.json.measurements.average] - options["frame-rate"]) >= averageThreshold;
+
+        return false;
+    },
+
+    _addTest: function(testName, testResults, options)
+    {
+        var row = Utilities.createElement("tr", {}, this.element);
+
+        var isNoisy = false;
+        [Strings.json.experiments.complexity, Strings.json.experiments.frameRate].forEach(function (experiment) {
+            var data = testResults[experiment];
+            for (var measurement in data) {
+                if (this._isNoisyMeasurement(experiment, data, measurement, options))
+                    isNoisy = true;
+            }
+        }, this);
+
+        this._flattenedHeaders.forEach(function (header) {
+            var className = "";
+            if (header.className) {
+                if (typeof header.className == "function")
+                    className = header.className(testResults, options);
+                else
+                    className = header.className;
+            }
+
+            if (header.title == Strings.text.testName) {
+                if (isNoisy)
+                    className += " noisy-results";
+                var td = Utilities.createElement("td", { class: className }, row);
+                td.textContent = testName;
+                return;
+            }
+
+            var td = Utilities.createElement("td", { class: className }, row);
+            if (header.title == Strings.text.results.graph) {
+                this._addGraphButton(td, testName, testResults);
+            } else if (!("text" in header)) {
+                td.textContent = testResults[header.title];
+            } else if (typeof header.text == "string") {
+                var data = testResults[header.text];
+                if (typeof data == "number")
+                    data = data.toFixed(2);
+                td.textContent = data;
+            } else {
+                td.textContent = header.text(testResults, testName);
+            }
+        }, this);
+    }
+});
+
 Utilities.extendObject(window.benchmarkRunnerClient, {
     testsCount: null,
     progressBar: null,
@@ -24,6 +147,12 @@ Utilities.extendObject(window.sectionsManager, {
     setSectionHeader: function(sectionIdentifier, title)
     {
         document.querySelector("#" + sectionIdentifier + " h1").textContent = title;
+    },
+
+    populateTable: function(tableIdentifier, headers, data)
+    {
+        var table = new DeveloperResultsTable(document.getElementById(tableIdentifier), headers);
+        table.showIterations(data, benchmarkRunnerClient.options);
     }
 });
 
@@ -70,7 +199,7 @@ window.optionsManager =
             var type = formElement.type;
 
             if (type == "number")
-                options[name] = formElement.value;
+                options[name] = +formElement.value;
             else if (type == "checkbox")
                 options[name] = formElement.checked;
             else if (type == "radio")
@@ -157,20 +286,19 @@ window.suitesManager =
         this._updateStartButtonState();
     },
 
-    _onChangeTestCheckbox: function(event)
+    _onChangeTestCheckbox: function(suiteCheckbox)
     {
-        var suiteCheckbox = event.target.suiteCheckbox;
         this._updateSuiteCheckboxState(suiteCheckbox);
         this._updateStartButtonState();
     },
 
     _createSuiteElement: function(treeElement, suite, id)
     {
-        var suiteElement = DocumentExtension.createElement("li", {}, treeElement);
-        var expand = DocumentExtension.createElement("input", { type: "checkbox",  class: "expand-button", id: id }, suiteElement);
-        var label = DocumentExtension.createElement("label", { class: "tree-label", for: id }, suiteElement);
+        var suiteElement = Utilities.createElement("li", {}, treeElement);
+        var expand = Utilities.createElement("input", { type: "checkbox",  class: "expand-button", id: id }, suiteElement);
+        var label = Utilities.createElement("label", { class: "tree-label", for: id }, suiteElement);
 
-        var suiteCheckbox = DocumentExtension.createElement("input", { type: "checkbox" }, label);
+        var suiteCheckbox = Utilities.createElement("input", { type: "checkbox" }, label);
         suiteCheckbox.suite = suite;
         suiteCheckbox.onchange = this._onChangeSuiteCheckbox.bind(this);
         suiteCheckbox.testsElements = [];
@@ -181,17 +309,25 @@ window.suitesManager =
 
     _createTestElement: function(listElement, test, suiteCheckbox)
     {
-        var testElement = DocumentExtension.createElement("li", {}, listElement);
-        var span = DocumentExtension.createElement("label", { class: "tree-label" }, testElement);
+        var testElement = Utilities.createElement("li", {}, listElement);
+        var span = Utilities.createElement("label", { class: "tree-label" }, testElement);
 
-        var testCheckbox = DocumentExtension.createElement("input", { type: "checkbox" }, span);
+        var testCheckbox = Utilities.createElement("input", { type: "checkbox" }, span);
         testCheckbox.test = test;
-        testCheckbox.onchange = this._onChangeTestCheckbox.bind(this);
+        testCheckbox.onchange = function(event) {
+            this._onChangeTestCheckbox(event.target.suiteCheckbox);
+        }.bind(this);
         testCheckbox.suiteCheckbox = suiteCheckbox;
 
         suiteCheckbox.testsElements.push(testElement);
         span.appendChild(document.createTextNode(" " + test.name));
-        DocumentExtension.createElement("input", { type: "number" }, testElement);
+        var complexity = Utilities.createElement("input", { type: "number" }, testElement);
+        complexity.relatedCheckbox = testCheckbox;
+        complexity.oninput = function(event) {
+            var relatedCheckbox = event.target.relatedCheckbox;
+            relatedCheckbox.checked = true;
+            this._onChangeTestCheckbox(relatedCheckbox.suiteCheckbox);
+        }.bind(this);
         return testElement;
     },
 
@@ -201,7 +337,7 @@ window.suitesManager =
 
         Suites.forEach(function(suite, index) {
             var suiteElement = this._createSuiteElement(treeElement, suite, "suite-" + index);
-            var listElement = DocumentExtension.createElement("ul", {}, suiteElement);
+            var listElement = Utilities.createElement("ul", {}, suiteElement);
             var suiteCheckbox = this._checkboxElement(suiteElement);
 
             suite.tests.forEach(function(test) {
@@ -213,7 +349,7 @@ window.suitesManager =
     updateEditsElementsState: function()
     {
         var editsElements = this._editsElements();
-        var showComplexityInputs = optionsManager.valueForOption("adjustment") == "fixed";
+        var showComplexityInputs = optionsManager.valueForOption("adjustment") == "step";
 
         for (var i = 0; i < editsElements.length; ++i) {
             var editElement = editsElements[i];
@@ -303,7 +439,9 @@ window.suitesManager =
                 var complexity = Math.round(data[Strings.json.measurements.average]);
 
                 var value = { checked: true, complexity: complexity };
-                localStorage.setItem(this._localStorageNameForTest(suiteName, testName), JSON.stringify(value));
+                try {
+                    localStorage.setItem(this._localStorageNameForTest(suiteName, testName), JSON.stringify(value));
+                } catch (e) {}
             }
         }
     }
@@ -313,7 +451,7 @@ Utilities.extendObject(window.benchmarkController, {
     initialize: function()
     {
         document.forms["benchmark-options"].addEventListener("change", benchmarkController.onBenchmarkOptionsChanged, true);
-        document.forms["graph-options"].addEventListener("change", benchmarkController.onGraphOptionsChanged, true);
+        document.forms["time-graph-options"].addEventListener("change", benchmarkController.onTimeGraphOptionsChanged, true);
         optionsManager.updateUIFromLocalStorage();
         suitesManager.createElements();
         suitesManager.updateUIFromLocalStorage();
@@ -367,10 +505,9 @@ Utilities.extendObject(window.benchmarkController, {
         document.querySelector("#results-json div").classList.remove("hidden");
     },
 
-    showTestGraph: function(testName, score, mean, graphData)
+    showTestGraph: function(testName, graphData)
     {
         sectionsManager.setSectionHeader("test-graph", testName);
-        sectionsManager.setSectionScore("test-graph", score, mean);
         sectionsManager.showSection("test-graph", true);
         this.updateGraphData(graphData);
     }

@@ -1,3 +1,100 @@
+2016-02-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.11.5 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2016-02-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][EFL] Enable SamplingProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153638
+
+        Reviewed by Michael Catanzaro.
+
+        Enable SamplingProfiler in GTK and EFL.
+        And added option to CMake to switch this from the build command.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-02-07  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Move LLVM detection for LLVMDisassembler to OptionsCommon.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=153961
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-02-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed non X86_64 buildfix after r196077.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-02-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][EFL] Switch FTL to B3
+        https://bugs.webkit.org/show_bug.cgi?id=153478
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed attempt to fix Mac CMake build after r195999.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        Add ENABLE_RESOURCE_USAGE to CMake builds.
+
+2016-02-02  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][EFL] Upgrade OpenWebRTC dependency
+        https://bugs.webkit.org/show_bug.cgi?id=153489
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindOpenWebRTC.cmake: Bump OpenWebRTC dependency,
+        required to make the mediastream work.
+
+2016-02-01  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] WTFHeaderDetection.h no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=153753
+        rdar://problem/24434627
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/WebKitFS.cmake:
+
+2016-01-31  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] All API tests are broken on 15.10
+        https://bugs.webkit.org/show_bug.cgi?id=153528
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt: Having include(WebKitCommon) statement follow
+        CMAKE_FOO_OUTPUT_DIRECTORY otherwise all the API tests gets blocked.
+
+2016-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Enable SamplingProfiler on POSIX environment
+        https://bugs.webkit.org/show_bug.cgi?id=153584
+
+        Reviewed by Michael Saboff.
+
+        Add features.h header check. It will define __GLIBC__.
+
+        * Source/cmake/OptionsCommon.cmake:
+
 2016-01-27  Alexey Proskuryakov  <ap@apple.com>
 
         Remove ENABLE_CURRENTSRC

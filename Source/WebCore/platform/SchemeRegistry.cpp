@@ -96,9 +96,9 @@ static URLSchemesMap& emptyDocumentSchemes()
     return emptyDocumentSchemes;
 }
 
-static HashSet<String>& schemesForbiddenFromDomainRelaxation()
+static HashSet<String, ASCIICaseInsensitiveHash>& schemesForbiddenFromDomainRelaxation()
 {
-    static NeverDestroyed<HashSet<String>> schemes;
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> schemes;
     return schemes;
 }
 
@@ -126,10 +126,10 @@ void SchemeRegistry::registerURLSchemeAsLocal(const String& scheme)
 
 void SchemeRegistry::removeURLSchemeRegisteredAsLocal(const String& scheme)
 {
-    if (scheme == "file")
+    if (equalLettersIgnoringASCIICase(scheme, "file"))
         return;
 #if PLATFORM(COCOA)
-    if (scheme == "applewebdata")
+    if (equalLettersIgnoringASCIICase(scheme, "applewebdata"))
         return;
 #endif
     localURLSchemes().remove(scheme);

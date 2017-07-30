@@ -680,6 +680,9 @@
     <ClCompile Include="..\page\csp\ContentSecurityPolicy.cpp">
       <Filter>page\csp</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\csp\ContentSecurityPolicyResponseHeaders.cpp">
+      <Filter>page\csp</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\ContextMenuController.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -3632,9 +3635,6 @@
     <ClCompile Include="..\html\DOMFormData.cpp">
       <Filter>html</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\DOMSettableTokenList.cpp">
-      <Filter>html</Filter>
-    </ClCompile>
     <ClCompile Include="..\html\DOMTokenList.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -5215,9 +5215,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMSelection.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMSettableTokenList.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMStringList.cpp">
@@ -7667,6 +7664,9 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\csp\ContentSecurityPolicy.h">
+      <Filter>page\csp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\csp\ContentSecurityPolicyResponseHeaders.h">
       <Filter>page\csp</Filter>
     </ClInclude>
     <ClInclude Include="..\page\ContextMenuClient.h">
@@ -10795,9 +10795,6 @@
     <ClInclude Include="..\html\DOMFormData.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\DOMSettableTokenList.h">
-      <Filter>html</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\DOMTokenList.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -12637,9 +12634,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMSelection.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMSettableTokenList.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMStringList.h">

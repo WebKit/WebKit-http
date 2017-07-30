@@ -3,10 +3,10 @@ function BouncingParticle(stage)
     this._stageSize = stage.size;
     this.size = stage.particleSize;
 
-    this.position = stage.randomPosition(stage.size.subtract(stage.particleSize));
-    this._angle = stage.randomAngle();
-    this._velocity = stage.randomVelocity(stage.maxVelocity);
-    this.rotater = stage.randomRotater();
+    this.position = Stage.randomPosition(stage.size.subtract(stage.particleSize));
+    this._angle = Stage.randomAngle();
+    this._velocity = Stage.randomVelocity(stage.maxVelocity);
+    this.rotater = Stage.randomRotater();
 }
 
 BouncingParticle.prototype =
@@ -72,11 +72,11 @@ BouncingParticlesStage = Utilities.createSubclass(Stage,
         this.particles = [];
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        Stage.prototype.initialize.call(this, benchmark);
-        this.particleSize = new Point(parseInt(benchmark.options["particleWidth"]) || 10, parseInt(benchmark.options["particleHeight"]) || 10);
-        this.maxVelocity = Math.max(parseInt(benchmark.options["maxVelocity"]) || 500, 100);
+        Stage.prototype.initialize.call(this, benchmark, options);
+        this.particleSize = new Point(parseInt(options["particleWidth"]) || 10, parseInt(options["particleHeight"]) || 10);
+        this.maxVelocity = Math.max(parseInt(options["maxVelocity"]) || 500, 100);
     },
 
     parseShapeParameters: function(options)
@@ -96,12 +96,12 @@ BouncingParticlesStage = Utilities.createSubclass(Stage,
     tune: function(count)
     {
         if (count == 0)
-            return this.particles.length;
+            return;
 
         if (count > 0) {
             for (var i = 0; i < count; ++i)
                 this.particles.push(this.createParticle());
-            return this.particles.length;
+            return;
         }
 
         count = Math.min(-count, this.particles.length);
@@ -112,7 +112,6 @@ BouncingParticlesStage = Utilities.createSubclass(Stage,
         }
 
         this.particles.splice(-count, count);
-        return this.particles.length;
     },
 
     complexity: function()

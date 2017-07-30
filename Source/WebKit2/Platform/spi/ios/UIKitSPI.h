@@ -24,6 +24,7 @@
  */
 
 #import <UIKit/UIKit.h>
+#import <UIKit/UITouch.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 
@@ -32,6 +33,7 @@
 #import <UIKit/UIBarButtonItem_Private.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
+#import <UIKit/UIDocumentMenuViewController_Private.h>
 #import <UIKit/UIDocumentPasswordView.h>
 #import <UIKit/UIFont_Private.h>
 #import <UIKit/UIGeometry_Private.h>
@@ -76,15 +78,6 @@
 
 #if HAVE(LINK_PREVIEW)
 #import <UIKit/UIPreviewItemController.h>
-#endif
-
-// FIXME: Unconditionally include this file when a new SDK is available. <rdar://problem/20150072>
-#if defined(__has_include) && __has_include(<UIKit/UIDocumentMenuViewController_Private.h>)
-#import <UIKit/UIDocumentMenuViewController_Private.h>
-#else
-@interface UIDocumentMenuViewController ()
-- (instancetype)_initIgnoringApplicationEntitlementForImportOfTypes:(NSArray *)types;
-@end
 #endif
 
 #else
@@ -240,6 +233,9 @@ typedef enum {
 
 @interface UIGestureRecognizer ()
 - (void)requireOtherGestureToFail:(UIGestureRecognizer *)gestureRecognizer;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90200
+@property(nonatomic, copy) NSArray<NSNumber *> *allowedTouchTypes;
+#endif
 @end
 
 @interface UILongPressGestureRecognizer ()
@@ -293,6 +289,16 @@ typedef enum {
 - (CADisplay *)_display;
 @end
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90100
+typedef enum {
+    UITouchTypeDirect
+} UITouchType;
+
+@interface UITouch ()
+@property(nonatomic,readonly) UITouchType type;
+@end
+#endif
+
 @interface UIScrollView ()
 - (void)_stopScrollingAndZoomingAnimations;
 - (void)_zoomToCenter:(CGPoint)center scale:(CGFloat)scale duration:(CFTimeInterval)duration force:(BOOL)force;
@@ -311,6 +317,7 @@ typedef enum {
 
 @interface UITapGestureRecognizer ()
 @property (nonatomic, readonly) CGPoint location;
+@property (nonatomic, readonly) NSArray  *touches;
 @end
 
 @class WebEvent;

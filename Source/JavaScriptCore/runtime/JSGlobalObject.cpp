@@ -64,6 +64,7 @@
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
+#include "JSBoundSlotBaseFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
@@ -278,6 +279,7 @@ void JSGlobalObject::init(VM& vm)
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
+    m_boundSlotBaseFunctionStructure.set(vm, this, JSBoundSlotBaseFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_nativeStdFunctionStructure.set(vm, this, JSNativeStdFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
@@ -404,7 +406,7 @@ m_ ## properName ## Structure.set(vm, this, instanceType::createStructure(vm, th
     m_definePropertyFunction.set(vm, this, definePropertyFunction);
 
     JSCell* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
-    JSCell* arrayConstructor = ArrayConstructor::create(vm, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), speciesGetterSetter);
+    JSObject* arrayConstructor = ArrayConstructor::create(vm, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), speciesGetterSetter);
     
     m_regExpConstructor.set(vm, this, RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), speciesGetterSetter));
     
@@ -439,7 +441,7 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, DontEnum);
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, DontEnum);
-    m_arrayPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayConstructor, DontEnum);
+    m_arrayPrototype->setConstructor(vm, arrayConstructor, DontEnum);
     m_regExpPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_regExpConstructor.get(), DontEnum);
     
     putDirectWithoutTransition(vm, vm.propertyNames->Object, objectConstructor, DontEnum);
@@ -528,7 +530,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->NaN, jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->Infinity, jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->undefinedPrivateName, jsUndefined(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->ObjectPrivateName, objectConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->ownEnumerablePropertyKeysPrivateName, JSFunction::create(vm, this, 0, String(), ownEnumerablePropertyKeys), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->getTemplateObjectPrivateName, privateFuncGetTemplateObject, DontEnum | DontDelete | ReadOnly),
@@ -548,13 +549,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->floorPrivateName, privateFuncFloor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isFinitePrivateName, privateFuncIsFinite, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isNaNPrivateName, privateFuncIsNaN, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyPrivateName, jsNumber(ArrayIterateKey), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindValuePrivateName, jsNumber(ArrayIterateValue), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyValuePrivateName, jsNumber(ArrayIterateKeyValue), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().symbolIteratorPrivateName(), Symbol::create(vm, static_cast<SymbolImpl&>(*vm.propertyNames->iteratorSymbol.impl())), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->PromisePrivateName, promiseConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->InternalPromisePrivateName, internalPromiseConstructor, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->promisePendingPrivateName, jsNumber(static_cast<unsigned>(JSPromise::Status::Pending)), DontEnum | DontDelete | ReadOnly),
 
         GlobalPropertyInfo(vm.propertyNames->isSetPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncIsSet), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->SetIteratorPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncSetIterator), DontEnum | DontDelete | ReadOnly),
@@ -563,11 +559,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->MapIteratorPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncMapIterator), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->mapIteratorNextPrivateName, JSFunction::create(vm, this, 0, String(), privateFuncMapIteratorNext), DontEnum | DontDelete | ReadOnly),
 
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseFulfilledPrivateName(), jsNumber(static_cast<unsigned>(JSPromise::Status::Fulfilled)), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseRejectedPrivateName(), jsNumber(static_cast<unsigned>(JSPromise::Status::Rejected)), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().toLengthPrivateName(), privateFuncToLength, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().toIntegerPrivateName(), privateFuncToInteger, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().isObjectPrivateName(), JSFunction::createBuiltinFunction(vm, globalObjectIsObjectCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isDictionaryPrivateName(), JSFunction::createBuiltinFunction(vm, globalObjectIsDictionaryCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().isPromisePrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsIsPromiseCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().newPromiseReactionPrivateName(), JSFunction::createBuiltinFunction(vm, promiseOperationsNewPromiseReactionCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
@@ -888,6 +881,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_errorStructure);
     visitor.append(&thisObject->m_calleeStructure);
     visitor.append(&thisObject->m_functionStructure);
+    visitor.append(&thisObject->m_boundSlotBaseFunctionStructure);
     visitor.append(&thisObject->m_boundFunctionStructure);
     visitor.append(&thisObject->m_nativeStdFunctionStructure);
     visitor.append(&thisObject->m_namedFunctionStructure);

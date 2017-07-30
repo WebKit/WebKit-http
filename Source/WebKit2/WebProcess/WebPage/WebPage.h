@@ -400,7 +400,8 @@ public:
     void setPaginationBehavesLikeColumns(bool);
     void setPageLength(double);
     void setGapBetweenPages(double);
-
+    void setPaginationLineGridEnabled(bool);
+    
     void postInjectedBundleMessage(const String& messageName, const UserData&);
 
     bool drawsBackground() const { return m_drawsBackground; }
@@ -1393,7 +1394,7 @@ private:
     WebCore::Timer m_volatilityTimer;
 #endif
 
-    HashSet<String, CaseFoldingHash> m_mimeTypesWithCustomContentProviders;
+    HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;
 
     HashSet<unsigned> m_activeRenderingSuppressionTokens;

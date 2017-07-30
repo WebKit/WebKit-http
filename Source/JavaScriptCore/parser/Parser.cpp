@@ -714,6 +714,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVariableDecl
                 JSTextPosition varDivot = tokenStartPosition() + 1;
                 initStart = tokenStartPosition();
                 next(TreeBuilder::DontBuildStrings); // consume '='
+                propagateError();
                 TreeExpression initializer = parseAssignmentExpression(context);
                 initEnd = lastTokenEndPosition();
                 lastInitializer = initializer;
@@ -1975,8 +1976,9 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         functionBodyType = StandardFunctionBodyBlock;
     }
 
-    bool isClassConstructor = constructorKind != ConstructorKind::None;
-    
+    functionScope->setConstructorKind(constructorKind);
+    functionScope->setExpectedSuperBinding(expectedSuperBinding);
+
     functionInfo.bodyStartColumn = startColumn;
     
     // If we know about this function already, we can use the cached info and skip the parser to the end of the function.
@@ -2065,12 +2067,24 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         semanticFailIfTrue(m_vm->propertyNames->arguments == *functionInfo.name, "'", functionInfo.name->impl(), "' is not a valid function name in strict mode");
         semanticFailIfTrue(m_vm->propertyNames->eval == *functionInfo.name, "'", functionInfo.name->impl(), "' is not a valid function name in strict mode");
     }
-    if (functionScope->hasDirectSuper() && functionBodyType == StandardFunctionBodyBlock) {
-        semanticFailIfTrue(!isClassConstructor, "Cannot call super() outside of a class constructor");
-        semanticFailIfTrue(constructorKind != ConstructorKind::Derived, "Cannot call super() in a base class constructor");
+    // It unncecessary to check of using super during reparsing one more time. Also it can lead to syntax error
+    // in case of arrow function becuase during reparsing we don't know that parse arrow function
+    // inside of the constructor or method
+    if (!m_lexer->isReparsingFunction()) {
+        if (functionScope->hasDirectSuper()) {
+            ConstructorKind functionConstructorKind = functionBodyType == StandardFunctionBodyBlock
+                ? constructorKind
+                : closestParentNonArrowFunctionNonLexicalScope()->constructorKind();
+            semanticFailIfTrue(functionConstructorKind == ConstructorKind::None, "Cannot call super() outside of a class constructor");
+            semanticFailIfTrue(functionConstructorKind != ConstructorKind::Derived, "Cannot call super() in a base class constructor");
+        }
+        if (functionScope->needsSuperBinding()) {
+            SuperBinding functionSuperBinding = functionBodyType == StandardFunctionBodyBlock
+                ? expectedSuperBinding
+                : closestParentNonArrowFunctionNonLexicalScope()->expectedSuperBinding();
+            semanticFailIfTrue(functionSuperBinding == SuperBinding::NotNeeded, "super can only be used in a method of a derived class");
+        }
     }
-    if (functionScope->needsSuperBinding() && functionBodyType == StandardFunctionBodyBlock)
-        semanticFailIfTrue(expectedSuperBinding == SuperBinding::NotNeeded, "super can only be used in a method of a derived class");
 
     JSTokenLocation location = JSTokenLocation(m_token.m_location);
     functionInfo.endOffset = m_token.m_data.offset;
@@ -2082,7 +2096,9 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     
     // Cache the tokenizer state and the function scope the first time the function is parsed.
     // Any future reparsing can then skip the function.
-    static const int minimumFunctionLengthToCache = 16;
+    // For arrow function is 8 = x=>x + 4 symbols;
+    // For ordinary function is 16  = function(){} + 4 symbols
+    const int minimumFunctionLengthToCache = functionBodyType == StandardFunctionBodyBlock ? 16 : 8;
     std::unique_ptr<SourceProviderCacheItem> newInfo;
     int functionLength = functionInfo.endOffset - functionInfo.startOffset;
     if (TreeBuilder::CanUseFunctionCache && m_functionCache && functionLength > minimumFunctionLengthToCache) {
@@ -2947,6 +2963,8 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
 template <typename LexerType>
 template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmentExpression(TreeBuilder& context, ExpressionErrorClassifier& classifier)
 {
+    ASSERT(!hasError());
+    
     failIfStackOverflow();
     JSTextPosition start = tokenStartPosition();
     JSTokenLocation location(tokenLocation());
@@ -3202,7 +3220,7 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             JSTextPosition start = tokenStartPosition();
             JSTokenLocation location(tokenLocation());
             currentScope()->useVariable(ident, m_vm->propertyNames->eval == *ident);
-            TreeExpression node = context.createResolve(location, ident, start);
+            TreeExpression node = context.createResolve(location, *ident, start, lastTokenEndPosition());
             return context.createProperty(ident, node, static_cast<PropertyNode::Type>(PropertyNode::Constant | PropertyNode::Shorthand), PropertyNode::KnownDirect, complete);
         }
 
@@ -3625,7 +3643,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         next();
         currentScope()->useVariable(ident, m_vm->propertyNames->eval == *ident);
         m_parserState.lastIdentifier = ident;
-        return context.createResolve(location, ident, start);
+        return context.createResolve(location, *ident, start, lastTokenEndPosition());
     }
     case STRING: {
         const Identifier* ident = m_token.m_data.ident;

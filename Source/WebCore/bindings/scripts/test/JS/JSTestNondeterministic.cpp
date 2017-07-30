@@ -55,6 +55,7 @@ void setJSTestNondeterministicNondeterministicGetterExceptionAttr(JSC::ExecState
 JSC::EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 void setJSTestNondeterministicNondeterministicSetterExceptionAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestNondeterministicConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestNondeterministicConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestNondeterministicPrototype : public JSC::JSNonFinalObject {
 public:
@@ -96,7 +97,7 @@ template<> const ClassInfo JSTestNondeterministicConstructor::s_info = { "TestNo
 
 static const HashTableValue JSTestNondeterministicPrototypeTableValues[] =
 {
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNondeterministicConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNondeterministicConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestNondeterministicConstructor) } },
     { "nondeterministicReadonlyAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNondeterministicNondeterministicReadonlyAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "nondeterministicWriteableAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNondeterministicNondeterministicWriteableAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestNondeterministicNondeterministicWriteableAttr) } },
     { "nondeterministicExceptionAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNondeterministicNondeterministicExceptionAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestNondeterministicNondeterministicExceptionAttr) } },
@@ -141,9 +142,11 @@ EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* sta
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestNondeterministic* castedThis = jsDynamicCast<JSTestNondeterministic*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestNondeterministic*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNondeterministic", "nondeterministicReadonlyAttr");
+    }
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
@@ -175,9 +178,11 @@ EncodedJSValue jsTestNondeterministicNondeterministicWriteableAttr(ExecState* st
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestNondeterministic* castedThis = jsDynamicCast<JSTestNondeterministic*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestNondeterministic*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNondeterministic", "nondeterministicWriteableAttr");
+    }
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
@@ -209,9 +214,11 @@ EncodedJSValue jsTestNondeterministicNondeterministicExceptionAttr(ExecState* st
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestNondeterministic* castedThis = jsDynamicCast<JSTestNondeterministic*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestNondeterministic*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNondeterministic", "nondeterministicExceptionAttr");
+    }
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
@@ -243,9 +250,11 @@ EncodedJSValue jsTestNondeterministicNondeterministicGetterExceptionAttr(ExecSta
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestNondeterministic* castedThis = jsDynamicCast<JSTestNondeterministic*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestNondeterministic*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNondeterministic", "nondeterministicGetterExceptionAttr");
+    }
     ExceptionCode ec = 0;
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
@@ -281,9 +290,11 @@ EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(ExecSta
     UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    JSTestNondeterministic* castedThis = jsDynamicCast<JSTestNondeterministic*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis))
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestNondeterministic*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
         return throwGetterTypeError(*state, "TestNondeterministic", "nondeterministicSetterExceptionAttr");
+    }
 #if ENABLE(WEB_REPLAY)
     JSGlobalObject* globalObject = state->lexicalGlobalObject();
     InputCursor& cursor = globalObject->inputCursor();
@@ -316,6 +327,19 @@ EncodedJSValue jsTestNondeterministicConstructor(ExecState* state, JSObject* bas
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSTestNondeterministic::getConstructor(state->vm(), domObject->globalObject()));
+}
+
+void setJSTestNondeterministicConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(thisValue);
+    JSTestNondeterministicPrototype* domObject = jsDynamicCast<JSTestNondeterministicPrototype*>(baseValue);
+    if (UNLIKELY(!domObject)) {
+        throwVMTypeError(state);
+        return;
+    }
+    // Shadowing a built-in constructor
+    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
 void setJSTestNondeterministicNondeterministicWriteableAttr(ExecState* state, JSObject* baseObject, EncodedJSValue thisValue, EncodedJSValue encodedValue)

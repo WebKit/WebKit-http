@@ -1,92 +1,268 @@
-function Rotater(rotateInterval)
-{
-    this._timeDelta = 0;
-    this._rotateInterval = rotateInterval;
-}
-
-Rotater.prototype =
-{
-    get interval()
+Controller = Utilities.createClass(
+    function(benchmark, options)
     {
-        return this._rotateInterval;
+        // Initialize timestamps relative to the start of the benchmark
+        // In start() the timestamps are offset by the start timestamp
+        this._startTimestamp = 0;
+        this._endTimestamp = options["test-interval"];
+        // Default data series: timestamp, complexity, estimatedFrameLength
+        this._sampler = new Sampler(options["series-count"] || 3, (60 * options["test-interval"] / 1000), this);
+        this._marks = {};
+
+        this._frameLengthEstimator = new SimpleKalmanEstimator(options["kalman-process-error"], options["kalman-measurement-error"]);
+        this._isFrameLengthEstimatorEnabled = true;
+
+        // Length of subsequent intervals; a value of 0 means use no intervals
+        this._intervalLength = options["interval-length"] || 100;
+
+        this.initialComplexity = 0;
+    }, {
+
+    set isFrameLengthEstimatorEnabled(enabled) {
+        this._isFrameLengthEstimatorEnabled = enabled;
     },
 
-    next: function(timeDelta)
+    start: function(startTimestamp, stage)
     {
-        this._timeDelta = (this._timeDelta + timeDelta) % this._rotateInterval;
+        this._startTimestamp = startTimestamp;
+        this._endTimestamp += startTimestamp;
+        this._measureAndResetInterval(startTimestamp);
+        this.recordFirstSample(startTimestamp, stage);
     },
 
-    degree: function()
+    recordFirstSample: function(startTimestamp, stage)
     {
-        return (360 * this._timeDelta) / this._rotateInterval;
+        this._sampler.record(startTimestamp, stage.complexity(), -1);
+        this.mark(Strings.json.samplingStartTimeOffset, startTimestamp);
     },
 
-    rotateZ: function()
-    {
-        return "rotateZ(" + Math.floor(this.degree()) + "deg)";
+    mark: function(comment, timestamp, data) {
+        data = data || {};
+        data.time = timestamp;
+        data.index = this._sampler.sampleCount;
+        this._marks[comment] = data;
     },
 
-    rotate: function(center)
-    {
-        return "rotate(" + Math.floor(this.degree()) + ", " + center.x + "," + center.y + ")";
-    }
-};
-
-function BenchmarkState(testInterval)
-{
-    this._currentTimeOffset = 0;
-    this._stageInterval = testInterval / BenchmarkState.stages.FINISHED;
-}
-
-// The enum values and the messages should be in the same order
-BenchmarkState.stages = {
-    WARMING: 0,
-    SAMPLING: 1,
-    FINISHED: 2,
-}
-
-BenchmarkState.prototype =
-{
-    _timeOffset: function(stage)
-    {
-        return stage * this._stageInterval;
+    containsMark: function(comment) {
+        return comment in this._marks;
     },
 
-    _message: function(stage, timeOffset)
+    _measureAndResetInterval: function(currentTimestamp)
     {
-        if (stage == BenchmarkState.stages.FINISHED)
-            return BenchmarkState.stages.messages[stage];
+        var sampleCount = this._sampler.sampleCount;
+        var averageFrameLength = 0;
 
-        return BenchmarkState.stages.messages[stage] + "... ("
-            + Math.floor((timeOffset - this._timeOffset(stage)) / 1000) + "/"
-            + Math.floor((this._timeOffset(stage + 1) - this._timeOffset(stage)) / 1000) + ")";
-    },
-
-    update: function(currentTimeOffset)
-    {
-        this._currentTimeOffset = currentTimeOffset;
-    },
-
-    samplingTimeOffset: function()
-    {
-        return this._timeOffset(BenchmarkState.stages.SAMPLING);
-    },
-
-    currentStage: function()
-    {
-        for (var stage = BenchmarkState.stages.WARMING; stage < BenchmarkState.stages.FINISHED; ++stage) {
-            if (this._currentTimeOffset < this._timeOffset(stage + 1))
-                return stage;
+        if (this._intervalEndTimestamp) {
+            var intervalStartTimestamp = this._sampler.samples[0][this._intervalStartIndex];
+            averageFrameLength = (currentTimestamp - intervalStartTimestamp) / (sampleCount - this._intervalStartIndex);
         }
-        return BenchmarkState.stages.FINISHED;
+
+        this._intervalStartIndex = sampleCount;
+        this._intervalEndTimestamp = currentTimestamp + this._intervalLength;
+
+        return averageFrameLength;
+    },
+
+    update: function(timestamp, stage)
+    {
+        var frameLengthEstimate = -1;
+        var didFinishInterval = false;
+        if (!this._intervalLength) {
+            if (this._isFrameLengthEstimatorEnabled) {
+                this._frameLengthEstimator.sample(timestamp - this._sampler.samples[0][this._sampler.sampleCount - 1]);
+                frameLengthEstimate = this._frameLengthEstimator.estimate;
+            }
+        } else if (timestamp >= this._intervalEndTimestamp) {
+            var intervalStartTimestamp = this._sampler.samples[0][this._intervalStartIndex];
+            intervalAverageFrameLength = this._measureAndResetInterval(timestamp);
+            if (this._isFrameLengthEstimatorEnabled) {
+                this._frameLengthEstimator.sample(intervalAverageFrameLength);
+                frameLengthEstimate = this._frameLengthEstimator.estimate;
+            }
+            didFinishInterval = true;
+            this.didFinishInterval(timestamp, stage, intervalAverageFrameLength);
+        }
+
+        this._sampler.record(timestamp, stage.complexity(), frameLengthEstimate);
+        this.tune(timestamp, stage, didFinishInterval);
+    },
+
+    didFinishInterval: function(timestamp, stage, intervalAverageFrameLength)
+    {
+    },
+
+    tune: function(timestamp, stage, didFinishInterval)
+    {
+    },
+
+    shouldStop: function(timestamp)
+    {
+        return timestamp > this._endTimestamp;
+    },
+
+    results: function()
+    {
+        return this._sampler.processSamples();
+    },
+
+    processSamples: function(results)
+    {
+        var complexityExperiment = new Experiment;
+        var smoothedFrameLengthExperiment = new Experiment;
+
+        var samples = this._sampler.samples;
+
+        var samplingStartIndex = 0, samplingEndIndex = -1;
+        if (Strings.json.samplingStartTimeOffset in this._marks)
+            samplingStartIndex = this._marks[Strings.json.samplingStartTimeOffset].index;
+        if (Strings.json.samplingEndTimeOffset in this._marks)
+            samplingEndIndex = this._marks[Strings.json.samplingEndTimeOffset].index;
+
+        for (var markName in this._marks)
+            this._marks[markName].time -= this._startTimestamp;
+        results[Strings.json.marks] = this._marks;
+
+        results[Strings.json.samples] = samples[0].map(function(timestamp, i) {
+            var result = {
+                // Represent time in milliseconds
+                time: timestamp - this._startTimestamp,
+                complexity: samples[1][i]
+            };
+
+            if (i == 0)
+                result.frameLength = 1000/60;
+            else
+                result.frameLength = timestamp - samples[0][i - 1];
+
+            if (samples[2][i] != -1)
+                result.smoothedFrameLength = samples[2][i];
+
+            // Don't start adding data to the experiments until we reach the sampling timestamp
+            if (i >= samplingStartIndex && (samplingEndIndex == -1 || i < samplingEndIndex)) {
+                complexityExperiment.sample(result.complexity);
+                if (result.smoothedFrameLength && result.smoothedFrameLength != -1)
+                    smoothedFrameLengthExperiment.sample(result.smoothedFrameLength);
+            }
+
+            return result;
+        }, this);
+
+        results[Strings.json.score] = complexityExperiment.score(Experiment.defaults.CONCERN);
+
+        var complexityResults = {};
+        results[Strings.json.experiments.complexity] = complexityResults;
+        complexityResults[Strings.json.measurements.average] = complexityExperiment.mean();
+        complexityResults[Strings.json.measurements.concern] = complexityExperiment.concern(Experiment.defaults.CONCERN);
+        complexityResults[Strings.json.measurements.stdev] = complexityExperiment.standardDeviation();
+        complexityResults[Strings.json.measurements.percent] = complexityExperiment.percentage();
+
+        var smoothedFrameLengthResults = {};
+        results[Strings.json.experiments.frameRate] = smoothedFrameLengthResults;
+        smoothedFrameLengthResults[Strings.json.measurements.average] = 1000 / smoothedFrameLengthExperiment.mean();
+        smoothedFrameLengthResults[Strings.json.measurements.concern] = smoothedFrameLengthExperiment.concern(Experiment.defaults.CONCERN);
+        smoothedFrameLengthResults[Strings.json.measurements.stdev] = smoothedFrameLengthExperiment.standardDeviation();
+        smoothedFrameLengthResults[Strings.json.measurements.percent] = smoothedFrameLengthExperiment.percentage();
     }
-}
+});
 
+StepController = Utilities.createSubclass(Controller,
+    function(benchmark, options)
+    {
+        options["interval-length"] = 0;
+        Controller.call(this, benchmark, options);
+        this.initialComplexity = options["complexity"];
+        this._stepped = false;
+        this._stepTime = options["test-interval"] / 2;
+    }, {
 
-function Stage() {}
+    start: function(startTimestamp, stage)
+    {
+        Controller.prototype.start.call(this, startTimestamp, stage);
+        this._stepTime += startTimestamp;
+    },
 
-Stage.prototype =
-{
+    tune: function(timestamp, stage)
+    {
+        if (this._stepped || timestamp < this._stepTime)
+            return;
+
+        this.mark(Strings.json.samplingEndTimeOffset, timestamp);
+        this._stepped = true;
+        stage.tune(stage.complexity() * 3);
+    }
+});
+
+AdaptiveController = Utilities.createSubclass(Controller,
+    function(benchmark, options)
+    {
+        // Data series: timestamp, complexity, estimatedIntervalFrameLength
+        Controller.call(this, benchmark, options);
+
+        // All tests start at 0, so we expect to see 60 fps quickly.
+        this._samplingTimestamp = options["test-interval"] / 2;
+        this._startedSampling = false;
+        this._targetFrameRate = options["frame-rate"];
+        this._pid = new PIDController(this._targetFrameRate);
+
+        this._intervalFrameCount = 0;
+        this._numberOfFramesToMeasurePerInterval = 4;
+    }, {
+
+    start: function(startTimestamp, stage)
+    {
+        Controller.prototype.start.call(this, startTimestamp, stage);
+
+        this._samplingTimestamp += startTimestamp;
+        this._intervalTimestamp = startTimestamp;
+    },
+
+    recordFirstSample: function(startTimestamp, stage)
+    {
+        this._sampler.record(startTimestamp, stage.complexity(), -1);
+    },
+
+    update: function(timestamp, stage)
+    {
+        if (!this._startedSampling && timestamp >= this._samplingTimestamp) {
+            this._startedSampling = true;
+            this.mark(Strings.json.samplingStartTimeOffset, this._samplingTimestamp);
+        }
+
+        // Start the work for the next frame.
+        ++this._intervalFrameCount;
+
+        if (this._intervalFrameCount < this._numberOfFramesToMeasurePerInterval) {
+            this._sampler.record(timestamp, stage.complexity(), -1);
+            return;
+        }
+
+        // Adjust the test to reach the desired FPS.
+        var intervalLength = timestamp - this._intervalTimestamp;
+        this._frameLengthEstimator.sample(intervalLength / this._numberOfFramesToMeasurePerInterval);
+        var intervalEstimatedFrameRate = 1000 / this._frameLengthEstimator.estimate;
+        var tuneValue = -this._pid.tune(timestamp - this._startTimestamp, intervalLength, intervalEstimatedFrameRate);
+        tuneValue = tuneValue > 0 ? Math.floor(tuneValue) : Math.ceil(tuneValue);
+        stage.tune(tuneValue);
+
+        this._sampler.record(timestamp, stage.complexity(), this._frameLengthEstimator.estimate);
+
+        // Start the next interval.
+        this._intervalFrameCount = 0;
+        this._intervalTimestamp = timestamp;
+    },
+
+    processSamples: function(results)
+    {
+        Controller.prototype.processSamples.call(this, results);
+        results[Strings.json.targetFrameLength] = 1000 / this._targetFrameRate;
+    }
+});
+
+Stage = Utilities.createClass(
+    function()
+    {
+    }, {
+
     initialize: function(benchmark)
     {
         this._benchmark = benchmark;
@@ -111,6 +287,23 @@ Stage.prototype =
         return 0;
     },
 
+    tune: function()
+    {
+        throw "Not implemented";
+    },
+
+    animate: function()
+    {
+        throw "Not implemented";
+    },
+
+    clear: function()
+    {
+        return this.tune(-this.tune(0));
+    }
+});
+
+Utilities.extendObject(Stage, {
     random: function(min, max)
     {
         return (Math.random() * (max - min)) + min;
@@ -123,7 +316,7 @@ Stage.prototype =
 
     randomInt: function(min, max)
     {
-        return Math.round(this.random(min, max));
+        return Math.floor(this.random(min, max + 1));
     },
 
     randomPosition: function(maxPosition)
@@ -157,213 +350,115 @@ Stage.prototype =
             + this.randomInt(min, max).toString(16);
     },
 
+    rotatingColor: function(cycleLengthMs, saturation, lightness)
+    {
+        return "hsl("
+            + Stage.dateFractionalValue(cycleLengthMs) * 360 + ", "
+            + ((saturation || .8) * 100).toFixed(0) + "%, "
+            + ((lightness || .35) * 100).toFixed(0) + "%)";
+    },
+
+    // Returns a fractional value that wraps around within [0,1]
+    dateFractionalValue: function(cycleLengthMs)
+    {
+        return (Date.now() / (cycleLengthMs || 2000)) % 1;
+    },
+
+    // Returns an increasing value slowed down by factor
+    dateCounterValue: function(factor)
+    {
+        return Date.now() / factor;
+    },
+
     randomRotater: function()
     {
         return new Rotater(this.random(1000, 10000));
-    },
-
-    tune: function()
-    {
-        throw "Not implemented";
-    },
-
-    animate: function()
-    {
-        throw "Not implemented";
-    },
-
-    clear: function()
-    {
-        return this.tune(-this.tune(0));
     }
-};
+});
 
-function Animator()
-{
-    this._intervalFrameCount = 0;
-    this._numberOfFramesToMeasurePerInterval = 3;
-    this._referenceTime = 0;
-    this._currentTimeOffset = 0;
-}
-
-Animator.prototype =
-{
-    initialize: function(benchmark)
+Rotater = Utilities.createClass(
+    function(rotateInterval)
     {
-        this._benchmark = benchmark;
+        this._timeDelta = 0;
+        this._rotateInterval = rotateInterval;
+        this._isSampling = false;
+    }, {
 
-        // Use Kalman filter to get a more non-fluctuating frame rate.
-        if (benchmark.options["estimated-frame-rate"])
-            this._estimator = new KalmanEstimator(60);
-        else
-            this._estimator = new IdentityEstimator;
+    get interval()
+    {
+        return this._rotateInterval;
     },
 
-    get benchmark()
+    next: function(timeDelta)
     {
-        return this._benchmark;
+        this._timeDelta = (this._timeDelta + timeDelta) % this._rotateInterval;
     },
 
-    _intervalTimeDelta: function()
+    degree: function()
     {
-        return this._currentTimeOffset - this._startTimeOffset;
+        return (360 * this._timeDelta) / this._rotateInterval;
     },
 
-    _shouldRequestAnotherFrame: function()
+    rotateZ: function()
     {
-        // Cadence is number of frames to measure, then one more frame to adjust the scene, and drop
-        var currentTime = performance.now();
+        return "rotateZ(" + Math.floor(this.degree()) + "deg)";
+    },
 
-        if (!this._referenceTime)
-            this._referenceTime = currentTime;
+    rotate: function(center)
+    {
+        return "rotate(" + Math.floor(this.degree()) + ", " + center.x + "," + center.y + ")";
+    }
+});
 
-        this._currentTimeOffset = currentTime - this._referenceTime;
+Benchmark = Utilities.createClass(
+    function(stage, options)
+    {
+        this._animateLoop = this._animateLoop.bind(this);
 
-        if (!this._intervalFrameCount)
-            this._startTimeOffset = this._currentTimeOffset;
+        this._stage = stage;
+        this._stage.initialize(this, options);
 
-        // Start the work for the next frame.
-        ++this._intervalFrameCount;
-
-        // Drop _dropFrameCount frames and measure the average of _measureFrameCount frames.
-        if (this._intervalFrameCount <= this._numberOfFramesToMeasurePerInterval) {
-            this._benchmark.record(this._currentTimeOffset, -1, -1);
-            return true;
+        switch (options["time-measurement"])
+        {
+        case "performance":
+            this._getTimestamp = performance.now.bind(performance);
+            break;
+        case "date":
+            this._getTimestamp = Date.now;
+            break;
         }
 
-        // Get the average FPS of _measureFrameCount frames over intervalTimeDelta.
-        var intervalTimeDelta = this._intervalTimeDelta();
-        var intervalFrameRate = 1000 / (intervalTimeDelta / this._numberOfFramesToMeasurePerInterval);
-        var estimatedIntervalFrameRate = this._estimator.estimate(intervalFrameRate);
-        // Record the complexity of the frame we just rendered. The next frame's time respresents the adjusted
-        // complexity
-        this._benchmark.record(this._currentTimeOffset, estimatedIntervalFrameRate, intervalFrameRate);
-
-        // Adjust the test to reach the desired FPS.
-        var shouldContinueRunning = this._benchmark.update(this._currentTimeOffset, intervalTimeDelta, estimatedIntervalFrameRate);
-
-        // Start the next drop/measure cycle.
-        this._intervalFrameCount = 0;
-
-        // If result is false, no more requestAnimationFrame() will be invoked.
-        return shouldContinueRunning;
-    },
-
-    animateLoop: function()
-    {
-        if (this._shouldRequestAnotherFrame()) {
-            this._benchmark.stage.animate(this._intervalTimeDelta());
-            requestAnimationFrame(this.animateLoop.bind(this));
+        options["test-interval"] *= 1000;
+        switch (options["adjustment"])
+        {
+        case "step":
+            this._controller = new StepController(this, options);
+            break;
+        case "adaptive":
+        default:
+            this._controller = new AdaptiveController(this, options);
+            break;
         }
-    }
-}
-
-function Benchmark(stage, options)
-{
-    this._options = options;
-
-    this._stage = stage;
-    this._stage.initialize(this);
-    this._animator = new Animator();
-    this._animator.initialize(this);
-
-    this._recordInterval = 200;
-    this._isSampling = false;
-    this._controller = new PIDController(this._options["frame-rate"]);
-    this._sampler = new Sampler(4, 60 * this._options["test-interval"], this);
-    this._state = new BenchmarkState(this._options["test-interval"] * 1000);
-}
-
-Benchmark.prototype =
-{
-    get options()
-    {
-        return this._options;
-    },
+    }, {
 
     get stage()
     {
         return this._stage;
     },
 
-    get animator()
-    {
-        return this._animator;
-    },
-
-    // Called from the load event listener or from this.run().
-    start: function()
-    {
-        this._animator.animateLoop();
-    },
-
-    // Called from the animator to adjust the complexity of the test.
-    update: function(currentTimeOffset, intervalTimeDelta, estimatedIntervalFrameRate)
-    {
-        this._state.update(currentTimeOffset);
-
-        var stage = this._state.currentStage();
-        if (stage == BenchmarkState.stages.FINISHED) {
-            this._stage.clear();
-            return false;
-        }
-
-        if (stage == BenchmarkState.stages.SAMPLING && !this._isSampling) {
-            this._sampler.mark(Strings.json.samplingTimeOffset, {
-                time: this._state.samplingTimeOffset() / 1000
-            });
-            this._isSampling = true;
-        }
-
-        var tuneValue = 0;
-        if (this._options["adjustment"] == "fixed") {
-            if (this._options["complexity"]) {
-                // this._stage.tune(0) returns the current complexity of the test.
-                tuneValue = this._options["complexity"] - this._stage.tune(0);
-            }
-        }
-        else if (!(this._isSampling && this._options["adjustment"] == "fixed-after-warmup")) {
-            // The relationship between frameRate and test complexity is inverse-proportional so we
-            // need to use the negative of PIDController.tune() to change the complexity of the test.
-            tuneValue = -this._controller.tune(currentTimeOffset, intervalTimeDelta, estimatedIntervalFrameRate);
-            tuneValue = tuneValue > 0 ? Math.floor(tuneValue) : Math.ceil(tuneValue);
-        }
-
-        this._stage.tune(tuneValue);
-
-        if (typeof this._recordTimeOffset == "undefined")
-            this._recordTimeOffset = currentTimeOffset;
-
-        var stage = this._state.currentStage();
-        if (stage != BenchmarkState.stages.FINISHED && currentTimeOffset < this._recordTimeOffset + this._recordInterval)
-            return true;
-
-        this._recordTimeOffset = currentTimeOffset;
-        return true;
-    },
-
-    record: function(currentTimeOffset, estimatedFrameRate, intervalFrameRate)
-    {
-        // If the frame rate is -1 it means we are still recording for this sample
-        this._sampler.record(currentTimeOffset, this.stage.complexity(), estimatedFrameRate, intervalFrameRate);
-    },
-
     run: function()
     {
         return this.waitUntilReady().then(function() {
-            this.start();
-            var promise = new SimplePromise;
-            var resolveWhenFinished = function() {
-                if (typeof this._state != "undefined" && (this._state.currentStage() == BenchmarkState.stages.FINISHED))
-                    return promise.resolve(this._sampler);
-                setTimeout(resolveWhenFinished, 50);
-            }.bind(this);
-
-            resolveWhenFinished();
-            return promise;
+            this._finishPromise = new SimplePromise;
+            this._previousTimestamp = this._getTimestamp();
+            this._didWarmUp = false;
+            this._stage.tune(this._controller.initialComplexity - this._stage.complexity());
+            this._animateLoop();
+            return this._finishPromise;
         }.bind(this));
     },
 
+    // Subclasses should override this if they have setup to do prior to commencing.
     waitUntilReady: function()
     {
         var promise = new SimplePromise;
@@ -371,55 +466,30 @@ Benchmark.prototype =
         return promise;
     },
 
-    processSamples: function(results)
+    _animateLoop: function()
     {
-        var complexity = new Experiment;
-        var smoothedFPS = new Experiment;
-        var samplingIndex = 0;
+        this._currentTimestamp = this._getTimestamp();
 
-        var samplingMark = this._sampler.marks[Strings.json.samplingTimeOffset];
-        if (samplingMark) {
-            samplingIndex = samplingMark.index;
-            results[Strings.json.samplingTimeOffset] = samplingMark.time;
+        if (this._controller.shouldStop(this._currentTimestamp)) {
+            this._finishPromise.resolve(this._controller.results());
+            return;
         }
 
-        results[Strings.json.samples] = this._sampler.samples[0].map(function(d, i) {
-            var result = {
-                // time offsets represented as seconds
-                time: d/1000,
-                complexity: this._sampler.samples[1][i]
-            };
-
-            // time offsets represented as FPS
-            if (i == 0)
-                result.fps = 60;
-            else
-                result.fps = 1000 / (d - this._sampler.samples[0][i - 1]);
-
-            var smoothedFPSresult = this._sampler.samples[2][i];
-            if (smoothedFPSresult != -1) {
-                result.smoothedFPS = smoothedFPSresult;
-                result.intervalFPS = this._sampler.samples[3][i];
+        if (!this._didWarmUp) {
+            if (this._currentTimestamp - this._previousTimestamp >= 100) {
+                this._didWarmUp = true;
+                this._controller.start(this._currentTimestamp, this._stage);
+                this._previousTimestamp = this._currentTimestamp;
             }
 
-            if (i >= samplingIndex) {
-                complexity.sample(result.complexity);
-                if (smoothedFPSresult != -1) {
-                    smoothedFPS.sample(smoothedFPSresult);
-                }
-            }
+            this._stage.animate(0);
+            requestAnimationFrame(this._animateLoop);
+            return;
+        }
 
-            return result;
-        }, this);
-
-        results[Strings.json.score] = complexity.score(Experiment.defaults.CONCERN);
-        [complexity, smoothedFPS].forEach(function(experiment, index) {
-            var jsonExperiment = !index ? Strings.json.experiments.complexity : Strings.json.experiments.frameRate;
-            results[jsonExperiment] = {};
-            results[jsonExperiment][Strings.json.measurements.average] = experiment.mean();
-            results[jsonExperiment][Strings.json.measurements.concern] = experiment.concern(Experiment.defaults.CONCERN);
-            results[jsonExperiment][Strings.json.measurements.stdev] = experiment.standardDeviation();
-            results[jsonExperiment][Strings.json.measurements.percent] = experiment.percentage();
-        });
+        this._controller.update(this._currentTimestamp, this._stage);
+        this._stage.animate(this._currentTimestamp - this._previousTimestamp);
+        this._previousTimestamp = this._currentTimestamp;
+        requestAnimationFrame(this._animateLoop);
     }
-};
+});

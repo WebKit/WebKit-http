@@ -255,6 +255,7 @@ SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackIdentifierKey, NSString
 SOFT_LINK_POINTER(AVFoundation, AVOutOfBandAlternateTrackSourceKey, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicDescribesMusicAndSoundForAccessibility, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicTranscribesSpokenDialogForAccessibility, NSString*)
+SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicIsAuxiliaryContent, NSString*)
 
 #define AVURLAssetHTTPCookiesKey getAVURLAssetHTTPCookiesKey()
 #define AVURLAssetOutOfBandAlternateTracksKey getAVURLAssetOutOfBandAlternateTracksKey()
@@ -266,6 +267,7 @@ SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicTranscribesSpokenDialogForA
 #define AVOutOfBandAlternateTrackSourceKey getAVOutOfBandAlternateTrackSourceKey()
 #define AVMediaCharacteristicDescribesMusicAndSoundForAccessibility getAVMediaCharacteristicDescribesMusicAndSoundForAccessibility()
 #define AVMediaCharacteristicTranscribesSpokenDialogForAccessibility getAVMediaCharacteristicTranscribesSpokenDialogForAccessibility()
+#define AVMediaCharacteristicIsAuxiliaryContent getAVMediaCharacteristicIsAuxiliaryContent()
 #endif
 
 #if ENABLE(DATACUE_VALUE)
@@ -304,6 +306,9 @@ SOFT_LINK(CoreVideo, CVOpenGLTextureGetName, GLuint, (CVOpenGLTextureRef image),
 SOFT_LINK_POINTER(CoreVideo, kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey, NSString *)
 #define kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey getkCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey()
 #endif
+
+SOFT_LINK_FRAMEWORK(MediaToolbox)
+SOFT_LINK_OPTIONAL(MediaToolbox, MTEnableCaption2015Behavior, Boolean, (), ())
 
 using namespace WebCore;
 
@@ -732,6 +737,10 @@ bool MediaPlayerPrivateAVFoundationObjC::hasAvailableVideoFrame() const
 #if ENABLE(AVF_CAPTIONS)
 static const NSArray* mediaDescriptionForKind(PlatformTextTrack::TrackKind kind)
 {
+    static bool manualSelectionMode = MTEnableCaption2015BehaviorPtr() && MTEnableCaption2015BehaviorPtr()();
+    if (manualSelectionMode)
+        return @[ AVMediaCharacteristicIsAuxiliaryContent ];
+
     // FIXME: Match these to correct types:
     if (kind == PlatformTextTrack::Caption)
         return [NSArray arrayWithObjects: AVMediaCharacteristicTranscribesSpokenDialogForAccessibility, nil];
@@ -1144,6 +1153,7 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenMode(MediaPlayer::Vid
 #if PLATFORM(IOS)
     if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
         [m_videoLayer setPIPModeEnabled:(mode & MediaPlayer::VideoFullscreenModePictureInPicture)];
+    updateDisableExternalPlayback();
 #else
     UNUSED_PARAM(mode);
 #endif
@@ -1505,22 +1515,17 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(GraphicsContext
         context.setImageInterpolationQuality(InterpolationLow);
         IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
         CGContextDrawImage(context.platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), image.get());
-        image = 0;
     }
 }
 
-static const HashSet<String>& avfMIMETypes()
+static const HashSet<String, ASCIICaseInsensitiveHash>& avfMIMETypes()
 {
-    static NeverDestroyed<HashSet<String>> cache = [] () {
-        HashSet<String> types;
-
-        NSArray *nsTypes = [AVURLAsset audiovisualMIMETypes];
-        for (NSString *mimeType in nsTypes)
-            types.add([mimeType lowercaseString]);
-
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache = []() {
+        HashSet<String, ASCIICaseInsensitiveHash> types;
+        for (NSString *type in [AVURLAsset audiovisualMIMETypes])
+            types.add(type);
         return types;
     }();
-
     
     return cache;
 }
@@ -1547,7 +1552,7 @@ RetainPtr<CGImageRef> MediaPlayerPrivateAVFoundationObjC::createImageForTimeInRe
     return image;
 }
 
-void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String>& supportedTypes)
+void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& supportedTypes)
 {
     supportedTypes = avfMIMETypes();
 } 
@@ -2857,6 +2862,8 @@ void MediaPlayerPrivateAVFoundationObjC::processMetadataTrack()
 
 void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, NSArray *nativeSamples, const MediaTime& time)
 {
+    ASSERT(time >= MediaTime::zeroTime());
+
     if (!m_currentTextTrack)
         return;
 
@@ -3092,7 +3099,7 @@ void MediaPlayerPrivateAVFoundationObjC::updateDisableExternalPlayback()
         return;
 
 #if PLATFORM(IOS)
-    [m_avPlayer setUsesExternalPlaybackWhileExternalScreenIsActive:m_videoFullscreenLayerManager->videoFullscreenLayer() != nil];
+    [m_avPlayer setUsesExternalPlaybackWhileExternalScreenIsActive:player()->fullscreenMode() & MediaPlayer::VideoFullscreenModeStandard];
 #endif
 }
 #endif
@@ -3235,14 +3242,14 @@ void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> me
     // Set the duration of all incomplete cues before adding new ones.
     MediaTime earliestStartTime = MediaTime::positiveInfiniteTime();
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
+        MediaTime start = std::max(toMediaTime(item.time), MediaTime::zeroTime());
         if (start < earliestStartTime)
             earliestStartTime = start;
     }
     m_metadataTrack->updatePendingCueEndTimes(earliestStartTime);
 
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
+        MediaTime start = std::max(toMediaTime(item.time), MediaTime::zeroTime());
         MediaTime end = MediaTime::positiveInfiniteTime();
         if (CMTIME_IS_VALID(item.duration))
             end = start + toMediaTime(item.duration);
@@ -3556,7 +3563,8 @@ NSArray* playerKVOProperties()
         MediaPlayerPrivateAVFoundationObjC* callback = strongSelf->m_callback;
         if (!callback)
             return;
-        callback->processCue(strongStrings.get(), strongSamples.get(), toMediaTime(itemTime));
+        MediaTime time = std::max(toMediaTime(itemTime), MediaTime::zeroTime());
+        callback->processCue(strongStrings.get(), strongSamples.get(), time);
     });
 }
 

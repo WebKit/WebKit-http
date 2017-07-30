@@ -1695,6 +1695,23 @@ static Ref<CSSValue> renderEmphasisPositionFlagsToCSSValue(TextEmphasisPosition 
     return list.releaseNonNull();
 }
 
+static Ref<CSSValue> hangingPunctuationToCSSValue(HangingPunctuation hangingPunctuation)
+{
+    auto& cssValuePool = CSSValuePool::singleton();
+    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+    if (hangingPunctuation & FirstHangingPunctuation)
+        list->append(cssValuePool.createIdentifierValue(CSSValueFirst));
+    if (hangingPunctuation & AllowEndHangingPunctuation)
+        list->append(cssValuePool.createIdentifierValue(CSSValueAllowEnd));
+    if (hangingPunctuation & ForceEndHangingPunctuation)
+        list->append(cssValuePool.createIdentifierValue(CSSValueForceEnd));
+    if (hangingPunctuation & LastHangingPunctuation)
+        list->append(cssValuePool.createIdentifierValue(CSSValueLast));
+    if (!list->length())
+        return cssValuePool.createIdentifierValue(CSSValueNone);
+    return list.releaseNonNull();
+}
+    
 static Ref<CSSValue> fillRepeatToCSSValue(EFillRepeat xRepeat, EFillRepeat yRepeat)
 {
     // For backwards compatibility, if both values are equal, just return one of them. And
@@ -2069,6 +2086,57 @@ inline bool paddingOrMarginIsRendererDependent(RenderStyle* style, RenderObject*
     return !(style && (style->*lengthGetter)().isFixed());
 }
 
+static CSSValueID convertToPageBreak(BreakBetween value)
+{
+    if (value == PageBreakBetween || value == LeftPageBreakBetween || value == RightPageBreakBetween
+        || value == RectoPageBreakBetween || value == VersoPageBreakBetween)
+        return CSSValueAlways; // CSS 2.1 allows us to map these to always.
+    if (value == AvoidBreakBetween || value == AvoidPageBreakBetween)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+
+static CSSValueID convertToColumnBreak(BreakBetween value)
+{
+    if (value == ColumnBreakBetween)
+        return CSSValueAlways;
+    if (value == AvoidBreakBetween || value == AvoidColumnBreakBetween)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+
+static CSSValueID convertToPageBreak(BreakInside value)
+{
+    if (value == AvoidBreakInside || value == AvoidPageBreakInside)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+
+static CSSValueID convertToColumnBreak(BreakInside value)
+{
+    if (value == AvoidBreakInside || value == AvoidColumnBreakInside)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+
+#if ENABLE(CSS_REGIONS)
+static CSSValueID convertToRegionBreak(BreakBetween value)
+{
+    if (value == RegionBreakBetween)
+        return CSSValueAlways;
+    if (value == AvoidBreakBetween || value == AvoidRegionBreakBetween)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+    
+static CSSValueID convertToRegionBreak(BreakInside value)
+{
+    if (value == AvoidBreakInside || value == AvoidRegionBreakInside)
+        return CSSValueAvoid;
+    return CSSValueAuto;
+}
+#endif
+    
 static bool isLayoutDependent(CSSPropertyID propertyID, RenderStyle* style, RenderObject* renderer)
 {
     switch (propertyID) {
@@ -2604,11 +2672,11 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyColumnSpan:
             return cssValuePool.createIdentifierValue(style->columnSpan() ? CSSValueAll : CSSValueNone);
         case CSSPropertyWebkitColumnBreakAfter:
-            return cssValuePool.createValue(style->columnBreakAfter());
+            return cssValuePool.createValue(convertToColumnBreak(style->breakAfter()));
         case CSSPropertyWebkitColumnBreakBefore:
-            return cssValuePool.createValue(style->columnBreakBefore());
+            return cssValuePool.createValue(convertToColumnBreak(style->breakBefore()));
         case CSSPropertyWebkitColumnBreakInside:
-            return cssValuePool.createValue(style->columnBreakInside());
+            return cssValuePool.createValue(convertToColumnBreak(style->breakInside()));
         case CSSPropertyColumnWidth:
             if (style->hasAutoColumnWidth())
                 return cssValuePool.createIdentifierValue(CSSValueAuto);
@@ -2617,11 +2685,11 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->tabSize(), CSSPrimitiveValue::CSS_NUMBER);
 #if ENABLE(CSS_REGIONS)
         case CSSPropertyWebkitRegionBreakAfter:
-            return cssValuePool.createValue(style->regionBreakAfter());
+            return cssValuePool.createValue(convertToRegionBreak(style->breakAfter()));
         case CSSPropertyWebkitRegionBreakBefore:
-            return cssValuePool.createValue(style->regionBreakBefore());
+            return cssValuePool.createValue(convertToRegionBreak(style->breakBefore()));
         case CSSPropertyWebkitRegionBreakInside:
-            return cssValuePool.createValue(style->regionBreakInside());
+            return cssValuePool.createValue(convertToRegionBreak(style->breakInside()));
 #endif
         case CSSPropertyCursor: {
             RefPtr<CSSValueList> list;
@@ -2956,16 +3024,19 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyPaddingLeft:
             return zoomAdjustedPaddingOrMarginPixelValue<&RenderStyle::paddingLeft, &RenderBoxModelObject::computedCSSPaddingLeft>(*style, renderer);
         case CSSPropertyPageBreakAfter:
-            return cssValuePool.createValue(style->pageBreakAfter());
+            return cssValuePool.createValue(convertToPageBreak(style->breakAfter()));
         case CSSPropertyPageBreakBefore:
-            return cssValuePool.createValue(style->pageBreakBefore());
-        case CSSPropertyPageBreakInside: {
-            EPageBreak pageBreak = style->pageBreakInside();
-            ASSERT(pageBreak != PBALWAYS);
-            if (pageBreak == PBALWAYS)
-                return nullptr;
-            return cssValuePool.createValue(style->pageBreakInside());
-        }
+            return cssValuePool.createValue(convertToPageBreak(style->breakBefore()));
+        case CSSPropertyPageBreakInside:
+            return cssValuePool.createValue(convertToPageBreak(style->breakInside()));
+        case CSSPropertyBreakAfter:
+            return cssValuePool.createValue(style->breakAfter());
+        case CSSPropertyBreakBefore:
+            return cssValuePool.createValue(style->breakBefore());
+        case CSSPropertyBreakInside:
+            return cssValuePool.createValue(style->breakInside());
+        case CSSPropertyHangingPunctuation:
+            return hangingPunctuationToCSSValue(style->hangingPunctuation());
         case CSSPropertyPosition:
             return cssValuePool.createValue(style->position());
         case CSSPropertyRight:

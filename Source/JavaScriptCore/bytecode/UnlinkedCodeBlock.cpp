@@ -58,7 +58,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_numParameters(0)
     , m_vm(vm)
     , m_globalObjectRegister(VirtualRegister())
-    , m_needsFullScopeChain(info.needsActivation())
     , m_usesEval(info.usesEval())
     , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
@@ -80,9 +79,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_objectAllocationProfileCount(0)
     , m_valueProfileCount(0)
     , m_llintCallLinkInfoCount(0)
-#if ENABLE(BYTECODE_COMMENTS)
-    , m_bytecodeCommentIterator(0)
-#endif
 {
     for (auto& constantRegisterIndex : m_linkTimeConstants)
         constantRegisterIndex = 0;
