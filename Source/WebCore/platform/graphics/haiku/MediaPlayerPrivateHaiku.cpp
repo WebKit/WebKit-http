@@ -25,6 +25,7 @@
 #include "GraphicsContext.h"
 #include "NotImplemented.h"
 #include "wtf/text/CString.h"
+#include "wtf/NeverDestroyed.h"
 
 #include <Bitmap.h>
 #include <DataIO.h>
@@ -348,9 +349,9 @@ void MediaPlayerPrivate::IdentifyTracks(const String& url)
 
 // #pragma mark - static methods
 
-static HashSet<String> mimeTypeCache()
+static HashSet<String, WTF::ASCIICaseInsensitiveHash> mimeTypeCache()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
+    static NeverDestroyed<HashSet<String, WTF::ASCIICaseInsensitiveHash>> cache;
     static bool typeListInitialized = false;
 
     if (typeListInitialized)
@@ -361,14 +362,14 @@ static HashSet<String> mimeTypeCache()
 
     // Add the types the Haiku Media Kit add-ons advertise support for
     while(get_next_file_format(&cookie, &mfi) == B_OK) {
-        cache.add(String(mfi.mime_type));
+        cache.get().add(String(mfi.mime_type));
     }
 
     typeListInitialized = true;
     return cache;
 }
 
-void MediaPlayerPrivate::getSupportedTypes(HashSet<String>& types)
+void MediaPlayerPrivate::getSupportedTypes(HashSet<String, WTF::ASCIICaseInsensitiveHash>& types)
 {
     types = mimeTypeCache();
 }

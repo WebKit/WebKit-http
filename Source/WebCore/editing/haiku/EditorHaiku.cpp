@@ -50,7 +50,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
     if (fragment && shouldInsertFragment(fragment, range,
             EditorInsertActionPasted))
     {
-        pasteAsFragment(fragment, canSmartReplaceWithPasteboard(*pasteboard),
+        pasteAsFragment(*fragment, canSmartReplaceWithPasteboard(*pasteboard),
             chosePlainText, mailBlockquoteHandling);
     }
 }

@@ -86,7 +86,7 @@ static void pthreadSignalHandlerSuspendResume(int, siginfo_t*, void* ucontext)
         return;
     }
 
-    struct ucontext* userContext = static_cast<struct ucontext*>(ucontext);
+    ucontext_t* userContext = static_cast<ucontext_t*>(ucontext);
     thread->suspendedMachineContext = userContext->uc_mcontext;
 
     // Allow suspend caller to see that this thread is suspended.
