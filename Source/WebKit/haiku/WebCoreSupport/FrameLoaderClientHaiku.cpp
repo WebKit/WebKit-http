@@ -238,22 +238,27 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
 
 
 bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader*,
-    const CertificateInfo& /*certificate*/, const char* message)
+    const CertificateInfo& certificate, const char* message)
 {
+	// FIXME use m_messenger as above, so that the alert is generated from the
+	// API side and can be overriden by clients with a fancier one (or hidden
+	// completely in case of DumpRenderTree).
     String text = "The SSL certificate received from " + 
         m_webFrame->Frame()->document()->url().string() + " could not be "
         "authenticated for the following reason: " + message + ".\n\n"
         "The secure connection to the website may be compromised, make sure "
         "to not send any sensitive information.";
 
-    // TODO add information about the certificate to the alert (in a "details" area or so)
+    BMessage warningMessage(SSL_CERT_ERROR);
+    warningMessage.AddString("text", text.utf8().data());
+    warningMessage.AddPointer("certificate info", &certificate);
 
-    BAlert* alert = new BAlert("Unsecure SSL certificate", text.utf8().data(),
-        "Continue", "Stop", NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
+    BMessage reply;
+    m_messenger.SendMessage(&warningMessage, &reply);
 
-    int button = alert->Go();
+    bool continueAnyway = reply.FindBool("continue");
 
-    return button == 0;
+    return continueAnyway;
 }
 
 

@@ -488,6 +488,21 @@ class DumpRenderTreeChrome: public BWebWindow
             B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0)
     {
     }
+
+    void MessageReceived(BMessage* msg)
+    {
+        if (msg->what == SSL_CERT_ERROR)
+        {
+            // Always accept SSL certificates, since the test suite uses an
+            // auto-generated one and that would normally produce warnings.
+            BMessage reply;
+            reply.AddBool("continue", true);
+            msg->SendReply(&reply);
+            return;
+        }
+
+        BWebWindow::MessageReceived(msg);
+    }
 };
 
 void DumpRenderTreeApp::ReadyToRun()

@@ -493,6 +493,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
     if (httpRequest) {
         const BHttpResult& hresult = static_cast<const BHttpResult&>(
             result);
+        url = URL(hresult.Url());
         BString location = hresult.Headers()["Location"];
         if (location.Length() > 0) {
             m_redirected = true;
