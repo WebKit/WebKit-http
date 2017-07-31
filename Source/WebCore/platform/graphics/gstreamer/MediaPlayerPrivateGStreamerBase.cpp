@@ -253,7 +253,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
 #if ENABLE(ENCRYPTED_MEDIA)
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 #endif
     m_notifier.cancelPendingNotifications();
 
@@ -1386,7 +1386,7 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& ins
     ASSERT(!m_cdmInstance);
     m_cdmInstance = &instance;
     GST_DEBUG("CDM instance %p set", m_cdmInstance.get());
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
@@ -1397,7 +1397,7 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& ins
     ASSERT(m_cdmInstance.get() == &instance);
     GST_DEBUG("detaching CDM instance %p", m_cdmInstance.get());
     m_cdmInstance = nullptr;
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& instance)
