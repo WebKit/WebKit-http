@@ -30,6 +30,7 @@
 #include <WebCore/Settings.h>
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
+#include "WindowsKeyboardCodes.h"
 
 using namespace WebCore;
 
@@ -55,10 +56,23 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
     m_page->settings().setScrollToFocusedElementEnabled(store.getBoolValueForKey(WebPreferencesKey::scrollToFocusedElementEnabledKey()));
 }
 
-bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)
+bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboardEvent)
 {
-    notImplemented();
-    return false;
+    if (keyboardEvent.type() != WebEvent::KeyDown && keyboardEvent.type() != WebEvent::RawKeyDown)
+        return false;
+
+    switch (keyboardEvent.windowsVirtualKeyCode()) {
+    case VK_PRIOR:
+        scroll(m_page.get(), ScrollUp, ScrollByPage);
+        break;
+    case VK_NEXT:
+        scroll(m_page.get(), ScrollDown, ScrollByPage);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
 }
 
 bool WebPage::platformHasLocalDataForURL(const URL&)
