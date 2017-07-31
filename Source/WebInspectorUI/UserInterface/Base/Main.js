@@ -187,7 +187,7 @@ WebInspector.loaded = function()
         y: 0
     };
 
-    this.visible = false;
+    this.visible = true;
 
     this._windowKeydownListeners = [];
 };
