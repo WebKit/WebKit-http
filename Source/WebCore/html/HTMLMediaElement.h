@@ -636,10 +636,6 @@ private:
     void cdmClientInstanceDetached(const CDMInstance&) override;
     void cdmClientAttemptToResumePlaybackIfNecessary() override;
     void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
-
-#if USE(OPENCDM)
-    void emitSession(const String&) override;
-#endif
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)

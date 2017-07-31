@@ -391,6 +391,20 @@ void CDMInstanceOpenCDM::gatherAvailableKeys(AvailableKeysCallback)
 {
 }
 
+String CDMInstanceOpenCDM::getCurrentSessionId() const
+{
+    ASSERT(sessionIdMap.size() == 1);
+
+    if (sessionIdMap.size() == 0) {
+        GST_WARNING("no sessions");
+        return { };
+    }
+    if (sessionIdMap.size() > 1)
+        GST_WARNING("more than one session");
+
+    return sessionIdMap.begin()->key;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)

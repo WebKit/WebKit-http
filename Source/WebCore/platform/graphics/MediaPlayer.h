@@ -378,9 +378,6 @@ public:
     void cdmInstanceAttached(const CDMInstance&);
     void cdmInstanceDetached(const CDMInstance&);
     void attemptToDecryptWithInstance(const CDMInstance&);
-#if USE(OPENCDM)
-    void emitSession(const String&);
-#endif
 #endif
 
     bool paused() const;

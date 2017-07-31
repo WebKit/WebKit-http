@@ -1051,9 +1051,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     GST_TRACE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
     switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_ERROR:
-#if USE(OPENCDM) && ENABLE(ENCRYPTED_MEDIA)
-        resetOpenCDMFlag();
-#endif
         if (m_resetPipeline || m_missingPluginsCallback || m_errorOccured)
             break;
         gst_message_parse_error(message, &err.outPtr(), &debug.outPtr());
@@ -1086,9 +1083,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             loadingFailed(error);
         break;
     case GST_MESSAGE_EOS:
-#if USE(OPENCDM) && ENABLE(ENCRYPTED_MEDIA)
-        resetOpenCDMFlag();
-#endif
         didEnd();
         break;
     case GST_MESSAGE_ASYNC_DONE:

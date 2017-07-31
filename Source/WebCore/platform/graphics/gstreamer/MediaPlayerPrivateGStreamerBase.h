@@ -127,16 +127,10 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    virtual void dispatchDecryptionKey(GstBuffer*);
+    void dispatchDecryptionKey(GstBuffer*);
+    void dispatchDecryptionSession(const String&);
     void handleProtectionEvent(GstEvent*);
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
-    virtual void emitSession(const String&) override;
-    virtual void resetOpenCDMFlag();
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA)
+    void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(const CDMInstance&) override;
     void cdmInstanceAttached(const CDMInstance&) override;
     void cdmInstanceDetached(const CDMInstance&) override;
@@ -259,16 +253,12 @@ private:
     void updateVideoRectangle();
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
-    Lock m_protectInitDataProcessing;
-    bool m_initDataProcessed;
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     RefPtr<const CDMInstance> m_cdmInstance;
     HashSet<uint32_t> m_handledProtectionEvents;
+    bool m_needToResendCredentials { false };
 #endif
 
     ImageOrientation m_videoSourceOrientation;

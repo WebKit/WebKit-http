@@ -815,7 +815,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
-    fprintf(stderr, "MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance() instance %p\n", &instance);
+    GST_TRACE("instance %p\n", &instance);
 
     GRefPtr<GstBuffer> keyBuffer;
 
@@ -841,15 +841,6 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
             it.value->dispatchDecryptionKey(keyBuffer.get());
     }
 }
-
-#if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerMSE::emitSession(const String& sessionId)
-{
-    GST_WARNING("FIXME: emitting session %s", sessionId.utf8().data());
-    ASSERT_NOT_REACHED();
-}
-#endif
-
 #endif
 
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)

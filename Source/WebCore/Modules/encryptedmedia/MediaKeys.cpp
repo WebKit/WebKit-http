@@ -138,14 +138,6 @@ void MediaKeys::attemptToResumePlaybackOnClients()
         cdmClient->cdmClientAttemptToResumePlaybackIfNecessary();
 }
 
-#if USE(OPENCDM)
-void MediaKeys::decryptWithSession(const String& sessionId)
-{
-    for (auto* cdmClient : m_cdmClients)
-        cdmClient->emitSession(sessionId);
-}
-#endif
-
 void MediaKeys::attemptToDecrypt(CDMClient& client)
 {
     // https://w3c.github.io/encrypted-media/#attempt-to-decrypt

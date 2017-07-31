@@ -237,9 +237,6 @@ public:
     virtual void cdmInstanceAttached(const CDMInstance&) { }
     virtual void cdmInstanceDetached(const CDMInstance&) { }
     virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
-#if USE(OPENCDM)
-    virtual void emitSession(const String&) { }
-#endif
 #endif
 
 #if ENABLE(VIDEO_TRACK)

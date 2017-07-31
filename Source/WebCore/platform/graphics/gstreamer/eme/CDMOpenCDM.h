@@ -66,6 +66,9 @@ public:
 
     const String& keySystem() const override { return m_keySystem; }
 
+    // FIXME: Session handling needs a lot of love here.
+    String getCurrentSessionId() const;
+
 private:
     MediaKeyStatus getKeyStatus(std::string &);
     SessionLoadFailure getSessionLoadStatus(std::string &);
