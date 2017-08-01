@@ -1,3 +1,6 @@
+include(platform/ImageDecoders.cmake)
+include(platform/TextureMapper.cmake)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
   "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
@@ -72,6 +75,8 @@ list(APPEND WebCore_SOURCES
   platform/haiku/EventLoopHaiku.cpp
   platform/haiku/FileSystemHaiku.cpp
   platform/haiku/KeyboardUtilities.cpp
+  platform/haiku/KeyedDecoderHaiku.cpp
+  platform/haiku/KeyedEncoderHaiku.cpp
   platform/haiku/KURLHaiku.cpp
   platform/haiku/LanguageHaiku.cpp
   platform/haiku/LocalizedStringsHaiku.cpp
@@ -127,6 +132,7 @@ list(APPEND WebCore_SOURCES
   platform/graphics/texmap/BitmapTextureImageBuffer.cpp
   platform/graphics/texmap/BitmapTexturePool.cpp
   platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+  platform/graphics/texmap/TextureMapperImageBuffer.cpp
 
   platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp

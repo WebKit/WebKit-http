@@ -520,7 +520,7 @@ void GraphicsContext::drawFocusRing(const Path& path, float width, float /*offse
     m_data->view()->PopState();
 }
 
-void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, float /* offset */, const Color& color)
+void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width, float /* offset */, const Color& color)
 {
     if (paintingDisabled() || width <= 0 || color.alpha() == 0)
         return;
