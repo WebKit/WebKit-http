@@ -105,7 +105,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
 {
     if (auto* networkDataTask = _session->dataTaskForIdentifier(task.taskIdentifier)) {
         auto completionHandlerCopy = Block_copy(completionHandler);
-        networkDataTask->client().willPerformHTTPRedirection(response, request, [completionHandlerCopy](const WebCore::ResourceRequest& request) {
+        networkDataTask->willPerformHTTPRedirection(response, request, [completionHandlerCopy](const WebCore::ResourceRequest& request) {
             completionHandlerCopy(request.nsURLRequest(WebCore::UpdateHTTPBody));
             Block_release(completionHandlerCopy);
         });
@@ -142,7 +142,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
         WebCore::ResourceResponse resourceResponse(response);
         copyTimingData([dataTask _timingData], resourceResponse.resourceLoadTiming());
         auto completionHandlerCopy = Block_copy(completionHandler);
-        networkDataTask->client().didReceiveResponse(resourceResponse, [completionHandlerCopy](WebCore::PolicyAction policyAction) {
+        networkDataTask->client().didReceiveResponseNetworkSession(resourceResponse, [completionHandlerCopy](WebCore::PolicyAction policyAction) {
             completionHandlerCopy(toNSURLSessionResponseDisposition(policyAction));
             Block_release(completionHandlerCopy);
         });
@@ -210,17 +210,17 @@ static NSURLSessionConfiguration *configurationForType(NetworkSession::Type type
 NetworkSession& NetworkSession::defaultSession()
 {
     ASSERT(isMainThread());
-    static NeverDestroyed<NetworkSession> session(NetworkSession::Type::Normal, WebCore::SessionID::defaultSessionID());
+    static NeverDestroyed<NetworkSession> session(NetworkSession::Type::Normal, WebCore::SessionID::defaultSessionID(), NetworkProcess::singleton().supplement<CustomProtocolManager>());
     return session;
 }
 
-NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID)
+NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID, CustomProtocolManager* customProtocolManager)
 {
     m_sessionDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this]);
 
     NSURLSessionConfiguration *configuration = configurationForType(type);
 
-    if (auto* customProtocolManager = NetworkProcess::singleton().supplement<CustomProtocolManager>())
+    if (customProtocolManager)
         customProtocolManager->registerProtocolClass(configuration);
     
 #if HAVE(TIMINGDATAOPTIONS)

@@ -312,6 +312,7 @@ void WTFSetCrashHook(WTFCrashHookFunction function)
     globalHook = function;
 }
 
+#if !defined(NDEBUG) || !OS(DARWIN)
 void WTFCrash()
 {
     if (globalHook)
@@ -326,19 +327,19 @@ void WTFCrash()
     ((void(*)())0)();
 #endif
 }
-    
+#else
+// We need to keep WTFCrash() around (even on non-debug OS(DARWIN) builds) as a workaround
+// for presently shipping (circa early 2016) SafariForWebKitDevelopment binaries which still
+// expects to link to it.
+void WTFCrash()
+{
+    CRASH();
+}
+#endif // !defined(NDEBUG) || !OS(DARWIN)
+
 void WTFCrashWithSecurityImplication()
 {
-    if (globalHook)
-        globalHook();
-    WTFReportBacktrace();
-    *(int *)(uintptr_t)0xfbadbeef = 0;
-    // More reliable, but doesn't say fbadbeef.
-#if COMPILER(GCC_OR_CLANG)
-    __builtin_trap();
-#else
-    ((void(*)())0)();
-#endif
+    CRASH();
 }
 
 #if HAVE(SIGNAL_H)
@@ -454,7 +455,7 @@ void WTFLogAlwaysAndCrash(const char* format, ...)
     va_start(args, format);
     WTFLogAlwaysV(format, args);
     va_end(args);
-    WTFCrash();
+    CRASH();
 }
 
 WTFLogChannel* WTFLogChannelByName(WTFLogChannel* channels[], size_t count, const char* name)

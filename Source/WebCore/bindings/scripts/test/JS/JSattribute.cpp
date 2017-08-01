@@ -24,6 +24,7 @@
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "URL.h"
+#include <runtime/FunctionPrototype.h>
 #include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
@@ -33,9 +34,9 @@ namespace WebCore {
 
 // Attributes
 
-JSC::EncodedJSValue jsattributeReadonly(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsattributeConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSattributeConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsattributeReadonly(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsattributeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSattributeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSattributePrototype : public JSC::JSNonFinalObject {
 public:
@@ -64,6 +65,12 @@ private:
 
 typedef JSDOMConstructorNotConstructable<JSattribute> JSattributeConstructor;
 
+template<> JSValue JSattributeConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
+{
+    UNUSED_PARAM(vm);
+    return globalObject.functionPrototype();
+}
+
 template<> void JSattributeConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSattribute::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
@@ -71,7 +78,7 @@ template<> void JSattributeConstructor::initializeProperties(VM& vm, JSDOMGlobal
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSattributeConstructor::s_info = { "attributeConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSattributeConstructor) };
+template<> const ClassInfo JSattributeConstructor::s_info = { "attribute", &Base::s_info, 0, CREATE_METHOD_TABLE(JSattributeConstructor) };
 
 /* Hash table for prototype */
 
@@ -112,10 +119,9 @@ void JSattribute::destroy(JSC::JSCell* cell)
     thisObject->JSattribute::~JSattribute();
 }
 
-EncodedJSValue jsattributeReadonly(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
     JSValue decodedThisValue = JSValue::decode(thisValue);
     auto* castedThis = jsDynamicCast<JSattribute*>(decodedThisValue);
@@ -128,19 +134,18 @@ EncodedJSValue jsattributeReadonly(ExecState* state, JSObject* slotBase, Encoded
 }
 
 
-EncodedJSValue jsattributeConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)
+EncodedJSValue jsattributeConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(baseValue);
+    JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSattribute::getConstructor(state->vm(), domObject->globalObject()));
 }
 
-void setJSattributeConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSattributeConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(baseValue);
+    JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state);
         return;
@@ -149,9 +154,9 @@ void setJSattributeConstructor(ExecState* state, JSObject* baseValue, EncodedJSV
     domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
-JSValue JSattribute::getConstructor(VM& vm, JSGlobalObject* globalObject)
+JSValue JSattribute::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSattributeConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSattributeConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 bool JSattributeOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

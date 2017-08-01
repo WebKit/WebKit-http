@@ -1,3 +1,6 @@
+include(platform/ImageDecoders.cmake)
+include(platform/TextureMapper.cmake)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
     "${DirectX_INCLUDE_DIRS}"
@@ -56,24 +59,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/RefPtrCairo.cpp
     platform/graphics/cairo/TransformationMatrixCairo.cpp
 
-    platform/graphics/texmap/BitmapTexture.cpp
-    platform/graphics/texmap/BitmapTextureGL.cpp
-    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
-    platform/graphics/texmap/BitmapTexturePool.cpp
-    platform/graphics/texmap/ClipStack.cpp
-    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-    platform/graphics/texmap/TextureMapper.cpp
-    platform/graphics/texmap/TextureMapperAnimation.cpp
-    platform/graphics/texmap/TextureMapperBackingStore.cpp
-    platform/graphics/texmap/TextureMapperFPSCounter.cpp
-    platform/graphics/texmap/TextureMapperGL.cpp
-    platform/graphics/texmap/TextureMapperImageBuffer.cpp
-    platform/graphics/texmap/TextureMapperLayer.cpp
-    platform/graphics/texmap/TextureMapperShaderProgram.cpp
-    platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp
-    platform/graphics/texmap/TextureMapperTile.cpp
-    platform/graphics/texmap/TextureMapperTiledBackingStore.cpp
-
     platform/graphics/win/DIBPixelData.cpp
     platform/graphics/win/FontCacheWin.cpp
     platform/graphics/win/FontCustomPlatformDataCairo.cpp
@@ -90,23 +75,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/TransformationMatrixWin.cpp
     platform/graphics/win/UniscribeController.cpp
 
-    platform/image-decoders/ImageDecoder.cpp
-
-    platform/image-decoders/bmp/BMPImageDecoder.cpp
-    platform/image-decoders/bmp/BMPImageReader.cpp
-
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
-
-    platform/image-decoders/gif/GIFImageDecoder.cpp
-    platform/image-decoders/gif/GIFImageReader.cpp
-
-    platform/image-decoders/ico/ICOImageDecoder.cpp
-
-    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-    platform/image-decoders/png/PNGImageDecoder.cpp
-
-    platform/image-decoders/webp/WEBPImageDecoder.cpp
 
     platform/network/CredentialStorage.cpp
     platform/network/NetworkStorageSessionStub.cpp

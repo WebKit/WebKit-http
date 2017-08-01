@@ -439,10 +439,6 @@ VisiblePosition rightWordPosition(const VisiblePosition& visiblePosition, bool s
 }
 
 
-enum BoundarySearchContextAvailability { DontHaveMoreContext, MayHaveMoreContext };
-
-typedef unsigned (*BoundarySearchFunction)(StringView, unsigned offset, BoundarySearchContextAvailability, bool& needMoreContext);
-
 static void prepend(Vector<UChar, 1024>& buffer, StringView string)
 {
     unsigned oldSize = buffer.size();
@@ -470,6 +466,99 @@ static void appendRepeatedCharacter(Vector<UChar, 1024>& buffer, UChar character
         buffer[oldSize + i] = character;
 }
 
+unsigned suffixLengthForRange(RefPtr<Range> forwardsScanRange, Vector<UChar, 1024>& string)
+{
+    unsigned suffixLength = 0;
+    TextIterator forwardsIterator(forwardsScanRange.get());
+    while (!forwardsIterator.atEnd()) {
+        StringView text = forwardsIterator.text();
+        unsigned i = endOfFirstWordBoundaryContext(text);
+        append(string, text.substring(0, i));
+        suffixLength += i;
+        if (i < text.length())
+            break;
+        forwardsIterator.advance();
+    }
+    return suffixLength;
+}
+
+unsigned prefixLengthForRange(RefPtr<Range> backwardsScanRange, Vector<UChar, 1024>& string)
+{
+    unsigned prefixLength = 0;
+    SimplifiedBackwardsTextIterator backwardsIterator(*backwardsScanRange);
+    while (!backwardsIterator.atEnd()) {
+        StringView text = backwardsIterator.text();
+        int i = startOfLastWordBoundaryContext(text);
+        prepend(string, text.substring(i));
+        prefixLength += text.length() - i;
+        if (i > 0)
+            break;
+        backwardsIterator.advance();
+    }
+    return prefixLength;
+}
+
+unsigned backwardSearchForBoundaryWithTextIterator(SimplifiedBackwardsTextIterator& it, Vector<UChar, 1024>& string, unsigned suffixLength, BoundarySearchFunction searchFunction)
+{
+    unsigned next = 0;
+    bool needMoreContext = false;
+    while (!it.atEnd()) {
+        bool inTextSecurityMode = it.node() && it.node()->renderer() && it.node()->renderer()->style().textSecurity() != TSNONE;
+        // iterate to get chunks until the searchFunction returns a non-zero value.
+        if (!inTextSecurityMode)
+            prepend(string, it.text());
+        else {
+            // Treat bullets used in the text security mode as regular characters when looking for boundaries
+            prependRepeatedCharacter(string, 'x', it.text().length());
+        }
+        if (string.size() > suffixLength) {
+            next = searchFunction(StringView(string.data(), string.size()), string.size() - suffixLength, MayHaveMoreContext, needMoreContext);
+            if (next > 1) // FIXME: This is a work around for https://webkit.org/b/115070. We need to provide more contexts in general case.
+                break;
+        }
+        it.advance();
+    }
+    if (needMoreContext && string.size() > suffixLength) {
+        // The last search returned the beginning of the buffer and asked for more context,
+        // but there is no earlier text. Force a search with what's available.
+        next = searchFunction(StringView(string.data(), string.size()), string.size() - suffixLength, DontHaveMoreContext, needMoreContext);
+        ASSERT(!needMoreContext);
+    }
+    
+    return next;
+}
+
+unsigned forwardSearchForBoundaryWithTextIterator(TextIterator& it, Vector<UChar, 1024>& string, unsigned prefixLength, BoundarySearchFunction searchFunction)
+{
+    unsigned next = 0;
+    bool needMoreContext = false;
+    while (!it.atEnd()) {
+        bool inTextSecurityMode = it.node() && it.node()->renderer() && it.node()->renderer()->style().textSecurity() != TSNONE;
+        // Keep asking the iterator for chunks until the search function
+        // returns an end value not equal to the length of the string passed to it.
+        if (!inTextSecurityMode)
+            append(string, it.text());
+        else {
+            // Treat bullets used in the text security mode as regular characters when looking for boundaries
+            appendRepeatedCharacter(string, 'x', it.text().length());
+        }
+        if (string.size() > prefixLength) {
+            next = searchFunction(StringView(string.data(), string.size()), prefixLength, MayHaveMoreContext, needMoreContext);
+            if (next != string.size())
+                break;
+        }
+        it.advance();
+    }
+    if (needMoreContext && string.size() > prefixLength) {
+        // The last search returned the end of the buffer and asked for more context,
+        // but there is no further text. Force a search with what's available.
+        next = searchFunction(StringView(string.data(), string.size()), prefixLength, DontHaveMoreContext, needMoreContext);
+        ASSERT(!needMoreContext);
+    }
+    
+    return next;
+}
+
 static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearchFunction searchFunction)
 {
     Position pos = c.deepEquivalent();
@@ -490,16 +579,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
         RefPtr<Range> forwardsScanRange(boundaryDocument.createRange());
         forwardsScanRange->setEndAfter(boundary, ec);
         forwardsScanRange->setStart(end.deprecatedNode(), end.deprecatedEditingOffset(), ec);
-        TextIterator forwardsIterator(forwardsScanRange.get());
-        while (!forwardsIterator.atEnd()) {
-            StringView text = forwardsIterator.text();
-            unsigned i = endOfFirstWordBoundaryContext(text);
-            append(string, text.substring(0, i));
-            suffixLength += i;
-            if (i < text.length())
-                break;
-            forwardsIterator.advance();
-        }
+        suffixLength = suffixLengthForRange(forwardsScanRange, string);
     }
 
     searchRange->setStart(start.deprecatedNode(), start.deprecatedEditingOffset(), ec);
@@ -510,30 +590,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
         return VisiblePosition();
 
     SimplifiedBackwardsTextIterator it(*searchRange);
-    unsigned next = 0;
-    bool needMoreContext = false;
-    while (!it.atEnd()) {
-        bool inTextSecurityMode = it.node() && it.node()->renderer() && it.node()->renderer()->style().textSecurity() != TSNONE;
-        // iterate to get chunks until the searchFunction returns a non-zero value.
-        if (!inTextSecurityMode) 
-            prepend(string, it.text());
-        else {
-            // Treat bullets used in the text security mode as regular characters when looking for boundaries
-            prependRepeatedCharacter(string, 'x', it.text().length());
-        }
-        if (string.size() > suffixLength) {
-            next = searchFunction(StringView(string.data(), string.size()), string.size() - suffixLength, MayHaveMoreContext, needMoreContext);
-            if (next > 1) // FIXME: This is a work around for https://webkit.org/b/115070. We need to provide more contexts in general case.
-                break;
-        }
-        it.advance();
-    }
-    if (needMoreContext && string.size() > suffixLength) {
-        // The last search returned the beginning of the buffer and asked for more context,
-        // but there is no earlier text. Force a search with what's available.
-        next = searchFunction(StringView(string.data(), string.size()), string.size() - suffixLength, DontHaveMoreContext, needMoreContext);
-        ASSERT(!needMoreContext);
-    }
+    unsigned next = backwardSearchForBoundaryWithTextIterator(it, string, suffixLength, searchFunction);
 
     if (!next)
         return VisiblePosition(it.atEnd() ? searchRange->startPosition() : pos, DOWNSTREAM);
@@ -568,46 +625,13 @@ static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunc
     if (requiresContextForWordBoundary(c.characterAfter())) {
         RefPtr<Range> backwardsScanRange(boundaryDocument.createRange());
         backwardsScanRange->setEnd(start.deprecatedNode(), start.deprecatedEditingOffset(), IGNORE_EXCEPTION);
-        SimplifiedBackwardsTextIterator backwardsIterator(*backwardsScanRange);
-        while (!backwardsIterator.atEnd()) {
-            StringView text = backwardsIterator.text();
-            int i = startOfLastWordBoundaryContext(text);
-            prepend(string, text.substring(i));
-            prefixLength += text.length() - i;
-            if (i > 0)
-                break;
-            backwardsIterator.advance();
-        }
+        prefixLength = prefixLengthForRange(backwardsScanRange, string);
     }
 
     searchRange->selectNodeContents(boundary, IGNORE_EXCEPTION);
     searchRange->setStart(start.deprecatedNode(), start.deprecatedEditingOffset(), IGNORE_EXCEPTION);
     TextIterator it(searchRange.get(), TextIteratorEmitsCharactersBetweenAllVisiblePositions);
-    unsigned next = 0;
-    bool needMoreContext = false;
-    while (!it.atEnd()) {
-        bool inTextSecurityMode = it.node() && it.node()->renderer() && it.node()->renderer()->style().textSecurity() != TSNONE;
-        // Keep asking the iterator for chunks until the search function
-        // returns an end value not equal to the length of the string passed to it.
-        if (!inTextSecurityMode)
-            append(string, it.text());
-        else {
-            // Treat bullets used in the text security mode as regular characters when looking for boundaries
-            appendRepeatedCharacter(string, 'x', it.text().length());
-        }
-        if (string.size() > prefixLength) {
-            next = searchFunction(StringView(string.data(), string.size()), prefixLength, MayHaveMoreContext, needMoreContext);
-            if (next != string.size())
-                break;
-        }
-        it.advance();
-    }
-    if (needMoreContext && string.size() > prefixLength) {
-        // The last search returned the end of the buffer and asked for more context,
-        // but there is no further text. Force a search with what's available.
-        next = searchFunction(StringView(string.data(), string.size()), prefixLength, DontHaveMoreContext, needMoreContext);
-        ASSERT(!needMoreContext);
-    }
+    unsigned next = forwardSearchForBoundaryWithTextIterator(it, string, prefixLength, searchFunction);
     
     if (it.atEnd() && next == string.size())
         pos = searchRange->endPosition();
@@ -1118,24 +1142,9 @@ VisiblePosition nextSentencePosition(const VisiblePosition& position)
     return position.honorEditingBoundaryAtOrAfter(nextBoundary(position, nextSentencePositionBoundary));
 }
 
-VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossingRule boundaryCrossingRule)
+Node* findStartOfParagraph(Node* startNode, Node* highestRoot, Node* startBlock, int& offset, Position::AnchorType& type, EditingBoundaryCrossingRule boundaryCrossingRule)
 {
-    Position p = c.deepEquivalent();
-    Node* startNode = p.deprecatedNode();
-
-    if (!startNode)
-        return VisiblePosition();
-    
-    if (isRenderedAsNonInlineTableImageOrHR(startNode))
-        return positionBeforeNode(startNode);
-
-    Node* startBlock = enclosingBlock(startNode);
-
     Node* node = startNode;
-    Node* highestRoot = highestEditableRoot(p);
-    int offset = p.deprecatedEditingOffset();
-    Position::AnchorType type = p.anchorType();
-
     Node* n = startNode;
     while (n) {
 #if ENABLE(USERSELECT_ALL)
@@ -1174,8 +1183,10 @@ VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossi
                 if (n == startNode && o < i)
                     i = std::max(0, o);
                 while (--i >= 0) {
-                    if (text[i] == '\n')
-                        return VisiblePosition(Position(downcast<Text>(n), i + 1), DOWNSTREAM);
+                    if (text[i] == '\n') {
+                        offset = i + 1;
+                        return n;
+                    }
                 }
             }
             node = n;
@@ -1189,33 +1200,12 @@ VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossi
             n = NodeTraversal::previousPostOrder(*n, startBlock);
     }
 
-    if (type == Position::PositionIsOffsetInAnchor) {
-        ASSERT(type == Position::PositionIsOffsetInAnchor || !offset);
-        return VisiblePosition(Position(node, offset, type), DOWNSTREAM);
-    }
-
-    return VisiblePosition(Position(node, type), DOWNSTREAM);
+    return node;
 }
 
-VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossingRule boundaryCrossingRule)
-{    
-    if (c.isNull())
-        return VisiblePosition();
-
-    Position p = c.deepEquivalent();
-    Node* startNode = p.deprecatedNode();
-
-    if (isRenderedAsNonInlineTableImageOrHR(startNode))
-        return positionAfterNode(startNode);
-    
-    Node* startBlock = enclosingBlock(startNode);
-    Node* stayInsideBlock = startBlock;
-    
+Node* findEndOfParagraph(Node* startNode, Node* highestRoot, Node* stayInsideBlock, int& offset, Position::AnchorType& type, EditingBoundaryCrossingRule boundaryCrossingRule)
+{
     Node* node = startNode;
-    Node* highestRoot = highestEditableRoot(p);
-    int offset = p.deprecatedEditingOffset();
-    Position::AnchorType type = p.anchorType();
-
     Node* n = startNode;
     while (n) {
 #if ENABLE(USERSELECT_ALL)
@@ -1255,8 +1245,10 @@ VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossing
                 int o = n == startNode ? offset : 0;
                 int length = text.length();
                 for (int i = o; i < length; ++i) {
-                    if (text[i] == '\n')
-                        return VisiblePosition(Position(downcast<Text>(n), i), DOWNSTREAM);
+                    if (text[i] == '\n') {
+                        offset = i;
+                        return n;
+                    }
                 }
             }
             node = n;
@@ -1269,7 +1261,62 @@ VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossing
         } else
             n = NodeTraversal::next(*n, stayInsideBlock);
     }
+    return node;
+}
 
+VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossingRule boundaryCrossingRule)
+{
+    Position p = c.deepEquivalent();
+    Node* startNode = p.deprecatedNode();
+    
+    if (!startNode)
+        return VisiblePosition();
+    
+    if (isRenderedAsNonInlineTableImageOrHR(startNode))
+        return positionBeforeNode(startNode);
+    
+    Node* startBlock = enclosingBlock(startNode);
+    
+    Node* highestRoot = highestEditableRoot(p);
+    int offset = p.deprecatedEditingOffset();
+    Position::AnchorType type = p.anchorType();
+    
+    Node* node = findStartOfParagraph(startNode, highestRoot, startBlock, offset, type, boundaryCrossingRule);
+    
+    if (is<Text>(node))
+        return VisiblePosition(Position(downcast<Text>(node), offset), DOWNSTREAM);
+    
+    if (type == Position::PositionIsOffsetInAnchor) {
+        ASSERT(type == Position::PositionIsOffsetInAnchor || !offset);
+        return VisiblePosition(Position(node, offset, type), DOWNSTREAM);
+    }
+    
+    return VisiblePosition(Position(node, type), DOWNSTREAM);
+}
+
+VisiblePosition endOfParagraph(const VisiblePosition& c, EditingBoundaryCrossingRule boundaryCrossingRule)
+{    
+    if (c.isNull())
+        return VisiblePosition();
+    
+    Position p = c.deepEquivalent();
+    Node* startNode = p.deprecatedNode();
+    
+    if (isRenderedAsNonInlineTableImageOrHR(startNode))
+        return positionAfterNode(startNode);
+    
+    Node* startBlock = enclosingBlock(startNode);
+    Node* stayInsideBlock = startBlock;
+    
+    Node* highestRoot = highestEditableRoot(p);
+    int offset = p.deprecatedEditingOffset();
+    Position::AnchorType type = p.anchorType();
+    
+    Node* node = findEndOfParagraph(startNode, highestRoot, stayInsideBlock, offset, type, boundaryCrossingRule);
+    
+    if (is<Text>(node))
+        return VisiblePosition(Position(downcast<Text>(node), offset), DOWNSTREAM);
+    
     if (type == Position::PositionIsOffsetInAnchor)
         return VisiblePosition(Position(node, offset, type), DOWNSTREAM);
 

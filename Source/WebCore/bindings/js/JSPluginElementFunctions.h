@@ -38,7 +38,8 @@ namespace WebCore {
     JSC::Bindings::Instance* pluginInstance(HTMLElement&);
     WEBCORE_EXPORT JSC::JSObject* pluginScriptObject(JSC::ExecState*, JSHTMLElement*);
 
-    JSC::EncodedJSValue pluginElementPropertyGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+    JSC::EncodedJSValue pluginElementPropertyGetter(JSC::ExecState*,
+    JSC::EncodedJSValue, JSC::PropertyName);
     bool pluginElementCustomGetOwnPropertySlot(JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&, JSHTMLElement*);
     bool pluginElementCustomPut(JSC::ExecState*, JSC::PropertyName, JSC::JSValue, JSHTMLElement*, JSC::PutPropertySlot&);
     JSC::CallType pluginElementGetCallData(JSHTMLElement*, JSC::CallData&);
@@ -46,7 +47,7 @@ namespace WebCore {
     template <class Type, class Base> bool pluginElementCustomGetOwnPropertySlot(JSC::ExecState* exec, JSC::PropertyName propertyName, JSC::PropertySlot& slot, Type* element)
     {
         if (!element->globalObject()->world().isNormal()) {
-            if (Type::info()->staticPropHashTable && JSC::getStaticValueSlot<Type, Base>(exec, *Type::info()->staticPropHashTable, element, propertyName, slot))
+            if (Type::hasStaticPropertyTable && JSC::getStaticValueSlot<Type, Base>(exec, *Type::info()->staticPropHashTable, element, propertyName, slot))
                 return true;
 
             JSC::JSValue proto = element->prototype();

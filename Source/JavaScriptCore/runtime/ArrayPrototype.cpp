@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2009, 2011, 2013, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2007-2009, 2011, 2013, 2015-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2003 Peter Kelly (pmk@post.com)
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
@@ -192,7 +192,7 @@ static ALWAYS_INLINE std::pair<SpeciesConstructResult, JSObject*> speciesConstru
         // We need prototype check for subclasses of Array, which are Array objects but have a different prototype by default.
         if (LIKELY(!thisObject->hasCustomProperties()
             && thisObject->globalObject()->arrayPrototype() == thisObject->prototype()
-            && !thisObject->globalObject()->arrayPrototype()->didChangeConstructorProperty()))
+            && !thisObject->globalObject()->arrayPrototype()->didChangeConstructorOrSpeciesProperties()))
             return std::make_pair(SpeciesConstructResult::FastPath, nullptr);
 
         constructor = thisObject->get(exec, exec->propertyNames().constructor);
@@ -905,19 +905,28 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
         result = asArray(thisObj)->fastSlice(*exec, begin, deleteCount);
 
     if (!result) {
-        if (speciesResult.first == SpeciesConstructResult::CreatedObject)
+        if (speciesResult.first == SpeciesConstructResult::CreatedObject) {
             result = speciesResult.second;
-        else {
+            
+            for (unsigned k = 0; k < deleteCount; ++k) {
+                JSValue v = getProperty(exec, thisObj, k + begin);
+                if (exec->hadException())
+                    return JSValue::encode(jsUndefined());
+                result->putByIndexInline(exec, k, v, true);
+                if (exec->hadException())
+                    return JSValue::encode(jsUndefined());
+            }
+        } else {
             result = JSArray::tryCreateUninitialized(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), deleteCount);
             if (!result)
                 return JSValue::encode(throwOutOfMemoryError(exec));
-        }
-
-        for (unsigned k = 0; k < deleteCount; ++k) {
-            JSValue v = getProperty(exec, thisObj, k + begin);
-            if (exec->hadException())
-                return JSValue::encode(jsUndefined());
-            result->initializeIndex(vm, k, v);
+            
+            for (unsigned k = 0; k < deleteCount; ++k) {
+                JSValue v = getProperty(exec, thisObj, k + begin);
+                if (exec->hadException())
+                    return JSValue::encode(jsUndefined());
+                result->initializeIndex(vm, k, v);
+            }
         }
     }
 
@@ -1060,6 +1069,7 @@ void ArrayPrototype::setConstructor(VM& vm, JSObject* constructorProperty, unsig
 {
     putDirectWithoutTransition(vm, vm.propertyNames->constructor, constructorProperty, attributes);
 
+    // Do the watchpoint on our constructor property
     PropertyOffset offset = this->structure()->get(vm, vm.propertyNames->constructor);
     ASSERT(isValidOffset(offset));
     this->structure()->startWatchingPropertyForReplacements(vm, offset);
@@ -1069,6 +1079,18 @@ void ArrayPrototype::setConstructor(VM& vm, JSObject* constructorProperty, unsig
 
     m_constructorWatchpoint = std::make_unique<ArrayPrototypeAdaptiveInferredPropertyWatchpoint>(condition, this);
     m_constructorWatchpoint->install();
+    
+    // Do the watchpoint on the constructor's Symbol.species property
+    offset = constructorProperty->structure()->get(vm, vm.propertyNames->speciesSymbol);
+    ASSERT(isValidOffset(offset));
+    constructorProperty->structure()->startWatchingPropertyForReplacements(vm, offset);
+
+    ASSERT(constructorProperty->getDirect(offset).isGetterSetter());
+    condition = ObjectPropertyCondition::equivalence(vm, this, constructorProperty, vm.propertyNames->speciesSymbol.impl(), constructorProperty->getDirect(offset));
+    ASSERT(condition.isWatchable());
+
+    m_constructorSpeciesWatchpoint = std::make_unique<ArrayPrototypeAdaptiveInferredPropertyWatchpoint>(condition, this);
+    m_constructorSpeciesWatchpoint->install();
 }
 
 ArrayPrototypeAdaptiveInferredPropertyWatchpoint::ArrayPrototypeAdaptiveInferredPropertyWatchpoint(const ObjectPropertyCondition& key, ArrayPrototype* prototype)
@@ -1084,7 +1106,7 @@ void ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire(const FireDeta
 
     StringFireDetail stringDetail(out.toCString().data());
 
-    m_arrayPrototype->m_didChangeConstructorProperty = true;
+    m_arrayPrototype->m_didChangeConstructorOrSpeciesProperties = true;
 }
 
 } // namespace JSC

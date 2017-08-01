@@ -203,6 +203,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)displayListDrawingEnabled;
 - (void)setDisplayListDrawingEnabled:(BOOL)enabled;
 
+- (BOOL)resourceLoadStatisticsEnabled;
+- (void)setResourceLoadStatisticsEnabled:(BOOL)enabled;
+
 - (BOOL)canvasUsesAcceleratedDrawing;
 - (void)setCanvasUsesAcceleratedDrawing:(BOOL)enabled;
 
@@ -369,6 +372,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 // compiled with USE_AVFOUNDATION.
 - (void)setAVFoundationEnabled:(BOOL)flag;
 - (BOOL)isAVFoundationEnabled;
+
+- (void)setAVFoundationNSURLSessionEnabled:(BOOL)flag;
+- (BOOL)isAVFoundationNSURLSessionEnabled;
 
 - (void)setQTKitEnabled:(BOOL)flag;
 - (BOOL)isQTKitEnabled;

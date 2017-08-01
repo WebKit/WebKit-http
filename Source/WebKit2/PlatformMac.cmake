@@ -54,6 +54,8 @@ list(APPEND WebKit2_SOURCES
     Shared/APIWebArchive.mm
     Shared/APIWebArchiveResource.mm
 
+    Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
+
     Shared/API/Cocoa/RemoteObjectInvocation.mm
     Shared/API/Cocoa/RemoteObjectRegistry.mm
     Shared/API/Cocoa/WKBrowsingContextHandle.mm
@@ -138,6 +140,7 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/WebMemorySampler.mac.mm
 
     UIProcess/ViewGestureController.cpp
+    UIProcess/WebAutomationSession.cpp
 
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
@@ -174,6 +177,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKWebsiteDataStore.mm
     UIProcess/API/Cocoa/WKWindowFeatures.mm
     UIProcess/API/Cocoa/_WKActivatedElementInfo.mm
+    UIProcess/API/Cocoa/_WKAutomationSession.mm
     UIProcess/API/Cocoa/_WKContextMenuElementInfo.mm
     UIProcess/API/Cocoa/_WKDownload.mm
     UIProcess/API/Cocoa/_WKElementAction.mm
@@ -192,6 +196,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/mac/WKView.mm
 
     UIProcess/Cocoa/AutomationClient.mm
+    UIProcess/Cocoa/AutomationSessionClient.mm
     UIProcess/Cocoa/DiagnosticLoggingClient.mm
     UIProcess/Cocoa/DownloadClient.mm
     UIProcess/Cocoa/FindClient.mm
@@ -208,10 +213,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebProcessProxyCocoa.mm
     UIProcess/Cocoa/WebViewImpl.mm
 
-    UIProcess/Databases/mac/DatabaseProcessProxyMac.mm
-
-    UIProcess/Launcher/mac/DynamicLinkerEnvironmentExtractor.mm
-    UIProcess/Launcher/mac/EnvironmentVariables.cpp
     UIProcess/Launcher/mac/ProcessLauncherMac.mm
 
     UIProcess/Network/CustomProtocols/mac/CustomProtocolManagerProxyMac.mm
@@ -284,7 +285,6 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm
     WebProcess/Plugins/Netscape/mac/PluginProxyMac.mm
-    WebProcess/Plugins/Netscape/mac/WKNPAPIPlugInContainer.mm
 
     WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm
     WebProcess/Plugins/PDF/PDFPlugin.mm

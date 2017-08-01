@@ -75,9 +75,7 @@ private:
         { }
 
         ElementAndTextDescendantIterator iterator;
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         size_t slotNodeIndex { notFound };
-#endif
     };
     Context& context() { return m_contextStack.last(); }
     const Context& context() const { return m_contextStack.last(); }

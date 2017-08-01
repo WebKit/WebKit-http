@@ -845,6 +845,9 @@ private:
         case NewArrayWithSize:
             compileNewArrayWithSize();
             break;
+        case NewTypedArray:
+            compileNewTypedArray();
+            break;
         case GetTypedArrayByteOffset:
             compileGetTypedArrayByteOffset();
             break;
@@ -869,6 +872,9 @@ private:
             break;
         case StringCharCodeAt:
             compileStringCharCodeAt();
+            break;
+        case StringFromCharCode:
+            compileStringFromCharCode();
             break;
         case GetByOffset:
         case GetGetterSetterByOffset:
@@ -4087,8 +4093,7 @@ private:
             
             LValue butterfly = m_out.sub(endOfStorage, payloadSize);
             
-            LValue object = allocateObject<JSArray>(
-                structure, butterfly, failCase);
+            LValue object = allocateObject<JSArray>(structure, butterfly, failCase);
             
             m_out.store32(publicLength, butterfly, m_heaps.Butterfly_publicLength);
             m_out.store32(vectorLength, butterfly, m_heaps.Butterfly_vectorLength);
@@ -4155,6 +4160,86 @@ private:
                 globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithArrayStorage)),
             m_out.constIntPtr(structure));
         setJSValue(vmCall(m_out.int64, m_out.operation(operationNewArrayWithSize), m_callFrame, structureValue, publicLength));
+    }
+
+    void compileNewTypedArray()
+    {
+        TypedArrayType type = m_node->typedArrayType();
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        
+        switch (m_node->child1().useKind()) {
+        case Int32Use: {
+            Structure* structure = globalObject->typedArrayStructure(type);
+
+            LValue size = lowInt32(m_node->child1());
+
+            LBasicBlock smallEnoughCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray small enough case"));
+            LBasicBlock nonZeroCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray non-zero case"));
+            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray slow case"));
+            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewTypedArray continuation"));
+
+            m_out.branch(
+                m_out.above(size, m_out.constInt32(JSArrayBufferView::fastSizeLimit)),
+                rarely(slowCase), usually(smallEnoughCase));
+
+            LBasicBlock lastNext = m_out.appendTo(smallEnoughCase, nonZeroCase);
+
+            m_out.branch(m_out.notZero32(size), usually(nonZeroCase), rarely(slowCase));
+
+            m_out.appendTo(nonZeroCase, slowCase);
+
+            LValue byteSize =
+                m_out.shl(m_out.zeroExtPtr(size), m_out.constInt32(logElementSize(type)));
+            if (elementSize(type) < 8) {
+                byteSize = m_out.bitAnd(
+                    m_out.add(byteSize, m_out.constIntPtr(7)),
+                    m_out.constIntPtr(~static_cast<intptr_t>(7)));
+            }
+        
+            LValue storage = allocateBasicStorage(byteSize, slowCase);
+
+            LValue fastResultValue =
+                allocateObject<JSArrayBufferView>(structure, m_out.intPtrZero, slowCase);
+
+            m_out.storePtr(storage, fastResultValue, m_heaps.JSArrayBufferView_vector);
+            m_out.store32(size, fastResultValue, m_heaps.JSArrayBufferView_length);
+            m_out.store32(m_out.constInt32(FastTypedArray), fastResultValue, m_heaps.JSArrayBufferView_mode);
+
+            ValueFromBlock fastResult = m_out.anchor(fastResultValue);
+            m_out.jump(continuation);
+
+            m_out.appendTo(slowCase, continuation);
+
+            LValue slowResultValue = lazySlowPath(
+                [=] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                    return createLazyCallGenerator(
+                        operationNewTypedArrayWithSizeForType(type), locations[0].directGPR(),
+                        CCallHelpers::TrustedImmPtr(structure), locations[1].directGPR());
+                },
+                size);
+            ValueFromBlock slowResult = m_out.anchor(slowResultValue);
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(m_out.intPtr, fastResult, slowResult));
+            return;
+        }
+
+        case UntypedUse: {
+            LValue argument = lowJSValue(m_node->child1());
+
+            LValue result = vmCall(
+                m_out.intPtr, m_out.operation(operationNewTypedArrayWithOneArgumentForType(type)),
+                m_callFrame, weakPointer(globalObject->typedArrayStructure(type)), argument);
+
+            setJSValue(result);
+            return;
+        }
+
+        default:
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            return;
+        }
     }
     
     void compileAllocatePropertyStorage()
@@ -4521,6 +4606,50 @@ private:
         
         setInt32(m_out.phi(m_out.int32, char8Bit, char16Bit));
     }
+
+    void compileStringFromCharCode()
+    {
+        Edge childEdge = m_node->child1();
+        
+        if (childEdge.useKind() == UntypedUse) {
+            LValue result = vmCall(
+                m_out.int64, m_out.operation(operationStringFromCharCodeUntyped), m_callFrame,
+                lowJSValue(childEdge));
+            setJSValue(result);
+            return;
+        }
+
+        DFG_ASSERT(m_graph, m_node, childEdge.useKind() == Int32Use);
+
+        LValue value = lowInt32(childEdge);
+        
+        LBasicBlock smallIntCase = FTL_NEW_BLOCK(m_out, ("StringFromCharCode small int case"));
+        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("StringFromCharCode slow case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("StringFromCharCode continuation"));
+
+        m_out.branch(
+            m_out.aboveOrEqual(value, m_out.constInt32(0xff)),
+            rarely(slowCase), usually(smallIntCase));
+
+        LBasicBlock lastNext = m_out.appendTo(smallIntCase, slowCase);
+
+        LValue smallStrings = m_out.constIntPtr(vm().smallStrings.singleCharacterStrings());
+        LValue fastResultValue = m_out.loadPtr(
+            m_out.baseIndex(m_heaps.singleCharacterStrings, smallStrings, m_out.zeroExtPtr(value)));
+        ValueFromBlock fastResult = m_out.anchor(fastResultValue);
+        m_out.jump(continuation);
+
+        m_out.appendTo(slowCase, continuation);
+
+        LValue slowResultValue = vmCall(
+            m_out.intPtr, m_out.operation(operationStringFromCharCode), m_callFrame, value);
+        ValueFromBlock slowResult = m_out.anchor(slowResultValue);
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+
+        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
+    }
     
     void compileGetByOffset()
     {
@@ -4791,7 +4920,8 @@ private:
             || m_node->isBinaryUseKind(ObjectUse)
             || m_node->isBinaryUseKind(BooleanUse)
             || m_node->isBinaryUseKind(SymbolUse)
-            || m_node->isBinaryUseKind(StringIdentUse)) {
+            || m_node->isBinaryUseKind(StringIdentUse)
+            || m_node->isBinaryUseKind(StringUse)) {
             compileCompareStrictEq();
             return;
         }
@@ -4855,6 +4985,31 @@ private:
         if (m_node->isBinaryUseKind(StringIdentUse)) {
             setBoolean(
                 m_out.equal(lowStringIdent(m_node->child1()), lowStringIdent(m_node->child2())));
+            return;
+        }
+
+        if (m_node->isBinaryUseKind(StringUse)) {
+            LValue left = lowCell(m_node->child1());
+            LValue right = lowCell(m_node->child2());
+
+            LBasicBlock notTriviallyEqualCase = FTL_NEW_BLOCK(m_out, ("CompareStrictEq/String not trivially equal case"));
+            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CompareStrictEq/String continuation"));
+
+            speculateString(m_node->child1(), left);
+
+            ValueFromBlock fastResult = m_out.anchor(m_out.booleanTrue);
+            m_out.branch(
+                m_out.equal(left, right), unsure(continuation), unsure(notTriviallyEqualCase));
+
+            LBasicBlock lastNext = m_out.appendTo(notTriviallyEqualCase, continuation);
+
+            speculateString(m_node->child2(), right);
+            
+            ValueFromBlock slowResult = m_out.anchor(stringsEqual(left, right));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setBoolean(m_out.phi(m_out.boolean, fastResult, slowResult));
             return;
         }
 
@@ -7572,6 +7727,107 @@ private:
         setBoolean(m_out.phi(m_out.boolean, fastResult, slowResult));
     }
 
+    LValue stringsEqual(LValue leftJSString, LValue rightJSString)
+    {
+        LBasicBlock notTriviallyUnequalCase = FTL_NEW_BLOCK(m_out, ("stringsEqual not trivially unequal case"));
+        LBasicBlock notEmptyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual not empty case"));
+        LBasicBlock leftReadyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual left ready case"));
+        LBasicBlock rightReadyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual right ready case"));
+        LBasicBlock left8BitCase = FTL_NEW_BLOCK(m_out, ("stringsEqual left 8-bit case"));
+        LBasicBlock right8BitCase = FTL_NEW_BLOCK(m_out, ("stringsEqual right 8-bit case"));
+        LBasicBlock loop = FTL_NEW_BLOCK(m_out, ("stringsEqual loop"));
+        LBasicBlock bytesEqual = FTL_NEW_BLOCK(m_out, ("stringsEqual bytes equal"));
+        LBasicBlock trueCase = FTL_NEW_BLOCK(m_out, ("stringsEqual true case"));
+        LBasicBlock falseCase = FTL_NEW_BLOCK(m_out, ("stringsEqual false case"));
+        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("stringsEqual slow case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("stringsEqual continuation"));
+
+        LValue length = m_out.load32(leftJSString, m_heaps.JSString_length);
+
+        m_out.branch(
+            m_out.notEqual(length, m_out.load32(rightJSString, m_heaps.JSString_length)),
+            unsure(falseCase), unsure(notTriviallyUnequalCase));
+
+        LBasicBlock lastNext = m_out.appendTo(notTriviallyUnequalCase, notEmptyCase);
+
+        m_out.branch(m_out.isZero32(length), unsure(trueCase), unsure(notEmptyCase));
+
+        m_out.appendTo(notEmptyCase, leftReadyCase);
+
+        LValue left = m_out.loadPtr(leftJSString, m_heaps.JSString_value);
+        LValue right = m_out.loadPtr(rightJSString, m_heaps.JSString_value);
+
+        m_out.branch(m_out.notNull(left), usually(leftReadyCase), rarely(slowCase));
+
+        m_out.appendTo(leftReadyCase, rightReadyCase);
+        
+        m_out.branch(m_out.notNull(right), usually(rightReadyCase), rarely(slowCase));
+
+        m_out.appendTo(rightReadyCase, left8BitCase);
+
+        m_out.branch(
+            m_out.testIsZero32(
+                m_out.load32(left, m_heaps.StringImpl_hashAndFlags),
+                m_out.constInt32(StringImpl::flagIs8Bit())),
+            unsure(slowCase), unsure(left8BitCase));
+
+        m_out.appendTo(left8BitCase, right8BitCase);
+
+        m_out.branch(
+            m_out.testIsZero32(
+                m_out.load32(right, m_heaps.StringImpl_hashAndFlags),
+                m_out.constInt32(StringImpl::flagIs8Bit())),
+            unsure(slowCase), unsure(right8BitCase));
+
+        m_out.appendTo(right8BitCase, loop);
+
+        LValue leftData = m_out.loadPtr(left, m_heaps.StringImpl_data);
+        LValue rightData = m_out.loadPtr(right, m_heaps.StringImpl_data);
+
+        ValueFromBlock indexAtStart = m_out.anchor(length);
+
+        m_out.jump(loop);
+
+        m_out.appendTo(loop, bytesEqual);
+
+        LValue indexAtLoopTop = m_out.phi(m_out.int32, indexAtStart);
+        LValue indexInLoop = m_out.sub(indexAtLoopTop, m_out.int32One);
+
+        LValue leftByte = m_out.load8ZeroExt32(
+            m_out.baseIndex(m_heaps.characters8, leftData, m_out.zeroExtPtr(indexInLoop)));
+        LValue rightByte = m_out.load8ZeroExt32(
+            m_out.baseIndex(m_heaps.characters8, rightData, m_out.zeroExtPtr(indexInLoop)));
+
+        m_out.branch(m_out.notEqual(leftByte, rightByte), unsure(falseCase), unsure(bytesEqual));
+
+        m_out.appendTo(bytesEqual, trueCase);
+
+        ValueFromBlock indexForNextIteration = m_out.anchor(indexInLoop);
+        m_out.addIncomingToPhi(indexAtLoopTop, indexForNextIteration);
+        m_out.branch(m_out.notZero32(indexInLoop), unsure(loop), unsure(trueCase));
+
+        m_out.appendTo(trueCase, falseCase);
+        
+        ValueFromBlock trueResult = m_out.anchor(m_out.booleanTrue);
+        m_out.jump(continuation);
+
+        m_out.appendTo(falseCase, slowCase);
+
+        ValueFromBlock falseResult = m_out.anchor(m_out.booleanFalse);
+        m_out.jump(continuation);
+
+        m_out.appendTo(slowCase, continuation);
+
+        LValue slowResultValue = vmCall(
+            m_out.int64, m_out.operation(operationCompareStringEq), m_callFrame,
+            leftJSString, rightJSString);
+        ValueFromBlock slowResult = m_out.anchor(unboxBoolean(slowResultValue));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        return m_out.phi(m_out.boolean, trueResult, falseResult, slowResult);
+    }
+
 #if FTL_USES_B3
     enum ScratchFPRUsage {
         DontNeedScratchFPR,
@@ -7884,6 +8140,11 @@ private:
         m_out.storePtr(newRemaining, m_out.absolute(&allocator.m_currentRemaining));
         return m_out.sub(
             m_out.loadPtr(m_out.absolute(&allocator.m_currentPayloadEnd)), newRemaining);
+    }
+
+    LValue allocateBasicStorage(LValue size, LBasicBlock slowPath)
+    {
+        return m_out.sub(allocateBasicStorageAndGetEnd(size, slowPath), size);
     }
     
     LValue allocateObject(Structure* structure)

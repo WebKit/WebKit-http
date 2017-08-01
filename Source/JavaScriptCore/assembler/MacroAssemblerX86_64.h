@@ -349,6 +349,18 @@ public:
         and64(scratchRegister(), srcDest);
     }
 
+    void and64(RegisterID op1, RegisterID op2, RegisterID dest)
+    {
+        if (op1 == op2 && op1 != dest && op2 != dest)
+            move(op1, dest);
+        else if (op1 == dest)
+            and64(op2, dest);
+        else {
+            move(op2, dest);
+            and64(op1, dest);
+        }
+    }
+
     void countLeadingZeros64(RegisterID src, RegisterID dst)
     {
         if (supportsLZCNT()) {
@@ -376,11 +388,11 @@ public:
     
     void lshift64(RegisterID src, RegisterID dest)
     {
-        ASSERT(src != dest);
-        
         if (src == X86Registers::ecx)
             m_assembler.shlq_CLr(dest);
         else {
+            ASSERT(src != dest);
+            
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
             m_assembler.shlq_CLr(dest);
@@ -395,11 +407,11 @@ public:
 
     void rshift64(RegisterID src, RegisterID dest)
     {
-        ASSERT(src != dest);
-
         if (src == X86Registers::ecx)
             m_assembler.sarq_CLr(dest);
         else {
+            ASSERT(src != dest);
+            
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
             m_assembler.sarq_CLr(dest);
@@ -414,11 +426,11 @@ public:
 
     void urshift64(RegisterID src, RegisterID dest)
     {
-        ASSERT(src != dest);
-
         if (src == X86Registers::ecx)
             m_assembler.shrq_CLr(dest);
         else {
+            ASSERT(src != dest);
+            
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
             m_assembler.shrq_CLr(dest);
@@ -429,6 +441,16 @@ public:
     void mul64(RegisterID src, RegisterID dest)
     {
         m_assembler.imulq_rr(src, dest);
+    }
+
+    void mul64(RegisterID src1, RegisterID src2, RegisterID dest)
+    {
+        if (src2 == dest) {
+            m_assembler.imulq_rr(src1, dest);
+            return;
+        }
+        move(src1, dest);
+        m_assembler.imulq_rr(src2, dest);
     }
     
     void x86ConvertToQuadWord64()
@@ -540,6 +562,18 @@ public:
     void xor64(RegisterID src, RegisterID dest)
     {
         m_assembler.xorq_rr(src, dest);
+    }
+
+    void xor64(RegisterID op1, RegisterID op2, RegisterID dest)
+    {
+        if (op1 == op2)
+            move(TrustedImm32(0), dest);
+        else if (op1 == dest)
+            xor64(op2, dest);
+        else {
+            move(op2, dest);
+            xor64(op1, dest);
+        }
     }
     
     void xor64(RegisterID src, Address dest)
@@ -867,7 +901,33 @@ public:
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
+    Jump branchAdd64(ResultCondition cond, RegisterID src1, RegisterID src2, RegisterID dest)
+    {
+        if (src1 == dest)
+            return branchAdd64(cond, src2, dest);
+        move(src2, dest);
+        return branchAdd64(cond, src1, dest);
+    }
+
+    Jump branchAdd64(ResultCondition cond, Address src1, RegisterID src2, RegisterID dest)
+    {
+        move(src2, dest);
+        return branchAdd64(cond, src1, dest);
+    }
+
+    Jump branchAdd64(ResultCondition cond, RegisterID src1, Address src2, RegisterID dest)
+    {
+        move(src1, dest);
+        return branchAdd64(cond, src2, dest);
+    }
+
     Jump branchAdd64(ResultCondition cond, RegisterID src, RegisterID dest)
+    {
+        add64(src, dest);
+        return Jump(m_assembler.jCC(x86Condition(cond)));
+    }
+
+    Jump branchAdd64(ResultCondition cond, Address src, RegisterID dest)
     {
         add64(src, dest);
         return Jump(m_assembler.jCC(x86Condition(cond)));

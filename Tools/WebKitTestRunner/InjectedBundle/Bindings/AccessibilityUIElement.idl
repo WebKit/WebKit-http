@@ -201,6 +201,13 @@ interface AccessibilityUIElement {
     readonly attribute AccessibilityTextMarker startTextMarker;
     readonly attribute AccessibilityTextMarker endTextMarker;
     boolean setSelectedVisibleTextRange(AccessibilityTextMarkerRange range);
+    AccessibilityTextMarkerRange leftWordTextMarkerRangeForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarkerRange rightWordTextMarkerRangeForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarker previousWordStartTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarker nextWordEndTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarkerRange paragraphTextMarkerRangeForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarker previousParagraphStartTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
+    AccessibilityTextMarker nextParagraphEndTextMarkerForTextMarker(AccessibilityTextMarker textMarker);
 
     // Returns an ordered list of supported actions for an element.
     readonly attribute DOMString supportedActions;

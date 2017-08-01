@@ -28,9 +28,11 @@
 
 #include "AXObjectCache.h"
 #include "Attr.h"
+#include "AttributeChangeInvalidation.h"
 #include "CSSParser.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ClassChangeInvalidation.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
 #include "ComposedTreeAncestorIterator.h"
@@ -55,6 +57,7 @@
 #include "HTMLParserIdioms.h"
 #include "HTMLSelectElement.h"
 #include "HTMLTemplateElement.h"
+#include "IdChangeInvalidation.h"
 #include "IdTargetObserverRegistry.h"
 #include "KeyboardEvent.h"
 #include "MainFrame.h"
@@ -76,6 +79,7 @@
 #include "ScrollLatchingState.h"
 #include "SelectorQuery.h"
 #include "Settings.h"
+#include "SimulatedClick.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleTreeResolver.h"
@@ -267,8 +271,7 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
         // Special case: If it's a double click event, we also send the dblclick event. This is not part
         // of the DOM specs, but is used for compatibility with the ondblclick="" attribute. This is treated
         // as a separate event in other DOM-compliant browsers like Firefox, and so we do the same.
-        Ref<MouseEvent> doubleClickEvent = MouseEvent::create();
-        doubleClickEvent->initMouseEvent(eventNames().dblclickEvent,
+        Ref<MouseEvent> doubleClickEvent = MouseEvent::create(eventNames().dblclickEvent,
             mouseEvent->bubbles(), mouseEvent->cancelable(), mouseEvent->view(), mouseEvent->detail(),
             mouseEvent->screenX(), mouseEvent->screenY(), mouseEvent->clientX(), mouseEvent->clientY(),
             mouseEvent->ctrlKey(), mouseEvent->altKey(), mouseEvent->shiftKey(), mouseEvent->metaKey(),
@@ -312,7 +315,12 @@ bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
 
 void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
 {
-    EventDispatcher::dispatchSimulatedClick(this, underlyingEvent, eventOptions, visualOptions);
+    simulateClick(*this, underlyingEvent, eventOptions, visualOptions, SimulatedClickCreationOptions::FromUserAgent);
+}
+
+void Element::dispatchSimulatedClickForBindings(Event* underlyingEvent)
+{
+    simulateClick(*this, underlyingEvent, SendNoEvents, DoNotShowPressedLook, SimulatedClickCreationOptions::FromBindings);
 }
 
 Ref<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
@@ -1176,26 +1184,30 @@ inline void Element::setAttributeInternal(unsigned index, const QualifiedName& n
         return;
     }
 
+    if (inSynchronizationOfLazyAttribute) {
+        ensureUniqueElementData().attributeAt(index).setValue(newValue);
+        return;
+    }
+
     const Attribute& attribute = attributeAt(index);
+    QualifiedName attributeName = attribute.name();
     AtomicString oldValue = attribute.value();
-    bool valueChanged = newValue != oldValue;
-    QualifiedName attributeName = (!inSynchronizationOfLazyAttribute || valueChanged) ? attribute.name() : name;
 
-    if (!inSynchronizationOfLazyAttribute)
-        willModifyAttribute(attributeName, oldValue, newValue);
+    willModifyAttribute(attributeName, oldValue, newValue);
 
-    if (valueChanged) {
+    if (newValue != oldValue) {
         // If there is an Attr node hooked to this attribute, the Attr::setValue() call below
         // will write into the ElementData.
         // FIXME: Refactor this so it makes some sense.
-        if (RefPtr<Attr> attrNode = inSynchronizationOfLazyAttribute ? nullptr : attrIfExists(attributeName))
+        if (RefPtr<Attr> attrNode = attrIfExists(attributeName))
             attrNode->setValue(newValue);
-        else
+        else {
+            Style::AttributeChangeInvalidation styleInvalidation(*this, name, oldValue, newValue);
             ensureUniqueElementData().attributeAt(index).setValue(newValue);
+        }
     }
 
-    if (!inSynchronizationOfLazyAttribute)
-        didModifyAttribute(attributeName, oldValue, newValue);
+    didModifyAttribute(attributeName, oldValue, newValue);
 }
 
 static inline AtomicString makeIdForStyleResolution(const AtomicString& value, bool inQuirksMode)
@@ -1205,24 +1217,9 @@ static inline AtomicString makeIdForStyleResolution(const AtomicString& value, b
     return value;
 }
 
-static bool checkNeedsStyleInvalidationForIdChange(const AtomicString& oldId, const AtomicString& newId, StyleResolver* styleResolver)
-{
-    ASSERT(newId != oldId);
-    if (!oldId.isEmpty() && styleResolver->hasSelectorForId(oldId))
-        return true;
-    if (!newId.isEmpty() && styleResolver->hasSelectorForId(newId))
-        return true;
-    return false;
-}
-
 void Element::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason)
 {
     bool valueIsSameAsBefore = oldValue == newValue;
-
-    StyleResolver* styleResolver = document().styleResolverIfExists();
-    bool testShouldInvalidateStyle = inRenderedDocument() && styleResolver && styleChangeType() < FullStyleChange;
-
-    bool shouldInvalidateStyle = false;
 
     if (!valueIsSameAsBefore) {
         if (name == HTMLNames::idAttr) {
@@ -1234,15 +1231,17 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
             AtomicString oldId = elementData()->idForStyleResolution();
             AtomicString newId = makeIdForStyleResolution(newValue, document().inQuirksMode());
             if (newId != oldId) {
+                Style::IdChangeInvalidation styleInvalidation(*this, oldId, newId);
                 elementData()->setIdForStyleResolution(newId);
-                shouldInvalidateStyle = testShouldInvalidateStyle && checkNeedsStyleInvalidationForIdChange(oldId, newId, styleResolver);
             }
         } else if (name == classAttr)
             classAttributeChanged(newValue);
         else if (name == HTMLNames::nameAttr)
             elementData()->setHasNameAttribute(!newValue.isNull());
-        else if (name == HTMLNames::pseudoAttr)
-            shouldInvalidateStyle |= testShouldInvalidateStyle && isInShadowTree();
+        else if (name == HTMLNames::pseudoAttr) {
+            if (needsStyleInvalidation() && isInShadowTree())
+                setNeedsStyleRecalc(FullStyleChange);
+        }
 #if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         else if (name == HTMLNames::slotAttr) {
             if (auto* parent = parentElement()) {
@@ -1261,12 +1260,6 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
         return;
 
     invalidateNodeListAndCollectionCachesInAncestors(&name, this);
-
-    // If there is currently no StyleResolver, we can't be sure that this attribute change won't affect style.
-    shouldInvalidateStyle |= !styleResolver;
-
-    if (shouldInvalidateStyle)
-        setNeedsStyleRecalc();
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->handleAttributeChanged(name, this);
@@ -1299,76 +1292,26 @@ static inline bool classStringHasClassName(const AtomicString& newClassString)
     return classStringHasClassName(newClassString.characters16(), length);
 }
 
-static bool checkSelectorForClassChange(const SpaceSplitString& changedClasses, const StyleResolver& styleResolver)
-{
-    unsigned changedSize = changedClasses.size();
-    for (unsigned i = 0; i < changedSize; ++i) {
-        if (styleResolver.hasSelectorForClass(changedClasses[i]))
-            return true;
-    }
-    return false;
-}
-
-static bool checkSelectorForClassChange(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses, const StyleResolver& styleResolver)
-{
-    unsigned oldSize = oldClasses.size();
-    if (!oldSize)
-        return checkSelectorForClassChange(newClasses, styleResolver);
-    BitVector remainingClassBits;
-    remainingClassBits.ensureSize(oldSize);
-    // Class vectors tend to be very short. This is faster than using a hash table.
-    unsigned newSize = newClasses.size();
-    for (unsigned i = 0; i < newSize; ++i) {
-        bool foundFromBoth = false;
-        for (unsigned j = 0; j < oldSize; ++j) {
-            if (newClasses[i] == oldClasses[j]) {
-                remainingClassBits.quickSet(j);
-                foundFromBoth = true;
-            }
-        }
-        if (foundFromBoth)
-            continue;
-        if (styleResolver.hasSelectorForClass(newClasses[i]))
-            return true;
-    }
-    for (unsigned i = 0; i < oldSize; ++i) {
-        // If the bit is not set the the corresponding class has been removed.
-        if (remainingClassBits.quickGet(i))
-            continue;
-        if (styleResolver.hasSelectorForClass(oldClasses[i]))
-            return true;
-    }
-    return false;
-}
-
 void Element::classAttributeChanged(const AtomicString& newClassString)
 {
-    StyleResolver* styleResolver = document().styleResolverIfExists();
-    bool testShouldInvalidateStyle = inRenderedDocument() && styleResolver && styleChangeType() < FullStyleChange;
-    bool shouldInvalidateStyle = false;
+    // Note: We'll need ElementData, but it doesn't have to be UniqueElementData.
+    if (!elementData())
+        ensureUniqueElementData();
 
-    if (classStringHasClassName(newClassString)) {
-        const bool shouldFoldCase = document().inQuirksMode();
-        // Note: We'll need ElementData, but it doesn't have to be UniqueElementData.
-        if (!elementData())
-            ensureUniqueElementData();
-        const SpaceSplitString oldClasses = elementData()->classNames();
-        elementData()->setClass(newClassString, shouldFoldCase);
-        const SpaceSplitString& newClasses = elementData()->classNames();
-        shouldInvalidateStyle = testShouldInvalidateStyle && checkSelectorForClassChange(oldClasses, newClasses, *styleResolver);
-    } else if (elementData()) {
-        const SpaceSplitString& oldClasses = elementData()->classNames();
-        shouldInvalidateStyle = testShouldInvalidateStyle && checkSelectorForClassChange(oldClasses, *styleResolver);
-        elementData()->clearClass();
+    bool shouldFoldCase = document().inQuirksMode();
+    bool newStringHasClasses = classStringHasClassName(newClassString);
+
+    auto oldClassNames = elementData()->classNames();
+    auto newClassNames = newStringHasClasses ? SpaceSplitString(newClassString, shouldFoldCase) : SpaceSplitString();
+    {
+        Style::ClassChangeInvalidation styleInvalidation(*this, oldClassNames, newClassNames);
+        elementData()->setClassNames(newClassNames);
     }
 
     if (hasRareData()) {
         if (auto* classList = elementRareData()->classList())
             classList->attributeValueChanged(newClassString);
     }
-
-    if (shouldInvalidateStyle)
-        setNeedsStyleRecalc();
 }
 
 URL Element::absoluteLinkURL() const
@@ -2094,27 +2037,38 @@ void Element::removeAttributeInternal(unsigned index, SynchronizationOfLazyAttri
     QualifiedName name = elementData.attributeAt(index).name();
     AtomicString valueBeingRemoved = elementData.attributeAt(index).value();
 
-    if (!inSynchronizationOfLazyAttribute) {
-        if (!valueBeingRemoved.isNull())
-            willModifyAttribute(name, valueBeingRemoved, nullAtom);
-    }
-
     if (RefPtr<Attr> attrNode = attrIfExists(name))
         detachAttrNodeFromElementWithValue(attrNode.get(), elementData.attributeAt(index).value());
 
-    elementData.removeAttribute(index);
+    if (inSynchronizationOfLazyAttribute) {
+        elementData.removeAttribute(index);
+        return;
+    }
 
-    if (!inSynchronizationOfLazyAttribute)
-        didRemoveAttribute(name, valueBeingRemoved);
+    if (!valueBeingRemoved.isNull())
+        willModifyAttribute(name, valueBeingRemoved, nullAtom);
+
+    {
+        Style::AttributeChangeInvalidation styleInvalidation(*this, name, valueBeingRemoved, nullAtom);
+        elementData.removeAttribute(index);
+    }
+
+    didRemoveAttribute(name, valueBeingRemoved);
 }
 
 void Element::addAttributeInternal(const QualifiedName& name, const AtomicString& value, SynchronizationOfLazyAttribute inSynchronizationOfLazyAttribute)
 {
-    if (!inSynchronizationOfLazyAttribute)
-        willModifyAttribute(name, nullAtom, value);
-    ensureUniqueElementData().addAttribute(name, value);
-    if (!inSynchronizationOfLazyAttribute)
-        didAddAttribute(name, value);
+    if (inSynchronizationOfLazyAttribute) {
+        ensureUniqueElementData().addAttribute(name, value);
+        return;
+    }
+
+    willModifyAttribute(name, nullAtom, value);
+    {
+        Style::AttributeChangeInvalidation styleInvalidation(*this, name, nullAtom, value);
+        ensureUniqueElementData().addAttribute(name, value);
+    }
+    didAddAttribute(name, value);
 }
 
 bool Element::removeAttribute(const AtomicString& name)
@@ -2179,9 +2133,9 @@ bool Element::hasAttributeNS(const AtomicString& namespaceURI, const AtomicStrin
     return elementData()->findAttributeByName(qName);
 }
 
-CSSStyleDeclaration *Element::style()
+CSSStyleDeclaration* Element::cssomStyle()
 {
-    return 0;
+    return nullptr;
 }
 
 void Element::focus(bool restorePreviousSelection, FocusDirection direction)
@@ -2527,6 +2481,18 @@ RenderStyle* Element::computedStyle(PseudoId pseudoElementSpecifier)
     }
 
     return style;
+}
+
+bool Element::needsStyleInvalidation() const
+{
+    if (!inRenderedDocument())
+        return false;
+    if (styleChangeType() >= FullStyleChange)
+        return false;
+    if (!document().styleResolverIfExists())
+        return false;
+
+    return true;
 }
 
 void Element::setStyleAffectedByEmpty()
@@ -3122,12 +3088,6 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
     else if (name == HTMLNames::forAttr && hasTagName(labelTag)) {
         if (treeScope().shouldCacheLabelsByForAttribute())
             updateLabel(treeScope(), oldValue, newValue);
-    }
-
-    if (oldValue != newValue) {
-        auto styleResolver = document().styleResolverIfExists();
-        if (styleResolver && styleResolver->hasSelectorForAttribute(*this, name.localName()))
-            setNeedsStyleRecalc();
     }
 
     if (std::unique_ptr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))

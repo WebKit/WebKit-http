@@ -1,3 +1,1785 @@
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Window should have its 'constructor' property on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154037
+        <rdar://problem/24689078>
+
+        Reviewed by Gavin Barraclough.
+
+        * http/tests/security/cross-origin-window-property-access-expected.txt:
+        * http/tests/security/cross-origin-window-property-access.html:
+        Add checks to make sure it still is not possible to access
+        window.constructor cross-origin.
+
+        * js/getOwnPropertyDescriptor-window-attributes-expected.txt:
+        * js/getOwnPropertyDescriptor-window-attributes.html:
+        Update test now that window has it's "constructor" attribute
+        on the prototype.
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a way to test ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=153479
+
+        Reviewed by Michael Catanzaro.
+
+        * compositing/overflow/overflow-scrollbar-layer-positions-expected.txt:
+        * fast/scrolling/overlay-scrollbars-scroll-corner-expected.html: Added.
+        * fast/scrolling/overlay-scrollbars-scroll-corner.html: Added.
+        * fast/scrolling/scroll-animator-basic-events-expected.txt: Added.
+        * fast/scrolling/scroll-animator-basic-events.html: Added.
+        * fast/scrolling/scroll-animator-overlay-scrollbars-hovered-expected.txt: Added.
+        * fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html: Added.
+        * fast/scrolling/scroll-animator-select-list-events-expected.txt: Added.
+        * fast/scrolling/scroll-animator-select-list-events.html: Added.
+        * fast/scrolling/scrollbar-tickmarks-hittest.html:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/fast/scrolling/scroll-animator-basic-events-expected.txt: Added.
+        * platform/mac-wk1/fast/scrolling/scroll-animator-select-list-events-expected.txt: Added.
+
+2016-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        JSDOMWindow::getOwnPropertySlot should not search photo chain
+        https://bugs.webkit.org/show_bug.cgi?id=154102
+
+        Reviewed by Chris Dumez.
+
+        Should only return *own* properties.
+
+        * fast/dom/Window/es52-globals-expected.txt:
+        * http/tests/security/window-named-valueOf-expected.txt:
+        * imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+            - update test results.
+
+2016-02-16  Keith Miller  <keith_miller@apple.com>
+
+        Spread operator should be allowed when not the first argument of parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=152721
+
+        Reviewed by Saam Barati.
+
+        Update tests with new semantics of spread calling.
+
+        * js/basic-spread-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/basic-spread.js:
+        * js/script-tests/parser-syntax-check.js:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Navigator.geolocation should not be marked a [Replaceable] and should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154304
+        <rdar://problem/24685092>
+
+        Reviewed by Gavin Barraclough.
+
+        * fast/dom/Geolocation/enabled-expected.txt:
+        * fast/dom/Geolocation/script-tests/enabled.js:
+        * js/dom/delete-syntax-expected.txt:
+        * js/dom/script-tests/delete-syntax.js:
+        Update tests as they expected the navigator properties to be on the
+        instance rather than the prototype.
+
+        * js/dom/script-tests/shadow-navigator-geolocation-in-strict-mode-does-not-throw.js: Removed.
+        * js/dom/shadow-navigator-geolocation-in-strict-mode-does-not-throw-expected.txt: Removed.
+        * js/dom/shadow-navigator-geolocation-in-strict-mode-does-not-throw.html: Removed.
+        Drop outdated test.
+
+        * js/navigator-set-geolocation-expected.txt: Added.
+        * js/navigator-set-geolocation.html: Added.
+        Add test to make sure that Navigator.geolocation cannot be set. I verified that
+        this test passes in both Firefox and Chrome.
+
+2016-02-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r190430): WTFCrashWithSecurityImplication in:void SVGRootInlineBox::layoutCharactersInTextBoxes()
+        https://bugs.webkit.org/show_bug.cgi?id=154185
+
+        Reviewed by Ryosuke Niwa.
+        
+        Ensure that adding an HTMLSlotElement with text to an SVGTextElement will
+        not create a renderer and we won't crash.
+
+        * fast/shadow-dom/text-slot-child-crash-expected.txt: Added.
+        * fast/shadow-dom/text-slot-child-crash.svg: Added.
+
+2016-02-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Add tests for iframe and overflow scrollability after navigating back
+        https://bugs.webkit.org/show_bug.cgi?id=154300
+
+        Reviewed by Brent Fulgham.
+        
+        Test that sends mousewheel events to overflow and iframe, before and after navigating
+        forward then back.
+        
+        These tests detect the regression caused by r188659.
+
+        * fast/scrolling/iframe-scrollable-after-back-expected.txt: Added.
+        * fast/scrolling/iframe-scrollable-after-back.html: Added.
+        * fast/scrolling/overflow-scrollable-after-back-expected.txt: Added.
+        * fast/scrolling/overflow-scrollable-after-back.html: Added.
+        * fast/scrolling/resources/scroll-notifying-page.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip on iOS.
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Update violation report 'Content-Type' header
+        https://bugs.webkit.org/show_bug.cgi?id=153166
+        <rdar://problem/24383327>
+
+        Reviewed by Brent Fulgham.
+
+        Update expected results now that we post the Content Security Policy violation report with
+        Content-Type application/csp-report.
+
+        * TestExpectations: Update associated bugs for entries that still fail.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame-expected.txt: Fix up HTTP_REFERER and csp-report
+        to reflect the correct value for HTTP_REFERER and the correct values for the report-uri and document-uri keys in the CSP
+        report JSON object.
+
+2016-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking pageoverlay/overlay-installation.html  as flaky on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153337
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196648
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Fix parsing of 'host/path' source expressions
+        https://bugs.webkit.org/show_bug.cgi?id=153170
+        <rdar://problem/24383407>
+
+        Reviewed by Brent Fulgham.
+
+        Remove entry for test http/tests/security/contentSecurityPolicy/source-list-parsing-paths-03.html
+        as it now passes.
+
+        * TestExpectations:
+
+2016-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Support for inline source maps
+        https://bugs.webkit.org/show_bug.cgi?id=154303
+        <rdar://problem/24670392>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/url-utilities-expected.txt: Added.
+        * inspector/unit-tests/url-utilities.html: Added.
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Disallow an empty host in a host-source source expression
+        https://bugs.webkit.org/show_bug.cgi?id=153168
+        <rdar://problem/24383366>
+
+        Reviewed by Brent Fulgham.
+
+        Remove entry for test http/tests/security/contentSecurityPolicy/source-list-parsing-07.html
+        as it now passes.
+
+        * TestExpectations:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Operations should be on the instance for global objects or if [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=154120
+        <rdar://problem/24613231>
+
+        Reviewed by Gavin Barraclough.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        Rebaseline test because the order of static properties has changed:
+        functions are now before constants instead of after.
+
+2016-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking webarchive/loading/missing-data.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=153380
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-02-16  Keith Miller  <keith_miller@apple.com>
+
+        ClonedArguments should not materialize its special properties unless they are being changed or deleted
+        https://bugs.webkit.org/show_bug.cgi?id=154128
+
+        Reviewed by Filip Pizlo.
+
+        Have argumnets-strict-mode test the speed of spreading the arguments object.
+
+        * js/regress/script-tests/arguments-strict-mode.js:
+        (foo):
+
+2016-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/events/keydown-1.html as flaky on mac-wk1 debug
+        https://bugs.webkit.org/show_bug.cgi?id=154297
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support StringFromCharCode
+        https://bugs.webkit.org/show_bug.cgi?id=154267
+
+        Reviewed by Mark Lam.
+
+        * js/regress/script-tests/string-from-char-code.js: Added.
+        (result):
+        * js/regress/script-tests/untyped-string-from-char-code.js: Added.
+        (result):
+        * js/regress/string-from-char-code-expected.txt: Added.
+        * js/regress/string-from-char-code.html: Added.
+        * js/regress/untyped-string-from-char-code-expected.txt: Added.
+        * js/regress/untyped-string-from-char-code.html: Added.
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] No hover-horizontal scrolling available
+        https://bugs.webkit.org/show_bug.cgi?id=122859
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/scrollbars/main-frame-scrollbar-horizontal-wheel-scroll-expected.html: Added.
+        * platform/gtk/scrollbars/main-frame-scrollbar-horizontal-wheel-scroll.html: Added.
+
+2016-02-16  Antti Koivisto  <antti@apple.com>
+
+        Factor id mutation style invalidation code into a class
+        https://bugs.webkit.org/show_bug.cgi?id=154287
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/style-invalidation-id-change-descendants-expected.txt: Added.
+        * fast/css/style-invalidation-id-change-descendants.html: Added.
+
+2016-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196621
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-15  Antti Koivisto  <antti@apple.com>
+
+        Optimize style invalidations for attribute selectors
+        https://bugs.webkit.org/show_bug.cgi?id=154242
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/style-invalidation-attribute-change-descendants-expected.txt: Added.
+        * fast/css/style-invalidation-attribute-change-descendants.html: Added.
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Do security checks early in JSDOMWindow::put*()
+        https://bugs.webkit.org/show_bug.cgi?id=154270
+
+        Reviewed by Gavin Barraclough.
+
+        * http/tests/security/cross-frame-access-put-expected.txt:
+        Rebaseline. The extra security warnings are for the following properties:
+        closed, crypto, frameElement, pageXOffset and pageYOffset.
+        All these properties are read-only and therefore cannot be set (cross-origin
+        or not). The previous code was not doing an explicit check and ended up
+        trying to set these properties. However, since they are read-only, we would
+        silently fail to set them. The new code does the explicit check and therefore
+        will warn and NOT attempt to set.
+
+        * http/tests/security/cross-origin-reified-window-location-setting-expected.txt: Added.
+        * http/tests/security/cross-origin-reified-window-location-setting.html: Added.
+        Add test to check that setting window.location cross-origin still works after the
+        window object has been reified.
+
+2016-02-15  Mark Lam  <mark.lam@apple.com>
+
+        [ARMv7] Some JSC test fails due to exhausting the JIT code heap on the no LLINT test configuration.
+        https://bugs.webkit.org/show_bug.cgi?id=151611
+
+        Reviewed by Saam Barati.
+
+        These tests are only failing because they are compiling too much with the LLINT
+        disabled.  As a result, they are using more JIT code heap space than is allowed
+        by the OS.
+
+        This patch excludes these tests from the noLLINT configuration on 32-bit ARM.
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-float64array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-osr-entry-hoisted-clobbered-structure-check.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array-overflow-values.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+        * js/script-tests/dfg-uint8clampedarray.js:
+        * js/script-tests/regress-141098.js:
+
+2016-02-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Gather some rudimentary statistics during resource load 
+        https://bugs.webkit.org/show_bug.cgi?id=153575
+        <rdar://problem/24075254>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/navigation/resources/redirect-on-reload-updates-history-item-statistics.php: Added.
+        * http/tests/navigation/resources/redirect-updates-history-item-done-statistics.html: Added.
+        * http/tests/navigation/statistics-expected.txt: Added.
+        * http/tests/navigation/statistics.html: Added.
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        The following properties should exist on the global object: AudioTrackList, AudioTrack, VideoTrackList, VideoTrack
+        https://bugs.webkit.org/show_bug.cgi?id=154250
+        <rdar://problem/24660829>
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline now that AudioTrackList, AudioTrack, VideoTrackList and VideoTrack
+        are exposed on the global Window object.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2016-02-15  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Rebaseline after r196244.
+
+        Unreviewed test gardening.
+
+        * platform/efl/compositing/geometry/clipping-foreground-expected.txt:
+        * platform/efl/compositing/geometry/root-layer-update-expected.txt:
+        * platform/efl/compositing/overflow/ancestor-overflow-expected.txt:
+        * platform/efl/compositing/overflow/nested-scrolling-expected.txt:
+        * platform/efl/compositing/overflow/overflow-scroll-expected.txt:
+        * platform/efl/compositing/overflow/parent-overflow-expected.txt:
+        * platform/efl/compositing/overflow/scrollbar-painting-expected.txt:
+        * platform/efl/compositing/reflections/nested-reflection-on-overflow-expected.txt:
+        * platform/efl/compositing/sibling-positioning-expected.txt:
+        * platform/efl/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/efl/fast/block/positioning/auto/vertical-rl/007-expected.txt:
+        * platform/efl/fast/block/positioning/vertical-rl/fixed-positioning-expected.txt:
+        * platform/efl/fast/borders/border-antialiasing-expected.txt:
+        * platform/efl/fast/clip/001-expected.txt:
+        * platform/efl/fast/clip/013-expected.txt:
+        * platform/efl/fast/clip/014-expected.txt:
+        * platform/efl/fast/clip/016-expected.txt:
+        * platform/efl/fast/clip/outline-overflowClip-expected.txt:
+        * platform/efl/fast/css/clip-zooming-expected.txt:
+        * platform/efl/fast/forms/validation-message-appearance-expected.txt:
+        * platform/efl/fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks-expected.txt:
+        * platform/efl/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/efl/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/efl/fast/lists/scrolled-marker-paint-expected.txt:
+        * platform/efl/fast/multicol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/column-rules-expected.txt:
+        * platform/efl/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/efl/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/efl/fast/multicol/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/efl/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/efl/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/efl/fast/multicol/nested-columns-expected.txt:
+        * platform/efl/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/efl/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/efl/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/efl/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-tb-hittest-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt:
+        * platform/efl/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/efl/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/efl/fast/multicol/positive-leading-expected.txt:
+        * platform/efl/fast/multicol/scrolling-column-rules-expected.txt:
+        * platform/efl/fast/multicol/scrolling-overflow-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/efl/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/efl/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/efl/fast/multicol/table-vertical-align-expected.txt:
+        * platform/efl/fast/multicol/tall-image-behavior-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/efl/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/efl/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/efl/fast/overflow/float-in-relpositioned-expected.txt:
+        * platform/efl/fast/overflow/overflow-auto-position-absolute-expected.txt:
+        * platform/efl/fast/overflow/overflow-rtl-expected.txt:
+        * platform/efl/fast/overflow/paged-x-div-expected.txt:
+        * platform/efl/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/efl/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/efl/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/efl/fast/overflow/paged-y-div-expected.txt:
+        * platform/efl/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/efl/fast/regions/repaint/region-painting-via-layout-expected.txt:
+        * platform/efl/fast/repaint/box-shadow-h-expected.txt:
+        * platform/efl/fast/repaint/box-shadow-v-expected.txt:
+        * platform/efl/fast/repaint/layer-outline-expected.txt:
+        * platform/efl/fast/repaint/layer-outline-horizontal-expected.txt:
+        * platform/efl/fast/table/edge-offsets-expected.txt:
+        * platform/efl/fast/transforms/overflow-with-transform-expected.txt:
+        * platform/efl/fast/transforms/rotated-transform-affects-scrolling-1-expected.txt: Added.
+        * platform/efl/fast/transforms/rotated-transform-affects-scrolling-2-expected.txt: Added.
+        * platform/efl/printing/single-line-must-not-be-split-into-two-pages-expected.txt:
+        * platform/efl/scrollbars/scrollbars-on-positioned-content-expected.txt:
+        * platform/efl/svg/custom/getscreenctm-in-scrollable-div-area-nested-expected.txt: Added.
+        * platform/efl/svg/custom/image-rescale-clip-expected.txt: Added.
+
+2016-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196607
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Implement FontFace JavaScript object
+        https://bugs.webkit.org/show_bug.cgi?id=153345
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/font-face-javascript-expected.txt: Added.
+        * fast/text/font-face-javascript.html: Added.
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequest / XMLHttpRequestUpload should inherit XMLHttpRequestEventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154230
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests now that XMLHttpRequestEventTarget is exposed on the
+        global objects.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2016-02-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Refine SimulatedMouseEvent to support Event.isTrusted
+        https://bugs.webkit.org/show_bug.cgi?id=154133
+        <rdar://problem/24616246>
+
+        Reviewed by Darin Adler.
+
+        * imported/blink/fast/events/event-trusted-expected.txt:
+        * imported/blink/fast/events/event-trusted.html:
+
+2016-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking animations/animation-delay-changed.html as flaky on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=154253
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web Workers have no access to console for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=26237
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/messageAdded-from-worker-expected.txt: Added.
+        * inspector/console/messageAdded-from-worker.html: Added.
+        * inspector/console/resources/worker-console-log.js: Added.
+
+2016-02-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: CSS variables are not formatted correctly
+        https://bugs.webkit.org/show_bug.cgi?id=154217
+        rdar://problem/24644154
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/codemirror/prettyprinting-css-rules-expected.txt:
+        * inspector/codemirror/prettyprinting-css-rules.html:
+        * inspector/codemirror/resources/prettyprinting/css-rule-tests/css-variables-expected.css: Added.
+        * inspector/codemirror/resources/prettyprinting/css-rule-tests/css-variables.css: Added.
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196563): It is no longer possible to call window.addEventListener without an explicit 'this'
+        https://bugs.webkit.org/show_bug.cgi?id=154245
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a layout test to cover the use of the EventListener API without an
+        explicit 'this' value.
+
+        * fast/dom/Window/addEventListener-implicit-this-expected.txt: Added.
+        * fast/dom/Window/addEventListener-implicit-this.html: Added.
+
+2016-02-15  Daniel Bates  <dabates@apple.com>
+
+        CSP: 'sandbox' should be ignored in report-only mode
+        https://bugs.webkit.org/show_bug.cgi?id=153167
+        <rdar://problem/22708669>
+
+        Reviewed by Brent Fulgham.
+
+        Remove the entry from the TestExpectations file for the test
+        http/tests/security/contentSecurityPolicy/sandbox-report-only.html as it now passes.
+
+        * TestExpectations:
+
+2016-02-15  Daniel Bates  <dabates@apple.com>
+
+        CSP: Allow schemeless source expressions to match an HTTP or HTTPS resource
+        https://bugs.webkit.org/show_bug.cgi?id=154177
+        <rdar://problem/22708772>
+
+        Reviewed by Brent Fulgham.
+
+        Update test case and expected result to test that a schemeless source expression
+        matches an HTTPS subresource (and does not trigger a Content Security Policy violation)
+        when the page is served over HTTP.
+
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-10-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-10.html: Change "no" to "yes"
+        so that we consider it a success (and continue printing "PASS") when we load and execute the
+        script, <https://127.0.0.1:8443/security/contentSecurityPolicy/resources/script.js>.
+
+2016-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196563
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-15  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed. EFL gardening after r195740.
+
+        * platform/efl/tables/mozilla/bugs/bug10269-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug10269-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug10296-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug103533-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug106158-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug108340-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug110566-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug11321-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug113235-3-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug11944-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug119786-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug1261-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug12910-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug13105-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug13118-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug133756-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug133756-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug13484-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug13526-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug14159-3-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug149275-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug17130-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug1828-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug18558-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2050-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug20579-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug21299-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug21918-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug221784-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug221784-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug22246-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug22246-2a-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2267-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug23072-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug23151-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug23299-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug24503-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug24627-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2469-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2479-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug24880-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug25086-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2516-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug25367-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2585-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug27038-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug27038-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug275625-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2757-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug278266-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug278385-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2886-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug29157-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug2973-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3037-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3037-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug30985-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3191-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug32205-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug32205-5-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug32447-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3263-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3309-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug34538-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug35662-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3718-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug40828-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug4284-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug44523-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug45055-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug4520-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-3-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-5-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46480-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46480-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug4739-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug48028-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug48028-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug51140-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug55527-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug55694-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug56405-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug57300-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug57378-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug57828-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug5798-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug5799-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug5838-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug58402-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug60013-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug60992-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug63785-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug650-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug67864-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug67915-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug69187-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug709-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug7112-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug7112-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug75250-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug8032-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug82946-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug8361-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug83786-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug8381-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug9072-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug9271-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug93363-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug96343-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug965-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug97138-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug99923-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/efl/tables/mozilla/collapsing_borders/bug127040-expected.txt:
+        * platform/efl/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/efl/tables/mozilla/core/captions-expected.txt:
+        * platform/efl/tables/mozilla/core/col_widths_auto_auto-expected.txt:
+        * platform/efl/tables/mozilla/core/col_widths_auto_autoPer-expected.txt:
+        * platform/efl/tables/mozilla/core/col_widths_fix_autoPer-expected.txt:
+        * platform/efl/tables/mozilla/core/row_span-expected.txt:
+        * platform/efl/tables/mozilla/dom/appendCol2-expected.txt:
+        * platform/efl/tables/mozilla/dom/appendRowsExpand1-expected.txt:
+        * platform/efl/tables/mozilla/dom/appendTbodyExpand1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCellsRebuild1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCellsShrink1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCellsShrink2-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCol1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCol2-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteCol3-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteColGroup1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteColGroup2-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteRowsRebuild1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteRowsShrink1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteTbodyExpand1-expected.txt:
+        * platform/efl/tables/mozilla/dom/deleteTbodyRebuild1-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertCellsExpand1-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertCellsExpand2-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertCellsRebuild1-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertCellsRebuild2-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertRowsExpand1-expected.txt:
+        * platform/efl/tables/mozilla/dom/insertRowsRebuild1-expected.txt:
+        * platform/efl/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_col-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_tbody-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_tfoot-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_thead-expected.txt:
+        * platform/efl/tables/mozilla/marvin/col_span-expected.txt:
+        * platform/efl/tables/mozilla/marvin/table_frame_border-expected.txt:
+        * platform/efl/tables/mozilla/marvin/table_frame_box-expected.txt:
+        * platform/efl/tables/mozilla/marvin/table_rules_all-expected.txt:
+        * platform/efl/tables/mozilla/marvin/table_rules_none-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_border_0-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_border_1-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_border_2-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_border_3-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_caption_align_bot-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_caption_align_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_cellspacing-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_default-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_row_th_nowrap-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_colspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_height-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_nowrap-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_td_rowspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_colspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_height-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tables_th_rowspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_caption_align_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_caption_align_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_bgcolor_name-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_bgcolor_rgb-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border_none-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border_px-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_cellpadding-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_cellpadding_pct-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_cellspacing-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_cellspacing_pct-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_frame_void-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_rules_groups-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_rules_none-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_bgcolor_name-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_bgcolor_rgb-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_colspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_height-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_nowrap-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_rowspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_td_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_bgcolor_name-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_bgcolor_rgb-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_colspan-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_height-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_nowrap-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_th_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_bgcolor_name-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_bgcolor_rgb-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tr_style-expected.txt:
+        * platform/efl/tables/mozilla/other/body_col-expected.txt:
+        * platform/efl/tables/mozilla/other/cellspacing-expected.txt:
+        * platform/efl/tables/mozilla/other/move_row-expected.txt:
+        * platform/efl/tables/mozilla/other/padding-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug10140-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug101759-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug10216-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug104898-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug1055-2-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug106336-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug11945-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug131020-3-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug14159-2-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug178855-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug18770-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug24880-1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug25707-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-11-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-12-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-13-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-14-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-16-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-17-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug3166-18-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug32205-1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug32205-4-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug4294-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug46268-4-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug51000-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug65372-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug6933-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug7113-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug73629-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug92868_1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/core/backgrounds-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/core/captions3-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/core/conflicts-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/appendCells1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/appendCellsRebuild1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/appendCol1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_above-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_below-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_hsides-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_lhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_rhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_void-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_frame_vsides-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_row-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_tbody-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_rules_cols-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_rules_rows-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/tables_caption_align_left-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/tables_caption_align_right-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_caption_align_left-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_caption_align_right-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_colgroup_width_px-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_rules_all-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_rules_cols-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_rules_rows-expected.txt:
+
+2016-02-14  Antti Koivisto  <antti@apple.com>
+
+        Add test for class change style invalidation optimization
+        https://bugs.webkit.org/show_bug.cgi?id=154226
+
+        Reviewed by Myles Maxfield.
+
+        Test for https://trac.webkit.org/r196383
+
+        * fast/css/style-invalidation-class-change-descendants-expected.txt: Added.
+        * fast/css/style-invalidation-class-change-descendants.html: Added.
+
+2016-02-15  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed. EFL gardening. Mark more video tests to failure.
+
+        * platform/efl/TestExpectations: Added more crash tests and moved the tests to upper position.
+
+2016-02-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [CSS Filters] When applying an SVG filter on a composited image using CSS the image is rendered without the filter
+        https://bugs.webkit.org/show_bug.cgi?id=154108
+
+        Reviewed by Sam Weinig.
+
+        * compositing/filters/simple-image-with-svg-filter-expected.html: Added.
+        * compositing/filters/simple-image-with-svg-filter.html: Added.
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Window and WorkerGlobalScope should inherit EventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154170
+        <rdar://problem/24642377>
+
+        Reviewed by Darin Adler.
+
+        * fast/frames/detached-frame-eventListener-expected.txt: Added.
+        * fast/frames/detached-frame-eventListener.html: Added.
+        Add test case to cover the use of the EventListener API on a detached
+        frame.
+
+        * fast/loader/window-clearing-expected.txt:
+        Rebaseline now that window has one more object in its prototype chain.
+
+        * http/tests/security/cross-frame-access-call-expected.txt:
+        * http/tests/security/cross-frame-access-call.html:
+        Add test coverage for cross-origin access to window.dispatchEvent() which
+        should not be allowed, in addition to window.addEventListener() and
+        window.removeEventListener() which were already tested.
+
+2016-02-12  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement paragraph related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154098
+        <rdar://problem/24269675>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-paragraph-nav-expected.txt: Added.
+        * accessibility/mac/text-marker-paragraph-nav.html: Added.
+        * accessibility/text-marker/text-marker-previous-next-expected.txt:
+        * accessibility/text-marker/text-marker-previous-next.html:
+
+2016-02-12  Saam barati  <sbarati@apple.com>
+
+        [ES6] we have an incorrect syntax error when a callee of a function expression has the same name as a top-level lexical declaration
+        https://bugs.webkit.org/show_bug.cgi?id=154143
+
+        Reviewed by Benjamin Poulain.
+
+        * js/basic-strict-mode-expected.txt:
+        * js/let-syntax-expected.txt:
+        * js/script-tests/let-syntax.js:
+
+2016-02-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, build fix after r196520
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-02-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196520
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-12  Daniel Bates  <dabates@apple.com>
+
+        CSP: 'blob:' URLs should not match 'self' in CSP source expression lists.
+        https://bugs.webkit.org/show_bug.cgi?id=153158
+        <rdar://problem/24383264>
+
+        Reviewed by Brent Fulgham.
+
+        Add test http/tests/security/contentSecurityPolicy/blob-url-matches-source-blob.html to ensure that a
+        blob URL matches source "blob:".
+
+        Replaced text-only test http/tests/security/contentSecurityPolicy/blob-urls-match-self.html with an
+        analogous reference test http/tests/security/contentSecurityPolicy/blob-url-does-not-match-source-self.html
+        so as ensure that we do not regress the behavior that source 'self' should not match a blob URL
+        without considering the Content Security Policy violation message as part of the expected result.
+        The Content Security Policy violation message will differ between test runs because it references
+        the blob URL that triggered the violation, which is cryptographically random.
+
+        * TestExpectations: Remove entry for test http/tests/security/contentSecurityPolicy/blob-urls-match-self.html as the analogous test
+        blob-url-does-not-match-source-self.htm now passes.
+        * http/tests/security/contentSecurityPolicy/blob-url-does-not-match-source-self-expected.html: Added.
+        * http/tests/security/contentSecurityPolicy/blob-url-does-not-match-source-self.html: Added.
+        * http/tests/security/contentSecurityPolicy/blob-url-matches-source-blob-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/blob-url-matches-source-blob.html: Added.
+        * http/tests/security/contentSecurityPolicy/blob-urls-match-self-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/blob-urls-match-self.html: Removed. See the analogous test blob-url-does-not-match-source-self.html.
+
+2016-02-12  Daniel Bates  <dabates@apple.com>
+
+        CSP: Implement child-src directive
+        https://bugs.webkit.org/show_bug.cgi?id=153562
+        <rdar://problem/24610087>
+
+        Reviewed by Brent Fulgham.
+
+        Add new tests, un-skip now passing tests and update incorrect expected result for test http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked.html. 
+
+        * TestExpectations: Remove entry for test http/tests/security/contentSecurityPolicy/worker-script-src.html as it now passes.
+        Mark all tests in http/tests/security/contentSecurityPolicy/1.1/child-src as PASS so that we run them except for tests
+        frame-fires-load-event-when-blocked.html and frame-fires-load-event-when-redirect-blocked.html (formerly named frame-blocked.html
+        and frame-redirect-blocked.html, respectively) as they depend on the fix for <https://bugs.webkit.org/show_bug.cgi?id=153150>.
+        Skip all other CSP 1.1 tests until we fix <https://bugs.webkit.org/show_bug.cgi?id=85558>. Group some CSP 1.1 entries together.
+        * fast/workers/worker-inherits-csp-blocks-eval-expected.txt: Update expected result based on change to worker-inherits-csp-blocks-eval.html.
+        * fast/workers/worker-inherits-csp-blocks-eval.html: Remove source 'self' from script-src directive. This was needed as
+        a workaround for <https://bugs.webkit.org/show_bug.cgi?id=153158> when the script URL for a worker was checked against the
+        script-src directive. Now that the script URL is checked against the child-src directive we do not need this workaround.
+        * fast/workers/worker-inherits-csp-blocks-xhr.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-about-blank-allowed.html: Use js-test-{pre, post}.js as opposed to
+        js-test.js to avoid duplicate "TEST COMPLETE" output.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-allowed.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked-expected.txt: Update expected result based on changes to frame-blocked.html.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked.html: Update test to work without the fix for <https://bugs.webkit.org/show_bug.cgi?id=153150>.
+
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-blocked-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-blocked.html: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked.html.
+        Keep a copy of the original test for when we fix <https://bugs.webkit.org/show_bug.cgi?id=153150>.
+
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-redirect-blocked-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-redirect-blocked.html: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked.html.
+        Keep a copy of the original test for when we fix <https://bugs.webkit.org/show_bug.cgi?id=153150>.
+
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked-expected.txt: Update expected result based on changes to frame-redirect-blocked.html.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked.html: Update test to work without the fix for <https://bugs.webkit.org/show_bug.cgi?id=153150>.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-src-takes-precedence-over-child-src-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-src-takes-precedence-over-child-src.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-allowed.html: Use js-test-{pre, post}.js as opposed to
+        js-test.js to avoid duplicate "TEST COMPLETE" output.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked-expected.txt: Update incorrect expected result to
+        reflect WebKit error message. The current result reflects the error message used by Blink.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked.html: Use js-test-{pre, post}.js as opposed to
+        js-test.js to avoid duplicate "TEST COMPLETE" output.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-allowed-expected.txt: Removed; WebKit does not support shared Web Workers.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-allowed.html: Removed; WebKit does not support shared Web Workers.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-blocked-expected.txt: Removed; WebKit does not support shared Web Workers.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-blocked.html: Removed; WebKit does not support shared Web Workers.
+        * http/tests/security/contentSecurityPolicy/resources/child-src-test.js: Remove logic for testing shared Web Workers as WebKit does not support such workers.
+        (window.onload): Deleted.
+        (injectSharedWorker): Deleted.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-blocks-eval-expected.txt: Update expected result based on change to worker-blob-inherits-csp-blocks-eval.html.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-blocks-eval.html: Remove source 'self' from script-src directive.
+        This was needed as a workaround for <https://bugs.webkit.org/show_bug.cgi?id=153158> when the script URL for a worker was checked
+        against the script-src directive. Now that the script URL is checked against the child-src directive we do not need this workaround.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-importScripts-block-aborts-all-subsequent-imports-expected.txt: Update
+        expected result based on change to worker-blob-inherits-csp-importScripts-block-aborts-all-subsequent-imports.html.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-importScripts-block-aborts-all-subsequent-imports.html:
+        Remove source 'self' from script-src directive. This was needed as a workaround for <https://bugs.webkit.org/show_bug.cgi?id=153158> when
+        the script URL for a worker was checked against the script-src directive. Now that the script URL is checked against the child-src directive
+        we do not need this workaround.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-importScripts-redirect-cross-origin-blocked.html: Ditto.
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-worker.html: Add child-src 'none' and remove FIXME comment.
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect-expected.txt: Added.
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect.html: Added.
+        * platform/ios-simulator/TestExpectations: Remove skip entry for tests in http/tests/security/contentSecurityPolicy/1.1 from this file.
+        Instead we will skip these tests from LayoutTests/TestExpectations since they fail for all ports.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wk2/TestExpectations: Ditto.
+
+2016-02-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Re-enable skipped animations tests on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152131
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should expose the DOM 4 Event.isTrusted property
+        https://bugs.webkit.org/show_bug.cgi?id=76121
+        <rdar://problem/22558494>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/unforgeable-attributes-expected.txt:
+        * fast/xmlhttprequest/xmlhttprequest-get-expected.txt:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * imported/blink/fast/events/event-trusted-expected.txt: Added.
+        * imported/blink/fast/events/event-trusted.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-12  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Simplify the relationship between IDBObjectStore and IDBIndex.
+        https://bugs.webkit.org/show_bug.cgi?id=154187
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/deleteindex-3-expected.txt: Added.
+        * storage/indexeddb/modern/deleteindex-3-private-expected.txt: Added.
+        * storage/indexeddb/modern/deleteindex-3-private.html: Added.
+        * storage/indexeddb/modern/deleteindex-3.html: Added.
+        * storage/indexeddb/modern/resources/deleteindex-3.js: Added.
+
+2016-02-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement @@search
+        https://bugs.webkit.org/show_bug.cgi?id=143889
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+        * js/regress/script-tests/v8-regexp-search.js: Added.
+        (runRegExpBenchmark.runBlock0):
+        (runRegExpBenchmark.runBlock1):
+        (runRegExpBenchmark):
+        (runRegExpBenchmark.runBlock3):
+        (runRegExpBenchmark.runBlock4):
+        * js/regress/v8-regexp-search-expected.txt: Added.
+        * js/regress/v8-regexp-search.html: Added.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.12_String.prototype.search/S15.5.4.12_A1_T3-expected.txt:
+
+2016-02-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196466
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interfaces should inherit EventTarget instead of duplicating the EventTarget API
+        https://bugs.webkit.org/show_bug.cgi?id=154121
+        <rdar://problem/24613234>
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline a couple of layout tests now that interfaces inherit EventTarget
+        instead of duplicating the EventTarget API in their IDL.
+
+        * fast/dom/Window/window-properties-performance-expected.txt:
+        * fast/dom/prototype-chain-expected.txt:
+
+2016-02-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make focusring painting subpixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=154111
+
+        Reviewed by David Hyatt.
+
+        Do not integral snap focusring rects while collecting them (use device pixel snapping instead
+        right before passing them to GraphicsContext::drawFocusRing).
+
+        * platform/mac/accessibility/image-link-expected.txt:
+        * platform/mac/accessibility/mac/aria-columnrowheaders-expected.txt: Copied from LayoutTests/platform/mac/accessibility/table-cells-expected.txt.
+        * platform/mac/accessibility/mac/document-links-expected.txt: Added.
+        * platform/mac/accessibility/table-attributes-expected.txt:
+        * platform/mac/accessibility/table-cells-expected.txt:
+        * platform/mac/accessibility/table-sections-expected.txt:
+        * platform/mac/accessibility/table-with-rules-expected.txt:
+
+2016-02-11  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Intl.NumberFormat.prototype.resolvedOptions ()
+        https://bugs.webkit.org/show_bug.cgi?id=147602
+
+        Reviewed by Darin Adler.
+
+        * js/intl-numberformat-expected.txt:
+        * js/script-tests/intl-numberformat.js:
+        (testNumberFormat):
+
+2016-02-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196423
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        Move 'length' property to the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154051
+        <rdar://problem/24577385>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline a couple of existing layout tests now that 'length' is
+        on the prototype.
+
+        * fast/dom/htmlcollection-getownpropertynames-expected.txt:
+        * storage/domstorage/localstorage/delete-defineproperty-removal-expected.txt:
+
+2016-02-11  Frederic Wang  <fred.wang@free.fr>
+
+        Use Testharness.js for the MathML script tests
+        https://bugs.webkit.org/show_bug.cgi?id=154065
+
+        Reviewed by Darin Adler.
+
+        * mathml/opentype/large-operators-munderover-expected.txt:
+        * mathml/opentype/large-operators-munderover.html:
+        * mathml/presentation/inferred-mrow-baseline-expected.txt:
+        * mathml/presentation/inferred-mrow-baseline.html:
+        * mathml/presentation/inferred-mrow-stretchy-expected.txt:
+        * mathml/presentation/inferred-mrow-stretchy.html:
+        * mathml/presentation/stretchy-depth-height-expected.txt:
+        * mathml/presentation/stretchy-depth-height-symmetric-expected.txt:
+        * mathml/presentation/stretchy-depth-height-symmetric.html:
+        * mathml/presentation/stretchy-depth-height.html:
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing deleted tests from ios-simulator TestExpectations
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding an ios-simulator expectation for fast/dom/event-handler-attributes.html
+        https://bugs.webkit.org/show_bug.cgi?id=153763
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/fast/dom/event-handler-attributes-expected.txt: Added.
+
+2016-02-10  Eric Carlson  <eric.carlson@apple.com>
+
+        Update "manual" caption track logic
+        https://bugs.webkit.org/show_bug.cgi?id=154084
+        <rdar://problem/24530516>
+
+        Reviewed by Dean Jackson.
+
+        * media/track/track-manual-mode-expected.txt:
+        * media/track/track-manual-mode.html:
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after 196392
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline / update existing layout tests now that interface objects
+        are now Function objects. Also add a layout test to cover various
+        aspects of interface objects.
+
+        * css3/blending/background-blend-mode-property-parsing-expected.txt:
+        * css3/blending/blend-mode-property-parsing-expected.txt:
+        * css3/blending/script-tests/background-blend-mode-property-parsing.js:
+        (shouldBeType):
+        * css3/blending/script-tests/blend-mode-property-parsing.js:
+        (shouldBeType):
+        * css3/filters/backdrop/backdropfilter-property-parsing-expected.txt:
+        * css3/filters/backdrop/script-tests/backdropfilter-property-parsing.js:
+        (shouldBeType):
+        * css3/filters/filter-property-parsing-expected.txt:
+        * css3/filters/script-tests/filter-property-parsing.js:
+        (shouldBeType):
+        * fast/css/image-set-parsing-expected.txt:
+        * fast/css/script-tests/image-set-parsing.js:
+        (shouldBeType):
+        * fast/dom/DOMException/XPathException-expected.txt:
+        * fast/dom/DOMException/prototype-object-expected.txt:
+        * fast/dom/DOMException/prototype-object.html:
+        * fast/dom/DOMException/resources/XPathException.js:
+        * fast/dom/MutationObserver/mutation-record-constructor-expected.txt:
+        * fast/dom/MutationObserver/mutation-record-constructor.html:
+        * fast/dom/Window/element-constructors-on-window-expected.txt:
+        * fast/dom/call-a-constructor-as-a-function-expected.txt:
+        * fast/dom/constructor-proto-expected.txt:
+        * fast/dom/constructor-proto.html:
+        * fast/dom/wrapper-classes-expected.txt:
+        * fast/dom/wrapper-classes.html:
+        * fast/mediastream/MediaStreamConstructor-expected.txt:
+        * fast/mediastream/MediaStreamConstructor.html:
+        * fast/workers/constructor-proto-expected.txt:
+        * fast/workers/worker-location-expected.txt:
+        * http/tests/xmlhttprequest/XMLHttpRequestException-expected.txt:
+        * http/tests/xmlhttprequest/XMLHttpRequestException.html:
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * js/dom/script-tests/global-constructors-attributes-idb.js:
+        (constructorPropertiesOnGlobalObject):
+        * js/dom/script-tests/global-constructors-attributes.js:
+        (constructorPropertiesOnGlobalObject):
+        * js/interface-objects-expected.txt: Added.
+        * js/interface-objects.html: Added.
+        * media/encrypted-media/encrypted-media-v2-syntax-expected.txt:
+        * media/encrypted-media/encrypted-media-v2-syntax.html:
+        * media/track/track-vttcue-expected.txt:
+        * platform/mac/fast/dom/Window/window-lookup-precedence-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * svg/custom/SVGException-expected.txt:
+        * svg/custom/global-constructors-expected.txt:
+        * svg/custom/script-tests/SVGException.js:
+        * svg/custom/script-tests/global-constructors.js:
+        (shouldBeDefined):
+        * transforms/2d/transform-value-types-expected.txt:
+        * transforms/2d/transform-value-types.html:
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/css-generated-content/details-summary-before-after.html as failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153029
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Reaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196374
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Attributes on the Window instance should be configurable unless [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=153920
+        <rdar://problem/24563211>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/Window/window-properties-configurable-expected.txt: Added.
+        * fast/dom/Window/window-properties-configurable.html: Added.
+        Add a test to check that Window properties are reported as configurable
+        unless the [Unforgeable] ones and that deleting them actually works.
+
+        * fast/dom/global-constructors.html:
+        Update test so it no longer expects window.Node to be shadowable. As per
+        the specification, the "Node" property is on the window instance, not its
+        prototype. Therefore, it should cannot be shadowed and setting it to
+        something actually overwites the previous value, given that the property
+        is writable as per:
+        - http://heycam.github.io/webidl/#es-interfaces
+        I have verified that the new behavior is consistent with Firefox.
+
+        * http/tests/security/cross-origin-reified-window-property-access-expected.txt: Added.
+        * http/tests/security/cross-origin-reified-window-property-access.html: Added.
+        * http/tests/security/resources/reify-window.html: Added.
+        Add a test case to cover cross-origin access of Window properties after
+        reification.
+
+        * js/getOwnPropertyDescriptor-unforgeable-attributes-expected.txt:
+        * js/getOwnPropertyDescriptor-unforgeable-attributes.html:
+        Drop window.self from the list of unforgeable attributes. This attribute
+        is not unforgeable in our implementation or in the specification:
+        - https://html.spec.whatwg.org/multipage/browsers.html#the-window-object
+
+        * js/getOwnPropertyDescriptor-window-attributes-expected.txt:
+        * js/getOwnPropertyDescriptor-window-attributes.html:
+        - Add coverage for window.self which is a regular Window property.
+        - Add coverage for window.Node which is a constructor property
+        - Add coverage for window.constructor. It should really be on the prototype
+          as per the specification but this at least checks that the property is
+          configurable, as per the specification.
+        - Rebaseline the test as more checks are passing now that Window properties
+          are marked as configurable.
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skop fast/regions/text-break-properties.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153762
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-09  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement word related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=153939
+        <rdar://problem/24269605>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-word-nav-expected.txt: Added.
+        * accessibility/mac/text-marker-word-nav.html: Added.
+        * accessibility/text-marker/text-marker-previous-next-expected.txt:
+        * accessibility/text-marker/text-marker-previous-next.html:
+
+2016-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark perf/adding-radio-buttons.html as flaky on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=154055
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests for ios-simulator after r196222
+        https://bugs.webkit.org/show_bug.cgi?id=154053
+
+        Reviewed by Zalan Bujtas.
+
+        * platform/ios-simulator-wk2/compositing/geometry/composited-in-columns-expected.txt:
+        * platform/ios-simulator-wk2/compositing/layer-creation/overlap-animation-container-expected.txt: Added.
+        * platform/ios-simulator-wk2/compositing/visibility/visibility-image-layers-dynamic-expected.txt:
+        * platform/ios-simulator-wk2/fast/inline/continuation-outlines-with-layers-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/layers/scroll-rect-to-visible-expected.txt:
+
+2016-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline compositing/overflow/scrollbar-painting.html for ios-simulator after r196244
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/compositing/overflow/scrollbar-painting-expected.txt:
+
+2016-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196303
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline more tests for ios-simulator after r196244
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/compositing/overflow/overflow-scroll-expected.txt:
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-non-replaced-width-margin-000-expected.txt:
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-replaced-width-margin-000-expected.txt:
+        * platform/ios-simulator-wk2/fast/block/float/overhanging-tall-block-expected.txt:
+        * platform/ios-simulator-wk2/fast/clip/014-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/float-in-relpositioned-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/overflow-auto-position-absolute-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/paged-x-div-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+
+2016-02-09  Zalan Bujtas  <zalan@apple.com>
+
+        Outline corners do not align properly for multiline inlines.
+        https://bugs.webkit.org/show_bug.cgi?id=154025
+
+        Reviewed by David Hyatt.
+
+        Adjust border position when outline-offset > 0. This patch also
+        removes integral pixelsnapping (drawLineForBoxSide takes care of
+        device pixelsnapping). 
+
+        * fast/inline/outline-corners-with-offset-expected.html: Added.
+        * fast/inline/outline-corners-with-offset.html: Added.
+
+2016-02-09  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Rebaseline after r196244.
+
+        Unreviewed test gardening.
+
+        * platform/win/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/win/fast/block/float/overhanging-tall-block-expected.txt:
+        * platform/win/fast/block/positioning/auto/vertical-rl/007-expected.txt:
+        * platform/win/fast/borders/border-antialiasing-expected.txt:
+        * platform/win/fast/clip/001-expected.txt:
+        * platform/win/fast/clip/013-expected.txt:
+        * platform/win/fast/clip/014-expected.txt:
+        * platform/win/fast/clip/outline-overflowClip-expected.txt:
+        * platform/win/fast/css/clip-zooming-expected.txt:
+        * platform/win/fast/frames/flattening/iframe-flattening-offscreen-expected.txt: Added.
+        * platform/win/fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks-expected.txt:
+        * platform/win/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/win/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/win/fast/lists/scrolled-marker-paint-expected.txt:
+        * platform/win/fast/multicol/client-rects-expected.txt:
+        * platform/win/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/win/fast/multicol/column-rules-expected.txt:
+        * platform/win/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/win/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/win/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/win/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/win/fast/multicol/float-paginate-expected.txt:
+        * platform/win/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/win/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/win/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/win/fast/multicol/nested-columns-expected.txt:
+        * platform/win/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/win/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/win/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/win/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/win/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/win/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/win/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/win/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/win/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/win/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/win/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/win/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/win/fast/multicol/pagination/LeftToRight-tb-hittest-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt:
+        * platform/win/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/win/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/win/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/win/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/win/fast/multicol/positive-leading-expected.txt:
+        * platform/win/fast/multicol/scrolling-column-rules-expected.txt:
+        * platform/win/fast/multicol/scrolling-overflow-expected.txt:
+        * platform/win/fast/multicol/span/anonymous-style-inheritance-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/win/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/win/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/win/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/win/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/win/fast/multicol/table-vertical-align-expected.txt:
+        * platform/win/fast/multicol/tall-image-behavior-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/win/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/win/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/win/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/win/fast/overflow/float-in-relpositioned-expected.txt:
+        * platform/win/fast/overflow/overflow-auto-position-absolute-expected.txt:
+        * platform/win/fast/overflow/overflow-rtl-expected.txt:
+        * platform/win/fast/overflow/paged-x-div-expected.txt:
+        * platform/win/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/win/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/win/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/win/fast/overflow/paged-y-div-expected.txt:
+        * platform/win/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/win/fast/repaint/box-shadow-h-expected.txt:
+        * platform/win/fast/repaint/box-shadow-v-expected.txt:
+        * platform/win/fast/repaint/layer-outline-expected.txt:
+        * platform/win/fast/repaint/layer-outline-horizontal-expected.txt:
+        * platform/win/fast/table/edge-offsets-expected.txt:
+        * platform/win/fast/transforms/overflow-with-transform-expected.txt:
+        * platform/win/printing/single-line-must-not-be-split-into-two-pages-expected.txt:
+        * platform/win/scrollbars/scrollbars-on-positioned-content-expected.txt:
+        * platform/win/svg/custom/getscreenctm-in-scrollable-div-area-nested-expected.txt:
+        * platform/win/svg/custom/image-rescale-clip-expected.txt:
+
+2016-02-09  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Rebaseline after r196244.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/compositing/geometry/clipping-foreground-expected.txt:
+        * platform/ios-simulator/compositing/geometry/root-layer-update-expected.txt:
+        * platform/ios-simulator/compositing/overflow/overflow-scroll-expected.txt:
+        * platform/ios-simulator/compositing/overflow/parent-overflow-expected.txt:
+        * platform/ios-simulator/compositing/overflow/scrollbar-painting-expected.txt:
+        * platform/ios-simulator/compositing/sibling-positioning-expected.txt:
+        * platform/ios-simulator/css2.1/20110323/abspos-non-replaced-width-margin-000-expected.txt: Added.
+        * platform/ios-simulator/css2.1/20110323/abspos-replaced-width-margin-000-expected.txt: Added.
+        * platform/ios-simulator/css3/blending/blend-mode-overflow-expected.txt:
+        * platform/ios-simulator/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/ios-simulator/fast/block/float/overhanging-tall-block-expected.txt:
+        * platform/ios-simulator/fast/borders/border-antialiasing-expected.txt:
+        * platform/ios-simulator/fast/clip/001-expected.txt:
+        * platform/ios-simulator/fast/clip/013-expected.txt:
+        * platform/ios-simulator/fast/clip/014-expected.txt:
+        * platform/ios-simulator/fast/clip/016-expected.txt:
+        * platform/ios-simulator/fast/clip/outline-overflowClip-expected.txt:
+        * platform/ios-simulator/fast/css/clip-zooming-expected.txt:
+        * platform/ios-simulator/fast/frames/flattening/iframe-flattening-offscreen-expected.txt:
+        * platform/ios-simulator/fast/inline/left-right-center-inline-alignment-in-ltr-and-rtl-blocks-expected.txt:
+        * platform/ios-simulator/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/ios-simulator/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/ios-simulator/fast/lists/scrolled-marker-paint-expected.txt:
+        * platform/ios-simulator/fast/multicol/client-rects-expected.txt:
+        * platform/ios-simulator/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/ios-simulator/fast/multicol/column-rules-expected.txt:
+        * platform/ios-simulator/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/ios-simulator/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/ios-simulator/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/ios-simulator/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/ios-simulator/fast/multicol/float-paginate-expected.txt:
+        * platform/ios-simulator/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/ios-simulator/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/ios-simulator/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/ios-simulator/fast/multicol/nested-columns-expected.txt:
+        * platform/ios-simulator/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/ios-simulator/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/ios-simulator/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/ios-simulator/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/ios-simulator/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/BottomToTop-bt-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/TopToBottom-bt-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/BottomToTop-lr-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/TopToBottom-lr-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/BottomToTop-rl-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/TopToBottom-rl-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/BottomToTop-tb-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/TopToBottom-bt-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/RightToLeft-bt-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/LeftToRight-tb-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/RightToLeft-lr-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/LeftToRight-rl-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/LeftToRight-rl-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/RightToLeft-rl-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/LeftToRight-rl-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/RightToLeft-tb-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/pagination/LeftToRight-tb-expected.txt.
+        * platform/ios-simulator/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/ios-simulator/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/ios-simulator/fast/multicol/positive-leading-expected.txt:
+        * platform/ios-simulator/fast/multicol/scrolling-column-rules-expected.txt:
+        * platform/ios-simulator/fast/multicol/scrolling-overflow-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/anonymous-style-inheritance-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-child-generated-content-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-columns-child-dynamic-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-columns-child-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/ios-simulator/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/ios-simulator/fast/multicol/table-vertical-align-expected.txt:
+        * platform/ios-simulator/fast/multicol/tall-image-behavior-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt.
+        * platform/ios-simulator/fast/multicol/vertical-rl/column-rules-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/vertical-lr/column-rules-expected.txt.
+        * platform/ios-simulator/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-rl/float-paginate-complex-expected.txt: Copied from LayoutTests/platform/ios-simulator/fast/multicol/vertical-lr/float-paginate-complex-expected.txt.
+        * platform/ios-simulator/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/ios-simulator/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/ios-simulator/fast/overflow/float-in-relpositioned-expected.txt:
+        * platform/ios-simulator/fast/overflow/overflow-auto-position-absolute-expected.txt:
+        * platform/ios-simulator/fast/overflow/overflow-rtl-expected.txt:
+        * platform/ios-simulator/fast/overflow/paged-x-div-expected.txt:
+        * platform/ios-simulator/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/ios-simulator/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/ios-simulator/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/ios-simulator/fast/overflow/paged-y-div-expected.txt:
+        * platform/ios-simulator/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/ios-simulator/fast/regions/repaint/region-painting-via-layout-expected.txt:
+        * platform/ios-simulator/fast/table/edge-offsets-expected.txt:
+        * platform/ios-simulator/fast/transforms/overflow-with-transform-expected.txt:
+        * platform/ios-simulator/svg/custom/image-rescale-clip-expected.txt:
+
 2016-02-08  Chris Dumez  <cdumez@apple.com>
 
         Attribute getters should not require an explicit 'this' value for Window properties

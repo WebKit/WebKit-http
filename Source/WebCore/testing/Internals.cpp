@@ -102,6 +102,7 @@
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
@@ -373,6 +374,7 @@ void Internals::resetToConsistentState(Page* page)
 
     WebCore::overrideUserPreferredLanguages(Vector<String>());
     WebCore::Settings::setUsesOverlayScrollbars(false);
+    WebCore::Settings::setUsesMockScrollAnimator(false);
     page->inspectorController().setLegacyProfilerEnabled(false);
 #if ENABLE(VIDEO_TRACK)
     page->group().captionPreferences().setCaptionsStyleSheetOverride(emptyString());
@@ -462,6 +464,34 @@ bool Internals::nodeNeedsStyleRecalc(Node* node, ExceptionCode& exception)
     }
 
     return node->needsStyleRecalc();
+}
+
+static String styleChangeTypeToString(StyleChangeType type)
+{
+    switch (type) {
+    case NoStyleChange:
+        return "NoStyleChange";
+    case InlineStyleChange:
+        return "InlineStyleChange";
+    case FullStyleChange:
+        return "FullStyleChange";
+    case SyntheticStyleChange:
+        return "SyntheticStyleChange";
+    case ReconstructRenderTree:
+        return "ReconstructRenderTree";
+    }
+    ASSERT_NOT_REACHED();
+    return "";
+}
+
+String Internals::styleChangeType(Node* node, ExceptionCode& exception)
+{
+    if (!node) {
+        exception = INVALID_ACCESS_ERR;
+        return { };
+    }
+
+    return styleChangeTypeToString(node->styleChangeType());
 }
 
 String Internals::description(Deprecated::ScriptValue value)
@@ -2646,6 +2676,11 @@ void Internals::setUsesOverlayScrollbars(bool enabled)
     WebCore::Settings::setUsesOverlayScrollbars(enabled);
 }
 
+void Internals::setUsesMockScrollAnimator(bool enabled)
+{
+    WebCore::Settings::setUsesMockScrollAnimator(enabled);
+}
+
 void Internals::forceReload(bool endToEnd)
 {
     frame()->loader().reload(endToEnd);
@@ -3431,5 +3466,15 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     return returnedValue.asBoolean();
 }
 #endif
+
+String Internals::resourceLoadStatisticsForOrigin(String origin)
+{
+    return ResourceLoadObserver::sharedObserver().statisticsForOrigin(origin);
+}
+
+void Internals::setResourceLoadStatisticsEnabled(bool enable)
+{
+    Settings::setResourceLoadStatisticsEnabled(enable);
+}
 
 }

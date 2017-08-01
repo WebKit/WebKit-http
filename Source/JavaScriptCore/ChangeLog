@@ -1,3 +1,1553 @@
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL_USES_B3 should be unconditionally true
+        https://bugs.webkit.org/show_bug.cgi?id=154324
+
+        Reviewed by Benjamin Poulain.
+
+        * dfg/DFGCommon.h:
+
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support CompareEq(String:, String:)
+        https://bugs.webkit.org/show_bug.cgi?id=154269
+        rdar://problem/24499921
+
+        Reviewed by Benjamin Poulain.
+
+        Looks like a slight pdfjs slow-down, probably because we're having some recompilations. I
+        think we should land the increased coverage first and fix the issues after, especially since
+        the regression is so small and doesn't have a statistically significant effect on the overall
+        score.
+
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCompareEq):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCompareStrictEq):
+        (JSC::FTL::DFG::LowerDFGToLLVM::nonSpeculativeCompare):
+        (JSC::FTL::DFG::LowerDFGToLLVM::stringsEqual):
+        * tests/stress/ftl-string-equality.js: Added.
+        * tests/stress/ftl-string-ident-equality.js: Added.
+        * tests/stress/ftl-string-strict-equality.js: Added.
+
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support NewTypedArray
+        https://bugs.webkit.org/show_bug.cgi?id=154268
+
+        Reviewed by Saam Barati.
+
+        3% speed-up on pdfjs. This was already covered by many different tests.
+
+        Rolling this back in after fixing the butterfly argument.
+
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNewArrayWithSize):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNewTypedArray):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileAllocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateBasicStorageAndGetEnd):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateBasicStorage):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateObject):
+
+2016-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        JSDOMWindow::getOwnPropertySlot should just call getStaticPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=154257
+
+        Reviewed by Chris Dumez.
+
+        * runtime/Lookup.h:
+        (JSC::getStaticPropertySlot):
+        (JSC::getStaticFunctionSlot):
+        (JSC::getStaticValueSlot):
+            - this could all do with a little more love.
+              But enforce the basic precedence:
+                (1) regular storage properties always win over static table properties.
+                (2) if properties have been reified, don't consult the static tables.
+                (3) only if the property is not present on the object & not reified
+                    should the static hashtable be consulted.
+
+2016-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        JSDOMWindow::getOwnPropertySlot should not search photo chain
+        https://bugs.webkit.org/show_bug.cgi?id=154102
+
+        Reviewed by Chris Dumez.
+
+        Should only return *own* properties.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+            - remove hack/special-case for DOMWindow; we no longer need this.
+
+2016-02-16  Keith Miller  <keith_miller@apple.com>
+
+        Spread operator should be allowed when not the first argument of parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=152721
+
+        Reviewed by Saam Barati.
+
+        Spread arguments to functions should now be ES6 compliant. Before we
+        would only take a spread operator if it was the sole argument to a
+        function. Additionally, we would not use the Symbol.iterator on the
+        object to generate the arguments. Instead we would do a loop up to the
+        length mapping indexed properties to the corresponding argument. We fix
+        both these issues by doing an AST transformation from foo(...a, b, ...c, d)
+        to foo(...[...a, b, ...c, d]) (where the spread on the rhs uses the
+        old spread semantics). This solution has the downside of requiring the
+        allocation of another object and copying each element twice but avoids a
+        large change to the vm calling convention.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::loadVarargs):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createElementList):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseArguments):
+        (JSC::Parser<LexerType>::parseArgument):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createElementList):
+        * tests/es6.yaml:
+        * tests/stress/spread-calling.js: Added.
+        (testFunction):
+        (testEmpty):
+        (makeObject):
+        (otherIterator.return.next):
+        (otherIterator):
+        (totalIter):
+        (throwingIter.return.next):
+        (throwingIter):
+        (i.catch):
+
+2016-02-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Enable B3 on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=154275
+
+        Reviewed by Mark Lam.
+
+        The port passes more tests than LLVM now, let's use it by default.
+
+        * dfg/DFGCommon.h:
+
+2016-02-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196652.
+        https://bugs.webkit.org/show_bug.cgi?id=154315
+
+        This change caused LayoutTest crashes (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "FTL should support NewTypedArray"
+        https://bugs.webkit.org/show_bug.cgi?id=154268
+        http://trac.webkit.org/changeset/196652
+
+2016-02-16  Brian Burg  <bburg@apple.com>
+
+        RemoteInspector should forward new automation session requests to its client
+        https://bugs.webkit.org/show_bug.cgi?id=154260
+        <rdar://problem/24663313>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::xpcConnectionReceivedMessage):
+        (Inspector::RemoteInspector::listingForAutomationTarget):
+        Use the correct key for the session identifier in the listing. The name()
+        override for RemoteAutomationTarget is actually the session identifier.
+
+        (Inspector::RemoteInspector::receivedAutomationSessionRequestMessage):
+        * inspector/remote/RemoteInspectorConstants.h: Add new constants.
+
+2016-02-16  Saam barati  <sbarati@apple.com>
+
+        SamplingProfiler still fails with ASan enabled
+        https://bugs.webkit.org/show_bug.cgi?id=154301
+        <rdar://problem/24679502>
+
+        Reviewed by Filip Pizlo.
+
+        To fix this issue, I've come up with unsafe versions
+        of all operations that load memory from the thread's call
+        frame. All these new unsafe methods are marked with SUPPRESS_ASAN.
+
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::callSiteAsRawBits):
+        (JSC::CallFrame::unsafeCallSiteAsRawBits):
+        (JSC::CallFrame::callSiteIndex):
+        (JSC::CallFrame::unsafeCallSiteIndex):
+        (JSC::CallFrame::stack):
+        (JSC::CallFrame::callerFrame):
+        (JSC::CallFrame::unsafeCallerFrame):
+        (JSC::CallFrame::friendlyFunctionName):
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::calleeAsValue):
+        (JSC::ExecState::callee):
+        (JSC::ExecState::unsafeCallee):
+        (JSC::ExecState::codeBlock):
+        (JSC::ExecState::unsafeCodeBlock):
+        (JSC::ExecState::scope):
+        (JSC::ExecState::callerFrame):
+        (JSC::ExecState::callerFrameOrVMEntryFrame):
+        (JSC::ExecState::unsafeCallerFrameOrVMEntryFrame):
+        (JSC::ExecState::callerFrameOffset):
+        (JSC::ExecState::callerFrameAndPC):
+        (JSC::ExecState::unsafeCallerFrameAndPC):
+        * interpreter/Register.h:
+        (JSC::Register::codeBlock):
+        (JSC::Register::asanUnsafeCodeBlock):
+        (JSC::Register::unboxedInt32):
+        (JSC::Register::tag):
+        (JSC::Register::unsafeTag):
+        (JSC::Register::payload):
+        * interpreter/VMEntryRecord.h:
+        (JSC::VMEntryRecord::prevTopCallFrame):
+        (JSC::VMEntryRecord::unsafePrevTopCallFrame):
+        (JSC::VMEntryRecord::prevTopVMEntryFrame):
+        (JSC::VMEntryRecord::unsafePrevTopVMEntryFrame):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::walk):
+        (JSC::FrameWalker::advanceToParentFrame):
+        (JSC::FrameWalker::isAtTop):
+        (JSC::FrameWalker::resetAtMachineFrame):
+
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support NewTypedArray
+        https://bugs.webkit.org/show_bug.cgi?id=154268
+
+        Reviewed by Saam Barati.
+
+        3% speed-up on pdfjs. This was already covered by many different tests.
+
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNewArrayWithSize):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNewTypedArray):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileAllocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateBasicStorageAndGetEnd):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateBasicStorage):
+        (JSC::FTL::DFG::LowerDFGToLLVM::allocateObject):
+
+2016-02-16  Saam barati  <sbarati@apple.com>
+
+        stress/sampling-profiler-deep-stack.js fails on ARM 32bit
+        https://bugs.webkit.org/show_bug.cgi?id=154255
+        <rdar://problem/24662996>
+
+        Reviewed by Mark Lam.
+
+        The bug here wasn't in the implementation of the sampling profiler 
+        itself. Rather, it was a bug in the test. JSC wasn't spending a lot
+        of time in a function that the test assumed a lot of time was spent in.
+        That's because the DFG was doing a good job at optimizing the function
+        at the leaf of the recursion. Because of that, we often wouldn't sample it.
+        I fixed this by making the leaf function do more work.
+
+        * tests/stress/sampling-profiler-deep-stack.js:
+        (platformSupportsSamplingProfiler.foo):
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Operations should be on the instance for global objects or if [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=154120
+        <rdar://problem/24613231>
+
+        Reviewed by Gavin Barraclough.
+
+        Have putEntry() take a thisValue parameter in addition to the base,
+        instead of relying on PropertySlot::thisValue() because this did not
+        always do the right thing. In particular, when JSDOMWindow::put() was
+        called to set a function, it would end up setting the new value on the
+        JSDOMWindowShell instead of the actual JSDOMWindow.
+        JSDOMWindow::getOwnPropertySlot() would then not be able to find it.
+        Therefore the following would fail:
+        $ window.open = "test"
+        $ console.log(window.open) // prints the native function instead of "test"
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        (JSC::lookupPut):
+
+2016-02-16  Keith Miller  <keith_miller@apple.com>
+
+        ClonedArguments should not materialize its special properties unless they are being changed or deleted
+        https://bugs.webkit.org/show_bug.cgi?id=154128
+
+        Reviewed by Filip Pizlo.
+
+        Before we would materialize ClonedArguments whenever they were being accessed.
+        However this would cause the IC to miss every time as the structure for
+        the arguments object would change as we went to IC it. Thus on the next
+        function call we would miss the cache since the new arguments object
+        would not have materialized the value.
+
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::getOwnPropertySlot):
+        * tests/stress/cloned-arguments-modification.js: Added.
+        (foo):
+
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should support StringFromCharCode
+        https://bugs.webkit.org/show_bug.cgi?id=154267
+        rdar://problem/24192536
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Fix a bug preventing the UntypedUse from being effective.
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileStringFromCharCode): Implement the opcode.
+        * tests/stress/string-from-char-code-slow.js: Added.
+
+2016-02-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] BranchAdd can override arguments of its stackmap
+        https://bugs.webkit.org/show_bug.cgi?id=154274
+
+        Reviewed by Filip Pizlo.
+
+        With the 3 operands BranchAdd added in r196513, we can run into
+        a register allocation such that the destination register is also
+        used by a value in the stack map.
+
+        It use to be that BranchAdd was a 2 operand instruction.
+        In that form, the destination is also one of the source and
+        can be recovered through Sub. There is no conflict between
+        destination and the stackmap.
+
+        After r196513, the destination has its own value. It is uncommon
+        on x86 because of the aggressive aliasing but that can happen.
+        On ARM, that's a standard form since there is no need for aliasing.
+
+        Since the arguments of the stackmap are of type EarlyUse,
+        they appeared as not interfering with the destination. When the register
+        allocator gives the same register to the destination and something in
+        the stack map, the result of BranchAdd destroys the value kept alive
+        for the stackmap.
+
+        In this patch, I introduce a concept very similar to ForceLateUse
+        to keep the argument of the stackmap live in CheckAdd. The new
+        role is "ForceLateUseUnlessRecoverable".
+
+        In this mode, anything that is not also an input argument becomes
+        LateUse. As such, it interferes with the destination of CheckAdd.
+        The arguments are recovered by the slow patch of CheckAdd. They
+        remain Early use.
+
+        This new modes ensure that destination can be aliased to the source
+        when that's useful, while making sure it is not aliased with another
+        value that needs to be live on exit.
+
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        (WTF::printInternal):
+        * b3/B3StackmapSpecial.h:
+        * b3/B3StackmapValue.h:
+
+2016-02-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web Workers have no access to console for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=26237
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ConsoleMessage.h:
+        Add accessor for MessageLevel.
+
+2016-02-15  Mark Lam  <mark.lam@apple.com>
+
+        [ARMv7] stress/op_rshift.js and stress/op_urshift.js are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=151514
+
+        Reviewed by Filip Pizlo.
+
+        The issue turns out to be trivial: on ARMv7 (and traditional ARM too), arithmetic
+        shift right (ASR) and logical shift right (LSR) takes an immediate shift amount
+        from 1-32.  See http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0204j/Cjacbgca.html.
+        An immediate shift amount of 0 is interpreted as a shift of 32 bits.
+
+        Meanwhile, our macro assembler is expecting the immediate shift value to be
+        between 0-31.  As a result, a shift amount of 0 is being wrongly encoded with 0
+        bits which means shift right by 32 bits.
+
+        The fix is to check if the shift amount is 0, and if so, emit a move.  Else,
+        emit the right shift as usual.
+
+        This issue does not affect left shifts, as the immediate shift amount for left
+        shifts is between 0-31 as our macro assembler expects.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::rshift32):
+        (JSC::MacroAssemblerARM::urshift32):
+        (JSC::MacroAssemblerARM::sub32):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::rshift32):
+        (JSC::MacroAssemblerARMv7::urshift32):
+
+        * tests/stress/op_rshift.js:
+        * tests/stress/op_urshift.js:
+        - Un-skip these tests.  They should always pass now.
+
+2016-02-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Parser::parseVariableDeclarationList should null check the node before attempting to create a new CommaExpr
+        https://bugs.webkit.org/show_bug.cgi?id=154244
+        rdar://problem/24290670
+
+        Reviewed by Michael Saboff.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::appendToCommaExpr): Catch the bug sooner in debug.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVariableDeclarationList): Fix the bug.
+        * tests/stress/for-let-comma.js: Added. This used to crash in debug and release.
+
+2016-02-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Improve the interface of Inst::shouldTryAliasingDef()
+        https://bugs.webkit.org/show_bug.cgi?id=154227
+
+        Reviewed by Andreas Kling.
+
+        Using Optional<> instead of a bool+reference looks cleaner
+        at the call sites.
+
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::shouldTryAliasingDef):
+        * b3/B3CheckSpecial.h:
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::shouldTryAliasingDef):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::shouldTryAliasingDef):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        * b3/air/AirSpecial.cpp:
+        (JSC::B3::Air::Special::shouldTryAliasingDef):
+        * b3/air/AirSpecial.h:
+
+2016-02-14  Brian Burg  <bburg@apple.com>
+
+        WKAutomationDelegate's requestAutomationSession should take a suggested session identifier
+        https://bugs.webkit.org/show_bug.cgi?id=154012
+        <rdar://problem/24557697>
+
+        Reviewed by Darin Adler.
+
+        Add a string parameter to the client method for requesting a new session.
+
+        * inspector/remote/RemoteInspector.h:
+
+2016-02-13  Timothy Hatcher  <timothy@apple.com>
+
+        Fix WebAssembly bug URL in the feature list.
+
+        * features.json:
+
+2016-02-12  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Change the last RefPtr::get() to release() in String.prototype.normalize
+        https://bugs.webkit.org/show_bug.cgi?id=154211
+
+        Reviewed by Ryosuke Niwa.
+
+        Change the last RefPtr::get() to release() in String.prototype.normalize.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::normalize):
+
+2016-02-12  Saam barati  <sbarati@apple.com>
+
+        [ES6] we have an incorrect syntax error when a callee of a function expression has the same name as a top-level lexical declaration
+        https://bugs.webkit.org/show_bug.cgi?id=154143
+
+        Reviewed by Benjamin Poulain.
+
+        We were raising syntax errors on the following type of programs when
+        we shouldn't have been.
+        ```
+        (function foo() { const foo = 20; });
+        ```
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        * parser/Parser.h:
+        (JSC::Scope::computeLexicallyCapturedVariablesAndPurgeCandidates):
+        (JSC::Scope::declareCallee):
+        (JSC::Scope::declareVariable):
+        (JSC::Scope::hasDeclaredVariable):
+        (JSC::Scope::hasLexicallyDeclaredVariable):
+        (JSC::Scope::hasDeclaredParameter):
+        (JSC::Scope::declareWrite):
+        (JSC::Scope::getCapturedVars):
+
+2016-02-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] ZeroExtend and SignExtend use incorrect addressing on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=154208
+
+        Reviewed by Filip Pizlo.
+
+        When lowering:
+            @1 = Load32(@x)
+            @2 = SExt8(@1)
+
+        LowerToAir would see there is a form of SignExtend8To32 (an alias for Load8S)
+        and use that.
+
+        There are two problems with that:
+        1) If we have an Addr, it went through legalizeMemoryOffsets() for a 32bits
+           load. If used on an other kind of load, there is no guarantee the addressing
+           is still valid.
+        2) If we have an Index, it is computed for the 32bits MemoryValue.
+           The computed index is not valid for the 8bits load.
+
+        (2) could be fixed by changing LowerToAir to use the current instruction width
+        instead of the B3ValueWidth but that's a bit tricky. We should just embrace
+        that one of our target is a Load-Store architecture.
+
+        In this patch, I just disabled the faulty forms on ARM64. We still need those operations
+        to be fast, this will be addressed in: https://bugs.webkit.org/show_bug.cgi?id=154207
+
+        I also strengthened the m_allowScratchRegister assertion. The instructions that do not
+        invalidate the temporary did not run the assertion, making this harder to debug.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::load8):
+        (JSC::MacroAssemblerARM64::store64):
+        (JSC::MacroAssemblerARM64::store32):
+        (JSC::MacroAssemblerARM64::loadDouble):
+        (JSC::MacroAssemblerARM64::storeDouble):
+        (JSC::MacroAssemblerARM64::branch32):
+        (JSC::MacroAssemblerARM64::branch64):
+        (JSC::MacroAssemblerARM64::getCachedDataTempRegisterIDAndInvalidate):
+        (JSC::MacroAssemblerARM64::getCachedMemoryTempRegisterIDAndInvalidate):
+        (JSC::MacroAssemblerARM64::dataMemoryTempRegister):
+        (JSC::MacroAssemblerARM64::cachedMemoryTempRegister):
+        (JSC::MacroAssemblerARM64::load):
+        (JSC::MacroAssemblerARM64::store):
+        * b3/air/AirOpcode.opcodes:
+
+2016-02-12  Michael Saboff  <msaboff@apple.com>
+
+        offlineasm: Emit Dwarf2 file and location directives to allow for debugging .asm files
+        https://bugs.webkit.org/show_bug.cgi?id=152703
+
+        Reviewed by Mark Lam.
+
+        Added support to output Dwarf2 .file and .loc assembler directives to provide the debugging
+        information needed to correlate the offline assembler generated code with the source lines 
+        in the .asm files.
+
+        Changed the tracking of file data to include a file index that was provided to the .file
+        directive.  That index is used when emitting the .loc directives.
+
+        * offlineasm/arm.rb:
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/backends.rb:
+        * offlineasm/config.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/x86.rb:
+
+2016-02-12  Saam barati  <sbarati@apple.com>
+
+        The parser doesn't properly protect against global variable references in builtins
+        https://bugs.webkit.org/show_bug.cgi?id=154144
+
+        Reviewed by Geoffrey Garen.
+
+        This patch fixes our global variable reference detection
+        algorithm that was broken. After fixing the algorithm, I
+        detected many places where we were incorrectly using global
+        variables. I've fixed all those.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::createExecutableInternal):
+        * builtins/NumberPrototype.js:
+        (toLocaleString):
+        * builtins/PromiseConstructor.js:
+        (race):
+        (reject):
+        (resolve):
+        * parser/Nodes.cpp:
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::ModuleProgramNode::ModuleProgramNode):
+        (JSC::ProgramNode::setClosedVariables): Deleted.
+        * parser/Nodes.h:
+        (JSC::ScopeNode::setClosedVariables): Deleted.
+        (JSC::ProgramNode::closedVariables): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::didFinishParsing):
+        * parser/Parser.h:
+        (JSC::Scope::setIsLexicalScope):
+        (JSC::Scope::isLexicalScope):
+        (JSC::Scope::closedVariableCandidates):
+        (JSC::Scope::declaredVariables):
+        (JSC::Scope::lexicalVariables):
+        (JSC::Scope::finalizeLexicalEnvironment):
+        (JSC::Parser::positionBeforeLastNewline):
+        (JSC::Parser::locationBeforeLastToken):
+        (JSC::Parser::isFunctionMetadataNode):
+        (JSC::parse):
+        (JSC::Parser::closedVariables): Deleted.
+
+2016-02-12  Filip Pizlo  <fpizlo@apple.com>
+
+        JSObject::putByIndexBeyondVectorLengthWithoutAttributes needs to go to the sparse map based on MAX_STORAGE_VECTOR_INDEX
+        https://bugs.webkit.org/show_bug.cgi?id=154201
+        rdar://problem/24291387
+
+        Reviewed by Saam Barati.
+
+        I decided against adding a test for this, because it runs for a very long time.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes): Fix the bug.
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncSplit): Fix a related bug: if this code creates an array that would have
+            hit the above bug, then it would probably manifest as a spin or as swapping.
+
+2016-02-12  Jonathan Davis  <jond@apple.com>
+
+        Add WebAssembly to the status page
+        https://bugs.webkit.org/show_bug.cgi?id=154199
+
+        Reviewed by Timothy Hatcher.
+
+        * features.json:
+
+2016-02-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: disambiguate the various identifier and connection types in RemoteInspector
+        https://bugs.webkit.org/show_bug.cgi?id=154130
+
+        Reviewed by Joseph Pecoraro.
+
+        There are multiple identifier types:
+            - connection identifier, a string UUID for a remote debugger process.
+            - session identifier, a string UUID for a remote driver/debugger instance.
+            - page/target identifier, a number unique within a single process.
+
+        There are multiple connection types:
+            - RemoteInspectorXPCConnection, a connection from RemoteInspectorXPCConnectionor to a relay.
+            - RemoteConnectionToTarget, a class that bridges to targets' dispatch queues.
+
+        Use consistent variable and getter names so that these don't get confused and
+        so that the code is easier to read. This is especially an improvement when working
+        with multiple target types or connection types within the same function.
+
+        * inspector/remote/RemoteConnectionToTarget.h:
+        * inspector/remote/RemoteConnectionToTarget.mm:
+        Remove the member for m_identifier since we can ask the target for its target identifier
+        or use a default value via WTF::Optional. There's no reason to cache the value.
+
+        (Inspector::RemoteTargetHandleRunSourceWithInfo):
+        (Inspector::RemoteConnectionToTarget::targetIdentifier):
+        (Inspector::RemoteConnectionToTarget::destination):
+        (Inspector::RemoteConnectionToTarget::setup):
+        (Inspector::RemoteConnectionToTarget::sendMessageToFrontend):
+        Bail out if the target pointer was somehow cleared and we can't get a useful target identifier.
+
+        (Inspector::RemoteConnectionToTarget::RemoteConnectionToTarget): Deleted.
+        * inspector/remote/RemoteControllableTarget.h:
+        * inspector/remote/RemoteInspectionTarget.cpp:
+        (Inspector::RemoteInspectionTarget::pauseWaitingForAutomaticInspection):
+        (Inspector::RemoteInspectionTarget::unpauseForInitializedInspector):
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::nextAvailableTargetIdentifier):
+        (Inspector::RemoteInspector::registerTarget):
+        (Inspector::RemoteInspector::unregisterTarget):
+        (Inspector::RemoteInspector::updateTarget):
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate):
+        (Inspector::RemoteInspector::sendAutomaticInspectionCandidateMessage):
+        (Inspector::RemoteInspector::sendMessageToRemote):
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::setupCompleted):
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::setupXPCConnectionIfNeeded):
+        (Inspector::RemoteInspector::xpcConnectionFailed):
+        (Inspector::RemoteInspector::listingForInspectionTarget):
+        (Inspector::RemoteInspector::listingForAutomationTarget):
+        (Inspector::RemoteInspector::pushListingsNow):
+        (Inspector::RemoteInspector::pushListingsSoon):
+        (Inspector::RemoteInspector::updateHasActiveDebugSession):
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::receivedDataMessage):
+        (Inspector::RemoteInspector::receivedDidCloseMessage):
+        (Inspector::RemoteInspector::receivedIndicateMessage):
+        (Inspector::RemoteInspector::receivedProxyApplicationSetupMessage):
+        (Inspector::RemoteInspector::receivedConnectionDiedMessage):
+        (Inspector::RemoteInspector::receivedAutomaticInspectionRejectMessage):
+        (Inspector::RemoteInspector::nextAvailableIdentifier): Deleted.
+        * inspector/remote/RemoteInspectorConstants.h:
+
+2016-02-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] On x86, improve the selection of which value are selected for the UseDef part of commutative operations
+        https://bugs.webkit.org/show_bug.cgi?id=154151
+
+        Reviewed by Filip Pizlo.
+
+        Previously, when an instruction destroy an argument with
+        a UseDef use, we would try to pick a good target for the UseDef
+        while doing instruction selection.
+
+        For example:
+            @x = Add(@1, @2)
+
+        can be lowered to:
+            Move @1 Tmp3
+            Add @2 Tmp3
+        or
+            Move @2 Tmp3
+            Add @1 Tmp3
+
+        The choice of which value ends up copied is done by preferRightForResult()
+        at lowering time.
+
+        There are two common problems with the code we generate:
+        1) It is based on UseCount. If a value is at its last use,
+           it is a good target for coalescing even with a use-count > 1.
+        2) When both values are at their last use, the best choice
+           depends on the register pressure of each. We don't have that information
+           until we do register allocation.
+
+        This patch implements a simple idea to minimize how many of those Moves are needed.
+        Each commutative operation gets a 3 op variant. The register allocator then attempts
+        to alias *both* of them to the destination.
+        Since our aliasing is conservative, it removes as many copy as possible without causing
+        spilling.
+
+        There was an unexpected cool impovement too. If you have:
+            Move Tmp1, Tmp2
+            BranchAdd32 Tmp3, Tmp2
+        we would previously restore Tmp2 by substracting Tmp3 from the result.
+        We can now just use Tmp1. That removes quite a few Sub from the slow paths.
+
+        The problem is that simple idea uncoverred a bunch of issues that had to be fixed too.
+        I detail them inline below.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::and64):
+        * assembler/MacroAssemblerX86Common.h:
+        Most addition are adding an Address version of the 3 operands opcodes.
+        The reason for this is allow the complex addressing forms of instructions
+        when spilling.
+
+        (JSC::MacroAssemblerX86Common::and32):
+        (JSC::MacroAssemblerX86Common::mul32):
+        (JSC::MacroAssemblerX86Common::or32):
+        (JSC::MacroAssemblerX86Common::xor32):
+        (JSC::MacroAssemblerX86Common::moveDouble):
+        This was an unexpected discovery: removing tons of Move32 made floating-point heavy
+        code much slower.
+
+        It turns out the MoveDouble we were using has partial register dependencies.
+
+        The x86 optimization manual, Chapter 3, section 3.4.1.13 lists the move instructions executed
+        directly on the frontend. That's what we use now.
+
+        (JSC::MacroAssemblerX86Common::addDouble):
+        (JSC::MacroAssemblerX86Common::addFloat):
+        (JSC::MacroAssemblerX86Common::mulDouble):
+        (JSC::MacroAssemblerX86Common::mulFloat):
+        (JSC::MacroAssemblerX86Common::andDouble):
+        (JSC::MacroAssemblerX86Common::andFloat):
+        (JSC::MacroAssemblerX86Common::xorDouble):
+        (JSC::MacroAssemblerX86Common::xorFloat):
+        If the destination is not aliased, the version taking an address
+        use LoadFloat/LoadDouble instead of direct addressing.
+
+        That is because this:
+            Move Tmp1, Tmp2
+            Op [Tmp3], Tmp2
+        is slower than
+            Move [Tmp3] Tmp2
+            Op Tmp1, Tmp2
+        (sometimes significantly).
+
+        I am not exactly sure why.
+
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::and64):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::and64):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::and32):
+        (JSC::MacroAssemblerX86Common::mul32):
+        (JSC::MacroAssemblerX86Common::or32):
+        (JSC::MacroAssemblerX86Common::xor32):
+        (JSC::MacroAssemblerX86Common::moveDouble):
+        (JSC::MacroAssemblerX86Common::addDouble):
+        (JSC::MacroAssemblerX86Common::addFloat):
+        (JSC::MacroAssemblerX86Common::mulDouble):
+        (JSC::MacroAssemblerX86Common::mulFloat):
+        (JSC::MacroAssemblerX86Common::andDouble):
+        (JSC::MacroAssemblerX86Common::andFloat):
+        (JSC::MacroAssemblerX86Common::xorDouble):
+        (JSC::MacroAssemblerX86Common::xorFloat):
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::and64):
+        (JSC::MacroAssemblerX86_64::mul64):
+        (JSC::MacroAssemblerX86_64::xor64):
+        (JSC::MacroAssemblerX86_64::branchAdd64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::movapd_rr):
+        (JSC::X86Assembler::movaps_rr):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::shouldTryAliasingDef):
+        (JSC::B3::CheckSpecial::generate):
+        * b3/B3CheckSpecial.h:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::shouldTryAliasingDef):
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::shouldTryAliasingDef):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        Aliasing the operands is done the same way as any coalescing.
+
+        There were problem with considering all those coalescing
+        as equivalent for the result.
+
+        Moves are mostly generated for Upsilon-Phis. Getting rid of
+        those tends to give better loops.
+
+        Sometimes, blocks have only Phis and a Jump. Coalescing
+        those moves gets rids of the block entirely.
+
+        Where it go interesting was that something like:
+            Move Tmp1, Tmp2
+            Op Tmp3, Tmp2
+        was significantly better than:
+            Op Tmp1, Tmp3
+            Move Tmp1, Tmp4
+        even in the same basic block.
+
+        To get back to the same performance when, I had to prioritize
+        regular Moves operations over argument coalescing.
+
+        Another argument for doing this is that the alias has a shorter
+        life in the hardware because the operation itself gets a new
+        virtual register from the bank.
+
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirSpecial.cpp:
+        (JSC::B3::Air::Special::shouldTryAliasingDef):
+        * b3/air/AirSpecial.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testCheckAddArgumentAliasing64):
+        (JSC::B3::testCheckAddArgumentAliasing32):
+        (JSC::B3::testCheckAddSelfOverflow64):
+        (JSC::B3::testCheckAddSelfOverflow32):
+        (JSC::B3::testCheckMulArgumentAliasing64):
+        (JSC::B3::testCheckMulArgumentAliasing32):
+        (JSC::B3::run):
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitSaveOrCopyCalleeSavesFor):
+        This ruined my week.
+
+        When regenerating the frame of an inlined function that
+        was called through a tail call, we were ignoring r13 for some reason.
+
+        Since this patch makes it more likely to increase the degree
+        of each Tmp, the number of register used increased and r13 was more
+        commonly used.
+
+        When getting out of OSRExit, we would have that value trashed :(
+
+        The fix is simply to restore it like the other two Baseline callee saved
+        register.
+
+2016-02-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement @@search
+        https://bugs.webkit.org/show_bug.cgi?id=143889
+
+        Reviewed by Darin Adler.
+
+        Implement RegExp.prototype[@@search].
+        In ES6, String.prototype.search delegates the actual matching to it
+        instead of executing RegExp matching inside String.prototype.search method itself.
+        By customizing @@search method, we can change the behavior of String.prototype.search for
+        derived / customized RegExp object.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::BuiltinNames): Deleted.
+        * builtins/BuiltinUtils.h:
+        * builtins/StringPrototype.js:
+        (search):
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry):
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::regExpProtoFuncSearch):
+        * runtime/RegExpPrototype.h:
+        (JSC::RegExpPrototype::create):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::getOwnPropertySlot):
+        (JSC::StringPrototype::finishCreation): Deleted.
+        (JSC::stringProtoFuncSearch): Deleted.
+        * runtime/StringPrototype.h:
+        * tests/es6.yaml:
+        * tests/stress/regexp-search.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (errorKey.toString):
+        (primitive.of.primitives.shouldThrow):
+        (testRegExpSearch):
+        (testSearch):
+        (testBoth):
+        (alwaysUnmatch):
+
+2016-02-12  Keith Miller  <keith_miller@apple.com>
+
+        AdaptiveInferredPropertyValueWatchpoint can trigger a GC that frees its CodeBlock and thus itself
+        https://bugs.webkit.org/show_bug.cgi?id=154146
+
+        Reviewed by Filip Pizlo.
+
+        Consider the following: there is some CodeBlock, C, that is watching some object, O, with a
+        structure, S, for replacements. Also, suppose that C has no references anymore and is due to
+        be GCed. Now, when some new property is added to O, S will create a new structure S' and
+        fire its transition watchpoints. Since C is watching S for replacements it will attempt to
+        have its AdaptiveInferredPropertyValueWatchpoint relocate itself to S'. To do so, it needs
+        it allocate RareData on S'. This allocation may cause a GC, which frees C while still
+        executing its watchpoint handler. The solution to this is to defer GC while running
+        AdaptiveInferredPropertyValueWatchpointBase handlers.
+
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp:
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::fire):
+
+2016-02-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Separate out !allowsAccess path in JSDOMWindowCustom getOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=154156
+
+        Reviewed by Chris Dumez.
+
+        * runtime/CommonIdentifiers.h:
+            - added new property names, needed by jsDOMWindowGetOwnPropertySlotDisallowAccess.
+
+2016-02-12  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Update ICU header files to version 52
+        https://bugs.webkit.org/show_bug.cgi?id=154160
+
+        Reviewed by Alex Christensen.
+
+        Update ICU header files to version 52 to allow the use of newer APIs.
+
+        * icu/unicode/localpointer.h:
+        * icu/unicode/platform.h:
+        * icu/unicode/ptypes.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/ucal.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/ucnv.h:
+        * icu/unicode/ucol.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/udat.h:
+        * icu/unicode/udatpg.h:
+        * icu/unicode/udisplaycontext.h: Added.
+        * icu/unicode/uenum.h:
+        * icu/unicode/uformattable.h: Added.
+        * icu/unicode/uiter.h:
+        * icu/unicode/uloc.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unorm2.h:
+        * icu/unicode/unum.h:
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/uset.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utf.h:
+        * icu/unicode/utf16.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utf_old.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h:
+        * icu/unicode/uversion.h:
+
+2016-02-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Fast path in JSObject::defineOwnIndexedProperty() forgets to check for the posibility of a descriptor that doesn't have a value
+        https://bugs.webkit.org/show_bug.cgi?id=154175
+        rdar://problem/24291497
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::defineOwnIndexedProperty): Fix the bug.
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry): Catch the bug sooner in debug.
+        (JSC::SparseArrayValueMap::putDirect):
+        * tests/stress/sparse-define-empty-descriptor.js: Added. This used to crash in release.
+
+2016-02-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RemoteInspector's listings should include whether an AutomationTarget is paired
+        https://bugs.webkit.org/show_bug.cgi?id=154077
+        <rdar://problem/24589133>
+
+        Reviewed by Joseph Pecoraro.
+
+        Instead of not generating a listing for the target when it is occupied,
+        generate the listing with a 'paired' flag. The old flag was redundant
+        because a _WKAutomationDelegate will not create a session if it doesn't
+        support automation or it already has an active session.
+
+        * inspector/remote/RemoteAutomationTarget.cpp:
+        (Inspector::RemoteAutomationTarget::setIsPaired):
+        (Inspector::RemoteAutomationTarget::setAutomationAllowed): Deleted.
+        * inspector/remote/RemoteAutomationTarget.h:
+        Return false for remoteControlAllowed() if the target is already paired.
+        This function is used by RemoteInspector to deny incoming connections.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::listingForAutomationTarget):
+        * inspector/remote/RemoteInspectorConstants.h:
+
+2016-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::ByteCodeParser needs to null check the result of presenceLike()
+        https://bugs.webkit.org/show_bug.cgi?id=154135
+        rdar://problem/24291586
+
+        Reviewed by Geoffrey Garen.
+
+        ByteCodeParser::presenceLike() could return a null object property condition if it detects a
+        contradiction. That could happen due to bogus profiling. It's totally OK - we just need to
+        bail from using a property condition when that happens.
+
+        * bytecode/ObjectPropertyCondition.h:
+        (JSC::ObjectPropertyCondition::equivalence):
+        (JSC::ObjectPropertyCondition::operator bool):
+        (JSC::ObjectPropertyCondition::object):
+        (JSC::ObjectPropertyCondition::condition):
+        (JSC::ObjectPropertyCondition::operator!): Deleted.
+        * bytecode/PropertyCondition.h:
+        (JSC::PropertyCondition::equivalence):
+        (JSC::PropertyCondition::operator bool):
+        (JSC::PropertyCondition::kind):
+        (JSC::PropertyCondition::uid):
+        (JSC::PropertyCondition::operator!): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::check):
+        (JSC::DFG::ByteCodeParser::load):
+
+2016-02-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] SqrtFloat and CeilFloat also suffer from partial register stalls
+        https://bugs.webkit.org/show_bug.cgi?id=154131
+
+        Reviewed by Filip Pizlo.
+
+        Looks like I forgot to update this when adding Float support.
+        Credit to Filip for finding this issue.
+
+        * b3/air/AirFixPartialRegisterStalls.cpp:
+
+2016-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Cannot call initializeIndex() if we didn't create the array using tryCreateUninitialized()
+        https://bugs.webkit.org/show_bug.cgi?id=154126
+
+        Reviewed by Saam Barati.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSplice):
+
+2016-02-11  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Intl.NumberFormat.prototype.resolvedOptions ()
+        https://bugs.webkit.org/show_bug.cgi?id=147602
+
+        Reviewed by Darin Adler.
+
+        This patch implements Intl.NumberFormat.prototype.resolvedOptions() according
+        to the ECMAScript 2015 Internationalization API spec (ECMA-402 2nd edition.)
+
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::localeData):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::localeData):
+        (JSC::computeCurrencySortKey):
+        (JSC::extractCurrencySortKey):
+        (JSC::computeCurrencyDigits):
+        (JSC::IntlNumberFormat::initializeNumberFormat):
+        (JSC::IntlNumberFormat::styleString):
+        (JSC::IntlNumberFormat::currencyDisplayString):
+        (JSC::IntlNumberFormat::resolvedOptions):
+        (JSC::IntlNumberFormat::setBoundFormat):
+        * runtime/IntlNumberFormat.h:
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::constructIntlNumberFormat):
+        (JSC::callIntlNumberFormat):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototypeFuncResolvedOptions):
+        * runtime/IntlObject.cpp:
+        (JSC::intlNumberOption):
+        (JSC::numberingSystemsForLocale):
+        (JSC::getNumberingSystemsForLocale): Deleted.
+        * runtime/IntlObject.h:
+
+2016-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        MacroAssemblerX86 should be happy with shift(cx, cx)
+        https://bugs.webkit.org/show_bug.cgi?id=154124
+
+        Reviewed by Saam Barati.
+
+        Prior to this change the assembler asserted that shift_amount and dest cannot be the same.
+        That's a good assertion for when shift_amount is not in cx. But if it's in cx already then
+        it's OK for them to be the same. Air will sometimes do shift(cx, cx) if you do "x << x" and
+        the coalescing got particularly clever.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::lshift32):
+        (JSC::MacroAssemblerX86Common::rshift32):
+        (JSC::MacroAssemblerX86Common::urshift32):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::lshift64):
+        (JSC::MacroAssemblerX86_64::rshift64):
+        (JSC::MacroAssemblerX86_64::urshift64):
+        * b3/testb3.cpp:
+        (JSC::B3::testLShiftSelf32):
+        (JSC::B3::testRShiftSelf32):
+        (JSC::B3::testURShiftSelf32):
+        (JSC::B3::testLShiftSelf64):
+        (JSC::B3::testRShiftSelf64):
+        (JSC::B3::testURShiftSelf64):
+        (JSC::B3::run):
+
+2016-02-11  Saam barati  <sbarati@apple.com>
+
+        The sampling profiler's stack walker methods should be marked with SUPPRESS_ASAN
+        https://bugs.webkit.org/show_bug.cgi?id=154123
+
+        Reviewed by Mark Lam.
+
+        The entire premise of the sampling profiler is to load from
+        another thread's memory. We should SUPPRESS_ASAN on the
+        methods that do this.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::FrameWalker):
+        (JSC::FrameWalker::walk):
+        (JSC::FrameWalker::advanceToParentFrame):
+        (JSC::FrameWalker::isAtTop):
+        (JSC::FrameWalker::resetAtMachineFrame):
+
+2016-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed typo fix after r190063.
+
+        * dfg/DFGSpeculativeJIT.cpp: Removed property svn:executable.
+        * dfg/DFGSpeculativeJIT.h: Removed property svn:executable.
+        * jit/JIT.h: Removed property svn:executable.
+        * jit/JITInlines.h: Removed property svn:executable.
+        * jit/JITOpcodes.cpp: Removed property svn:executable.
+
+2016-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed typo fix after r190063.
+
+        * dfg/DFGSpeculativeJIT.cpp: Removed property svn:executable.
+        * dfg/DFGSpeculativeJIT.h: Removed property svn:executable.
+        * jit/JIT.h: Removed property svn:executable.
+        * jit/JITInlines.h: Removed property svn:executable.
+        * jit/JITOpcodes.cpp: Removed property svn:executable.
+
+2016-02-10  Keith Miller  <keith_miller@apple.com>
+
+        Symbol.species accessors on builtin constructors should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=154097
+
+        Reviewed by Benjamin Poulain.
+
+        We did not have the Symbol.species accessors on our builtin constructors
+        marked as configurable. This does not accurately follow the ES6 spec as
+        the ES6 spec states that all default accessors on builtins should be
+        configurable. This means that we need an additional watchpoint on
+        ArrayConstructor to make sure that no users re-configures Symbol.species.
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesConstructArray):
+        (JSC::ArrayPrototype::setConstructor):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        * runtime/ArrayPrototype.h:
+        (JSC::ArrayPrototype::didChangeConstructorOrSpeciesProperties):
+        (JSC::ArrayPrototype::didChangeConstructorProperty): Deleted.
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSArrayBufferConstructor::finishCreation):
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructor::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/MapConstructor.cpp:
+        (JSC::MapConstructor::finishCreation):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/SetConstructor.cpp:
+        (JSC::SetConstructor::finishCreation):
+        * tests/stress/array-species-config-array-constructor.js: Added.
+        (A):
+        * tests/stress/symbol-species.js:
+        (testSymbolSpeciesOnConstructor):
+
+2016-02-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] The destination of Sqrt should be Def, not UseDef
+        https://bugs.webkit.org/show_bug.cgi?id=154086
+
+        Reviewed by Geoffrey Garen.
+
+        An unfortunate copy-paste: the destination of SqrtDouble and SqrtFloat
+        was defined as UseDef. As a result, the argument would be interfering
+        with everything defined prior.
+
+        * b3/air/AirOpcode.opcodes:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        Update functionProtoFuncToString() to handle JSObjects that
+        have the TypeOfShouldCallGetCallData flag and are callable,
+        as these behave like functions and use ClassInfo::className()
+        as function name in this case.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Attributes on the Window instance should be configurable unless [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=153920
+        <rdar://problem/24563211>
+
+        Reviewed by Darin Adler.
+
+        Marking the Window instance attributes as configurable but cause
+        getOwnPropertyDescriptor() to report them as configurable, as
+        expected. However, trying to delete them would actually lead to
+        unexpected behavior because:
+        - We did not reify custom accessor properties (most of the Window
+          properties are custom accessors) upon deletion.
+        - For non-reified static properties marked as configurable,
+          JSObject::deleteProperty() would attempt to call the property
+          setter with undefined. As a result, calling delete window.name
+          would cause window.name to become the string "undefined" instead
+          of the undefined value.
+
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+        Now that we reify ALL properties, we only need to check the property table
+        if we have not reified. As a result, I dropped the 'didReify' parameter for
+        this function and instead only call this function if we have not yet reified.
+
+        (JSC::JSObject::putInlineSlow):
+        Only call putEntry() if we have not reified: Drop the
+        '|| !(entry->attributes() & BuiltinOrFunctionOrAccessor)'
+        check as such properties now get reified as well.
+
+        (JSC::JSObject::deleteProperty):
+        - Call reifyAllStaticProperties() instead of reifyStaticFunctionsForDelete()
+          so that we now reify all properties upon deletion, including the custom
+          accessors. reifyStaticFunctionsForDelete() is now removed and the same
+          reification function is now used by: deletion, getOwnPropertyDescriptor()
+          and eager reification of the prototype objects in the bindings.
+        - Drop code that falls back to calling the static property setter with
+          undefined if we cannot find the property in the property storage. As
+          we now reify ALL properties, the code removing the property from the
+          property storage should succeed, provided that the property actually
+          exists.
+
+        (JSC::JSObject::getOwnNonIndexPropertyNames):
+        Only call getClassPropertyNames() if we have not reified. We should no longer
+        check the static property table after reifying now that we reify all
+        properties.
+
+        (JSC::JSObject::reifyAllStaticProperties):
+        Merge with reifyStaticFunctionsForDelete(). The only behavior change is the
+        flattening to an uncacheable dictionary, like reifyStaticFunctionsForDelete()
+        used to do.
+
+        * runtime/JSObject.h:
+
+2016-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196251.
+        https://bugs.webkit.org/show_bug.cgi?id=154078
+
+        Large regression on Dromaeo needs explanation (Requested by
+        kling on #webkit).
+
+        Reverted changeset:
+
+        "Visiting a WeakBlock should report bytes visited, since we
+        reported them allocated."
+        https://bugs.webkit.org/show_bug.cgi?id=153978
+        http://trac.webkit.org/changeset/196251
+
+2016-02-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r196331): It made ~180 JSC tests crash on ARMv7 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=154064
+
+        Reviewed by Mark Lam.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate): Added EABI_32BIT_DUMMY_ARG where it is necessary.
+        * dfg/DFGSpeculativeJIT.h: Fixed the comment.
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState): Added.
+        * wasm/WASMFunctionCompiler.h: Fixed the comment.
+
+2016-02-09  Keith Miller  <keith_miller@apple.com>
+
+        calling methods off super in a class constructor should check for TDZ
+        https://bugs.webkit.org/show_bug.cgi?id=154060
+
+        Reviewed by Ryosuke Niwa.
+
+        In a class constructor we need to check for TDZ when calling a method
+        off the super class. This is because, for super method calls, we use
+        the derived class's newly constructed object as the super method's
+        this value.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionCallDotNode::emitBytecode):
+        * tests/stress/super-method-calls-check-tdz.js: Added.
+        (Base):
+        (Derived):
+        (test):
+
+2016-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't crash if we fail to parse a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=154047
+        rdar://problem/24300617
+
+        Reviewed by Mark Lam.
+
+        Crashing probably seemed like a good idea at the time, but we could get here in case of a
+        near stack overflow, so that the parser bails because of recursion.
+
+        * parser/Parser.h:
+        (JSC::parse):
+
+2016-02-07  Gavin Barraclough  <barraclough@apple.com>
+
+        GetValueFunc/PutValueFunc should not take both slotBase and thisValue
+        https://bugs.webkit.org/show_bug.cgi?id=154009
+
+        Reviewed by Geoff Garen.
+
+        In JavaScript there are two types of properties - regular value properties, and accessor properties.
+        One difference between these is how they are reflected by getOwnPropertyDescriptor, and another is
+        what object they operate on in the case of a prototype access. If you access a value property of a
+        prototype object it return a value pertinent to the prototype, but in the case of a prototype object
+        returning an accessor, then the accessor function is applied to the base object of the access.
+
+        JSC supports special 'custom' properties implemented as a c++ callback, and these custom properties
+        can be used to implement either value- or accessor-like behavior. getOwnPropertyDescriptor behavior
+        is selected via the CustomAccessor attribute. Value- or accessor-like object selection is current
+        supported by passing both the slotBase and the thisValue to the callback,and hoping it uses the
+        right one. This is probably inefficient, bug-prone, and leads to crazy like JSBoundSlotBaseFunction.
+
+        Instead, just pass one thisValue to the callback functions, consistent with CustomAccessor.
+
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::getStaticValue):
+        (JSC::JSCallbackObject<Parent>::staticFunctionGetter):
+        (JSC::JSCallbackObject<Parent>::callbackGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+            - Modified the call being JIT generated - GetValueFunc/PutValueFunc now only take 3,
+              rather than 4 arguments. Selects which one to keep/drop based on access type.
+        (WTF::printInternal):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::isGet):
+        (JSC::AccessCase::isPut):
+        (JSC::AccessCase::isIn):
+        (JSC::AccessCase::doesCalls):
+        (JSC::AccessCase::isGetter):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+            - Split the CustomGetter/Setter access types into Value/Accessor variants.
+        * jsc.cpp:
+        (WTF::CustomGetter::getOwnPropertySlot):
+        (WTF::CustomGetter::customGetter):
+        (WTF::RuntimeArray::RuntimeArray):
+        (WTF::RuntimeArray::lengthGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * runtime/CustomGetterSetter.cpp:
+        (JSC::callCustomSetter):
+            - Pass 3 arguments when calling PutValueFunc.
+        * runtime/CustomGetterSetter.h:
+        * runtime/JSBoundSlotBaseFunction.cpp:
+        (JSC::boundSlotBaseFunctionCall):
+        (JSC::JSBoundSlotBaseFunction::JSBoundSlotBaseFunction):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+            - callCustomSetter currently takes a flag to distinguish value/accessor calls.
+        * runtime/JSFunction.cpp:
+        (JSC::retrieveArguments):
+        (JSC::JSFunction::argumentsGetter):
+        (JSC::retrieveCallerFunction):
+        (JSC::JSFunction::callerGetter):
+        (JSC::JSFunction::lengthGetter):
+        (JSC::JSFunction::nameGetter):
+        * runtime/JSFunction.h:
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::callbackGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+            - callCustomSetter currently takes a flag to distinguish value/accessor calls.
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+            - split PutPropertySlot setCustom into Value/Accessor variants.
+        * runtime/PropertySlot.cpp:
+        (JSC::PropertySlot::functionGetter):
+        (JSC::PropertySlot::customGetter):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::getValue):
+            - added customGetter helper to call GetValueFunc.
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::PutPropertySlot):
+        (JSC::PutPropertySlot::setNewProperty):
+        (JSC::PutPropertySlot::setCustomValue):
+        (JSC::PutPropertySlot::setCustomAccessor):
+        (JSC::PutPropertySlot::setThisValue):
+        (JSC::PutPropertySlot::customSetter):
+        (JSC::PutPropertySlot::context):
+        (JSC::PutPropertySlot::isStrictMode):
+        (JSC::PutPropertySlot::isCacheablePut):
+        (JSC::PutPropertySlot::isCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableCustom):
+        (JSC::PutPropertySlot::isCustomAccessor):
+        (JSC::PutPropertySlot::isInitialization):
+        (JSC::PutPropertySlot::cachedOffset):
+        (JSC::PutPropertySlot::setCustomProperty): Deleted.
+            - split PutPropertySlot setCustom into Value/Accessor variants.
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::getOwnPropertySlot):
+        (JSC::regExpConstructorDollar1):
+        (JSC::regExpConstructorDollar2):
+        (JSC::regExpConstructorDollar3):
+        (JSC::regExpConstructorDollar4):
+        (JSC::regExpConstructorDollar5):
+        (JSC::regExpConstructorDollar6):
+        (JSC::regExpConstructorDollar7):
+        (JSC::regExpConstructorDollar8):
+        (JSC::regExpConstructorDollar9):
+        (JSC::regExpConstructorInput):
+        (JSC::regExpConstructorMultiline):
+        (JSC::regExpConstructorLastMatch):
+        (JSC::regExpConstructorLastParen):
+        (JSC::regExpConstructorLeftContext):
+        (JSC::regExpConstructorRightContext):
+        (JSC::setRegExpConstructorInput):
+        (JSC::setRegExpConstructorMultiline):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::defineOwnProperty):
+        (JSC::regExpObjectSetLastIndexStrict):
+        (JSC::regExpObjectSetLastIndexNonStrict):
+        (JSC::RegExpObject::put):
+            - Merged slotBase & thisValue to custom property callbacks.
+
+2016-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Spread expressions are not fair game for direct binding
+        https://bugs.webkit.org/show_bug.cgi?id=154042
+        rdar://problem/24291413
+
+        Reviewed by Saam Barati.
+
+        Prior to this change we crashed on this:
+
+            var [x] = [...y];
+
+        Because NodesCodegen thinks that this is a direct binding.  It's not, because we cannot
+        directly generate bytecode for "...y".  This is a unique property of spread expressions, so
+        its sufficient to just bail out of direct binding if we see a spread expression. That's what
+        this patch does.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::emitDirectBinding):
+        * tests/stress/spread-in-tail.js: Added.
+        (foo):
+        (catch):
+
+2016-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196286.
+        https://bugs.webkit.org/show_bug.cgi?id=154026
+
+        Looks like 5% iOS PLT regression (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Throw away some unlinked code when navigating to a new
+        page."
+        https://bugs.webkit.org/show_bug.cgi?id=154014
+        http://trac.webkit.org/changeset/196286
+
 2016-02-08  Keith Miller  <keith_miller@apple.com>
 
         Error construction for inlined operations should not use the inliner's CodeBlock
@@ -23,6 +1573,7 @@
 
         runtimeTypeForValue should protect against seeing TDZ value
         https://bugs.webkit.org/show_bug.cgi?id=154023
+        rdar://problem/24291413
 
         Reviewed by Michael Saboff.
 

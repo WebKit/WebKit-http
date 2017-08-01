@@ -29,15 +29,19 @@
 #if USE(NETWORK_SESSION)
 
 #import <WebCore/AuthenticationChallenge.h>
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/ResourceRequest.h>
 #import <wtf/MainThread.h>
 
 namespace WebKit {
 
-NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, WebCore::StoredCredentials storedCredentials)
+NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, WebCore::StoredCredentials storedCredentials, WebCore::ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
     : m_failureTimer(*this, &NetworkDataTask::failureTimerFired)
     , m_session(session)
     , m_client(client)
+    , m_lastHTTPMethod(requestWithCredentials.httpMethod())
+    , m_firstRequest(requestWithCredentials)
+    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(shouldClearReferrerOnHTTPSToHTTPRedirect)
 {
     ASSERT(isMainThread());
     
@@ -56,10 +60,17 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
     m_password = request.url().pass();
     request.removeCredentials();
     
+    NSURLRequest *nsRequest = request.nsURLRequest(WebCore::UpdateHTTPBody);
+    if (shouldContentSniff == WebCore::DoNotSniffContent) {
+        NSMutableURLRequest *mutableRequest = [[nsRequest mutableCopy] autorelease];
+        [mutableRequest _setProperty:@(NO) forKey:(NSString *)_kCFURLConnectionPropertyShouldSniff];
+        nsRequest = mutableRequest;
+    }
+
     if (storedCredentials == WebCore::AllowStoredCredentials)
-        m_task = [m_session.m_sessionWithCredentialStorage dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)];
+        m_task = [m_session.m_sessionWithCredentialStorage dataTaskWithRequest:nsRequest];
     else
-        m_task = [m_session.m_sessionWithoutCredentialStorage dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)];
+        m_task = [m_session.m_sessionWithoutCredentialStorage dataTaskWithRequest:nsRequest];
     
     ASSERT(!m_session.m_dataTaskMap.contains(taskIdentifier()));
     m_session.m_dataTaskMap.add(taskIdentifier(), this);
@@ -75,6 +86,39 @@ NetworkDataTask::~NetworkDataTask()
     }
 }
 
+void NetworkDataTask::willPerformHTTPRedirection(const WebCore::ResourceResponse& redirectResponse, WebCore::ResourceRequest&& request, RedirectCompletionHandler completionHandler)
+{
+    if (redirectResponse.httpStatusCode() == 307) {
+        ASSERT(m_lastHTTPMethod == request.httpMethod());
+        WebCore::FormData* body = m_firstRequest.httpBody();
+        if (body && !body->isEmpty() && !equalLettersIgnoringASCIICase(m_lastHTTPMethod, "get"))
+            request.setHTTPBody(body);
+        
+        String originalContentType = m_firstRequest.httpContentType();
+        if (!originalContentType.isEmpty())
+            request.setHTTPHeaderField(WebCore::HTTPHeaderName::ContentType, originalContentType);
+    }
+    
+    // Should not set Referer after a redirect from a secure resource to non-secure one.
+    if (m_shouldClearReferrerOnHTTPSToHTTPRedirect && !request.url().protocolIs("https") && WebCore::protocolIs(request.httpReferrer(), "https"))
+        request.clearHTTPReferrer();
+    
+    const auto& url = request.url();
+    m_user = url.user();
+    m_password = url.pass();
+    m_lastHTTPMethod = request.httpMethod();
+    request.removeCredentials();
+    
+    if (!protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
+        // The network layer might carry over some headers from the original request that
+        // we want to strip here because the redirect is cross-origin.
+        request.clearHTTPAuthorization();
+        request.clearHTTPOrigin();
+    }
+    
+    client().willPerformHTTPRedirection(redirectResponse, request, completionHandler);
+}
+    
 void NetworkDataTask::scheduleFailure(FailureType type)
 {
     ASSERT(type != NoFailure);
@@ -145,6 +189,12 @@ auto NetworkDataTask::taskIdentifier() -> TaskIdentifier
 {
     return [m_task taskIdentifier];
 }
+
+WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge& challenge)
+{
+    return WebCore::Credential([NSURLCredential credentialForTrust:challenge.nsURLAuthenticationChallenge().protectionSpace.serverTrust]);
+}
+
 }
 
 #endif

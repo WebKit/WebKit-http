@@ -209,7 +209,7 @@ BuildbotQueue.prototype = {
             for (var i = data.cachedBuilds.length - 1; i >= 0; --i) {
                 var iteration = this._knownIterations[data.cachedBuilds[i]];
                 if (!iteration) {
-                    iteration = new BuildbotIteration(this, parseInt(data.cachedBuilds[i], 10), !(data.cachedBuilds[i] in currentBuilds));
+                    iteration = new BuildbotIteration(this, data.cachedBuilds[i], !(data.cachedBuilds[i] in currentBuilds));
                     newIterations.push(iteration);
                     this.iterations.push(iteration);
                     this._knownIterations[iteration.id] = iteration;
@@ -285,9 +285,15 @@ BuildbotQueue.prototype = {
         var sortedRepositories = Dashboard.sortedRepositories;
         for (var i = 0; i < sortedRepositories.length; ++i) {
             var repositoryName = sortedRepositories[i].name;
-            var result = b.revision[repositoryName] - a.revision[repositoryName];
-            if (result)
-                return result;
+            var trac = sortedRepositories[i].trac;
+            console.assert(trac);
+            var indexA = trac.indexOfRevision(a.revision[repositoryName]);
+            var indexB = trac.indexOfRevision(b.revision[repositoryName]);
+            if (indexA !== -1 && indexB !== -1) {
+                var result = indexB - indexA;
+                if (result)
+                    return result;
+            }
         }
 
         return 0;

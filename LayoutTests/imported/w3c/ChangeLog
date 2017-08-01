@@ -1,3 +1,171 @@
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Window should have its 'constructor' property on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154037
+        <rdar://problem/24689078>
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Navigator.geolocation should not be marked a [Replaceable] and should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154304
+        <rdar://problem/24685092>
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Operations should be on the instance for global objects or if [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=154120
+        <rdar://problem/24613231>
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        The following properties should exist on the global object: AudioTrackList, AudioTrack, VideoTrackList, VideoTrack
+        https://bugs.webkit.org/show_bug.cgi?id=154250
+        <rdar://problem/24660829>
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync W3C web-platform-tests' html/dom/interfaces.html
+        https://bugs.webkit.org/show_bug.cgi?id=154259
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-sync W3C web-platform-tests' html/dom/interfaces.html after:
+        - https://github.com/w3c/web-platform-tests/pull/2580
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequest / XMLHttpRequestUpload should inherit XMLHttpRequestEventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154230
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+
+2016-02-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web Workers have no access to console for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=26237
+
+        Reviewed by Timothy Hatcher.
+
+        * web-platform-tests/streams-api/readable-streams/garbage-collection-expected.txt:
+        Update test results for a console.warn message that the test produces from a Worker.
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Window and WorkerGlobalScope should inherit EventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154170
+        <rdar://problem/24642377>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that a couple of checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should expose the DOM 4 Event.isTrusted property
+        https://bugs.webkit.org/show_bug.cgi?id=76121
+        <rdar://problem/22558494>
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/dom/events/Event-constructors-expected.txt:
+        * web-platform-tests/dom/events/Event-dispatch-redispatch-expected.txt:
+        * web-platform-tests/dom/events/Event-initEvent-expected.txt:
+        * web-platform-tests/dom/events/ProgressEvent-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createEvent-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-button-element/button-events-expected.txt:
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interfaces should inherit EventTarget instead of duplicating the EventTarget API
+        https://bugs.webkit.org/show_bug.cgi?id=154121
+        <rdar://problem/24613234>
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        Move 'length' property to the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154051
+        <rdar://problem/24577385>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/collections/HTMLCollection-supported-property-names-expected.txt:
+        * web-platform-tests/dom/collections/namednodemap-supported-property-names-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Element-children-expected.txt:
+        * web-platform-tests/dom/nodes/Element-getElementsByTagName-expected.txt:
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.forms-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C tests now that more checks are passing. Some checks still
+        fail because a lot of our interfaces should inherit EventTarget and
+        currently don't (they duplicate the EventTarget API instead).
+
+        Also, as per WebIDL, window.NodeFilter's proto should be ObjectPrototype
+        instead of FunctionPrototype but this is an exceptional case and our new
+        behavior is consistent with Firefox and Chrome.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/dom/events/Event-constructors-expected.txt:
+        * web-platform-tests/dom/historical-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-idl-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-audio-element/audio_constructor-expected.txt:
+
 2016-02-08  Chris Dumez  <cdumez@apple.com>
 
         Attribute getters should not require an explicit 'this' value for Window properties

@@ -505,6 +505,7 @@ public:
         [NSNumber numberWithBool:NO],  WebKitForceSoftwareWebGLRenderingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],  WebKitResourceLoadStatisticsEnabledPreferenceKey,
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:YES],  WebKitFrameFlatteningEnabledPreferenceKey,
 #else
@@ -517,6 +518,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitHyperlinkAuditingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsePreHTML5ParserQuirksKey,
         [NSNumber numberWithBool:YES],  WebKitAVFoundationEnabledKey,
+        [NSNumber numberWithBool:NO],   WebKitAVFoundationNSURLSessionEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitSuppressesIncrementalRenderingKey,
 #if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
@@ -1828,6 +1830,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitDisplayListDrawingEnabledPreferenceKey];
 }
 
+- (BOOL)resourceLoadStatisticsEnabled
+{
+    return [self _boolValueForKey:WebKitResourceLoadStatisticsEnabledPreferenceKey];
+}
+
+- (void)setResourceLoadStatisticsEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitResourceLoadStatisticsEnabledPreferenceKey];
+}
+
 - (BOOL)canvasUsesAcceleratedDrawing
 {
     return [self _boolValueForKey:WebKitCanvasUsesAcceleratedDrawingPreferenceKey];
@@ -2066,6 +2078,16 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)isAVFoundationEnabled
 {
     return [self _boolValueForKey:WebKitAVFoundationEnabledKey];
+}
+
+- (void)setAVFoundationNSURLSessionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAVFoundationNSURLSessionEnabledKey];
+}
+
+- (BOOL)isAVFoundationNSURLSessionEnabled
+{
+    return [self _boolValueForKey:WebKitAVFoundationNSURLSessionEnabledKey];
 }
 
 - (void)setQTKitEnabled:(BOOL)flag

@@ -54,6 +54,10 @@ fast/history/page-cache-closed-audiocontext.html
 fast/history/page-cache-running-audiocontext.html
 fast/history/page-cache-suspended-audiocontext.html
 
+# No mousewheel events on iOS
+fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
+fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
+
 # Not supported on iOS
 batterystatus
 fast/mediastream
@@ -92,9 +96,6 @@ fast/history/page-cache-media-source-closed.html [ Skip ]
 fast/history/page-cache-media-source-opened.html [ Skip ]
 fast/history/page-cache-removed-source-buffer.html [ Skip ]
 
-# Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
-webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1
-
 # X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
 webkit.org/b/136452 http/tests/security/contentTypeOptions
 
@@ -106,8 +107,6 @@ webkit.org/b/144475 storage/indexeddb
 
 # TODO Animation triggers not supported
 animations/trigger-container-scroll-boundaries.html [ Failure ]
-animations/trigger-container-scroll-empty.html [ Failure ]
-animations/trigger-container-scroll-simple.html [ Failure ]
 
 # Quota API is not supported on iOS
 storage/domstorage/quota.html
@@ -246,25 +245,6 @@ svg/clip-path/clip-path-line-use-before-defined.svg [ ImageOnlyFailure ]
 # SVG
 webkit.org/b/137574 svg/dom/SVGAnimatedAngle.html [ Skip ] # Pass, Crash
 webkit.org/b/137574 svg/css/arrow-with-shadow.svg [ Skip ] # Pass, Crash
-
-# Animation tests that fail:
-animations/cross-fade-background-image.html [ ImageOnlyFailure ]
-animations/cross-fade-webkit-mask-box-image.html [ Failure ]
-animations/play-state-suspend.html [ Pass Failure ]
-animations/suspend-resume-animation.html [ Pass Failure ]
-animations/unprefixed-events-mixed-with-prefixed.html [ Pass Failure ]
-animations/unprefixed-events.html [ Pass Failure ]
-
-# Animation tests that are flaky:
-animations/3d/matrix-transform-type-animation.html [ Skip ] # Pass, Timeout, Missing
-animations/3d/replace-filling-transform.html [ Skip ] # ImageOnlyFailure, Timeout, Pass
-animations/3d/state-at-end-event-transform.html [ Skip ] # Pass, Timeout, Missing 
-animations/animation-delay-changed.html [ Skip ] # Failure, Pass
-animations/cross-fade-border-image-source.html [ Skip ] # Failure, ImageOnlyFailure, Pass
-
-# Animation tests that have stderr:
-animations/3d/transform-origin-vs-functions.html [ Skip ]
-animations/added-while-suspended.html [ Skip ]
 
 # Canvas tests that fail:
 webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
@@ -633,6 +613,7 @@ js/dom/global-constructors-attributes.html [ Failure ]
 # Page overlay tests that fail:
 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
 pageoverlay/overlay-large-document.html [ Failure ]
+webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
 
 # MathML tests that fail:
 mathml/opentype/horizontal.html [ Failure ]
@@ -1216,7 +1197,6 @@ svg/text/selection-tripleclick.svg [ Failure ]
 svg/text/small-fonts-2.svg [ Failure ]
 svg/text/small-fonts-3.svg [ Failure ]
 svg/text/small-fonts.svg [ Failure ]
-svg/text/svg-font-word-rounding-hacks-spaces.html [ ImageOnlyFailure ]
 svg/text/text-align-01-b.svg [ Failure ]
 svg/text/text-align-02-b.svg [ Failure ]
 svg/text/text-align-03-b.svg [ Failure ]
@@ -2788,7 +2768,6 @@ webkit.org/b/153292 accessibility/text-marker [ Pass ]
 # More flaky tests (Sept 18, 2015)
 
 fast/forms/select-element-focus-ring.html [ Failure Pass ]
-animations/keyframe-multiple-timing-functions-transform.html [ Failure Pass ]
 compositing/visible-rect/coverage-scrolling.html [ Failure Pass ]
 
 # Imported Blink tests.
@@ -2862,7 +2841,6 @@ webkit.org/b/152134 fast/events/ios/viewport-no-width-value-allows-double-tap.ht
 webkit.org/b/152141 fast/picture/image-picture-1x.html [ Skip ]
 webkit.org/b/152141 fast/picture/image-picture-invalid.html [ Skip ]
 webkit.org/b/152141 fast/picture/image-picture-nested.html [ Skip ]
-webkit.org/b/153043 fast/picture/image-picture-loads-1x.html [ Skip ]
 webkit.org/b/152992 http/tests/loading/preload-picture-invalid.html [ Skip ]
 webkit.org/b/152992 http/tests/loading/preload-picture-nested.html [ Skip ]
 webkit.org/b/152992 http/tests/loading/preload-picture-sizes.html [ Skip ]
@@ -2938,3 +2916,13 @@ webkit.org/b/153315 fast/css3-text/css3-text-decoration/text-underline-position/
 webkit.org/b/153898 pageoverlay/overlay-small-frame-paints.html [ Pass Failure ]
 
 webkit.org/b/153933 css3/filters/multiple-filters-invalidation.html [ Pass Crash ]
+
+webkit.org/b/154055 perf/adding-radio-buttons.html [ Pass Failure ]
+
+webkit.org/b/153762 fast/regions/text-break-properties.html [ Skip ]
+
+webkit.org/b/153029 fast/css-generated-content/details-summary-before-after.html [ Failure ]
+
+webkit.org/b/76121 imported/blink/fast/events/event-trusted.html [ Skip ]
+
+webkit.org/b/154253 animations/animation-delay-changed.html [ Pass Failure ]

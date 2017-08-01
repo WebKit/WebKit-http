@@ -34,6 +34,7 @@
 #include "EventListenerMap.h"
 #include "EventNames.h"
 #include "EventTargetInterfaces.h"
+#include "ScriptWrappable.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -108,7 +109,7 @@ DOM_EVENT_TARGET_INTERFACES_FOR_EACH(DOM_EVENT_INTERFACE_DECLARE)
 
 };
 
-class EventTarget {
+class EventTarget : public ScriptWrappable {
 public:
     void ref() { refEventTarget(); }
     void deref() { derefEventTarget(); }
@@ -124,7 +125,7 @@ public:
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture);
     virtual void removeAllEventListeners();
     virtual bool dispatchEvent(Event&);
-    bool dispatchEvent(Event*, ExceptionCode&); // DOM API
+    bool dispatchEventForBindings(Event*, ExceptionCode&); // DOM API
     virtual void uncaughtExceptionInEventHandler();
 
     // Used for legacy "onEvent" attribute APIs.

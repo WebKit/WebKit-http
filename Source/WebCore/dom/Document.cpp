@@ -134,6 +134,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -4145,21 +4146,21 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // <https://dom.spec.whatwg.org/#dom-document-createevent>.
 
     if (equalLettersIgnoringASCIICase(type, "customevent"))
-        return CustomEvent::create();
+        return CustomEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "event") || equalLettersIgnoringASCIICase(type, "events") || equalLettersIgnoringASCIICase(type, "htmlevents"))
-        return Event::create();
+        return Event::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "keyboardevent") || equalLettersIgnoringASCIICase(type, "keyboardevents"))
-        return KeyboardEvent::create();
+        return KeyboardEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "messageevent"))
-        return MessageEvent::create();
+        return MessageEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "mouseevent") || equalLettersIgnoringASCIICase(type, "mouseevents"))
-        return MouseEvent::create();
+        return MouseEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "uievent") || equalLettersIgnoringASCIICase(type, "uievents"))
-        return UIEvent::create();
+        return UIEvent::createForBindings();
 
 #if ENABLE(TOUCH_EVENTS)
     if (equalLettersIgnoringASCIICase(type, "touchevent"))
-        return TouchEvent::create();
+        return TouchEvent::createForBindings();
 #endif
 
     // The following string comes from the SVG specifications
@@ -4169,7 +4170,7 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // there is no practical value in this feature.
 
     if (equalLettersIgnoringASCIICase(type, "svgzoomevents"))
-        return SVGZoomEvent::create();
+        return SVGZoomEvent::createForBindings();
 
     // The following strings are for event classes where WebKit supplies an init function.
     // These strings are not part of the DOM specification and we would like to eliminate them.
@@ -4179,25 +4180,25 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // both the string and the corresponding init function for that class.
 
     if (equalLettersIgnoringASCIICase(type, "compositionevent"))
-        return CompositionEvent::create();
+        return CompositionEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "hashchangeevent"))
-        return HashChangeEvent::create();
+        return HashChangeEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "mutationevent") || equalLettersIgnoringASCIICase(type, "mutationevents"))
-        return MutationEvent::create();
+        return MutationEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "overflowevent"))
-        return OverflowEvent::create();
+        return OverflowEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "storageevent"))
-        return StorageEvent::create();
+        return StorageEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "textevent"))
-        return TextEvent::create();
+        return TextEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "wheelevent"))
-        return WheelEvent::create();
+        return WheelEvent::createForBindings();
 
 #if ENABLE(DEVICE_ORIENTATION)
     if (equalLettersIgnoringASCIICase(type, "devicemotionevent"))
-        return DeviceMotionEvent::create();
+        return DeviceMotionEvent::createForBindings();
     if (equalLettersIgnoringASCIICase(type, "deviceorientationevent"))
-        return DeviceOrientationEvent::create();
+        return DeviceOrientationEvent::createForBindings();
 #endif
 
     ec = NOT_SUPPORTED_ERR;
@@ -4598,6 +4599,9 @@ void Document::setInPageCache(bool flag)
                 v->resetScrollbars();
         }
         m_styleRecalcTimer.stop();
+
+        clearStyleResolver();
+        clearSelectorQueryCache();
     } else {
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
@@ -6396,6 +6400,9 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
 
 void Document::updateLastHandledUserGestureTimestamp()
 {
+    if (!m_lastHandledUserGestureTimestamp)
+        ResourceLoadObserver::sharedObserver().logUserInteraction(*this);
+
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
 }
 

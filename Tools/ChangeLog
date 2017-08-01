@@ -1,3 +1,261 @@
+2016-02-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Gather some rudimentary statistics during resource load 
+        https://bugs.webkit.org/show_bug.cgi?id=153575
+        <rdar://problem/24075254>
+
+        Reviewed by Brady Eidson.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]): Add menu item for new debug flag.
+        (-[SettingsController toggleResourceLoadStatisticsEnabled:]): Added.
+        (-[SettingsController resourceLoadStatisticsEnabled]): Added.
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController didChangeSettings]): React to changes in
+        users's desire to track resource load statistics.
+
+2016-02-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Update Tools/efl/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=154239
+
+        Reviewed by Michael Catanzaro.
+
+        * efl/install-dependencies:
+
+2016-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build of projects built after WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=154249
+        rdar://problem/24644805
+
+        Reviewed by Chris Dumez.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/win/CMakeLists.txt:
+        Don't include DerivedSources/WebKit/Interfaces to make MiniBrowser and DumpRenderTree
+        more like projects built internally after WebKit.  They should only need to use what
+        is in ForwardingHeaders/WebKit.
+
+2016-02-12  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement paragraph related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154098
+        <rdar://problem/24269675>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (nextWordEndTextMarkerForTextMarkerCallback):
+        (paragraphTextMarkerRangeForTextMarkerCallback):
+        (previousParagraphStartTextMarkerForTextMarkerCallback):
+        (nextParagraphEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
+2016-02-12  Jason Marcell  <jmarcell@apple.com>
+
+        Open source bot watcher's dashboard fails assertion in BuildbotQueue.prototype.compareIterationsByRevisions
+        https://bugs.webkit.org/show_bug.cgi?id=154180
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js: Remove reference to Internal
+        repository.
+
+2016-02-12  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt MediaResourceLoader (instead of CachedResourceLoader) in WebCoreNSURLSession.
+        https://bugs.webkit.org/show_bug.cgi?id=154136
+
+        Reviewed by Alex Christensen.
+
+        Use a MediaResourceLoader instead of a CachedResourceLoader for WebCoreNSURLSession.
+
+        Drive-by fix: generate USE and ENABLE macros for TestWebKitAPI by adding FEATURE_DEFINES
+        to GCC_PREPROCESSOR_DEFINES.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        (TestWebKitAPI::WebCoreNSURLSessionTest::TearDown):
+        (TestWebKitAPI::TEST_F):
+
+2016-02-11  Dana Burkart  <dburkart@apple.com>
+
+        Large logs can bring down the webkit master
+        https://bugs.webkit.org/show_bug.cgi?id=122112
+
+        Reviewed by Lucas Forschler.
+
+        Implement the suggested fix of throwing away stdout / stderr.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunWebKit1LeakTests):
+
+2016-02-10  Jason Marcell  <jmarcell@apple.com>
+
+        Remove calls to parseInt in order to work with non-integer revisions
+        https://bugs.webkit.org/show_bug.cgi?id=153820
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.sourceStampChanges): Remove calls to parseInt in order to work with non-integer
+        revisions.
+        (BuildbotIteration.prototype._parseData): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.update): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueueView.js:
+        (MockBuildbotQueueView.prototype._latestProductiveIteration): Change integers to strings in test code.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac.prototype.get oldestRecordedRevisionNumber): Ditto.
+        (MockTrac.prototype.get latestRecordedRevisionNumber): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Ditto.
+
+2016-02-10  Jason Marcell  <jmarcell@apple.com>
+
+        Teach dashboard code to compare non-integer revisions
+        https://bugs.webkit.org/show_bug.cgi?id=152345
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.compareIterationsByRevisions): Compare non-integer revisions.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Use Trac.indexOfRevision in order to compare non-integer
+        revisions. Also uses new Trac.commitsOnBranchLaterThanRevision method.
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Ditto.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Use Trac.indexOfRevision in order to compare non-integer
+        revisions. Also uses new Trac.nextRevision method to calculate a revision range.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._commitsOnBranch): Renamed this to indicate that it should be a private method used by the latter two new
+        methods.
+        (Trac.prototype.commitsOnBranchLaterThanRevision): Finds revisions on a branch later than the specified revision.
+        (Trac.prototype.commitsOnBranchInRevisionRange): Finds revisions on a branch within a specified range.
+        (Trac.prototype.nextRevision): Finds the next revision after a given revision on a specific branch.
+        (Trac.prototype.indexOfRevision): Finds the index of a given revision within the recordedCommits array.
+        (Trac.prototype.commitsOnBranch): Deleted. Renamed to _commitsOnBranch.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit tests.
+
+2016-02-09  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement word related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=153939
+        <rdar://problem/24269605>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (endTextMarkerCallback):
+        (leftWordTextMarkerRangeForTextMarkerCallback):
+        (rightWordTextMarkerRangeForTextMarkerCallback):
+        (previousWordStartTextMarkerForTextMarkerCallback):
+        (nextWordEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::setBoolAttributeValue):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::endTextMarker):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::endTextMarker):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Remove eail related cruft after r195725
+        https://bugs.webkit.org/show_bug.cgi?id=154030
+
+        Reviewed by Alex Christensen.
+
+        * efl/jhbuildrc:
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Remove LLVM related cruft after r196077
+        https://bugs.webkit.org/show_bug.cgi?id=154031
+
+        Reviewed by Alex Christensen.
+
+        * efl/jhbuild.modules:
+        * efl/patches/llvm-elf-add-stackmaps-arm64.patch: Removed.
+        * efl/patches/llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch: Removed.
+        * efl/patches/llvm-version-arm64.patch: Removed.
+
 2016-02-05  Aakash Jain  <aakash_jain@apple.com>
 
         tests fail if display sleeps while run-webkit-tests is running

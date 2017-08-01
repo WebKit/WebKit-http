@@ -89,6 +89,7 @@ public:
 
     String address(Node*);
     bool nodeNeedsStyleRecalc(Node*, ExceptionCode&);
+    String styleChangeType(Node*, ExceptionCode&);
     String description(Deprecated::ScriptValue);
 
     bool isPreloaded(const String& url);
@@ -345,6 +346,7 @@ public:
     bool isFromCurrentWorld(Deprecated::ScriptValue) const;
 
     void setUsesOverlayScrollbars(bool enabled);
+    void setUsesMockScrollAnimator(bool enabled);
 
     String getCurrentCursorInfo(ExceptionCode&);
 
@@ -460,6 +462,9 @@ public:
 
     String userVisibleString(const DOMURL*);
     void setShowAllPlugins(bool);
+
+    String resourceLoadStatisticsForOrigin(String origin);
+    void setResourceLoadStatisticsEnabled(bool);
 
 #if ENABLE(STREAMS_API)
     bool isReadableStreamDisturbed(ScriptState&, JSC::JSValue);

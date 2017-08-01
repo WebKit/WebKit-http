@@ -1,3 +1,642 @@
+2016-02-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add singular and plural cases for "Ignore n times before stopping" label in breakpoint editor
+        https://bugs.webkit.org/show_bug.cgi?id=154335
+        <rdar://problem/24655491>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Added string for singular ignore count.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype._createPopoverContent):
+        Remove unused variable "this._ignoreCount" and update ignore count text.
+
+        (WebInspector.BreakpointPopoverController.prototype._popoverIgnoreInputChanged):
+        Update ignore count text as value changes.
+
+        (WebInspector.BreakpointPopoverController.prototype._updateIgnoreCountText):
+        Set singular text when count === 1, otherwise set plural text.
+
+2016-02-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r196620): Web Inspector: Selecting last message in the console makes the scrollbar visible
+        https://bugs.webkit.org/show_bug.cgi?id=154326
+        <rdar://problem/24692717>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-item.selected::after):
+        Make sure the selected message marker (blue vertical line) doesn't
+        go over the content view.
+
+2016-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Support for inline source maps
+        https://bugs.webkit.org/show_bug.cgi?id=154303
+        <rdar://problem/24670392>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseDataURL):
+        Break a data URL into components.
+
+        * UserInterface/Controllers/SourceMapManager.js:
+        (WebInspector.SourceMapManager.prototype._loadAndParseSourceMap):
+        Handle a data URL without using NetworkAgent. Also move references
+        to a main frame after checking for NetworkAgent.
+
+        * UserInterface/Models/SourceMap.js:
+        (WebInspector.SourceMap.prototype.get sourceMappingBasePathURLComponents):
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.get sourceMapDisplaySubpath):
+        Handle JavaScript debuggable script URLs which may not be complete URLs.
+
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend):
+        Also handle if NetworkAgent does not exist.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        When connected to a JavaScript debuggable we were hiding disclosure
+        triangles as we did not expect resources to have subresources. If
+        a SourceMap is added, show them again.
+
+2016-02-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Increase the width of the find banner's search field
+        https://bugs.webkit.org/show_bug.cgi?id=154284
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > input[type="search"]):
+        Keep the minimum width the same as the current width.
+
+        (body .find-banner.console-find-banner):
+        Overwrite ".navigation-bar .item {flex-wrap: nowrap}".
+
+2016-02-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Non-overlay scrollbars obscure the ends of lines in the console and sidebars
+        https://bugs.webkit.org/show_bug.cgi?id=154276
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid .data-container):
+        * UserInterface/Views/DatabaseContentView.css:
+        (.storage-view.query):
+        * UserInterface/Views/LogContentView.css:
+        (.content-view.log):
+        Replace all occurrences of "overflow-y: overlay" with "overflow-y: auto".
+
+2016-02-15  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual sidebar minor regression fixes
+        https://bugs.webkit.org/show_bug.cgi?id=154237
+        <rdar://problem/24653135>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-special-property-placeholder):
+        Do not display the placeholder, as it is not used in comma separated value
+        property editors.
+
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle::before):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle): Deleted.
+        Added ::before to get rid of the "-" on subtitle elements (r196266).
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype.widthDidChange):
+        Recalculates the width for all comma separated value elements (r196266).
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateSections):
+        Only open/close sections with properties that have values when a new node
+        or selector item is selected.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBorderSection):
+        Make copies of the default unit lists to prevent modifying the values used
+        later in other sections (r194728).
+
+2016-02-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: eliminate the linear and rendering frames TimelineOverview subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=154000
+        <rdar://problem/24553105>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch eliminates the TimelineOverview subclasses, and moves logic for switching between
+        a time-based or frame-based graph into the overview itself. The values of the overview's start
+        time, current time, and end time now match the values in the timeline recording regardless of the
+        current view mode. When viewing the rendering frames graph, the recording times are ignored and
+        all frames are included. The overview maintains separate zoom level and ruler selection settings
+        for each view mode.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/LinearTimelineOverview.js: Removed.
+        * UserInterface/Views/RenderingFrameTimelineOverview.js: Removed.
+        Removed TimelineOverview subclasses.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype.get height):
+        Set FPS graph height to 108 pixels.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview:not(.frames) > .graphs-container > .timeline-overview-graph:nth-child(even)):
+        (.timeline-overview:not(.frames) > .graphs-container > .timeline-overview-graph:not(:first-child)):
+        (.timeline-overview > .graphs-container > .timeline-overview-graph:nth-child(even)): Deleted.
+        (.timeline-overview > .graphs-container > .timeline-overview-graph:not(:first-child)): Deleted.
+        Disable alternating graph styles when showing FPS instrument.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        Create separate settings for timelines and FPS view modes.
+        (WebInspector.TimelineOverview.prototype.get viewMode):
+        (WebInspector.TimelineOverview.prototype.set viewMode):
+        (WebInspector.TimelineOverview.prototype.set startTime):
+        Adjust the current ruler selection when start time changes. Not necessary
+        when showing the FPS instrument, which doesn't have a start time.
+        (WebInspector.TimelineOverview.prototype.get secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        Now a wrapper around the corresponding view mode setting.
+        (WebInspector.TimelineOverview.prototype.set pixelAlignDuration):
+        (WebInspector.TimelineOverview.prototype.get scrollStartTime):
+        (WebInspector.TimelineOverview.prototype.set scrollStartTime):
+        Now a wrapper around the corresponding view mode setting.
+        (WebInspector.TimelineOverview.prototype.get visibleDuration):
+        (WebInspector.TimelineOverview.prototype.get height):
+        Return the sum height of all visible overview graphs.
+        (WebInspector.TimelineOverview.prototype.shown):
+        Show overview graphs for the current view mode.
+        (WebInspector.TimelineOverview.prototype.hidden):
+        (WebInspector.TimelineOverview.prototype.reset):
+        (WebInspector.TimelineOverview.prototype.recordWasFiltered):
+        (WebInspector.TimelineOverview.prototype.selectRecord):
+        (WebInspector.TimelineOverview.prototype.updateLayoutIfNeeded):
+        (WebInspector.TimelineOverview.prototype.layout):
+        Layout for both view modes is largely identical, and differs only in the treatment
+        of the overview's start time, current time, and end time. Time-based instruments
+        use time values from the recording, while the FPS instrument has a fixed start time
+        of zero, and a current and end time pinned to the last rendering frame.
+        (WebInspector.TimelineOverview.prototype._handleScrollEvent):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        (WebInspector.TimelineOverview._handleGestureStart):
+        (WebInspector.TimelineOverview.prototype._handleGestureChange):
+        (WebInspector.TimelineOverview.prototype._instrumentAdded):
+        (WebInspector.TimelineOverview.prototype._instrumentRemoved):
+        (WebInspector.TimelineOverview.prototype._timelineRulerMouseClicked):
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+        Save the selection for the current view mode.
+        (WebInspector.TimelineOverview.prototype._recordSelected):
+        (WebInspector.TimelineOverview.prototype._resetSelection.reset):
+        (WebInspector.TimelineOverview.prototype._resetSelection):
+        (WebInspector.TimelineOverview.prototype._canShowTimelineType):
+        (WebInspector.TimelineOverview.prototype._viewModeDidChange):
+        Sets zoom level, ruler selection, and graph visibility based on current view mode.
+        (WebInspector.TimelineOverview.prototype._createViewModeSettings):
+        Helper function for creating an object to track the zoom level and ruler
+        selection of each view mode.
+        (WebInspector.TimelineOverview.prototype.get _currentSettings):
+        Internal getter for retrieving the settings for the current view mode.
+        (WebInspector.TimelineOverview.prototype.canShowTimeline): Deleted.
+        Not needed now that the overview contains all timelines.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph):
+        (WebInspector.TimelineOverviewGraph.prototype.shown):
+        (WebInspector.TimelineOverviewGraph.prototype.hidden):
+        Toggle CSS hidden class.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        No need to query offsetHeight now that TimelineOverviewGraph has a height property.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        Create a single timeline overview.
+        (WebInspector.TimelineRecordingContentView.prototype.get timelineOverviewHeight):
+        (WebInspector.TimelineRecordingContentView.prototype.shown):
+        (WebInspector.TimelineRecordingContentView.prototype.hidden):
+        (WebInspector.TimelineRecordingContentView.prototype.recordWasFiltered):
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        Update the timeline  overview's mode based on the current timeline view.
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        Removed special handling for the FPS overview.
+        Removed selection start time adjustment, which is now handled internally by TimelineOverview.
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimelineOverviewHeight):
+        (WebInspector.TimelineRecordingContentView.prototype._recordingReset):
+        (WebInspector.TimelineRecordingContentView.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineRecordingContentView.prototype._updateFrameSelection):
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.TimelineSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.TimelineSidebarPanel.prototype._renderingFrameTimelineTimesUpdated):
+        (WebInspector.TimelineSidebarPanel.prototype._contentBrowserCurrentContentViewDidChange):
+        Refresh the view mode when the content view changes.
+        (WebInspector.TimelineSidebarPanel.prototype._recordingSelected):
+        (WebInspector.TimelineSidebarPanel.prototype._viewModeSelected):
+        (WebInspector.TimelineSidebarPanel.prototype._viewModeForTimeline):
+        (WebInspector.TimelineSidebarPanel.prototype._updateViewModeIfNeeded):
+        Sync the tree outline, frames chart, and navigation bar with the current view mode.
+        (WebInspector.TimelineSidebarPanel.prototype.shown):
+        Refreshing the frame selection is unnecessary. It's updated by the recording content
+        view whenever the ruler selection changes.
+        (WebInspector.TimelineSidebarPanel.prototype.get viewMode): Deleted.
+        No longer public, since the timeline overview now owns the view mode. Internally the sidebar
+        still tracks the current state so it can determine when the value has changed.
+        (WebInspector.TimelineSidebarPanel.prototype.showTimelineOverview):
+        (WebInspector.TimelineSidebarPanel.prototype.showTimelineViewForTimeline):
+        The sidebar should only be synced to the overview after the content view has changed.
+        (WebInspector.TimelineSidebarPanel.prototype.updateFrameSelection):
+        Removed unnecessary assertion.
+        (WebInspector.TimelineSidebarPanel.prototype._changeViewMode): Deleted.
+        Replaced by _updateViewModeIfNeeded.
+
+2016-02-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Show inherited CSS variables in the Style sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=154215
+        rdar://problem/24644058
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WebInspector.CSSProperty.isInheritedPropertyName): Added.
+        (WebInspector.CSSProperty.prototype.update): Use WebInspector.CSSProperty.isInheritedPropertyName.
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload): Use WebInspector.CSSProperty.isInheritedPropertyName.
+
+2016-02-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Sidebars are defaulting to their minimum width, instead of a good width
+        https://bugs.webkit.org/show_bug.cgi?id=154218
+        rdar://problem/24644192
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel): Default the setting value to 300 instead of 0, so the minimum isn't used.
+
+2016-02-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: CSS variables are not formatted correctly
+        https://bugs.webkit.org/show_bug.cgi?id=154217
+        rdar://problem/24644154
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        (newlineBeforeToken): Check for `variable-2` token in the `maybeprop` state.
+
+2016-02-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: CodeMirror styles needs updated for CSS variables
+        https://bugs.webkit.org/show_bug.cgi?id=154216
+        rdar://problem/24644146
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .cm-m-css:matches(.cm-atom, .cm-meta, .cm-variable-2, .cm-variable-3, .cm-property)): Added .cm-variable-2.
+        (.cm-s-default .basic-block-has-not-executed.cm-m-css:matches(.cm-atom, .cm-meta, .cm-variable-2, .cm-variable-3, .cm-property)): Ditto.
+
+2016-02-13  Dan Bernstein  <mitz@apple.com>
+
+        Removed the unused Frameworks group.
+
+        Rubber-stamped by Sam Weinig.
+
+        * WebInspectorUI.xcodeproj/project.pbxproj:
+
+2016-02-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: DataGrid Header Cells should have Context Menu for Sorting
+        https://bugs.webkit.org/show_bug.cgi?id=154050
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.set sortOrder):
+        (WebInspector.DataGrid.prototype._toggledSortOrder):
+        Returns the opposite sort order from the current order.
+
+        (WebInspector.DataGrid.prototype._selectSortColumnAndSetOrder):
+        Changes the selected column to the one with the specified identifier and
+        then switches the sort order to the given order.
+
+        (WebInspector.DataGrid.prototype._headerCellClicked):
+        Moved logic for switching cells/sort-order to a separate function for
+        better reusability.
+
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        Adds context menu items on DataGrid header items to change the current
+        sort order to the specified order. If the context menu is on the selected
+        header item, only show the sort order that is not currently applied.
+
+2016-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename domAgent to domTreeManager in DOMNode
+        https://bugs.webkit.org/show_bug.cgi?id=154194
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+
+2016-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid including ESLint until it is used
+        https://bugs.webkit.org/show_bug.cgi?id=154196
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Do not include ESLint in optimized output yet.
+
+        * UserInterface/Controllers/AnalyzerManager.js:
+        Do not reference `eslint` until we use it.
+
+        * UserInterface/Main.html:
+        Remove include to ESLint until we need it.
+
+2016-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tabs: Conflicts with multiple Formatters per SourceCode
+        https://bugs.webkit.org/show_bug.cgi?id=144717
+        <rdar://problem/20845163>
+
+        Reviewed by Timothy Hatcher.
+
+        The underlying issue here is that each tab may create its own ContentView,
+        and therefore SourceCodeTextEditor, per-SourceCode. Each SourceCodeTextEditor
+        was mutating the SourceCode's state without listening for or expecting
+        updates from the other. This causes a bunch of different issues:
+
+            - editing in one tab does not get reflected in another tab for
+              the same resource. This is common when using the Search tab
+              to find and make an edit, then debug in another tab.
+
+            - one tab may auto format (pretty print) a resource and set
+              the formatter on the SourceCode to make SourceCodeLocations
+              know about formatted locations. However, a jump to location
+              that opens a new ContentView for the same Resource will
+              start out un-formatted, and misunderstand the location.
+              This often results in an unexpected jump to 0:0.
+
+        The solution taken by this change is to have a single ContentView
+        per represented object. When that ContentView gets shown in a new
+        ContentViewContainer it gets transferred, leaving a tombstone in the
+        previous ContentViewContainer that can be revived later. This keeps
+        back foward lists with expected values. It also means there is a
+        single ContentView that doesn't need to worry about having the
+        state of its represented object getting overrun.
+
+        Currently this makes the assumption that we won't ever show multiple
+        ContentViews for the same represented object at the same time. This
+        may need to change if we were to support split pane editor or
+        something like that.
+
+        This also makes the assumption that ContentViewContainer's showEntry
+        and hideEntry do not modify the back forward list. That has not been
+        the case, and I think it is safe to assume it will never be the case.
+
+        The contracts this patch maintains:
+
+            - a ContentView is always owned by one ViewContainer.
+              This ViewContainer is the one showing the ContentView.
+
+            - when another ViewContainer wants to share the ContentView
+              ownership is transferred. Creating tombstones in the old
+              ViewContainer and Reviving tombstones in the new ViewContainer.
+
+            - ViewContainer's have a tombstone per-BackForwardEntry that
+              references the ContentView.
+
+            - In order to ensure a ContentView always gets closed, when
+              the owning ViewContainer would close the ContentView it
+              checks if it should instead transfer ownership of the
+              ContentView to another interested ViewContainer.
+
+        This also maintains the contract that a ContentView should only be
+        closed once. When the ContentView is transferred between two
+        ContentViewContainers it should hide/show from the old to the new.
+        The last ContentViewContainer to reference a ContentView should
+        be the one to close the ContentView.
+
+        * UserInterface/Models/BackForwardEntry.js:
+        (WebInspector.BackForwardEntry):
+        (WebInspector.BackForwardEntry.prototype.get tombstone):
+        (WebInspector.BackForwardEntry.prototype.set tombstone):
+        (WebInspector.BackForwardEntry.prototype.prepareToShow):
+        (WebInspector.BackForwardEntry.prototype.prepareToHide):
+        Tombstone state and assertions that we don't show/hide tombstones,
+        that should all be done before a back forward entry has become a tombstone.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.contentViewForRepresentedObject):
+        (WebInspector.ContentView.closedContentViewForRepresentedObject):
+        (WebInspector.ContentView.resolvedRepresentedObjectForRepresentedObject):
+        Helpers for getting / creating / clearing the single ContentView that
+        is associated with a represented object.
+
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype.contentViewForRepresentedObject):
+        (WebInspector.ContentViewContainer.prototype.showContentView):
+        Eliminate code that dealt with multiple content views per represented object.
+        That is replaced by multiple ContentViewContainers per ContentView.
+
+        (WebInspector.ContentViewContainer.prototype.replaceContentView):
+        This is called in special places where we don't need to worry about a tombstone.
+        It is an in replace of a content view.
+
+        (WebInspector.ContentViewContainer.closeAllContentViewsOfPrototype):
+        (WebInspector.ContentViewContainer.prototype.closeContentView):
+        (WebInspector.ContentViewContainer.prototype.closeAllContentViews):
+        (WebInspector.ContentViewContainer.prototype._disassociateFromContentView):
+        Deal with closing BackForwardEntrys that are tombstones.
+
+        (WebInspector.ContentViewContainer.prototype._takeOwnershipOfContentView):
+        (WebInspector.ContentViewContainer.prototype._placeTombstonesForContentView):
+        (WebInspector.ContentViewContainer.prototype._clearTombstonesForContentView):
+        Helpers for transfering ownership of a ContentView to a ContentViewContainer.
+        There is always one owner of the ContentView. Non-owners have tombstone
+        BackForward entries.
+
+        (WebInspector.ContentViewContainer.prototype._showEntry):
+        If we are showing a tombstone, gain ownership.
+
+        (WebInspector.ContentViewContainer.prototype._hideEntry):
+        This may happen in closing, for simplicity we bail here instead of include
+        messy logic at the call site. We would have already hidden this entry
+        when making it a tombstone.
+
+2016-02-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: SourceCodeTextEditor close() generates removeEventListener warnings
+        https://bugs.webkit.org/show_bug.cgi?id=154150
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        Remove the event listeners in the cases that we would have added them.
+        If we have SourceMap information we should remove the key listener,
+        and if we don't we should remove the SourceMapAdded listener.
+
+2016-02-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add new icon for the Timeline Recording navigation bar item
+        https://bugs.webkit.org/show_bug.cgi?id=154089
+        rdar://problem/24595652
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/Stopwatch.png: Removed.
+        * UserInterface/Images/Stopwatch@2x.png: Removed.
+        * UserInterface/Images/Stopwatch.svg: Added.
+        * UserInterface/Views/TimelineIcons.css:
+        (.stopwatch-icon .icon): Use Stopwatch.svg.
+        (body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon): Added for GTK+.
+
+2016-02-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Switching actions in Edit Breakpoint popover causes a jerk
+        https://bugs.webkit.org/show_bug.cgi?id=154093
+        <rdar://problem/24597869>
+
+        Reviewed by Timothy Hatcher.
+
+        Adjusted CodeMirror eval editor styles to match vanilla input field.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-eval-editor):
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Regression: Web Inspector: Sometimes in Elements panel two elements showed as selected at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=149742
+        <rdar://problem/24492481>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.moveChild):
+        Since removing and re-adding this tree element may forgot its
+        entire child tree, re-select the selected child that may have
+        just been lost in the shuffle.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype._forgetTreeElement):
+        When forgetting the selected tree element, also deselect the
+        forgotten tree element so it clears its selected state.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow copying all headers in the request/response header tables
+        https://bugs.webkit.org/show_bug.cgi?id=154048
+        <rdar://problem/24576302>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Copy Table" string.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        Add context menu support for table header cells, and give them a
+        "Copy Table" context menu if there is copyable data.
+
+        (WebInspector.DataGrid.prototype._contextMenuInDataTable):
+        Add "Copy Table" context menu for copyable rows.
+
+        (WebInspector.DataGrid.prototype._copyTextForDataGridNode):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridHeaders):
+        (WebInspector.DataGrid.prototype._copyTable):
+        (WebInspector.DataGrid.prototype._hasCopyableData):
+        Helpers for determining copyability and copying tab separated data.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: localStorage inspector very slow on big values
+        https://bugs.webkit.org/show_bug.cgi?id=123750
+        <rdar://problem/15384930>
+
+        Reviewed by Timothy Hatcher.
+
+        It is not useful to show very large strings in the DOM Storage DataGrid.
+        This change truncates display strings to roughly 200 characters. If the
+        developer really wants the full value of the string they can just access
+        it through localStorage.
+
+        * UserInterface/Models/DOMStorageObject.js:
+        (WebInspector.DOMStorageObject.prototype.getEntries.innerCallback):
+        (WebInspector.DOMStorageObject.prototype.getEntries):
+        (WebInspector.DOMStorageObject.prototype.itemUpdated):
+        Modernize.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView):
+        (WebInspector.DOMStorageContentView.prototype.itemRemoved):
+        Modernize.
+
+        (WebInspector.DOMStorageContentView.prototype.itemAdded):
+        (WebInspector.DOMStorageContentView.prototype.itemUpdated):
+        (WebInspector.DOMStorageContentView.prototype._truncateValue):
+        (WebInspector.DOMStorageContentView.prototype._populate):
+        Whenever we get a value that we will display, truncate it to
+        just 200 characters.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expiration column in Storage tab can't be sorted
+        https://bugs.webkit.org/show_bug.cgi?id=154043
+        <rdar://problem/24572272>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid.expiresCompare):
+        Sort Session as the shortest time, not the longest time. Use the
+        cookie.expires date when sorting, not the locale string.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Limit max and min zoom factor of Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=154041
+        <rdar://problem/24571326>
+
+        Reviewed by Brian Burg.
+
+        Chose reasonable zoom levels that looked good to my eye and
+        roughly matched Safari's page zoom levels.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Do not implicitly prevent default for zoom in/out keyboard shortcuts to
+        allow for a system beep if we do not do anything. 
+
+        (WebInspector._increaseZoom):
+        (WebInspector._decreaseZoom):
+        Do not go beyond a max or min zoom level. Prevent default in the case
+        where we actually zoom, but don't prevent default where we do not
+        actually zoom to cause a system beep. Allow for a slight drift of
+        the floating point value as it increases / decreases by 0.2 at the
+        different zoom factors.
+
+        (WebInspector._resetZoom):
+        (WebInspector._showTabAtIndex):
+        Remove redundant prevent default calls, since it would happen
+        implicitly for these keyboard shortcuts.
+
 2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Uncaught exception merging script profiler records

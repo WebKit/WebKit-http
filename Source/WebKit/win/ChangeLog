@@ -1,3 +1,41 @@
+2016-02-16  Andreas Kling  <akling@apple.com>
+
+        Drop StyleResolver and SelectorQueryCache when entering PageCache.
+        <https://webkit.org/b/154238>
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebVisitedLinkStore.cpp:
+        (WebVisitedLinkStore::removeAllVisitedLinks): Deleted.
+        (WebVisitedLinkStore::addVisitedLinkHash): Deleted.
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed Window build fix.
+
+        * WebCoreStatistics.cpp:
+        * WebJavaScriptCollector.cpp:
+
+2016-02-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should expose the DOM 4 Event.isTrusted property
+        https://bugs.webkit.org/show_bug.cgi?id=76121
+        <rdar://problem/22558494>
+
+        Reviewed by Darin Adler.
+
+        * DOMCoreClasses.cpp:
+        (DOMNode::dispatchEvent):
+        (DOMWindow::dispatchEvent):
+
+2016-02-11  Antti Koivisto  <antti@apple.com>
+
+        Try to fix windows build.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::style):
+        (DOMElement::offsetLeft):
+
 2016-02-06  Darin Adler  <darin@apple.com>
 
         Finish auditing call sites of upper() and lower(), eliminate many, and rename the functions

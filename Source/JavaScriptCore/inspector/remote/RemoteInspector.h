@@ -52,7 +52,7 @@ public:
     public:
         virtual ~Client() { }
         virtual bool remoteAutomationAllowed() const = 0;
-        virtual void requestAutomationSession() = 0;
+        virtual void requestAutomationSession(const String& sessionIdentifier) = 0;
     };
 
     static void startDisabled();
@@ -62,14 +62,14 @@ public:
     void registerTarget(RemoteControllableTarget*);
     void unregisterTarget(RemoteControllableTarget*);
     void updateTarget(RemoteControllableTarget*);
-    void sendMessageToRemote(unsigned identifier, const String& message);
+    void sendMessageToRemote(unsigned targetIdentifier, const String& message);
 
     void updateAutomaticInspectionCandidate(RemoteInspectionTarget*);
     void setRemoteInspectorClient(RemoteInspector::Client*);
 
-    void setupFailed(unsigned identifier);
-    void setupCompleted(unsigned identifier);
-    bool waitingForAutomaticInspection(unsigned identifier);
+    void setupFailed(unsigned targetIdentifier);
+    void setupCompleted(unsigned targetIdentifier);
+    bool waitingForAutomaticInspection(unsigned targetIdentifier);
     void clientCapabilitiesDidChange() { pushListingsSoon(); }
 
     bool enabled() const { return m_enabled; }
@@ -87,7 +87,7 @@ public:
 private:
     RemoteInspector();
 
-    unsigned nextAvailableIdentifier();
+    unsigned nextAvailableTargetIdentifier();
 
     enum class StopSource { API, XPCMessage };
     void stopInternal(StopSource);
@@ -117,6 +117,7 @@ private:
     void receivedConnectionDiedMessage(NSDictionary *userInfo);
     void receivedAutomaticInspectionConfigurationMessage(NSDictionary *userInfo);
     void receivedAutomaticInspectionRejectMessage(NSDictionary *userInfo);
+    void receivedAutomationSessionRequestMessage(NSDictionary *userInfo);
 
     static bool startEnabled;
 
@@ -127,15 +128,15 @@ private:
     Lock m_mutex;
 
     HashMap<unsigned, RemoteControllableTarget*> m_targetMap;
-    HashMap<unsigned, RetainPtr<NSDictionary>> m_listingMap;
-    HashMap<unsigned, RefPtr<RemoteConnectionToTarget>> m_connectionMap;
+    HashMap<unsigned, RetainPtr<NSDictionary>> m_targetListingMap;
+    HashMap<unsigned, RefPtr<RemoteConnectionToTarget>> m_targetConnectionMap;
 
-    RefPtr<RemoteInspectorXPCConnection> m_xpcConnection;
+    RefPtr<RemoteInspectorXPCConnection> m_relayConnection;
 
     RemoteInspector::Client* m_client { nullptr };
 
     dispatch_queue_t m_xpcQueue;
-    unsigned m_nextAvailableIdentifier { 1 };
+    unsigned m_nextAvailableTargetIdentifier { 1 };
     int m_notifyToken { 0 };
     bool m_enabled { false };
     bool m_hasActiveDebugSession { false };
@@ -146,7 +147,7 @@ private:
     bool m_shouldSendParentProcessInformation { false };
     bool m_automaticInspectionEnabled { false };
     bool m_automaticInspectionPaused { false };
-    unsigned m_automaticInspectionCandidateIdentifier { 0 };
+    unsigned m_automaticInspectionCandidateTargetIdentifier { 0 };
 };
 
 } // namespace Inspector

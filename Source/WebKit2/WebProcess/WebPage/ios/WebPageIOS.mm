@@ -2179,7 +2179,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
     if (hitNode) {
         Element* element = is<Element>(*hitNode) ? downcast<Element>(hitNode) : nullptr;
         if (element) {
-            info.isClickableElement = true;
+            info.isElement = true;
             Element* linkElement = nullptr;
             if (element->renderer() && element->renderer()->isRenderImage()) {
                 elementIsLinkOrImage = true;
@@ -2348,7 +2348,7 @@ static inline Element* nextAssistableElement(Node* startNode, Page& page, bool i
     if (!is<Element>(startNode))
         return nullptr;
 
-    RefPtr<KeyboardEvent> key = KeyboardEvent::create();
+    RefPtr<KeyboardEvent> key = KeyboardEvent::createForBindings();
 
     Element* nextElement = downcast<Element>(startNode);
     do {

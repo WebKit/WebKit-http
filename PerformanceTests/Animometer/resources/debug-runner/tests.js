@@ -1,10 +1,10 @@
 Utilities.extendObject(Headers, {
     details: [
         {
-            title: Strings.text.results.graph
+            title: Strings.text.graph
         },
         {
-            title: Strings.text.experiments.complexity,
+            title: Strings.text.complexity,
             children:
             [
                 {
@@ -32,7 +32,7 @@ Utilities.extendObject(Headers, {
             ]
         },
         {
-            title: Strings.text.experiments.frameRate,
+            title: Strings.text.frameRate,
             children:
             [
                 {
@@ -65,6 +65,50 @@ Utilities.extendObject(Headers, {
                 }
             ]
         },
+        {
+            title: Strings.text.mergedRawComplexity,
+            children:
+            [
+                {
+                    text: function(data) {
+                        return data[Strings.json.regressions.complexityRegression][Strings.json.regressions.complexity].toFixed(2);
+                    },
+                    className: "average"
+                },
+                {
+                    text: function(data) {
+                        return [
+                            "± ",
+                            data[Strings.json.regressions.complexityRegression][Strings.json.measurements.stdev].toFixed(2),
+                            "ms"
+                        ].join("");
+                    },
+                    className: "stdev"
+                }
+            ]
+        },
+        {
+            title: Strings.text.mergedAverageComplexity,
+            children:
+            [
+                {
+                    text: function(data) {
+                        return data[Strings.json.regressions.complexityAverageRegression][Strings.json.regressions.complexity].toFixed(2);
+                    },
+                    className: "average"
+                },
+                {
+                    text: function(data) {
+                        return [
+                            "± ",
+                            data[Strings.json.regressions.complexityAverageRegression][Strings.json.measurements.stdev].toFixed(2),
+                            "ms"
+                        ].join("");
+                    },
+                    className: "stdev"
+                }
+            ]
+        },
     ]
 })
 
@@ -84,6 +128,14 @@ Suites.push(new Suite("HTML suite",
         {
             url: "bouncing-particles/bouncing-css-shapes.html?particleWidth=50&particleHeight=50&shape=circle&fill=gradient",
             name: "CSS bouncing gradient circles"
+        },
+        {
+            url: "bouncing-particles/bouncing-css-shapes.html?particleWidth=80&particleHeight=80&shape=circle&blend",
+            name: "CSS bouncing blend circles"
+        },
+        {
+            url: "bouncing-particles/bouncing-css-shapes.html?particleWidth=80&particleHeight=80&shape=circle&filter",
+            name: "CSS bouncing filter circles"
         },
         {
             url: "bouncing-particles/bouncing-css-images.html?particleWidth=80&particleHeight=80&imageSrc=../resources/yin-yang.svg",

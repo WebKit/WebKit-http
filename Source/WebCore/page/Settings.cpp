@@ -75,6 +75,7 @@ static void invalidateAfterGenericFamilyChange(Page* page)
 
 #if USE(AVFOUNDATION)
 bool Settings::gAVFoundationEnabled = true;
+bool Settings::gAVFoundationNSURLSessionEnabled = false;
 #endif
 
 #if PLATFORM(COCOA)
@@ -83,6 +84,7 @@ bool Settings::gQTKitEnabled = false;
 
 bool Settings::gMockScrollbarsEnabled = false;
 bool Settings::gUsesOverlayScrollbars = false;
+bool Settings::gMockScrollAnimatorEnabled = false;
 
 #if ENABLE(MEDIA_STREAM)
 bool Settings::gMockCaptureDevicesEnabled = false;
@@ -95,6 +97,7 @@ bool Settings::gShouldUseHighResolutionTimers = true;
 bool Settings::gShouldRewriteConstAsVar = false;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
+bool Settings::gResourceLoadStatisticsEnabledEnabled = false;
 
 #if PLATFORM(IOS)
 bool Settings::gNetworkDataUsageTrackingEnabled = false;
@@ -589,6 +592,14 @@ void Settings::setAVFoundationEnabled(bool enabled)
     gAVFoundationEnabled = enabled;
     HTMLMediaElement::resetMediaEngines();
 }
+
+void Settings::setAVFoundationNSURLSessionEnabled(bool enabled)
+{
+    if (gAVFoundationNSURLSessionEnabled == enabled)
+        return;
+
+    gAVFoundationNSURLSessionEnabled = enabled;
+}
 #endif
 
 #if PLATFORM(COCOA)
@@ -645,6 +656,16 @@ bool Settings::usesOverlayScrollbars()
     return gUsesOverlayScrollbars;
 }
 
+void Settings::setUsesMockScrollAnimator(bool flag)
+{
+    gMockScrollAnimatorEnabled = flag;
+}
+
+bool Settings::usesMockScrollAnimator()
+{
+    return gMockScrollAnimatorEnabled;
+}
+
 void Settings::setShouldRespectPriorityInCSSAttributeSetters(bool flag)
 {
     gShouldRespectPriorityInCSSAttributeSetters = flag;
@@ -688,6 +709,11 @@ void Settings::setFontFallbackPrefersPictographs(bool preferPictographs)
 void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 {
     gLowPowerVideoAudioBufferSizeEnabled = flag;
+}
+
+void Settings::setResourceLoadStatisticsEnabled(bool flag)
+{
+    gResourceLoadStatisticsEnabledEnabled = flag;
 }
 
 #if PLATFORM(IOS)

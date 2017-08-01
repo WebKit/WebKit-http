@@ -28,8 +28,6 @@
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
-#import "DynamicLinkerEnvironmentExtractor.h"
-#import "EnvironmentVariables.h"
 #import "PluginProcessCreationParameters.h"
 #import "PluginProcessMessages.h"
 #import "SandboxUtilities.h"
@@ -61,32 +59,9 @@ using namespace WebCore;
 
 namespace WebKit {
     
-bool PluginProcessProxy::pluginNeedsExecutableHeap(const PluginModuleInfo& pluginInfo)
-{
-    static const bool forceNonexecutableHeapForPlugins = [[NSUserDefaults standardUserDefaults] boolForKey:@"ForceNonexecutableHeapForPlugins"];
-    if (forceNonexecutableHeapForPlugins)
-        return false;
-    
-    if (pluginInfo.bundleIdentifier == "com.apple.QuickTime Plugin.plugin")
-        return false;
-
-    // We only allow 32-bit plug-ins to have the heap marked executable.
-    if (pluginInfo.pluginArchitecture == CPU_TYPE_X86)
-        return true;
-
-    return false;
-}
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 bool PluginProcessProxy::createPropertyListFile(const PluginModuleInfo& plugin)
 {
-    NSBundle *webKit2Bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit"];
-    NSString *frameworksPath = [[webKit2Bundle bundlePath] stringByDeletingLastPathComponent];
-    const char* frameworkExecutablePath = [[webKit2Bundle executablePath] fileSystemRepresentation];
-    
-    NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"PluginProcess.app"];
-    NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
-
     CString pluginPathString = fileSystemRepresentation(plugin.path);
 
     posix_spawnattr_t attr;
@@ -96,21 +71,12 @@ bool PluginProcessProxy::createPropertyListFile(const PluginModuleInfo& plugin)
     size_t outCount = 0;
     posix_spawnattr_setbinpref_np(&attr, 1, cpuTypes, &outCount);
 
-    EnvironmentVariables environmentVariables;
+    posix_spawnattr_setflags(&attr, POSIX_SPAWN_CLOEXEC_DEFAULT);
 
-    DynamicLinkerEnvironmentExtractor environmentExtractor([[NSBundle mainBundle] executablePath], _NSGetMachExecuteHeader()->cputype);
-    environmentExtractor.getExtractedEnvironmentVariables(environmentVariables);
-    
-    // To make engineering builds work, if the path is outside of /System set up
-    // DYLD_FRAMEWORK_PATH to pick up other frameworks, but don't do it for the
-    // production configuration because it involves extra file system access.
-    if (![frameworksPath hasPrefix:@"/System/"])
-        environmentVariables.appendValue("DYLD_FRAMEWORK_PATH", [frameworksPath fileSystemRepresentation], ':');
-
-    const char* args[] = { [processAppExecutablePath fileSystemRepresentation], frameworkExecutablePath, "-type", "pluginprocess", "-createPluginMIMETypesPreferences", pluginPathString.data(), 0 };
+    const char* args[] = { "/System/Library/Frameworks/WebKit.framework/PluginProcess.app/Contents/MacOS/PluginProcess", "/System/Library/Frameworks/WebKit.framework/WebKit", "-type", "pluginprocess", "-createPluginMIMETypesPreferences", pluginPathString.data(), 0 };
 
     pid_t pid;
-    int result = posix_spawn(&pid, args[0], 0, &attr, const_cast<char* const*>(args), environmentVariables.environmentPointer());
+    int result = posix_spawn(&pid, args[0], 0, &attr, const_cast<char* const*>(args), nullptr);
     posix_spawnattr_destroy(&attr);
 
     if (result)
@@ -129,26 +95,13 @@ bool PluginProcessProxy::createPropertyListFile(const PluginModuleInfo& plugin)
 }
 #endif
 
-static bool shouldUseXPC(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
-{
-    if (id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitUseXPCServiceForPlugIns"])
-        return [value boolValue];
-
-    // FIXME: This can be removed when <rdar://problem/16856490> is resolved.
-    if (pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.adobe.acrobat.pdfviewerNPAPI")
-        return false;
-
-    // FIXME: We should still use XPC for plug-ins that want the heap to be executable, see <rdar://problem/16059483>.
-    if (launchOptions.executableHeap)
-        return false;
-
-    return true;
-}
-
 void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
-    launchOptions.architecture = pluginProcessAttributes.moduleInfo.pluginArchitecture;
-    launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginProcessAttributes.moduleInfo);
+    if (pluginProcessAttributes.moduleInfo.pluginArchitecture == CPU_TYPE_X86)
+        launchOptions.processType = ProcessLauncher::ProcessType::Plugin32;
+    else
+        launchOptions.processType = ProcessLauncher::ProcessType::Plugin64;
+
     launchOptions.extraInitializationData.add("plugin-path", pluginProcessAttributes.moduleInfo.path);
 
     if (pluginProcessAttributes.sandboxPolicy == PluginProcessSandboxPolicyUnsandboxed) {
@@ -157,8 +110,6 @@ void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions
         else
             WTFLogAlways("Main process is sandboxed, ignoring plug-in sandbox policy");
     }
-
-    launchOptions.useXPC = shouldUseXPC(launchOptions, pluginProcessAttributes);
 }
 
 void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationParameters& parameters)
@@ -320,31 +271,6 @@ void PluginProcessProxy::setProcessSuppressionEnabled(bool processSuppressionEna
         return;
 
     m_connection->send(Messages::PluginProcess::SetProcessSuppressionEnabled(processSuppressionEnabled), 0);
-}
-
-void PluginProcessProxy::openPluginPreferencePane()
-{
-    if (!m_pluginProcessAttributes.moduleInfo.preferencePanePath)
-        return;
-
-    NSURL *preferenceURL = [NSURL fileURLWithPath:m_pluginProcessAttributes.moduleInfo.preferencePanePath];
-    if (!preferenceURL) {
-        LOG_ERROR("Creating URL for preference pane path \"%@\" failed.", (NSString *)m_pluginProcessAttributes.moduleInfo.preferencePanePath);
-        return;
-    }
-
-    NSArray *preferenceURLs = [NSArray arrayWithObject:preferenceURL];
-
-    LSLaunchURLSpec prefSpec;
-    prefSpec.appURL = 0;
-    prefSpec.itemURLs = reinterpret_cast<CFArrayRef>(preferenceURLs);
-    prefSpec.passThruParams = 0;
-    prefSpec.launchFlags = kLSLaunchAsync | kLSLaunchDontAddToRecents;
-    prefSpec.asyncRefCon = 0;
-
-    OSStatus error = LSOpenFromURLSpec(&prefSpec, 0);
-    if (error != noErr)
-        LOG_ERROR("LSOpenFromURLSpec to open \"%@\" failed with error %d.", (NSString *)m_pluginProcessAttributes.moduleInfo.preferencePanePath, error);
 }
 
 static bool isFlashUpdater(const String& launchPath, const Vector<String>& arguments)

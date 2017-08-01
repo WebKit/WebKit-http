@@ -1631,6 +1631,24 @@ bool FrameView::usesAsyncScrolling() const
     return false;
 }
 
+bool FrameView::usesMockScrollAnimator() const
+{
+    return Settings::usesMockScrollAnimator();
+}
+
+void FrameView::logMockScrollAnimatorMessage(const String& message) const
+{
+    Document* document = frame().document();
+    if (!document)
+        return;
+    StringBuilder builder;
+    if (frame().isMainFrame())
+        builder.appendLiteral("Main");
+    builder.appendLiteral("FrameView: ");
+    builder.append(message);
+    document->addConsoleMessage(MessageSource::Other, MessageLevel::Debug, builder.toString());
+}
+
 void FrameView::setCannotBlitToWindow()
 {
     m_cannotBlitToWindow = true;
@@ -4521,12 +4539,6 @@ bool FrameView::removeScrollableArea(ScrollableArea* scrollableArea)
 bool FrameView::containsScrollableArea(ScrollableArea* scrollableArea) const
 {
     return m_scrollableAreas && m_scrollableAreas->contains(scrollableArea);
-}
-
-void FrameView::clearScrollableAreas()
-{
-    if (m_scrollableAreas)
-        m_scrollableAreas->clear();
 }
 
 void FrameView::scrollableAreaSetChanged()

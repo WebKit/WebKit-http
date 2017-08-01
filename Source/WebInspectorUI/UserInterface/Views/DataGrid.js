@@ -60,6 +60,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
         this._headerTableColumnGroupElement = this._headerTableElement.createChild("colgroup");
         this._headerTableBodyElement = this._headerTableElement.createChild("tbody");
         this._headerTableRowElement = this._headerTableBodyElement.createChild("tr");
+        this._headerTableRowElement.addEventListener("contextmenu", this._contextMenuInHeader.bind(this), true);
         this._headerTableCellElements = new Map;
 
         this._scrollContainerElement = document.createElement("div");
@@ -181,7 +182,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
 
     set sortOrder(order)
     {
-        if (order === this._sortOrder)
+        if (!order || order === this._sortOrder)
             return;
 
         this._sortOrder = order;
@@ -940,6 +941,17 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
         tbody.appendChild(fillerRowElement); // We expect to find a filler row when attaching nodes.
     }
 
+    _toggledSortOrder()
+    {
+        return this._sortOrder !== WebInspector.DataGrid.SortOrder.Descending ? WebInspector.DataGrid.SortOrder.Descending : WebInspector.DataGrid.SortOrder.Ascending;
+    }
+
+    _selectSortColumnAndSetOrder(columnIdentifier, sortOrder)
+    {
+        this.sortColumnIdentifier = columnIdentifier;
+        this.sortOrder = sortOrder;
+    }
+
     _keyDown(event)
     {
         if (!this.selectedNode || event.shiftKey || event.metaKey || event.ctrlKey || this._editing)
@@ -1046,18 +1058,12 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
 
     _headerCellClicked(event)
     {
-        var cell = event.target.enclosingNodeOrSelfWithNodeName("th");
+        let cell = event.target.enclosingNodeOrSelfWithNodeName("th");
         if (!cell || !cell.columnIdentifier || !cell.classList.contains(WebInspector.DataGrid.SortableColumnStyleClassName))
             return;
 
-        var clickedColumnIdentifier = cell.columnIdentifier;
-        if (this.sortColumnIdentifier === clickedColumnIdentifier) {
-            if (this.sortOrder !== WebInspector.DataGrid.SortOrder.Descending)
-                this.sortOrder = WebInspector.DataGrid.SortOrder.Descending;
-            else
-                this.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
-        } else
-            this.sortColumnIdentifier = clickedColumnIdentifier;
+        let sortOrder = this._sortColumnIdentifier === cell.columnIdentifier ? this._toggledSortOrder() : this.sortOrder;
+        this._selectSortColumnAndSetOrder(cell.columnIdentifier, sortOrder);
     }
 
     _mouseoverColumnCollapser(event)
@@ -1170,6 +1176,31 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
             gridNode.select();
     }
 
+    _contextMenuInHeader(event)
+    {
+        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+
+        if (this._hasCopyableData())
+            contextMenu.appendItem(WebInspector.UIString("Copy Table"), this._copyTable.bind(this));
+
+        let cell = event.target.enclosingNodeOrSelfWithNodeName("th");
+        if (cell && cell.columnIdentifier && cell.classList.contains(WebInspector.DataGrid.SortableColumnStyleClassName)) {
+            contextMenu.appendSeparator();
+
+            if (this.sortColumnIdentifier !== cell.columnIdentifier || this.sortOrder !== WebInspector.DataGrid.SortOrder.Ascending) {
+                contextMenu.appendItem(WebInspector.UIString("Sort Ascending"), () => {
+                    this._selectSortColumnAndSetOrder(cell.columnIdentifier, WebInspector.DataGrid.SortOrder.Ascending);
+                });
+            }
+
+            if (this.sortColumnIdentifier !== cell.columnIdentifier || this.sortOrder !== WebInspector.DataGrid.SortOrder.Descending) {
+                contextMenu.appendItem(WebInspector.UIString("Sort Descending"), () => {
+                    this._selectSortColumnAndSetOrder(cell.columnIdentifier, WebInspector.DataGrid.SortOrder.Descending);
+                });
+            }
+        }
+    }
+
     _contextMenuInDataTable(event)
     {
         let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
@@ -1180,6 +1211,7 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
 
         if (gridNode && gridNode.selectable && gridNode.copyable && !gridNode.isEventWithinDisclosureTriangle(event)) {
             contextMenu.appendItem(WebInspector.UIString("Copy Row"), this._copyRow.bind(this, event.target));
+            contextMenu.appendItem(WebInspector.UIString("Copy Table"), this._copyTable.bind(this));
 
             if (this.dataGrid._editCallback) {
                 if (gridNode === this.placeholderNode)
@@ -1226,12 +1258,14 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
 
     _copyTextForDataGridNode(node)
     {
-        var fields = [];
-        for (var identifier of node.dataGrid.orderedColumns)
-            fields.push(this.textForDataGridNodeColumn(node, identifier));
+        let fields = node.dataGrid.orderedColumns.map((identifier) => this.textForDataGridNodeColumn(node, identifier));
+        return fields.join("\t");
+    }
 
-        var tabSeparatedValues = fields.join("\t");
-        return tabSeparatedValues;
+    _copyTextForDataGridHeaders()
+    {
+        let fields = this.orderedColumns.map((identifier) => this.headerTableHeader(identifier).textContent);
+        return fields.join("\t");
     }
 
     handleBeforeCopyEvent(event)
@@ -1259,6 +1293,25 @@ WebInspector.DataGrid = class DataGrid extends WebInspector.View
 
         var copyText = this._copyTextForDataGridNode(gridNode);
         InspectorFrontendHost.copyText(copyText);
+    }
+
+    _copyTable()
+    {
+        let copyData = [];
+        copyData.push(this._copyTextForDataGridHeaders());
+        for (let gridNode of this.children) {
+            if (!gridNode.copyable)
+                continue;
+            copyData.push(this._copyTextForDataGridNode(gridNode));
+        }
+
+        InspectorFrontendHost.copyText(copyData.join("\n"));
+    }
+
+    _hasCopyableData()
+    {
+        let gridNode = this.children[0];
+        return gridNode && gridNode.selectable && gridNode.copyable;
     }
 
     get resizeMethod()

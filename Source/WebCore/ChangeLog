@@ -1,3 +1,4151 @@
+2016-02-17  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] GridSpan refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=153868
+
+        Reviewed by Sergio Villar Senin.
+
+        Add new enum to know if a GridSpan is definite or indefinite.
+        That way we don't need GridUnresolvedSpan class (which is removed).
+        We can always have two GridSpans in GridCoordinate,
+        if the position is "auto" the GridSpan will be marked as indefinite.
+        This will allow in a follow-up patch to avoid repeated calls
+        to methods that resolve positions.
+
+        Most operations in GridSpan are restricted to definite GridSpans (access
+        to positions, iterator, etc.). For indefinite GridSpans we only need to
+        know that they're indefinite, we shouldn't use the rest of the data.
+
+        No new tests, no change of behavior.
+
+        * css/CSSGridTemplateAreasValue.cpp:
+        (WebCore::stringForPosition):
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseGridTemplateAreasRow):
+        * css/StyleBuilderConverter.h:
+        (WebCore::StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::GridIterator::nextEmptyGridArea):
+        (WebCore::RenderGrid::computeUsedBreadthOfGridTracks):
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctionsForNonSpanningItems):
+        (WebCore::RenderGrid::insertItemIntoGrid):
+        (WebCore::RenderGrid::placeItemsOnGrid):
+        (WebCore::RenderGrid::populateExplicitGridAndOrderIterator):
+        (WebCore::RenderGrid::placeSpecifiedMajorAxisItemsOnGrid):
+        (WebCore::RenderGrid::placeAutoMajorAxisItemOnGrid):
+        (WebCore::RenderGrid::offsetAndBreadthForPositionedChild):
+        (WebCore::RenderGrid::gridAreaBreadthForChildIncludingAlignmentOffsets):
+        (WebCore::RenderGrid::columnAxisOffsetForChild):
+        (WebCore::RenderGrid::rowAxisOffsetForChild):
+        (WebCore::RenderGrid::placeAutoMajorAxisItemsOnGrid): Deleted.
+        (WebCore::RenderGrid::autoPlacementMinorAxisDirection): Deleted.
+        (WebCore::RenderGrid::populateGridPositions): Deleted.
+        * rendering/style/GridCoordinate.h:
+        (WebCore::GridSpan::definiteGridSpan):
+        (WebCore::GridSpan::indefiniteGridSpan):
+        (WebCore::GridSpan::operator==):
+        (WebCore::GridSpan::integerSpan):
+        (WebCore::GridSpan::resolvedInitialPosition):
+        (WebCore::GridSpan::resolvedFinalPosition):
+        (WebCore::GridSpan::begin):
+        (WebCore::GridSpan::end):
+        (WebCore::GridSpan::isDefinite):
+        (WebCore::GridSpan::GridSpan):
+        (WebCore::GridCoordinate::GridCoordinate):
+        * rendering/style/GridResolvedPosition.cpp:
+        (WebCore::initialPositionSide):
+        (WebCore::finalPositionSide):
+        (WebCore::adjustGridPositionsFromStyle):
+        (WebCore::resolveRowStartColumnStartNamedGridLinePositionAgainstOppositePosition):
+        (WebCore::resolveRowEndColumnEndNamedGridLinePositionAgainstOppositePosition):
+        (WebCore::resolveNamedGridLinePositionAgainstOppositePosition):
+        (WebCore::resolveGridPositionAgainstOppositePosition):
+        (WebCore::GridResolvedPosition::resolveGridPositionsFromAutoPlacementPosition):
+        (WebCore::GridResolvedPosition::resolveGridPositionsFromStyle):
+        (WebCore::implicitNamedGridLineForSide): Deleted.
+        (WebCore::GridResolvedPosition::isNonExistentNamedLineOrArea): Deleted.
+        (WebCore::resolveNamedGridLinePositionFromStyle): Deleted.
+        (WebCore::resolveGridPositionFromStyle): Deleted.
+        * rendering/style/GridResolvedPosition.h:
+        (WebCore::GridResolvedPosition::GridResolvedPosition): Deleted.
+        (WebCore::GridResolvedPosition::operator*): Deleted.
+        (WebCore::GridResolvedPosition::operator++): Deleted.
+        (WebCore::GridResolvedPosition::operator==): Deleted.
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Window should have its 'constructor' property on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154037
+        <rdar://problem/24689078>
+
+        Reviewed by Gavin Barraclough.
+
+        Window should have its 'constructor' property on the prototype as per
+        the Web IDL specification:
+        http://heycam.github.io/webidl/#interface-prototype-object
+
+        Firefox and Chrome already match the specification.
+
+        No new tests, covered by:
+        - fast/dom/Window/window-constructor-settable.html
+        - fast/dom/Window/window-constructor.html
+        - http/tests/security/cross-origin-window-property-access.html
+        - imported/w3c/web-platform-tests/html/dom/interfaces.html
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (ConstructorShouldBeOnInstance): Deleted.
+        Drop this routine as all constructors are now on the prototype.
+
+        (InstancePropertyCount):
+        Do not account for constructor properties as these can only be
+        on the prototype now.
+
+        (PrototypePropertyCount):
+        Increment the property count by 1 if the interface has a constructor
+        property (e.g. [NoInterfaceObject] interfaces do not have one).
+
+        (GeneratePropertiesHashTable):
+        Stop calling ConstructorShouldBeOnInstance() as it no longer exists.
+        Always generated the "constructor" property if:
+        1. We are generating the prototype hash table.
+        and
+        2. The interface needs a constructor (i.e. not marked as
+           [NoInterfaceObject]).
+
+        (GenerateImplementation):
+        - Drop code handling the case where ConstructorShouldBeOnInstance()
+          returns true as constructors are not always on the prototype and
+          the ConstructorShouldBeOnInstance() routine has been dropped.
+        - Drop code handling [CustomProxyToJSObject]. Now that the constructor
+          is always on the prototype, we never need to cast thisValue to a
+          JSDOMWindow (by calling toJSDOMWindow). In the Window case, thisValue
+          is now casted to a JSDOMWindowPrototype*, similarly to other interfaces
+          so we don't need a special casting function anymore.
+        - Stop generating security checks. This only impacts Window as it is the
+          only interface marked as [CheckSecurity]. The cross-origin checking code
+          as it was would not work when "constructor" is on the prototype because
+          thisValue is a JSDOMWindowPrototype, not a JSDOMWindow and we have no
+          way of getting the wrapped window. Also, the security check is no longer
+          needed because:
+          1. Accessing crossOriginWindow.constructor will not work now that
+             constructor is on the prototype because
+             JSDOMWindow::getOwnPropertySlot() already prevents access to the
+             prototype in the cross-origin case.
+          2. "constructor" is a value property, not a getter/setter. Therefore,
+             it is no possible to use the getter/setter from a same origin window
+             instance and call it on a cross origin window.
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a way to test ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=153479
+
+        Reviewed by Michael Catanzaro.
+
+        Tests: fast/scrolling/overlay-scrollbars-scroll-corner.html
+               fast/scrolling/scroll-animator-basic-events.html
+               fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html
+               fast/scrolling/scroll-animator-select-list-events.html
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::usesMockScrollAnimator):
+        (WebCore::FrameView::logMockScrollAnimatorMessage):
+        * page/FrameView.h:
+        * page/Settings.cpp:
+        (WebCore::Settings::setUsesMockScrollAnimator):
+        (WebCore::Settings::usesMockScrollAnimator):
+        * page/Settings.h:
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::scrollAnimator):
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::usesMockScrollAnimator):
+        (WebCore::ScrollableArea::logMockScrollAnimatorMessage):
+        * platform/mock/ScrollAnimatorMock.cpp: Added.
+        (WebCore::ScrollAnimatorMock::create):
+        (WebCore::ScrollAnimatorMock::ScrollAnimatorMock):
+        (WebCore::ScrollAnimatorMock::~ScrollAnimatorMock):
+        (WebCore::ScrollAnimatorMock::didAddVerticalScrollbar):
+        (WebCore::ScrollAnimatorMock::didAddHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMock::willRemoveVerticalScrollbar):
+        (WebCore::ScrollAnimatorMock::willRemoveHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMock::mouseEnteredContentArea):
+        (WebCore::ScrollAnimatorMock::mouseMovedInContentArea):
+        (WebCore::ScrollAnimatorMock::mouseExitedContentArea):
+        (WebCore::ScrollAnimatorMock::mouseEnteredScrollbar):
+        (WebCore::ScrollAnimatorMock::mouseExitedScrollbar):
+        (WebCore::ScrollAnimatorMock::mouseIsDownInScrollbar):
+        * platform/mock/ScrollAnimatorMock.h: Added.
+        * platform/mock/ScrollbarThemeMock.cpp:
+        (WebCore::ScrollbarThemeMock::usesOverlayScrollbars):
+        * platform/mock/ScrollbarThemeMock.h:
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::usesMockScrollAnimator):
+        (WebCore::RenderLayer::logMockScrollAnimatorMessage):
+        * rendering/RenderLayer.h:
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::usesMockScrollAnimator):
+        (WebCore::RenderListBox::logMockScrollAnimatorMessage):
+        * rendering/RenderListBox.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+        (WebCore::Internals::setUsesMockScrollAnimator):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Enable overlay scrollbars in GTK+ after r196641.
+
+        This was blocked by bug #153404, but the commit that introduced
+        the regression was rolled out in r196641.
+
+        * platform/gtk/ScrollbarThemeGtk.cpp:
+        (WebCore::ScrollbarThemeGtk::ScrollbarThemeGtk):
+
+2016-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        JSDOMWindow::getOwnPropertySlot should just call getStaticPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=154257
+
+        Reviewed by Chris Dumez.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+            - JSDOMWindow::getOwnPropertySlot should just call getStaticPropertySlot
+
+2016-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        JSDOMWindow::getOwnPropertySlot should not search photo chain
+        https://bugs.webkit.org/show_bug.cgi?id=154102
+
+        Reviewed by Chris Dumez.
+
+        Should only return *own* properties.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::jsDOMWindowGetOwnPropertySlotNamedItemGetter):
+
+2016-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix.
+
+        * PlatformMac.cmake:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Navigator.geolocation should not be marked a [Replaceable] and should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154304
+        <rdar://problem/24685092>
+
+        Reviewed by Gavin Barraclough.
+
+        1. Drop the [Replaceable] IDL extended attribute for navigator.geolocation
+           as this does not match other browsers or the specification:
+           - https://dev.w3.org/geo/api/spec-source.html#geolocation_interface
+        2. Move Navigator attributes to the prototype, where they should be as
+           per the Web IDL specification.
+
+        The previous behavior was meant as a workaround for a bug in the Amazon
+        iOS app (rdar://problem/16332749). However, I have confirmed that the
+        latest Amazon App no longer has any issue with those changes.
+
+        Test: js/navigator-set-geolocation.html
+
+        * Modules/geolocation/NavigatorGeolocation.idl:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (InterfaceRequiresAttributesOnInstanceForCompatibility): Deleted.
+
+2016-02-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r196268): WTFCrashWithSecurityImplication on SVG path animation tests
+        https://bugs.webkit.org/show_bug.cgi?id=154221
+
+        Reviewed by Brent Fulgham.
+
+        In r196268, a destructor was added to SVGListPropertyTearOff that notifies
+        its wrapper (the SVGAnimatedListPropertyTearoff) about its deletion. This
+        allows the wrapper to nullify any references to the wrapped content.
+        
+        We needed to do the same thing for SVGPathSegListPropertyTearOff. Both
+        SVGPathSegListPropertyTearOff and SVGListPropertyTearOff inherit from
+        SVGListProperty and both hold pointers to SVGAnimatedListPropertyTearOff
+        which needs to be notified.
+        
+        Tests: exiting svg path animation tests should not crash.
+
+        * svg/properties/SVGPathSegListPropertyTearOff.h:
+        (WebCore::SVGPathSegListPropertyTearOff::~SVGPathSegListPropertyTearOff):
+
+2016-02-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r190430): WTFCrashWithSecurityImplication in:void SVGRootInlineBox::layoutCharactersInTextBoxes()
+        https://bugs.webkit.org/show_bug.cgi?id=154185
+
+        Reviewed by Ryosuke Niwa.
+
+        This is a regression caused by adding support for HTMLSlotElement. The
+        crash happens when adding an HTMLSlotElement to anther element which should
+        not have it as a child like SVGTextElement for example. In this case, we
+        were creating a RenderText which should not be happen inside an SVG document.
+        The RenderText::createTextBox() was creating InlineTextBox for the slot's
+        text and attach it to the SVGRootInlineBox. In layoutCharactersInTextBoxes(),
+        the assumption is the inline box is either SVGInlineTextBox or SVGInlineFlowBox.
+        But since we have an InlineTextBox instead, the crash happens when casting
+        the InlineTextBox to SVGInlineFlowBox.
+
+        The fix is for createRenderTreeForSlotAssignees() to not create a renderer
+        when the parent element should not have a renderer for the this element.
+        This is the same thing we do for createRenderer() which handles the non
+        HTMLSlotElement case and which is called also from createRenderTreeRecursively().
+        
+        Test: fast/shadow-dom/text-slot-child-crash.svg
+
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::moveToFlowThreadIfNeeded):
+        (WebCore::Style::TreeResolver::createRenderer): Delete the check for
+        shouldCreateRenderer() and handling the case when resolvedStyle is null
+        since these are handled by the caller createRenderTreeRecursively().
+        
+        (WebCore::Style::TreeResolver::createRenderTreeForSlotAssignees):
+        Assert shouldCreateRenderer() is true for this element.
+        
+        (WebCore::Style::TreeResolver::createRenderTreeRecursively): Don't create
+        the renderer if shouldCreateRenderer() returns false. Also handle the case
+        when resolvedStyle is null and pass the new style to createRenderer().
+        
+        * style/StyleTreeResolver.h:
+
+2016-02-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Every RenderLayer should not have to remove itself from the scrollableArea set
+        https://bugs.webkit.org/show_bug.cgi?id=154311
+
+        Reviewed by Zalan Bujtas.
+
+        A subset of RenderLayers are are scrollable, and get registered on the FrameView,
+        but we pay the cost of a hash lookup for removal on every RenderLayer, which is a waste.
+        
+        Store a bit that tells RenderLayer that it's in the set and needs to be removed.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::~RenderLayer):
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayer.h:
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Update violation report 'Content-Type' header
+        https://bugs.webkit.org/show_bug.cgi?id=153166
+        <rdar://problem/24383327>
+
+        Reviewed by Brent Fulgham.
+
+        Inspired by Blink patch:
+        <https://src.chromium.org/viewvc/blink?view=rev&revision=154215>
+
+        Post the Content Security Policy violation report with Content-Type application/csp-report as
+        per section Reporting of the Content Security Policy 2.0 spec., <https://www.w3.org/TR/2015/CR-CSP2-20150721/>.
+
+        Currently we post CSP violation reports with Content-Type application/json.
+
+        * html/parser/XSSAuditorDelegate.cpp:
+        (WebCore::XSSAuditorDelegate::didBlockScript): Use report type ViolationReportType::XSSAuditor to PingLoader.
+        * loader/PingLoader.cpp:
+        (WebCore::PingLoader::sendViolationReport): Modified to take argument of type ViolationReportType
+        to determine the appropriate Content-Type header to use for the report. For a XSS Auditor violation report
+        we use Content-Type application/json. For a Content Security Policy violation report we use Content-Type
+        application/csp-report. Additionally, pass a ASCIILiteral() to ResourceRequestBase::setHTTPMethod()
+        as opposed to a constant string literal to avoid a copy of a constant string literal.
+        * loader/PingLoader.h: Add enum class ViolationReportType.
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::reportViolation): Use report type ViolationReportType::ContentSecurityPolicy.
+
+2016-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Add checks before redirecting with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=154298
+
+        Reviewed by Andy Estes.
+
+        This fixes http/tests/security/cors-post-redirect-307.html and 
+        http/tests/navigation/post-307-response.html when using NetworkSession.
+
+        * platform/network/ResourceRequestBase.h:
+        WEBCORE_EXPORT some functions newly used in WebKit2.
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Fix parsing of 'host/path' source expressions
+        https://bugs.webkit.org/show_bug.cgi?id=153170
+        <rdar://problem/24383407>
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by Mike West):
+        <https://src.chromium.org/viewvc/blink?revision=154875&view=revision>
+
+        Fixes an issue where a source of the form example.com/A/ was incorrectly considered
+        invalid and hence such a requested resource would be blocked. A source of this form
+        is valid by the definition of host-source in section Source List Syntax of the Content
+        Security Policy 2.0 spec., <http://www.w3.org/TR/2015/CR-CSP2-20150721/>.
+
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::ContentSecurityPolicySourceList::parseSource):
+
+2016-02-16  Daniel Bates  <dabates@apple.com>
+
+        CSP: Disallow an empty host in a host-source source expression
+        https://bugs.webkit.org/show_bug.cgi?id=153168
+        <rdar://problem/24383366>
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by rob@robwu.nl):
+        <https://src.chromium.org/viewvc/blink?revision=180407&view=revision>
+
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::ContentSecurityPolicySourceList::parseSource):
+
+2016-02-16  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: WK2 IPC Scaffolding.
+        https://bugs.webkit.org/show_bug.cgi?id=154296
+
+        Reviewed by Alex Christensen.
+        
+        No change in behavior yet; Just laying the groundwork.
+
+        * Modules/indexeddb/client/IDBConnectionToServer.h:
+        * Modules/indexeddb/server/IDBConnectionToClient.h:
+        * Modules/indexeddb/shared/IDBResourceIdentifier.h:
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Operations should be on the instance for global objects or if [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=154120
+        <rdar://problem/24613231>
+
+        Reviewed by Gavin Barraclough.
+
+        Operations should be on the instance for global objects or if
+        [Unforgeable] as per the Web IDL specification:
+        - http://heycam.github.io/webidl/#es-operations
+        - http://heycam.github.io/webidl/#dfn-unforgeable-on-an-interface
+
+        This patch implements this behavior in order to align
+        with the specification and other browsers.
+
+        No new tests, already covered by existing tests.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::jsDOMWindowGetOwnPropertySlotRestrictedAccess):
+        Update function names now that they have "Instance" in their
+        name instead of "Prototype".
+
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        - Update function names now that they have "Instance" in their
+          name instead of "Prototype".
+        - Move the functions hard-coding *before* the static table check
+          now that these functions are in the static table to maintain
+          the previous behavior.
+
+        * bindings/js/JSLocationCustom.cpp:
+        (WebCore::JSLocation::getOwnPropertySlotDelegate):
+        Update function names now that they have "Instance" in their
+        name instead of "Prototype".
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        - Move functions to the instance if their interface is a global
+          object or if they are marked as [Unforgeable]. Operations are
+          now treated more like attributes, as they can now be either on
+          the instance or the prototype. In a lot of places, I now use
+          the naming "properties" instead of "attributes" as "properties"
+          refer both "attributes" and "operations" / "functions".
+
+        * bindings/scripts/test/JS/JSTestInterface.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        Rebaseline bindings tests.
+
+2016-02-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Rollout r188659. This broke scrolling of iframes and overflow when
+        navigating back to a page in the page cache.
+        
+        The fix was overly agressive and had no layout test. I will fix the original
+        issue a different way.
+
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrame::CachedFrame):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::clearScrollableAreas): Deleted.
+        * page/FrameView.h:
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] No hover-horizontal scrolling available
+        https://bugs.webkit.org/show_bug.cgi?id=122859
+
+        Reviewed by Michael Catanzaro.
+
+        This is a regression of WebKit2, because in WebKit1 we used native
+        widgets for frame scrollbars that handled this automatically. Now
+        we need to also check if the mouse is over frame scrollbars to
+        adjust the wheel event.
+
+        Test: platform/gtk/scrollbars/main-frame-scrollbar-horizontal-wheel-scroll.html
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleWheelEvent): Pass the adjusted wheel
+        event to platformCompleteWheelEvent().
+        * page/gtk/EventHandlerGtk.cpp:
+        (WebCore::EventHandler::shouldTurnVerticalTicksIntoHorizontal):
+        Check also frame scrollbars.
+
+2016-02-16  Antti Koivisto  <antti@apple.com>
+
+        Factor id mutation style invalidation code into a class
+        https://bugs.webkit.org/show_bug.cgi?id=154287
+
+        Reviewed by Andreas Kling.
+
+        Also add a cheap basic optimization that avoids descendant invalidation if they can not be affected.
+
+        It would be easy to implement fine grained invalidation like with classes and attribute selectors.
+        However dynamic id changes are not common enough (nor recommended) to pay the memory cost of
+        the required data structures.
+
+        Test: fast/css/style-invalidation-id-change-descendants.html
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::recursivelyCollectFeaturesFromSelector):
+        (WebCore::RuleFeatureSet::add):
+        (WebCore::RuleFeatureSet::clear):
+        * css/RuleFeature.h:
+        * dom/Element.cpp:
+        (WebCore::makeIdForStyleResolution):
+        (WebCore::Element::attributeChanged):
+        (WebCore::checkNeedsStyleInvalidationForIdChange): Deleted.
+        * style/IdChangeInvalidation.cpp: Added.
+        (WebCore::Style::IdChangeInvalidation::invalidateStyle):
+        * style/IdChangeInvalidation.h: Added.
+        (WebCore::Style::IdChangeInvalidation::IdChangeInvalidation):
+        (WebCore::Style::IdChangeInvalidation::~IdChangeInvalidation):
+
+2016-02-16  Andreas Kling  <akling@apple.com>
+
+        Drop StyleResolver and SelectorQueryCache when entering PageCache.
+        <https://webkit.org/b/154238>
+
+        Reviewed by Antti Koivisto.
+
+        Stop keeping these around for cached pages to save lots of memory.
+        We can easily rebuild them if a cached navigation occurs, and this
+        way we also don't need to worry about invalidating style for cached
+        pages in all the right places.
+
+        Restoring a cached page will now lead to a forced style recalc.
+        We don't try to defer this (beyond a zero-timer) since it's going
+        to happen anyway, and it's nicer to front-load the cost rather than
+        stuttering on the first user content interaction.
+
+        * dom/Document.cpp:
+        (WebCore::Document::setInPageCache):
+        * history/CachedPage.cpp:
+        (WebCore::CachedPage::restore):
+        (WebCore::CachedPage::clear): Deleted.
+        * history/CachedPage.h:
+        (WebCore::CachedPage::markForVisitedLinkStyleRecalc): Deleted.
+        (WebCore::CachedPage::markForFullStyleRecalc): Deleted.
+        * history/PageCache.cpp:
+        (WebCore::PageCache::markPagesForVisitedLinkStyleRecalc): Deleted.
+        (WebCore::PageCache::markPagesForFullStyleRecalc): Deleted.
+        * history/PageCache.h:
+        * page/Frame.cpp:
+        (WebCore::Frame::setPageAndTextZoomFactors): Deleted.
+        * page/Page.cpp:
+        (WebCore::Page::setViewScaleFactor): Deleted.
+        (WebCore::Page::setDeviceScaleFactor): Deleted.
+        (WebCore::Page::setPagination): Deleted.
+        (WebCore::Page::setPaginationLineGridEnabled): Deleted.
+        (WebCore::Page::setVisitedLinkStore): Deleted.
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] clicking on the scrollbar trough steps rather than jumps to the clicked position
+        https://bugs.webkit.org/show_bug.cgi?id=115363
+
+        Reviewed by Michael Catanzaro.
+
+        Allow ScrollbarTheme to decide the behavior of a button press event,
+        instead of only deciding whether to center on thumb or not. This
+        way we can match the current GTK+ behavior in WebKit, without
+        affecting other ports.
+
+        * platform/ScrollTypes.h: Add ScrollbarButtonPressAction enum.
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::mouseDown): Ask ScrollbarTheme to handle the
+        event for the pressed part and do the requested action.
+        * platform/ScrollbarTheme.cpp:
+        (WebCore::ScrollbarTheme::handleMousePressEvent): Add default
+        implementation. It's equivalent to the previous default implementation.
+        * platform/ScrollbarTheme.h:
+        * platform/gtk/ScrollbarThemeGtk.cpp:
+        (WebCore::ScrollbarThemeGtk::handleMousePressEvent): Match current
+        GTK+ behavior: left click centers on thumb and right click
+        scrolls. Dragging the thumb works for left and middle buttons.
+        * platform/gtk/ScrollbarThemeGtk.h:
+        * platform/ios/ScrollbarThemeIOS.h: Remove shouldCenterOnThumb,
+        and don't override handleMousePressEvent since iOS wants the
+        default behavior.
+        * platform/ios/ScrollbarThemeIOS.mm:
+        * platform/mac/ScrollbarThemeMac.h: Override handleMousePressEvent
+        and remove shouldCenterOnThumb.
+        * platform/mac/ScrollbarThemeMac.mm:
+        (WebCore::shouldCenterOnThumb): Same implementation just made it
+        static to be used as helper.
+        (WebCore::ScrollbarThemeMac::handleMousePressEvent): Return the
+        desired action keeping the same behavior.
+        * platform/win/ScrollbarThemeWin.cpp:
+        (WebCore::ScrollbarThemeWin::handleMousePressEvent): Ditto.
+        * platform/win/ScrollbarThemeWin.h:
+        * rendering/RenderScrollbarTheme.h:
+
+2016-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Mouse cursor doesn't change when entering scrollbars
+        https://bugs.webkit.org/show_bug.cgi?id=154243
+
+        Reviewed by Simon Fraser.
+
+        If the scrollbar is over or very close to text or a link, when
+        entering the scrollbar the cursor is not changed, keeping the beam
+        or hand cursor when using the scrollbar. Same happens for image
+        documents where the magnifier cursor is used and it remains when
+        entering the scrollbars. We should use pointer cursor always for
+        scrollbars.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::updateCursor): Request also to include
+        frame scrollbars in hit test result.
+        (WebCore::EventHandler::selectCursor): Use always pointer cursor
+        for scrollbars.
+
+2016-02-15  Antti Koivisto  <antti@apple.com>
+
+        Optimize style invalidations for attribute selectors
+        https://bugs.webkit.org/show_bug.cgi?id=154242
+
+        Reviewed by Andreas Kling.
+
+        Currently we invalidate the whole element subtree if there are any attribute selectors for the changed attribute.
+        This is slow as generally few if any elements are really affected. Using attribute selectors for dynamic styling
+        should be performant.
+
+        This patch implements optimization strategy for attributes similar to what we already have for classes:
+
+        - Collect a map of all rules that contains descendant-affecting attribute selectors for a given attribute.
+        - When an attribute value changes check if there are any such rules for it.
+        - Check if the value change affects the results of any of the attribute selectors.
+        - Only if it does invalidate the exact descendant elements affected by the rules.
+
+        Test: fast/css/style-invalidation-attribute-change-descendants.html
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::ancestorClassRules):
+        (WebCore::DocumentRuleSets::ancestorAttributeRulesForHTML):
+
+            Create optimization RuleSets when needed.
+
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::uncommonAttribute):
+        (WebCore::DocumentRuleSets::features):
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::recursivelyCollectFeaturesFromSelector):
+        (WebCore::makeAttributeSelectorKey):
+        (WebCore::RuleFeatureSet::collectFeatures):
+
+            Collect rules with descendant affecting attribute selectors.
+
+        (WebCore::RuleFeatureSet::add):
+        (WebCore::RuleFeatureSet::clear):
+        (WebCore::RuleFeatureSet::shrinkToFit):
+        * css/RuleFeature.h:
+        * css/SelectorChecker.cpp:
+        (WebCore::anyAttributeMatches):
+        (WebCore::SelectorChecker::attributeSelectorMatches):
+
+            Expose function for matching single attribute selectors.
+
+        (WebCore::canMatchHoverOrActiveInQuirksMode):
+        * css/SelectorChecker.h:
+        * dom/Attr.cpp:
+        (WebCore::Attr::setValue):
+        (WebCore::Attr::childrenChanged):
+        * dom/Element.cpp:
+        (WebCore::Element::setAttributeInternal):
+        (WebCore::makeIdForStyleResolution):
+        (WebCore::Element::attributeChanged):
+        (WebCore::Element::removeAttributeInternal):
+        (WebCore::Element::addAttributeInternal):
+        (WebCore::Element::removeAttribute):
+
+            Add AttributeChangeInvalidation where needed.
+
+        (WebCore::Element::needsStyleInvalidation):
+
+            Move to Element from ClassChangeInvalidation.
+
+        (WebCore::Element::willModifyAttribute):
+
+            No more full style invalidation on attribute change.
+
+        * style/AttributeChangeInvalidation.cpp: Added.
+        (WebCore::Style::AttributeChangeInvalidation::invalidateStyle):
+
+            Invalidate local style.
+            Check if we need to invalidate descendants by looking into ancestorAttributeRules.
+
+        (WebCore::Style::AttributeChangeInvalidation::invalidateDescendants):
+
+            Use StyleInvalidationAnalysis to invalidate the subtree for the relevant rules.
+
+        * style/AttributeChangeInvalidation.h: Added.
+        (WebCore::Style::AttributeChangeInvalidation::needsInvalidation):
+        (WebCore::Style::AttributeChangeInvalidation::AttributeChangeInvalidation):
+        (WebCore::Style::AttributeChangeInvalidation::~AttributeChangeInvalidation):
+
+            If needed, invalidate descendants before and after attribute change to catch rules that start and stop applying.
+
+2016-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Do security checks early in JSDOMWindow::put*()
+        https://bugs.webkit.org/show_bug.cgi?id=154270
+
+        Reviewed by Gavin Barraclough.
+
+        Do security checks early in JSDOMWindow::put() / JSDOMWindow::putByIndex()
+        and return as soon as possible. This makes it less error-prone as we need
+        to do the security check only once, at the top of the function.
+
+        Also lock down the security further by calling lookupPut() only if the
+        property name is "location". The "location" property is the only one that
+        can be set cross-origin. Previously, trying to set a property such as
+        "name" (which cannot be set cross-origin) relied on the attribute setter
+        doing the security check when getting called. The new check is less error
+        prone and will correctly prevent overriding window's method cross-origin
+        once these move down from the prototype (Bug 154120).
+
+        Finally, the previous code was failing to set the "location" property
+        cross-origin after the window has been reified. This patch fixes the
+        issue by always calling the original "location" property setter from the
+        static table in the cross-origin case.
+
+        Test: http/tests/security/cross-origin-reified-window-location-setting.html
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::put):
+        (WebCore::JSDOMWindow::putByIndex):
+
+2016-02-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Gather some rudimentary statistics during resource load 
+        https://bugs.webkit.org/show_bug.cgi?id=153575
+        <rdar://problem/24075254>
+
+        Reviewed by Brady Eidson.
+
+        Tested by: http/tests/navigation/statistics.html
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Document.cpp:
+        (WebCore::Document::updateLastHandledUserGestureTimestamp): Log user interaction
+        with the ResourceLoadObserver.
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::willSendRequest): Track load statistics if the
+        user interacted with the document.
+        * loader/ResourceLoadObserver.cpp: Added.
+        * loader/ResourceLoadObserver.h: Added.
+        * loader/ResourceLoadStatistics.cpp: Added.
+        * loader/ResourceLoadStatistics.h: Added.
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::willSendRequestInternal): Track load statistics.
+        * page/Settings.cpp:
+        (WebCore::Settings::setResourceLoadStatisticsEnabled): Added.
+        * page/Settings.h:
+        (WebCore::Settings::resourceLoadStatisticsEnabled): Added.
+        * platform/Logging.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::resourceLoadStatisticsForOrigin):
+        (WebCore::Internals::setResourceLoadStatisticsEnabled):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        The following properties should exist on the global object: AudioTrackList, AudioTrack, VideoTrackList, VideoTrack
+        https://bugs.webkit.org/show_bug.cgi?id=154250
+        <rdar://problem/24660829>
+
+        Reviewed by Eric Carlson.
+
+        The following properties should exist on the global object:
+        - AudioTrackList, AudioTrack, VideoTrackList, VideoTrack
+
+        These interfaces are not marked as [NoInterfaceObject] in:
+        - https://html.spec.whatwg.org/#audiotracklist-and-videotracklist-objects
+
+        No new tests, already covered by existing tests.
+
+        * html/track/AudioTrack.idl:
+        * html/track/AudioTrackList.idl:
+        * html/track/VideoTrack.idl:
+        * html/track/VideoTrackList.idl:
+
+2016-02-15  Sam Weinig  <sam@webkit.org>
+
+        Stop using NSMapTable in places where we were only using it to be GC safe
+        <rdar://problem/24063723>
+        https://bugs.webkit.org/show_bug.cgi?id=154264
+
+        Reviewed by Dan Bernstein.
+
+        Switch from NSMapTable to HashMap.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/objc/DOMInternal.h:
+        * bindings/objc/DOMInternal.mm:
+        * bindings/objc/WebScriptObject.mm:
+        * bridge/objc/objc_instance.mm:
+        * platform/spi/cocoa/NSPointerFunctionsSPI.h: Removed. No longer used.
+
+2016-02-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Implement FontFace JavaScript object
+        https://bugs.webkit.org/show_bug.cgi?id=153345
+
+        Reviewed by Antti Koivisto.
+
+        Test: fast/text/font-face-javascript.html
+
+        This patch implements the FontFace Javascript object. This object mostly consists of
+        style getters / setters, which we implement by parsing input strings and generating
+        output strings similarly to getComputedStyle(). This object also has a load() function
+        which returns a promise which will be fulfilled or rejected depending on the load.
+        There is also a "loaded" attribute which exposes this promise directly. Also, a status
+        field is exposed so script knows what the state of the load is.
+
+        Currently, loading depends on our CachedResourceLoader which is part of the Document,
+        so this API is not available in a non-document context.
+
+        Another caveat is that immediate-mode font loading (where the content provides an
+        ArrayBuffer containing the bytes of the font file) is forthcoming. This requires
+        changing the relationship between CSSFontFaceSource and CachedFont.
+
+        CSSFontFace has been modified to keep a strong reference to the CSSFontSelector. This
+        is because the lifetime of the CSSFontFace can now outlive the CSSFontSelector. When
+        the CSSFontSelector is removed from the Document, it explicitly clears its constituent
+        CSSFontFaces, thereby breaking the reference cycle.
+
+        Test: fast/text/font-face-javascript-expected.html
+
+        * CMakeLists.txt: Add new files.
+        * DerivedSources.cpp: Ditto.
+        * DerivedSources.make: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * bindings/js/JSDOMPromise.cpp:
+        (WebCore::DeferredWrapper::globalObject): Remove whitespace.
+        (WebCore::DeferredWrapper::deferred): Allow access to the inner JSC object.
+        * bindings/js/JSDOMPromise.h:
+        (WebCore::DOMPromise::deferred): Ditto.
+        * bindings/js/JSFontFaceCustom.cpp: Copied from Source/WebCore/bindings/js/JSDOMPromise.cpp.
+        (WebCore::JSFontFace::loaded):
+        (WebCore::JSFontFace::load):
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::CSSFontFace): 
+        (WebCore::CSSFontFace::adoptSource):
+        (WebCore::CSSFontFace::updateStatus): Enforce the state machine's transitions.
+        (WebCore::CSSFontFace::fontLoaded):
+        (WebCore::CSSFontFace::pump):
+        (WebCore::CSSFontFace::load):
+        * css/CSSFontFace.h:
+        (WebCore::CSSFontFaceClient::~CSSFontFaceClient):
+        (WebCore::CSSFontFace::create):
+        (WebCore::CSSFontFace::status):
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::appendSources): Update for new CSSFontFace API.
+        (WebCore::CSSFontSelector::registerLocalFontFacesForFamily): Ditto.
+        (WebCore::CSSFontSelector::addFontFaceRule): Ditto.
+        (WebCore::CSSFontSelector::kick): Ditto.
+        (WebCore::appendSources): Deleted.
+        (WebCore::registerLocalFontFacesForFamily): Deleted.
+        * css/CSSFontSelector.h:
+        * css/CSSUnicodeRangeValue.cpp: Use for serializing the "unicodeRange" property.
+        * css/FontFace.cpp:
+        (WebCore::createPromise): Implement the remaining Javascript API functions.
+        (WebCore::valueFromDictionary):
+        (WebCore::FontFace::create):
+        (WebCore::FontFace::FontFace):
+        (WebCore::FontFace::parseString):
+        (WebCore::FontFace::status):
+        (WebCore::FontFace::kick):
+        (WebCore::FontFace::load):
+        (WebCore::FontFace::fulfillPromise):
+        (WebCore::FontFace::rejectPromise):
+        (WebCore::parseString): Deleted.
+        * css/FontFace.h:
+        (WebCore::FontFace::promise):
+        (WebCore::FontFace::backing):
+        (WebCore::FontFace::create): Deleted.
+        * css/FontFace.idl: Copied from Source/WebCore/bindings/js/JSDOMPromise.cpp.
+
+2016-02-15  Jer Noble  <jer.noble@apple.com>
+
+        Null-deref crash in DefaultAudioDestinationNode::suspend()
+        https://bugs.webkit.org/show_bug.cgi?id=154248
+
+        Reviewed by Alex Christensen.
+
+        Drive-by fix: AudioContext should be a reference, not a pointer.
+
+        * Modules/webaudio/AnalyserNode.cpp:
+        (WebCore::AnalyserNode::AnalyserNode):
+        * Modules/webaudio/AnalyserNode.h:
+        (WebCore::AnalyserNode::create):
+        * Modules/webaudio/AudioBasicInspectorNode.cpp:
+        (WebCore::AudioBasicInspectorNode::AudioBasicInspectorNode):
+        (WebCore::AudioBasicInspectorNode::connect):
+        (WebCore::AudioBasicInspectorNode::disconnect):
+        (WebCore::AudioBasicInspectorNode::checkNumberOfChannelsForInput):
+        (WebCore::AudioBasicInspectorNode::updatePullStatus):
+        * Modules/webaudio/AudioBasicInspectorNode.h:
+        * Modules/webaudio/AudioBasicProcessorNode.cpp:
+        (WebCore::AudioBasicProcessorNode::AudioBasicProcessorNode):
+        (WebCore::AudioBasicProcessorNode::checkNumberOfChannelsForInput):
+        * Modules/webaudio/AudioBasicProcessorNode.h:
+        * Modules/webaudio/AudioBufferSourceNode.cpp:
+        (WebCore::AudioBufferSourceNode::create):
+        (WebCore::AudioBufferSourceNode::AudioBufferSourceNode):
+        (WebCore::AudioBufferSourceNode::renderFromBuffer):
+        (WebCore::AudioBufferSourceNode::setBuffer):
+        (WebCore::AudioBufferSourceNode::startPlaying):
+        (WebCore::AudioBufferSourceNode::looping):
+        (WebCore::AudioBufferSourceNode::setLooping):
+        * Modules/webaudio/AudioBufferSourceNode.h:
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::AudioContext):
+        (WebCore::AudioContext::createBufferSource):
+        (WebCore::AudioContext::createMediaElementSource):
+        (WebCore::AudioContext::createMediaStreamDestination):
+        (WebCore::AudioContext::createScriptProcessor):
+        (WebCore::AudioContext::createBiquadFilter):
+        (WebCore::AudioContext::createWaveShaper):
+        (WebCore::AudioContext::createPanner):
+        (WebCore::AudioContext::createConvolver):
+        (WebCore::AudioContext::createDynamicsCompressor):
+        (WebCore::AudioContext::createAnalyser):
+        (WebCore::AudioContext::createGain):
+        (WebCore::AudioContext::createDelay):
+        (WebCore::AudioContext::createChannelSplitter):
+        (WebCore::AudioContext::createChannelMerger):
+        (WebCore::AudioContext::createOscillator):
+        * Modules/webaudio/AudioContext.h:
+        (WebCore::operator==):
+        (WebCore::operator!=):
+        * Modules/webaudio/AudioDestinationNode.cpp:
+        (WebCore::AudioDestinationNode::AudioDestinationNode):
+        (WebCore::AudioDestinationNode::render):
+        (WebCore::AudioDestinationNode::updateIsEffectivelyPlayingAudio):
+        * Modules/webaudio/AudioDestinationNode.h:
+        * Modules/webaudio/AudioNode.cpp:
+        (WebCore::AudioNode::AudioNode):
+        (WebCore::AudioNode::connect):
+        (WebCore::AudioNode::disconnect):
+        (WebCore::AudioNode::setChannelCount):
+        (WebCore::AudioNode::setChannelCountMode):
+        (WebCore::AudioNode::setChannelInterpretation):
+        (WebCore::AudioNode::scriptExecutionContext):
+        (WebCore::AudioNode::processIfNecessary):
+        (WebCore::AudioNode::checkNumberOfChannelsForInput):
+        (WebCore::AudioNode::propagatesSilence):
+        (WebCore::AudioNode::pullInputs):
+        (WebCore::AudioNode::enableOutputsIfNecessary):
+        (WebCore::AudioNode::deref):
+        (WebCore::AudioNode::finishDeref):
+        * Modules/webaudio/AudioNode.h:
+        (WebCore::AudioNode::context):
+        * Modules/webaudio/AudioNodeInput.cpp:
+        (WebCore::AudioNodeInput::connect):
+        (WebCore::AudioNodeInput::disconnect):
+        (WebCore::AudioNodeInput::disable):
+        (WebCore::AudioNodeInput::enable):
+        (WebCore::AudioNodeInput::updateInternalBus):
+        (WebCore::AudioNodeInput::bus):
+        (WebCore::AudioNodeInput::internalSummingBus):
+        (WebCore::AudioNodeInput::sumAllConnections):
+        (WebCore::AudioNodeInput::pull):
+        * Modules/webaudio/AudioNodeOutput.cpp:
+        (WebCore::AudioNodeOutput::setNumberOfChannels):
+        (WebCore::AudioNodeOutput::updateNumberOfChannels):
+        (WebCore::AudioNodeOutput::propagateChannelCount):
+        (WebCore::AudioNodeOutput::pull):
+        (WebCore::AudioNodeOutput::bus):
+        (WebCore::AudioNodeOutput::fanOutCount):
+        (WebCore::AudioNodeOutput::paramFanOutCount):
+        (WebCore::AudioNodeOutput::addInput):
+        (WebCore::AudioNodeOutput::removeInput):
+        (WebCore::AudioNodeOutput::disconnectAllInputs):
+        (WebCore::AudioNodeOutput::addParam):
+        (WebCore::AudioNodeOutput::removeParam):
+        (WebCore::AudioNodeOutput::disconnectAllParams):
+        (WebCore::AudioNodeOutput::disable):
+        (WebCore::AudioNodeOutput::enable):
+        * Modules/webaudio/AudioNodeOutput.h:
+        (WebCore::AudioNodeOutput::context):
+        * Modules/webaudio/AudioParam.cpp:
+        (WebCore::AudioParam::value):
+        (WebCore::AudioParam::smooth):
+        (WebCore::AudioParam::calculateSampleAccurateValues):
+        (WebCore::AudioParam::calculateFinalValues):
+        (WebCore::AudioParam::calculateTimelineValues):
+        (WebCore::AudioParam::connect):
+        (WebCore::AudioParam::disconnect):
+        * Modules/webaudio/AudioParam.h:
+        (WebCore::AudioParam::create):
+        (WebCore::AudioParam::AudioParam):
+        * Modules/webaudio/AudioParamTimeline.cpp:
+        (WebCore::AudioParamTimeline::valueForContextTime):
+        * Modules/webaudio/AudioParamTimeline.h:
+        * Modules/webaudio/AudioScheduledSourceNode.cpp:
+        (WebCore::AudioScheduledSourceNode::AudioScheduledSourceNode):
+        (WebCore::AudioScheduledSourceNode::updateSchedulingInfo):
+        (WebCore::AudioScheduledSourceNode::start):
+        (WebCore::AudioScheduledSourceNode::finish):
+        * Modules/webaudio/AudioScheduledSourceNode.h:
+        * Modules/webaudio/AudioSummingJunction.cpp:
+        (WebCore::AudioSummingJunction::AudioSummingJunction):
+        (WebCore::AudioSummingJunction::~AudioSummingJunction):
+        (WebCore::AudioSummingJunction::changedOutputs):
+        (WebCore::AudioSummingJunction::updateRenderingState):
+        * Modules/webaudio/AudioSummingJunction.h:
+        (WebCore::AudioSummingJunction::context):
+        * Modules/webaudio/BiquadFilterNode.cpp:
+        (WebCore::BiquadFilterNode::BiquadFilterNode):
+        * Modules/webaudio/BiquadFilterNode.h:
+        (WebCore::BiquadFilterNode::create):
+        * Modules/webaudio/BiquadProcessor.cpp:
+        (WebCore::BiquadProcessor::BiquadProcessor):
+        * Modules/webaudio/BiquadProcessor.h:
+        * Modules/webaudio/ChannelMergerNode.cpp:
+        (WebCore::ChannelMergerNode::create):
+        (WebCore::ChannelMergerNode::ChannelMergerNode):
+        (WebCore::ChannelMergerNode::checkNumberOfChannelsForInput):
+        * Modules/webaudio/ChannelMergerNode.h:
+        * Modules/webaudio/ChannelSplitterNode.cpp:
+        (WebCore::ChannelSplitterNode::create):
+        (WebCore::ChannelSplitterNode::ChannelSplitterNode):
+        * Modules/webaudio/ChannelSplitterNode.h:
+        * Modules/webaudio/ConvolverNode.cpp:
+        (WebCore::ConvolverNode::ConvolverNode):
+        (WebCore::ConvolverNode::setBuffer):
+        * Modules/webaudio/ConvolverNode.h:
+        (WebCore::ConvolverNode::create):
+        * Modules/webaudio/DefaultAudioDestinationNode.cpp:
+        (WebCore::DefaultAudioDestinationNode::DefaultAudioDestinationNode):
+        (WebCore::DefaultAudioDestinationNode::resume):
+        (WebCore::DefaultAudioDestinationNode::suspend):
+        (WebCore::DefaultAudioDestinationNode::close):
+        * Modules/webaudio/DefaultAudioDestinationNode.h:
+        (WebCore::DefaultAudioDestinationNode::create):
+        * Modules/webaudio/DelayNode.cpp:
+        (WebCore::DelayNode::DelayNode):
+        * Modules/webaudio/DelayNode.h:
+        (WebCore::DelayNode::create):
+        * Modules/webaudio/DelayProcessor.cpp:
+        (WebCore::DelayProcessor::DelayProcessor):
+        * Modules/webaudio/DelayProcessor.h:
+        * Modules/webaudio/DynamicsCompressorNode.cpp:
+        (WebCore::DynamicsCompressorNode::DynamicsCompressorNode):
+        * Modules/webaudio/DynamicsCompressorNode.h:
+        (WebCore::DynamicsCompressorNode::create):
+        * Modules/webaudio/GainNode.cpp:
+        (WebCore::GainNode::GainNode):
+        (WebCore::GainNode::checkNumberOfChannelsForInput):
+        * Modules/webaudio/GainNode.h:
+        (WebCore::GainNode::create):
+        * Modules/webaudio/MediaElementAudioSourceNode.cpp:
+        (WebCore::MediaElementAudioSourceNode::create):
+        (WebCore::MediaElementAudioSourceNode::MediaElementAudioSourceNode):
+        (WebCore::MediaElementAudioSourceNode::setFormat):
+        * Modules/webaudio/MediaElementAudioSourceNode.h:
+        * Modules/webaudio/MediaStreamAudioDestinationNode.cpp:
+        (WebCore::MediaStreamAudioDestinationNode::create):
+        (WebCore::MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode):
+        * Modules/webaudio/MediaStreamAudioDestinationNode.h:
+        * Modules/webaudio/MediaStreamAudioSourceNode.cpp:
+        (WebCore::MediaStreamAudioSourceNode::MediaStreamAudioSourceNode):
+        (WebCore::MediaStreamAudioSourceNode::setFormat):
+        * Modules/webaudio/OfflineAudioDestinationNode.cpp:
+        (WebCore::OfflineAudioDestinationNode::OfflineAudioDestinationNode):
+        (WebCore::OfflineAudioDestinationNode::offlineRender):
+        (WebCore::OfflineAudioDestinationNode::notifyComplete):
+        * Modules/webaudio/OfflineAudioDestinationNode.h:
+        (WebCore::OfflineAudioDestinationNode::create):
+        * Modules/webaudio/OscillatorNode.cpp:
+        (WebCore::OscillatorNode::create):
+        (WebCore::OscillatorNode::OscillatorNode):
+        * Modules/webaudio/OscillatorNode.h:
+        * Modules/webaudio/PannerNode.cpp:
+        (WebCore::PannerNode::PannerNode):
+        (WebCore::PannerNode::pullInputs):
+        (WebCore::PannerNode::process):
+        (WebCore::PannerNode::listener):
+        (WebCore::PannerNode::setPanningModel):
+        * Modules/webaudio/PannerNode.h:
+        (WebCore::PannerNode::create):
+        * Modules/webaudio/ScriptProcessorNode.cpp:
+        (WebCore::ScriptProcessorNode::create):
+        (WebCore::ScriptProcessorNode::ScriptProcessorNode):
+        (WebCore::ScriptProcessorNode::initialize):
+        (WebCore::ScriptProcessorNode::fireProcessEvent):
+        * Modules/webaudio/ScriptProcessorNode.h:
+        * Modules/webaudio/WaveShaperNode.cpp:
+        (WebCore::WaveShaperNode::WaveShaperNode):
+        (WebCore::WaveShaperNode::setOversample):
+        * Modules/webaudio/WaveShaperNode.h:
+        (WebCore::WaveShaperNode::create):
+
+2016-02-15  Jer Noble  <jer.noble@apple.com>
+
+        Null-deref crash in DefaultAudioDestinationNode::suspend()
+        https://bugs.webkit.org/show_bug.cgi?id=154248
+
+        Reviewed by Alex Christensen.
+
+        Null-check scriptExecutionContext() before deref.
+
+        * Modules/webaudio/DefaultAudioDestinationNode.cpp:
+        (WebCore::DefaultAudioDestinationNode::resume):
+        (WebCore::DefaultAudioDestinationNode::suspend):
+        (WebCore::DefaultAudioDestinationNode::close):
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequest / XMLHttpRequestUpload should inherit XMLHttpRequestEventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154230
+
+        Reviewed by Alex Christensen.
+
+        MLHttpRequest / XMLHttpRequestUpload should inherit XMLHttpRequestEventTarget
+        as per:
+        https://xhr.spec.whatwg.org/#xmlhttprequesteventtarget
+
+        Firefox and Chrome already match the specification.
+
+        No new tests, already covered by existing tests.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * xml/XMLHttpRequest.h:
+        * xml/XMLHttpRequest.idl:
+        * xml/XMLHttpRequestEventTarget.h: Added.
+        * xml/XMLHttpRequestEventTarget.idl: Copied from Source/WebCore/xml/XMLHttpRequestUpload.idl.
+        * xml/XMLHttpRequestUpload.h:
+        * xml/XMLHttpRequestUpload.idl:
+
+2016-02-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Refine SimulatedMouseEvent to support Event.isTrusted
+        https://bugs.webkit.org/show_bug.cgi?id=154133
+        <rdar://problem/24616246>
+
+        Reviewed by Darin Adler.
+
+        This patch extracts everything related to create/dispatch SimulatedMouseEvent from MouseEvent.h/cpp
+        and EventDispatcher.h/cpp, and produces SimulateClick.h/cpp which will handle simulated click solely.
+        After that, we hide the SimulatedMouseEvent and only expose simulateClick to be called. The reason is
+        that we both want to tell whether the call sites are from user agent/bindings and keep the
+        SimulatedMouseEvent intact.
+
+        Also, this patch separate Element::dispatchSimulatedClick into two: one for the user agent, and another
+        for the bindings. Therefore, HTMLElement.click will be treated as untrusted.
+
+        Some of the changes in this patch referred Blink r200401:
+        https://codereview.chromium.org/1285793004
+
+        Modified test:
+        LayoutTests/imported/blink/fast/events/event-trusted.html
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchSimulatedClick):
+        (WebCore::Element::dispatchSimulatedClickForBindings):
+        * dom/Element.h:
+        * dom/EventDispatcher.cpp:
+        (WebCore::EventDispatcher::dispatchSimulatedClick): Deleted.
+        * dom/EventDispatcher.h:
+        * dom/MouseEvent.cpp:
+        (WebCore::SimulatedMouseEvent::create): Deleted.
+        (WebCore::SimulatedMouseEvent::~SimulatedMouseEvent): Deleted.
+        (WebCore::SimulatedMouseEvent::SimulatedMouseEvent): Deleted.
+        * dom/MouseEvent.h:
+        * dom/SimulatedClick.cpp: Added.
+        (WebCore::simulateMouseEvent):
+        (WebCore::simulateClick):
+        * dom/SimulatedClick.h: Added.
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::click):
+
+2016-02-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web Workers have no access to console for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=26237
+
+        Reviewed by Timothy Hatcher.
+
+        This adds the most basic console message support to Workers.
+        Messages logged from workers get surfaced through the Page's console.
+        This lacks support for logging and interacting with arguments,
+        which would be addressed when adding more complete Worker
+        debugging tools.
+
+        Test: inspector/console/messageAdded-from-worker.html
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        Add new files.
+
+        * bindings/js/WorkerScriptController.cpp:
+        (WebCore::WorkerScriptController::~WorkerScriptController):
+        (WebCore::WorkerScriptController::initScript):
+        Set the ConsoleClient for the Worker's global object. We route
+        the messages to the Page's console.
+
+        * bindings/js/WorkerScriptController.h:
+        * workers/WorkerConsoleClient.h: Added.
+        * workers/WorkerConsoleClient.cpp: Added.
+        (WebCore::WorkerConsoleClient::WorkerConsoleClient):
+        (WebCore::WorkerConsoleClient::~WorkerConsoleClient):
+        (WebCore::WorkerConsoleClient::profile):
+        (WebCore::WorkerConsoleClient::profileEnd):
+        (WebCore::WorkerConsoleClient::count):
+        (WebCore::WorkerConsoleClient::time):
+        (WebCore::WorkerConsoleClient::timeEnd):
+        (WebCore::WorkerConsoleClient::timeStamp):
+        Stub most console methods in a Worker.
+
+        (WebCore::WorkerConsoleClient::messageWithTypeAndLevel):
+        Send worker log messages to the global scope and on to the main page.
+
+        * workers/WorkerGlobalScope.h:
+        * workers/WorkerGlobalScope.cpp:
+        (WebCore::WorkerGlobalScope::addConsoleMessage):
+        (WebCore::WorkerGlobalScope::addMessageToWorkerConsole):
+        Ideally we want to converge on simple addConsoleMessage
+        APIs that just take a ConsoleMessage, without a barrage
+        of parameters. Add these versions now.
+
+2016-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix.
+
+        * PlatformMac.cmake:
+
+2016-02-15  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196563): It is no longer possible to call window.addEventListener without an explicit 'this'
+        https://bugs.webkit.org/show_bug.cgi?id=154245
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch adds support for calling the EventListener API without an
+        explicit 'this' value. If no explicit 'this' value is passed, then we
+        fall back to using the global object. This matches Chrome and Firefox's
+        behavior. It also fixes the Dromaeo/cssquery-dojo.html test.
+
+        Test: fast/dom/Window/addEventListener-implicit-this.html
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateFunctionCastedThis):
+
+2016-02-14  Gavin Barraclough  <barraclough@apple.com>
+
+        Organize, deduplicate & comment JSDOMWindowCustom getOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=154224
+
+        Reviewed by Chris Dumez.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::jsDOMWindowGetOwnPropertySlotRestrictedAccess):
+        (WebCore::jsDOMWindowGetOwnPropertySlotNamedItemGetter):
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        (WebCore::JSDOMWindow::getOwnPropertySlotByIndex):
+            - organized property access sequence into a more logical order, removed
+              duplicated code & added comments.
+        (WebCore::namedItemGetter): Deleted.
+            - there was no need for a custom callback here; merged functionality into
+              jsDOMWindowGetOwnPropertySlotNamedItemGetter.
+        (WebCore::jsDOMWindowGetOwnPropertySlotCrossOrigin): Deleted.
+            - renamed to jsDOMWindowGetOwnPropertySlotRestrictedAccess
+              (this now also handles frameless access).
+
+2016-02-15  Daniel Bates  <dabates@apple.com>
+
+        CSP: 'sandbox' should be ignored in report-only mode
+        https://bugs.webkit.org/show_bug.cgi?id=153167
+        <rdar://problem/22708669>
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by Mike West):
+        <https://src.chromium.org/viewvc/blink?revision=165322&view=revision>
+
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::reportInvalidDirectiveInReportOnlyMode): Added. Logs a
+        console message to the console to explain that the specified directive is invalid in
+        report-only mode.
+        * page/csp/ContentSecurityPolicy.h:
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp:
+        (WebCore::ContentSecurityPolicyDirectiveList::applySandboxPolicy): Do not apply sandbox
+        policy when in report-only mode and call ContentSecurityPolicy::reportInvalidDirectiveInReportOnlyMode()
+        to log a message to the console.
+
+2016-02-15  Daniel Bates  <dabates@apple.com>
+
+        CSP: Allow schemeless source expressions to match an HTTP or HTTPS resource
+        https://bugs.webkit.org/show_bug.cgi?id=154177
+        <rdar://problem/22708772>
+
+        Reviewed by Brent Fulgham.
+
+        Allow a schemeless source expression to match an HTTP or HTTPS subresource when the page is
+        delivered over HTTP as per section Matching Source Expressions of the Content Security Policy
+        2.0 spec., <https://www.w3.org/TR/2015/CR-CSP2-20150721/> (21 July 2015).
+
+        Currently we have logic that implements this functionality, but it is guarded behind the compile-
+        time macro ENABLE(CSP_NEXT) that is disabled by default. Instead we should always compile such
+        code. In subsequent commits we will move more code out from under the ENABLE(CSP_NEXT)-guard
+        towards removing the ENABLE_CSP_NEXT macro entirely.
+
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::protocolMatchesSelf):
+
+2016-02-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Consolidated Linux-specific file lists.
+        https://bugs.webkit.org/show_bug.cgi?id=154219
+
+        Reviewed by Gyuyoung Kim.
+
+        No new tests needed.
+
+        * PlatformEfl.cmake: Moved Linux files and include dir to Linux.cmake.
+        * PlatformGTK.cmake: Ditto.
+        * platform/Linux.cmake: Added.
+
+2016-02-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !(ENABLE(SVG_FONTS) || ENABLE(SVG_OTF_CONVERTER)) build after r196322
+        https://bugs.webkit.org/show_bug.cgi?id=154104
+
+        Reviewed by Myles C. Maxfield.
+
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::CSSFontFaceSource):
+
+2016-02-14  Antti Koivisto  <antti@apple.com>
+
+        Add test for class change style invalidation optimization
+        https://bugs.webkit.org/show_bug.cgi?id=154226
+
+        Reviewed by Myles Maxfield.
+
+        Test for https://trac.webkit.org/r196383
+
+        Add internals.styleChangeType function.
+
+        Test: fast/css/style-invalidation-class-change-descendants.html
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::nodeNeedsStyleRecalc):
+        (WebCore::asString):
+        (WebCore::Internals::styleChangeType):
+        (WebCore::Internals::description):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2016-02-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [CSS Filters] When applying an SVG filter on a composited image using CSS the image is rendered without the filter
+        https://bugs.webkit.org/show_bug.cgi?id=154108
+
+        Reviewed by Sam Weinig.
+        
+        When checking whether we can directly composite an image, we need to check for software-rendered
+        filters.
+
+        Test: compositing/filters/simple-image-with-svg-filter.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::isDirectlyCompositedImage):
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop the [EventTarget] WebKit-specific IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=154171
+
+        Reviewed by Sam Weinig.
+
+        Drop the [EventTarget] WebKit-specific IDL extended attribute now that
+        all interfaces inherit EventTarget when they should.
+
+        No new tests, no Web-Exposed behavior change.
+
+        * Modules/battery/BatteryManager.idl:
+        * Modules/encryptedmedia/MediaKeySession.idl:
+        * Modules/indexeddb/IDBDatabase.idl:
+        * Modules/indexeddb/IDBOpenDBRequest.idl:
+        * Modules/indexeddb/IDBRequest.idl:
+        * Modules/indexeddb/IDBTransaction.idl:
+        * Modules/mediasession/MediaRemoteControls.idl:
+        * Modules/mediasource/MediaSource.idl:
+        * Modules/mediasource/SourceBuffer.idl:
+        * Modules/mediasource/SourceBufferList.idl:
+        * Modules/mediastream/MediaStream.idl:
+        * Modules/mediastream/MediaStreamTrack.idl:
+        * Modules/mediastream/RTCDTMFSender.idl:
+        * Modules/mediastream/RTCDataChannel.idl:
+        * Modules/mediastream/RTCPeerConnection.idl:
+        * Modules/notifications/Notification.idl:
+        * Modules/speech/SpeechSynthesisUtterance.idl:
+        * Modules/webaudio/AudioContext.idl:
+        * Modules/webaudio/AudioNode.idl:
+        * Modules/webaudio/OfflineAudioContext.idl:
+        * Modules/websockets/WebSocket.idl:
+        * bindings/scripts/CodeGeneratorGObject.pm:
+        (ImplementsInterface):
+        (SkipFunction): Deleted.
+        (GenerateCFile): Deleted.
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (InstanceNeedsVisitChildren):
+        (GenerateImplementation):
+        * bindings/scripts/IDLAttributes.txt:
+        * bindings/scripts/test/TestEventTarget.idl:
+        * bindings/scripts/test/TestNode.idl:
+        * css/FontLoader.idl:
+        * dom/EventTarget.idl:
+        * dom/MessagePort.idl:
+        * dom/Node.idl:
+        * dom/WebKitNamedFlow.idl:
+        * fileapi/FileReader.idl:
+        * html/MediaController.idl:
+        * html/track/AudioTrackList.idl:
+        * html/track/TextTrack.idl:
+        * html/track/TextTrackCue.idl:
+        * html/track/TextTrackList.idl:
+        * html/track/VideoTrackList.idl:
+        * loader/appcache/DOMApplicationCache.idl:
+        * page/DOMWindow.idl:
+        * page/EventSource.idl:
+        * page/Performance.idl:
+        * workers/WorkerGlobalScope.idl:
+        * xml/XMLHttpRequest.idl:
+        * xml/XMLHttpRequestUpload.idl:
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix the Mac CMake build after r196136
+
+        * PlatformMac.cmake:
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix the Windows build.
+
+        * Modules/webdatabase/Database.cpp:
+        * bridge/c/c_utility.cpp:
+        * platform/MemoryPressureHandler.cpp:
+
+2016-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Window and WorkerGlobalScope should inherit EventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154170
+        <rdar://problem/24642377>
+
+        Reviewed by Darin Adler.
+
+        Window and WorkerGlobalScope should inherit EventTarget instead of
+        duplicating the EventTarget API in their IDL. These were the last
+        interfaces that needed fixing. The next step will be to get rid
+        of the [EventTarget] IDL extended attribute and rely entirely
+        on the EventTarget inheritance.
+
+        Test:
+        - fast/frames/detached-frame-eventListener.html
+        - Covered by existing tests.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        Add JSEventTargetCustom.h header to the project.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        Drop custom bindings for Window's addEventListener() and
+        removeEventListener(). The only reason these needed custom
+        code was to add a check for frameless windows. The frameless
+        Window checks was moved to the respective methods in the
+        JSEventTarget generated bindings.
+
+        * bindings/js/JSDOMWindowShell.cpp:
+        (WebCore::JSDOMWindowShell::setWindow):
+        Set WindowPrototype's prototype to EventTarget's prototype.
+
+        * bindings/js/JSDOMWindowShell.h:
+        * bindings/js/JSDictionary.cpp:
+        Include "DOMWindow.h" to fix the build.
+
+        * bindings/js/JSEventTargetCustom.cpp:
+        (WebCore::JSEventTarget::toWrapped):
+        Handle DOMWindow and WorkerGlobalScope explicitely in toWrapped()
+        and get rid of the DOM_EVENT_TARGET_INTERFACES_FOR_EACH(TRY_TO_UNWRAP_WITH_INTERFACE)
+        now that all interfaces inherit EventTarget when they should.
+        The reason DOMWindow and WorkerGlobalScope still need special
+        handling is because their wrappers (JSDOMWindow /
+        JSWorkerGlobalScope) do not subclass JSEventTarget.
+
+        (WebCore::JSEventTargetOrGlobalScope::create):
+        * bindings/js/JSEventTargetCustom.h: Added.
+        (WebCore::JSEventTargetOrGlobalScope::wrapped):
+        (WebCore::JSEventTargetOrGlobalScope::operator JSC::JSObject&):
+        (WebCore::JSEventTargetOrGlobalScope::JSEventTargetOrGlobalScope):
+        Add a wrapper type for JSEventTarget / JSDOMWindow and
+        JSWorkerGlobalScope for use in the generated bindings. This is
+        needed because JSDOMWindow and JSWorkerGlobalScope do not
+        subclass JSEventTarget. Subclassing JSEventTarget would be
+        complicated for them because they already subclass
+        JSDOMWindowBase / JSWorkerGlobalScopeBase, which subclasses
+        JSDOMGlobalObject.
+
+        * bindings/js/WorkerScriptController.cpp:
+        (WebCore::WorkerScriptController::initScript):
+        Set WorkerGlobalScopePrototype's prototype to EventTarget's prototype.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (ShouldGenerateToJSDeclaration):
+        Do not generate to toJS() implementation for interfaces that use
+        the [CustomProxyToJSObject] IDL extended attribute, even if they
+        inherit EventTarget.
+
+        (GetCastingHelperForThisObject):
+        To initialize castedThis from thisValue JSValue, we now use the
+        JSEventTargetOrGlobalScope wrapper for the EventTarget
+        implementation. This is to work around the fact that JSDOMWindow
+        and JSWorkerGlobalScope do not subclass JSEventTarget.
+
+        (GenerateFunctionCastedThis):
+        - Drop code handling [WorkerGlobalScope] IDL extended attribute
+          as there is no such attribute.
+        - Use auto instead of auto* type for castedThis because
+          JSEventTargetOrGlobalScope::create() returns a unique_ptr.
+        - Do not check that castedThis inherits JSEventTarget in the
+          EventTarget bindings code as this no longer holds true.
+
+        (GenerateImplementation):
+        Generate frameless window() and security checks for EventTarget
+        methods when thisValue is a JSDOMWindow.
+
+        * dom/EventTarget.idl:
+        Add [JSCustomHeader] IDL Extended attribute as we need a header
+        to expose JSEventTargetOrGlobalScope class.
+
+        * page/DOMWindow.idl:
+        * workers/WorkerGlobalScope.idl:
+        Inherit EventTarget and stop duplicating the EventTarget API.
+        This matches the HTML specification.
+
+2016-02-14  Darin Adler  <darin@apple.com>
+
+        Small tweaks to some SimpleLineLayout code
+        https://bugs.webkit.org/show_bug.cgi?id=154229
+
+        Reviewed by Zalan Bujtas.
+
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintFlow): Use std::ceil instead of ceilf.
+        Use auto instead of const auto& for a for loop where the local object is
+        copied and not a reference.
+        (WebCore::SimpleLineLayout::hitTestFlow): Use modern for loop.
+        (WebCore::SimpleLineLayout::collectFlowOverflow): Use std::ceil instead of
+        ceilf. Use a modern for loop, and use slightly more descriptive local
+        variable names.
+        (WebCore::SimpleLineLayout::computeBoundingBox): Use auto instead of
+        const auto& as above.
+        (WebCore::SimpleLineLayout::computeFirstRunLocation): Use auto and use
+        the name "range" for the range rather than the name "it", since the range
+        is not an iterator.
+        (WebCore::SimpleLineLayout::collectAbsoluteRects): Use auto instead of
+        const auto& as above.
+        (WebCore::SimpleLineLayout::collectAbsoluteQuads): Ditto.
+        (WebCore::SimpleLineLayout::showLineLayoutForFlow): Use modern for loop.
+
+        * rendering/SimpleLineLayoutResolver.cpp:
+        (WebCore::SimpleLineLayout::RunResolver::Run::text): Convert from a String
+        to a StringView using the StringView constructor instead of writing out
+        explicit 8-bit and 16-bit cases.
+
+2016-02-13  Antti Koivisto  <antti@apple.com>
+
+        Factor class change style invalidation code into a class
+        https://bugs.webkit.org/show_bug.cgi?id=154163
+
+        Reviewed by Andreas Kling.
+
+        Factor this piece of functionality out of Element and into ClassChangeInvalidation class.
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Element.cpp:
+        (WebCore::classStringHasClassName):
+        (WebCore::Element::classAttributeChanged):
+        (WebCore::collectClasses): Deleted.
+        (WebCore::computeClassChange): Deleted.
+        (WebCore::invalidateStyleForClassChange): Deleted.
+        * style/ClassChangeInvalidation.cpp: Added.
+        (WebCore::Style::ClassChangeInvalidation::computeClassChange):
+        (WebCore::Style::ClassChangeInvalidation::invalidateStyle):
+        * style/ClassChangeInvalidation.h: Added.
+        (WebCore::Style::ClassChangeInvalidation::needsInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::ClassChangeInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::~ClassChangeInvalidation):
+
+2016-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] [SVG -> OTF Converter] SVG fonts drawn into ImageBuffers are invisible
+        https://bugs.webkit.org/show_bug.cgi?id=154222
+
+        Reviewed by Antti Koivisto.
+
+        Windows ImageBuffer code is sensitive to broken bounding box and
+        descent code.
+
+        Covered by existing tests.
+
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::appendHHEATable):
+        (WebCore::SVGToOTFFontConverter::appendOS2Table):
+        (WebCore::SVGToOTFFontConverter::processGlyphElement):
+        (WebCore::SVGToOTFFontConverter::SVGToOTFFontConverter):
+
+2016-02-13  Antti Koivisto  <antti@apple.com>
+
+        Add version number for default stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=154220
+
+        Reviewed by Ryosuke Niwa.
+
+        We currently fail to update RuleFeatureSets for shadow trees when the default stylesheet grows
+        (for example when media controls stylesheet is initialized).
+
+        No test since this is not causing known bugs. It is blocking optimizations in shadow trees that
+        rely on rule features being up-to-date.
+
+        * css/CSSDefaultStyleSheets.cpp:
+        (WebCore::CSSDefaultStyleSheets::loadSimpleDefaultStyle):
+        (WebCore::CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement):
+
+            Increment version number when the default stylesheet changes.
+
+        * css/CSSDefaultStyleSheets.h:
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::appendAuthorStyleSheets):
+        (WebCore::DocumentRuleSets::collectFeatures):
+
+            Store the current default stylesheet version number.
+
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::features):
+
+            Collect features again if the default stylesheet has changed.
+
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::styleForElement):
+
+2016-02-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Consolidate building of GStreamer and OpenWebRTC code.
+        https://bugs.webkit.org/show_bug.cgi?id=154116
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * PlatformEfl.cmake: Migrated shared code to GStreamer.cmake.
+        * PlatformGTK.cmake: Ditto.
+        * platform/GStreamer.cmake: Added.
+
+2016-02-13  Mark Lam  <mark.lam@apple.com>
+
+        Add thread violation checks to WebView public APIs.
+        https://bugs.webkit.org/show_bug.cgi?id=154183
+
+        Reviewed by Timothy Hatcher.
+
+        No new tests.  Just adding a new thread violation round.
+
+        * platform/ThreadCheck.h:
+        * platform/mac/ThreadCheck.mm:
+        - Adding WebCoreThreadViolationCheckRoundThree().
+
+2016-02-12  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement paragraph related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154098
+        <rdar://problem/24269675>
+
+        Reviewed by Chris Fleizach.
+
+        Using CharacterOffset to implement paragraph related text marker calls. Reused
+        logic from VisibleUnits class. And refactored textMarkerForCharacterOffset method
+        to get better performance. Also fixed an issue where we can't navigate through a text
+        node with line breaks in it using next/previousCharacterOffset call.
+
+        Test: accessibility/mac/text-marker-paragraph-nav.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::traverseToOffsetInRange):
+        (WebCore::AXObjectCache::startOrEndTextMarkerDataForRange):
+        (WebCore::AXObjectCache::characterOffsetForNodeAndOffset):
+        (WebCore::AXObjectCache::textMarkerDataForCharacterOffset):
+        (WebCore::AXObjectCache::textMarkerDataForNextCharacterOffset):
+        (WebCore::AXObjectCache::textMarkerDataForPreviousCharacterOffset):
+        (WebCore::AXObjectCache::nextNode):
+        (WebCore::AXObjectCache::textMarkerDataForVisiblePosition):
+        (WebCore::AXObjectCache::nextCharacterOffset):
+        (WebCore::AXObjectCache::previousCharacterOffset):
+        (WebCore::startWordBoundary):
+        (WebCore::AXObjectCache::startCharacterOffsetOfWord):
+        (WebCore::AXObjectCache::endCharacterOffsetOfWord):
+        (WebCore::AXObjectCache::previousWordStartCharacterOffset):
+        (WebCore::AXObjectCache::previousWordBoundary):
+        (WebCore::AXObjectCache::startCharacterOffsetOfParagraph):
+        (WebCore::AXObjectCache::endCharacterOffsetOfParagraph):
+        (WebCore::AXObjectCache::paragraphForCharacterOffset):
+        (WebCore::AXObjectCache::nextParagraphEndCharacterOffset):
+        (WebCore::AXObjectCache::previousParagraphStartCharacterOffset):
+        (WebCore::AXObjectCache::rootAXEditableElement):
+        * accessibility/AXObjectCache.h:
+        (WebCore::CharacterOffset::remaining):
+        (WebCore::CharacterOffset::isNull):
+        (WebCore::CharacterOffset::isEqual):
+        (WebCore::AXObjectCache::isNodeInUse):
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (+[WebAccessibilityTextMarker textMarkerWithCharacterOffset:cache:]):
+        (-[WebAccessibilityObjectWrapper nextMarkerForCharacterOffset:]):
+        (-[WebAccessibilityObjectWrapper previousMarkerForCharacterOffset:]):
+        (-[WebAccessibilityObjectWrapper rangeForTextMarkers:]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (startOrEndTextmarkerForRange):
+        (nextTextMarkerForCharacterOffset):
+        (previousTextMarkerForCharacterOffset):
+        (-[WebAccessibilityObjectWrapper nextTextMarkerForCharacterOffset:]):
+        (-[WebAccessibilityObjectWrapper previousTextMarkerForCharacterOffset:]):
+        (-[WebAccessibilityObjectWrapper textMarkerForCharacterOffset:]):
+        (textMarkerForCharacterOffset):
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:forParameter:]):
+        (-[WebAccessibilityObjectWrapper nextTextMarkerForNode:offset:]): Deleted.
+        (-[WebAccessibilityObjectWrapper previousTextMarkerForNode:offset:]): Deleted.
+        (-[WebAccessibilityObjectWrapper textMarkerForNode:offset:ignoreStart:]): Deleted.
+        (-[WebAccessibilityObjectWrapper textMarkerForNode:offset:]): Deleted.
+        * editing/VisibleUnits.cpp:
+        (WebCore::nextSentencePosition):
+        (WebCore::findStartOfParagraph):
+        (WebCore::findEndOfParagraph):
+        (WebCore::startOfParagraph):
+        (WebCore::endOfParagraph):
+        * editing/VisibleUnits.h:
+
+2016-02-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Reset results for bindings tests after r196520
+
+        Unreviewed test gardening.
+
+        No new tests needed.
+
+        * bindings/scripts/test/GObject/WebKitDOMTestEventTarget.cpp:
+        (webkit_dom_test_event_target_dispatch_event):
+        * bindings/scripts/test/GObject/WebKitDOMTestNode.cpp:
+        (webkit_dom_test_node_dispatch_event):
+
+2016-02-12  Saam barati  <sbarati@apple.com>
+
+        Attempting build fix from https://bugs.webkit.org/show_bug.cgi?id=154144.
+
+        * bindings/js/JSDOMGlobalObject.cpp:
+        (WebCore::JSDOMGlobalObject::addBuiltinGlobals):
+
+2016-02-12  Daniel Bates  <dabates@apple.com>
+
+        CSP: 'blob:' URLs should not match 'self' in CSP source expression lists.
+        https://bugs.webkit.org/show_bug.cgi?id=153158
+        <rdar://problem/24383264>
+
+        Reviewed by Brent Fulgham.
+
+        A blob URL should not match source 'self' by section Security Considerations for GUID URL schemes
+        of the Content Security Policy 2.0 spec., <https://www.w3.org/TR/CSP2/> (21 July 2015).
+
+        Tests: http/tests/security/contentSecurityPolicy/blob-url-does-not-match-source-self.html
+               http/tests/security/contentSecurityPolicy/blob-url-matches-source-blob.html
+
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::ContentSecurityPolicySourceList::matches): Do not make a distinction between URLs that
+        contain a nested URL (e.g. blob://http://www.example.com/...) and URLs that do not contain a nested
+        URL. The URL of the requested resource should be matched against the source list source expressions.
+
+2016-02-12  Daniel Bates  <dabates@apple.com>
+
+        CSP: Implement child-src directive
+        https://bugs.webkit.org/show_bug.cgi?id=153562
+        <rdar://problem/24610087>
+
+        Reviewed by Brent Fulgham.
+
+        Add support for the child-src directive, <https://w3c.github.io/webappsec-csp/2/#child_src> (29 August 2015),
+        which formally replaces the deprecated frame-src directive as of the Content Security Policy 2.0 spec. The
+        child-src directive was first introduced in the Content Security Policy 1.1 spec, <https://www.w3.org/TR/2014/WD-CSP11-20140211/>.
+
+        As a side effect of this change, the script URL for a Web Worker is checked against the child-src directive
+        as opposed to the script-src directive. This is a backward incompatible change from the CSP 1.0 spec.
+
+        Tests: http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-blocked.html
+               http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/1.1/child-src/frame-src-takes-precedence-over-child-src.html
+               http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked.html
+               http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect.html
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::isAllowedByContentSecurityPolicy): Check child-src directive (if applicable).
+        * loader/ThreadableLoader.h: Add enum value EnforceChildSrcDirective to enum class ContentSecurityPolicyEnforcement to
+        enforce the child-src directive on redirect.
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::allowChildContextFromSource): Added.
+        * page/csp/ContentSecurityPolicy.h:
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp:
+        (WebCore::ContentSecurityPolicyDirectiveList::checkSourceAndReportViolation): Add message prefix for a child-src violation.
+        We use the same message prefix as used by Blink.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildContextFromSource): Added.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildFrameFromSource): Modified to check the frame-src
+        directive (if specified) before checking the child-src directive by <https://w3c.github.io/webappsec-csp/2/#directive-child-src-nested>.
+        (WebCore::ContentSecurityPolicyDirectiveList::addDirective): Parse the child-src directive.
+        * page/csp/ContentSecurityPolicyDirectiveList.h:
+        * workers/AbstractWorker.cpp:
+        (WebCore::AbstractWorker::resolveURL): Check if the script URL for the worker is allowed by the child-src directive
+        as opposed to the script-src directive. This is a backwards incompatible change from the CSP 1.0 spec.
+        * workers/Worker.cpp:
+        (WebCore::Worker::create): Enforce the child-src directive on redirects (if applicable).
+
+2016-02-12  Saam barati  <sbarati@apple.com>
+
+        The parser doesn't properly protect against global variable references in builtins
+        https://bugs.webkit.org/show_bug.cgi?id=154144
+
+        Reviewed by Geoffrey Garen.
+
+        Change JS builtins to no longer reference global variables.
+
+        No new tests because old tests cover the issues here.
+
+        * Modules/mediastream/NavigatorUserMedia.js:
+        (webkitGetUserMedia):
+        * Modules/mediastream/RTCPeerConnection.js:
+        (addIceCandidate):
+        (getStats):
+        * Modules/mediastream/RTCPeerConnectionInternals.js:
+        (setLocalOrRemoteDescription):
+        * Modules/plugins/QuickTimePluginReplacement.js:
+        (Replacement.prototype.handleEvent):
+        * Modules/streams/ByteLengthQueuingStrategy.js:
+        (initializeByteLengthQueuingStrategy):
+        * Modules/streams/CountQueuingStrategy.js:
+        (initializeCountQueuingStrategy):
+        * Modules/streams/ReadableStreamInternals.js:
+        (teeReadableStream):
+        * bindings/js/JSDOMGlobalObject.cpp:
+        (WebCore::JSDOMGlobalObject::addBuiltinGlobals):
+        * bindings/js/WebCoreBuiltinNames.h:
+
+2016-02-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should expose the DOM 4 Event.isTrusted property
+        https://bugs.webkit.org/show_bug.cgi?id=76121
+        <rdar://problem/22558494>
+
+        Reviewed by Darin Adler.
+
+        Implements Event.isTrusted. The implementation here is slitely different from and better than
+        the DOM specification. Here Event.isTrusted will be initialized differently depending on the
+        callers of the constructors/create methods. If the caller is from user agent, the isTrusted
+        will be true. Otherwise, it will be false. Since a user agent dispatched event can be catched
+        and re-initialized/redispatched by the bindings, the flag will be unset at *Event::init*Event
+        and EventTarget::dispatchEventForBindings. As currently there is no way to let user agent to
+        dispatch a bindings created event, therefore we ensure that the Event.isTrusted is set for
+        events dispatched by user agent, and unset for those by bindings.
+
+        EventTarget::dispatchEvent(Event*, ExceptionCode&) is renamed to EventTarget::dispatchEventForBindings
+        in this patch as well. So that, together with the improved design of the API, developers in
+        the future will be less likely using a wrong dispatchEvent method and setting Event.isTrusted
+        incorrectly comparing to the DOM design.
+
+        After this patch, all events that are created by user agent should be dispatched by
+        EventTarget::dispatchEvent, and those are created by bindings should be dispatched by
+        EventTarget::dispatchEventForBindings.
+
+        Some of the changes in this patch referred Blink r198996:
+        https://codereview.chromium.org/1241613004
+
+        Test: imported/blink/fast/events/event-trusted.html
+
+        * bindings/scripts/CodeGeneratorGObject.pm:
+        (GenerateEventTargetIface):
+        * dom/Event.cpp:
+        (WebCore::Event::Event):
+        (WebCore::Event::initEvent):
+        * dom/Event.h:
+        (WebCore::Event::isTrusted):
+        (WebCore::Event::setUntrusted):
+        * dom/Event.idl:
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::dispatchEventForBindings):
+        (WebCore::EventTarget::dispatchEvent): Deleted.
+        * dom/EventTarget.h:
+        * dom/EventTarget.idl:
+        * page/DOMWindow.idl:
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::dispatchDragEvent):
+        * workers/WorkerGlobalScope.idl:
+
+2016-02-12  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: IDBObjectStore and IDBIndex need to be ActiveDOMObjects.
+        https://bugs.webkit.org/show_bug.cgi?id=154153
+
+        Reviewed by Alex Christensen.
+
+        No new tests (No testable change in behavior).
+
+        This is needed so that IDBObjectStore and IDBIndex JS wrappers are not garbage collected
+        while their IDBTransaction is still in progress.
+
+        * Modules/indexeddb/client/IDBIndexImpl.cpp:
+        (WebCore::IDBClient::IDBIndex::IDBIndex):
+        (WebCore::IDBClient::IDBIndex::activeDOMObjectName):
+        (WebCore::IDBClient::IDBIndex::canSuspendForDocumentSuspension):
+        (WebCore::IDBClient::IDBIndex::hasPendingActivity):
+        * Modules/indexeddb/client/IDBIndexImpl.h:
+        
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::create):
+        (WebCore::IDBClient::IDBObjectStore::IDBObjectStore):
+        (WebCore::IDBClient::IDBObjectStore::activeDOMObjectName):
+        (WebCore::IDBClient::IDBObjectStore::canSuspendForDocumentSuspension):
+        (WebCore::IDBClient::IDBObjectStore::hasPendingActivity):
+        (WebCore::IDBClient::IDBObjectStore::index):
+        * Modules/indexeddb/client/IDBObjectStoreImpl.h:
+        
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::objectStore):
+        (WebCore::IDBClient::IDBTransaction::createObjectStore):
+        (WebCore::IDBClient::IDBTransaction::createIndex):
+
+2016-02-12  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Simplify the relationship between IDBObjectStore and IDBIndex.
+        https://bugs.webkit.org/show_bug.cgi?id=154187
+
+        Reviewed by Alex Christensen.
+
+        Tests: storage/indexeddb/modern/deleteindex-3-private.html
+               storage/indexeddb/modern/deleteindex-3.html
+
+        Instead of allowing IDBIndex to have two different lifecycle modes, it is now always
+        owned by an IDBObjectStore.
+        
+        To support the case where an IDBIndex is deleted from its IDBObjectStore, the object
+        store simply hangs on to deleted indexes until it is destroyed itself.
+        
+        * Modules/indexeddb/client/IDBIndexImpl.cpp:
+        (WebCore::IDBClient::IDBIndex::markAsDeleted):
+        (WebCore::IDBClient::IDBIndex::ref):
+        (WebCore::IDBClient::IDBIndex::deref):
+        * Modules/indexeddb/client/IDBIndexImpl.h:
+        
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::deleteIndex):
+        * Modules/indexeddb/client/IDBObjectStoreImpl.h:
+
+2016-02-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [CSS Font Loading] Implement CSSFontFace Boilerplate
+        https://bugs.webkit.org/show_bug.cgi?id=154145
+
+        Reviewed by Dean Jackson.
+
+        The CSS Font Loading spec[1] dictates that the FontFace object needs to have string
+        accessors and mutators for a bunch of properties. Our CSSFontFace object currently
+        contains this parsed information, but it isn't accessible via string-based methods.
+        This patch adds the necessary accessors and mutators, and migrates CSSFontSelector
+        to use these mutators where necessary.
+
+        There is more work to come on CSSFontFace; the next step is to create an .idl file
+        and hook it up to our CSSFontFace object. In this patch I have left some
+        unimplemented pieces (for example: where the spec dictates that some operation should
+        throw a JavaScript exception) which will be implemented in a follow-up patch. This
+        patch does not have any visible behavior change; I'm separating out the boilerplate
+        into this patch in order to ease reviewing burden.
+
+        This patch separates the externally-facing JavaScript API into a new class, FontFace.
+        This class owns a CSSFontFace, which provides the backing implementation. There will
+        be a system of shared ownership of these objects once FontFaceSet is implemented.
+
+        No new tests because there is no behavior change.
+
+        * CMakeLists.txt: Add new files to CMake builds.
+        * WebCore.vcxproj/WebCore.vcxproj: Ditto for Windows.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto for Cocoa.
+        * css/CSSAllInOne.cpp: Ditto for All-In-One builds.
+        * css/CSSFontFace.cpp: Move shared code from CSSFontSelector into CSSFontFace.
+        (WebCore::CSSFontFace::CSSFontFace):
+        (WebCore::CSSFontFace::~CSSFontFace):
+        (WebCore::CSSFontFace::setFamilies):
+        (WebCore::CSSFontFace::setStyle):
+        (WebCore::CSSFontFace::setWeight):
+        (WebCore::CSSFontFace::setUnicodeRange):
+        (WebCore::CSSFontFace::setVariantLigatures):
+        (WebCore::CSSFontFace::setVariantPosition):
+        (WebCore::CSSFontFace::setVariantCaps):
+        (WebCore::CSSFontFace::setVariantNumeric):
+        (WebCore::CSSFontFace::setVariantAlternates):
+        (WebCore::CSSFontFace::setVariantEastAsian):
+        (WebCore::CSSFontFace::setFeatureSettings):
+        * css/CSSFontFace.h: Clean up.
+        (WebCore::CSSFontFace::create):
+        (WebCore::CSSFontFace::families):
+        (WebCore::CSSFontFace::traitsMask):
+        (WebCore::CSSFontFace::featureSettings):
+        (WebCore::CSSFontFace::variantSettings):
+        (WebCore::CSSFontFace::setVariantSettings):
+        (WebCore::CSSFontFace::setTraitsMask):
+        (WebCore::CSSFontFace::isLocalFallback):
+        (WebCore::CSSFontFace::addRange): Deleted.
+        (WebCore::CSSFontFace::insertFeature): Deleted.
+        (WebCore::CSSFontFace::setVariantCommonLigatures): Deleted.
+        (WebCore::CSSFontFace::setVariantDiscretionaryLigatures): Deleted.
+        (WebCore::CSSFontFace::setVariantHistoricalLigatures): Deleted.
+        (WebCore::CSSFontFace::setVariantContextualAlternates): Deleted.
+        (WebCore::CSSFontFace::setVariantPosition): Deleted.
+        (WebCore::CSSFontFace::setVariantCaps): Deleted.
+        (WebCore::CSSFontFace::setVariantNumericFigure): Deleted.
+        (WebCore::CSSFontFace::setVariantNumericSpacing): Deleted.
+        (WebCore::CSSFontFace::setVariantNumericFraction): Deleted.
+        (WebCore::CSSFontFace::setVariantNumericOrdinal): Deleted.
+        (WebCore::CSSFontFace::setVariantNumericSlashedZero): Deleted.
+        (WebCore::CSSFontFace::setVariantAlternates): Deleted.
+        (WebCore::CSSFontFace::setVariantEastAsianVariant): Deleted.
+        (WebCore::CSSFontFace::setVariantEastAsianWidth): Deleted.
+        (WebCore::CSSFontFace::setVariantEastAsianRuby): Deleted.
+        (WebCore::CSSFontFace::CSSFontFace): Deleted.
+        * css/CSSFontSelector.cpp: Migrate shared code into CSSFontFace, and udpate
+        to use the new API.
+        (WebCore::appendSources):
+        (WebCore::registerLocalFontFacesForFamily):
+        (WebCore::CSSFontSelector::addFontFaceRule):
+        (WebCore::computeTraitsMask): Deleted.
+        (WebCore::createFontFace): Deleted.
+        * css/FontFace.cpp: Added. External JavaScript API. Owns a CSSFontFace.
+        (WebCore::FontFace::FontFace):
+        (WebCore::FontFace::~FontFace):
+        (WebCore::parseString):
+        (WebCore::FontFace::setFamily):
+        (WebCore::FontFace::setStyle):
+        (WebCore::FontFace::setWeight):
+        (WebCore::FontFace::setStretch):
+        (WebCore::FontFace::setUnicodeRange):
+        (WebCore::FontFace::setVariant):
+        (WebCore::FontFace::setFeatureSettings):
+        (WebCore::FontFace::family):
+        (WebCore::FontFace::style):
+        (WebCore::FontFace::weight):
+        (WebCore::FontFace::stretch):
+        (WebCore::FontFace::unicodeRange):
+        (WebCore::FontFace::variant):
+        (WebCore::FontFace::featureSettings):
+        * css/FontFace.h: Added. Ditto.
+        (WebCore::FontFace::create):
+        * css/FontVariantBuilder.cpp: Added. Moved code here from FontVariantBuilder.h.
+        Refactored to support a new client (CSSFontFace).
+        (WebCore::extractFontVariantLigatures):
+        (WebCore::extractFontVariantNumeric):
+        (WebCore::extractFontVariantEastAsian):
+        (WebCore::computeFontVariant):
+        * css/FontVariantBuilder.h: Moved code from here into FontVariantBuilder.cpp.
+        (WebCore::applyValueFontVariantLigatures): Deleted.
+        (WebCore::applyValueFontVariantNumeric): Deleted.
+        (WebCore::applyValueFontVariantEastAsian): Deleted.
+        * css/StyleBuilderCustom.h: Update for new FontVariantBuilder API.
+        (WebCore::StyleBuilderCustom::applyValueFontVariantLigatures):
+        (WebCore::StyleBuilderCustom::applyValueFontVariantNumeric):
+        (WebCore::StyleBuilderCustom::applyValueFontVariantEastAsian):
+        * platform/text/TextFlags.h: Provide convenience classes.
+        (WebCore::FontVariantLigaturesValues::FontVariantLigaturesValues):
+        (WebCore::FontVariantNumericValues::FontVariantNumericValues):
+        (WebCore::FontVariantEastAsianValues::FontVariantEastAsianValues):
+
+2016-02-12  Jer Noble  <jer.noble@apple.com>
+
+        Build fix after r196506; publish MediaResourceLoader.h as a private header so it can be used by
+        TestWebKitAPI.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2016-02-11  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt MediaResourceLoader (instead of CachedResourceLoader) in WebCoreNSURLSession.
+        https://bugs.webkit.org/show_bug.cgi?id=154136
+
+        Reviewed by Alex Christensen.
+
+        MediaResourceLoader already supports using CORS attribute to verify CORS access requirements
+        when loading media resources, so use it, rather than CachedResourceLoader, as the backing for
+        WebCoreNSURLSession.
+
+        * platform/network/cocoa/WebCoreNSURLSession.h:
+        * platform/network/cocoa/WebCoreNSURLSession.mm:
+        (-[WebCoreNSURLSession delegateQueue]):
+        (-[WebCoreNSURLSession streamTaskWithNetService:]):
+        (-[WebCoreNSURLSession isKindOfClass:]):
+        (-[WebCoreNSURLSessionDataTask initWithSession:identifier:request:]):
+        (-[WebCoreNSURLSessionDataTask _restart]):
+        (-[WebCoreNSURLSessionDataTask _cancel]):
+        (-[WebCoreNSURLSessionDataTask resume]):
+        (-[WebCoreNSURLSessionDataTask _timingData]):
+        (-[WebCoreNSURLSessionDataTask resource:receivedResponse:]):
+        (-[WebCoreNSURLSessionDataTask resource:receivedData:length:]):
+        (-[WebCoreNSURLSession initWithResourceLoader:delegate:delegateQueue:]): Deleted.
+        (-[WebCoreNSURLSession loader]): Deleted.
+        (WebCore::WebCoreNSURLSessionDataTaskClient::dataSent): Deleted.
+        (WebCore::WebCoreNSURLSessionDataTaskClient::responseReceived): Deleted.
+        (WebCore::WebCoreNSURLSessionDataTaskClient::dataReceived): Deleted.
+        (WebCore::WebCoreNSURLSessionDataTaskClient::redirectReceived): Deleted.
+        (WebCore::WebCoreNSURLSessionDataTaskClient::notifyFinished): Deleted.
+        (-[WebCoreNSURLSessionDataTask initWithSession:identifier:URL:]): Deleted.
+        (-[WebCoreNSURLSessionDataTask _finish]): Deleted.
+        (-[WebCoreNSURLSessionDataTask _setDefersLoading:]): Deleted.
+        (-[WebCoreNSURLSessionDataTask resource:sentBytes:totalBytesToBeSent:]): Deleted.
+        (-[WebCoreNSURLSessionDataTask resource:receivedRedirect:request:]): Deleted.
+        (-[WebCoreNSURLSessionDataTask resourceFinished:]): Deleted.
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL):
+
+2016-02-12  Alex Christensen  <achristensen@webkit.org>
+
+        Fix non-internal builds when using NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=152285
+
+        * platform/spi/cf/CFNetworkSPI.h:
+        Add SPI declaration used in r194156.
+
+2016-02-12  Andreas Kling  <akling@apple.com>
+
+        Throw out all live resource decoded data on memory pressure / suspension.
+        <https://webkit.org/b/154176>
+
+        Reviewed by Antti Koivisto.
+
+        When pruning live resource decoded data from the memory cache,
+        we normally avoid pruning anything that's been painted in the last second.
+        This is an optimization to avoid getting into image decoding loops.
+
+        For memory pressure / process suspension scenarios this doesn't really
+        make sense though:
+
+            - In the pressure case, if we have to render again soon it'll likely
+              be a new GIF frame which we have to decode anyway.
+
+            - In the process suspension case, we might *never* render again,
+              so we should be good citizens and drop all the decoded data we can.
+
+        This patch makes us drop all the decoded data, recently painted or not.
+
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::MemoryPressureHandler::releaseCriticalMemory):
+
+2016-02-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Separate out !allowsAccess path in JSDOMWindowCustom getOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=154156
+
+        Reviewed by Chris Dumez.
+
+        JSDOMWindowCustom getOwnPropertySlot currently allows cross-origin access to all
+        static properties, relying on the property to perform the access check. This is
+        a little insecure, since it is error prone - someone could easily add a property
+        to the static table without realizing it would be automatcially exposed.
+
+        Instead, add a hard-coded filter to restrict access. As a future implementation
+        we might consider autogenerating this (the properties are already tagged in IDL,
+        we might be able to track this in a flag on the static table).
+
+        By separating out the handling of the same- and cross-origin access we can
+        simplify & make the policy being enforced much clearer.
+
+        * bindings/js/JSDOMBinding.cpp:
+        (WebCore::objectToStringFunctionGetter): Deleted.
+            - removed objectToStringFunctionGetter - this duplicated functionality of
+              nonCachingStaticFunctionGetter.
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::objectToStringFunctionGetter): Deleted.
+            - removed objectToStringFunctionGetter - this duplicated functionality of
+              nonCachingStaticFunctionGetter.
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::jsDOMWindowGetOwnPropertySlotDisallowAccess):
+            - explicitly handle providing access to only the things we do want to allow cross-origin.
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        (WebCore::JSDOMWindow::getOwnPropertySlotByIndex):
+            - push all !allowsAccess handling to jsDOMWindowGetOwnPropertySlotDisallowAccess
+        (WebCore::childFrameGetter): Deleted.
+            - this was just a deoptimiztion - moving access into a callback saved very
+              little & caused more work to be duplicated.
+
+2016-02-12  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Update ICU header files to version 52
+        https://bugs.webkit.org/show_bug.cgi?id=154160
+
+        Reviewed by Alex Christensen.
+
+        Update ICU header files to version 52 to allow the use of newer APIs.
+
+        No new tests because there is no behavior change.
+
+        * icu/unicode/bytestream.h:
+        * icu/unicode/chariter.h:
+        * icu/unicode/localpointer.h:
+        * icu/unicode/platform.h:
+        * icu/unicode/ptypes.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/rep.h:
+        (Replaceable::Replaceable):
+        * icu/unicode/std_string.h:
+        * icu/unicode/strenum.h:
+        * icu/unicode/stringpiece.h:
+        * icu/unicode/ubrk.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/ucnv.h:
+        * icu/unicode/ucol.h:
+        * icu/unicode/ucoleitr.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucsdet.h:
+        * icu/unicode/uenum.h:
+        * icu/unicode/uidna.h:
+        * icu/unicode/uiter.h:
+        * icu/unicode/uloc.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unistr.h:
+        (UnicodeString::UnicodeString):
+        (UnicodeString::operator== ):
+        (UnicodeString::startsWith):
+        (UnicodeString::setTo):
+        (UnicodeString::remove):
+        (UnicodeString::replace): Deleted.
+        (UnicodeString::extract): Deleted.
+        (UnicodeString::char32At): Deleted.
+        (UnicodeString::getChar32Start): Deleted.
+        (UnicodeString::getChar32Limit): Deleted.
+        (UnicodeString::getTerminatedBuffer): Deleted.
+        (UnicodeString::append): Deleted.
+        (UnicodeString::truncate): Deleted.
+        * icu/unicode/unorm2.h:
+        * icu/unicode/uobject.h:
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/usearch.h:
+        * icu/unicode/uset.h:
+        * icu/unicode/ushape.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utext.h:
+        * icu/unicode/utf.h:
+        * icu/unicode/utf16.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utf_old.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h:
+        * icu/unicode/uversion.h:
+
+2016-02-12  Andreas Kling  <akling@apple.com>
+
+        [Mac] BitmapImage::decodedDataIsPurgeable() is telling lies and causing massive memory usage.
+        <https://webkit.org/b/154172>
+
+        Reviewed by Antti Koivisto.
+
+        The underlying mechanism in CoreAnimation that made this work is no longer in place.
+
+        Instead of keeping purgeable frames and juggling volatility bits, we were simply caching
+        every single frame of large GIF animations, sometimes leading to monstrous memory usage.
+
+        Remove the code from WebCore since it's not doing at all what it means to.
+
+        Now iOS and Mac will behave the same again, and frame caching decisions will be
+        made by WebKit, based on total pixel byte size.
+
+        * loader/cache/CachedImage.h:
+        * loader/cache/CachedResource.h:
+        (WebCore::CachedResource::decodedDataIsPurgeable): Deleted.
+        * loader/cache/MemoryCache.cpp:
+        (WebCore::MemoryCache::pruneLiveResourcesToSize): Deleted.
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::decodedDataIsPurgeable): Deleted.
+        (WebCore::BitmapImage::destroyDecodedDataIfNecessary): Deleted.
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/Image.h:
+        (WebCore::Image::decodedDataIsPurgeable): Deleted.
+        * platform/graphics/cg/BitmapImageCG.cpp:
+        (WebCore::BitmapImage::decodedDataIsPurgeable): Deleted.
+        * platform/graphics/cg/ImageSourceCG.cpp:
+        (WebCore::ImageSource::createFrameAtIndex): Deleted.
+
+2016-02-12  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Ref cycle between IDBObjectStore and IDBIndex.
+        https://bugs.webkit.org/show_bug.cgi?id=154110
+
+        Reviewed by Darin Adler.
+
+        No new tests (Currently untestable).
+
+        The lifetime of IDBObjectStore and IDBIndex are closely intertwined, but we have to break the ref cycle.
+        
+        This patch does a few semi-gnarly things:
+        1 - Makes both IDBIndex and IDBObjectStore have a custom marking function so they can add each other as 
+            opaque roots.
+        2 - Adds a lock to protect IDBObjectStore's collection of referenced indexes to support #1, as GC marking
+            can happen on any thread.
+        3 - Makes IDBIndex not be traditionally RefCounted; Instead, IDBIndex::ref()/deref() simply ref()/deref()
+            the owning IDBObjectStore.
+        4 - ...Except when somebody deletes an IDBIndex from its IDBObjectStore. Once that happens, the object
+            store no longer has a reference back to the index, but the index still needs a reference back to the
+            object store. To support this, the IDBIndex becomes "traditionally RefCounted" while holding a ref to
+            its IDBObjectStore.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+        * Modules/indexeddb/IDBIndex.h:
+        (WebCore::IDBIndex::isModern):
+        * Modules/indexeddb/IDBIndex.idl:
+        
+        * Modules/indexeddb/IDBObjectStore.h:
+        (WebCore::IDBObjectStore::isModern):
+        * Modules/indexeddb/IDBObjectStore.idl:
+        
+        * Modules/indexeddb/client/IDBIndexImpl.cpp:
+        (WebCore::IDBClient::IDBIndex::objectStore):
+        (WebCore::IDBClient::IDBIndex::openCursor):
+        (WebCore::IDBClient::IDBIndex::doCount):
+        (WebCore::IDBClient::IDBIndex::openKeyCursor):
+        (WebCore::IDBClient::IDBIndex::doGet):
+        (WebCore::IDBClient::IDBIndex::doGetKey):
+        (WebCore::IDBClient::IDBIndex::markAsDeleted):
+        (WebCore::IDBClient::IDBIndex::ref):
+        (WebCore::IDBClient::IDBIndex::deref):
+        (WebCore::IDBClient::IDBIndex::create): Deleted.
+        * Modules/indexeddb/client/IDBIndexImpl.h:
+        (WebCore::IDBClient::IDBIndex::modernObjectStore):
+        
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::createIndex):
+        (WebCore::IDBClient::IDBObjectStore::index):
+        (WebCore::IDBClient::IDBObjectStore::deleteIndex):
+        (WebCore::IDBClient::IDBObjectStore::visitReferencedIndexes):
+        * Modules/indexeddb/client/IDBObjectStoreImpl.h:
+        
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::createIndex):
+        * Modules/indexeddb/client/IDBTransactionImpl.h:
+        
+        * Modules/indexeddb/legacy/LegacyIndex.cpp:
+        (WebCore::LegacyIndex::ref):
+        (WebCore::LegacyIndex::deref):
+        * Modules/indexeddb/legacy/LegacyIndex.h:
+        
+        * bindings/js/JSIDBIndexCustom.cpp: Added.
+        (WebCore::JSIDBIndex::visitAdditionalChildren):
+        
+        * bindings/js/JSIDBObjectStoreCustom.cpp:
+        (WebCore::JSIDBObjectStore::visitAdditionalChildren):
+
+2016-02-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL][GTK] Fix ENABLE(SVG_OTF_CONVERTER) build
+        https://bugs.webkit.org/show_bug.cgi?id=154165
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::font):
+        * svg/SVGToOTFFontConversion.cpp:
+        * svg/SVGToOTFFontConversion.h:
+
+2016-02-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed nit fixes after r196466.
+
+        * Modules/speech/SpeechSynthesisUtterance.idl: Fix curly bracket
+          placement.
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader): Use wrappableObject instead of domObject.
+        * bindings/scripts/test/*: Rebaseline.
+        * dom/WebKitNamedFlow.idl: Drop unnecessary #if case.
+
+2016-02-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Properly handle classes inheriting from EventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=154158
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of removing its parent we now handle the case of classes
+        having EventTarget as parent to make them implement the interface
+        instead.
+
+        * bindings/scripts/CodeGeneratorGObject.pm:
+        (ShouldBeExposedAsInterface): Whether the parent given class
+        should be exposed as an interface instead of a parent class.
+        (GetParentClassName): Return Object as parent for classes having
+        a parent that should be exposed as an interface.
+        (GetParentImplClassName): Ditto.
+        (GetBaseClass): Ditto.
+        (GetParentGObjType): Ditto.
+        (SkipFunction): Add FIXME comment.
+        (ImplementsInterface): Helper function to check if a class
+        implements the given interface.
+        (GenerateCFile): Check whether the class implements EventTarget to
+        generate the interface implementation.
+        (GenerateInterface): Do not remove the parent class when it's EventTarget.
+
+2016-02-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196470.
+        https://bugs.webkit.org/show_bug.cgi?id=154167
+
+        Broke some tests (Requested by anttik on #webkit).
+
+        Reverted changeset:
+
+        "Factor class change style invalidation code into a class"
+        https://bugs.webkit.org/show_bug.cgi?id=154163
+        http://trac.webkit.org/changeset/196470
+
+2016-02-12  Antti Koivisto  <antti@apple.com>
+
+        Factor class change style invalidation code into a class
+        https://bugs.webkit.org/show_bug.cgi?id=154163
+
+        Reviewed by Andreas Kling.
+
+        Factor this piece of functionality out of Element and into ClassChangeInvalidation class.
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Element.cpp:
+        (WebCore::classStringHasClassName):
+        (WebCore::Element::classAttributeChanged):
+        (WebCore::collectClasses): Deleted.
+        (WebCore::computeClassChange): Deleted.
+        (WebCore::invalidateStyleForClassChange): Deleted.
+        * style/ClassChangeInvalidation.cpp: Added.
+        (WebCore::Style::ClassChangeInvalidation::computeClassChange):
+        (WebCore::Style::ClassChangeInvalidation::invalidateStyle):
+        * style/ClassChangeInvalidation.h: Added.
+        (WebCore::Style::ClassChangeInvalidation::needsInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::ClassChangeInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::~ClassChangeInvalidation):
+
+2016-02-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        GCC buildfix in Source/WebCore/svg/SVGToOTFFontConversion.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=154162
+
+        Reviewed by Andreas Kling.
+
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::finishAppendingKERNSubtable):
+
+2016-02-12  Andreas Kling  <akling@apple.com>
+
+        Don't invalidate the FontCache on memory pressure.
+        <https://webkit.org/b/154161>
+
+        Reviewed by Antti Koivisto.
+
+        Invalidating the FontCache does more harm than good:
+
+            - Anything that's still in the cache at this point is also
+              referenced outside the cache, thus will not actually get deleted.
+
+            - Future deduplication will fail, leading to more objects.
+
+            - The global FontCache generation gets bumped, causing future style
+              recalcs to be less efficient and breaking style sharing.
+
+            - All FontSelector invalidation callbacks will fire, potentially
+              causing forced full-document style recalcs.
+
+        In fact, the only win from invalidating the FontCache comes from some
+        minor shrinkage in the containers that make up the cache itself.
+
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::MemoryPressureHandler::releaseCriticalMemory): Deleted.
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interfaces should inherit EventTarget instead of duplicating the EventTarget API
+        https://bugs.webkit.org/show_bug.cgi?id=154121
+        <rdar://problem/24613234>
+
+        Reviewed by Gavin Barraclough.
+
+        Interfaces should inherit EventTarget instead of duplicating the
+        EventTarget API in their IDL. Not only the duplication is ugly and
+        error-prone, but this also does not match the specifications and
+        have subtle web-exposed differences.
+
+        This patch takes care of all interfaces except for DOMWindow and
+        WorkerGlobalScope. Those will be updated in the follow-up patch
+        as they will require a little bit more work and testing.
+
+        We should also be able to get rid of the [EventTarget] WebKit IDL
+        attribute in a follow-up.
+
+        No new tests, already covered by existing tests.
+
+        * Modules/battery/BatteryManager.idl:
+        * Modules/encryptedmedia/MediaKeySession.idl:
+        * Modules/indexeddb/IDBDatabase.h:
+        * Modules/indexeddb/IDBDatabase.idl:
+        * Modules/indexeddb/IDBRequest.h:
+        * Modules/indexeddb/IDBRequest.idl:
+        * Modules/indexeddb/IDBTransaction.h:
+        * Modules/indexeddb/IDBTransaction.idl:
+        * Modules/mediasession/MediaRemoteControls.idl:
+        * Modules/mediasource/MediaSource.h:
+        * Modules/mediasource/MediaSource.idl:
+        * Modules/mediasource/SourceBuffer.h:
+        * Modules/mediasource/SourceBuffer.idl:
+        * Modules/mediasource/SourceBufferList.h:
+        * Modules/mediasource/SourceBufferList.idl:
+        * Modules/mediastream/MediaStream.h:
+        * Modules/mediastream/MediaStream.idl:
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/MediaStreamTrack.idl:
+        * Modules/mediastream/RTCDTMFSender.h:
+        * Modules/mediastream/RTCDTMFSender.idl:
+        * Modules/mediastream/RTCDataChannel.h:
+        * Modules/mediastream/RTCDataChannel.idl:
+        * Modules/mediastream/RTCPeerConnection.h:
+        * Modules/mediastream/RTCPeerConnection.idl:
+        * Modules/notifications/Notification.idl:
+        * Modules/speech/SpeechSynthesisUtterance.idl:
+        * Modules/webaudio/AudioContext.idl:
+        * Modules/webaudio/AudioNode.idl:
+        * Modules/websockets/WebSocket.idl:
+        * css/FontLoader.idl:
+        * dom/EventTarget.h:
+        * dom/MessagePort.idl:
+        * dom/Node.h:
+        * dom/Node.idl:
+        * dom/WebKitNamedFlow.idl:
+        * fileapi/FileReader.idl:
+        * html/MediaController.idl:
+        * html/track/AudioTrackList.idl:
+        * html/track/TextTrack.idl:
+        * html/track/TextTrackCue.idl:
+        * html/track/TextTrackList.idl:
+        * html/track/VideoTrackList.idl:
+        * loader/appcache/DOMApplicationCache.h:
+        * loader/appcache/DOMApplicationCache.idl:
+        * page/EventSource.idl:
+        * page/Performance.h:
+        * page/Performance.idl:
+        * workers/Worker.idl:
+        * xml/XMLHttpRequest.h:
+        * xml/XMLHttpRequest.idl:
+        * xml/XMLHttpRequestUpload.idl:
+        - Drop hardcoded EventTarget operations and inherit EventTarget instead.
+        - Drop JSGenerateToNativeObject / JSGenerateToJSObject IDL extended
+          attributes for interfaces inheriting the EventTarget interface as
+          the bindings generator now does this automatically for us.
+        - On native side, have EventTarget subclass ScriptWrappable instead of
+          each of its subclasses doing so. The issue was that
+          EventTargetOwner::finalize() was calling uncacheWrapper() with an
+          EventTarget*, which would not clear inlined cached wrapped (see
+          clearInlineCachedWrapper()) because EventTarget did not subclass
+          ScriptWrappable. However, cacheWrapper() is called is a specific
+          subtype pointer (e.g. Node*) and we would decide to create an
+          inline cached wrapper because Node subclassed ScriptWrappable
+          (as well as EventTarget).
+
+        * WebCore.xcodeproj/project.pbxproj:
+        Export JSEventTarget.h as private header to fix the build.
+
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::wrapperKey):
+        (WebCore::getCachedWrapper):
+        (WebCore::cacheWrapper):
+        (WebCore::uncacheWrapper):
+        Use new wrapperKey() function that is generated for each bindings
+        class that also has wrapperOwner(). This is used instead of the
+        C cast to void* in order to cast to the base wrapped type to fix
+        issues with multiple inheritance. The issue was that cacheWrapper()
+        was getting called with a DOM object subtype pointer (e.g.
+        AudioContext*) but uncacheWrapper() was getting called with a base
+        wrapped type pointer (e.g. EventTarget*). Most of our DOM classes
+        use multiple inheritance and thus the pointer values (used as keys
+        in the weak map) may differ.
+
+        * bindings/js/JSTrackCustom.cpp:
+        (WebCore::toJS):
+        Call CREATE_DOM_WRAPPER() with an actual wrapped type (e.g. AudioTrack)
+        instead of TrackBase type. TrackBase does not have corresponding
+        generated bindings and therefore does not have a wrapperKey()
+        function.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (ShouldGenerateToWrapped):
+        (ShouldGenerateToJSDeclaration):
+        (GenerateHeader):
+        - Generate a wrapperKey() utility function along-side wrapperOwner()
+          to help cast to the base wrapped type.
+        - Generate toWrapped() / toJS() utility functions for interfaces
+          that inherit EventTarget as those are required by our
+          implementation and this avoids having to explicitly have them in
+          the IDL.
+
+        * bindings/scripts/test/*:
+        Rebaseline bindings tests.
+
+2016-02-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Optimize texture-complete checks
+        https://bugs.webkit.org/show_bug.cgi?id=98308
+
+        Reviewed by Dean Jackson.
+
+        No new tests: No change in behavior.
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::initializeNewContext): Initially consider all
+        textures as suspect.
+        (WebCore::WebGLRenderingContextBase::extensions): New helper function.
+        (WebCore::WebGLRenderingContextBase::reshape): Mark textures as invalid when appropriate.
+        (WebCore::WebGLRenderingContextBase::bindTexture): Identify invalid textures and mark
+        them for later fix-up. Likewise, remove 'known good' textures from the fix-up pass.
+        (WebCore::WebGLRenderingContextBase::deleteTexture): Remove instances of the deleted texture
+        from our set of invalid textures.
+        (WebCore::WebGLRenderingContextBase::checkTextureCompleteness): Only iterate through
+        the 'bad' textures, rather than checking every single texture.
+        * html/canvas/WebGLRenderingContextBase.h:
+
+2016-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Assert that IDBTransaction::transitionedToFinishing transitions to finishing.
+        https://bugs.webkit.org/show_bug.cgi?id=154061
+
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::transitionedToFinishing):
+        Added assertion that we are transitioning to a finished or finishing state, based on Darin's feedback.
+
+2016-02-11  Enrica Casucci  <enrica@apple.com>
+
+        WebContent process crashes when performing data detection on content with existing data detector links.
+        https://bugs.webkit.org/show_bug.cgi?id=154118
+        rdar://problem/24511860
+
+        Reviewed by Tim Horton.
+
+        The DOM mutation caused by removing the existing links, can shift the range endpoints.
+        We now save the range enpoints as positions so that we can recreate the ranges,
+        if a DOM mutation occurred.
+
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::removeResultLinksFromAnchor):
+        (WebCore::searchForLinkRemovingExistingDDLinks):
+        (WebCore::DataDetection::detectContentInRange):
+
+2016-02-11  Jer Noble  <jer.noble@apple.com>
+
+        Make MediaResourceLoader behave more like a CachedResourceLoader.
+        https://bugs.webkit.org/show_bug.cgi?id=154117
+
+        Reviewed by Alex Christensen.
+
+        MediaResourceLoader currently can only handle a single request at a time. Split the class
+        into two, MediaResourceLoader and MediaResource, effectively wrapping CachedResourceLoader
+        and CachedRawResource respectively. With this devision, the same loader can be used to issue
+        multiple simultaneous resource requests.
+
+        This necessecitates splitting PlatformMediaResource into two classes as well.  To simplify
+        the HTMLMediaElement, MediaPlayer, and MediaPlayerClient APIs, do not require a client
+        object when creating the loader; instead, the client is required to create the resource.
+        This also matches the CachedRawResource API.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerCreateResourceLoader): Remove the client parameter.
+        * html/HTMLMediaElement.h:
+        * loader/MediaResourceLoader.cpp:
+        (WebCore::MediaResourceLoader::MediaResourceLoader):
+        (WebCore::MediaResourceLoader::~MediaResourceLoader):
+        (WebCore::MediaResourceLoader::requestResource): Renamed from start().
+        (WebCore::MediaResourceLoader::removeResource): Remove resource from live resource list.
+        (WebCore::MediaResource::create): Utility factory.
+        (WebCore::MediaResource::MediaResource):
+        (WebCore::MediaResource::~MediaResource):
+        (WebCore::MediaResource::stop): Moved from MediaResourceLoader.
+        (WebCore::MediaResource::setDefersLoading): Ditto.
+        (WebCore::MediaResource::responseReceived): Ditto.
+        (WebCore::MediaResource::redirectReceived): Ditto.
+        (WebCore::MediaResource::dataSent): Ditto.
+        (WebCore::MediaResource::dataReceived): Ditto.
+        (WebCore::MediaResource::notifyFinished): Ditto.
+        (WebCore::MediaResource::getOrCreateReadBuffer): Ditto.
+        * loader/MediaResourceLoader.h:
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::createResourceLoader):
+        * platform/graphics/MediaPlayer.h:
+        (WebCore::MediaPlayerClient::mediaPlayerCreateResourceLoader):
+        * platform/graphics/PlatformMediaResourceLoader.h:
+        (WebCore::PlatformMediaResourceClient::~PlatformMediaResourceClient): Renamed from PlatformMediaResourceLoaderClient.
+        (WebCore::PlatformMediaResourceClient::responseReceived): Client methods now take a reference to the resource.
+        (WebCore::PlatformMediaResourceClient::redirectReceived): Ditto.
+        (WebCore::PlatformMediaResourceClient::dataSent): Ditto. 
+        (WebCore::PlatformMediaResourceClient::dataReceived): Ditto.
+        (WebCore::PlatformMediaResourceClient::accessControlCheckFailed): Ditto.
+        (WebCore::PlatformMediaResourceClient::loadFailed): Ditto.
+        (WebCore::PlatformMediaResourceClient::loadFinished): Ditto.
+        (WebCore::PlatformMediaResourceClient::getOrCreateReadBuffer): Ditto.
+        (WebCore::PlatformMediaResourceLoader::PlatformMediaResourceLoader): Ditto.
+        (WebCore::PlatformMediaResource::PlatformMediaResource): 
+        (WebCore::PlatformMediaResource::~PlatformMediaResource): 
+        (WebCore::PlatformMediaResource::setClient):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcStart):
+        (webKitWebSrcNeedData):
+        (webKitWebSrcEnoughData):
+        (CachedResourceStreamingClient::getOrCreateReadBuffer):
+        (CachedResourceStreamingClient::responseReceived):
+        (CachedResourceStreamingClient::dataReceived):
+        (CachedResourceStreamingClient::accessControlCheckFailed):
+        (CachedResourceStreamingClient::loadFailed):
+        (CachedResourceStreamingClient::loadFinished):
+
+2016-02-11  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make focusring painting subpixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=154111
+
+        Reviewed by David Hyatt.
+
+        Do not integral snap focusring rects while collecting them (use device pixel snapping instead
+        right before passing them to GraphicsContext::drawFocusRing).
+
+        Unable to test.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/displaylists/DisplayListItems.h:
+        (WebCore::DisplayList::DrawFocusRingRects::create):
+        (WebCore::DisplayList::DrawFocusRingRects::rects):
+        (WebCore::DisplayList::DrawFocusRingRects::DrawFocusRingRects):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::drawFocusRing):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        * platform/graphics/mac/GraphicsContextMac.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::addFocusRingRectsForInlineChildren):
+        (WebCore::RenderBlock::addFocusRingRects):
+        * rendering/RenderBlock.h:
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::addFocusRingRectsForInlineChildren):
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::addFocusRingRects):
+        * rendering/RenderBox.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::paintFocusRing):
+        (WebCore::RenderElement::issueRepaintForOutlineAuto):
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::absoluteRects):
+        (WebCore::RenderInline::addFocusRingRects):
+        * rendering/RenderInline.h:
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::addFocusRingRects):
+        * rendering/RenderListBox.h:
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::addPDFURLRect):
+        (WebCore::RenderObject::absoluteFocusRingQuads):
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::addFocusRingRects):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::addFocusRingRects):
+        * rendering/RenderTextControl.h:
+        * rendering/svg/RenderSVGContainer.cpp:
+        (WebCore::RenderSVGContainer::addFocusRingRects):
+        * rendering/svg/RenderSVGContainer.h:
+        * rendering/svg/RenderSVGImage.cpp:
+        (WebCore::RenderSVGImage::addFocusRingRects):
+        * rendering/svg/RenderSVGImage.h:
+        * rendering/svg/RenderSVGShape.cpp:
+        (WebCore::RenderSVGShape::addFocusRingRects):
+        * rendering/svg/RenderSVGShape.h:
+
+2016-02-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r196393
+
+        Unreviewed.
+
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::getFontFace):
+        * css/CSSSegmentedFontFace.h:
+
+2016-02-11  Antti Koivisto  <antti@apple.com>
+
+        Rename Element::style() to Element::cssomStyle()
+        https://bugs.webkit.org/show_bug.cgi?id=154107
+
+        Reviewed by Alex Christensen.
+
+        It implements the IDL "style" attribute that returns a CSSOM object.
+        Inside WebCore "style" generally refers to a RenderStyle.
+
+        * dom/Element.cpp:
+        (WebCore::Element::hasAttributeNS):
+        (WebCore::Element::cssomStyle):
+        (WebCore::Element::focus):
+        (WebCore::Element::style): Deleted.
+        * dom/Element.h:
+        (WebCore::Element::tagQName):
+        * dom/Element.idl:
+        * dom/StyledElement.cpp:
+        (WebCore::StyledElement::~StyledElement):
+        (WebCore::StyledElement::cssomStyle):
+        (WebCore::StyledElement::style): Deleted.
+        * dom/StyledElement.h:
+        (WebCore::StyledElement::synchronizeStyleAttributeInternal):
+        (WebCore::StyledElement::collectStyleForPresentationAttribute):
+        * editing/Editor.cpp:
+        (WebCore::Editor::applyEditingStyleToElement):
+        * inspector/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::getMatchedStylesForNode):
+        (WebCore::InspectorCSSAgent::getInlineStylesForNode):
+        (WebCore::InspectorCSSAgent::asInspectorStyleSheet):
+        * inspector/InspectorStyleSheet.cpp:
+        (WebCore::InspectorStyleSheetForInlineStyle::didModifyElementAttribute):
+        (WebCore::InspectorStyleSheetForInlineStyle::inlineStyle):
+        (WebCore::InspectorStyleSheetForInlineStyle::elementStyleText):
+        * svg/SVGElement.idl:
+
+2016-02-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Consolidate TextureMapper file and include dir lists.
+        https://bugs.webkit.org/show_bug.cgi?id=154106
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * CMakeLists.txt: Moved texmap include dir and source list to
+        TextureMapper.cmake, removed non-existent include dir "filters/texmap".
+        * PlatformEfl.cmake: Moved texmap and coordinatedgraphics include
+        dirs and source list to TextureMapper.cmake.
+        * PlatformGTK.cmake: Ditto, also removed non-existent include dir
+        "texmap/threadedcompositor"
+        * PlatformWinCairo.cmake: Moved texmap files to TextureMapper.cmake.
+        * platform/TextureMapper.cmake: Added.
+
+2016-02-11  Chris Dumez  <cdumez@apple.com>
+
+        Move 'length' property to the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154051
+        <rdar://problem/24577385>
+
+        Reviewed by Darin Adler.
+
+        Move 'length' property to the prototype, where it should be. We used to
+        keep it on the instance because our implementation of
+        getOwnPropertySlot() was wrong for interfaces with a named property
+        getter. However, our implementation of getOwnPropertySlot() is now
+        spec-compliant so this should be OK.
+
+        Moving 'length' to the prototype is also a little bit risky in terms of
+        performance, especially for HTMLCollection / NodeList. However, I did
+        not see an impact on realistic benchmarks like Speedometer and only saw
+        a small impact (< 5%) on micro-benchmarks. I propose we make our behavior
+        correct and monitor performance. If we see any benchmark we care about
+        regress then we should try and optimize while keeping the attribute on
+        the prototype.
+
+        No new tests, already covered by existing tests.
+
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::getStaticValueSlotEntryWithoutCaching):
+        * bindings/js/JSHTMLDocumentCustom.cpp:
+        (WebCore::JSHTMLDocument::getOwnPropertySlot):
+        (WebCore::JSHTMLDocument::nameGetter): Deleted.
+        * bindings/js/JSLocationCustom.cpp:
+        (WebCore::JSLocation::putDelegate):
+        * bindings/js/JSPluginElementFunctions.h:
+        (WebCore::pluginElementCustomGetOwnPropertySlot):
+        * bindings/js/JSStorageCustom.cpp:
+        (WebCore::JSStorage::deleteProperty):
+        (WebCore::JSStorage::deletePropertyByIndex):
+        (WebCore::JSStorage::putDelegate):
+        Leverage the new hasStaticPropertyTable static property in the
+        generated bindings for performance.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        Generate a "hasStaticPropertyTable" static const boolean property
+        for each bindings class so we can check at build time if
+        ClassInfo::staticPropHashTable is null.
+
+        (AttributeShouldBeOnInstance):
+        Move "length" to the prototype.
+
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.h:
+        * bindings/scripts/test/JS/JSTestClassWithJSBuiltinConstructor.h:
+        * bindings/scripts/test/JS/JSTestCustomConstructorWithNoInterfaceObject.h:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.h:
+        * bindings/scripts/test/JS/JSTestEventConstructor.h:
+        * bindings/scripts/test/JS/JSTestEventTarget.h:
+        * bindings/scripts/test/JS/JSTestException.h:
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.h:
+        * bindings/scripts/test/JS/JSTestInterface.h:
+        * bindings/scripts/test/JS/JSTestJSBuiltinConstructor.h:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.h:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.h:
+        * bindings/scripts/test/JS/JSTestNode.h:
+        * bindings/scripts/test/JS/JSTestNondeterministic.h:
+        * bindings/scripts/test/JS/JSTestObj.h:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.h:
+        * bindings/scripts/test/JS/JSTestOverrideBuiltins.h:
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.h:
+        * bindings/scripts/test/JS/JSTestTypedefs.h:
+        * bindings/scripts/test/JS/JSattribute.h:
+        * bindings/scripts/test/JS/JSreadonly.h:
+        Rebaseline bindings tests.
+
+
+2016-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !(ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)) after r196281
+        https://bugs.webkit.org/show_bug.cgi?id=154035
+
+        Reviewed by Antti Koivisto.
+
+        Follow-up fix after r196365. Removed guards around slotNodeIndex.
+
+        * dom/ComposedTreeIterator.h:
+        (WebCore::ComposedTreeIterator::Context::Context):
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Updating bindings test reference file for JSTestEventConstructor.cpp after r196400
+
+        Unreviewed test gardening.
+
+        No new tests needed.
+
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        (WebCore::JSTestEventConstructorConstructor::construct):
+
+2016-02-10  Eric Carlson  <eric.carlson@apple.com>
+
+        Update "manual" caption track logic
+        https://bugs.webkit.org/show_bug.cgi?id=154084
+        <rdar://problem/24530516>
+
+        Reviewed by Dean Jackson.
+
+        No new tests, media/track/track-manual-mode.html was updated.
+
+        * English.lproj/Localizable.strings: Add new string.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::addTextTrack): track.setManualSelectionMode is no more.
+        (WebCore::HTMLMediaElement::configureTextTrackGroup): Never enable a track automatically when
+          in manual selection mode.
+        (WebCore::HTMLMediaElement::captionPreferencesChanged):  track.setManualSelectionMode is no more.
+
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::containsOnlyForcedSubtitles): Return true for forced tracks.
+        (WebCore::TextTrack::kind): Deleted.
+        * html/track/TextTrack.h:
+
+        * html/track/TrackBase.h:
+        (WebCore::TrackBase::kind): De-virtualize, nobody overrides it.
+
+        * page/CaptionUserPreferencesMediaAF.cpp:
+        (WebCore::trackDisplayName): Include "forced" in the name of forced tracks.
+
+        * platform/LocalizedStrings.cpp:
+        (WebCore::forcedTrackMenuItemText): New.
+        * platform/LocalizedStrings.h:
+
+2016-02-10  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Rename *Event::create* which creates events for bindings to *Event::createForBindings* and cleanup corresponding paths
+        https://bugs.webkit.org/show_bug.cgi?id=153903
+        <rdar://problem/24518146>
+
+        Reviewed by Darin Adler.
+
+        Rename Event::create(const AtomicString&, const EventInit&) to Event::createForBindings
+        (const AtomicString&, const EventInit&) and for all the subclasses as well in order to
+        support Event.isTrusted. Besides, some of the subclasses use the create method for bindings
+        to create events not for bindings and vice versa. Therefore, this patch also cleanup
+        corresponding paths to ensure no misuse of the create mehtod. The same for Event::create()
+        as it is combined with Event::initEvent to create an event for bindings for legacy content.
+
+        After this patch, all call sites of *Event::create* are supposed to use *Event::create
+        to create events for user agent and *Event::createForBindings for bindings.
+
+        No change in behavior.
+
+        * Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.h:
+        (WebCore::WebKitPlaybackTargetAvailabilityEvent::create):
+        (WebCore::WebKitPlaybackTargetAvailabilityEvent::createForBindings):
+        (WebCore::WebKitPlaybackTargetAvailabilityEventInit::WebKitPlaybackTargetAvailabilityEventInit): Deleted.
+        * Modules/encryptedmedia/MediaKeyMessageEvent.cpp:
+        (WebCore::MediaKeyMessageEvent::MediaKeyMessageEvent):
+        (WebCore::MediaKeyMessageEventInit::MediaKeyMessageEventInit): Deleted.
+        * Modules/encryptedmedia/MediaKeyMessageEvent.h:
+        (WebCore::MediaKeyMessageEvent::create):
+        (WebCore::MediaKeyMessageEvent::createForBindings):
+        * Modules/encryptedmedia/MediaKeyNeededEvent.cpp:
+        (WebCore::MediaKeyNeededEvent::MediaKeyNeededEvent):
+        (WebCore::MediaKeyNeededEventInit::MediaKeyNeededEventInit): Deleted.
+        * Modules/encryptedmedia/MediaKeyNeededEvent.h:
+        (WebCore::MediaKeyNeededEvent::create):
+        (WebCore::MediaKeyNeededEvent::createForBindings):
+        * Modules/encryptedmedia/MediaKeySession.cpp:
+        (WebCore::MediaKeySession::sendMessage):
+        * Modules/gamepad/GamepadEvent.h:
+        (WebCore::GamepadEvent::create):
+        (WebCore::GamepadEvent::createForBindings):
+        (WebCore::GamepadEventInit::GamepadEventInit): Deleted.
+        * Modules/indieui/UIRequestEvent.cpp:
+        (WebCore::UIRequestEvent::createForBindings):
+        (WebCore::UIRequestEvent::UIRequestEvent):
+        (WebCore::UIRequestEventInit::UIRequestEventInit): Deleted.
+        (WebCore::UIRequestEvent::create): Deleted.
+        * Modules/indieui/UIRequestEvent.h:
+        * Modules/mediastream/MediaStreamEvent.cpp:
+        (WebCore::MediaStreamEvent::createForBindings):
+        (WebCore::MediaStreamEventInit::MediaStreamEventInit): Deleted.
+        (WebCore::MediaStreamEvent::create): Deleted.
+        * Modules/mediastream/MediaStreamEvent.h:
+        * Modules/mediastream/MediaStreamTrackEvent.cpp:
+        (WebCore::MediaStreamTrackEvent::createForBindings):
+        (WebCore::MediaStreamTrackEventInit::MediaStreamTrackEventInit): Deleted.
+        (WebCore::MediaStreamTrackEvent::create): Deleted.
+        * Modules/mediastream/MediaStreamTrackEvent.h:
+        * Modules/mediastream/RTCDTMFToneChangeEvent.cpp:
+        (WebCore::RTCDTMFToneChangeEvent::createForBindings):
+        (WebCore::RTCDTMFToneChangeEvent::create): Deleted.
+        * Modules/mediastream/RTCDTMFToneChangeEvent.h:
+        * Modules/mediastream/RTCDataChannelEvent.cpp:
+        (WebCore::RTCDataChannelEvent::createForBindings):
+        (WebCore::RTCDataChannelEvent::create): Deleted.
+        * Modules/mediastream/RTCDataChannelEvent.h:
+        * Modules/mediastream/RTCIceCandidateEvent.cpp:
+        (WebCore::RTCIceCandidateEvent::createForBindings):
+        (WebCore::RTCIceCandidateEvent::create): Deleted.
+        * Modules/mediastream/RTCIceCandidateEvent.h:
+        * Modules/mediastream/RTCTrackEvent.cpp:
+        (WebCore::RTCTrackEvent::createForBindings):
+        (WebCore::RTCTrackEventInit::RTCTrackEventInit): Deleted.
+        (WebCore::RTCTrackEvent::create): Deleted.
+        * Modules/mediastream/RTCTrackEvent.h:
+        * Modules/speech/SpeechSynthesisEvent.cpp:
+        (WebCore::SpeechSynthesisEvent::createForBindings):
+        (WebCore::SpeechSynthesisEvent::create):
+        (WebCore::SpeechSynthesisEvent::SpeechSynthesisEvent):
+        * Modules/speech/SpeechSynthesisEvent.h:
+        * Modules/webaudio/AudioProcessingEvent.cpp:
+        (WebCore::AudioProcessingEvent::create): Deleted.
+        * Modules/webaudio/AudioProcessingEvent.h:
+        (WebCore::AudioProcessingEvent::create):
+        (WebCore::AudioProcessingEvent::createForBindings):
+        * Modules/webaudio/OfflineAudioCompletionEvent.cpp:
+        (WebCore::OfflineAudioCompletionEvent::createForBindings):
+        (WebCore::OfflineAudioCompletionEvent::create): Deleted.
+        * Modules/webaudio/OfflineAudioCompletionEvent.h:
+        * Modules/websockets/CloseEvent.h:
+        (WebCore::CloseEvent::create):
+        (WebCore::CloseEvent::createForBindings):
+        (WebCore::CloseEvent::CloseEvent):
+        (WebCore::CloseEventInit::CloseEventInit): Deleted.
+        * bindings/objc/DOM.mm:
+        (-[DOMNode nextFocusNode]):
+        (-[DOMNode previousFocusNode]):
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateConstructorDefinition):
+        * dom/AnimationEvent.cpp:
+        (WebCore::AnimationEventInit::AnimationEventInit): Deleted.
+        * dom/AnimationEvent.h:
+        * dom/BeforeLoadEvent.h:
+        (WebCore::BeforeLoadEventInit::BeforeLoadEventInit): Deleted.
+        * dom/ClipboardEvent.h:
+        * dom/CompositionEvent.cpp:
+        (WebCore::CompositionEventInit::CompositionEventInit): Deleted.
+        * dom/CompositionEvent.h:
+        * dom/CustomEvent.cpp:
+        (WebCore::CustomEventInit::CustomEventInit): Deleted.
+        * dom/CustomEvent.h:
+        * dom/DeviceMotionEvent.h:
+        * dom/DeviceOrientationEvent.h:
+        * dom/Document.cpp:
+        (WebCore::Document::createEvent):
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchMouseEvent):
+        * dom/ErrorEvent.cpp:
+        (WebCore::ErrorEventInit::ErrorEventInit): Deleted.
+        * dom/ErrorEvent.h:
+        * dom/Event.cpp:
+        (WebCore::EventInit::EventInit): Deleted.
+        * dom/Event.h:
+        (WebCore::Event::createForBindings):
+        (WebCore::Event::create): Deleted.
+        * dom/FocusEvent.cpp:
+        (WebCore::FocusEventInit::FocusEventInit): Deleted.
+        * dom/FocusEvent.h:
+        * dom/HashChangeEvent.h:
+        (WebCore::HashChangeEventInit::HashChangeEventInit): Deleted.
+        * dom/KeyboardEvent.cpp:
+        (WebCore::KeyboardEvent::KeyboardEvent):
+        (WebCore::KeyboardEventInit::KeyboardEventInit): Deleted.
+        * dom/KeyboardEvent.h:
+        * dom/MessageEvent.cpp:
+        (WebCore::MessageEvent::MessageEvent):
+        (WebCore::MessageEventInit::MessageEventInit): Deleted.
+        * dom/MessageEvent.h:
+        * dom/MouseEvent.cpp:
+        (WebCore::MouseEvent::createForBindings):
+        (WebCore::MouseEvent::create):
+        (WebCore::MouseEvent::MouseEvent):
+        (WebCore::MouseEvent::cloneFor):
+        (WebCore::MouseEventInit::MouseEventInit): Deleted.
+        * dom/MouseEvent.h:
+        (WebCore::MouseEvent::createForBindings):
+        (WebCore::MouseEvent::create): Deleted.
+        * dom/MouseRelatedEvent.cpp:
+        (WebCore::MouseRelatedEvent::MouseRelatedEvent):
+        (WebCore::MouseRelatedEvent::init):
+        * dom/MouseRelatedEvent.h:
+        (WebCore::MouseRelatedEvent::screenX):
+        (WebCore::MouseRelatedEvent::screenY):
+        (WebCore::MouseRelatedEvent::screenLocation):
+        (WebCore::MouseRelatedEvent::clientX):
+        (WebCore::MouseRelatedEvent::clientY):
+        (WebCore::MouseRelatedEvent::movementX):
+        (WebCore::MouseRelatedEvent::movementY):
+        (WebCore::MouseRelatedEvent::clientLocation):
+        (WebCore::MouseRelatedEvent::isSimulated):
+        (WebCore::MouseRelatedEvent::absoluteLocation):
+        (WebCore::MouseRelatedEvent::setAbsoluteLocation):
+        * dom/MutationEvent.h:
+        * dom/OverflowEvent.cpp:
+        (WebCore::OverflowEvent::OverflowEvent):
+        (WebCore::OverflowEvent::initOverflowEvent):
+        (WebCore::OverflowEventInit::OverflowEventInit): Deleted.
+        * dom/OverflowEvent.h:
+        * dom/PageTransitionEvent.cpp:
+        (WebCore::PageTransitionEventInit::PageTransitionEventInit): Deleted.
+        * dom/PageTransitionEvent.h:
+        * dom/PopStateEvent.cpp:
+        (WebCore::PopStateEvent::createForBindings):
+        (WebCore::PopStateEventInit::PopStateEventInit): Deleted.
+        (WebCore::PopStateEvent::PopStateEvent): Deleted.
+        (WebCore::PopStateEvent::create): Deleted.
+        * dom/PopStateEvent.h:
+        * dom/ProgressEvent.cpp:
+        (WebCore::ProgressEventInit::ProgressEventInit): Deleted.
+        * dom/ProgressEvent.h:
+        (WebCore::ProgressEvent::createForBindings):
+        (WebCore::ProgressEvent::create): Deleted.
+        * dom/SecurityPolicyViolationEvent.h:
+        (WebCore::SecurityPolicyViolationEventInit::SecurityPolicyViolationEventInit): Deleted.
+        * dom/TextEvent.cpp:
+        (WebCore::TextEvent::createForBindings):
+        (WebCore::TextEvent::create): Deleted.
+        * dom/TextEvent.h:
+        * dom/TouchEvent.h:
+        * dom/TransitionEvent.cpp:
+        (WebCore::TransitionEventInit::TransitionEventInit): Deleted.
+        * dom/TransitionEvent.h:
+        * dom/UIEvent.cpp:
+        (WebCore::UIEventInit::UIEventInit): Deleted.
+        * dom/UIEvent.h:
+        (WebCore::UIEvent::createForBindings):
+        (WebCore::UIEvent::create): Deleted.
+        * dom/UIEventWithKeyState.h:
+        (WebCore::UIEventWithKeyState::ctrlKey):
+        (WebCore::UIEventWithKeyState::shiftKey):
+        (WebCore::UIEventWithKeyState::altKey):
+        (WebCore::UIEventWithKeyState::metaKey):
+        (WebCore::UIEventWithKeyState::UIEventWithKeyState):
+        * dom/WebKitAnimationEvent.cpp:
+        (WebCore::WebKitAnimationEventInit::WebKitAnimationEventInit): Deleted.
+        * dom/WebKitAnimationEvent.h:
+        * dom/WebKitTransitionEvent.cpp:
+        (WebCore::WebKitTransitionEventInit::WebKitTransitionEventInit): Deleted.
+        * dom/WebKitTransitionEvent.h:
+        * dom/WheelEvent.h:
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerKeyAdded):
+        (WebCore::HTMLMediaElement::mediaPlayerKeyError):
+        (WebCore::HTMLMediaElement::mediaPlayerKeyMessage):
+        (WebCore::HTMLMediaElement::mediaPlayerKeyNeeded):
+        * html/MediaKeyEvent.cpp:
+        (WebCore::MediaKeyEvent::MediaKeyEvent):
+        (WebCore::MediaKeyEventInit::MediaKeyEventInit): Deleted.
+        * html/MediaKeyEvent.h:
+        * html/canvas/WebGLContextEvent.cpp:
+        (WebCore::WebGLContextEventInit::WebGLContextEventInit): Deleted.
+        * html/canvas/WebGLContextEvent.h:
+        * html/track/TrackEvent.cpp:
+        (WebCore::TrackEvent::TrackEvent):
+        (WebCore::TrackEventInit::TrackEventInit): Deleted.
+        * html/track/TrackEvent.h:
+        * html/track/TrackListBase.cpp:
+        (TrackListBase::scheduleTrackEvent):
+        (TrackListBase::scheduleChangeEvent):
+        * page/EventSource.cpp:
+        (WebCore::EventSource::createMessageEvent):
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::reportViolation):
+        (WebCore::gatherSecurityPolicyViolationEventData): Deleted.
+        * storage/StorageEvent.cpp:
+        (WebCore::StorageEvent::createForBindings):
+        (WebCore::StorageEventInit::StorageEventInit): Deleted.
+        (WebCore::StorageEvent::create): Deleted.
+        * storage/StorageEvent.h:
+        * svg/SVGZoomEvent.h:
+        (WebCore::SVGZoomEvent::createForBindings):
+        (WebCore::SVGZoomEvent::create): Deleted.
+        * xml/XMLHttpRequestProgressEvent.h:
+        (WebCore::XMLHttpRequestProgressEvent::createForBindings):
+        (WebCore::XMLHttpRequestProgressEvent::create): Deleted.
+
+2016-02-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining bindings tests
+
+        Unreviewed test gardening.
+
+        No new tests needed.
+
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.cpp:
+        * bindings/scripts/test/JS/JSTestCallback.cpp:
+        * bindings/scripts/test/JS/JSTestClassWithJSBuiltinConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestCustomConstructorWithNoInterfaceObject.cpp:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.cpp:
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestEventTarget.cpp:
+        * bindings/scripts/test/JS/JSTestException.cpp:
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.cpp:
+        * bindings/scripts/test/JS/JSTestInterface.cpp:
+        * bindings/scripts/test/JS/JSTestJSBuiltinConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.cpp:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.cpp:
+        * bindings/scripts/test/JS/JSTestNondeterministic.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.cpp:
+        * bindings/scripts/test/JS/JSTestOverrideBuiltins.cpp:
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.cpp:
+        * bindings/scripts/test/JS/JSTestTypedefs.cpp:
+        * bindings/scripts/test/JS/JSattribute.cpp:
+        * bindings/scripts/test/JS/JSreadonly.cpp:
+
+2016-02-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Consolidate CMake code related to image decoders.
+        https://bugs.webkit.org/show_bug.cgi?id=154074
+
+        Reviewed by Alex Christensen.
+
+        Common image decoder sources, includes and libs are moved to
+        platform/ImageDecoders.cmake.
+
+        Also, added include directories of libjpeg and libpng to
+        WebCore_SYSTEM_INCLUDE_DIRECTORIES.
+
+        No new tests needed.
+
+        * CMakeLists.txt: Moved common include paths to ImageDecoders.cmake.
+        * PlatformEfl.cmake: Moved common sources and libs to ImageDecoders.cmake.
+        * PlatformGTK.cmake: Ditto.
+        * PlatformWinCairo.cmake: Moved common sources to ImageDecoders.cmake.
+        * platform/ImageDecoders.cmake: Added.
+
+2016-02-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        CSSSegmentedFontFace does not need to be reference counted
+        https://bugs.webkit.org/show_bug.cgi?id=154083
+
+        Reviewed by Antti Koivisto.
+
+        ...There is only ever a single reference to one.
+
+        No new tests because there is no behavior change.
+
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::getFontFace):
+        * css/CSSFontSelector.h:
+        * css/CSSSegmentedFontFace.h:
+        (WebCore::CSSSegmentedFontFace::create): Deleted.
+
+2016-02-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        FontCache's clients should use references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=154085
+
+        Reviewed by Antti Koivisto.
+
+        They are never null.
+
+        No new tests because there is no behavior change.
+
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::CSSFontSelector):
+        (WebCore::CSSFontSelector::~CSSFontSelector):
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontCache::addClient):
+        (WebCore::FontCache::removeClient):
+        * platform/graphics/FontCache.h:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        interface objects should be Function objects as per Web IDL:
+        - http://heycam.github.io/webidl/#interface-object
+        - http://heycam.github.io/webidl/#es-interfaces
+
+        So window.Event should be a Function object for e.g. but in WebKit it
+        is a regular EventConstructor JSObject.
+        Firefox and Chrome match the specification.
+
+        Test: js/interface-objects.html
+
+        * bindings/js/JSDOMBinding.cpp:
+        (WebCore::callThrowTypeError):
+        (WebCore::DOMConstructorObject::getCallData):
+        When calling the interface object as a function, we throw a TypeError
+        with a message asking to use the 'new' operator to match the behavior
+        of Firefox and Chrome.
+
+        * bindings/js/JSDOMBinding.h:
+        Add JSC::TypeOfShouldCallGetCallData structure flag and implement
+        getCallData() so that typeof returns "function", as per the
+        specification and the behavior of other browsers.
+
+        (WebCore::DOMConstructorObject::className):
+        Implement className() and return "Function" to match the specification and
+        other browsers. Otherwise, it would fall back to using ClassInfo::className
+        which os the function name and interface name (e.g. "Event").
+
+        * bindings/js/JSDOMConstructor.h:
+        (WebCore::JSDOMConstructorNotConstructable::callThrowTypeError):
+        (WebCore::JSDOMConstructorNotConstructable::getCallData):
+        As per the specification, interfaces that do not have a [Constructor]
+        should throw a TypeError when called as a function. Use the "Illegal
+        constructor" error message to match Firefox and Chrome.
+
+        * bindings/js/JSDOMGlobalObject.h:
+        (WebCore::getDOMConstructor):
+        Instead of using objectPrototype as prototype for all DOM constructors,
+        we now call the prototypeForStructure() static function that is
+        generated for each bindings class. As per the Web IDL specification,
+        The [[Prototype]] internal property of an interface object for a
+        non-callback interface is determined as follows:
+        1. If the interface inherits from some other interface, the value of
+           [[Prototype]] is the interface object for that other interface.
+        2. If the interface doesn't inherit from any other interface, the value
+           of [[Prototype]] is %FunctionPrototype% ([ECMA-262], section 6.1.7.4).
+
+        * bindings/js/JSImageConstructor.cpp:
+        (WebCore::JSImageConstructor::prototypeForStructure):
+        Have the Image's interface object use HTMLElement's interface object
+        as prototype as HTMLImageElement inherits HTMLElement.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (getInterfaceExtendedAttributesFromName):
+        Add a utility function to cheaply retrieve an interface's IDL extended
+        attributes without actually parsing the IDL. This is used to check if
+        an interface's parent is marked as [NoInterfaceObject] currently.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+        (GenerateCallbackHeader):
+        (GenerateCallbackImplementation):
+        Mark JSGlobalObject* parameter as const as the implementation does not
+        alter the globalObject.
+
+        (GenerateConstructorHelperMethods):
+        - Generate prototypeForStructure() function for each bindings class that
+          is not marked as [NoInterfaceObject] so getDOMConstructor() knows which
+          prototype to use for the interface object / constructor when constructing
+          it.
+        - Use the interface name for the interface object, without the "Constructor"
+          suffix, to match the behavior of Firefox and Chrome.
+
+        * bindings/scripts/test/*:
+        Rebaseline bindings tests.
+
+2016-02-10  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Graphical corruption in videos when enabling custom loading path
+        https://bugs.webkit.org/show_bug.cgi?id=154044
+
+        Reviewed by Alex Christensen.
+
+        Revert the "Drive-by fix" in r196345 as it breaks the WebCoreNSURLSessionTests.BasicOperation API test.
+
+        * platform/network/cocoa/WebCoreNSURLSession.mm:
+        (-[WebCoreNSURLSessionDataTask resource:receivedData:length:]):
+
+2016-02-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        CSSSegmentedFontFace does not need to be reference counted
+        https://bugs.webkit.org/show_bug.cgi?id=154083
+
+        Reviewed by Antti Koivisto.
+
+        ...There is only ever a single reference to one.
+
+        No new tests because there is no behavior change.
+
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::getFontFace):
+        * css/CSSFontSelector.h:
+        * css/CSSSegmentedFontFace.h:
+        (WebCore::CSSSegmentedFontFace::create): Deleted.
+
+2016-02-10  Antti Koivisto  <antti@apple.com>
+
+        Optimize style invalidation after class attribute change
+        https://bugs.webkit.org/show_bug.cgi?id=154075
+        rdar://problem/12526450
+
+        Reviewed by Andreas Kling.
+
+        Currently a class attribute change invalidates style for the entire element subtree for any class found in the
+        active stylesheet set.
+
+        This patch optimizes class changes by building a new optimization structure called ancestorClassRules. It contains
+        rules that have class selectors in the portion of the complex selector that matches ancestor elements. The sets
+        of rules are hashes by the class name.
+
+        On class attribute change the existing StyleInvalidationAnalysis mechanism is used with ancestorClassRules to invalidate
+        exactly those descendants that are affected by the addition or removal of the class name. This is fast because the CSS JIT
+        makes selector matching cheap and the number of relevant rules is typically small.
+
+        This optimization is very effective on many dynamic pages. For example when focusing and unfocusing the web inspector it
+        cuts down the number of resolved elements from ~1000 to ~50. Even in PLT it reduces the number of resolved elements by ~11%.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::collectFeatures):
+        (WebCore::DocumentRuleSets::ancestorClassRules):
+
+            Create optimization RuleSets on-demand when there is an actual dynamic class change.
+
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::features):
+        (WebCore::DocumentRuleSets::sibling):
+        (WebCore::DocumentRuleSets::uncommonAttribute):
+        * css/ElementRuleCollector.cpp:
+        (WebCore::ElementRuleCollector::ElementRuleCollector):
+
+            Add a new constructor that doesn't requires DocumentRuleSets. Only the user and author style is required.
+
+        (WebCore::ElementRuleCollector::matchAuthorRules):
+        (WebCore::ElementRuleCollector::matchUserRules):
+        * css/ElementRuleCollector.h:
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::recursivelyCollectFeaturesFromSelector):
+
+            Collect class names that show up in the ancestor portion of the selector.
+            Make this a member.
+
+        (WebCore::RuleFeatureSet::collectFeatures):
+
+            Move this code from RuleData.
+            Add the rule to ancestorClassRules if needed.
+
+        (WebCore::RuleFeatureSet::add):
+        (WebCore::RuleFeatureSet::clear):
+        (WebCore::RuleFeatureSet::shrinkToFit):
+        (WebCore::recursivelyCollectFeaturesFromSelector): Deleted.
+        (WebCore::RuleFeatureSet::collectFeaturesFromSelector): Deleted.
+        * css/RuleFeature.h:
+        (WebCore::RuleFeature::RuleFeature):
+        (WebCore::RuleFeatureSet::RuleFeatureSet): Deleted.
+        * css/RuleSet.cpp:
+        (WebCore::RuleData::RuleData):
+        (WebCore::RuleSet::RuleSet):
+        (WebCore::RuleSet::~RuleSet):
+        (WebCore::RuleSet::addToRuleSet):
+        (WebCore::RuleSet::addRule):
+        (WebCore::RuleSet::addRulesFromSheet):
+        (WebCore::collectFeaturesFromRuleData): Deleted.
+        * css/RuleSet.h:
+        (WebCore::RuleSet::tagRules):
+        (WebCore::RuleSet::RuleSet): Deleted.
+        * css/StyleInvalidationAnalysis.cpp:
+        (WebCore::shouldDirtyAllStyle):
+        (WebCore::StyleInvalidationAnalysis::StyleInvalidationAnalysis):
+
+            Add a new constructor that takes a ready made RuleSet instead of a stylesheet.
+
+        (WebCore::StyleInvalidationAnalysis::invalidateIfNeeded):
+        (WebCore::StyleInvalidationAnalysis::invalidateStyleForTree):
+        (WebCore::StyleInvalidationAnalysis::invalidateStyle):
+        (WebCore::StyleInvalidationAnalysis::invalidateStyle):
+
+            New function for invalidating a subtree instead of the whole document.
+
+        * css/StyleInvalidationAnalysis.h:
+        (WebCore::StyleInvalidationAnalysis::dirtiesAllStyle):
+        (WebCore::StyleInvalidationAnalysis::hasShadowPseudoElementRulesInAuthorSheet):
+        * dom/Element.cpp:
+        (WebCore::classStringHasClassName):
+        (WebCore::collectClasses):
+        (WebCore::computeClassChange):
+
+            Factor to return the changed classes.
+
+        (WebCore::invalidateStyleForClassChange):
+
+            First filter out classes that don't show up in stylesheets. If something remains invalidate the current
+            element for inline style change (that is a style change that doesn't affect descendants).
+
+            Next check if there are any ancestorClassRules for the changed class. If so use the StyleInvalidationAnalysis
+            to find any affected descendants and invalidate them with inline style change as well.
+
+        (WebCore::Element::classAttributeChanged):
+
+            Invalidate for removed classes before setting new attribute value, invalidate for added classes afterwards.
+
+        (WebCore::Element::absoluteLinkURL):
+        (WebCore::checkSelectorForClassChange): Deleted.
+        * dom/ElementData.h:
+        (WebCore::ElementData::setClassNames):
+        (WebCore::ElementData::classNames):
+        (WebCore::ElementData::classNamesMemoryOffset):
+        (WebCore::ElementData::clearClass): Deleted.
+        (WebCore::ElementData::setClass): Deleted.
+
+2016-02-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r196322
+
+        Unreviwed.
+
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::font):
+        * css/CSSFontFaceSource.h:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Attributes on the Window instance should be configurable unless [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=153920
+        <rdar://problem/24563211>
+
+        Reviewed by Darin Adler.
+
+        Attributes on the Window instance should be configurable unless [Unforgeable]:
+        1. 'constructor' property:
+           - http://www.w3.org/TR/WebIDL/#interface-prototype-object
+        2. Constructor properties (e.g. window.Node):
+           - http://www.w3.org/TR/WebIDL/#es-interfaces
+        3. IDL attributes:
+           - http://heycam.github.io/webidl/#es-attributes (configurable unless
+             [Unforgeable], e.g. window.location)
+
+        Firefox complies with the WebIDL specification but WebKit does not for 1. and 3.
+
+        Test: fast/dom/Window/window-properties-configurable.html
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        For known Window properties (i.e. properties in the static property table),
+        if we have reified and this is same-origin access, then call
+        Base::getOwnPropertySlot() to get the property from the local property
+        storage. If we have not reified yet, or this is cross-origin access, query
+        the static property table. This is to match the behavior of Firefox and
+        Chrome which seem to keep returning the original properties upon cross
+        origin access, even if those were deleted or redefined.
+
+        (WebCore::JSDOMWindow::put):
+        The previous code used to call the static property setter for properties in
+        the static table. However, this does not do the right thing if properties
+        were reified. For example, deleting window.name and then trying to set it
+        again would not work. Therefore, update this code to only do this if the
+        properties have not been reified, similarly to what is done in
+        JSObject::putInlineSlow().
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (ConstructorShouldBeOnInstance):
+        Add a FIXME comment indicating that window.constructor should be on
+        the prototype as per the Web IDL specification.
+
+        (GenerateAttributesHashTable):
+        - Mark 'constructor' property as configurable for Window, as per the
+          specification and consistently with other 'constructor' properties:
+          http://www.w3.org/TR/WebIDL/#interface-prototype-object
+        - Mark properties as configurable even though they are on the instance.
+          Window has its properties on the instance as per the specification:
+          1. http://heycam.github.io/webidl/#es-attributes
+          2. http://heycam.github.io/webidl/#PrimaryGlobal (window is [PrimaryGlobal]
+          However, these properties should be configurable as long as they are
+          not marked as [Unforgeable], as per 1.
+
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.cpp:
+        * bindings/scripts/test/JS/JSTestException.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        Rebaseline bindings tests.
+
+2016-02-10  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Ref cycle between IDBObjectStore and IDBTransaction.
+        https://bugs.webkit.org/show_bug.cgi?id=154061
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Currently untestable).
+
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::transitionedToFinishing): Make sure the new state makes sense,
+          set the new state, and then clear the set of referenced object stores which is no longer needed.
+        (WebCore::IDBClient::IDBTransaction::abort):
+        (WebCore::IDBClient::IDBTransaction::commit):
+        * Modules/indexeddb/client/IDBTransactionImpl.h:
+
+2016-02-10  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r195770): Use-after-free in ResourceLoaderOptions::cachingPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=153727
+        <rdar://problem/24429886>
+
+        Reviewed by Darin Adler.
+
+        Follow-up after r195965. Only protect those parts of CachedResource::removeClient() which
+        affect the MemoryCache when allowsCaching() is false.
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::removeClient):
+
+2016-02-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !(ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)) after r196281
+        https://bugs.webkit.org/show_bug.cgi?id=154035
+
+        Reviewed by Antti Koivisto.
+
+        * dom/ComposedTreeIterator.h:
+        (WebCore::ComposedTreeIterator::Context::Context):
+
+2016-02-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Toggle buttons are blurry with GTK+ 3.19
+        https://bugs.webkit.org/show_bug.cgi?id=154007
+
+        Reviewed by Michael Catanzaro.
+
+        Use min-width/min-height style properties when GTK+ >= 3.19.7 to
+        get the size of toggle buttons.
+
+        * rendering/RenderThemeGtk.cpp:
+        (WebCore::setToggleSize):
+        (WebCore::paintToggle):
+
+2016-02-09  Aakash Jain  <aakash_jain@apple.com>
+
+        Headers that use WEBCORE_EXPORT should include PlatformExportMacros.h
+        https://bugs.webkit.org/show_bug.cgi?id=146984
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Modules/speech/SpeechSynthesis.h:
+        * contentextensions/ContentExtensionError.h:
+        * dom/DeviceOrientationClient.h:
+        * platform/graphics/Color.h:
+        * platform/ios/wak/WebCoreThread.h:
+        * platform/network/CacheValidation.h:
+        * platform/network/cf/CertificateInfo.h:
+
+2016-02-09  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement word related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=153939
+        <rdar://problem/24269605>
+
+        Reviewed by Chris Fleizach.
+
+        Using CharacterOffset to implement word related text marker calls. Reused
+        logic from previousBoundary and nextBoundary in VisibleUnits class.
+
+        Test: accessibility/mac/text-marker-word-nav.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::traverseToOffsetInRange):
+        (WebCore::AXObjectCache::rangeForNodeContents):
+        (WebCore::isReplacedNodeOrBR):
+        (WebCore::characterOffsetsInOrder):
+        (WebCore::resetNodeAndOffsetForReplacedNode):
+        (WebCore::setRangeStartOrEndWithCharacterOffset):
+        (WebCore::AXObjectCache::rangeForUnorderedCharacterOffsets):
+        (WebCore::AXObjectCache::setTextMarkerDataWithCharacterOffset):
+        (WebCore::AXObjectCache::startOrEndCharacterOffsetForRange):
+        (WebCore::AXObjectCache::startOrEndTextMarkerDataForRange):
+        (WebCore::AXObjectCache::characterOffsetForNodeAndOffset):
+        (WebCore::AXObjectCache::textMarkerDataForCharacterOffset):
+        (WebCore::AXObjectCache::previousNode):
+        (WebCore::AXObjectCache::visiblePositionFromCharacterOffset):
+        (WebCore::AXObjectCache::characterOffsetFromVisiblePosition):
+        (WebCore::AXObjectCache::textMarkerDataForVisiblePosition):
+        (WebCore::AXObjectCache::nextCharacterOffset):
+        (WebCore::AXObjectCache::previousCharacterOffset):
+        (WebCore::startWordBoundary):
+        (WebCore::endWordBoundary):
+        (WebCore::AXObjectCache::startCharacterOffsetOfWord):
+        (WebCore::AXObjectCache::endCharacterOffsetOfWord):
+        (WebCore::AXObjectCache::previousWordStartCharacterOffset):
+        (WebCore::AXObjectCache::nextWordEndCharacterOffset):
+        (WebCore::AXObjectCache::leftWordRange):
+        (WebCore::AXObjectCache::rightWordRange):
+        (WebCore::characterForCharacterOffset):
+        (WebCore::AXObjectCache::characterAfter):
+        (WebCore::AXObjectCache::characterBefore):
+        (WebCore::parentEditingBoundary):
+        (WebCore::AXObjectCache::nextWordBoundary):
+        (WebCore::AXObjectCache::previousWordBoundary):
+        (WebCore::AXObjectCache::rootAXEditableElement):
+        * accessibility/AXObjectCache.h:
+        (WebCore::AXObjectCache::removeNodeForUse):
+        (WebCore::AXObjectCache::isNodeInUse):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper previousTextMarkerForNode:offset:]):
+        (-[WebAccessibilityObjectWrapper textMarkerForNode:offset:ignoreStart:]):
+        (-[WebAccessibilityObjectWrapper textMarkerForNode:offset:]):
+        (textMarkerForCharacterOffset):
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:forParameter:]):
+        * editing/VisibleUnits.cpp:
+        (WebCore::rightWordPosition):
+        (WebCore::prepend):
+        (WebCore::appendRepeatedCharacter):
+        (WebCore::suffixLengthForRange):
+        (WebCore::prefixLengthForRange):
+        (WebCore::backwardSearchForBoundaryWithTextIterator):
+        (WebCore::forwardSearchForBoundaryWithTextIterator):
+        (WebCore::previousBoundary):
+        (WebCore::nextBoundary):
+        * editing/VisibleUnits.h:
+
+2016-02-09  Daniel Bates  <dabates@apple.com>
+
+        CSP: Extract helper classes into their own files
+        https://bugs.webkit.org/show_bug.cgi?id=154040
+        <rdar://problem/24571189>
+
+        Reviewed by Brent Fulgham.
+
+        No functionality was changed. So, no new tests.
+
+        * CMakeLists.txt: Add files ContentSecurityPolicy{DirectiveList, MediaListDirective, Source, SourceList, SourceListDirective}.cpp.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * page/csp/ContentSecurityPolicy.cpp: Clean up #includes. Include header ParsingUtilities.h so that we can remove our own
+        variants of skip{Exactly, Until, While}(). Update code as necessary for class renames.
+        (WebCore::skipExactly): Deleted; instead use the analogous function in ParsingUtilities.h.
+        (WebCore::skipUntil): Deleted; instead use the analogous function in ParsingUtilities.h.
+        (WebCore::skipWhile): Deleted; instead use the analogous function in ParsingUtilities.h.
+        (WebCore::isSourceListNone): Moved to file ContentSecurityPolicySourceList.cpp.
+        (WebCore::CSPSource): Deleted; moved implementation to files ContentSecurityPolicySource.{cpp, h}.
+        (WebCore::CSPSourceList): Deleted; moved implementation to files ContentSecurityPolicySourceList.{cpp, h}.
+        (WebCore::CSPDirective): Deleted; moved implementation to file ContentSecurityPolicyDirective.h.
+        (WebCore::MediaListDirective): Deleted; moved implementation to files ContentSecurityPolicyMediaListDirective.{cpp, h}.
+        (WebCore::SourceListDirective): Deleted; moved implementation to files ContentSecurityPolicySourceListDirective.{cpp, h}.
+        (WebCore::CSPDirectiveList): Deleted; moved implementation to files ContentSecurityPolicyDirectiveList.{cpp, h}.
+        * page/csp/ContentSecurityPolicy.h:
+        * page/csp/ContentSecurityPolicyDirective.h: Added.
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp: Added; removed use of ternary operator where it made the code less readable.
+        Updated code to make use of the functions defined in ParsingUtilities.h.
+        (WebCore::isExperimentalDirectiveName): Moved from file ContentSecurityPolicy.cpp.
+        (WebCore::isCSPDirectiveName): Ditto.
+        (WebCore::isDirectiveNameCharacter): Ditto.
+        (WebCore::isDirectiveValueCharacter): Ditto.
+        (WebCore::isNotASCIISpace): Ditto.
+        * page/csp/ContentSecurityPolicyDirectiveList.h: Added.
+        * page/csp/ContentSecurityPolicyMediaListDirective.cpp: Added. Updated code to make use of the functions defined in ParsingUtilities.h.
+        (WebCore::isMediaTypeCharacter): Moved from file ContentSecurityPolicy.cpp.
+        (WebCore::isNotASCIISpace): Ditto.
+        * page/csp/ContentSecurityPolicyMediaListDirective.h: Added.
+        * page/csp/ContentSecurityPolicySource.cpp: Added.
+        * page/csp/ContentSecurityPolicySource.h: Added.
+        * page/csp/ContentSecurityPolicySourceList.cpp: Added. Updated code to make use of the functions defined in ParsingUtilities.h.
+        (WebCore::isSourceCharacter): Moved from file ContentSecurityPolicy.cpp.
+        (WebCore::isHostCharacter): Ditto.
+        (WebCore::isPathComponentCharacter): Ditto.
+        (WebCore::isSchemeContinuationCharacter): Ditto.
+        (WebCore::isNotColonOrSlash): Ditto.
+        (WebCore::isSourceListNone): Ditto.
+        * page/csp/ContentSecurityPolicySourceList.h: Added.
+        * page/csp/ContentSecurityPolicySourceListDirective.cpp: Added.
+        * page/csp/ContentSecurityPolicySourceListDirective.h: Added.
+
+2016-02-09  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: TransactionOperation objects leak.
+        https://bugs.webkit.org/show_bug.cgi?id=154054
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Currently untestable).
+
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::abortOnServerAndCancelRequests): Remove the TransactionOperation from
+          the map, as this operation doesn't complete "normally" like most others.
+        (WebCore::IDBClient::IDBTransaction::commitOnServer): Ditto.
+        
+        * Modules/indexeddb/client/TransactionOperation.h:
+        (WebCore::IDBClient::TransactionOperation::perform): Clear the m_performFunction after use,
+          as it holds a lambda that holds a RefPtr to the IDBTransaction, as well as a self-ref.
+        (WebCore::IDBClient::TransactionOperation::completed): Clear m_completeFunction for the same reasons.
+
+2016-02-09  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Graphical corruption in videos when enabling custom loading path
+        https://bugs.webkit.org/show_bug.cgi?id=154044
+
+        Reviewed by Alex Christensen.
+
+        The NSOperationQueue provided by AVFoundation from the AVAssetResourceLoader queue is not
+        set to be a serial queue. So when adding dataReceived operations to that queue, there exists
+        the possibility that some operations are handled before others, and the client will receieve
+        data out of order.
+
+        A real NSURLSession object will only issue another operation when the first operation
+        completes, so emulate this behavior in WebCoreNSURLSession by using a serial dispatch queue.
+        The internal queue will enqueue an operation to the resource loader's queue, and block until
+        that operation completes, thus ensuring ordering of the data (and other) operations.
+
+        * platform/network/cocoa/WebCoreNSURLSession.h:
+        * platform/network/cocoa/WebCoreNSURLSession.mm:
+        (-[WebCoreNSURLSession initWithResourceLoader:delegate:delegateQueue:]): Initialize _internalQueue
+        (-[WebCoreNSURLSession addDelegateOperation:]): Added utility method.
+        (-[WebCoreNSURLSession taskCompleted:]): Call -addDelegateOperation:
+        (-[WebCoreNSURLSession finishTasksAndInvalidate]): Ditto.
+        (-[WebCoreNSURLSession resetWithCompletionHandler:]): Ditto.
+        (-[WebCoreNSURLSession flushWithCompletionHandler:]): Ditto.
+        (-[WebCoreNSURLSession getTasksWithCompletionHandler:]): Ditto.
+        (-[WebCoreNSURLSession getAllTasksWithCompletionHandler:]): Ditto.
+        (-[WebCoreNSURLSessionDataTask resource:receivedResponse:]): Ditto.
+        (-[WebCoreNSURLSessionDataTask resource:receivedData:length:]): Ditto.
+        (-[WebCoreNSURLSessionDataTask resourceFinished:]): Ditto.
+
+        Drive-by fix:
+        (-[WebCoreNSURLSessionDataTask resource:receivedData:length:]): Set countOfBytesReceived outside the operation,
+            queue, matching NSURLSessionDataTask's behavior.
+
+2016-02-09  Nan Wang  <n_wang@apple.com>
+
+        [iOS Simulator] accessibility/text-marker/text-marker-range-stale-node-crash.html crashing
+        https://bugs.webkit.org/show_bug.cgi?id=154039
+
+        Reviewed by Chris Fleizach.
+
+        We are accessing the derefed node in the CharacterOffset object, we should create an empty
+        CharacterOffset object if the node is not in use.
+
+        It's covered by the test accessibility/text-marker/text-marker-range-stale-node-crash.html.
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityTextMarker characterOffset]):
+        (-[WebAccessibilityTextMarker isIgnored]):
+
+2016-02-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unreviewed build fix after r196322
+
+        Unreviewed.
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::font):
+
+2016-02-09  Zalan Bujtas  <zalan@apple.com>
+
+        Outline corners do not align properly for multiline inlines.
+        https://bugs.webkit.org/show_bug.cgi?id=154025
+
+        Reviewed by David Hyatt.
+
+        Adjust border position when outline-offset > 0. This patch also
+        removes integral pixelsnapping (drawLineForBoxSide takes care of
+        device pixelsnapping). 
+
+        Test: fast/inline/outline-corners-with-offset.html
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::paintOutlineForLine):
+
+2016-02-09  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt NSURLSession properties in AVAssetResourceLoader
+
+        Rubber-stamped by Eric Carlson;
+
+        Set the correct global variable from setAVFoundationNSURLSessionEnabled().
+
+        * page/Settings.cpp:
+        (WebCore::Settings::setAVFoundationNSURLSessionEnabled):
+
+2016-02-07  Gavin Barraclough  <barraclough@apple.com>
+
+        GetValueFunc/PutValueFunc should not take both slotBase and thisValue
+        https://bugs.webkit.org/show_bug.cgi?id=154009
+
+        Reviewed by Geoff Garen.
+
+        In JavaScript there are two types of properties - regular value properties, and accessor properties.
+        One difference between these is how they are reflected by getOwnPropertyDescriptor, and another is
+        what object they operate on in the case of a prototype access. If you access a value property of a
+        prototype object it return a value pertinent to the prototype, but in the case of a prototype object
+        returning an accessor, then the accessor function is applied to the base object of the access.
+
+        JSC supports special 'custom' properties implemented as a c++ callback, and these custom properties
+        can be used to implement either value- or accessor-like behavior. getOwnPropertyDescriptor behavior
+        is selected via the CustomAccessor attribute. Value- or accessor-like object selection is current
+        supported by passing both the slotBase and the thisValue to the callback,and hoping it uses the
+        right one. This is probably inefficient, bug-prone, and leads to crazy like JSBoundSlotBaseFunction.
+
+        Instead, just pass one thisValue to the callback functions, consistent with CustomAccessor.
+
+        * bindings/js/JSDOMBinding.cpp:
+        (WebCore::printErrorMessageForFrame):
+        (WebCore::objectToStringFunctionGetter):
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::propertyNameToString):
+        (WebCore::getStaticValueSlotEntryWithoutCaching<JSDOMObject>):
+        (WebCore::nonCachingStaticFunctionGetter):
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::visitAdditionalChildren):
+        (WebCore::childFrameGetter):
+        (WebCore::namedItemGetter):
+        (WebCore::jsDOMWindowWebKit):
+        (WebCore::jsDOMWindowIndexedDB):
+            - add missing null check, in case indexDB acessor is applied to non-window object.
+        * bindings/js/JSPluginElementFunctions.cpp:
+        (WebCore::pluginScriptObject):
+        (WebCore::pluginElementPropertyGetter):
+        * bindings/js/JSPluginElementFunctions.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+        * bridge/runtime_array.cpp:
+        (JSC::RuntimeArray::destroy):
+        (JSC::RuntimeArray::lengthGetter):
+        * bridge/runtime_array.h:
+        * bridge/runtime_method.cpp:
+        (JSC::RuntimeMethod::finishCreation):
+        (JSC::RuntimeMethod::lengthGetter):
+        * bridge/runtime_method.h:
+        * bridge/runtime_object.cpp:
+        (JSC::Bindings::RuntimeObject::invalidate):
+        (JSC::Bindings::RuntimeObject::fallbackObjectGetter):
+        (JSC::Bindings::RuntimeObject::fieldGetter):
+        (JSC::Bindings::RuntimeObject::methodGetter):
+        * bridge/runtime_object.h:
+            - Merged slotBase & thisValue to custom property callbacks.
+
+2016-02-09  Jer Noble  <jer.noble@apple.com>
+
+        Build-fix; add Nullibility macros around previously un-macro'd class definitions.
+
+        * platform/spi/mac/AVFoundationSPI.h:
+
+2016-02-04  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt NSURLSession properties in AVAssetResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=153873
+
+        Reviewed by Eric Carlson.
+
+        Adopt a new AVAssetResourceLoader API allowing clients to specify a NSURLSession object to
+        use for media loading, and control the use of this property with a new Setting.
+
+        * page/Settings.cpp:
+        (WebCore::Settings::setAVFoundationNSURLSessionEnabled):
+        * page/Settings.h:
+        (WebCore::Settings::isAVFoundationNSURLSessionEnabled):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL):
+        * platform/spi/mac/AVFoundationSPI.h:
+
+2016-02-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Decouple font creation from font loading
+        https://bugs.webkit.org/show_bug.cgi?id=153414
+
+        Reviewed by Darin Adler.
+
+        Previously, CSSFontFaceSource never triggered a font download until that font was actually used. This means
+        that the function which triggers the download also has the goal of returning a font to use. However,
+        the CSS Font Loading JavaScript API requires being able to trigger a font download without this extra font
+        creation overhead.
+
+        In addition, this patch adds an explicit (and enforced) state transition diagram. The diagram looks like
+        this:
+                            => Success
+                          //
+        Pending => Loading
+                          \\
+                            => Failure
+
+        Therefore, the API for CSSFontFaceSource has changed to expose the concept of these new states. This means
+        that its user (CSSSegmentedFontFaceSource) has been updated to handle each possible state that its constituent
+        CSSFontFaceSources may be in.
+
+        No new tests because there is no behavior change.
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::allSourcesFailed): Renamed to make the name clearer.
+        (WebCore::CSSFontFace::addedToSegmentedFontFace): Use references instead of pointers.
+        (WebCore::CSSFontFace::removedFromSegmentedFontFace): Ditto.
+        (WebCore::CSSFontFace::adoptSource): Renamed to make the name clearer.
+        (WebCore::CSSFontFace::fontLoaded): Use references instead of pointers. Also, remove old dead code.
+        (WebCore::CSSFontFace::font): Adapt to the new API of CSSFontFaceSource.
+        (WebCore::CSSFontFace::isValid): Deleted.
+        (WebCore::CSSFontFace::addSource): Deleted.
+        (WebCore::CSSFontFace::notifyFontLoader): Deleted. Old dead code.
+        (WebCore::CSSFontFace::notifyLoadingDone): Deleted. Old dead code.
+        * css/CSSFontFace.h:
+        (WebCore::CSSFontFace::create): Remove old dead code.
+        (WebCore::CSSFontFace::CSSFontFace): Use references instead of pointers.
+        (WebCore::CSSFontFace::loadState): Deleted. Remove old dead code.
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::setStatus): Enforce state transitions.
+        (WebCore::CSSFontFaceSource::CSSFontFaceSource): Explicitly handle new state transitions.
+        (WebCore::CSSFontFaceSource::fontLoaded): Update for new states.
+        (WebCore::CSSFontFaceSource::load): Pulled out code from font().
+        (WebCore::CSSFontFaceSource::font): Moved code into load().
+        (WebCore::CSSFontFaceSource::isValid): Deleted.
+        (WebCore::CSSFontFaceSource::isDecodeError): Deleted.
+        (WebCore::CSSFontFaceSource::ensureFontData): Deleted.
+        * css/CSSFontFaceSource.h: Much cleaner API.
+        * css/CSSFontSelector.cpp:
+        (WebCore::createFontFace): Migrate to references instead of pointers. This requires a little
+        reorganization.
+        (WebCore::registerLocalFontFacesForFamily): Update to new CSSFontFaceSource API.
+        (WebCore::CSSFontSelector::addFontFaceRule): Ditto.
+        (WebCore::CSSFontSelector::getFontFace): Ditto.
+        * css/CSSSegmentedFontFace.cpp:
+        (WebCore::CSSSegmentedFontFace::CSSSegmentedFontFace): Migrate to references instead of pointers.
+        (WebCore::CSSSegmentedFontFace::~CSSSegmentedFontFace): Ditto.
+        (WebCore::CSSSegmentedFontFace::fontLoaded): Remove old dead code.
+        (WebCore::CSSSegmentedFontFace::appendFontFace): Cleanup.
+        (WebCore::CSSSegmentedFontFace::fontRanges): Adopt to new API.
+        (WebCore::CSSSegmentedFontFace::pruneTable): Deleted.
+        (WebCore::CSSSegmentedFontFace::isLoading): Deleted. Old dead code.
+        (WebCore::CSSSegmentedFontFace::checkFont): Deleted. Ditto.
+        (WebCore::CSSSegmentedFontFace::loadFont): Deleted. Ditto.
+        * css/CSSSegmentedFontFace.h:
+        (WebCore::CSSSegmentedFontFace::create): Migrate to references instead of pointers.
+        (WebCore::CSSSegmentedFontFace::fontSelector): Ditto.
+        (WebCore::CSSSegmentedFontFace::LoadFontCallback::~LoadFontCallback): Deleted.
+        * loader/cache/CachedFont.cpp:
+        (WebCore::CachedFont::didAddClient): Migrate to references instead of pointers.
+        (WebCore::CachedFont::checkNotify): Ditto.
+        * loader/cache/CachedFontClient.h:
+        (WebCore::CachedFontClient::fontLoaded): Ditto.
+
+2016-02-09  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: IDBOpenDBRequests leak.
+        https://bugs.webkit.org/show_bug.cgi?id=154032
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Currently untestable).
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+        Add a simple Event subclass that holds a ref to an IDBRequest, to make sure that we
+        drop the last ref to the request after its last event fires or is otherwise destroyed:
+        * Modules/indexeddb/IDBRequestCompletionEvent.cpp: Added.
+        (WebCore::IDBRequestCompletionEvent::IDBRequestCompletionEvent):
+        * Modules/indexeddb/IDBRequestCompletionEvent.h: Added.
+        (WebCore::IDBRequestCompletionEvent::create):
+
+        * Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp:
+        (WebCore::IDBClient::IDBOpenDBRequest::onError): IDBRequestCompletionEvent instead of Event.
+        (WebCore::IDBClient::IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit): Ditto.
+        (WebCore::IDBClient::IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion): Ditto.
+        (WebCore::IDBClient::IDBOpenDBRequest::onSuccess): Ditto.
+
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::dispatchEvent): After setting up the request's 
+          completion event to fire, clear the back-ref to the request.
+
+2016-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196286.
+        https://bugs.webkit.org/show_bug.cgi?id=154026
+
+        Looks like 5% iOS PLT regression (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Throw away some unlinked code when navigating to a new
+        page."
+        https://bugs.webkit.org/show_bug.cgi?id=154014
+        http://trac.webkit.org/changeset/196286
+
 2016-02-08  Chris Dumez  <cdumez@apple.com>
 
         Attribute getters should not require an explicit 'this' value for Window properties

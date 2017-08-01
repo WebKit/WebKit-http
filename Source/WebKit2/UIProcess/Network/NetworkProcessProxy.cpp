@@ -80,9 +80,8 @@ NetworkProcessProxy::~NetworkProcessProxy()
 
 void NetworkProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
-    launchOptions.processType = ProcessLauncher::NetworkProcess;
+    launchOptions.processType = ProcessLauncher::ProcessType::Network;
     ChildProcessProxy::getLaunchOptions(launchOptions);
-    platformGetLaunchOptions(launchOptions);
 }
 
 void NetworkProcessProxy::connectionWillOpen(IPC::Connection& connection)

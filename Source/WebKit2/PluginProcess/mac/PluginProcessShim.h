@@ -42,6 +42,7 @@ struct PluginProcessShimCallbacks {
     void (*carbonWindowHidden)(WindowRef);
     void (*setModal)(bool);
     bool (*openCFURLRef)(CFURLRef, int32_t& returnValue, CFURLRef* launchedURL);
+    bool (*shouldMapMemoryExecutable)(int flags);
 };
 
 typedef void (*PluginProcessShimInitializeFunc)(const PluginProcessShimCallbacks&);

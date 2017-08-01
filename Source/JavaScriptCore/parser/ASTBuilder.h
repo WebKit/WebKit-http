@@ -441,6 +441,17 @@ public:
 
     ElementNode* createElementList(int elisions, ExpressionNode* expr) { return new (m_parserArena) ElementNode(elisions, expr); }
     ElementNode* createElementList(ElementNode* elems, int elisions, ExpressionNode* expr) { return new (m_parserArena) ElementNode(elems, elisions, expr); }
+    ElementNode* createElementList(ArgumentListNode* elems)
+    {
+        ElementNode* head = new (m_parserArena) ElementNode(0, elems->m_expr);
+        ElementNode* tail = head;
+        elems = elems->m_next;
+        while (elems) {
+            tail = new (m_parserArena) ElementNode(tail, 0, elems->m_expr);
+            elems = elems->m_next;
+        }
+        return head;
+    }
 
     FormalParameterList createFormalParameterList() { return new (m_parserArena) FunctionParameters(); }
     void appendParameter(FormalParameterList list, DestructuringPattern pattern, ExpressionNode* defaultValue) 
@@ -729,6 +740,7 @@ public:
     CommaNode* appendToCommaExpr(const JSTokenLocation& location, ExpressionNode*, ExpressionNode* tail, ExpressionNode* next)
     {
         ASSERT(tail->isCommaNode());
+        ASSERT(next);
         CommaNode* newTail = new (m_parserArena) CommaNode(location, next);
         static_cast<CommaNode*>(tail)->setNext(newTail);
         return newTail;

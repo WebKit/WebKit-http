@@ -72,6 +72,40 @@ test("_parseRevisionFromURL", function()
     strictEqual(this.trac._parseRevisionFromURL("https://git.foobar.com/trac/Whatever.git/changeset/0e498db5d8e5b5a342631"), "0e498db5d8e5b5a342631", "Git");
 });
 
+test("nextRevision", function()
+{
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    strictEqual(this.trac.nextRevision("trunk", "33020"), "33022", "nextRevision same branch");
+    strictEqual(this.trac.nextRevision("trunk", "33019"), "33020", "nextRevision different branch");
+});
+
+test("indexOfRevision", function()
+{
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    strictEqual(this.trac.indexOfRevision("33020"), 2, "indexOfRevision");
+});
+
+test("commitsOnBranchLaterThanRevision", function()
+{
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    var commits = this.trac.commitsOnBranchLaterThanRevision("trunk", "33020");
+    equal(commits.length, 1, "greater than 33020");
+});
+
+test("commitsOnBranchLaterThanRevision no commits", function()
+{
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    var commits = this.trac.commitsOnBranchLaterThanRevision("someOtherBranch", "33021");
+    equal(commits.length, 0, "greater than 33021");
+});
+
+test("commitsOnBranchInRevisionRange", function()
+{
+    this.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+    var commits = this.trac.commitsOnBranchInRevisionRange("trunk", "33020", "33022");
+    equal(commits.length, 2, "in range 33020, 33022");
+});
+
 module("BuildBotQueueView", {
     setup: function() {
         this.trac = new MockTrac();
@@ -100,7 +134,7 @@ test("_appendPendingRevisionCount", function()
 
 test("_popoverLinesForCommitRange", function()
 {
-    var lines = this.view._popoverLinesForCommitRange(this.trac, this.trunkBranch, 33018, 33020);
+    var lines = this.view._popoverLinesForCommitRange(this.trac, this.trunkBranch, "33018", "33020");
     strictEqual(lines.length, 2, "has 2 lines");
 });
 
@@ -113,6 +147,31 @@ test("_presentPopoverForPendingCommits", function()
     strictEqual(nodeList.length, 1, "has 1 pending commit");
 });
 
+test("_presentPopoverForPendingCommits no pending commits", function()
+{
+    this.someOtherBranch = {
+        name: "someOtherBranch",
+        repository: {
+            name: "openSource",
+            trac: this.trac,
+            isSVN: true,
+        }
+    };
+    this.queue.branches = [this.someOtherBranch];
+    this.view._latestProductiveIteration = function(queue)
+    {
+        var iteration = {
+            revision: { "openSource": "33021" },
+        };
+        return iteration;
+    }
+    var element = document.createElement("div");
+    var popover = new Dashboard.Popover();
+    this.view._presentPopoverForPendingCommits(element, popover, this.queue);
+    var nodeList = popover._element.getElementsByClassName("pending-commit");
+    strictEqual(nodeList.length, 0, "has 0 pending commits");
+});
+
 test("_presentPopoverForRevisionRange", function()
 {
     var element = document.createElement("div");
@@ -120,8 +179,8 @@ test("_presentPopoverForRevisionRange", function()
     var context = {
         trac: this.trac,
         branch: this.trunkBranch,
-        firstRevision: 33018,
-        lastRevision: 33020
+        firstRevision: "33018",
+        lastRevision: "33020"
     };
     this.view._presentPopoverForRevisionRange(element, popover, context);
     var nodeList = popover._element.getElementsByClassName("pending-commit");
@@ -135,8 +194,8 @@ test("_presentPopoverForRevisionRange no commits", function()
     var context = {
         trac: this.trac,
         branch: this.trunkBranch,
-        firstRevision: 33020,
-        lastRevision: 33018
+        firstRevision: "33020",
+        lastRevision: "33018"
     };
     this.view._presentPopoverForRevisionRange(element, popover, context);
     var nodeList = popover._element.getElementsByClassName("pending-commit");
@@ -147,7 +206,7 @@ test("_revisionContentWithPopoverForIteration", function()
 {
     var finished = false;
     var iteration = new BuildbotIteration(this.queue, 1, finished);
-    iteration.revision = { "openSource": 33018 };
+    iteration.revision = { "openSource": "33018" };
     var previousIteration = null;
     var content = this.view._revisionContentWithPopoverForIteration(iteration, previousIteration, this.trunkBranch);
     strictEqual(content.innerHTML, "r33018", "should have correct revision number.");
@@ -159,9 +218,9 @@ test("_revisionContentWithPopoverForIteration has previousIteration", function()
 {
     var finished = false;
     var iteration = new BuildbotIteration(this.queue, 2, finished);
-    iteration.revision = { "openSource": 33022 };
+    iteration.revision = { "openSource": "33022" };
     var previousIteration = new BuildbotIteration(this.queue, 1, finished);
-    previousIteration.revision = { "openSource": 33018 };
+    previousIteration.revision = { "openSource": "33018" };
     var content = this.view._revisionContentWithPopoverForIteration(iteration, previousIteration, this.trunkBranch);
     strictEqual(content.innerHTML, "r33022", "should have correct revision number.");
     strictEqual(content.classList.contains("revision-number"), true, "should have class 'revision-number'.");
@@ -178,7 +237,7 @@ test("_formatRevisionForDisplay Subversion", function()
     var repository = this.trunkBranch.repository;
     repository.isSVN = true;
     repository.isGit = false;
-    strictEqual(this.view._formatRevisionForDisplay(33018, repository), "r33018", "Should be r33018")
+    strictEqual(this.view._formatRevisionForDisplay("33018", repository), "r33018", "Should be r33018")
 });
 
 test("_formatRevisionForDisplay Git", function()
@@ -191,12 +250,13 @@ test("_formatRevisionForDisplay Git", function()
 
 module("BuildBotQueue", {
     setup: function() {
+        Dashboard.Repository.OpenSource.trac = new MockTrac();
+        Dashboard.Repository.OpenSource.trac.recordedCommits = MockTrac.EXAMPLE_TRAC_COMMITS;
+        Dashboard.Repository.Internal.trac = new MockTrac();
         this.queue = new MockBuildbotQueue();
         this.queue.branches = [{
             name: "trunk",
-            repository: {
-                name: "openSource",
-            }
+            repository: Dashboard.Repository.Opensource
         }];
     }
 });
@@ -206,8 +266,8 @@ test("compareIterations by revisions", function()
     var finished = false;
     var iteration1 = new BuildbotIteration(this.queue, 1, finished);
     var iteration2 = new BuildbotIteration(this.queue, 2, finished);
-    iteration1.revision = { "openSource": 33018 };
-    iteration2.revision = { "openSource": 33019 };
+    iteration1.revision = { "openSource": "33018" };
+    iteration2.revision = { "openSource": "33019" };
     iteration1.loaded = true;
     iteration2.loaded = true;
     ok(this.queue.compareIterations(iteration2, iteration1) < 0, "compareIterations: less than");
@@ -221,7 +281,7 @@ test("compareIterations by loaded (one revision missing)", function()
     var iteration1 = new BuildbotIteration(this.queue, 1, finished);
     var iteration2 = new BuildbotIteration(this.queue, 2, finished);
     iteration1.revision = {};
-    iteration2.revision = { "openSource": 33019 };
+    iteration2.revision = { "openSource": "33019" };
     iteration1.loaded = false;
     iteration2.loaded = true;
     ok(this.queue.compareIterations(iteration1, iteration2) > 0, "compareIterations: greater than");
@@ -233,8 +293,8 @@ test("compareIterations by loaded (same revision)", function()
     var finished = false;
     var iteration1 = new BuildbotIteration(this.queue, 1, finished);
     var iteration2 = new BuildbotIteration(this.queue, 2, finished);
-    iteration1.revision = { "openSource": 33019 };
-    iteration2.revision = { "openSource": 33019 };
+    iteration1.revision = { "openSource": "33019" };
+    iteration2.revision = { "openSource": "33019" };
     iteration1.loaded = false;
     iteration2.loaded = true;
     ok(this.queue.compareIterations(iteration1, iteration2) > 0, "compareIterations: greater than");
@@ -260,8 +320,8 @@ test("compareIterations by id (same revision)", function()
     var finished = false;
     var iteration1 = new BuildbotIteration(this.queue, 1, finished);
     var iteration2 = new BuildbotIteration(this.queue, 2, finished);
-    iteration1.revision = { "openSource": 33019 };
-    iteration2.revision = { "openSource": 33019 };
+    iteration1.revision = { "openSource": "33019" };
+    iteration2.revision = { "openSource": "33019" };
     iteration1.loaded = false;
     iteration2.loaded = false;
     ok(this.queue.compareIterations(iteration2, iteration1) < 0, "compareIterations: less than");
@@ -274,8 +334,8 @@ test("compareIterationsByRevisions", function()
     var finished = false;
     var iteration1 = new BuildbotIteration(this.queue, 1, finished);
     var iteration2 = new BuildbotIteration(this.queue, 2, finished);
-    iteration1.revision = { "openSource": 33018 };
-    iteration2.revision = { "openSource": 33019 };
+    iteration1.revision = { "openSource": "33018" };
+    iteration2.revision = { "openSource": "33019" };
     iteration1.loaded = true;
     iteration2.loaded = false;
     ok(this.queue.compareIterationsByRevisions(iteration2, iteration1) < 0, "compareIterationsByRevisions: less than");

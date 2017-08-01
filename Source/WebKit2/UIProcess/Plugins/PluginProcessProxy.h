@@ -87,9 +87,6 @@ public:
 #if PLATFORM(COCOA)
     void setProcessSuppressionEnabled(bool);
 
-    // Returns whether the plug-in needs the heap to be marked executable.
-    static bool pluginNeedsExecutableHeap(const PluginModuleInfo&);
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     // Creates a property list in ~/Library/Preferences that contains all the MIME types supported by the plug-in.
     static bool createPropertyListFile(const PluginModuleInfo&);
@@ -142,7 +139,6 @@ private:
     void endModal();
 
     void applicationDidBecomeActive();
-    void openPluginPreferencePane();
     void launchProcess(const String& launchPath, const Vector<String>& arguments, bool& result);
     void launchApplicationAtURL(const String& urlString, const Vector<String>& arguments, bool& result);
     void openURL(const String& url, bool& result, int32_t& status, String& launchedURLString);

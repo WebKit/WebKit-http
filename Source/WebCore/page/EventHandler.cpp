@@ -1338,7 +1338,7 @@ void EventHandler::updateCursor()
     bool metaKey;
     PlatformKeyboardEvent::getCurrentModifierState(shiftKey, ctrlKey, altKey, metaKey);
 
-    HitTestRequest request(HitTestRequest::ReadOnly);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::AllowFrameScrollbars);
     HitTestResult result(view->windowToContents(m_lastKnownMousePosition));
     renderView->hitTest(request, result);
 
@@ -1361,6 +1361,14 @@ OptionalCursor EventHandler::selectCursor(const HitTestResult& result, bool shif
     if (m_frame.mainFrame().eventHandler().panScrollInProgress())
         return NoCursorChange;
 #endif
+
+    // Use always pointer cursor for scrollbars.
+    if (result.scrollbar()) {
+#if ENABLE(CURSOR_VISIBILITY)
+        cancelAutoHideCursorTimer();
+#endif
+        return pointerCursor();
+    }
 
     Node* node = result.targetNode();
     if (!node)
@@ -2105,7 +2113,7 @@ bool EventHandler::dispatchDragEvent(const AtomicString& eventType, Element& dra
         return false;
 
     view->disableLayerFlushThrottlingTemporarilyForInteraction();
-    RefPtr<MouseEvent> me = MouseEvent::create(eventType,
+    Ref<MouseEvent> me = MouseEvent::create(eventType,
         true, true, event.timestamp(), m_frame.document()->defaultView(),
         0, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(),
 #if ENABLE(POINTER_LOCK)
@@ -2114,7 +2122,7 @@ bool EventHandler::dispatchDragEvent(const AtomicString& eventType, Element& dra
         event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(),
         0, 0, event.force(), dataTransfer);
 
-    dragTarget.dispatchEvent(me.get(), IGNORE_EXCEPTION);
+    dragTarget.dispatchEvent(me);
     return me->defaultPrevented();
 }
 
@@ -2646,7 +2654,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     if (scrollableArea)
         scrollableArea->setScrolledProgrammatically(false);
 
-    bool handledEvent = platformCompleteWheelEvent(event, scrollableContainer.get(), scrollableArea);
+    bool handledEvent = platformCompleteWheelEvent(adjustedEvent, scrollableContainer.get(), scrollableArea);
     platformNotifyIfEndGesture(adjustedEvent, scrollableArea);
     return handledEvent;
 }

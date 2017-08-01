@@ -26,8 +26,6 @@
 #import "config.h"
 #import "ProcessLauncher.h"
 
-#import "DynamicLinkerEnvironmentExtractor.h"
-#import "EnvironmentVariables.h"
 #import <WebCore/CFBundleSPI.h>
 #import <WebCore/ServersSPI.h>
 #import <WebCore/SoftLinking.h>
@@ -48,127 +46,24 @@
 
 namespace WebKit {
 
-namespace {
-
-struct UUIDHolder : public RefCounted<UUIDHolder> {
-    static Ref<UUIDHolder> create()
-    {
-        return adoptRef(*new UUIDHolder);
-    }
-
-    UUIDHolder()
-    {
-        uuid_generate(uuid);
-    }
-
-    uuid_t uuid;
-};
-
-}
-
-static void setUpTerminationNotificationHandler(pid_t pid)
-{
-    dispatch_source_t processDiedSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, pid, DISPATCH_PROC_EXIT, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-    dispatch_source_set_event_handler(processDiedSource, ^{
-        int status;
-        waitpid(dispatch_source_get_handle(processDiedSource), &status, 0);
-        dispatch_source_cancel(processDiedSource);
-    });
-    dispatch_source_set_cancel_handler(processDiedSource, ^{
-        dispatch_release(processDiedSource);
-    });
-    dispatch_resume(processDiedSource);
-}
-
-#if ASAN_ENABLED
-static const char* copyASanDynamicLibraryPath()
-{
-    uint32_t imageCount = _dyld_image_count();
-    for (uint32_t i = 0; i < imageCount; ++i) {
-        if (strstr(_dyld_get_image_name(i), "/libclang_rt.asan_"))
-            return fastStrDup(_dyld_get_image_name(i));
-    }
-
-    return 0;
-}
-#endif
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-static RetainPtr<NSString> computeProcessShimPath(const ProcessLauncher::LaunchOptions& launchOptions, NSBundle *webKitBundle)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    if (launchOptions.processType == ProcessLauncher::PluginProcess)
-        return [[webKitBundle privateFrameworksPath] stringByAppendingPathComponent:@"PluginProcessShim.dylib"];
-#endif
-
-    if (launchOptions.processType == ProcessLauncher::NetworkProcess)
-        return [[webKitBundle privateFrameworksPath] stringByAppendingPathComponent:@"SecItemShim.dylib"];
-
-    if (launchOptions.processType == ProcessLauncher::WebProcess)
-        return [[webKitBundle privateFrameworksPath] stringByAppendingPathComponent:@"WebProcessShim.dylib"];
-
-    return nil;
-}
-#endif
-
-static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, EnvironmentVariables& environmentVariables)
-{
-    DynamicLinkerEnvironmentExtractor environmentExtractor([[NSBundle mainBundle] executablePath], _NSGetMachExecuteHeader()->cputype);
-    environmentExtractor.getExtractedEnvironmentVariables(environmentVariables);
-
-    NSBundle *webKitBundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit"];
-    NSString *frameworksPath = [[webKitBundle bundlePath] stringByDeletingLastPathComponent];
-
-    // To make engineering builds work, if the path is outside of /System set up
-    // DYLD_FRAMEWORK_PATH to pick up other frameworks, but don't do it for the
-    // production configuration because it involves extra file system access.
-    if (isWebKitDevelopmentBuild) {
-        environmentVariables.appendValue("DYLD_FRAMEWORK_PATH", [frameworksPath fileSystemRepresentation], ':');
-        environmentVariables.appendValue("DYLD_LIBRARY_PATH", webKitBundle.privateFrameworksPath.fileSystemRepresentation, ':');
-    }
-
-#if ASAN_ENABLED
-    static const char* asanLibraryPath = copyASanDynamicLibraryPath();
-    ASSERT(asanLibraryPath); // ASan runtime library was not found in the current process. This code may need to be updated if the library name has changed.
-    // ASan doesn't require this library to be inserted, but it otherwise automatically performs a re-exec, making the child process stop in a debugger on launch one extra time.
-    if (asanLibraryPath)
-        environmentVariables.appendValue("DYLD_INSERT_LIBRARIES", asanLibraryPath, ':');
-#endif
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-    if (auto shimPath = computeProcessShimPath(launchOptions, webKitBundle)) {
-        // Make sure that the shim library file exists and insert it.
-        const char* processShimPath = [shimPath fileSystemRepresentation];
-        struct stat statBuf;
-        if (stat(processShimPath, &statBuf) == 0 && (statBuf.st_mode & S_IFMT) == S_IFREG)
-            environmentVariables.appendValue("DYLD_INSERT_LIBRARIES", processShimPath, ':');
-    }
-#endif
-}
-
-typedef void (ProcessLauncher::*DidFinishLaunchingProcessFunction)(PlatformProcessIdentifier, IPC::Connection::Identifier);
+typedef void (ProcessLauncher::*DidFinishLaunchingProcessFunction)(pid_t, IPC::Connection::Identifier);
 
 static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptions)
 {
     switch (launchOptions.processType) {
-    case ProcessLauncher::WebProcess:
+    case ProcessLauncher::ProcessType::Web:
         return "com.apple.WebKit.WebContent" WK_XPC_SERVICE_SUFFIX;
-    case ProcessLauncher::NetworkProcess:
+    case ProcessLauncher::ProcessType::Network:
         return "com.apple.WebKit.Networking" WK_XPC_SERVICE_SUFFIX;
 #if ENABLE(DATABASE_PROCESS)
-    case ProcessLauncher::DatabaseProcess:
+    case ProcessLauncher::ProcessType::Database:
         return "com.apple.WebKit.Databases" WK_XPC_SERVICE_SUFFIX;
 #endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    case ProcessLauncher::PluginProcess:
-        // FIXME: Support plugins that require an executable heap.
-        if (launchOptions.architecture == CPU_TYPE_X86)
-            return "com.apple.WebKit.Plugin.32" WK_XPC_SERVICE_SUFFIX;
-        if (launchOptions.architecture == CPU_TYPE_X86_64)
-            return "com.apple.WebKit.Plugin.64" WK_XPC_SERVICE_SUFFIX;
-
-        ASSERT_NOT_REACHED();
-        return 0;
+    case ProcessLauncher::ProcessType::Plugin32:
+        return "com.apple.WebKit.Plugin.32" WK_XPC_SERVICE_SUFFIX;
+    case ProcessLauncher::ProcessType::Plugin64:
+        return "com.apple.WebKit.Plugin.64" WK_XPC_SERVICE_SUFFIX;
 #endif
     }
 }
@@ -181,15 +76,18 @@ static bool shouldLeakBoost(const ProcessLauncher::LaunchOptions& launchOptions)
     return true;
 #else
     // On Mac, leak a boost onto the NetworkProcess.
-    return launchOptions.processType == ProcessLauncher::NetworkProcess;
+    return launchOptions.processType == ProcessLauncher::ProcessType::Network;
 #endif
 }
     
-static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction, UUIDHolder* instanceUUID)
+static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
     // Create a connection to the WebKit XPC service.
     auto connection = adoptOSObject(xpc_connection_create(serviceName(launchOptions), 0));
-    xpc_connection_set_oneshot_instance(connection.get(), instanceUUID->uuid);
+
+    uuid_t uuid;
+    uuid_generate(uuid);
+    xpc_connection_set_oneshot_instance(connection.get(), uuid);
 
     // Inherit UI process localization. It can be different from child process default localization:
     // 1. When the application and system frameworks simply have different localized resources available, we should match the application.
@@ -298,202 +196,7 @@ static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions
 
 static void createService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
-    // Generate the uuid for the service instance we are about to create.
-    // FIXME: This UUID should be stored on the ChildProcessProxy.
-    RefPtr<UUIDHolder> instanceUUID = UUIDHolder::create();
-    connectToService(launchOptions, forDevelopment, that, didFinishLaunchingProcessFunction, instanceUUID.get());
-}
-
-static bool tryPreexistingProcess(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
-{
-    EnvironmentVariables environmentVariables;
-    static const char* preexistingProcessServiceName = environmentVariables.get(EnvironmentVariables::preexistingProcessServiceNameKey());
-
-    ProcessLauncher::ProcessType preexistingProcessType;
-    if (preexistingProcessServiceName)
-        ProcessLauncher::getProcessTypeFromString(environmentVariables.get(EnvironmentVariables::preexistingProcessTypeKey()), preexistingProcessType);
-
-    bool usePreexistingProcess = preexistingProcessServiceName && preexistingProcessType == launchOptions.processType;
-    if (!usePreexistingProcess)
-        return false;
-
-    // Create the listening port.
-    mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
-    
-    // Insert a send right so we can send to it.
-    mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
-
-    pid_t processIdentifier = 0;
-
-    mach_port_t lookupPort;
-    bootstrap_look_up(bootstrap_port, preexistingProcessServiceName, &lookupPort);
-
-    mach_msg_header_t header;
-    header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND);
-    header.msgh_id = 0;
-    header.msgh_local_port = listeningPort;
-    header.msgh_remote_port = lookupPort;
-    header.msgh_size = sizeof(header);
-    kern_return_t kr = mach_msg(&header, MACH_SEND_MSG, sizeof(header), 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
-
-    mach_port_deallocate(mach_task_self(), lookupPort);
-    preexistingProcessServiceName = 0;
-
-    if (kr) {
-        LOG_ERROR("Failed to pick up preexisting process at %s (%x). Launching a new process of type %s instead.", preexistingProcessServiceName, kr, ProcessLauncher::processTypeAsString(launchOptions.processType));
-        return false;
-    }
-    
-    // We've finished launching the process, message back to the main run loop.
-    RefPtr<ProcessLauncher> protector(that);
-    RunLoop::main().dispatch([protector, didFinishLaunchingProcessFunction, processIdentifier, listeningPort] {
-        (*protector.*didFinishLaunchingProcessFunction)(processIdentifier, IPC::Connection::Identifier(listeningPort));
-    });
-    return true;
-}
-
-static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
-{
-    EnvironmentVariables environmentVariables;
-    addDYLDEnvironmentAdditions(launchOptions, isWebKitDevelopmentBuild, environmentVariables);
-
-    // Create the listening port.
-    mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
-
-    // Insert a send right so we can send to it.
-    mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
-
-    NSBundle *webKitBundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit"];
-
-    NSString *processPath = nil;
-    switch (launchOptions.processType) {
-    case ProcessLauncher::WebProcess:
-        processPath = [webKitBundle pathForAuxiliaryExecutable:@"WebProcess.app"];
-        break;
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    case ProcessLauncher::PluginProcess:
-        processPath = [webKitBundle pathForAuxiliaryExecutable:@"PluginProcess.app"];
-        break;
-#endif
-    case ProcessLauncher::NetworkProcess:
-        processPath = [webKitBundle pathForAuxiliaryExecutable:@"NetworkProcess.app"];
-        break;
-#if ENABLE(DATABASE_PROCESS)
-    case ProcessLauncher::DatabaseProcess:
-        processPath = [webKitBundle pathForAuxiliaryExecutable:@"DatabaseProcess.app"];
-        break;
-#endif
-    }
-
-    NSString *frameworkExecutablePath = [webKitBundle executablePath];
-    NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
-
-    NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-    CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
-
-    // Make a unique, per pid, per process launcher web process service name.
-    CString serviceName = String::format("com.apple.WebKit.WebProcess-%d-%p", getpid(), that).utf8();
-
-    // Inherit UI process localization. It can be different from child process default localization:
-    // 1. When the application and system frameworks simply have different localized resources available, we should match the application.
-    // 1.1. An important case is WebKitTestRunner, where we should use English localizations for all system frameworks.
-    // 2. When AppleLanguages is passed as command line argument for UI process, or set in its preferences, we should respect it in child processes.
-    CString appleLanguagesArgument = String("('" + String(preferredBundleLocalizationName()) + "')").utf8();
-
-    Vector<const char*> args;
-    args.append([processAppExecutablePath fileSystemRepresentation]);
-    args.append([frameworkExecutablePath fileSystemRepresentation]);
-    args.append("-type");
-    args.append(ProcessLauncher::processTypeAsString(launchOptions.processType));
-    args.append("-servicename");
-    args.append(serviceName.data());
-    args.append("-client-identifier");
-    args.append(clientIdentifier.data());
-    args.append("-ui-process-name");
-    args.append([[[NSProcessInfo processInfo] processName] UTF8String]);
-    args.append("-AppleLanguages"); // This argument will be handled by Core Foundation.
-    args.append(appleLanguagesArgument.data());
-
-    HashMap<String, String>::const_iterator it = launchOptions.extraInitializationData.begin();
-    HashMap<String, String>::const_iterator end = launchOptions.extraInitializationData.end();
-    Vector<CString> temps;
-    for (; it != end; ++it) {
-        String keyPlusDash = "-" + it->key;
-        CString key(keyPlusDash.utf8().data());
-        temps.append(key);
-        args.append(key.data());
-
-        CString value(it->value.utf8().data());
-        temps.append(value);
-        args.append(value.data());
-    }
-
-    args.append(nullptr);
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    // Register ourselves.
-    kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.data()), listeningPort, 0);
-    ASSERT_UNUSED(kr, kr == KERN_SUCCESS);
-#pragma clang diagnostic pop
-
-    posix_spawnattr_t attr;
-    posix_spawnattr_init(&attr);
-
-    short flags = 0;
-
-    // We want our process to receive all signals.
-    sigset_t signalMaskSet;
-    sigemptyset(&signalMaskSet);
-
-    posix_spawnattr_setsigmask(&attr, &signalMaskSet);
-    flags |= POSIX_SPAWN_SETSIGMASK;
-
-    // Determine the architecture to use.
-    cpu_type_t architecture = launchOptions.architecture;
-    if (architecture == ProcessLauncher::LaunchOptions::MatchCurrentArchitecture)
-        architecture = _NSGetMachExecuteHeader()->cputype;
-
-    cpu_type_t cpuTypes[] = { architecture };
-    size_t outCount = 0;
-    posix_spawnattr_setbinpref_np(&attr, 1, cpuTypes, &outCount);
-
-    // Start suspended so we can set up the termination notification handler.
-    flags |= POSIX_SPAWN_START_SUSPENDED;
-
-    static const int allowExecutableHeapFlag = 0x2000;
-    if (launchOptions.executableHeap)
-        flags |= allowExecutableHeapFlag;
-
-    posix_spawnattr_setflags(&attr, flags);
-
-    pid_t processIdentifier = 0;
-    int result = posix_spawn(&processIdentifier, args[0], 0, &attr, const_cast<char**>(args.data()), environmentVariables.environmentPointer());
-
-    posix_spawnattr_destroy(&attr);
-
-    if (!result) {
-        // Set up the termination notification handler and then ask the child process to continue.
-        setUpTerminationNotificationHandler(processIdentifier);
-        kill(processIdentifier, SIGCONT);
-    } else {
-        // We failed to launch. Release the send right.
-        mach_port_deallocate(mach_task_self(), listeningPort);
-
-        // And the receive right.
-        mach_port_mod_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_RECEIVE, -1);
-    
-        listeningPort = MACH_PORT_NULL;
-        processIdentifier = 0;
-    }
-
-    // We've finished launching the process, message back to the main run loop.
-    RefPtr<ProcessLauncher> protector(that);
-    RunLoop::main().dispatch([protector, didFinishLaunchingProcessFunction, processIdentifier, listeningPort] {
-        (*protector.*didFinishLaunchingProcessFunction)(processIdentifier, IPC::Connection::Identifier(listeningPort));
-    });
+    connectToService(launchOptions, forDevelopment, that, didFinishLaunchingProcessFunction);
 }
 
 static NSString *systemDirectoryPath()
@@ -512,17 +215,9 @@ static NSString *systemDirectoryPath()
 
 void ProcessLauncher::launchProcess()
 {
-    if (tryPreexistingProcess(m_launchOptions, this, &ProcessLauncher::didFinishLaunchingProcess))
-        return;
-
     bool isWebKitDevelopmentBuild = ![[[[NSBundle bundleWithIdentifier:@"com.apple.WebKit"] bundlePath] stringByDeletingLastPathComponent] hasPrefix:systemDirectoryPath()];
 
-    if (m_launchOptions.useXPC) {
-        createService(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
-        return;
-    }
-
-    createProcess(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
+    createService(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
 }
 
 void ProcessLauncher::terminateProcess()

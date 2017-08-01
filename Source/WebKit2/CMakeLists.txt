@@ -70,7 +70,10 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/indexeddb"
+    "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/legacy"
+    "${WEBCORE_DIR}/Modules/indexeddb/server"
+    "${WEBCORE_DIR}/Modules/indexeddb/shared"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/notifications"
@@ -199,6 +202,7 @@ set(WebKit2_SOURCES
     DatabaseProcess/IndexedDB/IDBSerialization.cpp
     DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
     DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
@@ -512,6 +516,7 @@ set(WebKit2_SOURCES
     WebProcess/Databases/WebDatabaseProvider.cpp
     WebProcess/Databases/WebToDatabaseProcessConnection.cpp
 
+    WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
     WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.cpp
     WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp
 

@@ -1,3 +1,142 @@
+2016-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL_USES_B3 should be unconditionally true
+        https://bugs.webkit.org/show_bug.cgi?id=154324
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/Platform.h:
+
+2016-02-13  Mark Lam  <mark.lam@apple.com>
+
+        Eliminate the need for WTFCrashImpl().
+        https://bugs.webkit.org/show_bug.cgi?id=154202
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2016-02-12  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Update ICU header files to version 52
+        https://bugs.webkit.org/show_bug.cgi?id=154160
+
+        Reviewed by Alex Christensen.
+
+        Update ICU header files to version 52 to allow the use of newer APIs.
+
+        * icu/unicode/bytestream.h:
+        * icu/unicode/localpointer.h:
+        * icu/unicode/platform.h:
+        * icu/unicode/ptypes.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/rep.h:
+        (Replaceable::Replaceable):
+        * icu/unicode/std_string.h:
+        * icu/unicode/strenum.h:
+        * icu/unicode/stringpiece.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/ucnv.h:
+        * icu/unicode/ucol.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/uenum.h:
+        * icu/unicode/uiter.h:
+        * icu/unicode/uloc.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unistr.h:
+        (UnicodeString::UnicodeString):
+        (UnicodeString::operator== ):
+        (UnicodeString::startsWith):
+        (UnicodeString::setTo):
+        (UnicodeString::remove):
+        (UnicodeString::replace): Deleted.
+        (UnicodeString::extract): Deleted.
+        (UnicodeString::char32At): Deleted.
+        (UnicodeString::getChar32Start): Deleted.
+        (UnicodeString::getChar32Limit): Deleted.
+        (UnicodeString::getTerminatedBuffer): Deleted.
+        (UnicodeString::append): Deleted.
+        (UnicodeString::truncate): Deleted.
+        * icu/unicode/unorm2.h:
+        * icu/unicode/uobject.h:
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/uset.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utf.h:
+        * icu/unicode/utf16.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utf_old.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h:
+        * icu/unicode/uversion.h:
+
+2016-02-11  Mark Lam  <mark.lam@apple.com>
+
+        Need WTFCrash workaround for shipping SafariForWebKitDevelopment binaries.
+        https://bugs.webkit.org/show_bug.cgi?id=154125
+
+        Reviewed by Joseph Pecoraro.
+
+        Presently shipping SafariForWebKitDevelopment binaries still expect to link to a
+        WTFCrash function.  We need to provide this function as a workaround until we can
+        update SafariForWebKitDevelopment to use the new inlined version.
+
+        We do this by doing:
+        1. Make WTFCrashImpl() the sole function for implementing a crash.
+           The CRASH() macro is now defined to be WTFCrashImpl() instead of WTFCrash().
+        2. Renamed the legacy WTFCrash() to WTFCrashImpl() for debug or non-Darwin builds.
+           For (non-debug && OS(DARWIN)) builds, WTFCrashImpl() will be an inlined
+           function with an asm statement that issues a breakpoint trap.
+        3. Implement WTFCrash() as a function that calls CRASH().
+           This satisfies the need of shipping SafariForWebKitDevelopment binaries.
+        4. Change WTFCrashWithSecurityImplication() to call CRASH().
+           This ensures that we have a consistent implementation of how we crash.
+        5. Changed WTFLogAlwaysAndCrash() to call CRASH() instead of WTFCrash().
+           This is just to have consistency in that all code in the WebKit project
+           now crashes by calling CRASH(), not WTFCrash().
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2016-02-09  Mark Lam  <mark.lam@apple.com>
+
+        Changed WTFCrash to not trash the crash site register state.
+        https://bugs.webkit.org/show_bug.cgi?id=153996
+
+        Reviewed by Geoffrey Garen.
+
+        When doing post-mortem crash site analysis using data from crash reports, it is
+        immensely valuable to be able to infer the crashing program's state from the
+        register values at crash time.  However, for RELEASE_ASSERT failures, we crash
+        using WTFCrash(), and WTFCrash() is currently implemented as a function call
+        that, in turn, calls a lot of other functions to do crash handling before
+        actually crashing.  As a result, the register values captured in the crash
+        reports are not likely to still contain the values used by the caller function
+        that failed the RELEASE_ASSERT.
+
+        This patch aims to remedy this issue for non-debug builds on OS(DARWIN) ports.
+        It does so by changing WTFCrash() into an inlined function that has an inlined
+        asm statement to issues the CPU specific breakpoint trap instruction.  As a
+        result, for non-debug OS(DARWIN) builds, crashes due to failed RELEASE_ASSERTs
+        will now show up in crash reports as crashing due to EXC_BREAKPOINT (SIGTRAP)
+        instead of a EXC_BAD_ACCESS (SIGSEGV) on address 0xbbadbeef.
+
+        For debug and non-DARWIN builds, WTFCrash() behavior currently remains unchanged.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK][EFL] Fix several build configuration related to SamplingProfiler after r196245
+        https://bugs.webkit.org/show_bug.cgi?id=154033
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
 2016-02-08  Filip Pizlo  <fpizlo@apple.com>
 
         Make sure that locking code that relies on module boundaries for compiler fences uses NEVER_INLINE

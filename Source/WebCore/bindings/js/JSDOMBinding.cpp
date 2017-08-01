@@ -334,11 +334,6 @@ void printErrorMessageForFrame(Frame* frame, const String& message)
     frame->document()->domWindow()->printErrorMessage(message);
 }
 
-EncodedJSValue objectToStringFunctionGetter(ExecState* exec, JSObject*, EncodedJSValue, PropertyName propertyName)
-{
-    return JSValue::encode(JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), 0, propertyName.publicName(), objectProtoFuncToString));
-}
-
 Structure* getCachedDOMStructure(JSDOMGlobalObject& globalObject, const ClassInfo* classInfo)
 {
     JSDOMStructureMap& structures = globalObject.structures();
@@ -713,6 +708,18 @@ void DOMConstructorJSBuiltinObject::visitChildren(JSC::JSCell* cell, JSC::SlotVi
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_initializeFunction);
+}
+
+static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
+{
+    throwTypeError(exec, ASCIILiteral("Constructor requires 'new' operator"));
+    return JSValue::encode(jsNull());
+}
+
+CallType DOMConstructorObject::getCallData(JSCell*, CallData& callData)
+{
+    callData.native.function = callThrowTypeError;
+    return CallTypeHost;
 }
 
 } // namespace WebCore

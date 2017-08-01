@@ -23,9 +23,11 @@
 #ifndef DocumentRuleSets_h
 #define DocumentRuleSets_h
 
+#include "CSSDefaultStyleSheets.h"
 #include "RuleFeature.h"
 #include "RuleSet.h"
 #include <memory>
+#include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -45,24 +47,42 @@ public:
     RuleSet* authorStyle() const { return m_authorStyle.get(); }
     RuleSet* userStyle() const { return m_userStyle.get(); }
     RuleFeatureSet& features() { return m_features; }
-    const RuleFeatureSet& features() const { return m_features; }
+    const RuleFeatureSet& features() const;
     RuleSet* sibling() const { return m_siblingRuleSet.get(); }
     RuleSet* uncommonAttribute() const { return m_uncommonAttributeRuleSet.get(); }
+    RuleSet* ancestorClassRules(AtomicStringImpl* className) const;
+
+    struct AttributeRules {
+        Vector<const CSSSelector*> attributeSelectors;
+        std::unique_ptr<RuleSet> ruleSet;
+    };
+    const AttributeRules* ancestorAttributeRulesForHTML(AtomicStringImpl*) const;
 
     void initUserStyle(ExtensionStyleSheets&, const MediaQueryEvaluator&, StyleResolver&);
     void resetAuthorStyle();
     void appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&, MediaQueryEvaluator*, InspectorCSSOMWrappers&, StyleResolver*);
 
-    void collectFeatures();
-
 private:
+    void collectFeatures() const;
     void collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&, RuleSet& userStyle, const MediaQueryEvaluator&, StyleResolver&);
+
     std::unique_ptr<RuleSet> m_authorStyle;
     std::unique_ptr<RuleSet> m_userStyle;
-    RuleFeatureSet m_features;
-    std::unique_ptr<RuleSet> m_siblingRuleSet;
-    std::unique_ptr<RuleSet> m_uncommonAttributeRuleSet;
+
+    mutable RuleFeatureSet m_features;
+    mutable unsigned m_defaultStyleVersionOnFeatureCollection { 0 };
+    mutable std::unique_ptr<RuleSet> m_siblingRuleSet;
+    mutable std::unique_ptr<RuleSet> m_uncommonAttributeRuleSet;
+    mutable HashMap<AtomicStringImpl*, std::unique_ptr<RuleSet>> m_ancestorClassRuleSets;
+    mutable HashMap<AtomicStringImpl*, std::unique_ptr<AttributeRules>> m_ancestorAttributeRuleSetsForHTML;
 };
+
+inline const RuleFeatureSet& DocumentRuleSets::features() const
+{
+    if (m_defaultStyleVersionOnFeatureCollection < CSSDefaultStyleSheets::defaultStyleVersion)
+        collectFeatures();
+    return m_features;
+}
 
 } // namespace WebCore
 

@@ -130,22 +130,24 @@ struct HashTable {
             skipInvalidKeys();
         }
 
-        const HashTableValue* value()
+        const HashTableValue* value() const
         {
             return &m_table->values[m_position];
         }
 
-        const char* key()
+        const HashTableValue& operator*() const { return *value(); }
+
+        const char* key() const
         {
             return m_table->values[m_position].m_key;
         }
 
-        const HashTableValue* operator->()
+        const HashTableValue* operator->() const
         {
             return value();
         }
 
-        bool operator!=(const ConstIterator& other)
+        bool operator!=(const ConstIterator& other) const
         {
             ASSERT(m_table == other.m_table);
             return m_position != other.m_position;
@@ -208,10 +210,15 @@ inline BuiltinGenerator HashTableValue::builtinAccessorSetterGenerator() const
 template <class ThisImp, class ParentImp>
 inline bool getStaticPropertySlot(ExecState* exec, const HashTable& table, ThisImp* thisObj, PropertyName propertyName, PropertySlot& slot)
 {
-    const HashTableValue* entry = table.entry(propertyName);
+    if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
+        return true;
 
-    if (!entry) // not found, forward to parent
-        return ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot);
+    if (thisObj->staticFunctionsReified())
+        return false;
+
+    auto* entry = table.entry(propertyName);
+    if (!entry)
+        return false;
 
     if (entry->attributes() & BuiltinOrFunctionOrAccessor)
         return setUpStaticFunctionSlot(exec, entry, thisObj, propertyName, slot);
@@ -236,7 +243,10 @@ inline bool getStaticFunctionSlot(ExecState* exec, const HashTable& table, JSObj
     if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
         return true;
 
-    const HashTableValue* entry = table.entry(propertyName);
+    if (thisObj->staticFunctionsReified())
+        return false;
+
+    auto* entry = table.entry(propertyName);
     if (!entry)
         return false;
 
@@ -250,10 +260,15 @@ inline bool getStaticFunctionSlot(ExecState* exec, const HashTable& table, JSObj
 template <class ThisImp, class ParentImp>
 inline bool getStaticValueSlot(ExecState* exec, const HashTable& table, ThisImp* thisObj, PropertyName propertyName, PropertySlot& slot)
 {
-    const HashTableValue* entry = table.entry(propertyName);
+    if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
+        return true;
 
-    if (!entry) // not found, forward to parent
-        return ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot);
+    if (thisObj->staticFunctionsReified())
+        return false;
+
+    auto* entry = table.entry(propertyName);
+    if (!entry)
+        return false;
 
     ASSERT(!(entry->attributes() & BuiltinOrFunctionOrAccessor));
 
@@ -266,18 +281,25 @@ inline bool getStaticValueSlot(ExecState* exec, const HashTable& table, ThisImp*
     return true;
 }
 
-inline void putEntry(ExecState* exec, const HashTableValue* entry, JSObject* base, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+// 'base' means the object holding the property (possibly in the prototype chain of the object put was called on).
+// 'thisValue' is the object that put is being applied to (in the case of a proxy, the proxy target).
+// 'slot.thisValue()' is the object the put was originally performed on (in the case of a proxy, the proxy itself).
+inline void putEntry(ExecState* exec, const HashTableValue* entry, JSObject* base, JSObject* thisValue, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     // If this is a function put it as an override property.
     if (entry->attributes() & BuiltinOrFunction) {
-        if (JSObject* thisObject = jsDynamicCast<JSObject*>(slot.thisValue()))
+        if (JSObject* thisObject = jsDynamicCast<JSObject*>(thisValue))
             thisObject->putDirect(exec->vm(), propertyName, value);
     } else if (entry->attributes() & Accessor) {
         if (slot.isStrictMode())
             throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
     } else if (!(entry->attributes() & ReadOnly)) {
-        entry->propertyPutter()(exec, base, JSValue::encode(slot.thisValue()), JSValue::encode(value));
-        slot.setCustomProperty(base, entry->propertyPutter());
+        JSValue updateThisValue = entry->attributes() & CustomAccessor ? slot.thisValue() : JSValue(base);
+        entry->propertyPutter()(exec, JSValue::encode(updateThisValue), JSValue::encode(value));
+        if (entry->attributes() & CustomAccessor)
+            slot.setCustomAccessor(base, entry->propertyPutter());
+        else
+            slot.setCustomValue(base, entry->propertyPutter());
     } else if (slot.isStrictMode())
         throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
 }
@@ -294,7 +316,7 @@ inline bool lookupPut(ExecState* exec, PropertyName propertyName, JSObject* base
     if (!entry)
         return false;
 
-    putEntry(exec, entry, base, propertyName, value, slot);
+    putEntry(exec, entry, base, base, propertyName, value, slot);
     return true;
 }
 

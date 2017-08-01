@@ -129,7 +129,7 @@ WebProcessProxy::~WebProcessProxy()
 
 void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
-    launchOptions.processType = ProcessLauncher::WebProcess;
+    launchOptions.processType = ProcessLauncher::ProcessType::Web;
 
     ChildProcessProxy::getLaunchOptions(launchOptions);
 
@@ -146,8 +146,6 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
         }
         launchOptions.extraInitializationData.add(ASCIILiteral("OverrideLanguages"), languageString.toString());
     }
-
-    platformGetLaunchOptions(launchOptions);
 }
 
 void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)

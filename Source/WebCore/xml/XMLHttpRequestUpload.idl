@@ -28,20 +28,7 @@
 
 [
     GenerateIsReachable=Impl,
-    EventTarget,
-] interface XMLHttpRequestUpload {
-    // From XMLHttpRequestEventTarget
-    attribute EventHandler onabort;
-    attribute EventHandler onerror;
-    attribute EventHandler onload;
-    attribute EventHandler onloadend;
-    attribute EventHandler onloadstart;
-    attribute EventHandler onprogress;
-    attribute EventHandler ontimeout;
-
-    // EventTarget interface
-    void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    [RaisesException] boolean dispatchEvent(Event event);
+    JSGenerateToJSObject,
+] interface XMLHttpRequestUpload : XMLHttpRequestEventTarget {
 };
 
