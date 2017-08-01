@@ -33,23 +33,17 @@
 
 #include "CSSSelector.h"
 #include "CallTracerTypes.h"
-#include "CanvasGradient.h"
-#include "CanvasPattern.h"
 #include "CanvasRenderingContext.h"
-#include "DOMPath.h"
 #include "DocumentThreadableLoader.h"
 #include "Element.h"
+#include "EventTarget.h"
 #include "FormData.h"
 #include "Frame.h"
 #include "HTMLCanvasElement.h"
-#include "HTMLImageElement.h"
-#include "HTMLVideoElement.h"
 #include "HitTestResult.h"
-#include "ImageData.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentationCookie.h"
 #include "Page.h"
-#include "ScriptExecutionContext.h"
 #include "StorageArea.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerInspectorController.h"
@@ -71,17 +65,20 @@ class DOMWrapperWorld;
 class Database;
 class Document;
 class DocumentLoader;
+class EventListener;
 class HTTPHeaderMap;
 class InspectorTimelineAgent;
 class InstrumentingAgents;
 class NetworkLoadMetrics;
 class Node;
 class PseudoElement;
+class RegisteredEventListener;
 class RenderLayer;
 class RenderObject;
 class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
+class ScriptExecutionContext;
 class SecurityOrigin;
 class ShadowRoot;
 class URL;
@@ -135,9 +132,12 @@ public:
 
     static InspectorInstrumentationCookie willCallFunction(ScriptExecutionContext*, const String& scriptName, int scriptLine);
     static void didCallFunction(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
+    static void didAddEventListener(EventTarget&, const AtomicString& eventType);
+    static void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEvent(Document&, const Event&, bool hasEventListeners);
     static void didDispatchEvent(const InspectorInstrumentationCookie&);
-    static void willHandleEvent(ScriptExecutionContext*, const Event&);
+    static void willHandleEvent(ScriptExecutionContext&, const Event&, const RegisteredEventListener&);
+    static void didHandleEvent(ScriptExecutionContext&);
     static InspectorInstrumentationCookie willDispatchEventOnWindow(Frame*, const Event&, DOMWindow&);
     static void didDispatchEventOnWindow(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willEvaluateScript(Frame&, const String& url, int lineNumber);
@@ -232,7 +232,7 @@ public:
     static void didChangeCSSCanvasClientNodes(HTMLCanvasElement&);
     static void didCreateCanvasRenderingContext(HTMLCanvasElement&);
     static void didChangeCanvasMemory(HTMLCanvasElement&);
-    static void recordCanvasAction(CanvasRenderingContext&, const String&, Vector<CanvasActionParameterVariant>&& = { });
+    static void recordCanvasAction(CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
     static void didFinishRecordingCanvasFrame(HTMLCanvasElement&, bool forceDispatch = false);
 
     static void networkStateChanged(Page&);
@@ -295,8 +295,11 @@ private:
 
     static InspectorInstrumentationCookie willCallFunctionImpl(InstrumentingAgents&, const String& scriptName, int scriptLine, ScriptExecutionContext*);
     static void didCallFunctionImpl(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
+    static void didAddEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType);
+    static void willRemoveEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents&, Document&, const Event&, bool hasEventListeners);
-    static void willHandleEventImpl(InstrumentingAgents&, const Event&);
+    static void willHandleEventImpl(InstrumentingAgents&, const Event&, const RegisteredEventListener&);
+    static void didHandleEventImpl(InstrumentingAgents&);
     static void didDispatchEventImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willDispatchEventOnWindowImpl(InstrumentingAgents&, const Event&, DOMWindow&);
     static void didDispatchEventOnWindowImpl(const InspectorInstrumentationCookie&);
@@ -391,7 +394,7 @@ private:
     static void didChangeCSSCanvasClientNodesImpl(InstrumentingAgents*, HTMLCanvasElement&);
     static void didCreateCanvasRenderingContextImpl(InstrumentingAgents*, HTMLCanvasElement&);
     static void didChangeCanvasMemoryImpl(InstrumentingAgents*, HTMLCanvasElement&);
-    static void recordCanvasActionImpl(InstrumentingAgents*, CanvasRenderingContext&, const String&, Vector<CanvasActionParameterVariant>&& = { });
+    static void recordCanvasActionImpl(InstrumentingAgents*, CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
     static void didFinishRecordingCanvasFrameImpl(InstrumentingAgents*, HTMLCanvasElement&, bool forceDispatch = false);
 
     static void layerTreeDidChangeImpl(InstrumentingAgents&);
@@ -641,6 +644,20 @@ inline void InspectorInstrumentation::didRemoveTimer(ScriptExecutionContext& con
         didRemoveTimerImpl(*instrumentingAgents, timerId, context);
 }
 
+inline void InspectorInstrumentation::didAddEventListener(EventTarget& target, const AtomicString& eventType)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(target.scriptExecutionContext()))
+        didAddEventListenerImpl(*instrumentingAgents, target, eventType);
+}
+
+inline void InspectorInstrumentation::willRemoveEventListener(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(target.scriptExecutionContext()))
+        willRemoveEventListenerImpl(*instrumentingAgents, target, eventType, listener, capture);
+}
+
 inline InspectorInstrumentationCookie InspectorInstrumentation::willCallFunction(ScriptExecutionContext* context, const String& scriptName, int scriptLine)
 {
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
@@ -671,11 +688,18 @@ inline void InspectorInstrumentation::didDispatchEvent(const InspectorInstrument
         didDispatchEventImpl(cookie);
 }
 
-inline void InspectorInstrumentation::willHandleEvent(ScriptExecutionContext* context, const Event& event)
+inline void InspectorInstrumentation::willHandleEvent(ScriptExecutionContext& context, const Event& event, const RegisteredEventListener& listener)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        return willHandleEventImpl(*instrumentingAgents, event);
+        return willHandleEventImpl(*instrumentingAgents, event, listener);
+}
+
+inline void InspectorInstrumentation::didHandleEvent(ScriptExecutionContext& context)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
+        return didHandleEventImpl(*instrumentingAgents);
 }
 
 inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEventOnWindow(Frame* frame, const Event& event, DOMWindow& window)
@@ -1098,7 +1122,7 @@ inline void InspectorInstrumentation::didChangeCanvasMemory(HTMLCanvasElement& c
         didChangeCanvasMemoryImpl(instrumentingAgents, canvasElement);
 }
 
-inline void InspectorInstrumentation::recordCanvasAction(CanvasRenderingContext& canvasRenderingContext, const String& name, Vector<CanvasActionParameterVariant>&& parameters)
+inline void InspectorInstrumentation::recordCanvasAction(CanvasRenderingContext& canvasRenderingContext, const String& name, Vector<RecordCanvasActionVariant>&& parameters)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(&canvasRenderingContext.canvas().document()))

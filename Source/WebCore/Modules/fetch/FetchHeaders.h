@@ -33,6 +33,8 @@
 #include "ExceptionOr.h"
 #include "HTTPHeaderMap.h"
 #include <wtf/HashTraits.h>
+#include <wtf/Variant.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -46,6 +48,9 @@ public:
         Response
     };
 
+    using Init = Variant<Vector<Vector<String>>, Vector<WTF::KeyValuePair<String, String>>>;
+    static ExceptionOr<Ref<FetchHeaders>> create(std::optional<Init>&&);
+
     static Ref<FetchHeaders> create(Guard guard = Guard::None) { return adoptRef(*new FetchHeaders { guard }); }
     static Ref<FetchHeaders> create(const FetchHeaders& headers) { return adoptRef(*new FetchHeaders { headers }); }
 
@@ -54,6 +59,9 @@ public:
     ExceptionOr<String> get(const String&) const;
     ExceptionOr<bool> has(const String&) const;
     ExceptionOr<void> set(const String& name, const String& value);
+
+    ExceptionOr<void> fill(const Init&);
+    ExceptionOr<void> fill(const FetchHeaders&);
 
     void fill(const FetchHeaders*);
     void filterAndFill(const HTTPHeaderMap&, Guard);
@@ -78,15 +86,21 @@ public:
     void setGuard(Guard);
 
 private:
-    FetchHeaders(Guard guard) : m_guard(guard) { }
+    explicit FetchHeaders(Guard guard, HTTPHeaderMap&& headers = { });
     FetchHeaders(const FetchHeaders&);
 
     Guard m_guard;
     HTTPHeaderMap m_headers;
 };
 
+inline FetchHeaders::FetchHeaders(Guard guard, HTTPHeaderMap&& headers)
+    : m_guard(guard)
+    , m_headers(WTFMove(headers))
+{
+}
+
 inline FetchHeaders::FetchHeaders(const FetchHeaders& other)
-    : RefCounted()
+    : RefCounted<FetchHeaders>()
     , m_guard(other.m_guard)
     , m_headers(other.m_headers)
 {

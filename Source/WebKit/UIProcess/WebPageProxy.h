@@ -1634,6 +1634,8 @@ private:
 
     void viewIsBecomingVisible();
 
+    void stopAllURLSchemeTasks();
+
     PageClient& m_pageClient;
     Ref<API::PageConfiguration> m_configuration;
 

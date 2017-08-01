@@ -1,3 +1,198 @@
+2017-08-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] WebKitFS.cmake depends on options set in Option cmake files that are included later
+        https://bugs.webkit.org/show_bug.cgi?id=174855
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't create derived sources directory here anymore.
+
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+
+2017-07-31  Daniel Bates  <dabates@apple.com>
+
+        WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction() may not be able to
+        determine page that initiated navigation
+        https://bugs.webkit.org/show_bug.cgi?id=174531
+
+        Remove a comment from WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction()
+        about determining the originating page independently from the originating frame. There
+        does not seem to be much value to fixing this. We can always revisit this issue if we
+        discover a strong motivating example. See <https://bugs.webkit.org/show_bug.cgi?id=174531#c1>
+        for more details.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2017-07-31  Sam Weinig  <sam@webkit.org>
+
+        Remove unnecessary exceptions from storage code
+        https://bugs.webkit.org/show_bug.cgi?id=174572
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::canAccessStorage): Deleted.
+        * WebProcess/Storage/StorageAreaImpl.h:
+        * WebProcess/Storage/StorageNamespaceImpl.cpp:
+        Remove canAccessStorage. It is no longer called.
+
+2017-07-30  Brady Eidson  <beidson@apple.com>
+
+        Add URLSchemeHandler API tests that verify the lack of URLSchemeTask object leaks.
+        https://bugs.webkit.org/show_bug.cgi?id=174958
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/APIURLSchemeTask.h:
+
+        * UIProcess/API/C/WKTestingSupport.cpp:
+        (WKGetAPIURLSchemeTaskInstanceCount):
+        (WKGetWebURLSchemeTaskInstanceCount):
+        * UIProcess/API/C/WKTestingSupport.h:
+
+        * UIProcess/WebURLSchemeTask.h:
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-07-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GTK and WPE about StorageProcess renaming
+
+        * CMakeLists.txt:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+
+2017-07-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac][WebKit2] WebKit sandbox errors while streaming Netflix
+        https://bugs.webkit.org/show_bug.cgi?id=174955
+        <rdar://problem/33583994>
+
+        Reviewed by Alex Christensen.
+
+        Wider testing with the stricter sandboxing rules identified three more IOKit properties we need to expose:
+        - CEAModeID
+        - CEAPixelRepetition
+        - IOFBHDMIDongleROM
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2017-07-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219986.
+        https://bugs.webkit.org/show_bug.cgi?id=174962
+
+        "broke PLT on iOS (rdar://problem/33602751)" (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "Part 1 of: Rename DatabaseProcess to StorageProcess."
+        https://bugs.webkit.org/show_bug.cgi?id=174879
+        http://trac.webkit.org/changeset/219986
+
+2017-07-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219990.
+        https://bugs.webkit.org/show_bug.cgi?id=174961
+
+        "broke PLT on iOS (rdar://problem/33602751)" (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "Part 2 of: Rename DatabaseProcess to StorageProcess."
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+        http://trac.webkit.org/changeset/219990
+
+2017-07-28  Brady Eidson  <beidson@apple.com>
+
+        API tests that use URLSchemeHandler are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=174950
+
+        Reviewed by Alex Christensen.
+
+        Make sure that in all cases where we remove the last task from the page->task map...
+        ...We also remove the map itself.
+
+        * UIProcess/WebURLSchemeHandler.cpp:
+        (WebKit::WebURLSchemeHandler::stopTask):
+        (WebKit::WebURLSchemeHandler::taskCompleted):
+        (WebKit::WebURLSchemeHandler::removeTaskFromPageMap):
+        * UIProcess/WebURLSchemeHandler.h:
+
+2017-07-28  Brady Eidson  <beidson@apple.com>
+
+        WKURLSchemeTaskImpl instances are being abandoned (except if the task is stopped).
+        <rdar://problem/33568276> and https://bugs.webkit.org/show_bug.cgi?id=174895
+
+        Reviewed by Alex Christensen.
+
+        There was a lot going on here:
+        - There was an unbroken cycle between URLSchemeHandlers and URLSchemeTasks 
+        - WKURLSchemeTasks were not destroying their API::URLSchemeTask implementation object
+        - When a WKWebView was dealloc'ed, it was not cleaning up the related UIProcess tasks
+        - If the NetworkingProcess crashed, WebProcesses were not cleaning up their tasks
+          (and therefore the UIProcess tasks were also not getting cleaned up)
+        - If a WebProcess crashed, the UIProcess was not cleaning up the related tasks
+        
+        * UIProcess/API/Cocoa/WKURLSchemeTask.mm:
+        (-[WKURLSchemeTaskImpl dealloc]): Call API::~URLSchemeTask
+        
+        * UIProcess/Cocoa/WebURLSchemeHandlerCocoa.h:
+        * UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm:
+        (WebKit::WebURLSchemeHandlerCocoa::platformTaskCompleted): Clear out the API wrapper map
+          so the wrapper and implementation object can both be destroyed.
+        
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close): Call stopAllURLSchemeTasks.
+        (WebKit::WebPageProxy::processDidTerminate): Call stopAllURLSchemeTasks.
+        (WebKit::WebPageProxy::stopAllURLSchemeTasks):
+        * UIProcess/WebPageProxy.h:
+        
+        * UIProcess/WebURLSchemeHandler.cpp:
+        (WebKit::WebURLSchemeHandler::startTask):
+        (WebKit::WebURLSchemeHandler::stopAllTasksForPage):
+        (WebKit::WebURLSchemeHandler::stopTask):
+        (WebKit::WebURLSchemeHandler::taskCompleted):
+        * UIProcess/WebURLSchemeHandler.h:
+        
+        * UIProcess/WebURLSchemeTask.cpp:
+        (WebKit::WebURLSchemeTask::WebURLSchemeTask):
+        * UIProcess/WebURLSchemeTask.h:
+        (WebKit::WebURLSchemeTask::pageID): Store separate from the WebPage so messaging
+          is possible even after the WebPage* has been cleared.
+        
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopAllURLSchemeTasks):
+        * WebProcess/WebPage/WebPage.h:
+        
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp:
+        (WebKit::WebURLSchemeHandlerProxy::stopAllTasks):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidComplete):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidStopLoading):
+        (WebKit::WebURLSchemeHandlerProxy::removeTask):
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.h:
+        
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::networkProcessConnectionClosed): Call stopAllURLSchemeTasks 
+          for each WebPage.
+
+2017-07-28  Frederic Wang  <fwang@igalia.cpm>
+
+        Fix typo in scrollPositionChangedViaDelegatedScrolling
+        https://bugs.webkit.org/show_bug.cgi?id=174937
+
+        Reviewed by Wenson Hsieh.
+
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::scrollViewDidScroll):
+
 2017-07-28  Jeremy Jones  <jeremyj@apple.com>
 
         Remove Web prefix from WebVideoFullscreen and WebPlaybackSession classes.

@@ -1,3 +1,164 @@
+2017-07-31  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix JSCOnly ARM buildbots after r220047
+        https://bugs.webkit.org/show_bug.cgi?id=174993
+
+        Reviewed by Saam Barati.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (BuildAndRemoteJSCTestsFactory.__init__):
+
+2017-07-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Private Symbols
+        https://bugs.webkit.org/show_bug.cgi?id=174935
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-07-30  Darin Adler  <darin@apple.com>
+
+        Remove code in HTMLObjectElement attribute parsing that forces style resolution and layout
+        https://bugs.webkit.org/show_bug.cgi?id=130653
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didFinishLoadForFrame): Omit now-unneeded "shouldDump" argument
+        when calling frameDidChangeLocation.
+        (WTR::InjectedBundlePage::frameDidChangeLocation): Removed "shouldDump" argument. This was
+        causing WebKitTestRunner to not dump anything in cases where DumpRenderTree will dump, and
+        thus causing mysterious failures of a couple of tests. There are two remaining issues:
+        1) WebKitTestRunner won't run its dump code if there is no "page", and there is no such
+        consideration in DumpRenderTree and 2) Both DumpRenderTree and WebKitTestRunner share the
+        same logic flaw that causes "top loading frame" to get set to one of the subframes in
+        tests where  the following sequence occurs: test calls waitUntilDone, main frame finishes
+        loading, subframe starts loading. It would be good to clean that up some day, but for now
+        this patch makes the two work identically rather than changing both.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h: Updated for change above.
+
+2017-07-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Replace RetainPtr<> with auto when adopting allocated ObjC objects in DataInteractionTests
+        https://bugs.webkit.org/show_bug.cgi?id=174963
+
+        Reviewed by Darin Adler.
+
+        Replaces several uses of RetainPtr<>s with auto. Some test cases in this file use auto, while other test cases declare using
+        RetainPtr<>. This patch changes them to all use auto.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-07-30  Brady Eidson  <beidson@apple.com>
+
+        Add URLSchemeHandler API tests that verify the lack of URLSchemeTask object leaks.
+        https://bugs.webkit.org/show_bug.cgi?id=174958
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-leaks.mm: Added.
+        (-[LeakSchemeHandler webView:startURLSchemeTask:]):
+        (-[LeakSchemeHandler webView:stopURLSchemeTask:]):
+        (runUntilTasksInFlight):
+        (TEST):
+
+2017-07-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219990.
+        https://bugs.webkit.org/show_bug.cgi?id=174961
+
+        "broke PLT on iOS (rdar://problem/33602751)" (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "Part 2 of: Rename DatabaseProcess to StorageProcess."
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+        http://trac.webkit.org/changeset/219990
+
+2017-07-28  Brady Eidson  <beidson@apple.com>
+
+        API tests that use URLSchemeHandler are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=174950
+
+        Reviewed by Alex Christensen.
+
+        Fix the NoMIMEType test to be correct.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm:
+        (-[SchemeHandler initWithData:mimeType:]):
+        (-[SchemeHandler webView:startURLSchemeTask:]):
+        (TEST):
+
+2017-07-28  Daniel Bates  <dabates@apple.com>
+
+        prepare-ChangeLog should not list added layout tests in PAL ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174876
+
+        Reviewed by Alex Christensen.
+
+        Do not list added layout tests in the PAL ChangeLog as such tests are unlikely to be related
+        to a PAL change. Unit tests are more appropriate for PAL changes than layout tests because
+        they provide a more direct way to test the platform abstraction.
+
+        As a side effect of this change we no longer list added layout tests in WebCore/platform/gtk/po/ChangeLog.
+
+        * Scripts/prepare-ChangeLog:
+        (generateNewChangeLogs): Only list added layout tests in the WebCore ChangeLog regardless
+        of the current working directory.
+
+2017-07-28  Jonathan Bedard  <jbedard@apple.com>
+
+        Using "auto <function()> -> returnType" breaks prepare-ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174930
+
+        Unreviewed test fix.
+
+        We need to check parentheses before printing 'const' or 'volatile' in the ChangeLog. 
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp):
+
+2017-07-28  JF Bastien  <jfbastien@apple.com>
+
+        Using "auto <function()> -> returnType" breaks prepare-ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174930
+
+        Reviewed by Daniel Bates.
+
+        Teach prepare-ChangeLog about C++ auto arrow return, and while I'm
+        here also teach it about const and volatile overloads. I didn't do
+        reference and rvalue reference overloads because we don't really
+        use them, and the current parser throws away those characters and
+        it doesn't seem worth making it more complex.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp):
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/cpp_unittests-expected.txt:
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/cpp_unittests.cpp:
+        (Foo::Arrow::arrow):
+        (Foo::Arrow::otherArrow):
+        (Foo::Arrow::otherArrow const):
+        (Foo::Arrow::otherArrow volatile):
+        (Foo::Arrow::otherArrow const volatile):
+
+2017-07-28  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Building with ENABLE_VIDEO=OFF fails
+        https://bugs.webkit.org/show_bug.cgi?id=174940
+
+        Reviewed by Alex Christensen.
+
+        When GStreamer usage is completely disabled at build time, CMake does not query pkg-config for the GStreamer.
+        This adds missing USE(GSTREAMER) guards in order to make testing code buildable when GStreamer usage is disabled.
+
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (methodCallCallback): Add missing USE(GSTREAMER) guard.
+
 2017-07-28  Claudio Saavedra  <csaavedra@igalia.com>
 
         [WPE] Implement EventSenderProxy in WTR

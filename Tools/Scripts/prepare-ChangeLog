@@ -688,7 +688,7 @@ sub generateNewChangeLogs($$$$$$$$$$$$$$)
         print CHANGE_LOG normalizeLineEndings("        Reviewed by $reviewer.\n\n", $endl);
         print CHANGE_LOG normalizeLineEndings($description . "\n", $endl) if $description;
 
-        if ($prefix =~ m/WebCore/ || `pwd` =~ m/WebCore/ || @$requiresTests) {
+        if (unixPath($prefix) =~ m|/WebCore/$| || @$requiresTests) {
             if (@$addedRegressionTests) {
                 print CHANGE_LOG normalizeLineEndings(testListForChangeLog(sort @$addedRegressionTests), $endl);
             } else {
@@ -1007,9 +1007,25 @@ sub get_function_line_ranges_for_cpp($$)
                 next;
             }
 
+            if ($1 eq "const" and !$in_parentheses) {
+                $potential_name .= " const";
+                next;
+            }
+
+            if ($1 eq "volatile" and !$in_parentheses) {
+                $potential_name .= " volatile";
+                next;
+            }
+
+            # C++ auto function() -> type
+            if ($1 eq ">") {
+                $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
+                next;
+            }
+
             # C++ constructor initializers
             if ($1 eq ":") {
-                  $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
+                $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
             }
 
             # Open brace.

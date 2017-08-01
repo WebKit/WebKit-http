@@ -26,6 +26,7 @@
 #pragma once
 
 #include "APIObject.h"
+#include <wtf/InstanceCounted.h>
 
 namespace WebKit {
 class WebURLSchemeTask;
@@ -33,7 +34,7 @@ class WebURLSchemeTask;
 
 namespace API {
 
-class URLSchemeTask final : public ObjectImpl<Object::Type::URLSchemeTask> {
+class URLSchemeTask final : public ObjectImpl<Object::Type::URLSchemeTask>, public InstanceCounted<URLSchemeTask> {
 public:
     static Ref<URLSchemeTask> create(WebKit::WebURLSchemeTask&);
 

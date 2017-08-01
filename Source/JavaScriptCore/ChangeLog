@@ -1,3 +1,260 @@
+2017-07-31  Mark Lam  <mark.lam@apple.com>
+
+        Added some UNLIKELYs to operationOptimize().
+        https://bugs.webkit.org/show_bug.cgi?id=174976
+
+        Reviewed by JF Bastien.
+
+        * jit/JITOperations.cpp:
+
+2017-07-31  Keith Miller  <keith_miller@apple.com>
+
+        Make more things LLInt constexprs
+        https://bugs.webkit.org/show_bug.cgi?id=174994
+
+        Reviewed by Saam Barati.
+
+        This patch makes more const values in the LLInt constexprs.
+        It also deletes all of the no longer necessary static_asserts in
+        LLIntData.cpp. Finally, it fixes a typo in parser.rb.
+
+        * interpreter/ShadowChicken.h:
+        (JSC::ShadowChicken::Packet::tailMarker):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * offlineasm/generate_offset_extractor.rb:
+        * offlineasm/parser.rb:
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220060.
+
+        This broke our internal builds. Contact reviewer of patch for
+        more information.
+
+        Reverted changeset:
+
+        "Merge WTFThreadData to Thread::current"
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+        http://trac.webkit.org/changeset/220060
+
+2017-07-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Support optional catch binding
+        https://bugs.webkit.org/show_bug.cgi?id=174981
+
+        Reviewed by Saam Barati.
+
+        This patch implements optional catch binding proposal[1], which is now stage 3.
+        This proposal adds a new `catch` brace with no error value binding.
+
+            ```
+                try {
+                    ...
+                } catch {
+                    ...
+                }
+            ```
+
+        Sometimes we do not need to get error value actually. For example, the function returns
+        boolean which means whether the function succeeds.
+
+            ```
+            function parse(result) // -> bool
+            {
+                 try {
+                     parseInner(result);
+                 } catch {
+                     return false;
+                 }
+                 return true;
+            }
+            ```
+
+        In the above case, we are not interested in the actual error value. Without this syntax,
+        we always need to introduce a binding for an error value that is just ignored.
+
+        [1]: https://michaelficarra.github.io/optional-catch-binding-proposal/
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TryNode::emitBytecode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseTryStatement):
+
+2017-07-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Sam Weinig.
+
+        Use Thread::current() instead.
+
+        * API/JSContext.mm:
+        (+[JSContext currentContext]):
+        (+[JSContext currentThis]):
+        (+[JSContext currentCallee]):
+        (+[JSContext currentArguments]):
+        (-[JSContext beginCallbackWithData:calleeValue:thisValue:argumentCount:arguments:]):
+        (-[JSContext endCallbackWithData:]):
+        * heap/Heap.cpp:
+        (JSC::Heap::requestCollection):
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        (JSC::checkModuleSyntax):
+        (JSC::evaluate):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        (JSC::importModule):
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::checkCurrentAtomicStringTable):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        (JSC::JSLock::willReleaseLock):
+        (JSC::JSLock::dropAllLocks):
+        (JSC::JSLock::grabAllLocks):
+        * runtime/JSLock.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::updateStackLimits):
+        (JSC::VM::committedStackByteCount):
+        * runtime/VM.h:
+        (JSC::VM::isSafeToRecurse const):
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::isSafeToRecurse const):
+
+2017-07-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Private Symbols
+        https://bugs.webkit.org/show_bug.cgi?id=174935
+
+        Reviewed by Darin Adler.
+
+        Use SymbolImpl::isPrivate().
+
+        * builtins/BuiltinNames.cpp:
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::isPrivateName): Deleted.
+        * builtins/BuiltinUtils.h:
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::lookup):
+        * runtime/CommonIdentifiers.cpp:
+        (JSC::CommonIdentifiers::isPrivateName): Deleted.
+        * runtime/CommonIdentifiers.h:
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createUndefinedVariableError):
+        * runtime/Identifier.h:
+        (JSC::Identifier::isPrivateName):
+        * runtime/IdentifierInlines.h:
+        (JSC::identifierToSafePublicJSValue):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorAssign):
+        (JSC::defineProperties):
+        (JSC::setIntegrityLevel):
+        (JSC::testIntegrityLevel):
+        (JSC::ownPropertyKeys):
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::PrivateName):
+        * runtime/PropertyName.h:
+        (JSC::PropertyName::isPrivateName):
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performDefineOwnProperty):
+
+2017-07-29  Keith Miller  <keith_miller@apple.com>
+
+        LLInt offsets extractor should be able to handle C++ constexprs
+        https://bugs.webkit.org/show_bug.cgi?id=174964
+
+        Reviewed by Saam Barati.
+
+        This patch adds new syntax to the offline asm language. The new keyword,
+        constexpr, takes the subsequent identifier and maps it to a C++ constexpr
+        expression. Additionally, if the value is not an identifier you can wrap it in
+        parentheses. e.g. constexpr (myConstexprFunction() + OBJECT_OFFSET(Foo, bar)),
+        which will get converted into:
+        static_cast<int64_t>(myConstexprFunction() + OBJECT_OFFSET(Foo, bar));
+
+        This patch also changes the data format the LLIntOffsetsExtractor
+        binary produces.  Previously, it would produce unsigned values,
+        after this patch every value is an int64_t.  Using an int64_t is
+        useful because it means that we can represent any constant needed.
+        int32_t masks are sign extended then passed then converted to a
+        negative literal sting in the assembler so it will be the constant
+        expected.
+
+        * llint/LLIntOffsetsExtractor.cpp:
+        (JSC::LLIntOffsetsExtractor::dummy):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/asm.rb:
+        * offlineasm/ast.rb:
+        * offlineasm/generate_offset_extractor.rb:
+        * offlineasm/offsets.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/transform.rb:
+
+2017-07-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: capture an async stack trace when web content calls addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=174739
+        <rdar://problem/33468197>
+
+        Reviewed by Brian Burg.
+
+        Allow debugger agents to perform custom logic when asynchronous stack
+        trace data is cleared. For example, the PageDebuggerAgent would clear
+        its list of registered listeners for which call stacks have been recorded.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::clearAsyncStackTraceData):
+        * inspector/agents/InspectorDebuggerAgent.h:
+
+2017-07-28  Mark Lam  <mark.lam@apple.com>
+
+        ObjectToStringAdaptiveStructureWatchpoint should not fire if it's dying imminently.
+        https://bugs.webkit.org/show_bug.cgi?id=174948
+        <rdar://problem/33495680>
+
+        Reviewed by Filip Pizlo.
+
+        ObjectToStringAdaptiveStructureWatchpoint is owned by StructureRareData.  If its
+        owner StructureRareData is already known to be dead (in terms of GC liveness) but
+        hasn't been destructed yet (i.e. not swept by the GC yet), we should ignore all
+        requests to fire this watchpoint.
+
+        If the GC had the chance to sweep the StructureRareData, thereby destructing the
+        ObjectToStringAdaptiveStructureWatchpoint, it (the watchpoint) would have removed
+        itself from the WatchpointSet it was on.  Hence, it would not have been fired.
+
+        But since the watchpoint hasn't been destructed yet, it still remains on the
+        WatchpointSet and needs to guard against being fired in this state.  The fix is
+        to simply return early if its owner StructureRareData is not live.  This has the
+        effect of the watchpoint fire being a no-op, which is equivalent to the watchpoint
+        not firing as we would expect.
+
+        This patch also removes some cargo cult copying of watchpoint code which
+        instantiates a StringFireDetail.  In a few cases, that StringFireDetail is never
+        used.  This patch removes these unnecessary instantiations.
+
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp:
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::fireInternal):
+        * runtime/StructureRareData.cpp:
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::fireInternal):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire):
+
 2017-07-28  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         ASSERTION FAILED: candidate->op() == PhantomCreateRest || candidate->op() == PhantomDirectArguments || candidate->op() == PhantomClonedArguments || candidate->op() == PhantomSpread || candidate->op() == PhantomNewArrayWithSpread

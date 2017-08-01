@@ -26,6 +26,7 @@
 #pragma once
 
 #include <WebCore/ResourceRequest.h>
+#include <wtf/InstanceCounted.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -40,12 +41,13 @@ namespace WebKit {
 class WebURLSchemeHandler;
 class WebPageProxy;
 
-class WebURLSchemeTask : public RefCounted<WebURLSchemeTask> {
+class WebURLSchemeTask : public RefCounted<WebURLSchemeTask>, public InstanceCounted<WebURLSchemeTask> {
     WTF_MAKE_NONCOPYABLE(WebURLSchemeTask);
 public:
     static Ref<WebURLSchemeTask> create(WebURLSchemeHandler&, WebPageProxy&, uint64_t identifier, const WebCore::ResourceRequest&);
 
     uint64_t identifier() const { return m_identifier; }
+    uint64_t pageID() const { return m_pageIdentifier; }
 
     const WebCore::ResourceRequest& request() const { return m_request; }
 
@@ -71,6 +73,7 @@ private:
     Ref<WebURLSchemeHandler> m_urlSchemeHandler;
     WebPageProxy* m_page;
     uint64_t m_identifier;
+    uint64_t m_pageIdentifier;
     WebCore::ResourceRequest m_request;
     bool m_stopped { false };
     bool m_responseSent { false };

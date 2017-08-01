@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebURLSchemeHandler.h"
 
+#include "WebPageProxy.h"
 #include "WebURLSchemeTask.h"
 
 using namespace WebCore;
@@ -53,7 +54,24 @@ void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t taskIdentifier,
     auto result = m_tasks.add(taskIdentifier, WebURLSchemeTask::create(*this, page, taskIdentifier, request));
     ASSERT(result.isNewEntry);
 
+    auto pageEntry = m_tasksByPageIdentifier.add(page.pageID(), HashSet<uint64_t>());
+    ASSERT(!pageEntry.iterator->value.contains(taskIdentifier));
+    pageEntry.iterator->value.add(taskIdentifier);
+
     platformStartTask(page, result.iterator->value);
+}
+
+void WebURLSchemeHandler::stopAllTasksForPage(WebPageProxy& page)
+{
+    auto iterator = m_tasksByPageIdentifier.find(page.pageID());
+    if (iterator == m_tasksByPageIdentifier.end())
+        return;
+
+    auto& tasksByPage = iterator->value;
+    while (!tasksByPage.isEmpty())
+        stopTask(page, *tasksByPage.begin());
+
+    ASSERT(m_tasksByPageIdentifier.find(page.pageID()) == m_tasksByPageIdentifier.end());
 }
 
 void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t taskIdentifier)
@@ -63,10 +81,29 @@ void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t taskIdentifier)
         return;
 
     iterator->value->stop();
-
     platformStopTask(page, iterator->value);
 
+    removeTaskFromPageMap(page.pageID(), taskIdentifier);
     m_tasks.remove(iterator);
+}
+
+void WebURLSchemeHandler::taskCompleted(WebURLSchemeTask& task)
+{
+    auto takenTask = m_tasks.take(task.identifier());
+    ASSERT_UNUSED(takenTask, takenTask->ptr() == &task);
+    removeTaskFromPageMap(task.pageID(), task.identifier());
+
+    platformTaskCompleted(task);
+}
+
+void WebURLSchemeHandler::removeTaskFromPageMap(uint64_t pageID, uint64_t taskID)
+{
+    auto iterator = m_tasksByPageIdentifier.find(pageID);
+    ASSERT(iterator != m_tasksByPageIdentifier.end());
+    ASSERT(iterator->value.contains(taskID));
+    iterator->value.remove(taskID);
+    if (iterator->value.isEmpty())
+        m_tasksByPageIdentifier.remove(iterator);
 }
 
 } // namespace WebKit

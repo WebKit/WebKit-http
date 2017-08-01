@@ -108,6 +108,12 @@ class Sizeof
     end
 end
 
+class ConstExpr
+    def offsetsPruneTo(sequence)
+        sequence.list << self
+    end
+end
+
 prunedAST = originalAST.offsetsPrune
 
 File.open(outputFlnm, "w") {
@@ -115,13 +121,25 @@ File.open(outputFlnm, "w") {
     $output = outp
     outp.puts inputHash
     length = 0
+
+    emitCodeInAllConfigurations(prunedAST) {
+        | settings, ast, backend, index |
+        constsList = ast.filter(ConstExpr).uniq.sort
+
+        constsList.each_with_index {
+            | const, index |
+            outp.puts "constexpr int64_t constValue#{index} = static_cast<int64_t>(#{const.value});"
+        }
+    }
+
     emitCodeInAllConfigurations(prunedAST) {
         | settings, ast, backend, index |
         offsetsList = ast.filter(StructOffset).uniq.sort
         sizesList = ast.filter(Sizeof).uniq.sort
-        length += OFFSET_HEADER_MAGIC_NUMBERS.size + (OFFSET_MAGIC_NUMBERS.size + 1) * (1 + offsetsList.size + sizesList.size)
+        constsList = ast.filter(ConstExpr).uniq.sort
+        length += OFFSET_HEADER_MAGIC_NUMBERS.size + (OFFSET_MAGIC_NUMBERS.size + 1) * (1 + offsetsList.size + sizesList.size + constsList.size)
     }
-    outp.puts "static const unsigned extractorTable[#{length}] = {"
+    outp.puts "static const int64_t extractorTable[#{length}] = {"
     emitCodeInAllConfigurations(prunedAST) {
         | settings, ast, backend, index |
         OFFSET_HEADER_MAGIC_NUMBERS.each {
@@ -131,7 +149,8 @@ File.open(outputFlnm, "w") {
 
         offsetsList = ast.filter(StructOffset).uniq.sort
         sizesList = ast.filter(Sizeof).uniq.sort
-        
+        constsList = ast.filter(ConstExpr).uniq.sort
+
         emitMagicNumber
         outp.puts "#{index},"
         offsetsList.each {
@@ -140,10 +159,16 @@ File.open(outputFlnm, "w") {
             outp.puts "OFFLINE_ASM_OFFSETOF(#{offset.struct}, #{offset.field}),"
         }
         sizesList.each {
-            | offset |
+            | sizeof |
             emitMagicNumber
-            outp.puts "sizeof(#{offset.struct}),"
+            outp.puts "sizeof(#{sizeof.struct}),"
+        }
+        constsList.each_index {
+            | index |
+            emitMagicNumber
+            outp.puts "constValue#{index},"
         }
     }
     outp.puts "};"
+
 }

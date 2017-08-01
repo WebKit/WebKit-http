@@ -1,3 +1,842 @@
+2017-08-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Gather crypto constants in a single location
+        https://bugs.webkit.org/show_bug.cgi?id=174091
+
+        Reviewed by Jiewen Tan.
+
+        Gather common constants used across the libgcrypt-specific Web Crypto
+        implementations in a single place -- in the GCryptUtilities.h header,
+        inside the CryptoConstants namespace. The various ASN.1 object identifiers
+        and other helper values are placed inside, in the std::array<uint8_t, N>
+        container.
+
+        Additionally, CryptoConstants::matches() helper function is provided. It
+        compares the provided data-and-size pair with the given std::array
+        container and returns true if the std::memcmp() call returns 0.
+
+        Changes in CryptoKeyEC and CryptoKeyRSA consist mostly of switching to the
+        use of CryptoConstants::matches() and the CryptoConstants data arrays, as
+        well as some whitespace cleanup.
+
+        Additionallity in CryptoKeyEC, the helper functions covering various curve
+        attributes are reordered, renamed and reorganized for simplicity.
+
+        No new tests -- no changes in behavior.
+
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp:
+        (WebCore::curveIdentifier):
+        (WebCore::curveSize):
+        (WebCore::curveUncompressedFieldElementSize):
+        (WebCore::curveUncompressedPointSize):
+        (WebCore::CryptoKeyEC::platformImportRaw):
+        (WebCore::CryptoKeyEC::platformImportJWKPublic):
+        (WebCore::CryptoKeyEC::platformImportJWKPrivate):
+        (WebCore::supportedAlgorithmIdentifier):
+        (WebCore::curveForIdentifier):
+        (WebCore::CryptoKeyEC::platformImportSpki):
+        (WebCore::CryptoKeyEC::platformExportRaw):
+        (WebCore::CryptoKeyEC::platformAddFieldElements):
+        (WebCore::CryptoKeyEC::platformExportSpki):
+        (WebCore::CryptoKeyEC::platformExportPkcs8):
+        (WebCore::uncompressedPointSizeForCurve): Deleted.
+        (WebCore::uncompressedFieldElementSizeForCurve): Deleted.
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::supportedAlgorithmIdentifier):
+        (WebCore::CryptoKeyRSA::importPkcs8):
+        (WebCore::CryptoKeyRSA::exportSpki):
+        (WebCore::CryptoKeyRSA::exportPkcs8):
+        * crypto/gcrypt/GCryptUtilities.h:
+        (WebCore::CryptoConstants::matches):
+
+2017-07-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for MediaFeatureNames
+        https://bugs.webkit.org/show_bug.cgi?id=175008
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * css/MediaFeatureNames.cpp:
+        (WebCore::MediaFeatureNames::init): Do not include
+        <wtf/StaticConstructors.h>. Use LazyNeverDestroyed instead of
+        DEFINE_GLOBAL. Call LazyNeverDestroyed::construct instead of
+        placement new.
+        * css/MediaFeatureNames.h: Use LazyNeverDestroyed.
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::MediaQueryEvaluator::evaluate const): Dereference with ->.
+
+2017-07-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for QualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * dom/DOMAllInOne.cpp: Remove the warning. Include QualifiedName.cpp.
+        * dom/QualifiedName.cpp:
+        (WebCore::QualifiedName::init): Call LazyNeverDestroyed::construct
+        instead of placement new.
+        * dom/QualifiedName.h: Use LazyNeverDestroyed.
+
+2017-07-31  Matt Rajca  <mrajca@apple.com>
+
+        Support quirk for letting media autoplay if the user interacted with at least one media element.
+        https://bugs.webkit.org/show_bug.cgi?id=175005
+        <rdar://problem/33476038>
+
+        Reviewed by Eric Carlson.
+
+        If the user has interacted with at least one media element, let other media elements auto-play
+        as a quirk.
+
+        * dom/Document.cpp:
+        (WebCore::Document::updateIsPlayingMedia):
+        * dom/Document.h:
+        (WebCore::Document::noteUserInteractionWithMediaElement):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture):
+        * html/MediaElementSession.cpp:
+        (WebCore::needsDocumentLevelMediaUserGestureQuirk):
+        (WebCore::MediaElementSession::playbackPermitted const):
+        * page/MediaProducer.h:
+
+2017-07-31  Nan Wang  <n_wang@apple.com>
+
+        AX: CFEqual is failing on text markers with exact same data
+        https://bugs.webkit.org/show_bug.cgi?id=175002
+        <rdar://problem/33636985>
+
+        Reviewed by Chris Fleizach.
+
+        We should zero the memory of the TextMarkerData instance so that it
+        can be tested for byte-equivalence.
+
+        Made sure this change won't break any of the existing tests.
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::textMarkerDataForVisiblePosition):
+        (WebCore::AXObjectCache::textMarkerDataForFirstPositionInTextControl):
+
+2017-07-28  Matt Rajca  <mrajca@apple.com>
+
+        Propagate user gesture tokens when script elements are loaded.
+        https://bugs.webkit.org/show_bug.cgi?id=174959
+
+        Reviewed by Eric Carlson.
+
+        Propagate user gesture tokens when script elements are loaded (i.e. between the time an
+        element is created and its onload handler is invoked).
+
+        * dom/ScriptElement.cpp:
+        (WebCore::ScriptElement::ScriptElement):
+        (WebCore::ScriptElement::dispatchLoadEventRespectingUserGestureIndicator):
+        (WebCore::ScriptElement::executeScriptAndDispatchEvent):
+        (WebCore::ScriptElement::executePendingScript):
+        * dom/ScriptElement.h:
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220048.
+
+        This revision caused multiple crashes in fast/images. See
+        webkit.org/b/174990
+
+        Reverted changeset:
+
+        "RenderImageResourceStyleImage::image() should return the
+        nullImage() if the image is not available"
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        http://trac.webkit.org/changeset/220048
+
+2017-07-31  Sam Weinig  <sam@webkit.org>
+
+        Remove unnecessary exceptions from storage code
+        https://bugs.webkit.org/show_bug.cgi?id=174572
+
+        Reviewed by Chris Dumez.
+
+        Remove checks for canAccessStorage() and the exceptions they would cause.
+        These were used for Storage in ephemeral sessions, but they are now supported.
+        Add checks for a null frame to functions that can mutate the storage, as the
+        frame is needed for that, and it retains our existing behavior for disconnected
+        frames. By removing these checks / exceptions, we can fully generate Storage.idl.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSBindingsAllInOne.cpp:
+        * bindings/js/JSStorageCustom.cpp: Removed.
+        Remove JSStorageCustom.cpp
+
+        * loader/EmptyClients.cpp:
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::sessionStorage):
+        (WebCore::DOMWindow::localStorage):
+        * storage/StorageArea.h:
+        Remove canAccessStorage.
+
+        * storage/Storage.cpp:
+        (WebCore::Storage::length):
+        (WebCore::Storage::key):
+        (WebCore::Storage::getItem):
+        (WebCore::Storage::setItem):
+        (WebCore::Storage::removeItem):
+        (WebCore::Storage::clear):
+        (WebCore::Storage::contains):
+        (WebCore::Storage::isSupportedPropertyName):
+        (WebCore::Storage::supportedPropertyNames):
+        * storage/Storage.h:
+        * storage/Storage.idl:
+        Remove canAccessStorage checks and corresponding exceptions. Add supportedPropertyNames
+        to allow the removal of the [CustomGetOwnPropertyNames].
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220060.
+
+        This broke our internal builds. Contact reviewer of patch for
+        more information.
+
+        Reverted changeset:
+
+        "Merge WTFThreadData to Thread::current"
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+        http://trac.webkit.org/changeset/220060
+
+2017-07-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Sam Weinig.
+
+        Use Thread::current() instead.
+
+        * fileapi/AsyncFileStream.cpp:
+        * platform/ThreadGlobalData.cpp:
+        (WebCore::ThreadGlobalData::ThreadGlobalData):
+        * platform/graphics/cocoa/WebCoreDecompressionSession.h:
+        * platform/ios/wak/WebCoreThread.mm:
+        (StartWebThread):
+        * workers/WorkerThread.cpp:
+        (WebCore::WorkerThread::workerThread):
+
+2017-07-31  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Created a bool pretty printer at WTF for debugging purposes
+        https://bugs.webkit.org/show_bug.cgi?id=174893
+
+        Reviewed by Darin Adler.
+
+        Use WTF::boolPrettyPrinter in debugging messages.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::supportsKeySystem):
+        * platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerMSE::seek):
+
+2017-07-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Suppress the -Wextra compiler warning when building with GCC 6.3.0,
+        explicitly initializing the RefCounted<> base class in the
+        FetchHeaders(const FetchHeaders&) constructor.
+
+        Note that while that's the signature of the copy constructor for the FetchHeaders
+        class, the base RefCounted<> class is not copyable, so the default RefCounted<>
+        constructor is used, but the FetchHeaders resources are normally copied into the
+        new object from the one that's passed in.
+
+        * Modules/fetch/FetchHeaders.h:
+        (WebCore::FetchHeaders::FetchHeaders):
+
+2017-07-30  Darin Adler  <darin@apple.com>
+
+        Remove code in HTMLObjectElement attribute parsing that forces style resolution and layout
+        https://bugs.webkit.org/show_bug.cgi?id=130653
+
+        Reviewed by Antti Koivisto.
+
+        Also fixes a bug where load events are delivered prematurely in some cases
+        when an object, embed, frame, or iframe element is still loading.
+
+        * dom/Document.cpp:
+        (WebCore::Document::loadEventDelayTimerFired): Added a call to
+        FrameLoader::checkLoadComplete. Goes along with the change to
+        FrameLoader::checkLoadCompleteForThisFrame, which now respects the
+        isDelayingLoadEvent flag.
+
+        * html/HTMLAppletElement.cpp:
+        (WebCore::HTMLAppletElement::HTMLAppletElement): Removed the createdByParser argument,
+        no longer needed by the base class.
+        (WebCore::HTMLAppletElement::create): Added call to finishCreating, which is now part of
+        the process of creating any object in a class derived from HTMLPlugInImageElement.
+        (WebCore::HTMLAppletElement::updateWidget): Rearranged logic so setNeedsWidgetUpdate
+        is only called when it's becoming false; avoids a false/true/false round trip that can
+        cause trouble.
+        * html/HTMLAppletElement.h: Updated for the above.
+
+        * html/HTMLEmbedElement.cpp:
+        (WebCore::HTMLEmbedElement::HTMLEmbedElement): Removed the createdByParser argument,
+        no longer needed by the base class.
+        (WebCore::HTMLEmbedElement::create): Added call to finishCreating, which is now part of
+        the process of creating any object in a class derived from HTMLPlugInImageElement.
+        (WebCore::HTMLEmbedElement::parseAttribute): Changed srcAttr to call
+        updateImageLoaderWithNewURLSoon to do the image loading logic.
+        (WebCore::HTMLEmbedElement::updateWidget): Rearranged logic so setNeedsWidgetUpdate
+        is only called when it's becoming false; avoids a false/true/false round trip that can
+        cause trouble.
+        * html/HTMLEmbedElement.h: Updated for the above.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::setReadyState): Call setShouldDelayLoadEvent(false) when
+        transitioning to HAVE_CURRENT_DATA (or beyond), even if we have already fired a loadeddata
+        event in the past. This matches what the HTML specification calls for, but only if you
+        read it carefully. Without this change, and with the more complete implementation of
+        load event delay below, one of the regression tests hangs because are permanently stuck
+        dealying load events. Also added a FIXME about other code that likely has a similar
+        problem; the symptom is likely to be subtle and minor, though.
+
+        * html/HTMLObjectElement.cpp:
+        (WebCore::HTMLObjectElement::HTMLObjectElement): Removed the createdByParser argument,
+        no longer needed by the base class.
+        (WebCore::HTMLObjectElement::create): Added call to finishCreating, which is now part of
+        the process of creating any object in a class derived from HTMLPlugInImageElement.
+        (WebCore::HTMLObjectElement::parseAttribute): Changed dataAttr to use
+        updateImageLoaderWithNewURLSoon. Explicitly call scheduleUpdateForAfterStyleResolution
+        since just calling invalidateStyleAndRenderersForSubtree alone is no longer sufficient.
+        (WebCore::HTMLObjectElement::updateWidget): Rearranged logic so setNeedsWidgetUpdate
+        is only called when it's becoming false; avoids a false/true/false round trip that can
+        cause trouble.
+        (WebCore::HTMLObjectElement::childrenChanged): Added calls to the new
+        scheduleUpdateForAfterStyleResolution since invalidating style is no longer sufficient.
+        (WebCore::HTMLObjectElement::renderFallbackContent): Remove the call to
+        updateStyleIfNeeded. This is the main change that the title of this bug refers to.
+        * html/HTMLObjectElement.h: Updated for the above. Also removed the
+        clearUseFallbackContent function because it's clearer to set the data member in
+        line at the single call site in HTMLObjectElement::parseAttribute.
+
+        * html/HTMLPlugInImageElement.cpp:
+        (WebCore::HTMLPlugInImageElement::HTMLPlugInImageElement): Removed the createdByParser
+        argument; no need to set an m_needsWidgetUpdate flag differently for parser cases now.
+        (WebCore::HTMLPlugInImageElement::finshCreating): Added. To be called after creating
+        an element to do work that can't be done in a constructor.
+        (WebCore::HTMLPlugInImageElement::didRecalcStyle): Added. Calls the new
+        scheduleUpdateForAfterStyleResolution function.
+        (WebCore::HTMLPlugInImageElement::didAttachRenderers): Moved all the logic from this
+        function into scheduleUpdateForAfterStyleResolution. Also added a call through to the base
+        class; cleans things up, even though it's just an assertion.
+        (WebCore::HTMLPlugInImageElement::willDetachRenderers): Removed the call to
+        setNeedsWidgetUpdate(true) here; no longer needed because the new logic already
+        does the right thing in this case.
+        (WebCore::HTMLPlugInImageElement::updateWidgetIfNecessary): Deleted. Now handled by
+        updateAfterStyleResolution instead.
+        (WebCore::HTMLPlugInImageElement::finishParsingChildren): Deleted. Handling updates
+        after parsing all the children now comes naturally out of the new implementation.
+        (WebCore::HTMLPlugInImageElement::scheduleUpdateForAfterStyleResolution): Added.
+        Schedules a call to updateAfterStyleResolution when needed, and equally importantly,
+        increments the load event delay count to make sure that loads that are part of that
+        update can participate in decision about whether it's time for the load event.
+        (WebCore::HTMLPlugInImageElement::updateAfterStyleResolution): Added.
+        Combines updateWidgetIfNecessary and startLoadingImage, and also deals with the new
+        m_needsImageReload boolean in cases where no actual loading is done.
+        (WebCore::HTMLPlugInImageElement::didMoveToNewDocument): Update load event delay
+        count when moving an element that is in the middle of loading. This lets the
+        updateAfterStyleResolution function do the right thing even when the element is
+        moved without leaving anything stuck in a strange state.
+        (WebCore::HTMLPlugInImageElement::prepareForDocumentSuspension): Call the new
+        scheduleUpdateForAfterStyleResolution since invalidating style is no longer sufficient.
+        (WebCore::HTMLPlugInImageElement::startLoadingImage): Deleted. Now handled by
+        updateAfterStyleResolution instead.
+        (WebCore::HTMLPlugInImageElement::updateImageLoaderWithNewURLSoon): Added. Does all
+        the right things for when an image URL is changed; for use by the concrete derived classes.
+        * html/HTMLPlugInImageElement.h: Updated for above changes. Also made m_imageLoader
+        private rather than protected, and added the two new boolean data members.
+
+        * html/HTMLTagNames.in: Removed unneeded constructorNeedsCreatedByParser flags for
+        applet, embed, and object.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::isLoadingInAPISense): Return true if the document is
+        delaying a load event.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::checkLoadCompleteForThisFrame): Don't do any work if
+        isDelayingLoadEvent is true; otherwise this function can have a side effect of
+        triggering the load event.
+        (WebCore::FrameLoader::detachFromParent): Schedule a checkLoadComplete here, too, not
+        just a checkCompleted. This is relevant if the frame we are detaching was delaying
+        a load event because it no longer will be and so the load might be complete.
+
+2017-07-30  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchRequest, DOMWindowFetch and WorkerGlobalScopeFetch
+        https://bugs.webkit.org/show_bug.cgi?id=174974
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebCore.xcodeproj/project.pbxproj:
+        * Modules/fetch/DOMWindowFetch.js: Removed.
+        * Modules/fetch/FetchRequest.js: Removed.
+        * Modules/fetch/WorkerGlobalScopeFetch.js: Removed.
+        Remove builtin files.
+
+        * Modules/fetch/DOMWindowFetch.cpp:
+        (WebCore::DOMWindowFetch::fetch):
+        * Modules/fetch/DOMWindowFetch.h:
+        * Modules/fetch/DOMWindowFetch.idl:
+        * Modules/fetch/WorkerGlobalScopeFetch.cpp:
+        (WebCore::WorkerGlobalScopeFetch::fetch):
+        * Modules/fetch/WorkerGlobalScopeFetch.h:
+        * Modules/fetch/WorkerGlobalScopeFetch.idl:
+        Remove builtin and instead create FetchRequest in the implementation.
+
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::extract):
+        * Modules/fetch/FetchBody.h:
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::extractBody):
+        * Modules/fetch/FetchBodyOwner.h:
+        * Modules/fetch/FetchResponse.cpp:
+        * Modules/fetch/FetchResponse.h:
+        Rename FetchBody::BindingDataType to FetchBody::Init to match its IDL naming.
+
+        * Modules/fetch/FetchHeaders.cpp:
+        (WebCore::appendToHeaderMap):
+        (WebCore::fillHeaderMap):
+        (WebCore::FetchHeaders::create):
+        (WebCore::FetchHeaders::fill):
+        * Modules/fetch/FetchHeaders.h:
+        Add helpers to implement the fill algorithm for various input types.
+        Leave the existing fill for now, as it is still used by the FetchResponse
+        builtin, but will eventually be removed.
+
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::FetchRequest::initializeOptions):
+        (WebCore::FetchRequest::initializeWith):
+        (WebCore::FetchRequest::setBody):
+        (WebCore::FetchRequest::create):
+        (WebCore::FetchRequest::setBodyFromInputRequest): Deleted.
+        * Modules/fetch/FetchRequest.h:
+        Migrate builtin code to the implementation. This is 1-to-1 re-implementation,
+        so I did not attempt to fix any conformance issues. That will come in follow up.
+
+        * Modules/fetch/FetchRequest.idl:
+        Replace builtins with an IDL constructor.
+
+        * Modules/fetch/FetchRequestInit.h:
+        * Modules/fetch/FetchRequestInit.idl:
+        Add missing headers and body to FetchRequestInit.
+
+2017-07-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        RenderImageResourceStyleImage::image() should return the nullImage() if the image is not available
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        <rdar://problem/33530130>
+
+        Reviewed by Darin Adler.
+
+        If an <img> element has image content data for a none cached image, e.g.
+        -webkit-named-image, RenderImageResourceStyleImage will be created and 
+        attached to the RenderImage. RenderImageResourceStyleImage::m_cachedImage
+        will be set to null because the m_styleImage->isCachedImage() is false in
+        this case. When ImageLoader finishes loading the url of the src attribute, 
+        RenderImageResource::setCachedImage() will be called to set m_cachedImage.
+
+        A crash will happen when the RenderImage is destroyed. Destroying the 
+        RenderImage calls RenderImageResourceStyleImage::shutdown() which checks
+        m_cachedImage and finds it not null, so it calls RenderImageResourceStyleImage::image()
+        which ends up calling CSSNamedImageValue::image() which returns a null pointer
+        because the size is empty. RenderImageResourceStyleImage::shutdown() calls
+        image()->stopAnimation() without checking the return value of image().
+
+        Like the base class virtual method RenderImageResource::image(), 
+        RenderImageResourceStyleImage::image() should return the nullImage() if
+        the image is not available.
+
+        Test: fast/images/image-element-image-content-data.html
+
+        * css/CSSCrossfadeValue.cpp:
+        * css/CSSFilterImageValue.cpp:
+        * page/EventHandler.cpp:
+        * page/PageSerializer.cpp:
+        * rendering/RenderElement.cpp:
+        * rendering/RenderImageResource.cpp:
+        * rendering/RenderImageResourceStyleImage.cpp:
+        (WebCore::RenderImageResourceStyleImage::initialize):
+
+        (WebCore::RenderImageResourceStyleImage::shutdown): Revert back the changes
+        of r208511 in this function. Add a call to image()->stopAnimation() without
+        checking the return of image() since it will return the nullImage() if
+        the image not available. There is no need to check m_cachedImage before 
+        calling image() because image() does not check or access m_cachedImage.
+
+        (WebCore::RenderImageResourceStyleImage::image): The base class method
+        RenderImageResource::image() returns the nullImage() if the image not
+        available. This is because CachedImage::imageForRenderer() returns
+        the nullImage() if the image is not available; see CachedImage.h. We should
+        do the same for the derived class for consistency.
+
+        * rendering/style/ContentData.cpp:
+        * rendering/style/StyleCachedImage.cpp:
+        * style/StylePendingResources.cpp:
+
+2017-07-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, rollout r220044 because it set the bots on fire.
+        
+        It seems that the "-Wunguarded-availability-new" pragma is not widely supported. So, a bunch of the
+        Mac bots are now unable to build and that includes EWS.
+        
+        Fixing by rolling it out.
+
+        * platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableAudioSample):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::removeAudioRenderer):
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.h:
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (-[WebAVSampleBufferErrorListener beginObservingRenderer:]):
+        (-[WebAVSampleBufferErrorListener stopObservingRenderer:]):
+        (-[WebAVSampleBufferErrorListener observeValueForKeyPath:ofObject:change:context:]):
+        (WebCore::SourceBufferPrivateAVFObjC::trackDidChangeEnabled):
+        (WebCore::SourceBufferPrivateAVFObjC::rendererDidReceiveError):
+        (WebCore::SourceBufferPrivateAVFObjC::flush):
+
+2017-07-29  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building for macOS 10.12 with the macOS 10.13 SDK.
+
+        Suppressed the unguarded-availability-new warning around uses of AVSampleBufferAudioRenderer
+        and AVSampleBufferRenderSynchronizer. Even though the 10.13 SDK declares them as available
+        starting in that release, they have been available as SPI earlier.
+
+        * platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableAudioSample):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::removeAudioRenderer):
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.h:
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (-[WebAVSampleBufferErrorListener beginObservingRenderer:]):
+        (-[WebAVSampleBufferErrorListener stopObservingRenderer:]):
+        (-[WebAVSampleBufferErrorListener observeValueForKeyPath:ofObject:change:context:]):
+        (WebCore::SourceBufferPrivateAVFObjC::trackDidChangeEnabled):
+        (WebCore::SourceBufferPrivateAVFObjC::rendererDidReceiveError):
+        (WebCore::SourceBufferPrivateAVFObjC::flush):
+
+2017-07-29  Nan Wang  <n_wang@apple.com>
+
+        AX: findMatchingObjects doesn't work when the startObject is ignored
+        https://bugs.webkit.org/show_bug.cgi?id=174965
+
+        Reviewed by Chris Fleizach.
+
+        findMatchingObjects would return a wrong element if we pass in an ignored
+        start object. To fix this, we should use the closest accessible sibling as 
+        the start object.
+
+        Test: accessibility/mac/search-predicate-from-ignored-element.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::appendChildrenToArray):
+
+2017-07-29  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: FKA: Buttons need a visible focus indicator
+        https://bugs.webkit.org/show_bug.cgi?id=171040
+        <rdar://problem/30922548>
+
+        Reviewed by Antoine Quint.
+
+        Added a background color for the focus state of the icon buttons in modern media controls.
+
+        Test: media/modern-media-controls/button/button-focus-state.html
+
+        * Modules/modern-media-controls/controls/button.css:
+        (button:focus):
+        (button:focus > picture):
+        * Modules/modern-media-controls/controls/slider.css:
+        (.slider > input):
+
+2017-07-28  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchHeaders
+        https://bugs.webkit.org/show_bug.cgi?id=174905
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebCore.xcodeproj/project.pbxproj:
+        * Modules/fetch/FetchHeaders.js: Removed.
+        Remove FetchHeaders.js
+
+        * Modules/fetch/FetchHeaders.cpp:
+        (WebCore::appendToHeaderMap):
+        (WebCore::FetchHeaders::create):
+        (WebCore::FetchHeaders::append):
+        * Modules/fetch/FetchHeaders.h:
+        (WebCore::FetchHeaders::FetchHeaders):
+        Add create function for generated constructor.
+        Add appendToHeaderMap static function which takes the functionality
+        from the existing append function, and makes it useable in create.
+
+        * Modules/fetch/FetchHeaders.idl:
+        Replace [JSBuiltinConstructor] with real constructor. Keep other builtin
+        attributes as they are still used by other Fetch code.
+
+        * bindings/js/JSDOMConvertRecord.h:
+        Fix record conversion to work with proxies by changing to use the method table
+        for getOwnPropertyNames, and undefined values by not excluding undefined values. 
+
+2017-07-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: capture an async stack trace when web content calls addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=174739
+        <rdar://problem/33468197>
+
+        Reviewed by Brian Burg.
+
+        Test: inspector/debugger/async-stack-trace.html
+
+        Add instrumentation to EventTarget to support showing asynchronous
+        stack traces when the debugger breaks in a script event listener.
+
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::addEventListener):
+        (WebCore::EventTarget::removeEventListener):
+        (WebCore::EventTarget::fireEventListeners):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didAddEventListenerImpl):
+        (WebCore::InspectorInstrumentation::willRemoveEventListenerImpl):
+        (WebCore::InspectorInstrumentation::willHandleEventImpl):
+        (WebCore::InspectorInstrumentation::didHandleEventImpl):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didAddEventListener):
+        (WebCore::InspectorInstrumentation::willRemoveEventListener):
+        (WebCore::InspectorInstrumentation::willHandleEvent):
+        (WebCore::InspectorInstrumentation::didHandleEvent):
+        * inspector/PageDebuggerAgent.cpp:
+        (WebCore::PageDebuggerAgent::didClearAsyncStackTraceData):
+        (WebCore::PageDebuggerAgent::didAddEventListener):
+        (WebCore::PageDebuggerAgent::willRemoveEventListener):
+        (WebCore::PageDebuggerAgent::willHandleEvent):
+        * inspector/PageDebuggerAgent.h:
+
+2017-07-28  Matt Rajca  <mrajca@apple.com>
+
+        Don't add autoplay restrictions to media elements created in response to user gestures.
+        https://bugs.webkit.org/show_bug.cgi?id=174947
+
+        Reviewed by Eric Carlson.
+
+        Test: media/video-create-with-user-gesture.html
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement):
+
+2017-07-28  Jeremy Jones  <jeremyj@apple.com>
+
+        WebMediaSessionHelper calls -[UIApplication beginReceivingRemoteControlEvents] from WebThread
+        https://bugs.webkit.org/show_bug.cgi?id=174934
+        rdar://problem/33586772
+
+        Reviewed by Eric Carlson.
+
+        No new tests because no effect on DOM.
+
+        This dispatches a UIKit call to the main thread since it might happen on WebThread in WK1.
+
+        * platform/audio/ios/MediaSessionManagerIOS.mm:
+        (-[WebMediaSessionHelper initWithCallback:]):
+
+2017-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] Reeder's defaults font is Times instead of San Francisco
+        https://bugs.webkit.org/show_bug.cgi?id=174885
+        <rdar://problem/33462483>
+
+        Reviewed by Simon Fraser.
+
+        Reeder uses explicit dot-prefixed names in its source code. Within Core Text,
+        dot-prefixed names cannot be matched case insensitively. The solution is to
+        not case-fold these family names, and to make our caches case sensitive for
+        these special names.
+
+        Tests: fast/text/font-lookup-dot-prefix-case-sensitive-2.html
+               fast/text/font-lookup-dot-prefix-case-sensitive.html
+
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontPlatformDataCacheKey::operator==):
+        (WebCore::FontPlatformDataCacheKeyHash::hash):
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::keysMatch):
+        (WebCore::computeFontCascadeCacheHash):
+        * platform/graphics/FontDescription.cpp:
+        (WebCore::FontCascadeDescription::familyNamesAreEqual):
+        (WebCore::FontCascadeDescription::familyNameHash):
+        (WebCore::FontCascadeDescription::foldedFamilyName):
+        * platform/graphics/FontDescription.h:
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontDatabase::fontForPostScriptName):
+
+2017-07-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Record actions performed on CanvasRenderingContext2D
+        https://bugs.webkit.org/show_bug.cgi?id=174482
+
+        Reviewed by Joseph Pecoraro.
+
+        Tests: inspector/canvas/recording-2d.html
+               inspector/canvas/recording.html
+
+        * html/canvas/CanvasRenderingContext2D.idl:
+        Add CallTracingCallback to interface to record all API calls.
+
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::paint):
+        If a recording is active, mark the current frame as completed.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateAttributeGetterBodyDefinition):
+        (GenerateAttributeSetterBodyDefinition):
+        (GenerateImplementationFunctionCall):
+        (GenerateCallTracerParameter):
+        (GenerateCallTracer):
+        * bindings/scripts/test/TestCallTracer.idl:
+        * bindings/scripts/test/JS/JSTestCallTracer.cpp:
+        (WebCore::setJSTestCallTracerTestAttributeInterfaceSetter):
+        (WebCore::setJSTestCallTracerTestAttributeSpecifiedSetter):
+        (WebCore::jsTestCallTracerTestAttributeWithVariantGetter):
+        (WebCore::jsTestCallTracerTestAttributeWithVariant):
+        (WebCore::setJSTestCallTracerTestAttributeWithVariantSetter):
+        (WebCore::setJSTestCallTracerTestAttributeWithVariant):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationInterfaceBody):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationSpecifiedBody):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationWithArgumentsBody):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationWithNullableArgumentBody):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgumentBody):
+        (WebCore::jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgument):
+        * inspector/InspectorCanvas.h:
+        * inspector/InspectorCanvas.cpp:
+        (WebCore::InspectorCanvas::recordAction):
+        (WebCore::InspectorCanvas::buildAction):
+        Change CallTracer IDL generation to flatten any variants so that all types for the
+        parameters of an action are able to be listed in a single variant. This prevents possible
+        ambiguity when constructing the variant, as they require that exactly one type be
+        constructible and a sub-variant might not satisfy that condition. This was only an issue for
+        older mac SDKs.
+
+        * bindings/js/CallTracer.h:
+        * bindings/js/CallTracer.cpp:
+        (WebCore::CallTracer::recordCanvasAction):
+        * bindings/js/CallTracerTypes.h:
+        * inspector/InspectorCanvasAgent.h:
+        * inspector/InspectorCanvasAgent.cpp:
+        (WebCore::InspectorCanvasAgent::recordCanvasAction):
+        * inspector/InspectorInstrumentation.h:
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::recordCanvasAction):
+        (WebCore::InspectorInstrumentation::recordCanvasActionImpl):
+        Rename CanvasActionParameterVariant to RecordCanvasActionVariant to match what is expected by
+        the IDL generator. Also remove unnecessary includes now that they are in CallTracerTypes.h.
+
+        * CMakeLists.txt:
+        * bindings/js/JSBindingsAllInOne.cpp:
+        Add CallTracer for CMake builds.
+
+2017-07-28  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Split-up and cleanup Fetch IDL files in preparation for removing unnecessary js builtins
+        https://bugs.webkit.org/show_bug.cgi?id=174915
+
+        Reviewed by Alex Christensen.
+
+        - Split FetchRequest enums and Init dictionary out of FetchRequest so they
+          can be used from other files like WorkerGlobalScopeFetch and DOMWindowFetch.
+        - Add missing FetchResponseInit. Currently unused but will be in a subsequent patch.
+        - Add and update comments about missing properties and functions.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebCore.xcodeproj/project.pbxproj:
+        * Modules/fetch/DOMWindowFetch.idl:
+        * Modules/fetch/FetchBody.idl:
+        * Modules/fetch/FetchBodyOwner.h:
+        * Modules/fetch/FetchHeaders.h:
+        * Modules/fetch/FetchHeaders.idl:
+        * Modules/fetch/FetchReferrerPolicy.h: Added.
+        * Modules/fetch/FetchReferrerPolicy.idl: Added.
+        * Modules/fetch/FetchRequest.h:
+        * Modules/fetch/FetchRequest.idl:
+        * Modules/fetch/FetchRequestCache.h: Added.
+        * Modules/fetch/FetchRequestCache.idl: Added.
+        * Modules/fetch/FetchRequestCredentials.h: Added.
+        * Modules/fetch/FetchRequestCredentials.idl: Added.
+        * Modules/fetch/FetchRequestInit.h: Added.
+        * Modules/fetch/FetchRequestInit.idl: Added.
+        * Modules/fetch/FetchRequestMode.h: Added.
+        * Modules/fetch/FetchRequestMode.idl: Added.
+        * Modules/fetch/FetchRequestRedirect.h: Added.
+        * Modules/fetch/FetchRequestRedirect.idl: Added.
+        * Modules/fetch/FetchResponse.h:
+        * Modules/fetch/FetchResponse.idl:
+        * Modules/fetch/WorkerGlobalScopeFetch.idl:
+
+2017-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r216944): Fallback fonts erroneously visible when the primary font is loading
+        https://bugs.webkit.org/show_bug.cgi?id=174772
+        <rdar://problem/33267643>
+
+        Reviewed by Simon Fraser.
+
+        During a font load, we try pretty hard to find a font to use that isn't the
+        last resort font (which happens to be Times). We do this by iterating through
+        all the fonts in the font-family list, as well as through all the relevant
+        @font-face blocks which share the requested font family name. 
+
+        Unfortunately, if we find one of these fallback fonts, we were simply using it
+        directly, which means that it was being drawn as visible (because the
+        visibility setting lives inside the Font object). Instead, we should carry the
+        invisibility setting from the interstitial font to this used fallback font.
+
+        This patch is an extension of r219221, which fixed the problem only for system
+        fallback fonts. This patch adopts the same methodology to all fallback fonts.
+
+        Test: http/tests/webfont/font-loading-system-fallback-visibility-FontRanges.html
+
+        * platform/graphics/FontCascadeFonts.cpp:
+        (WebCore::FontCascadeFonts::glyphDataForVariant):
+        (WebCore::glyphPageFromFontRanges):
+        * platform/graphics/FontRanges.cpp:
+        (WebCore::FontRanges::glyphDataForCharacter):
+
+2017-07-28  Frederic Wang  <fwang@igalia.cpm>
+
+        Fix typo in scrollPositionChangedViaDelegatedScrolling
+        https://bugs.webkit.org/show_bug.cgi?id=174937
+
+        Reviewed by Wenson Hsieh.
+
+        No new tests, fix typo in the inUserInteraction parameter.
+
+        * page/scrolling/ScrollingTree.cpp:
+        (WebCore::ScrollingTree::scrollPositionChangedViaDelegatedScrolling):
+        * page/scrolling/ScrollingTree.h:
+
 2017-07-28  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS DnD] [WK1] Snapshots generated using -[DOMRange renderImageForcingBlackText:] are upside down

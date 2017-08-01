@@ -860,8 +860,6 @@ webkit.org/b/141467 fast/multicol/pagination/RightToLeft-rl-hittest.html [ Failu
 webkit.org/b/141698 editing/pasteboard/5761530-1.html [ Failure ]
 webkit.org/b/141699 fast/attachment/attachment-disabled-rendering.html [ Failure ]
 webkit.org/b/141699 fast/attachment/attachment-rendering.html [ Failure ]
-webkit.org/b/141700 fast/dom/Element/getClientRects.html [ Failure ]
-webkit.org/b/141700 fast/dom/Range/getClientRects.html [ Failure ]
 
 webkit.org/b/141705 media/video-fullscreeen-only-controls.html [ Failure ]
 
@@ -3180,8 +3178,6 @@ webkit.org/b/163973 fast/canvas/canvas-imageSmoothingQuality.html [ Failure ]
 
 webkit.org/b/163974 fast/canvas/drawImage-with-negative-source-destination.html [ Failure ]
 
-webkit.org/b/163975 fast/css/image-set-unprefixed.html [ Failure ]
-
 webkit.org/b/163976 fast/css/user-drag-none.html [ Failure ]
 
 webkit.org/b/163977 fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
@@ -3463,16 +3459,11 @@ webkit.org/b/160119 accessibility/media-element.html [ Timeout Crash Pass Failur
 webkit.org/b/160119 editing/selection/caret-at-bidi-boundary.html [ Failure Pass Timeout ]
 webkit.org/b/160119 editing/selection/select-bidi-run.html [ Timeout Pass ]
 
-webkit.org/b/160119 fast/block/basic/020.html [ Failure ]
-
 webkit.org/b/160119 fast/block/positioning/016.html [ Failure ]
 webkit.org/b/160119 fast/block/positioning/025.html [ Failure ]
 webkit.org/b/160119 fast/block/positioning/fixed-position-stacking-context.html [ Failure ]
 
 webkit.org/b/160119 fast/css/text-input-with-webkit-border-radius.html [ Crash Pass ]
-
-webkit.org/b/160119 fast/dynamic/012.html [ Failure ]
-webkit.org/b/160119 fast/dynamic/layer-hit-test-crash.html [ Failure ]
 
 webkit.org/b/160119 fast/forms/search/search-cancel-button-visible-when-input-becomes-disabled.html [ Crash Pass ]
 
@@ -3482,24 +3473,12 @@ webkit.org/b/160139 fast/history/page-cache-geolocation-active-oneshot.html [ Cr
 
 webkit.org/b/160119 fast/images/composited-animated-gif-outside-viewport.html [ Timeout Pass ]
 
-webkit.org/b/160119 fast/layers/layer-visibility-sublayer.html [ Failure ]
-webkit.org/b/160119 fast/layers/layer-visibility.html [ Failure ]
-
 webkit.org/b/160119 fast/regions/fullscreen/full-screen-video-from-region.html [ Crash Pass ]
 
 webkit.org/b/160119 fast/repaint/selection-gap-fixed-child.html [ Failure ]
 webkit.org/b/160119 fast/repaint/selection-gap-flipped-fixed-child.html [ Failure ]
 
-webkit.org/b/160119 fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ ImageOnlyFailure ]
-webkit.org/b/160119 fast/scrolling/rtl-scrollbars-sticky-document-2.html [ Failure ]
-
-webkit.org/b/160119 fast/text/orthogonal-writing-mode-containing-block-frameView-resize-relayout.html [ ImageOnlyFailure ]
-
-webkit.org/b/160119 fast/text/whitespace/028.html [ Failure ]
-
 webkit.org/b/160119 imported/blink/css3/blending/mix-blend-mode-has-ancestor-clipping-layer.html [ ImageOnlyFailure ]
-
-webkit.org/b/160119 imported/blink/css3/filters/effect-reference-source-alpha-hw.html [ ImageOnlyFailure ]
 
 webkit.org/b/160119 imported/blink/fast/css/first-letter-range-insert.html [ Crash Pass ]
 webkit.org/b/160119 imported/blink/fast/css/first-letter-render-quote.html [ Crash Pass ]
@@ -3552,14 +3531,6 @@ webkit.org/b/160119 media/video-object-fit-change.html [ ImageOnlyFailure ]
 # Threaded compositor failures caused by one of r203496, r203497, or r203498
 webkit.org/b/163528 media/video-object-fit.html [ ImageOnlyFailure ]
 webkit.org/b/163533 security/contentSecurityPolicy/video-with-data-url-allowed-by-media-src-star.html [ ImageOnlyFailure ]
-
-webkit.org/b/160119 fast/block/float/float-with-anonymous-previous-sibling.html [ ImageOnlyFailure ]
-
-webkit.org/b/160119 fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-altered.html [ ImageOnlyFailure ]
-webkit.org/b/160119 fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-removed.html [ ImageOnlyFailure ]
-webkit.org/b/160119 fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect.html [ ImageOnlyFailure ]
-
-webkit.org/b/160119 fast/css3-text/css3-text-justify/text-justify-last-line-simple-line-layout.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of tests failing due to THREADED COMPOSITOR enablement. Don't put random test

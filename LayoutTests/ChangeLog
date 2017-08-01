@@ -1,3 +1,337 @@
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        Correct the line numbers in GTK's scheme-about.any-expected.txt.
+        https://bugs.webkit.org/show_bug.cgi?id=175017
+
+        Reviewed by Sam Weinig.
+
+        The code fix landed in r220050.
+
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt:
+
+2017-07-31  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove some obsolete expected failures blamed on the threaded compositor.
+        https://bugs.webkit.org/show_bug.cgi?id=174982
+
+        Reviewed by Sergio Villar Senin.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test gardening
+
+        * platform/mac-highsierra/TestExpectations:
+        * platform/mac-highsierra/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2_long_empty.https-expected.txt: Added.
+        * platform/mac-highsierra/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2_short_empty.https-expected.txt: Added.
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped  http/tests/media/video-play-stall.html.
+        https://bugs.webkit.org/show_bug.cgi?id=174988
+
+        Unreviewed test gardening.
+        * TestExpectations:
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220048.
+
+        This revision caused multiple crashes in fast/images. See
+        webkit.org/b/174990
+
+        Reverted changeset:
+
+        "RenderImageResourceStyleImage::image() should return the
+        nullImage() if the image is not available"
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        http://trac.webkit.org/changeset/220048
+
+2017-07-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Do not mark all web-platform tests as slow, as this increases time spent on layout tests.
+        Only mark individual web-platform tests as slow.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-07-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Support optional catch binding
+        https://bugs.webkit.org/show_bug.cgi?id=174981
+
+        Reviewed by Saam Barati.
+
+        Rebaseline existing tests.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        * sputnik/Conformance/12_Statement/12.14_The_try_Statement/S12.14_A16_T4-expected.txt:
+        * sputnik/Conformance/12_Statement/12.14_The_try_Statement/S12.14_A16_T4.html:
+
+2017-07-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Many web-platform tests are slow on Windows.
+
+        Unreviewed test gardening, mark web-platform tests as slow.
+
+        * platform/win/TestExpectations:
+
+2017-07-31  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Layout test fast/css/image-set-unprefixed.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=163975
+
+        Reviewed by Žan Doberšek.
+
+        Remove obsolete expectation for image-set-unprefixed.html.
+
+        It appears to have started passing with the test change in r209543.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-31  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Layout Tests fast/dom/{Element,Range}/getClientRects.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=141700
+
+        Reviewed by Sam Weinig.
+
+        Add gtk-specific expectations for getClientRects tests.
+
+        Since these expectations depend on text metrics, it is unsurprising that they
+        are platform-dependent.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/dom/Element/getClientRects-expected.txt: Added.
+        * platform/gtk/fast/dom/Range/getClientRects-expected.txt:
+
+2017-07-30  Darin Adler  <darin@apple.com>
+
+        Remove code in HTMLObjectElement attribute parsing that forces style resolution and layout
+        https://bugs.webkit.org/show_bug.cgi?id=130653
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/international/embed-bidi-style-in-isolate-crash.html: Removed onerror attribute
+        in the audio element in this test. The error event does fire during the test, which causes
+        the test to fail. Before, the test was prematurely exiting before the load failed, preventing
+        the test from failing, but also meaning we didn't finish running the test.
+
+        * imported/blink/fast/dom/Window/open-window-features-fuzz.html: Use waitUntilDone and
+        notifyDone to prevent the test from exiting prematurely. Use a URL that won't trigger loading
+        outside the web browser; the URL is not what mattered to this test. Before, the test was
+        prematurely exiting before the test ran. Note also, that I don't think this is testing
+        much effectively; not sure we are getting any benefit from this test since before it was
+        not really running to completion anyway.
+
+        * media/event-queue-crash-expected.txt: Updated expectations to expect syntax error. Before
+        there was a race and often the test exited before the syntax error could be logged.
+
+        * platform/mac/TestExpectations: Removed flakiness expectation from the
+        media/event-queue-crash.html test. What made it flaky was a race with the load event,
+        and that race should be fixed by the change to FrameLoader::checkLoadCompleteForThisFrame.
+        The same race existed on all platforms, not just Mac, so this flakiness expectation should
+        be in the main TextExpectations file if anywhere. But I believe it is not needed at all.
+        For media/modern-media-controls/media-documents/background-color-and-centering.html,
+        added image failure expectation because under modern WebKit on Mac the image now captures
+        the upper left hand corner of the controls overlay. Still seems to pass on iOS and the bug
+        this was created for was iOS-specific, so should be OK for now.
+
+        * webarchive/loading/video-in-webarchive-expected.txt: Updated. The old result shows evidence
+        of a premature load event, fixed by the change to FrameLoader::checkLoadCompleteForThisFrame.
+
+2017-07-30  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchRequest, DOMWindowFetch and WorkerGlobalScopeFetch
+        https://bugs.webkit.org/show_bug.cgi?id=174974
+
+        Reviewed by Darin Adler.
+
+        * http/tests/inspector/network/fetch-network-data-expected.txt:
+        Update results to have the correct line number for exceptions reported in the console.
+
+2017-07-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        RenderImageResourceStyleImage::image() should return the nullImage() if the image is not available
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        <rdar://problem/33530130>
+
+        Reviewed by Darin Adler.
+
+        * fast/images/image-element-image-content-data-expected.txt: Added.
+        * fast/images/image-element-image-content-data.html: Added.
+
+2017-07-29  Nan Wang  <n_wang@apple.com>
+
+        AX: findMatchingObjects doesn't work when the startObject is ignored
+        https://bugs.webkit.org/show_bug.cgi?id=174965
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/search-predicate-from-ignored-element-expected.txt: Added.
+        * accessibility/mac/search-predicate-from-ignored-element.html: Added.
+
+2017-07-29  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: FKA: Buttons need a visible focus indicator
+        https://bugs.webkit.org/show_bug.cgi?id=171040
+        <rdar://problem/30922548>
+
+        Reviewed by Antoine Quint.
+
+        * media/modern-media-controls/button/button-focus-state-expected.txt: Added.
+        * media/modern-media-controls/button/button-focus-state.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-elcapitan/TestExpectations:
+
+2017-07-28  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchHeaders
+        https://bugs.webkit.org/show_bug.cgi?id=174905
+
+        Reviewed by Alex Christensen.
+
+        * fetch/header-constructor-is-array-expected.txt:
+        * fetch/header-constructor-is-array.html:
+        Update test to match spec. An array with out a prototype will not yield
+        a valid Header as it is not iterable.
+
+2017-07-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: capture an async stack trace when web content calls addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=174739
+        <rdar://problem/33468197>
+
+        Reviewed by Brian Burg.
+
+        Add test case checking that async stack traces are recorded for addEventListener.
+
+        * inspector/debugger/async-stack-trace-expected.txt:
+        * inspector/debugger/async-stack-trace.html:
+
+2017-07-28  Matt Rajca  <mrajca@apple.com>
+
+        Don't add autoplay restrictions to media elements created in response to user gestures.
+        https://bugs.webkit.org/show_bug.cgi?id=174947
+
+        Reviewed by Eric Carlson.
+
+        Skip the test on iOS because "runWithKeyDown" does not work there.
+
+        Jer: "Turns out the problem with iOS is that the WKTR EventSender is basically unwritten. It
+        doesn't support sending mouse, key, or touch events, so our "do this during a user gesture"
+        helper in video-test.js doesn't work."
+
+        * media/video-create-with-user-gesture-expected.txt: Added.
+        * media/video-create-with-user-gesture.html: Added.
+        * platform/ios/TestExpectations:
+
+2017-07-28  Per Arne Vollan  <pvollan@apple.com>
+
+        The test imported/w3c/web-platform-tests/fetch/api/basic/accept-header.any.html is slow on Windows.
+
+        Unreviewed test gardening, mark test as slow.
+
+        * platform/win/TestExpectations:
+
+2017-07-28  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220016.
+
+        Test needs to be unskipped due to configuration change in High
+        Sierra.
+
+        Reverted changeset:
+
+        "Marked fast/images/pdf-as-image-with-annotations.html as
+        image failure."
+        http://trac.webkit.org/changeset/220016
+
+2017-07-28  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/images/pdf-as-image-with-annotations.html as image failure.
+        <rdar://problem/33550614>
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra/TestExpectations:
+
+2017-07-28  Matt Lewis  <jlewis3@apple.com>
+
+        Marked multiple iimported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/ as failing.
+        <rdar://problem/33548297>
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra/TestExpectations:
+
+2017-07-28  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/IndexedDB-private-browsing/idbfactory_open12.html as flaky.
+        <rdar://problem/33555052>
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-highsierra/TestExpectations:
+
+2017-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] Reeder's defaults font is Times instead of San Francisco
+        https://bugs.webkit.org/show_bug.cgi?id=174885
+        <rdar://problem/33462483>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-lookup-dot-prefix-case-sensitive-2-expected.html: Added.
+        * fast/text/font-lookup-dot-prefix-case-sensitive-2.html: Added.
+        * fast/text/font-lookup-dot-prefix-case-sensitive-expected-mismatch.html: Added.
+        * fast/text/font-lookup-dot-prefix-case-sensitive.html: Added.
+
+2017-07-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Record actions performed on CanvasRenderingContext2D
+        https://bugs.webkit.org/show_bug.cgi?id=174482
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-2d-expected.txt: Added.
+        * inspector/canvas/recording-2d.html: Added.
+        * inspector/canvas/recording-expected.txt: Added.
+        * inspector/canvas/recording.html: Added.
+        Take a recording of all CanvasRenderingContext2D actions and dump the recorded JSON data.
+
+2017-07-28  Per Arne Vollan  <pvollan@apple.com>
+
+        The test imported/w3c/web-platform-tests/cors/allow-headers.htm is slow on Windows.
+
+        Unreviewed test gardening, mark test as slow.
+
+        * platform/win/TestExpectations:
+
+2017-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r216944): Fallback fonts erroneously visible when the primary font is loading
+        https://bugs.webkit.org/show_bug.cgi?id=174772
+        <rdar://problem/33267643>
+
+        Reviewed by Simon Fraser.
+
+        * http/tests/webfont/font-loading-system-fallback-visibility-FontRanges-expected.html: Added.
+        * http/tests/webfont/font-loading-system-fallback-visibility-FontRanges.html: Added.
+
+2017-07-28  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION(r125147): Layout Test svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg is failing
+        https://bugs.webkit.org/show_bug.cgi?id=93589
+
+        Unreviewed test gardening, this test is also a flaky timeout on Windows.
+
+        * platform/win/TestExpectations:
+
 2017-07-28  Claudio Saavedra  <csaavedra@igalia.com>
 
         [WPE] Implement EventSenderProxy in WTR

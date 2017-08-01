@@ -193,7 +193,13 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
     Modules/fetch/FetchHeaders.idl
+    Modules/fetch/FetchReferrerPolicy.idl
     Modules/fetch/FetchRequest.idl
+    Modules/fetch/FetchRequestCache.idl
+    Modules/fetch/FetchRequestCredentials.idl
+    Modules/fetch/FetchRequestInit.idl
+    Modules/fetch/FetchRequestMode.idl
+    Modules/fetch/FetchRequestRedirect.idl
     Modules/fetch/FetchResponse.idl
     Modules/fetch/WorkerGlobalScopeFetch.idl
 
@@ -1136,6 +1142,7 @@ set(WebCore_SOURCES
 
     bindings/js/CachedModuleScriptLoader.cpp
     bindings/js/CachedScriptFetcher.cpp
+    bindings/js/CallTracer.cpp
     bindings/js/CommonVM.cpp
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/GCController.cpp
@@ -1221,7 +1228,6 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
-    bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
@@ -3826,12 +3832,8 @@ add_dependencies(WebCoreTestSupportBindings WebCoreDerivedSources)
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
-    ${WEBCORE_DIR}/Modules/fetch/DOMWindowFetch.js
-    ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
     ${WEBCORE_DIR}/Modules/fetch/FetchInternals.js
-    ${WEBCORE_DIR}/Modules/fetch/FetchRequest.js
     ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
-    ${WEBCORE_DIR}/Modules/fetch/WorkerGlobalScopeFetch.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
