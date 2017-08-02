@@ -279,6 +279,12 @@ public:
         for (DFG::BasicBlock* block : preOrder)
             compileBlock(block);
 
+        // Make sure everything is decorated. This does a bunch of deferred decorating. This has
+        // to happen last because our abstract heaps are generated lazily. They have to be
+        // generated lazily because we have an infiniten number of numbered, indexed, and
+        // absolute heaps. We only become aware of the ones we actually mention while lowering.
+        m_heaps.computeRangesAndDecorateInstructions();
+
         // We create all Phi's up front, but we may then decide not to compile the basic block
         // that would have contained one of them. So this creates orphans, which triggers B3
         // validation failures. Calling this fixes the issue.
@@ -516,6 +522,12 @@ private:
             break;
         case ArithRound:
             compileArithRound();
+            break;
+        case ArithFloor:
+            compileArithFloor();
+            break;
+        case ArithCeil:
+            compileArithCeil();
             break;
         case ArithSqrt:
             compileArithSqrt();
@@ -901,6 +913,18 @@ private:
             break;
         case GetRestLength:
             compileGetRestLength();
+            break;
+        case RegExpExec:
+            compileRegExpExec();
+            break;
+        case RegExpTest:
+            compileRegExpTest();
+            break;
+        case NewRegexp:
+            compileNewRegexp();
+            break;
+        case StringReplace:
+            compileStringReplace();
             break;
 
         case PhantomLocal:
@@ -1875,30 +1899,57 @@ private:
 
     void compileArithRound()
     {
-        LBasicBlock realPartIsMoreThanHalf = FTL_NEW_BLOCK(m_out, ("ArithRound should round down"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithRound continuation"));
+        LValue result = nullptr;
 
-        LValue value = lowDouble(m_node->child1());
-        LValue integerValue = m_out.doubleCeil(value);
-        ValueFromBlock integerValueResult = m_out.anchor(integerValue);
+        if (producesInteger(m_node->arithRoundingMode()) && !shouldCheckNegativeZero(m_node->arithRoundingMode())) {
+            LValue value = lowDouble(m_node->child1());
+            result = m_out.doubleFloor(m_out.doubleAdd(value, m_out.constDouble(0.5)));
+        } else {
+            LBasicBlock realPartIsMoreThanHalf = FTL_NEW_BLOCK(m_out, ("ArithRound should round down"));
+            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithRound continuation"));
 
-        LValue realPart = m_out.doubleSub(integerValue, value);
+            LValue value = lowDouble(m_node->child1());
+            LValue integerValue = m_out.doubleCeil(value);
+            ValueFromBlock integerValueResult = m_out.anchor(integerValue);
 
-        m_out.branch(m_out.doubleGreaterThanOrUnordered(realPart, m_out.constDouble(0.5)), unsure(realPartIsMoreThanHalf), unsure(continuation));
+            LValue realPart = m_out.doubleSub(integerValue, value);
 
-        LBasicBlock lastNext = m_out.appendTo(realPartIsMoreThanHalf, continuation);
-        LValue integerValueRoundedDown = m_out.doubleSub(integerValue, m_out.constDouble(1));
-        ValueFromBlock integerValueRoundedDownResult = m_out.anchor(integerValueRoundedDown);
-        m_out.jump(continuation);
-        m_out.appendTo(continuation, lastNext);
+            m_out.branch(m_out.doubleGreaterThanOrUnordered(realPart, m_out.constDouble(0.5)), unsure(realPartIsMoreThanHalf), unsure(continuation));
 
-        LValue result = m_out.phi(m_out.doubleType, integerValueResult, integerValueRoundedDownResult);
+            LBasicBlock lastNext = m_out.appendTo(realPartIsMoreThanHalf, continuation);
+            LValue integerValueRoundedDown = m_out.doubleSub(integerValue, m_out.constDouble(1));
+            ValueFromBlock integerValueRoundedDownResult = m_out.anchor(integerValueRoundedDown);
+            m_out.jump(continuation);
+            m_out.appendTo(continuation, lastNext);
+
+            result = m_out.phi(m_out.doubleType, integerValueResult, integerValueRoundedDownResult);
+        }
 
         if (producesInteger(m_node->arithRoundingMode())) {
             LValue integerValue = convertDoubleToInt32(result, shouldCheckNegativeZero(m_node->arithRoundingMode()));
             setInt32(integerValue);
         } else
             setDouble(result);
+    }
+
+    void compileArithFloor()
+    {
+        LValue value = lowDouble(m_node->child1());
+        LValue integerValue = m_out.doubleFloor(value);
+        if (producesInteger(m_node->arithRoundingMode()))
+            setInt32(convertDoubleToInt32(integerValue, shouldCheckNegativeZero(m_node->arithRoundingMode())));
+        else
+            setDouble(integerValue);
+    }
+
+    void compileArithCeil()
+    {
+        LValue value = lowDouble(m_node->child1());
+        LValue integerValue = m_out.doubleCeil(value);
+        if (producesInteger(m_node->arithRoundingMode()))
+            setInt32(convertDoubleToInt32(integerValue, shouldCheckNegativeZero(m_node->arithRoundingMode())));
+        else
+            setDouble(integerValue);
     }
 
     void compileArithSqrt() { setDouble(m_out.doubleSqrt(lowDouble(m_node->child1()))); }
@@ -6381,6 +6432,78 @@ private:
         m_out.appendTo(continuation, lastNext);
     }
 
+    void compileRegExpExec()
+    {
+        LValue base = lowCell(m_node->child1());
+        LValue argument = lowCell(m_node->child2());
+        setJSValue(
+            vmCall(Int64, m_out.operation(operationRegExpExec), m_callFrame, base, argument));
+    }
+
+    void compileRegExpTest()
+    {
+        LValue base = lowCell(m_node->child1());
+        LValue argument = lowCell(m_node->child2());
+        setBoolean(
+            vmCall(Int32, m_out.operation(operationRegExpTest), m_callFrame, base, argument));
+    }
+
+    void compileNewRegexp()
+    {
+        // FIXME: We really should be able to inline code that uses NewRegexp. That means not
+        // reaching into the CodeBlock here.
+        // https://bugs.webkit.org/show_bug.cgi?id=154808
+
+        LValue result = vmCall(
+            pointerType(),
+            m_out.operation(operationNewRegexp), m_callFrame,
+            m_out.constIntPtr(codeBlock()->regexp(m_node->regexpIndex())));
+        
+        setJSValue(result);
+    }
+
+    void compileStringReplace()
+    {
+        if (m_node->child1().useKind() == StringUse
+            && m_node->child2().useKind() == RegExpObjectUse
+            && m_node->child3().useKind() == StringUse) {
+
+            if (JSString* replace = m_node->child3()->dynamicCastConstant<JSString*>()) {
+                if (!replace->length()) {
+                    LValue string = lowString(m_node->child1());
+                    LValue regExp = lowCell(m_node->child2());
+                    speculateRegExpObject(m_node->child2(), regExp);
+
+                    LValue result = vmCall(
+                        Int64, m_out.operation(operationStringProtoFuncReplaceRegExpEmptyStr),
+                        m_callFrame, string, regExp);
+
+                    setJSValue(result);
+                    return;
+                }
+            }
+            
+            LValue string = lowString(m_node->child1());
+            LValue regExp = lowCell(m_node->child2());
+            speculateRegExpObject(m_node->child2(), regExp);
+            LValue replace = lowString(m_node->child3());
+
+            LValue result = vmCall(
+                Int64, m_out.operation(operationStringProtoFuncReplaceRegExpString),
+                m_callFrame, string, regExp, replace);
+
+            setJSValue(result);
+            return;
+        }
+        
+        LValue result = vmCall(
+            Int64, m_out.operation(operationStringProtoFuncReplaceGeneric), m_callFrame,
+            lowJSValue(m_node->child1()), lowJSValue(m_node->child2()),
+            lowJSValue(m_node->child3()));
+
+        setJSValue(result);
+    }
+
     LValue didOverflowStack()
     {
         // This does a very simple leaf function analysis. The invariant of FTL call
@@ -9207,6 +9330,9 @@ private:
         case FinalObjectUse:
             speculateFinalObject(edge);
             break;
+        case RegExpObjectUse:
+            speculateRegExpObject(edge);
+            break;
         case StringUse:
             speculateString(edge);
             break;
@@ -9481,6 +9607,17 @@ private:
     void speculateFinalObject(Edge edge)
     {
         speculateFinalObject(edge, lowCell(edge));
+    }
+    
+    void speculateRegExpObject(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(
+            jsValueValue(cell), edge, SpecRegExpObject, isNotType(cell, RegExpObjectType));
+    }
+    
+    void speculateRegExpObject(Edge edge)
+    {
+        speculateRegExpObject(edge, lowCell(edge));
     }
     
     void speculateString(Edge edge, LValue cell)

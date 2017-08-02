@@ -203,7 +203,7 @@ Structure::Structure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, co
     setHasReadOnlyOrGetterSetterPropertiesExcludingProto(classInfo->hasStaticSetterOrReadonlyProperties());
     setHasNonEnumerableProperties(false);
     setAttributesInPrevious(0);
-    setPreventExtensions(false);
+    setDidPreventExtensions(false);
     setDidTransition(false);
     setStaticFunctionsReified(false);
     setHasRareData(false);
@@ -235,7 +235,7 @@ Structure::Structure(VM& vm)
     setHasReadOnlyOrGetterSetterPropertiesExcludingProto(m_classInfo->hasStaticSetterOrReadonlyProperties());
     setHasNonEnumerableProperties(false);
     setAttributesInPrevious(0);
-    setPreventExtensions(false);
+    setDidPreventExtensions(false);
     setDidTransition(false);
     setStaticFunctionsReified(false);
     setHasRareData(false);
@@ -266,7 +266,7 @@ Structure::Structure(VM& vm, Structure* previous, DeferredStructureTransitionWat
     setHasReadOnlyOrGetterSetterPropertiesExcludingProto(previous->hasReadOnlyOrGetterSetterPropertiesExcludingProto());
     setHasNonEnumerableProperties(previous->hasNonEnumerableProperties());
     setAttributesInPrevious(0);
-    setPreventExtensions(previous->preventExtensions());
+    setDidPreventExtensions(previous->didPreventExtensions());
     setDidTransition(true);
     setStaticFunctionsReified(previous->staticFunctionsReified());
     setHasRareData(false);
@@ -625,7 +625,7 @@ Structure* Structure::preventExtensionsTransition(VM& vm, Structure* structure)
     structure->materializePropertyMapIfNecessary(vm, deferGC);
     transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
     transition->m_offset = structure->m_offset;
-    transition->setPreventExtensions(true);
+    transition->setDidPreventExtensions(true);
     transition->pin();
 
     transition->checkOffsetConsistency();
@@ -691,7 +691,7 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
 // In future we may want to cache this property.
 bool Structure::isSealed(VM& vm)
 {
-    if (isExtensible())
+    if (isStructureExtensible())
         return false;
 
     DeferGC deferGC(vm.heap);
@@ -710,7 +710,7 @@ bool Structure::isSealed(VM& vm)
 // In future we may want to cache this property.
 bool Structure::isFrozen(VM& vm)
 {
-    if (isExtensible())
+    if (isStructureExtensible())
         return false;
 
     DeferGC deferGC(vm.heap);
@@ -1153,24 +1153,11 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
     Structure* curStructure = this;
     JSValue curValue = value;
     while (curStructure) {
-        Vector<Structure*, 8> structures;
-        Structure* structure;
-        PropertyTable* table;
-
-        curStructure->findStructuresAndMapForMaterialization(structures, structure, table);
-        if (table) {
-            PropertyTable::iterator iter = table->begin();
-            PropertyTable::iterator end = table->end();
-            for (; iter != end; ++iter)
-                curShape->addProperty(*iter->key);
-            
-            structure->m_lock.unlock();
-        }
-        for (unsigned i = structures.size(); i--;) {
-            Structure* structure = structures[i];
-            if (structure->m_nameInPrevious)
-                curShape->addProperty(*structure->m_nameInPrevious);
-        }
+        curStructure->forEachPropertyConcurrently(
+            [&] (const PropertyMapEntry& entry) -> bool {
+                curShape->addProperty(*entry.key);
+                return true;
+            });
 
         if (JSObject* curObject = curValue.getObject())
             curShape->setConstructorName(JSObject::calculatedClassName(curObject));

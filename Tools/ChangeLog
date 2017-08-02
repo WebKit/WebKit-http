@@ -1,3 +1,493 @@
+2016-03-02  Alejandro G. Castro  <alex@igalia.com>
+
+        Unreviewed build fix for media-stream after r197114.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack):
+
+2016-03-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Disable FTL JIT testing on 32-bit JSC tester bots
+        https://bugs.webkit.org/show_bug.cgi?id=154858
+
+        Reviewed by Saam Barati.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (Run32bitJSCTests):
+
+2016-03-01  Dean Johnson  <dean_johnson@apple.com>
+
+        Fix iOS EWS.
+        https://bugs.webkit.org/show_bug.cgi?id=154880
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-02-29  Chris Dumez  <cdumez@apple.com>
+
+        Have parseHTMLInteger() / parseHTMLNonNegativeInteger() use WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=154845
+
+        Reviewed by Ryosuke Niwa.
+
+        Update API tests accordingly.
+
+        * TestWebKitAPI/Tests/WebCore/HTMLParserIdioms.cpp:
+        (TestWebKitAPI::testParseHTMLInteger):
+        (TestWebKitAPI::parseHTMLIntegerFails):
+        (TestWebKitAPI::testParseHTMLNonNegativeInteger):
+        (TestWebKitAPI::parseHTMLNonNegativeIntegerFails):
+        (TestWebKitAPI::TEST): Deleted.
+
+2016-02-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the experimental feature of antialiased font dilation
+        https://bugs.webkit.org/show_bug.cgi?id=154843
+
+        Reviewed by Zalan Bujtas.
+
+        Remove the "antialiased font dilation" code path, and related prefs.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Deleted.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues): Deleted.
+
+2016-02-29  Brady Eidson  <beidson@apple.com>
+
+        Fix timing flakiness in test I added in http://trac.webkit.org/changeset/197372
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess-1.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess-2.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm:
+        (TEST): Sometimes a third message from the first html file was leaking through. The message is expected
+          so we should always wait for it and make sure we got it.
+
+2016-02-29  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: WebKit 2 IPC layer easily confused about multiple web processes being connected.
+        https://bugs.webkit.org/show_bug.cgi?id=154837
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess-1.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess-2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm: Added.
+
+2016-02-29  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][jhbuild] GLib build fails with GCC 6.0
+        https://bugs.webkit.org/show_bug.cgi?id=154825
+
+        Use the upstream work-around. https://bugzilla.gnome.org/show_bug.cgi?id=761550
+
+        Reviewed by Csaba Osztrogonác.
+
+        * gtk/jhbuild.modules: Apply upstream path.
+        * gtk/patches/gdate-suppress-string-format-literal-warning.patch: Added.
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        We've been running Octane/regexp all wrong in run-jsc-benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=154827
+
+        Reviewed by Andreas Kling.
+
+        Octane v.2 and JetStream v.1.1 run this benchmark with warmup. This script was running
+        it without warmup. This patches fixes this by making this script run it with warmup.
+
+        This fix shows that my last patch, which added FTL support for regexp, was actually a 3%
+        speed-up on Octane/regexp, not a slow-down as the ChangeLog claimed.
+
+        It discovered this bug because for each Octane test that I want to debug, I usually make
+        a standalone .js file that contains the whole test along with a miniharness - usually
+        a plain loop - that runs it almost like it would for real but with whatever hacks I'm
+        using for debugging. When I wrote such a thing for regexp, I used a ~20 iteration warmup
+        to match the one second of warmup that this benchmark gets in Octane. To my surprise,
+        this quite faithful regexp runner did not see the regression that run-jsc-benchmarks
+        saw. That's when I found out that run-jsc-benchmarks was running it wrong.
+
+        The reason for the no-warmup slow-down is that the FTL is actually fairly expensive to
+        run on some of these very large functions in the regexp benchmark. I don't think we can
+        do anything about that, and I'd argue that the speed-up we see after the compilation is
+        done suggests that it was worth it.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-02-29  Gavin Barraclough  <barraclough@apple.com>
+
+        RefCounter<T>::Event -> RefCounterEvent
+        https://bugs.webkit.org/show_bug.cgi?id=154767
+
+        Reviewed by Darin Adler.
+
+        RefCounter<T>::Event is kinda verbose to use, and there is no need for this
+        to be specific to a particular typeof RefCounter. Move the enum class up to
+        the top level & rename to RefCounterEvent.
+
+        * TestWebKitAPI/Tests/WTF/RefCounter.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-02-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove more LLVM related cruft
+        https://bugs.webkit.org/show_bug.cgi?id=154821
+
+        Reviewed by Darin Adler.
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/copy-webkitlibraries-to-product-directory:
+        * Scripts/export-llvm-build: Removed.
+        * Scripts/run-jsc-stress-tests:
+
+2016-02-28  Sam Weinig  <sam@webkit.org>
+
+        Reimplement WKPageGroup in terms of WKUserContentController
+        https://bugs.webkit.org/show_bug.cgi?id=154804
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/PageGroup.cpp: Added.
+
+2016-02-28  Sam Weinig  <sam@webkit.org>
+
+        Bind _WKUserStyleSheets to WKUserContentWorlds to allow for grouping of user content by associating to a world
+        https://bugs.webkit.org/show_bug.cgi?id=154798
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        Add tests for removing _WKUserStyleSheets and WKUserScripts
+
+2016-02-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Silence leaks under TextCodecICU::registerCodecs
+        https://bugs.webkit.org/show_bug.cgi?id=154737
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/leakdetector.py:
+        (LeakDetector._callstacks_to_exclude_from_leaks):
+
+2016-02-26  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix incorrect cast
+
+        Unreviewed.
+
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow):
+
+2016-02-26  Chris Dumez  <cdumez@apple.com>
+
+        Fix the behavior of reflecting IDL attributes of type unsigned long
+        https://bugs.webkit.org/show_bug.cgi?id=154771
+
+        Reviewed by Ryosuke Niwa.
+
+        Update API tests to cover the fixes to the parseHTMLNonNegativeInteger()
+        implementation:
+        - "-0" is parsed as 0.
+        - Range boundaries are now [0; 2147483647].
+
+        * TestWebKitAPI/Tests/WebCore/HTMLParserIdioms.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-02-26  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: New database versions are never committed to SQLite.
+        <rdar://problem/24860952> and https://bugs.webkit.org/show_bug.cgi?id=154741
+        
+        Modern IDB: If a database handle is not open, files are not actually deleted from disk
+        https://bugs.webkit.org/show_bug.cgi?id=154756
+
+        Reviewed by Alex Christensen.
+
+        This also happens to test the previously untested fix for http://trac.webkit.org/changeset/197190
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence-1.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence-2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence.mm: Added.
+        (-[IndexedDBNavigationDelegate webView:didFinishNavigation:]):
+        (-[IndexedDBMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197216.
+        https://bugs.webkit.org/show_bug.cgi?id=154766
+
+        Test simply needs updated result (Requested by litherum on
+        #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r197158."
+        https://bugs.webkit.org/show_bug.cgi?id=154758
+        http://trac.webkit.org/changeset/197216
+
+2016-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        [iOS Simulator] Reftests don't work
+        https://bugs.webkit.org/show_bug.cgi?id=154764
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/image_diff.py: (IOSSimulatorImageDiffer._start):
+        Use simctl instead of sim.
+
+2016-02-26  Chris Dumez  <cdumez@apple.com>
+
+        Add API test coverage for parseHTMLInteger / parseHTMLNonNegativeInteger
+        https://bugs.webkit.org/show_bug.cgi?id=154714
+
+        Reviewed by Darin Adler.
+
+        Add API test coverage for parseHTMLInteger / parseHTMLNonNegativeInteger as per:
+        - https://html.spec.whatwg.org/multipage/infrastructure.html#signed-integers
+        - https://html.spec.whatwg.org/multipage/infrastructure.html#non-negative-integers
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/HTMLParserIdioms.cpp: Added.
+        (TestWebKitAPI::testParseHTMLInteger):
+        (TestWebKitAPI::parseHTMLIntegerFails):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::testParseHTMLNonNegativeInteger):
+        (TestWebKitAPI::parseHTMLNonNegativeIntegerFails):
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197158.
+        https://bugs.webkit.org/show_bug.cgi?id=154758
+
+        This change did not fix the failing test (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r195795): [WK2] fast/text/crash-complex-text-
+        surrogate.html is flakey"
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+        http://trac.webkit.org/changeset/197158
+
+2016-02-26  Anders Carlsson  <andersca@apple.com>
+
+        WKWebsiteDataStore/WKWebsiteDataRecord needs to provide size information about each type of data
+        https://bugs.webkit.org/show_bug.cgi?id=154750
+        rdar://problem/23861395
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetchWebsiteData:]):
+        Use the new WKWebsiteDataStore SPI to compute data sizes.
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        RefCounter value changed callback should be called on all changes (not just zero edge).
+        https://bugs.webkit.org/show_bug.cgi?id=154699
+
+        Reviewed by Geoff Garen.
+
+        RefCounter currently only triggers a callback when the count goes from zero
+        to non-zero and vice-versa. Change that, to be useful to more clients.
+
+        * TestWebKitAPI/Tests/WTF/RefCounter.cpp:
+        (TestWebKitAPI::TEST):
+            - Updated for change in RefCounter callback siganture & behaviour.
+
+2016-02-25  Sam Weinig  <sam@webkit.org>
+
+        Allow WKUserScripts to be run in isolated worlds
+        https://bugs.webkit.org/show_bug.cgi?id=154701
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentWorld.mm: Added.
+        (-[SimpleDelegate webView:didFinishNavigation:]):
+        (-[UserContentWorldRemoteObject didObserveNormalWorld]):
+        (-[UserContentWorldRemoteObject didObserveWorldWithName:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentWorldPlugIn.mm: Added.
+        (-[_WKUserContentWorldPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[_WKUserContentWorldPlugIn webProcessPlugInBrowserContextController:globalObjectIsAvailableForFrame:inScriptWorld:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentWorldProtocol.h: Added.
+
+2016-02-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should have an option to clean the destination directory
+        https://bugs.webkit.org/show_bug.cgi?id=152685
+
+        Reviewed by Darin Adler.
+
+        Adding --clean-dest-dir option to W3C test importer.
+        When this option is set, all files in the destination directory will be deleted
+        except for WebKit specific files (test expectations, .gitignore...) before new tests import.
+        Dangling test expectations are removed after tests import.'
+
+        Adding unit test and minor refactoring for the other tests.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (parse_args): Add '--clean-dest-dir' option.
+        (TestImporter.do_import):
+        (TestImporter._is_baseline): helper routine to capture -expected.txt files.
+        (TestImporter):
+        (TestImporter._should_not_keep_when_importing): helper routine to filter files that should not be cleaned before importing.
+        (TestImporter.clean_destination_directory):
+        (TestImporter.remove_dangling_expectations):
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest._parse_options):
+        (TestImporterTest.test_import_dir_with_no_tests_and_no_hg):
+        (TestImporterTest.test_import_dir_with_no_tests):
+        (TestImporterTest.test_import_dir_with_empty_init_py):
+        (test_clean_directory_option):
+
+2016-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r195795): [WK2] fast/text/crash-complex-text-surrogate.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+        <rdar://problem/24483596>
+
+        Reviewed by Dan Bernstein.
+
+        Force auto-activation rules to a consistent state.
+
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2016-02-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreivewed build fix for r197150.
+
+        * TestWebKitAPI/Tests/mac/IsNavigationActionTrusted.mm:
+
+2016-02-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Restrict information passed with navigation action which is triggered by untrusted event
+        https://bugs.webkit.org/show_bug.cgi?id=154571
+        <rdar://problem/15967937>
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/IsNavigationActionTrusted.mm: Added.
+        (-[WKNavigationActionDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TestWebKitAPI::TEST):
+        (-[NavigationActionDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        * TestWebKitAPI/Tests/mac/IsNavigationActionTrusted.html: Added.
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        Should template RefCounter instead of RefCounter::Token
+        https://bugs.webkit.org/show_bug.cgi?id=154691
+
+        Reviewed by Anders Carlsson.
+
+        Mechanical update per RefCounter interface change.
+
+        * TestWebKitAPI/Tests/WTF/RefCounter.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-02-25  Skachkov Aleksandr  <gskachkov@gmail.com>
+
+        Unreviewed: Add Aleksandr Skachkov as a commiter
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-02-25  Sam Weinig  <sam@webkit.org>
+
+        HashMap::ensure() should return an AddResult like all the other add-like functions
+        https://bugs.webkit.org/show_bug.cgi?id=154680
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        Update tests to use/test the new AddResult result.
+
+2016-02-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Enable MallocScribble when detecting leaks
+        https://bugs.webkit.org/show_bug.cgi?id=154679
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_setup_environ_for_server):
+
+2016-02-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Unreviewed, fix iOS builds after r197114.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::createCanonicalUUIDString):
+        (WTR::TestController::saltForOrigin):
+
+2016-02-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo deviceId and groupId must be unique to the page's origin
+        https://bugs.webkit.org/show_bug.cgi?id=153163
+        <rdar://problem/24334526>
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::setUserMediaPermissionForOrigin): Take top level document origin.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setUserMediaPermissionForOrigin): Ditto.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::decidePolicyForUserMediaPermissionRequest): Pass through top level document origin.
+        (WTR::checkUserMediaPermissionForOrigin): Ditto.
+        (WTR::TestController::resetStateToConsistentValues): m_userMediaOriginPermissions -> m_cahcedUserMediaPermissions.
+        (WTR::originUserVisibleName): Return a String.
+        (WTR::userMediaOriginHash): Create a hash of the origin plus top level document origin.
+        (WTR::TestController::saltForOrigin): Return salt for an origin.
+        (WTR::TestController::setUserMediaPermissionForOrigin): Return permission for an origin.
+        (WTR::TestController::handleCheckOfUserMediaPermissionForOrigin):
+        (WTR::TestController::handleUserMediaPermissionRequest):
+        (WTR::TestController::decidePolicyForUserMediaPermissionRequestIfPossible):
+        (WTR::OriginSettings::OriginSettings): New, class to cache settings for an origin.
+        (WTR::OriginSettings::persistentPermission): Persistent permissions for origin.
+        (WTR::OriginSettings::setPersistentPermission): Set permissions for origin.
+        (WTR::OriginSettings::persistentSalt): Return the persistent salt for the origin, if any.
+        (WTR::OriginSettings::setPersistentSalt): Set the persistent salt for the origin
+        (WTR::OriginSettings::ephemeralSalts): Return hashmap used to store per-frame salts.
+        * WebKitTestRunner/TestController.h:
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch by default.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
 2016-02-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         W3C importer should generate all web-platform-tests submodules descriptions

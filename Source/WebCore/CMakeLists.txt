@@ -10,7 +10,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
-    "${WEBCORE_DIR}/Modules/indexeddb/legacy"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
     "${WEBCORE_DIR}/Modules/indexeddb/shared"
     "${WEBCORE_DIR}/Modules/indieui"
@@ -30,6 +29,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/accessibility"
+    "${WEBCORE_DIR}/animation"
     "${WEBCORE_DIR}/bindings"
     "${WEBCORE_DIR}/bindings/generic"
     "${WEBCORE_DIR}/bindings/js"
@@ -123,6 +123,7 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
 )
 
 set(WebCore_IDL_INCLUDES
+    animation
     css
     dom
     fileapi
@@ -173,6 +174,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/fetch/FetchBody.idl
     Modules/fetch/FetchHeaders.idl
     Modules/fetch/FetchRequest.idl
+    Modules/fetch/FetchResponse.idl
 
     Modules/geolocation/Coordinates.idl
     Modules/geolocation/Geolocation.idl
@@ -600,7 +602,6 @@ set(WebCore_NON_SVG_IDL_FILES
     page/AbstractView.idl
     page/BarProp.idl
     page/Crypto.idl
-    page/DOMSecurityPolicy.idl
     page/DOMSelection.idl
     page/DOMWindow.idl
     page/EventSource.idl
@@ -820,6 +821,7 @@ set(WebCore_SOURCES
     Modules/fetch/FetchBody.cpp
     Modules/fetch/FetchHeaders.cpp
     Modules/fetch/FetchRequest.cpp
+    Modules/fetch/FetchResponse.cpp
 
     Modules/geolocation/Coordinates.cpp
     Modules/geolocation/GeoNotifier.cpp
@@ -834,7 +836,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBDatabase.cpp
     Modules/indexeddb/IDBDatabaseException.cpp
     Modules/indexeddb/IDBDatabaseIdentifier.cpp
-    Modules/indexeddb/IDBDatabaseMetadata.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
     Modules/indexeddb/IDBGetResult.cpp
@@ -865,26 +866,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/client/IDBTransactionImpl.cpp
     Modules/indexeddb/client/IDBVersionChangeEventImpl.cpp
     Modules/indexeddb/client/TransactionOperation.cpp
-
-    Modules/indexeddb/legacy/IDBCursorBackend.cpp
-    Modules/indexeddb/legacy/IDBCursorBackendOperations.cpp
-    Modules/indexeddb/legacy/IDBDatabaseBackend.cpp
-    Modules/indexeddb/legacy/IDBDatabaseCallbacksImpl.cpp
-    Modules/indexeddb/legacy/IDBPendingTransactionMonitor.cpp
-    Modules/indexeddb/legacy/IDBTransactionBackend.cpp
-    Modules/indexeddb/legacy/IDBTransactionBackendOperations.cpp
-    Modules/indexeddb/legacy/IDBTransactionCoordinator.cpp
-    Modules/indexeddb/legacy/LegacyAny.cpp
-    Modules/indexeddb/legacy/LegacyCursor.cpp
-    Modules/indexeddb/legacy/LegacyCursorWithValue.cpp
-    Modules/indexeddb/legacy/LegacyDatabase.cpp
-    Modules/indexeddb/legacy/LegacyFactory.cpp
-    Modules/indexeddb/legacy/LegacyIndex.cpp
-    Modules/indexeddb/legacy/LegacyObjectStore.cpp
-    Modules/indexeddb/legacy/LegacyOpenDBRequest.cpp
-    Modules/indexeddb/legacy/LegacyRequest.cpp
-    Modules/indexeddb/legacy/LegacyTransaction.cpp
-    Modules/indexeddb/legacy/LegacyVersionChangeEvent.cpp
 
     Modules/indexeddb/server/IDBConnectionToClient.cpp
     Modules/indexeddb/server/IDBSerialization.cpp
@@ -1107,6 +1088,7 @@ set(WebCore_SOURCES
     bindings/js/Dictionary.cpp
     bindings/js/GCController.cpp
     bindings/js/IDBBindingUtilities.cpp
+    bindings/js/JSAnimationTimelineCustom.cpp
     bindings/js/JSAttrCustom.cpp
     bindings/js/JSAudioBufferSourceNodeCustom.cpp
     bindings/js/JSAudioContextCustom.cpp
@@ -2010,7 +1992,6 @@ set(WebCore_SOURCES
     page/ContextMenuContext.cpp
     page/ContextMenuController.cpp
     page/Crypto.cpp
-    page/DOMSecurityPolicy.cpp
     page/DOMSelection.cpp
     page/DOMTimer.cpp
     page/DOMWindow.cpp
@@ -2303,6 +2284,8 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
+    platform/mediastream/MediaEndpoint.cpp
+    platform/mediastream/MediaEndpointConfiguration.cpp
     platform/mediastream/MediaStreamPrivate.cpp
     platform/mediastream/MediaStreamTrackPrivate.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
@@ -3021,6 +3004,20 @@ list(APPEND WebCore_CSS_VALUE_KEYWORDS
     ${WEBCORE_DIR}/css/SVGCSSValueKeywords.in
 )
 
+if (ENABLE_WEB_ANIMATIONS)
+    list(APPEND WebCore_IDL_FILES
+        "animation/AnimationTimeline.idl"
+        "animation/DocumentAnimation.idl"
+        "animation/DocumentTimeline.idl"
+    )
+
+    list(APPEND WebCore_SOURCES
+        "animation/AnimationTimeline.cpp"
+        "animation/DocumentAnimation.cpp"
+        "animation/DocumentTimeline.cpp"
+    )
+endif ()
+
 if (ENABLE_WEBGL)
     list(APPEND WebCore_SOURCES
         html/canvas/ANGLEInstancedArrays.cpp
@@ -3672,6 +3669,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
 
 set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
+    ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
     ${WEBCORE_DIR}/Modules/mediastream/MediaDevices.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js

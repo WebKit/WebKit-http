@@ -344,6 +344,8 @@ public:
     virtual bool isPlayingToWirelessPlaybackTarget() const override;
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
     virtual void setShouldPlayToPlaybackTarget(bool) override;
+    virtual void customPlaybackActionSelected() override;
+    String playbackTargetPickerCustomActionName() const;
 #endif
     bool webkitCurrentPlaybackTargetIsWireless() const;
 
@@ -559,10 +561,6 @@ private:
     virtual String mediaPlayerMediaKeysStorageDirectory() const override;
 #endif
     
-#if ENABLE(MEDIA_STREAM)
-    virtual String mediaPlayerMediaDeviceIdentifierStorageDirectory() const override;
-#endif
-
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
     void enqueuePlaybackTargetAvailabilityChangedEvent();

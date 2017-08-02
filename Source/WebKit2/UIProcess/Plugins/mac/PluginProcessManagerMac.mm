@@ -32,10 +32,17 @@
 
 namespace WebKit {
 
-void PluginProcessManager::updateProcessSuppressionDisabled(bool disabled)
+void PluginProcessManager::updateProcessSuppressionDisabled(RefCounterEvent event)
 {
-    bool enabled = !disabled;
+    size_t disableCount = m_processSuppressionDisabledForPageCounter.value();
 
+    // We only care about zero/non-zero edge changes; ignore cases where the count was previously non-zero, and still is.
+    if (disableCount >= 2 || (disableCount == 1 && event == RefCounterEvent::Decrement))
+        return;
+    ASSERT((event == RefCounterEvent::Increment && disableCount == 1)
+        || (event == RefCounterEvent::Decrement && !disableCount));
+
+    bool enabled = !disableCount;
     for (auto& pluginProcess : m_pluginProcesses)
         pluginProcess->setProcessSuppressionEnabled(enabled);
 }

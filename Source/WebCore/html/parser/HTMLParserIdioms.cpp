@@ -153,130 +153,66 @@ double parseToDoubleForNumberType(const String& string)
 }
 
 template <typename CharacterType>
-static bool parseHTMLIntegerInternal(const CharacterType* position, const CharacterType* end, int& value)
+static Optional<int> parseHTMLIntegerInternal(const CharacterType* position, const CharacterType* end)
 {
-    // Step 3
-    bool isPositive = true;
-
-    // Step 4
-    while (position < end) {
-        if (!isHTMLSpace(*position))
-            break;
+    while (position < end && isHTMLSpace(*position))
         ++position;
-    }
 
-    // Step 5
     if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
+        return Nullopt;
 
-    // Step 6
+    bool isNegative = false;
     if (*position == '-') {
-        isPositive = false;
+        isNegative = true;
         ++position;
     } else if (*position == '+')
         ++position;
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
-    // Step 7
-    if (!isASCIIDigit(*position))
-        return false;
+    if (position == end || !isASCIIDigit(*position))
+        return Nullopt;
 
-    // Step 8
-    StringBuilder cleanCharacters;
-    if (!isPositive)
-        cleanCharacters.append('-');
-    while (position < end) {
-        if (!isASCIIDigit(*position))
-            break;
-        cleanCharacters.append(*position++);
-    }
+    constexpr int intMax = std::numeric_limits<int>::max();
+    constexpr int base = 10;
+    constexpr int maxMultiplier = intMax / base;
 
-    // Step 9
-    bool ok;
-    if (cleanCharacters.is8Bit())
-        value = charactersToIntStrict(cleanCharacters.characters8(), cleanCharacters.length(), &ok);
-    else
-        value = charactersToIntStrict(cleanCharacters.characters16(), cleanCharacters.length(), &ok);
-    return ok;
-}
+    unsigned result = 0;
+    do {
+        int digitValue = *position - '0';
 
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers
-bool parseHTMLInteger(const String& input, int& value)
-{
-    // Step 1
-    // Step 2
-    unsigned length = input.length();
-    if (!length || input.is8Bit()) {
-        const LChar* start = input.characters8();
-        return parseHTMLIntegerInternal(start, start + length, value);
-    }
+        if (result > maxMultiplier || (result == maxMultiplier && digitValue > (intMax % base) + isNegative))
+            return Nullopt;
 
-    const UChar* start = input.characters16();
-    return parseHTMLIntegerInternal(start, start + length, value);
-}
-
-template <typename CharacterType>
-static bool parseHTMLNonNegativeIntegerInternal(const CharacterType* position, const CharacterType* end, unsigned& value)
-{
-    // Step 3
-    while (position < end) {
-        if (!isHTMLSpace(*position))
-            break;
+        result = base * result + digitValue;
         ++position;
-    }
+    } while (position < end && isASCIIDigit(*position));
 
-    // Step 4
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
-
-    // Step 5
-    if (*position == '+')
-        ++position;
-
-    // Step 6
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
-
-    // Step 7
-    if (!isASCIIDigit(*position))
-        return false;
-
-    // Step 8
-    StringBuilder digits;
-    while (position < end) {
-        if (!isASCIIDigit(*position))
-            break;
-        digits.append(*position++);
-    }
-
-    // Step 9
-    bool ok;
-    if (digits.is8Bit())
-        value = charactersToUIntStrict(digits.characters8(), digits.length(), &ok);
-    else
-        value = charactersToUIntStrict(digits.characters16(), digits.length(), &ok);
-    return ok;
+    return isNegative ? -result : result;
 }
 
-
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-non-negative-integers
-bool parseHTMLNonNegativeInteger(const String& input, unsigned& value)
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-integers
+Optional<int> parseHTMLInteger(const String& input)
 {
-    // Step 1
-    // Step 2
     unsigned length = input.length();
-    if (!length || input.is8Bit()) {
-        const LChar* start = input.characters8();
-        return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
+    if (!length)
+        return Nullopt;
+
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseHTMLIntegerInternal(start, start + length);
     }
-    
-    const UChar* start = input.characters16();
-    return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
+
+    auto* start = input.characters16();
+    return parseHTMLIntegerInternal(start, start + length);
+}
+
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-non-negative-integers
+Optional<int> parseHTMLNonNegativeInteger(const String& input)
+{
+    Optional<int> signedValue = parseHTMLInteger(input);
+    if (!signedValue || signedValue.value() < 0)
+        return Nullopt;
+
+    return signedValue;
 }
 
 static bool threadSafeEqual(const StringImpl& a, const StringImpl& b)

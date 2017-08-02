@@ -281,6 +281,10 @@ WK_EXPORT bool WKPreferencesGetShowsURLsInToolTipsEnabled(WKPreferencesRef prefe
 WK_EXPORT void WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef preferences);
 
+// Defaults to false
+WK_EXPORT void WKPreferencesSetHiddenPageDOMTimerThrottlingAutoIncreases(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetHiddenPageDOMTimerThrottlingAutoIncreases(WKPreferencesRef preferences);
+
 // Defaults to true on Mac, false on other platforms.
 WK_EXPORT void WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetHiddenPageCSSAnimationSuspensionEnabled(WKPreferencesRef preferences);
@@ -375,7 +379,7 @@ WK_EXPORT double WKPreferencesGetMinimumZoomFontSize(WKPreferencesRef preference
 WK_EXPORT void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef preferences);
 
-// Defaults to false.
+// Not implemented, should be deleted once Safari no longer uses this function.
 WK_EXPORT void WKPreferencesSetAntialiasedFontDilationEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetAntialiasedFontDilationEnabled(WKPreferencesRef preferences);
 

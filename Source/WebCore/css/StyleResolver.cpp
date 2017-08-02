@@ -225,8 +225,13 @@ void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& pro
                 }
 
                 // The value currentColor has implicitely the same side effect. It depends on the value of color,
-                // which is an inherited value, making the non-inherited property implicitely inherited.
+                // which is an inherited value, making the non-inherited property implicitly inherited.
                 if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueCurrentcolor) {
+                    isCacheable = false;
+                    break;
+                }
+
+                if (value.isVariableDependentValue()) {
                     isCacheable = false;
                     break;
                 }
@@ -283,6 +288,9 @@ StyleResolver::StyleResolver(Document& document)
 void StyleResolver::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets)
 {
     m_ruleSets.appendAuthorStyleSheets(styleSheets, m_medium.get(), m_inspectorCSSOMWrappers, this);
+
+    document().fontSelector().buildCompleted();
+
     if (auto renderView = document().renderView())
         renderView->style().fontCascade().update(&document().fontSelector());
 

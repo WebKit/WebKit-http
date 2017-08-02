@@ -27,6 +27,7 @@
 
 #include <unicode/uchar.h>
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -40,6 +41,9 @@ template<typename CharacterType> bool isHTMLSpaceOrComma(CharacterType);
 bool isHTMLLineBreak(UChar);
 bool isNotHTMLSpace(UChar);
 bool isHTMLSpaceButNotLineBreak(UChar);
+
+// 2147483647 is 2^31 - 1.
+static const unsigned maxHTMLNonNegativeInteger = 2147483647;
 
 // Strip leading and trailing whitespace as defined by the HTML specification. 
 WEBCORE_EXPORT String stripLeadingAndTrailingHTMLSpaces(const String&);
@@ -57,10 +61,10 @@ double parseToDoubleForNumberType(const String&);
 double parseToDoubleForNumberType(const String&, double fallbackValue);
 
 // http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers
-bool parseHTMLInteger(const String&, int&);
+WEBCORE_EXPORT Optional<int> parseHTMLInteger(const String&);
 
 // http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-non-negative-integers
-bool parseHTMLNonNegativeInteger(const String&, unsigned int&);
+WEBCORE_EXPORT Optional<int> parseHTMLNonNegativeInteger(const String&);
 
 // https://html.spec.whatwg.org/multipage/infrastructure.html#cors-settings-attribute
 String parseCORSSettingsAttribute(const AtomicString&);
@@ -112,27 +116,33 @@ inline bool isHTMLSpaceButNotLineBreak(UChar character)
 // https://html.spec.whatwg.org/multipage/infrastructure.html#limited-to-only-non-negative-numbers-greater-than-zero
 inline unsigned limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(unsigned value, unsigned defaultValue = 1)
 {
-    return (value > 0 && value <= 2147483647) ? value : defaultValue;
+    return (value > 0 && value <= maxHTMLNonNegativeInteger) ? value : defaultValue;
 }
 
 inline unsigned limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(const String& stringValue, unsigned defaultValue = 1)
 {
-    unsigned value = defaultValue;
-    parseHTMLNonNegativeInteger(stringValue, value);
-    return limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(value, defaultValue);
+    ASSERT(defaultValue > 0);
+    ASSERT(defaultValue <= maxHTMLNonNegativeInteger);
+    auto optionalValue = parseHTMLNonNegativeInteger(stringValue);
+    unsigned value = optionalValue && optionalValue.value() ? optionalValue.value() : defaultValue;
+    ASSERT(value > 0);
+    ASSERT(value <= maxHTMLNonNegativeInteger);
+    return value;
 }
 
 // https://html.spec.whatwg.org/#reflecting-content-attributes-in-idl-attributes:idl-unsigned-long
 inline unsigned limitToOnlyHTMLNonNegative(unsigned value, unsigned defaultValue = 0)
 {
-    return value <= 2147483647 ? value : defaultValue;
+    ASSERT(defaultValue <= maxHTMLNonNegativeInteger);
+    return value <= maxHTMLNonNegativeInteger ? value : defaultValue;
 }
 
 inline unsigned limitToOnlyHTMLNonNegative(const String& stringValue, unsigned defaultValue = 0)
 {
-    unsigned value = defaultValue;
-    parseHTMLNonNegativeInteger(stringValue, value);
-    return limitToOnlyHTMLNonNegative(value, defaultValue);
+    ASSERT(defaultValue <= maxHTMLNonNegativeInteger);
+    unsigned value = parseHTMLNonNegativeInteger(stringValue).valueOr(defaultValue);
+    ASSERT(value <= maxHTMLNonNegativeInteger);
+    return value;
 }
 
 }

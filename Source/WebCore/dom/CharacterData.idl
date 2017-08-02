@@ -19,11 +19,11 @@
 
 interface CharacterData : Node {
 
-    [TreatNullAs=NullString] attribute DOMString data;
+    [TreatNullAs=EmptyString] attribute DOMString data;
 
     readonly attribute unsigned long length;
     
-    [TreatReturnedNullStringAs=Null, ObjCLegacyUnnamedParameters, RaisesException] DOMString substringData(unsigned long offset, unsigned long length);
+    [ObjCLegacyUnnamedParameters, RaisesException] DOMString? substringData(unsigned long offset, unsigned long length);
 
     void appendData(DOMString data);
 

@@ -179,7 +179,10 @@ Ref<RenderStyle> TreeResolver::styleForElement(Element& element, RenderStyle& in
     }
 
     if (element.hasCustomStyleResolveCallbacks()) {
-        if (RefPtr<RenderStyle> style = element.customStyleForRenderer(inheritedStyle))
+        RenderStyle* shadowHostStyle = nullptr;
+        if (auto* shadowRoot = scope().shadowRoot)
+            shadowHostStyle = shadowRoot->host()->renderStyle();
+        if (RefPtr<RenderStyle> style = element.customStyleForRenderer(inheritedStyle, shadowHostStyle))
             return style.releaseNonNull();
     }
 
@@ -960,8 +963,10 @@ void TreeResolver::resolve(Change change)
     auto& renderView = *m_document.renderView();
 
     Element* documentElement = m_document.documentElement();
-    if (!documentElement)
+    if (!documentElement) {
+        m_document.ensureStyleResolver();
         return;
+    }
     if (change != Force && !documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())
         return;
 

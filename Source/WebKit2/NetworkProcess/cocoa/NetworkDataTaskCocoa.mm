@@ -47,6 +47,7 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
     : m_failureTimer(*this, &NetworkDataTask::failureTimerFired)
     , m_session(session)
     , m_client(&client)
+    , m_storedCredentials(storedCredentials)
     , m_lastHTTPMethod(requestWithCredentials.httpMethod())
     , m_firstRequest(requestWithCredentials)
     , m_shouldClearReferrerOnHTTPSToHTTPRedirect(shouldClearReferrerOnHTTPSToHTTPRedirect)
@@ -75,22 +76,28 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
         nsRequest = mutableRequest;
     }
 
-    if (storedCredentials == WebCore::AllowStoredCredentials)
+    if (storedCredentials == WebCore::AllowStoredCredentials) {
         m_task = [m_session.m_sessionWithCredentialStorage dataTaskWithRequest:nsRequest];
-    else
+        ASSERT(!m_session.m_dataTaskMapWithCredentials.contains([m_task taskIdentifier]));
+        m_session.m_dataTaskMapWithCredentials.add([m_task taskIdentifier], this);
+    } else {
         m_task = [m_session.m_sessionWithoutCredentialStorage dataTaskWithRequest:nsRequest];
-    
-    ASSERT(!m_session.m_dataTaskMap.contains(taskIdentifier()));
-    m_session.m_dataTaskMap.add(taskIdentifier(), this);
+        ASSERT(!m_session.m_dataTaskMapWithoutCredentials.contains([m_task taskIdentifier]));
+        m_session.m_dataTaskMapWithoutCredentials.add([m_task taskIdentifier], this);
+    }
 }
 
 NetworkDataTask::~NetworkDataTask()
 {
+    ASSERT(isMainThread());
     if (m_task) {
-        ASSERT(m_session.m_dataTaskMap.contains(taskIdentifier()));
-        ASSERT(m_session.m_dataTaskMap.get(taskIdentifier()) == this);
-        ASSERT(isMainThread());
-        m_session.m_dataTaskMap.remove(taskIdentifier());
+        if (m_storedCredentials == WebCore::StoredCredentials::AllowStoredCredentials) {
+            ASSERT(m_session.m_dataTaskMapWithCredentials.get([m_task taskIdentifier]) == this);
+            m_session.m_dataTaskMapWithCredentials.remove([m_task taskIdentifier]);
+        } else {
+            ASSERT(m_session.m_dataTaskMapWithoutCredentials.get([m_task taskIdentifier]) == this);
+            m_session.m_dataTaskMapWithoutCredentials.remove([m_task taskIdentifier]);
+        }
     }
 }
 
@@ -193,11 +200,6 @@ void NetworkDataTask::failureTimerFired()
     ASSERT_NOT_REACHED();
 }
 
-void NetworkDataTask::findPendingDownloadLocation(ResponseCompletionHandler completionHandler)
-{
-    NetworkProcess::singleton().findPendingDownloadLocation(*this, m_task.get().response.suggestedFilename, completionHandler);
-}
-
 void NetworkDataTask::setPendingDownloadLocation(const WTF::String& filename, const SandboxExtension::Handle& sandboxExtensionHandle)
 {
     ASSERT(!m_sandboxExtension);
@@ -215,7 +217,8 @@ bool NetworkDataTask::tryPasswordBasedAuthentication(const WebCore::Authenticati
         return false;
     
     if (!m_user.isNull() && !m_password.isNull()) {
-        completionHandler(AuthenticationChallengeDisposition::UseCredential, WebCore::Credential(m_user, m_password, WebCore::CredentialPersistenceForSession));
+        auto persistence = m_storedCredentials == WebCore::StoredCredentials::AllowStoredCredentials ? WebCore::CredentialPersistenceForSession : WebCore::CredentialPersistenceNone;
+        completionHandler(AuthenticationChallengeDisposition::UseCredential, WebCore::Credential(m_user, m_password, persistence));
         m_user = String();
         m_password = String();
         return true;
@@ -232,6 +235,11 @@ bool NetworkDataTask::tryPasswordBasedAuthentication(const WebCore::Authenticati
 void NetworkDataTask::transferSandboxExtensionToDownload(Download& download)
 {
     download.setSandboxExtension(WTFMove(m_sandboxExtension));
+}
+
+String NetworkDataTask::suggestedFilename()
+{
+    return m_task.get().response.suggestedFilename;
 }
 
 WebCore::ResourceRequest NetworkDataTask::currentRequest()
@@ -256,11 +264,6 @@ void NetworkDataTask::suspend()
     if (m_failureTimer.isActive())
         m_failureTimer.stop();
     [m_task suspend];
-}
-
-auto NetworkDataTask::taskIdentifier() -> TaskIdentifier
-{
-    return [m_task taskIdentifier];
 }
 
 WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge& challenge)

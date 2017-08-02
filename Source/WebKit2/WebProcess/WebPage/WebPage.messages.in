@@ -283,7 +283,7 @@ messages -> WebPage LegacyReceiver {
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam
     DidReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, String audioDeviceUID, String videoDeviceUID)
-    DidCompleteUserMediaPermissionCheck(uint64_t userMediaID, bool allowed)
+    DidCompleteUserMediaPermissionCheck(uint64_t userMediaID, String mediaDeviceIdentifierHashSalt, bool allowed)
 #endif
 
     # Notification
@@ -414,6 +414,7 @@ messages -> WebPage LegacyReceiver {
     PlaybackTargetSelected(uint64_t contextId, WebCore::MediaPlaybackTargetContext target)
     PlaybackTargetAvailabilityDidChange(uint64_t contextId, bool available)
     SetShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
+    CustomPlaybackActionSelected(uint64_t contextId)
 #endif
 
     ClearWheelEventTestTrigger()

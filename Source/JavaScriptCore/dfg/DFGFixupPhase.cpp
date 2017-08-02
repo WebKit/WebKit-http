@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -363,7 +363,9 @@ private:
             break;
         }
 
-        case ArithRound: {
+        case ArithRound:
+        case ArithFloor:
+        case ArithCeil: {
             if (m_graph.unaryArithShouldSpeculateInt32(node, FixupPass)) {
                 fixIntOrBooleanEdge(node->child1());
                 insertCheck<Int32Use>(m_indexInBlock, node->child1().node());
@@ -881,6 +883,18 @@ private:
             fixEdge<CellUse>(node->child2());
             break;
         }
+
+        case StringReplace: {
+            if (node->child1()->shouldSpeculateString()
+                && node->child2()->shouldSpeculateRegExpObject()
+                && node->child3()->shouldSpeculateString()) {
+                fixEdge<StringUse>(node->child1());
+                fixEdge<RegExpObjectUse>(node->child2());
+                fixEdge<StringUse>(node->child3());
+                break;
+            }
+            break;
+        }
             
         case Branch: {
             if (node->child1()->shouldSpeculateBoolean()) {
@@ -1093,26 +1107,7 @@ private:
             break;
         }
 
-        case OverridesHasInstance: {
-            if (node->child2().node()->isCellConstant()) {
-                if (node->child2().node()->asCell() != m_graph.globalObjectFor(node->origin.semantic)->functionProtoHasInstanceSymbolFunction()) {
-
-                    m_graph.convertToConstant(node, jsBoolean(true));
-                    break;
-                }
-
-                if (!m_graph.hasExitSite(node->origin.semantic, BadTypeInfoFlags)) {
-                    // Here we optimistically assume that we will not see an bound/C-API function here.
-                    m_insertionSet.insertNode(m_indexInBlock, SpecNone, CheckTypeInfoFlags, node->origin, OpInfo(ImplementsDefaultHasInstance), Edge(node->child1().node(), CellUse));
-                    m_graph.convertToConstant(node, jsBoolean(false));
-                    break;
-                }
-            }
-
-            fixEdge<CellUse>(node->child1());
-            break;
-        }
-            
+        case OverridesHasInstance:
         case CheckStructure:
         case CheckCell:
         case CreateThis:

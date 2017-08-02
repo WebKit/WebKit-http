@@ -36,6 +36,7 @@
 #include "JSDOMPromise.h"
 
 namespace JSC {
+class ArrayBuffer;
 class ExecState;
 class JSValue;
 };
@@ -47,7 +48,7 @@ typedef int ExceptionCode;
 
 class FetchBody {
 public:
-    typedef DOMPromise<Vector<unsigned char>, ExceptionCode> ArrayBufferPromise;
+    typedef DOMPromise<RefPtr<JSC::ArrayBuffer>, ExceptionCode> ArrayBufferPromise;
     void arrayBuffer(ArrayBufferPromise&&);
 
     typedef DOMPromise<RefPtr<DOMFormData>, ExceptionCode> FormDataPromise;
@@ -68,8 +69,9 @@ public:
     void setMimeType(const String& mimeType) { m_mimeType = mimeType; }
     String mimeType() const { return m_mimeType; }
 
-    static FetchBody fromJSValue(JSC::ExecState&, JSC::JSValue);
-    static FetchBody fromRequestBody(FetchBody*);
+    static FetchBody extract(JSC::ExecState&, JSC::JSValue);
+    static FetchBody extractFromBody(FetchBody*);
+    FetchBody() = default;
 
 private:
     template<typename T> bool processIfEmptyOrDisturbed(DOMPromise<T, ExceptionCode>&);
@@ -79,7 +81,8 @@ private:
     FetchBody(Ref<Blob>&&);
     FetchBody(Ref<DOMFormData>&&);
     FetchBody(String&&);
-    FetchBody() { }
+
+    Vector<char> extractFromText() const;
 
     Type m_type = Type::None;
     String m_mimeType;

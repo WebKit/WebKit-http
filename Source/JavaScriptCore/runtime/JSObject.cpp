@@ -197,6 +197,13 @@ ALWAYS_INLINE void JSObject::visitButterfly(SlotVisitor& visitor, Butterfly* but
     }
 }
 
+size_t JSObject::estimatedSize(JSCell* cell)
+{
+    JSObject* thisObject = jsCast<JSObject*>(cell);
+    size_t butterflyOutOfLineSize = thisObject->m_butterfly ? thisObject->structure()->outOfLineSize() : 0;
+    return Base::estimatedSize(cell) + butterflyOutOfLineSize;
+}
+
 void JSObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSObject* thisObject = jsCast<JSObject*>(cell);
@@ -421,6 +428,11 @@ void JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue
                     return;
                 }
             }
+        }
+        if (obj->type() == ProxyObjectType) {
+            ProxyObject* proxy = jsCast<ProxyObject*>(obj);
+            proxy->ProxyObject::put(proxy, exec, propertyName, value, slot);
+            return;
         }
         JSValue prototype = obj->prototype();
         if (prototype.isNull())
@@ -1275,13 +1287,23 @@ void JSObject::putDirectNonIndexAccessor(VM& vm, PropertyName propertyName, JSVa
 // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-hasproperty
 bool JSObject::hasProperty(ExecState* exec, PropertyName propertyName) const
 {
-    PropertySlot slot(this, PropertySlot::InternalMethodType::HasProperty);
-    return const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
+    return hasPropertyGeneric(exec, propertyName, PropertySlot::InternalMethodType::HasProperty);
 }
 
 bool JSObject::hasProperty(ExecState* exec, unsigned propertyName) const
 {
-    PropertySlot slot(this, PropertySlot::InternalMethodType::HasProperty);
+    return hasPropertyGeneric(exec, propertyName, PropertySlot::InternalMethodType::HasProperty);
+}
+
+bool JSObject::hasPropertyGeneric(ExecState* exec, PropertyName propertyName, PropertySlot::InternalMethodType internalMethodType) const
+{
+    PropertySlot slot(this, internalMethodType);
+    return const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
+}
+
+bool JSObject::hasPropertyGeneric(ExecState* exec, unsigned propertyName, PropertySlot::InternalMethodType internalMethodType) const
+{
+    PropertySlot slot(this, internalMethodType);
     return const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
 }
 
@@ -1653,12 +1675,24 @@ void JSObject::freeze(VM& vm)
     setStructure(vm, Structure::freezeTransition(vm, structure(vm)));
 }
 
-void JSObject::preventExtensions(VM& vm)
+bool JSObject::preventExtensions(JSObject* object, ExecState* exec)
 {
-    if (!isExtensible())
-        return;
-    enterDictionaryIndexingMode(vm);
-    setStructure(vm, Structure::preventExtensionsTransition(vm, structure(vm)));
+    if (!object->isStructureExtensible()) {
+        // We've already set the internal [[PreventExtensions]] field to false.
+        // We don't call the methodTable isExtensible here because it's not defined
+        // that way in the specification. We are just doing an optimization here.
+        return true;
+    }
+
+    VM& vm = exec->vm();
+    object->enterDictionaryIndexingMode(vm);
+    object->setStructure(vm, Structure::preventExtensionsTransition(vm, object->structure(vm)));
+    return true;
+}
+
+bool JSObject::isExtensible(JSObject* obj, ExecState*)
+{
+    return obj->isExtensibleImpl();
 }
 
 void JSObject::reifyAllStaticProperties(ExecState* exec)
@@ -1796,7 +1830,7 @@ bool JSObject::defineOwnIndexedProperty(ExecState* exec, unsigned index, const P
     // 3. If current is undefined and extensible is false, then Reject.
     // 4. If current is undefined and extensible is true, then
     if (result.isNewEntry) {
-        if (!isExtensible()) {
+        if (!isStructureExtensible()) {
             map->remove(result.iterator);
             return reject(exec, throwException, "Attempting to define property on object that is not extensible.");
         }
@@ -1916,6 +1950,12 @@ bool JSObject::attemptToInterceptPutByIndexOnHoleForPrototype(ExecState* exec, J
                 return true;
             }
         }
+
+        if (current->type() == ProxyObjectType) {
+            ProxyObject* proxy = jsCast<ProxyObject*>(current);
+            proxy->putByIndexCommon(exec, thisValue, i, value, shouldThrow);
+            return true;
+        }
         
         JSValue prototypeValue = current->prototype();
         if (prototypeValue.isNull())
@@ -2006,7 +2046,7 @@ void JSObject::putByIndexBeyondVectorLengthWithArrayStorage(ExecState* exec, uns
     // First, handle cases where we don't currently have a sparse map.
     if (LIKELY(!map)) {
         // If the array is not extensible, we should have entered dictionary mode, and created the sparse map.
-        ASSERT(isExtensible());
+        ASSERT(isStructureExtensible());
     
         // Update m_length if necessary.
         if (i >= storage->length())
@@ -2032,7 +2072,7 @@ void JSObject::putByIndexBeyondVectorLengthWithArrayStorage(ExecState* exec, uns
     unsigned length = storage->length();
     if (i >= length) {
         // Prohibit growing the array if length is not writable.
-        if (map->lengthIsReadOnly() || !isExtensible()) {
+        if (map->lengthIsReadOnly() || !isStructureExtensible()) {
             if (shouldThrow)
                 throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
             return;
@@ -2152,7 +2192,7 @@ bool JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage(ExecState* exec,
     // First, handle cases where we don't currently have a sparse map.
     if (LIKELY(!map)) {
         // If the array is not extensible, we should have entered dictionary mode, and created the spare map.
-        ASSERT(isExtensible());
+        ASSERT(isStructureExtensible());
     
         // Update m_length if necessary.
         if (i >= storage->length())
@@ -2182,7 +2222,7 @@ bool JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage(ExecState* exec,
             // Prohibit growing the array if length is not writable.
             if (map->lengthIsReadOnly())
                 return reject(exec, mode == PutDirectIndexShouldThrow, StrictModeReadonlyPropertyWriteError);
-            if (!isExtensible())
+            if (!isStructureExtensible())
                 return reject(exec, mode == PutDirectIndexShouldThrow, "Attempting to define property on object that is not extensible.");
         }
         length = i + 1;
@@ -2817,7 +2857,10 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
     DefineOwnPropertyScope scope(exec);
     PropertyDescriptor current;
     bool isCurrentDefined = getOwnPropertyDescriptor(exec, propertyName, current);
-    return validateAndApplyPropertyDescriptor(exec, this, propertyName, isExtensible(), descriptor, isCurrentDefined, current, throwException);
+    bool isExtensible = isExtensibleInline(exec);
+    if (UNLIKELY(exec->hadException()))
+        return false;
+    return validateAndApplyPropertyDescriptor(exec, this, propertyName, isExtensible, descriptor, isCurrentDefined, current, throwException);
 }
 
 bool JSObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)

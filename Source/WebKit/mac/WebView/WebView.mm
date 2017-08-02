@@ -2257,7 +2257,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setUsesEncodingDetector([preferences usesEncodingDetector]);
     settings.setFantasyFontFamily([preferences fantasyFontFamily]);
     settings.setFixedFontFamily([preferences fixedFontFamily]);
-    settings.setAntialiasedFontDilationEnabled([preferences antialiasedFontDilationEnabled]);
     settings.setForceFTPDirectoryListings([preferences _forceFTPDirectoryListings]);
     settings.setFTPDirectoryTemplatePath([preferences _ftpDirectoryTemplatePath]);
     settings.setLocalStorageDatabasePath([preferences _localStorageDatabasePath]);
@@ -8740,7 +8739,7 @@ bool LayerFlushController::flushLayers()
         return;
 
     NSRect rectInScreenCoordinates = [self.window convertRectToScreen:NSMakeRect(location.x(), location.y(), 0, 0)];
-    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo);
+    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo, { });
 }
 
 - (void)_playbackTargetPickerClientStateDidChange:(uint64_t)clientId state:(WebCore::MediaProducer::MediaStateFlags)state

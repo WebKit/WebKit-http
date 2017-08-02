@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -928,7 +928,7 @@ struct Node {
     NodeFlags arithNodeFlags()
     {
         NodeFlags result = m_flags & NodeArithFlagsMask;
-        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == DoubleAsInt32)
+        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == DoubleAsInt32)
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }
@@ -1022,6 +1022,9 @@ struct Node {
         m_opInfo = indexingType;
     }
     
+    // FIXME: We really should be able to inline code that uses NewRegexp. That means
+    // using something other than the index into the CodeBlock here.
+    // https://bugs.webkit.org/show_bug.cgi?id=154808
     bool hasRegexpIndex()
     {
         return op() == NewRegexp;
@@ -1331,6 +1334,8 @@ struct Node {
     {
         switch (op()) {
         case ArithRound:
+        case ArithFloor:
+        case ArithCeil:
         case GetDirectPname:
         case GetById:
         case GetByIdFlush:
@@ -1353,6 +1358,7 @@ struct Node {
         case RegExpTest:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
+        case StringReplace:
             return true;
         default:
             return false;
@@ -1712,7 +1718,7 @@ struct Node {
 
     bool hasArithRoundingMode()
     {
-        return op() == ArithRound;
+        return op() == ArithRound || op() == ArithFloor || op() == ArithCeil;
     }
 
     Arith::RoundingMode arithRoundingMode()
@@ -1961,6 +1967,11 @@ struct Node {
         return isStringOrStringObjectSpeculation(prediction());
     }
 
+    bool shouldSpeculateRegExpObject()
+    {
+        return isRegExpObjectSpeculation(prediction());
+    }
+    
     bool shouldSpeculateSymbol()
     {
         return isSymbolSpeculation(prediction());

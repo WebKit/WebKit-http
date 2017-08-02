@@ -189,10 +189,6 @@
 #include <wtf/text/StringBuffer.h>
 #include <yarr/RegularExpression.h>
 
-#if ENABLE(CSP_NEXT)
-#include "DOMSecurityPolicy.h"
-#endif
-
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionEvent.h"
 #include "DeviceOrientationEvent.h"
@@ -543,6 +539,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(nullptr)
 #endif
+    , m_fontSelector(CSSFontSelector::create(*this))
 #if ENABLE(WEB_REPLAY)
     , m_inputCursor(EmptyInputCursor::create())
 #endif
@@ -576,6 +573,8 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 
     initSecurityContext();
     initDNSPrefetch();
+
+    m_fontSelector->registerForInvalidationCallbacks(*this);
 
     for (auto& nodeListAndCollectionCount : m_nodeListAndCollectionCounts)
         nodeListAndCollectionCount = 0;
@@ -653,6 +652,8 @@ Document::~Document()
     extensionStyleSheets().detachFromDocument();
 
     clearStyleResolver(); // We need to destroy CSSFontSelector before destroying m_cachedResourceLoader.
+    m_fontSelector->clearDocument();
+    m_fontSelector->unregisterForInvalidationCallbacks(*this);
 
     // It's possible for multiple Documents to end up referencing the same CachedResourceLoader (e.g., SVGImages
     // load the initial empty document and the SVGDocument with the same DocumentLoader).
@@ -1294,7 +1295,7 @@ String Document::defaultCharset() const
 {
     if (Settings* settings = this->settings())
         return settings->defaultTextEncodingName();
-    return String();
+    return UTF8Encoding().domName();
 }
 
 void Document::setCharset(const String& charset)
@@ -1684,15 +1685,6 @@ void Document::allowsMediaDocumentInlinePlaybackChanged()
 {
     for (auto* element : m_allowsMediaDocumentInlinePlaybackElements)
         element->allowsMediaDocumentInlinePlaybackChanged();
-}
-#endif
-
-#if ENABLE(CSP_NEXT)
-DOMSecurityPolicy& Document::securityPolicy()
-{
-    if (!m_domSecurityPolicy)
-        m_domSecurityPolicy = DOMSecurityPolicy::create(this);
-    return *m_domSecurityPolicy;
 }
 #endif
 
@@ -2202,26 +2194,12 @@ void Document::fontsNeedUpdate(FontSelector&)
     scheduleForcedStyleRecalc();
 }
 
-CSSFontSelector& Document::fontSelector()
-{
-    if (!m_fontSelector) {
-        m_fontSelector = CSSFontSelector::create(*this);
-        m_fontSelector->registerForInvalidationCallbacks(*this);
-    }
-    return *m_fontSelector;
-}
-
 void Document::clearStyleResolver()
 {
     m_styleResolver = nullptr;
     m_userAgentShadowTreeStyleResolver = nullptr;
 
-    // FIXME: It would be better if the FontSelector could survive this operation.
-    if (m_fontSelector) {
-        m_fontSelector->clearDocument();
-        m_fontSelector->unregisterForInvalidationCallbacks(*this);
-        m_fontSelector = nullptr;
-    }
+    m_fontSelector->buildStarted();
 }
 
 void Document::createRenderTree()
@@ -6841,7 +6819,7 @@ void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetClient& clien
     page->removePlaybackTargetPickerClient(clientId);
 }
 
-void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo)
+void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo, const String& customMenuItemTitle)
 {
     Page* page = this->page();
     if (!page)
@@ -6851,7 +6829,7 @@ void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool 
     if (it == m_clientToIDMap.end())
         return;
 
-    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo);
+    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo, customMenuItemTitle);
 }
 
 void Document::playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient& client, MediaProducer::MediaStateFlags state)
@@ -6892,6 +6870,12 @@ void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
         return;
 
     it->value->setShouldPlayToPlaybackTarget(shouldPlay);
+}
+
+void Document::customPlaybackActionSelected(uint64_t clientId)
+{
+    if (auto* client = m_idToClientMap.get(clientId))
+        client->customPlaybackActionSelected();
 }
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 

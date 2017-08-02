@@ -1,3 +1,1131 @@
+2016-03-02  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel layout: Enable vertical/horizontal subpixel spacing for tables.
+        https://bugs.webkit.org/show_bug.cgi?id=154899
+
+        Reviewed by Simon Fraser.
+
+        This patch enables authors to specify device pixel values for table border spacing.
+        (see border-spacing)
+
+        * fast/table/hidpi-vertical-and-horizontal-spacing-expected.html: Added.
+        * fast/table/hidpi-vertical-and-horizontal-spacing.html: Added.
+
+2016-03-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [AX][GTK] Position-related tests need new baseline after r196439
+        https://bugs.webkit.org/show_bug.cgi?id=154917
+
+        The tests in question include the position accessed via the component
+        interface. The result changed by one pixel after r196439.
+
+        Unreviewed gardening.
+
+        * platform/gtk/accessibility/image-link-expected.txt: new baseline
+        * platform/gtk/accessibility/math-multiscript-attributes-expected.txt: new baseline
+        * platform/gtk/accessibility/table-attributes-expected.txt: new baseline
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: new baseline
+        * platform/gtk/accessibility/table-cells-expected.txt: new baseline
+        * platform/gtk/accessibility/table-detection-expected.txt: new baseline
+        * platform/gtk/accessibility/table-sections-expected.txt: new baseline
+
+2016-02-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Contents inside a shadow host with a negative tabindex should not be tab focusable
+        https://bugs.webkit.org/show_bug.cgi?id=154769
+
+        Reviewed by Antti Koivisto.
+
+        Added a test for navigating across shadow boundaries.
+
+        * fast/shadow-dom/negative-tabindex-on-shadow-host-expected.txt: Added.
+        * fast/shadow-dom/negative-tabindex-on-shadow-host.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Small-caps non-BMP characters are garbled in the complex text codepath
+        https://bugs.webkit.org/show_bug.cgi?id=154875
+
+        Reviewed by Michael Saboff.
+
+        * fast/text/complex-small-caps-non-bmp-capitalize-expected.html: Added.
+        * fast/text/complex-small-caps-non-bmp-capitalize.html: Added.
+        * fast/text/regress-154875-expected.txt: Deleted
+        * fast/text/regress-154875.html: Deleted
+
+2016-03-01  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Add support for Unicode regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=154842
+
+        Reviewed by Filip Pizlo.
+
+        Added a new test for the added unicode regular expression processing.
+
+        Updated several tests for the y flag changes and "unicode" property.
+
+        * js/regexp-unicode-expected.txt: Added.
+        * js/regexp-unicode.html: Added.
+        * js/script-tests/regexp-unicode.js: Added.
+        New test.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/regexp-flags-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/regexp-flags.js:
+        (RegExp.prototype.hasOwnProperty):
+        Updated tests.
+
+2016-03-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/text/crash-complex-text-surrogate.html as flaky on mac
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-01  Michael Saboff  <msaboff@apple.com>
+
+        ASSERT in platform/graphics/mac/ComplexTextController.cpp::capitalize()
+        https://bugs.webkit.org/show_bug.cgi?id=154875
+
+        Reviewed by Myles C. Maxfield.
+
+        New test.
+
+        * fast/text/regress-154875-expected.txt: Added.
+        * fast/text/regress-154875.html: Added.
+
+2016-03-01  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should simplify StringReplace with an empty replacement string
+        https://bugs.webkit.org/show_bug.cgi?id=154871
+
+        Reviewed by Michael Saboff.
+
+        Really add this new test.
+
+        * js/regress/script-tests/string-replace-empty.js: Added.
+        * js/regress/string-replace-empty-expected.txt: Added.
+        * js/regress/string-replace-empty.html: Added.
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Turn String.prototype.replace into an intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=154835
+
+        Reviewed by Michael Saboff.
+
+        * js/regress/script-tests/string-replace.js: Added.
+        * js/regress/string-replace-expected.txt: Added.
+        * js/regress/string-replace.html: Added.
+
+2016-03-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline isplaylists/extent-includes tests for mac-wk1
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/displaylists/extent-includes-shadow-expected.txt:
+        * platform/mac-wk1/displaylists/extent-includes-transforms-expected.txt:
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking webgl/1.0.2/conformance/extensions/get-extension.html as flaky on mac, removing wk1 specific flakiness expectation.
+        https://bugs.webkit.org/show_bug.cgi?id=152506
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange.html as flaky on mac
+        https://bugs.webkit.org/show_bug.cgi?id=154748
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Re-enable passing fast/multicol/newmulticol tests on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing unnecessary ios-simulator-wk2 expectation file.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt: Removed.
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-forms.html after r197355
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-embedded.html for ios-simulator after r197237 
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-02-28  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have global store elimination
+        https://bugs.webkit.org/show_bug.cgi?id=154658
+
+        Reviewed by Benjamin Poulain.
+
+        These two benchmarks both speed up significantly with this change.
+
+        * js/regress/build-large-object-expected.txt: Added.
+        * js/regress/build-large-object.html: Added.
+        * js/regress/many-repeat-stores-expected.txt: Added.
+        * js/regress/many-repeat-stores.html: Added.
+        * js/regress/script-tests/build-large-object.js: Added.
+        * js/regress/script-tests/many-repeat-stores.js: Added.
+
+2016-02-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        streams/pipe-to.html flaky on mac-wk1 debug
+        https://bugs.webkit.org/show_bug.cgi?id=154687
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Marking streams/pipe-to.html as slow.
+        * streams/pipe-to.html: Increasing the timeout value.
+
+2016-02-29  Adrien Plazas  <aplazas@igalia.com>
+
+        [GTK] Touch slider test fails due to assertion in webkitWebViewBaseTouchEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=153829
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations:
+        Remove now passing tests from the expected failures.
+
+2016-02-28  Antti Koivisto  <antti@apple.com>
+
+        ::slotted doesn't work in nested shadow trees
+        https://bugs.webkit.org/show_bug.cgi?id=154765
+        <rdar://problem/24870995>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-shadow-slotted-nested-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-slotted-nested.html: Added.
+
+2016-02-28  Tim Horton  <timothy_horton@apple.com>
+
+        Switch to application/vnd.apple.folder for <attachment> folder special-case
+        https://bugs.webkit.org/show_bug.cgi?id=154786
+        <rdar://problem/24416632>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/attachment/attachment-folder-icon-expected.html:
+        * fast/attachment/attachment-folder-icon.html:
+
+2016-02-28  Tim Horton  <timothy_horton@apple.com>
+
+        Variables can resolve to the wrong value when elements differ in nothing but inherited variable value
+        https://bugs.webkit.org/show_bug.cgi?id=154785
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/variables/avoid-matched-property-cache-expected.html: Added.
+        * fast/css/variables/avoid-matched-property-cache.html: Added.
+        Add a test. The non-standard element is necessary because the resolved property
+        cache is already disabled when using the "simple" default style sheet, and
+        it seems better to use a totally non-standard element than one that might
+        end up in the "simple" default style sheet in the future and would silently
+        invalidate the test.
+
+2016-02-28  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Emit loading&putting this/super only if they are used in arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=153981
+
+        Reviewed by Saam Barati.
+
+        Added new benchmark tests for invoking arrow function within function, class's constructor and method
+
+        * js/regress/arrowfunction-call-in-class-constructor-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-class-constructor.html: Added.
+        * js/regress/arrowfunction-call-in-class-method-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-class-method.html: Added.
+        * js/regress/arrowfunction-call-in-function-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-function.html: Added.
+        * js/regress/script-tests/arrowfunction-call-in-class-constructor.js: Added.
+        * js/regress/script-tests/arrowfunction-call-in-class-method.js: Added.
+        * js/regress/script-tests/arrowfunction-call-in-function.js: Added.
+        * js/regress/script-tests/arrowfunction-call.js:
+
+2016-02-27  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Removing ios-simulator baseline for js/number-toLocaleString.html
+        https://bugs.webkit.org/show_bug.cgi?id=154524
+
+        Reviewed by Darin Adler.
+
+        The default locale issue has been fixed in r197261.
+        Infinity.toLocaleString() should return "∞" as expected.
+
+        * platform/ios-simulator/js/number-toLocaleString-expected.txt: Removed.
+
+2016-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Prevent cross-origin access to Location.assign() / Location.reload()
+        https://bugs.webkit.org/show_bug.cgi?id=154779
+
+        Reviewed by Darin Adler.
+
+        Update existing layout tests now that we prevent cross-origin access to
+        Location.assign() / Location.reload().
+
+        * http/tests/security/cross-frame-access-getOwnPropertyDescriptor-expected.txt:
+        * http/tests/security/cross-frame-access-getOwnPropertyDescriptor.html:
+        * http/tests/security/cross-frame-access-location-get-expected.txt:
+        * http/tests/security/cross-frame-access-location-get-override-expected.txt:
+        * http/tests/security/cross-frame-access-location-get-override.html:
+        * http/tests/security/cross-frame-access-location-get.html:
+        * http/tests/security/xss-DENIED-defineProperty-expected.txt:
+
+2016-02-27  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Intl.Collator uses POSIX locale (detected by js/intl-collator.html on iOS Simulator)
+        https://bugs.webkit.org/show_bug.cgi?id=152448
+
+        Reviewed by Darin Adler.
+
+        Add tests for default locale in test runner to be en-US.
+
+        * js/intl-collator-expected.txt:
+        * js/intl-datetimeformat-expected.txt:
+        * js/intl-numberformat-expected.txt:
+        * js/script-tests/intl-collator.js:
+        * js/script-tests/intl-datetimeformat.js:
+        * js/script-tests/intl-numberformat.js:
+
+2016-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLMarqueeElement.scrollAmount / scrollDelay with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154781
+
+        Reviewed by Darin Adler.
+
+        Update existing test to reflect the behavior changes.
+
+        * fast/html/marquee-element-expected.txt:
+        * fast/html/marquee-element.html:
+
+2016-02-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark failing reftests as such, now that we detect reftest failures.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-27  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION(r195795): [WK2] fast/text/crash-complex-text-surrogate.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+
+        The test has been made made non-flaky, but it also needs new results.
+
+        * platform/mac/fast/text/crash-complex-text-surrogate-expected.txt:
+
+2016-02-26  Chris Dumez  <cdumez@apple.com>
+
+        Fix the behavior of reflecting IDL attributes of type unsigned long
+        https://bugs.webkit.org/show_bug.cgi?id=154771
+
+        Reviewed by Ryosuke Niwa.
+
+        Add test coverage for the behavior of reflecting IDL attributes of type
+        unsigned long.
+
+        * fast/dom/reflect-unsigned-long-expected.txt: Added.
+        * fast/dom/reflect-unsigned-long.html: Added.
+
+2016-02-26  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (188611): Search field Cancel button should not overlap search text on extensions page.
+        https://bugs.webkit.org/show_bug.cgi?id=154692
+        <rdar://problem/22840453>
+
+        Reviewed by Brent Fulgham.
+
+        Adjust the cancel button position using the actual size of the cancel button.
+
+        When the input box and the font height trigger different cancel button sizes, we need to readjust
+        the rectangle returned by cancelButtonRectForBounds.
+        This fixes both the mispositioned cancel button and the squared off icon when the input field is zoomed all the way in.
+
+        * fast/forms/search/search-padding-cancel-results-buttons-expected.txt:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/mac/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/forms/search-styled-expected.txt:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/fast/forms/searchfield-heights-expected.txt:
+        * platform/mac/fast/repaint/search-field-cancel-expected.txt:
+        * platform/mac/fast/replaced/width100percent-searchfield-expected.txt:
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197216.
+        https://bugs.webkit.org/show_bug.cgi?id=154766
+
+        Test simply needs updated result (Requested by litherum on
+        #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r197158."
+        https://bugs.webkit.org/show_bug.cgi?id=154758
+        http://trac.webkit.org/changeset/197216
+
+2016-02-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests for ios-simulator after r197162
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/indeterminate-radio-expected.txt: Added.
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197158.
+        https://bugs.webkit.org/show_bug.cgi?id=154758
+
+        This change did not fix the failing test (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r195795): [WK2] fast/text/crash-complex-text-
+        surrogate.html is flakey"
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+        http://trac.webkit.org/changeset/197158
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197160.
+        https://bugs.webkit.org/show_bug.cgi?id=154757
+
+        This change causes editing/mac/attributed-string/font-
+        size.html to fail on El Capitan WK1 (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "Font size computed style is innaccurate"
+        https://bugs.webkit.org/show_bug.cgi?id=154705
+        http://trac.webkit.org/changeset/197160
+
+2016-02-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip js/basic-map.html on Mac since it is already run in JSC tests
+        https://bugs.webkit.org/show_bug.cgi?id=154753
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Function.name and Function.length should be configurable.
+        https://bugs.webkit.org/show_bug.cgi?id=154604
+
+        Reviewed by Saam Barati.
+
+        * ietestcenter/Javascript/TestCases/15.2.3.3-4-187.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.3.4.5-15-2.js:
+        (ES5Harness.registerTest.test):
+        * js/dom/function-name-expected.txt:
+        * js/dom/getOwnPropertyDescriptor-expected.txt:
+        * js/dom/script-tests/function-name.js:
+        * js/mozilla/strict/15.3.5.1-expected.txt:
+        * js/mozilla/strict/function-name-arity-expected.txt:
+        * js/mozilla/strict/script-tests/15.3.5.1.js:
+        * js/mozilla/strict/script-tests/function-name-arity.js:
+        * js/resources/getOwnPropertyDescriptor.js:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.6/15.10.6.2_RegExp.prototype.exec/S15.10.6.2_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.6/15.10.6.3_RegExp.prototype.test/S15.10.6.3_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.6/15.10.6.4_RegExp.prototype.toString/S15.10.6.4_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.1_eval/S15.1.2.1_A4.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.2_parseInt/S15.1.2.2_A9.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.3_parseFloat/S15.1.2.3_A7.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.4_isNaN/S15.1.2.4_A2.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.5_isFinite/S15.1.2.5_A2.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.1_decodeURI/S15.1.3.1_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.2_decodeURIComponent/S15.1.3.2_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.4_encodeURIComponent/S15.1.3.4_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.2_Object.prototype.toString/S15.2.4.2_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.3_Object.prototype.toLocaleString/S15.2.4.3_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.4_Object.prototype.valueOf/S15.2.4.4_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.5_Object.prototype.hasOwnProperty/S15.2.4.5_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.6_Object.prototype.isPrototypeOf/S15.2.4.6_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.7_Object.prototype.propertyIsEnumerable/S15.2.4.7_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.4/15.3.4.2_Function.prototype.toString/S15.3.4.2_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.4/15.3.4.3_Function.prototype.apply/S15.3.4.3_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.4/15.3.4.4_Function.prototype.call/S15.3.4.4_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.5/S15.3.5.1_A2_T1.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.5/S15.3.5.1_A2_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.5/S15.3.5.1_A2_T3.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.10_Array_prototype_slice/S15.4.4.10_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.11_Array_prototype_sort/S15.4.4.11_A7.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.12_Array_prototype_splice/S15.4.4.12_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.13_Array_prototype_unshift/S15.4.4.13_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.2_Array_prototype_toString/S15.4.4.2_A4.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.3_Array_prototype_toLocaleString/S15.4.4.3_A4.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.4_Array_prototype_concat/S15.4.4.4_A4.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.5_Array_prototype_join/S15.4.4.5_A6.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.6_Array_prototype_pop/S15.4.4.6_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.7_Array_prototype_push/S15.4.4.7_A6.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.8_Array_prototype_reverse/S15.4.4.8_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.9_Array_prototype_shift/S15.4.4.9_A5.2.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.10_String.prototype.match/S15.5.4.10_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.11_String.prototype.replace/S15.5.4.11_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.12_String.prototype.search/S15.5.4.12_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.13_String.prototype.slice/S15.5.4.13_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.15_String.prototype.substring/S15.5.4.15_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.16_String.prototype.toLowerCase/S15.5.4.16_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.17_String.prototype.toLocaleLowerCase/S15.5.4.17_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.18_String.prototype.toUpperCase/S15.5.4.18_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.19_String.prototype.toLocaleUpperCase/S15.5.4.19_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.4_String.prototype.charAt/S15.5.4.4_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.5_String.prototype.charCodeAt/S15.5.4.5_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.6_String.prototype.concat/S15.5.4.6_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.7_String.prototype.indexOf/S15.5.4.7_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.8_String.prototype.lastIndexOf/S15.5.4.8_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.9_String.prototype.localeCompare/S15.5.4.9_A9.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.4/15.9.4.2_Date.parse/S15.9.4.2_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.4/15.9.4.3_Date.UTC/S15.9.4.3_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.10_Date.prototype.getFullYear/S15.9.5.10_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.11_Date.prototype.getUTCFullYear/S15.9.5.11_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.12_Date.prototype.getMonth/S15.9.5.12_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.13_Date.prototype.getUTCMonth/S15.9.5.13_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.14_Date.prototype.getDate/S15.9.5.14_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.15_Date.prototype.getUTCDate/S15.9.5.15_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.16_Date.prototype.getDay/S15.9.5.16_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.17_Date.prototype.getUTCDay/S15.9.5.17_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.18_Date.prototype.getHours/S15.9.5.18_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.19_Date.prototype.getUTCHours/S15.9.5.19_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.20_Date.prototype.getMinutes/S15.9.5.20_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.21_Date.prototype.getUTCMinutes/S15.9.5.21_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.22_Date.prototype.getSeconds/S15.9.5.22_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.23_Date.prototype.getUTCSeconds/S15.9.5.23_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.24_Date.prototype.getMilliseconds/S15.9.5.24_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.25_Date.prototype.getUTCMilliseconds/S15.9.5.25_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.26_Date.prototype.getTimezoneOffset/S15.9.5.26_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.27_Date.prototype.setTime/S15.9.5.27_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.28_Date.prototype.setMilliseconds/S15.9.5.28_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.29_Date.prototype.setUTCMilliseconds/S15.9.5.29_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.2_Date.prototype.toString/S15.9.5.2_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.30_Date.prototype.setSeconds/S15.9.5.30_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.31_Date.prototype.setUTCSeconds/S15.9.5.31_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.32_Date.prototype.setMinutes/S15.9.5.32_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.33_Date.prototype.setUTCMinutes/S15.9.5.33_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.34_Date.prototype.setHours/S15.9.5.34_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.35_Date.prototype.setUTCHours/S15.9.5.35_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.36_Date.prototype.setDate/S15.9.5.36_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.37_Date.prototype.setUTCDate/S15.9.5.37_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.38_Date.prototype.setMonth/S15.9.5.38_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.39_Date.prototype.setUTCMonth/S15.9.5.39_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.3_Date.prototype.toDateString/S15.9.5.3_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.40_Date.prototype.setFullYear/S15.9.5.40_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.41_Date.prototype.setUTCFullYear/S15.9.5.41_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.42_Date.prototype.toUTCString/S15.9.5.42_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.4_Date.prototype.toTimeString/S15.9.5.4_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.5_Date.prototype.toLocaleString/S15.9.5.5_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.6_Date.prototype.toLocaleDateString/S15.9.5.6_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.7_Date.prototype.toLocaleTimeString/S15.9.5.7_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.8_Date.prototype.valueOf/S15.9.5.8_A3_T2.html:
+        * sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.5/15.9.5.9_Date.prototype.getTime/S15.9.5.9_A3_T2.html:
+
+2016-02-26  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix flaky test introduced in r197156.
+
+        * fast/dom/Node/nullable-parameters-expected.txt:
+        * fast/dom/Node/nullable-parameters.html:
+        * fast/dom/Node/resources/testdoc.xml: Removed.
+        * fast/dom/Node/resources/testdoc2.xml: Removed.
+
+2016-02-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        <g> wrapping <symbol> causes display of hidden <symbol>
+        https://bugs.webkit.org/show_bug.cgi?id=154576
+
+        Reviewed by Darin Adler.
+
+        Ensure the <symbol> element is not displayed when it's wrapped in a <g>
+        element and this <g> element is referenced by a <use> element.
+
+        * platform/gtk/svg/custom/use-on-g-containing-symbol-expected.png: Removed.
+        * platform/gtk/svg/custom/use-on-g-containing-symbol-expected.txt: Removed.
+        * platform/ios-simulator/svg/custom/use-on-g-containing-symbol-expected.txt: Removed.
+        * platform/mac/svg/custom/use-on-g-containing-symbol-expected.png: Removed.
+        * platform/mac/svg/custom/use-on-g-containing-symbol-expected.txt: Removed.
+        * platform/win/svg/custom/use-on-g-containing-symbol-expected.txt: Removed.
+        * svg/custom/use-on-g-containing-symbol-expected.svg: Added.
+        * svg/custom/use-on-g-containing-symbol.svg:
+        The original test was wrong. It had the following definition:
+            "<g id='symbol'><symbol>...</symbol></g>"
+        And it was expecting to have the symbol drawn if the <g> element was
+        referenced like that
+            "<use xlink:href='#symbol'/>"
+        FireFox does not render anything for this <use> element which is correct.
+        With this patch, this test failed so it had to be modified to test the right
+        behavior. Also it is now converted to a ref test.
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197167.
+        https://bugs.webkit.org/show_bug.cgi?id=154730
+
+        This change broke the Mac build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION (188611): Search field Cancel button should not
+        overlap search text on extensions page."
+        https://bugs.webkit.org/show_bug.cgi?id=154692
+        http://trac.webkit.org/changeset/197167
+
+2016-02-26  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (188611): Search field Cancel button should not overlap search text on extensions page.
+        https://bugs.webkit.org/show_bug.cgi?id=154692
+        <rdar://problem/22840453>
+
+        Reviewed by Brent Fulgham.
+
+        Adjust the cancel button position using the actual size of the cancel button.
+
+        When the input box and the font height trigger different cancel button sizes, we need to readjust
+        the rectangle returned by cancelButtonRectForBounds.
+        This fixes both the mispositioned cancel button and the squared off icon when the input field is zoomed all the way in.
+
+        Covered by existing tests.
+
+        * fast/forms/search/search-padding-cancel-results-buttons-expected.txt:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/mac/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/forms/search-styled-expected.txt:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/fast/forms/searchfield-heights-expected.txt:
+        * platform/mac/fast/repaint/search-field-cancel-expected.txt:
+        * platform/mac/fast/replaced/width100percent-searchfield-expected.txt:
+
+2016-02-26  Antti Koivisto  <antti@apple.com>
+
+        Implement ::slotted pseudo element
+        https://bugs.webkit.org/show_bug.cgi?id=149441
+        <rdar://problem/22731987>
+
+        Reviewed by Andreas Kling.
+
+        * fast/shadow-dom/css-scoping-shadow-slotted-rule.html:
+
+            Enable the test, fix it and update it to the current spec.
+
+        * fast/shadow-dom/slotted-pseudo-element-css-text-expected.txt: Added.
+        * fast/shadow-dom/slotted-pseudo-element-css-text.html: Added.
+
+            Add parsing/cssText test based on a Blink test.
+            There are a few failures due to * not roundtripping and the parser being too lenient with pseudo elements.
+
+        * platform/mac/TestExpectations:
+
+2016-02-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Sync web-platform-tests up to revision 5ca8b46
+        https://bugs.webkit.org/show_bug.cgi?id=154678
+
+        Reviewed by Chris Dumez.
+
+        * platform/mac/TestExpectations: Renaming test filenames, and adding test expectation to area-coords.html.
+
+2016-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font size computed style is innaccurate
+        https://bugs.webkit.org/show_bug.cgi?id=154705
+        <rdar://problem/23474068>
+
+        Reviewed by Timothy Hatcher.
+
+        Update expected results.
+
+        * css3/calc/font-size-fractional-expected.txt:
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html:
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size-expected.txt:
+        * editing/mac/attributed-string/font-size-expected.txt:
+        * editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-mavericks/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-mavericks/editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/vertical-align-expected.txt:
+
+2016-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r195795): [WK2] fast/text/crash-complex-text-surrogate.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=154709
+        <rdar://problem/24483596>
+
+        Reviewed by Dan Bernstein.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-02-25  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Mark DOMString parameters as nullable when they should be
+        https://bugs.webkit.org/show_bug.cgi?id=154666
+
+        Reviewed by Darin Adler.
+
+        Add test coverage for minor behavioral changes in this patch.
+
+        * fast/dom/Element/getElementsByTagNameNS-nullable-expected.txt: Added.
+        * fast/dom/Element/getElementsByTagNameNS-nullable.html: Added.
+        * fast/dom/Node/nullable-parameters-expected.txt: Added.
+        * fast/dom/Node/nullable-parameters.html: Added.
+        * fast/dom/Node/resources/testdoc.xml: Added.
+        * fast/dom/Node/resources/testdoc2.xml: Added.
+        * fast/events/storageevent-initStorageEvent-nullable-expected.txt: Added.
+        * fast/events/storageevent-initStorageEvent-nullable.html: Added.
+
+2016-02-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping flaky test storage/indexeddb/intversion-open-in-upgradeneeded.html on mac-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=154706
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-02-25  Daniel Bates  <dabates@apple.com>
+
+        [iOS Simulator] http/tests/security/contentSecurityPolicy/1.1/plugintypes tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=154652
+
+        Skip Content Security Policy plugin-types tests when run in the iOS simulator app because
+        plugins are not supported on iOS.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] [SVG -> OTF Converter] Support the SVG -> OTF Font Converter
+        https://bugs.webkit.org/show_bug.cgi?id=143402
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline many tests.
+
+        There are some known bugs (which are marked in platform/win/TestExpecations):
+        webkit.org/b/137204 The SVG -> OTF Font converter outputs 'kern' tables instead of 'GPOS' tables
+        webkit.org/b/154690 SVG Fonts don't draw multibyte characters
+        webkit.org/b/137096 The SVG -> OTF Font Converter does not work with SVG's "altglyph" facility
+        webkit.org/b/137093 Same thing with the "lang" attribute
+
+        * platform/win/svg/W3C-SVG-1.1/fonts-desc-02-t-expected.txt: Added.
+        * platform/win/svg/W3C-SVG-1.1/text-text-06-t-expected.txt: Added.
+        * platform/win/TestExpectations:
+        * platform/win/svg/W3C-SVG-1.1-SE/color-prop-05-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-dom-01-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-dom-02-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-dom-03-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-dom-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-units-03-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/filters-felem-01-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/filters-image-03-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/interact-pointer-03-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/painting-marker-07-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/paths-dom-02-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/pservers-grad-17-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/pservers-grad-20-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/pservers-pattern-03-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/pservers-pattern-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/struct-use-14-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/styling-css-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/styling-pres-02-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/svgdom-over-01-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/text-tref-03-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/text-tspan-02-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-02-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-03-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-04-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-05-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-06-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/types-dom-07-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/animate-elem-03-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/animate-elem-24-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/animate-elem-36-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/animate-elem-40-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/filters-light-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/filters-turb-02-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-01-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-02-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-03-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-04-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-05-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-06-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-07-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/masking-mask-01-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/pservers-grad-08-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-06-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-07-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-08-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-groups-01-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-groups-03-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/text-fonts-03-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/text-intro-02-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/text-intro-03-b-expected.txt:
+        * platform/win/svg/batik/text/textEffect-expected.txt:
+        * platform/win/svg/batik/text/textEffect3-expected.txt:
+        * platform/win/svg/custom/glyph-selection-arabic-forms-expected.txt:
+        * platform/win/svg/custom/svg-fonts-in-html-expected.txt:
+        * platform/win/svg/custom/svg-fonts-with-no-element-reference-expected.txt: Added.
+        * platform/win/svg/custom/svg-fonts-word-spacing-expected.txt:
+        * platform/win/svg/foreignObject/text-tref-02-b-expected.txt:
+        * platform/win/svg/hixie/intrinsic/003-expected.txt:
+        * platform/win/svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures-expected.txt:
+        * platform/win/svg/text/text-text-04-t-expected.txt:
+        * platform/win/svg/text/text-text-05-t-expected.txt:
+        * platform/win/svg/text/text-text-06-t-expected.txt:
+        * platform/win/svg/wicd/test-rightsizing-b-expected.txt:
+        * platform/win/svg/zoom/page/zoom-svg-through-object-with-absolute-size-2-expected.txt:
+        * platform/win/svg/zoom/page/zoom-svg-through-object-with-absolute-size-expected.txt:
+
+2016-02-25  Daniel Bates  <dabates@apple.com>
+
+        CSP: Remove SecurityPolicy script interface
+        https://bugs.webkit.org/show_bug.cgi?id=154694
+        <rdar://problem/24846482>
+
+        Reviewed by Andy Estes.
+
+        Remove SecurityPolicy tests and update platform-specific expected results as needed.
+
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowconnectionto-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowconnectionto.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-alloweval-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-alloweval.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowfontfrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowfontfrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowformaction-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowformaction.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowframefrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowframefrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowimagefrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowimagefrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowinlinescript-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowinlinescript.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowinlinestyle-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowinlinestyle.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowmediafrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowmediafrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowobjectfrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowobjectfrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowplugintype-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowplugintype.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowscriptfrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowscriptfrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowstylefrom-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-allowstylefrom.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-isactive-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-isactive.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-reporturi-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicy-reporturi.html: Removed.
+        * http/tests/security/contentSecurityPolicy/resources/securitypolicy-tests-base.js: Removed.
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt: Update expected result as needed.
+        * platform/win/js/dom/global-constructors-attributes-expected.txt: Ditto.
+
+2016-02-25  Chris Dumez  <cdumez@apple.com>
+
+        Drop [TreatReturnedNullStringAs=Undefined] WebKit-specific IDL attribute
+        https://bugs.webkit.org/show_bug.cgi?id=154662
+
+        Reviewed by Darin Adler.
+
+        Add layout test to cover the return value of document.defaultCharset before
+        and after its frame is detached.
+
+        * fast/frames/detached-frame-document-defaultCharset-expected.txt: Added.
+        * fast/frames/detached-frame-document-defaultCharset.html: Added.
+
+2016-02-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing failure expectation for 26 editing tests that now pass on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152131
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-02-25  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        Fix a test flake where order doesn't matter.
+
+        * platform/wk2/storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-expected.txt: Removed.
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-expected.txt:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private-expected.txt:
+        * storage/indexeddb/resources/deletedatabase-delayed-by-open-and-versionchange.js:
+        (prepareDatabase.request.onblocked):
+        (onOpenSuccess):
+
+2016-02-25  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Skip a web inspector IndexedDB test for now.
+
+2016-02-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing a pass expectation for inspector/indexeddb/requestDatabaseNames.html that overrides the skip r197122
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-02-25  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: WebKit 2 IPC layer.
+        https://bugs.webkit.org/show_bug.cgi?id=153808
+
+        Reviewed by Alex Christensen.
+
+        - Consolidate all test failures to the platform agnostic TestExpectations file.
+        - Remove all existing WK2-specific results.
+        - Add one new WK2-specific result.
+        - Skip two WK2-only failures.
+        
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * platform/wk2/imported/w3c/indexeddb/abort-in-initial-upgradeneeded-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor-advance-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_advance_index5-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_advance_index9-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_advance_objectstore5-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_continue_index5-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_continue_index6-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_continue_index8-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_continue_invalid-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_continue_objectstore6-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_delete_index4-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbcursor_delete_objectstore4-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbdatabase_close2-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbdatabase_deleteObjectStore4-not_reused-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbfactory_deleteDatabase3-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbfactory_open12-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex-multientry-big-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex_get3-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex_get7-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex_getKey7-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex_openCursor2-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbindex_openKeyCursor3-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_add4-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex2-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex4-deleteIndex-event_order-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex6-event_order-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_createIndex7-event_order-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbobjectstore_put4-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbtransaction_abort-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/idbversionchangeevent-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/keygenerator-constrainterror-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/keygenerator-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/keygenerator-overflow-expected.txt: Removed.
+        * platform/wk2/imported/w3c/indexeddb/transaction-requestqueue-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/aborted-versionchange-closes-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/bad-keypath-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/basics-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/clear-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/create-and-remove-object-store-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/create-objectstore-basics-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/cursor-continue-dir-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/cursor-continue-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/cursor-finished-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/cursors-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/database-basics-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/deleteIndex-bug110792-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-expected.txt: Added.
+        * platform/wk2/storage/indexeddb/index-count-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/intversion-abort-in-initial-upgradeneeded-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/intversion-close-in-oncomplete-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/intversion-close-in-upgradeneeded-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/invalid-keys-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/key-requirements-delete-null-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/key-requirements-inline-and-passed-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/key-requirements-put-no-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/key-requirements-put-null-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/key-type-array-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/keypath-arrays-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/keypath-edges-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/keyrange-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/bad-keypath-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/clear-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/create-objectstore-basics-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/cursors-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-delete-null-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-inline-and-passed-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-put-no-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-put-null-key-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/mozilla/readonly-transactions-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/object-lookups-in-versionchange-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/objectstore-count-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/open-cursor-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/readonly-transactions-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/request-result-cache-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/transaction-abort-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/transaction-active-flag-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/transaction-after-close-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/transaction-read-only-expected.txt: Removed.
+        * platform/wk2/storage/indexeddb/version-change-exclusive-expected.txt: Removed.
+
+2016-02-25  Daniel Bates  <dabates@apple.com>
+
+        CSP: Make SecurityPolicyViolationEvent more closely conform to CSP spec and enable it by default
+        https://bugs.webkit.org/show_bug.cgi?id=154522
+        <rdar://problem/24762078>
+
+        Reviewed by Brent Fulgham.
+
+        Add new test http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-https.html
+        to ensure that SecurityPolicyViolationEvent.statusCode is 0 when dispatched for a violation on an HTTPS-served
+        document per section Reporting of the Content Security Policy 2.0 spec, <https://www.w3.org/TR/2015/CR-CSP2-20150721/>.
+        Update existing test results and mark more tests as PASS in file LayoutTests/TestExpectations.
+
+        * TestExpectations: Mark tests http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation*.html as PASS
+        so that we run them.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-basics-expected.txt: Update expected result to
+        reflect failing sub-test. We do not support the experimental JavaScript event listener onsecuritypolicyviolation when
+        building with ENABLE(CSP_NEXT) disabled.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-expected.txt: Update line and column numbers.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-from-script-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-from-script.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-from-script-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-from-script.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image.html: Update line and column numbers.
+        * js/dom/global-constructors-attributes-expected.txt: Update expected results now that we expose SecurityPolicyViolationEvent.
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt: Ditto.
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt: Ditto.
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt: Ditto.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt: Ditto.
+
+2016-02-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo deviceId and groupId must be unique to the page's origin
+        https://bugs.webkit.org/show_bug.cgi?id=153163
+        <rdar://problem/24334526>
+
+        Reviewed by Tim Horton.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt:
+        * fast/mediastream/MediaDevices-enumerateDevices.html:
+        * http/tests/media/media-stream/enumerate-devices-source-id-expected.txt: Added.
+        * http/tests/media/media-stream/enumerate-devices-source-id-persistent-expected.txt: Added.
+        * http/tests/media/media-stream/enumerate-devices-source-id-persistent.html: Added.
+        * http/tests/media/media-stream/enumerate-devices-source-id.html: Added.
+        * http/tests/media/media-stream/resources/enumerate-devices-source-id-frame.html: Added.
+
+2016-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose Proxy target and handler internal properties to Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=154663
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object.html:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        Test that a Proxy object includes the internal properties.
+
+2016-02-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/odd-strings.html as flaky on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=154619
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-02-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/indexeddb/idbcursor-advance.htm as flaky on Yosemite Release WK2
+        https://bugs.webkit.org/show_bug.cgi?id=154618
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-02-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Implement Fetch API Response
+        https://bugs.webkit.org/show_bug.cgi?id=154536
+
+        Reviewed by Alex Christensen.
+
+        Adding Response as constructor in global and worker scopes.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
 2016-02-24  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r197033.

@@ -1229,7 +1229,6 @@ webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/indexeddb/requestDatabaseNames.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
@@ -1250,7 +1249,6 @@ webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
 
 # Touch events is not enabled on Mac
@@ -1278,8 +1276,8 @@ imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ 
 webkit.org/b/150806 imported/w3c/web-platform-tests/XMLHttpRequest/send-timeout-events.htm [ Pass Failure ]
 webkit.org/b/150823 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
 
-webkit.org/b/152436 [ Debug ] imported/w3c/web-platform-tests/streams-api/readable-streams/garbage-collection.html [ Pass Crash ]
-webkit.org/b/153781 [ Debug ] imported/w3c/web-platform-tests/streams-api/readable-streams/garbage-collection-1.html [ Pass Crash ]
+webkit.org/b/152436 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.https.html [ Pass Crash ]
+webkit.org/b/153781 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection-1.html [ Pass Crash ]
 
 # WOFF2 is only supported on certain Operating Systems.
 webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/woff2.html [ ImageOnlyFailure ]
@@ -1317,9 +1315,16 @@ webkit.org/b/153883 webgl/1.0.3/conformance/extensions/oes-texture-half-float-li
 
 webkit.org/b/153871 imported/w3c/web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html [ Pass Failure ]
 
-# This test is already run with run-jsc-stress-tests
+# These tests are already run with run-jsc-stress-tests
 webkit.org/b/153879 js/basic-set.html [ Skip ]
+webkit.org/b/154753 js/basic-map.html [ Skip ]
 
 # outline: auto -focusring.
 accessibility/mac/selection-element-tabbing-to-link.html [ Pass Failure ]
 accessibility/mac/selection-notification-focus-change.html [ Pass Failure ]
+
+webkit.org/b/154748 storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange.html [ Pass Failure ]
+
+webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass Timeout ]
+
+webkit.org/b/154709 [ ElCapitan+ ] fast/text/crash-complex-text-surrogate.html [ Pass Failure ]

@@ -158,8 +158,9 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_canHandleHTTPSServerTrustEvaluation(true)
     , m_didNetworkProcessCrash(false)
     , m_memoryCacheDisabled(false)
-    , m_userObservablePageCounter([this](bool) { updateProcessSuppressionState(); })
-    , m_processSuppressionDisabledForPageCounter([this](bool) { updateProcessSuppressionState(); })
+    , m_userObservablePageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
+    , m_processSuppressionDisabledForPageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
+    , m_hiddenPageThrottlingAutoIncreasesCounter([this](RefCounterEvent) { updateHiddenPageThrottlingAutoIncreaseLimit(); })
 {
     for (auto& scheme : m_configuration->alwaysRevalidatedURLSchemes())
         m_schemesToRegisterAsAlwaysRevalidated.add(scheme);
@@ -749,6 +750,8 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
         pageConfiguration->setPageGroup(m_defaultPageGroup.ptr());
     if (!pageConfiguration->preferences())
         pageConfiguration->setPreferences(&pageConfiguration->pageGroup()->preferences());
+    if (!pageConfiguration->userContentController())
+        pageConfiguration->setUserContentController(&pageConfiguration->pageGroup()->userContentController());
     if (!pageConfiguration->visitedLinkStore())
         pageConfiguration->setVisitedLinkStore(m_visitedLinkStore.ptr());
     if (!pageConfiguration->websiteDataStore()) {
@@ -1085,6 +1088,18 @@ void WebProcessPool::clearCachedCredentials()
         m_networkProcess->send(Messages::NetworkProcess::ClearCachedCredentials(), 0);
 }
 
+void WebProcessPool::terminateDatabaseProcess()
+{
+#if ENABLE(DATABASE_PROCESS)
+    ASSERT(m_processes.isEmpty());
+    if (!m_databaseProcess)
+        return;
+
+    m_databaseProcess->terminate();
+    m_databaseProcess = nullptr;
+#endif
+}
+
 void WebProcessPool::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
 {
     if (m_networkProcess)
@@ -1319,6 +1334,17 @@ void WebProcessPool::setFontWhitelist(API::Array* array)
                 m_fontWhitelist.append(font->string());
         }
     }
+}
+
+void WebProcessPool::updateHiddenPageThrottlingAutoIncreaseLimit()
+{
+    // We're estimating an upper bound for a set of background timer fires for a page to be 200ms
+    // (including all timer fires, all paging-in, and any resulting GC). To ensure this does not
+    // result in more than 1% CPU load allow for one timer fire per 100x this duration.
+    static int maximumTimerThrottlePerPageInMS = 200 * 100;
+
+    int limitInMilliseconds = maximumTimerThrottlePerPageInMS * m_hiddenPageThrottlingAutoIncreasesCounter.value();
+    sendToAllProcesses(Messages::WebProcess::SetHiddenPageTimerThrottlingIncreaseLimit(limitInMilliseconds));
 }
 
 } // namespace WebKit

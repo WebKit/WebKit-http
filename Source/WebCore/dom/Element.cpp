@@ -212,9 +212,14 @@ void Element::setTabIndexExplicitly(short tabIndex)
     ensureElementRareData().setTabIndexExplicitly(tabIndex);
 }
 
-bool Element::supportsFocus() const
+bool Element::tabIndexSetExplicitly() const
 {
     return hasRareData() && elementRareData()->tabIndexSetExplicitly();
+}
+
+bool Element::supportsFocus() const
+{
+    return tabIndexSetExplicitly();
 }
 
 Element* Element::focusDelegate()
@@ -2765,9 +2770,7 @@ URL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 
 int Element::getIntegralAttribute(const QualifiedName& attributeName) const
 {
-    int value = 0;
-    parseHTMLInteger(getAttribute(attributeName), value);
-    return value;
+    return parseHTMLInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setIntegralAttribute(const QualifiedName& attributeName, int value)
@@ -2777,14 +2780,12 @@ void Element::setIntegralAttribute(const QualifiedName& attributeName, int value
 
 unsigned Element::getUnsignedIntegralAttribute(const QualifiedName& attributeName) const
 {
-    unsigned value = 0;
-    parseHTMLNonNegativeInteger(getAttribute(attributeName), value);
-    return value;
+    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value)
 {
-    setAttribute(attributeName, AtomicString::number(value));
+    setAttribute(attributeName, AtomicString::number(limitToOnlyHTMLNonNegative(value)));
 }
 
 #if ENABLE(INDIE_UI)
@@ -3269,7 +3270,7 @@ void Element::didDetachRenderers()
     ASSERT(hasCustomStyleResolveCallbacks());
 }
 
-RefPtr<RenderStyle> Element::customStyleForRenderer(RenderStyle&)
+RefPtr<RenderStyle> Element::customStyleForRenderer(RenderStyle&, RenderStyle*)
 {
     ASSERT(hasCustomStyleResolveCallbacks());
     return nullptr;

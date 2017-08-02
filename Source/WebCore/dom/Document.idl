@@ -54,23 +54,27 @@
 
     [ObjCLegacyUnnamedParameters, NewObject, RaisesException] Node importNode([Default=Undefined] optional Node importedNode,
                     optional boolean deep);
-    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] Element createElementNS([TreatNullAs=NullString,TreatUndefinedAs=NullString,Default=Undefined] optional DOMString namespaceURI,
-                            [TreatNullAs=NullString,Default=Undefined] optional DOMString qualifiedName);
-    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] Attr createAttributeNS([TreatNullAs=NullString,TreatUndefinedAs=NullString,Default=Undefined] optional DOMString namespaceURI,
-                                                                          [TreatNullAs=NullString,Default=Undefined] optional DOMString qualifiedName);
+
+    // FIXME: 'qualifiedName' should not have [TreatNullAs=EmptyString].
+    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] Element createElementNS([Default=Undefined] optional DOMString? namespaceURI,
+        [TreatNullAs=EmptyString, Default=Undefined] optional DOMString qualifiedName);
+
+    // FIXME: 'qualifiedName' should not have [TreatNullAs=EmptyString].
+    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] Attr createAttributeNS([Default=Undefined] optional DOMString? namespaceURI,
+        [TreatNullAs=EmptyString, Default=Undefined] optional DOMString qualifiedName);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI, [Default=Undefined] optional DOMString localName);
+    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(optional DOMString namespaceURI, optional DOMString localName);
 #else
-    HTMLCollection getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI, [Default=Undefined] optional DOMString localName);
+    HTMLCollection getElementsByTagNameNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
 #endif
 
     // DOM Level 3 Core
 
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString inputEncoding;
 
-    [TreatReturnedNullStringAs=Null] readonly attribute DOMString xmlEncoding;
-    [TreatReturnedNullStringAs=Null, TreatNullAs=NullString, SetterRaisesException] attribute DOMString xmlVersion;
+    readonly attribute DOMString? xmlEncoding;
+    [SetterRaisesException] attribute DOMString? xmlVersion;
     [SetterRaisesException] attribute boolean xmlStandalone;
 
     [RaisesException] Node               adoptNode([Default=Undefined] optional Node source);
@@ -80,7 +84,7 @@
     // (see http://www.w3.org/TR/2011/WD-dom-20110915/#document). We need to keep
     // the writable version around for Objective C clients, but are moving to
     // read-only for other clients.
-             [TreatReturnedNullStringAs=Null, TreatNullAs=NullString] attribute DOMString documentURI;
+    attribute DOMString? documentURI;
 #else
     [ImplementedAs=urlForBindings] readonly attribute DOMString documentURI;
 #endif
@@ -141,7 +145,7 @@
     // Common extensions
     boolean            execCommand([Default=Undefined] optional DOMString command,
                                    [Default=Undefined] optional boolean userInterface,
-                                   [TreatNullAs=NullString, TreatUndefinedAs=NullString, Default=Undefined] optional DOMString value);
+                                   optional DOMString? value);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // FIXME: remove the these two versions once optional is implemented for Objective-C.
@@ -158,16 +162,20 @@
 
     // Moved down from HTMLDocument
 
-             [TreatNullAs=NullString] attribute DOMString title;
+    // FIXME: Should not have [TreatNullAs=EmptyString].
+    [TreatNullAs=EmptyString] attribute DOMString title;
+
     readonly attribute DOMString referrer;
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [TreatNullAs=NullString, SetterRaisesException] attribute DOMString domain;
+    // FIXME: Should not have [TreatNullAs=EmptyString].
+    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString domain;
 #else
     readonly attribute DOMString domain;
 #endif
     [ImplementedAs=urlForBindings] readonly attribute DOMString URL;
 
-    [TreatNullAs=NullString, GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
+    // FIXME: Should not have [TreatNullAs=EmptyString].
+    [TreatNullAs=EmptyString, GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
 
     [SetterRaisesException, ImplementedAs=bodyOrFrameset, StrictTypeChecking] attribute HTMLElement body;
 
@@ -188,12 +196,12 @@
     // IE extensions
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    [TreatReturnedNullStringAs=Undefined, TreatNullAs=NullString] attribute DOMString charset;
+    attribute DOMString charset;
 #else
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString charset;
 #endif
-    [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString defaultCharset;
-    [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString readyState;
+    readonly attribute DOMString defaultCharset;
+    readonly attribute DOMString readyState;
 
     Element            elementFromPoint([Default=Undefined] optional long x, 
                                         [Default=Undefined] optional long y);
@@ -208,8 +216,8 @@
 
     // WebKit extensions
 
-    [TreatReturnedNullStringAs=Null] readonly attribute DOMString preferredStylesheetSet;
-             [TreatReturnedNullStringAs=Null, TreatNullAs=NullString] attribute DOMString selectedStylesheetSet;
+    readonly attribute DOMString? preferredStylesheetSet;
+    attribute DOMString? selectedStylesheetSet;
 
 #if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
     CSSStyleDeclaration createCSSStyleDeclaration();
@@ -293,9 +301,6 @@
     // Page visibility API.
     readonly attribute DOMString visibilityState;
     readonly attribute boolean hidden;
-
-    // Security Policy API: http://dvcs.w3.org/hg/content-security-policy/raw-file/tip/csp-specification.dev.html#script-interfaces
-    [Conditional=CSP_NEXT] readonly attribute DOMSecurityPolicy securityPolicy;
 
     // currentscript API: http://www.whatwg.org/specs/web-apps/current-work/multipage/dom.html#dom-document-currentscript
     readonly attribute HTMLScriptElement currentScript;

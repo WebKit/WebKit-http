@@ -38,56 +38,47 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         this._controlHandleRadius = 7;
         this._bezierWidth = editorWidth - (this._controlHandleRadius * 2);
         this._bezierHeight = editorHeight - (this._controlHandleRadius * 2) - (this._padding * 2);
-        this._bezierPreviewAnimationStyleText = "bezierPreview 2s 250ms forwards ";
 
-        var bezierPreviewContainer = document.createElement("div");
-        bezierPreviewContainer.id = "bezierPreview";
-        bezierPreviewContainer.classList.add("bezier-preview");
-        bezierPreviewContainer.title = WebInspector.UIString("Click to restart the animation");
-        bezierPreviewContainer.addEventListener("mousedown", this._resetPreviewAnimation.bind(this));
+        this._bezierPreviewContainer = this._element.createChild("div", "bezier-preview");
+        this._bezierPreviewContainer.title = WebInspector.UIString("Click to restart the animation");
+        this._bezierPreviewContainer.addEventListener("mousedown", this._resetPreviewAnimation.bind(this));
 
-        this._bezierPreview = document.createElement("div");
-        bezierPreviewContainer.appendChild(this._bezierPreview);
+        this._bezierPreview = this._bezierPreviewContainer.createChild("div");
 
-        this._element.appendChild(bezierPreviewContainer);
+        this._bezierPreviewTiming = this._element.createChild("div", "bezier-preview-timing");
 
-        this._bezierContainer = createSVGElement("svg");
-        this._bezierContainer.id = "bezierContainer";
+        this._bezierContainer = this._element.appendChild(createSVGElement("svg"));
         this._bezierContainer.setAttribute("width", editorWidth);
         this._bezierContainer.setAttribute("height", editorHeight);
         this._bezierContainer.classList.add("bezier-container");
 
-        var svgGroup = createSVGElement("g");
+        let svgGroup = this._bezierContainer.appendChild(createSVGElement("g"));
         svgGroup.setAttribute("transform", "translate(0, " + this._padding + ")");
 
-        var linearCurve = createSVGElement("line");
+        let linearCurve = svgGroup.appendChild(createSVGElement("line"));
         linearCurve.classList.add("linear-curve");
         linearCurve.setAttribute("x1", this._controlHandleRadius);
         linearCurve.setAttribute("y1", this._bezierHeight + this._controlHandleRadius);
         linearCurve.setAttribute("x2", this._bezierWidth + this._controlHandleRadius);
         linearCurve.setAttribute("y2", this._controlHandleRadius);
-        svgGroup.appendChild(linearCurve);
 
-        this._bezierCurve = createSVGElement("path");
+        this._bezierCurve = svgGroup.appendChild(createSVGElement("path"));
         this._bezierCurve.classList.add("bezier-curve");
-        svgGroup.appendChild(this._bezierCurve);
 
         function createControl(x1, y1)
         {
             x1 += this._controlHandleRadius;
             y1 += this._controlHandleRadius;
 
-            var line = createSVGElement("line");
+            let line = svgGroup.appendChild(createSVGElement("line"));
             line.classList.add("control-line");
             line.setAttribute("x1", x1);
             line.setAttribute("y1", y1);
             line.setAttribute("x2", x1);
             line.setAttribute("y2", y1);
-            svgGroup.appendChild(line);
 
-            var handle = createSVGElement("circle");
+            let handle = svgGroup.appendChild(createSVGElement("circle"));
             handle.classList.add("control-handle");
-            svgGroup.appendChild(handle);
 
             return {point: null, line, handle};
         }
@@ -95,15 +86,26 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         this._inControl = createControl.call(this, 0, this._bezierHeight);
         this._outControl = createControl.call(this, this._bezierWidth, 0);
 
-        this._bezierContainer.appendChild(svgGroup);
-        this._element.appendChild(this._bezierContainer);
+        this._numberInputContainer = this._element.createChild("div", "number-input-container");
 
-        this._bezierPreviewTiming = document.createElement("div");
-        this._bezierPreviewTiming.classList.add("bezier-preview-timing");
-        this._element.appendChild(this._bezierPreviewTiming);
+        function createBezierInput(id, className)
+        {
+            let key = "_bezier" + id + "Input";
+            this[key] = this._numberInputContainer.createChild("input", className);
+            this[key].addEventListener("input", this._handleNumberInputInput.debounce(250, this));
+            this[key].addEventListener("keydown", this._handleNumberInputKeydown.bind(this));
+        }
+
+        createBezierInput.call(this, "InX", "in-x");
+        createBezierInput.call(this, "InY", "in-y");
+        createBezierInput.call(this, "OutX", "out-x");
+        createBezierInput.call(this, "OutY", "out-y");
 
         this._selectedControl = null;
+        this._mouseDownPosition = null;
         this._bezierContainer.addEventListener("mousedown", this);
+
+        WebInspector.addWindowKeydownListener(this);
     }
 
     // Public
@@ -124,16 +126,17 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
             return;
 
         this._bezier = bezier;
-        this._inControl.point = new WebInspector.Point(this._bezier.inPoint.x * this._bezierWidth, (1 - this._bezier.inPoint.y) * this._bezierHeight);
-        this._outControl.point = new WebInspector.Point(this._bezier.outPoint.x * this._bezierWidth, (1 - this._bezier.outPoint.y) * this._bezierHeight);
-
-        this._updateBezier();
-        this._triggerPreviewAnimation();
+        this._updateBezierPreview();
     }
 
     get bezier()
     {
         return this._bezier;
+    }
+
+    removeListeners()
+    {
+        WebInspector.removeWindowKeydownListener(this);
     }
 
     // Protected
@@ -153,6 +156,46 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         }
     }
 
+    handleKeydownEvent(event)
+    {
+        if (!this._selectedControl || !this._element.parentNode)
+            return false;
+
+        let horizontal = 0;
+        let vertical = 0;
+        switch (event.keyCode) {
+        case WebInspector.KeyboardShortcut.Key.Up.keyCode:
+            vertical = -1;
+            break;
+        case WebInspector.KeyboardShortcut.Key.Right.keyCode:
+            horizontal = 1;
+            break;
+        case WebInspector.KeyboardShortcut.Key.Down.keyCode:
+            vertical = 1;
+            break;
+        case WebInspector.KeyboardShortcut.Key.Left.keyCode:
+            horizontal = -1;
+            break;
+        default:
+            return false;
+        }
+
+        if (event.shiftKey) {
+            horizontal *= 10;
+            vertical *= 10;
+        }
+
+        vertical *= this._bezierWidth / 100;
+        horizontal *= this._bezierHeight / 100;
+
+        this._selectedControl.point.x = Number.constrain(this._selectedControl.point.x + horizontal, 0, this._bezierWidth);
+        this._selectedControl.point.y += vertical;
+        this._updateControl(this._selectedControl);
+        this._updateValue();
+
+        return true;
+    }
+
     // Private
 
     _handleMousedown(event)
@@ -163,7 +206,7 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         window.addEventListener("mousemove", this, true);
         window.addEventListener("mouseup", this, true);
 
-        this._bezierPreview.style.animation = null;
+        this._bezierPreviewContainer.classList.remove("animate");
         this._bezierPreviewTiming.classList.remove("animate");
 
         this._updateControlPointsForMouseEvent(event, true);
@@ -177,7 +220,7 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
     _handleMouseup(event)
     {
         this._selectedControl.handle.classList.remove("selected");
-        this._selectedControl = null;
+        this._mouseDownPosition = null;
         this._triggerPreviewAnimation();
 
         window.removeEventListener("mousemove", this, true);
@@ -191,10 +234,19 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         point.y -= this._controlHandleRadius + this._padding;
 
         if (calculateSelectedControlPoint) {
+            this._mouseDownPosition = point;
+
             if (this._inControl.point.distance(point) < this._outControl.point.distance(point))
                 this._selectedControl = this._inControl;
             else
                 this._selectedControl = this._outControl;
+        }
+
+        if (event.shiftKey && this._mouseDownPosition) {
+            if (Math.abs(this._mouseDownPosition.x - point.x) > Math.abs(this._mouseDownPosition.y - point.y))
+                point.y = this._mouseDownPosition.y;
+            else
+                point.x = this._mouseDownPosition.x;
         }
 
         this._selectedControl.point = point;
@@ -232,6 +284,11 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         this._bezierCurve.setAttribute("d", path);
         this._updateControl(this._inControl);
         this._updateControl(this._outControl);
+
+        this._bezierInXInput.value = this._bezier.inPoint.x;
+        this._bezierInYInput.value = this._bezier.inPoint.y;
+        this._bezierOutXInput.value = this._bezier.outPoint.x;
+        this._bezierOutYInput.value = this._bezier.outPoint.y;
     }
 
     _updateControl(control)
@@ -243,9 +300,19 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
         control.line.setAttribute("y2", control.point.y + this._controlHandleRadius);
     }
 
+    _updateBezierPreview()
+    {
+        this._inControl.point = new WebInspector.Point(this._bezier.inPoint.x * this._bezierWidth, (1 - this._bezier.inPoint.y) * this._bezierHeight);
+        this._outControl.point = new WebInspector.Point(this._bezier.outPoint.x * this._bezierWidth, (1 - this._bezier.outPoint.y) * this._bezierHeight);
+
+        this._updateBezier();
+        this._triggerPreviewAnimation();
+    }
+
     _triggerPreviewAnimation()
     {
-        this._bezierPreview.style.animation = this._bezierPreviewAnimationStyleText + this._bezier.toString();
+        this._bezierPreview.style.animationTimingFunction = this._bezier.toString();
+        this._bezierPreviewContainer.classList.add("animate");
         this._bezierPreviewTiming.classList.add("animate");
     }
 
@@ -257,6 +324,55 @@ WebInspector.BezierEditor = class BezierEditor extends WebInspector.Object
 
         this._element.removeChild(this._bezierPreviewTiming);
         this._element.appendChild(this._bezierPreviewTiming);
+    }
+
+    _handleNumberInputInput(event)
+    {
+        this._changeBezierForInput(event.target, event.target.value);
+    }
+
+    _handleNumberInputKeydown(event)
+    {
+        let shift = 0;
+        if (event.keyIdentifier === "Up")
+            shift = 0.01;
+         else if (event.keyIdentifier === "Down")
+            shift = -0.01;
+
+        if (!shift)
+            return;
+
+        if (event.shiftKey)
+            shift *= 10;
+
+        event.preventDefault();
+        this._changeBezierForInput(event.target, parseFloat(event.target.value) + shift);
+    }
+
+    _changeBezierForInput(target, value)
+    {
+        value = Math.round(value * 100) / 100;
+
+        switch (target) {
+        case this._bezierInXInput:
+            this._bezier.inPoint.x = Number.constrain(value, 0, 1);
+            break;
+        case this._bezierInYInput:
+            this._bezier.inPoint.y = value;
+            break;
+        case this._bezierOutXInput:
+            this._bezier.outPoint.x = Number.constrain(value, 0, 1);
+            break;
+        case this._bezierOutYInput:
+            this._bezier.outPoint.y = value;
+            break;
+        default:
+            return;
+        }
+
+        this._updateBezierPreview();
+
+        this.dispatchEventToListeners(WebInspector.BezierEditor.Event.BezierChanged, {bezier: this._bezier});
     }
 };
 

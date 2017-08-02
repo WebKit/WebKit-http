@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WKFrameInfoRef.h"
 
+#include "APIFrameHandle.h"
 #include "APIFrameInfo.h"
 #include "WKAPICast.h"
 
@@ -34,4 +35,9 @@ using namespace WebKit;
 WKTypeID WKFrameInfoGetTypeID()
 {
     return toAPI(API::FrameInfo::APIType);
+}
+
+WKFrameHandleRef WKFrameInfoGetFrameHandleRef(WKFrameInfoRef frameInfoRef)
+{
+    return toAPI(&toImpl(frameInfoRef)->handle());
 }

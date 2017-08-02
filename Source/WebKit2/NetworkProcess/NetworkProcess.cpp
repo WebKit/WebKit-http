@@ -31,6 +31,7 @@
 #include "AuthenticationManager.h"
 #include "ChildProcessMessages.h"
 #include "CustomProtocolManager.h"
+#include "DataReference.h"
 #include "DownloadProxyMessages.h"
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
@@ -45,6 +46,8 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebProcessPoolMessages.h"
 #include "WebsiteData.h"
+#include "WebsiteDataFetchOption.h"
+#include "WebsiteDataType.h"
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/Logging.h>
@@ -53,6 +56,7 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
+#include <wtf/OptionSet.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 
@@ -92,6 +96,9 @@ NetworkProcess::NetworkProcess()
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
     addSupplement<CustomProtocolManager>();
+#if USE(NETWORK_SESSION)
+    NetworkSession::setCustomProtocolManager(supplement<CustomProtocolManager>());
+#endif
 }
 
 NetworkProcess::~NetworkProcess()
@@ -266,6 +273,9 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 void NetworkProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
+#if USE(NETWORK_SESSION)
+    NetworkSession::defaultSession().clearCredentials();
+#endif
 }
 
 void NetworkProcess::ensurePrivateBrowsingSession(SessionID sessionID)
@@ -278,20 +288,23 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
     SessionTracker::destroySession(sessionID);
 }
 
-static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vector<WebsiteData::Entry>)> completionHandler)
+static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, std::function<void (Vector<WebsiteData::Entry>)> completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
-        auto* origins = new HashSet<RefPtr<SecurityOrigin>>();
+        auto* originsAndSizes = new HashMap<RefPtr<SecurityOrigin>, uint64_t>();
 
-        NetworkCache::singleton().traverse([completionHandler, origins](const NetworkCache::Entry *entry) {
-            if (!entry) {
+        NetworkCache::singleton().traverse([fetchOptions, completionHandler, originsAndSizes](const NetworkCache::Cache::TraversalEntry *traversalEntry) {
+            if (!traversalEntry) {
                 Vector<WebsiteData::Entry> entries;
 
-                for (auto& origin : *origins)
-                    entries.append(WebsiteData::Entry { origin, WebsiteDataTypeDiskCache });
+                for (auto& originAndSize : *originsAndSizes) {
+                    WebsiteData::Entry entry { originAndSize.key, WebsiteDataType::DiskCache, originAndSize.value };
 
-                delete origins;
+                    entries.append(WTFMove(entry));
+                }
+
+                delete originsAndSizes;
 
                 RunLoop::main().dispatch([completionHandler, entries] {
                     completionHandler(entries);
@@ -300,7 +313,10 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
                 return;
             }
 
-            origins->add(SecurityOrigin::create(entry->response().url()));
+            auto result = originsAndSizes->add(SecurityOrigin::create(traversalEntry->entry.response().url()), 0);
+
+            if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
+                result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
         });
 
         return;
@@ -311,7 +327,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
 
 #if USE(CFURLCACHE)
     for (auto& origin : NetworkProcess::cfURLCacheOrigins())
-        entries.append(WebsiteData::Entry { WTFMove(origin), WebsiteDataTypeDiskCache });
+        entries.append(WebsiteData::Entry { WTFMove(origin), WebsiteDataType::DiskCache, 0 });
 #endif
 
     RunLoop::main().dispatch([completionHandler, entries] {
@@ -319,7 +335,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
     });
 }
 
-void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, uint64_t callbackID)
+void NetworkProcess::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
 {
     struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
         explicit CallbackAggregator(std::function<void (WebsiteData)> completionHandler)
@@ -347,28 +363,28 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataT
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
     }));
 
-    if (websiteDataTypes & WebsiteDataTypeCookies) {
+    if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
         if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
             getHostnamesWithCookies(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithCookies);
     }
 
-    if (websiteDataTypes & WebsiteDataTypeDiskCache) {
-        fetchDiskCacheEntries(sessionID, [callbackAggregator](Vector<WebsiteData::Entry> entries) {
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
+        fetchDiskCacheEntries(sessionID, fetchOptions, [callbackAggregator](Vector<WebsiteData::Entry> entries) {
             callbackAggregator->m_websiteData.entries.appendVector(entries);
         });
     }
 }
 
-void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+void NetworkProcess::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
 #if PLATFORM(COCOA)
-    if (websiteDataTypes & WebsiteDataTypeHSTSCache) {
+    if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
         if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
             clearHSTSCache(*networkStorageSession, modifiedSince);
     }
 #endif
 
-    if (websiteDataTypes & WebsiteDataTypeCookies) {
+    if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
         if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
             deleteAllCookiesModifiedSince(*networkStorageSession, modifiedSince);
     }
@@ -377,7 +393,7 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteData
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteData(callbackID), 0);
     };
 
-    if ((websiteDataTypes & WebsiteDataTypeDiskCache) && !sessionID.isEphemeral()) {
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral()) {
         clearDiskCache(modifiedSince, WTFMove(completionHandler));
         return;
     }
@@ -396,11 +412,11 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, std
 
         auto* cacheKeysToDelete = new Vector<NetworkCache::Key>;
 
-        NetworkCache::singleton().traverse([completionHandler, originsToDelete, cacheKeysToDelete](const NetworkCache::Entry *entry) {
+        NetworkCache::singleton().traverse([completionHandler, originsToDelete, cacheKeysToDelete](const NetworkCache::Cache::TraversalEntry *traversalEntry) {
 
-            if (entry) {
-                if (originsToDelete->contains(SecurityOrigin::create(entry->response().url())))
-                    cacheKeysToDelete->append(entry->key());
+            if (traversalEntry) {
+                if (originsToDelete->contains(SecurityOrigin::create(traversalEntry->entry.response().url())))
+                    cacheKeysToDelete->append(traversalEntry->entry.key());
                 return;
             }
 
@@ -426,9 +442,9 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, std
     RunLoop::main().dispatch(WTFMove(completionHandler));
 }
 
-void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
+void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
 {
-    if (websiteDataTypes & WebsiteDataTypeCookies) {
+    if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
         if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
             deleteCookiesForHostnames(*networkStorageSession, cookieHostNames);
     }
@@ -437,7 +453,7 @@ void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t w
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
     };
 
-    if ((websiteDataTypes & WebsiteDataTypeDiskCache) && !sessionID.isEphemeral()) {
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral()) {
         clearDiskCacheEntries(origins, WTFMove(completionHandler));
         return;
     }
@@ -471,18 +487,23 @@ void NetworkProcess::continueWillSendRequest(DownloadID downloadID, const WebCor
     downloadManager().continueWillSendRequest(downloadID, request);
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, String suggestedFilename, ResponseCompletionHandler completionHandler)
+void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
+{
+    downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
+}
+
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler completionHandler)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
     downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(networkDataTask.currentRequest()), destinationID);
     
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, completionHandler);
-    downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), suggestedFilename), destinationID);
+    downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
 }
     
-void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle)
+void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
 {
-    downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle);
+    downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle, allowOverwrite);
 }
 #endif
 

@@ -94,12 +94,6 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include "NativeWebTouchEvent.h"
 #endif
 
-#if PLATFORM(EFL)
-#include "WKPageEfl.h"
-#include "WebUIPopupMenuClient.h"
-#include <Evas.h>
-#endif
-
 #if PLATFORM(COCOA)
 #include "LayerRepresentation.h"
 #endif
@@ -157,7 +151,6 @@ class DragData;
 class FloatRect;
 class GraphicsLayer;
 class IntSize;
-class MediaConstraintsImpl;
 class ProtectionSpace;
 class RunLoopObserver;
 class SharedBuffer;
@@ -177,6 +170,9 @@ typedef GtkWidget* PlatformWidget;
 #endif
 
 namespace WebKit {
+
+enum HiddenPageThrottlingAutoIncreasesCounterType { };
+typedef RefCounter<HiddenPageThrottlingAutoIncreasesCounterType> HiddenPageThrottlingAutoIncreasesCounter;
 
 class CertificateInfo;
 class NativeWebGestureEvent;
@@ -357,9 +353,6 @@ public:
 
     API::UIClient& uiClient() { return *m_uiClient; }
     void setUIClient(std::unique_ptr<API::UIClient>);
-#if PLATFORM(EFL)
-    void initializeUIPopupMenuClient(const WKPageUIPopupMenuClientBase*);
-#endif
 
     void initializeWebPage();
 
@@ -1069,7 +1062,7 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
-    void showPlaybackTargetPicker(uint64_t, const WebCore::FloatRect&, bool hasVideo);
+    void showPlaybackTargetPicker(uint64_t, const WebCore::FloatRect&, bool hasVideo, const String&);
     void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags);
     void setMockMediaPlaybackTargetPickerEnabled(bool);
     void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State);
@@ -1078,6 +1071,7 @@ public:
     virtual void setPlaybackTarget(uint64_t, Ref<WebCore::MediaPlaybackTarget>&&) override;
     virtual void externalOutputDeviceAvailableDidChange(uint64_t, bool) override;
     virtual void setShouldPlayToPlaybackTarget(uint64_t, bool) override;
+    virtual void customPlaybackActionSelected(uint64_t) override;
 #endif
 
     void didChangeBackgroundColor();
@@ -1098,6 +1092,7 @@ private:
     void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
     void updateActivityToken();
     void updateProccessSuppressionState();
+    void updateHiddenPageThrottlingAutoIncreases();
 
     enum class ResetStateReason {
         PageInvalidated,
@@ -1207,8 +1202,8 @@ private:
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
 
-    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, const Vector<String>& audioDeviceUIDs, const Vector<String>& videoDeviceUIDs);
-    void checkUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier);
+    void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, const Vector<String>& audioDeviceUIDs, const Vector<String>& videoDeviceUIDs);
+    void checkUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier);
 
     void runModal();
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&);
@@ -1495,9 +1490,6 @@ private:
     std::unique_ptr<API::HistoryClient> m_historyClient;
     std::unique_ptr<API::FormClient> m_formClient;
     std::unique_ptr<API::UIClient> m_uiClient;
-#if PLATFORM(EFL)
-    WebUIPopupMenuClient m_uiPopupMenuClient;
-#endif
     std::unique_ptr<API::FindClient> m_findClient;
     std::unique_ptr<API::FindMatchesClient> m_findMatchesClient;
     std::unique_ptr<API::DiagnosticLoggingClient> m_diagnosticLoggingClient;
@@ -1520,7 +1512,7 @@ private:
 
     WebProcessLifetimeTracker m_webProcessLifetimeTracker { *this };
 
-    const RefPtr<WebUserContentControllerProxy> m_userContentController;
+    Ref<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkStore> m_visitedLinkStore;
     Ref<WebsiteDataStore> m_websiteDataStore;
 
@@ -1773,8 +1765,9 @@ private:
     std::unique_ptr<RemoteLayerTreeScrollingPerformanceData> m_scrollingPerformanceData;
     bool m_scrollPerformanceDataCollectionEnabled;
 #endif
-    UserObservablePageToken m_pageIsUserObservableCount;
+    UserObservablePageCounter::Token m_pageIsUserObservableCount;
     ProcessSuppressionDisabledToken m_preventProcessSuppressionCount;
+    HiddenPageThrottlingAutoIncreasesCounter::Token m_hiddenPageDOMTimerThrottlingAutoIncreasesCount;
         
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
     WTF::Optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;

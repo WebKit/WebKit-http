@@ -199,6 +199,7 @@
     macro(ShowsURLsInToolTipsEnabled, showsURLsInToolTipsEnabled, Bool, bool, false) \
     macro(AcceleratedCompositingForOverflowScrollEnabled, acceleratedCompositingForOverflowScrollEnabled, Bool, bool, false) \
     macro(HiddenPageDOMTimerThrottlingEnabled, hiddenPageDOMTimerThrottlingEnabled, Bool, bool, DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED) \
+    macro(HiddenPageDOMTimerThrottlingAutoIncreases, hiddenPageDOMTimerThrottlingAutoIncreases, Bool, bool, false) \
     macro(HiddenPageCSSAnimationSuspensionEnabled, hiddenPageCSSAnimationSuspensionEnabled, Bool, bool, DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED) \
     macro(LowPowerVideoAudioBufferSizeEnabled, lowPowerVideoAudioBufferSizeEnabled, Bool, bool, false) \
     macro(ThreadedScrollingEnabled, threadedScrollingEnabled, Bool, bool, true) \
@@ -221,7 +222,6 @@
     macro(ServiceControlsEnabled, serviceControlsEnabled, Bool, bool, false) \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false) \
     macro(NewBlockInsideInlineModelEnabled, newBlockInsideInlineModelEnabled, Bool, bool, false) \
-    macro(AntialiasedFontDilationEnabled, antialiasedFontDilationEnabled, Bool, bool, false) \
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true) \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false) \
     FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE(macro) \

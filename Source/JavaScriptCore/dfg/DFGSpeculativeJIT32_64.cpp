@@ -2292,7 +2292,9 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case ArithRound:
-        compileArithRound(node);
+    case ArithFloor:
+    case ArithCeil:
+        compileArithRounding(node);
         break;
 
     case ArithSin: {
@@ -2834,26 +2836,6 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpExec: {
-        if (compileRegExpExec(node))
-            return;
-
-        if (!node->adjustedRefCount()) {
-            SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand argument(this, node->child2());
-            GPRReg baseGPR = base.gpr();
-            GPRReg argumentGPR = argument.gpr();
-            
-            flushRegisters();
-            GPRFlushedCallResult result(this);
-            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
-            m_jit.exceptionCheck();
-            
-            // Must use jsValueResult because otherwise we screw up register
-            // allocation, which thinks that this node has a result.
-            booleanResult(result.gpr(), node);
-            break;
-        }
-
         SpeculateCellOperand base(this, node->child1());
         SpeculateCellOperand argument(this, node->child2());
         GPRReg baseGPR = base.gpr();
@@ -3252,22 +3234,17 @@ void SpeculativeJIT::compile(Node* node)
         
         op1.use();
         
-        if (!(m_state.forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean))) {
-            m_jit.move(op1TagGPR, resultTagGPR);
-            m_jit.move(op1PayloadGPR, resultPayloadGPR);
-        } else {
-            MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(op1.jsValueRegs());
-            MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(op1PayloadGPR);
-            
-            alreadyPrimitive.link(&m_jit);
-            m_jit.move(op1TagGPR, resultTagGPR);
-            m_jit.move(op1PayloadGPR, resultPayloadGPR);
-            
-            addSlowPathGenerator(
-                slowPathCall(
-                    notPrimitive, this, operationToPrimitive,
-                    JSValueRegs(resultTagGPR, resultPayloadGPR), op1TagGPR, op1PayloadGPR));
-        }
+        MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(op1.jsValueRegs());
+        MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(op1PayloadGPR);
+        
+        alreadyPrimitive.link(&m_jit);
+        m_jit.move(op1TagGPR, resultTagGPR);
+        m_jit.move(op1PayloadGPR, resultPayloadGPR);
+        
+        addSlowPathGenerator(
+            slowPathCall(
+                notPrimitive, this, operationToPrimitive,
+                JSValueRegs(resultTagGPR, resultPayloadGPR), op1TagGPR, op1PayloadGPR));
         
         jsValueResult(resultTagGPR, resultPayloadGPR, node, UseChildrenCalledExplicitly);
         break;
@@ -4851,6 +4828,7 @@ void SpeculativeJIT::compile(Node* node)
     case KillStack:
     case GetStack:
     case GetMyArgumentByVal:
+    case StringReplace:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

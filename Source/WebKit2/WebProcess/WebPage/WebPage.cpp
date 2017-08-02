@@ -158,6 +158,8 @@
 #include <WebCore/SubstituteData.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/UserInputBridge.h>
+#include <WebCore/UserScript.h>
+#include <WebCore/UserStyleSheet.h>
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/markup.h>
@@ -307,7 +309,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
 #endif
-    , m_userContentController(parameters.userContentControllerID ? WebUserContentController::getOrCreate(parameters.userContentControllerID) : nullptr)
+    , m_userContentController(WebUserContentController::getOrCreate(parameters.userContentControllerID))
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
 #endif
@@ -394,7 +396,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroup->pageGroupID());
     pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::getOrCreate(m_pageGroup->pageGroupID());
-    pageConfiguration.userContentController = m_userContentController ? &m_userContentController->userContentController() : &m_pageGroup->userContentController();
+    pageConfiguration.userContentController = &m_userContentController->userContentController();
     pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -402,6 +404,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 
     m_page = std::make_unique<Page>(pageConfiguration);
+    updatePreferences(parameters.store);
 
     m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
@@ -415,6 +418,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 
     m_mainFrame = WebFrame::createWithCoreMainFrame(this, &m_page->mainFrame());
+    m_drawingArea->updatePreferences(parameters.store);
 
 #if ENABLE(BATTERY_STATUS)
     WebCore::provideBatteryTo(m_page.get(), new WebBatteryClient(this));
@@ -449,7 +453,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_page->setTextAutosizingWidth(parameters.textAutosizingWidth);
 #endif
 
-    updatePreferences(parameters.store);
     platformInitialize();
 
     setUseFixedLayout(parameters.useFixedLayout);
@@ -490,7 +493,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     WebBackForwardListProxy::setHighestItemIDFromUIProcess(parameters.highestUsedBackForwardItemID);
     
     if (!parameters.itemStates.isEmpty())
-        restoreSession(parameters.itemStates);
+        restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No);
 
     if (parameters.sessionID.isValid())
         setSessionID(parameters.sessionID);
@@ -2231,10 +2234,18 @@ void WebPage::executeEditCommand(const String& commandName, const String& argume
     executeEditingCommand(commandName, argument);
 }
 
+void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& itemStates, WasRestoredByAPIRequest restoredByAPIRequest)
+{
+    for (const auto& itemState : itemStates) {
+        auto historyItem = toHistoryItem(itemState.pageState);
+        historyItem->setWasRestoredFromSession(restoredByAPIRequest == WasRestoredByAPIRequest::Yes);
+        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID);
+    }
+}
+
 void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
 {
-    for (const auto& itemState : itemStates)
-        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, toHistoryItem(itemState.pageState), m_pageID);
+    restoreSessionInternal(itemStates, WasRestoredByAPIRequest::Yes);
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2969,6 +2980,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShowsURLsInToolTips(store.getBoolValueForKey(WebPreferencesKey::showsURLsInToolTipsEnabledKey()));
 
     settings.setHiddenPageDOMTimerThrottlingEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageDOMTimerThrottlingEnabledKey()));
+    settings.setHiddenPageDOMTimerThrottlingAutoIncreases(store.getBoolValueForKey(WebPreferencesKey::hiddenPageDOMTimerThrottlingAutoIncreasesKey()));
 
     settings.setHiddenPageCSSAnimationSuspensionEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageCSSAnimationSuspensionEnabledKey()));
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
@@ -2976,7 +2988,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
     settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
-    settings.setAntialiasedFontDilationEnabled(store.getBoolValueForKey(WebPreferencesKey::antialiasedFontDilationEnabledKey()));
     
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
@@ -3475,9 +3486,9 @@ void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool a
     m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed, audioDeviceUID, videoDeviceUID);
 }
 
-void WebPage::didCompleteUserMediaPermissionCheck(uint64_t userMediaID, bool allowed)
+void WebPage::didCompleteUserMediaPermissionCheck(uint64_t userMediaID, const String& mediaDeviceIdentifierHashSalt, bool allowed)
 {
-    m_userMediaPermissionRequestManager.didCompleteUserMediaPermissionCheck(userMediaID, allowed);
+    m_userMediaPermissionRequestManager.didCompleteUserMediaPermissionCheck(userMediaID, mediaDeviceIdentifierHashSalt, allowed);
 }
 #endif
 
@@ -5173,8 +5184,6 @@ void WebPage::imageOrMediaDocumentSizeChanged(const IntSize& newSize)
 
 void WebPage::addUserScript(const String& source, WebCore::UserContentInjectedFrames injectedFrames, WebCore::UserScriptInjectionTime injectionTime)
 {
-    ASSERT(m_userContentController);
-
     WebCore::UserScript userScript(source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectionTime, injectedFrames);
 
     m_userContentController->userContentController().addUserScript(mainThreadNormalWorld(), std::make_unique<WebCore::UserScript>(userScript));
@@ -5182,8 +5191,6 @@ void WebPage::addUserScript(const String& source, WebCore::UserContentInjectedFr
 
 void WebPage::addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames injectedFrames)
 {
-    ASSERT(m_userContentController);
-
     WebCore::UserStyleSheet userStyleSheet(source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectedFrames, UserStyleUserLevel);
 
     m_userContentController->userContentController().addUserStyleSheet(mainThreadNormalWorld(), std::make_unique<WebCore::UserStyleSheet>(userStyleSheet), InjectInExistingDocuments);
@@ -5191,9 +5198,6 @@ void WebPage::addUserStyleSheet(const String& source, WebCore::UserContentInject
 
 void WebPage::removeAllUserContent()
 {
-    if (!m_userContentController)
-        return;
-
     m_userContentController->userContentController().removeAllUserContent();
 }
 

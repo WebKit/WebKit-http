@@ -329,6 +329,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setHiddenPageDOMTimerThrottlingEnabled(hiddenPageDOMTimerThrottlingEnabled);
 }
 
+- (BOOL)_hiddenPageDOMTimerThrottlingAutoIncreases
+{
+    return _preferences->hiddenPageDOMTimerThrottlingAutoIncreases();
+}
+
+- (void)_setHiddenPageDOMTimerThrottlingAutoIncreases:(BOOL)hiddenPageDOMTimerThrottlingAutoIncreases
+{
+    _preferences->setHiddenPageDOMTimerThrottlingAutoIncreases(hiddenPageDOMTimerThrottlingAutoIncreases);
+}
+
 - (BOOL)_pageVisibilityBasedProcessSuppressionEnabled
 {
     return _preferences->pageVisibilityBasedProcessSuppressionEnabled();
@@ -377,16 +387,6 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setDiagnosticLoggingEnabled:(BOOL)diagnosticLoggingEnabled
 {
     _preferences->setDiagnosticLoggingEnabled(diagnosticLoggingEnabled);
-}
-
-- (BOOL)_antialiasedFontDilationEnabled
-{
-    return _preferences->antialiasedFontDilationEnabled();
-}
-
-- (void)_setAntialiasedFontDilationEnabled:(BOOL)antialiasedFontDilationEnabled
-{
-    _preferences->setAntialiasedFontDilationEnabled(antialiasedFontDilationEnabled);
 }
 
 - (NSUInteger)_defaultFontSize

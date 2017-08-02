@@ -37,6 +37,7 @@
 #include <WebCore/IDBCursorInfo.h>
 #include <WebCore/IDBError.h>
 #include <WebCore/IDBIndexInfo.h>
+#include <WebCore/IDBKeyRangeData.h>
 #include <WebCore/IDBObjectStoreInfo.h>
 #include <WebCore/IDBOpenDBRequestImpl.h>
 #include <WebCore/IDBRequestData.h>
@@ -48,27 +49,17 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static uint64_t generateConnectionToServerIdentifier()
-{
-    ASSERT(RunLoop::isMain());
-    static uint64_t identifier = 0;
-    return ++identifier;
-}
-
 Ref<WebIDBConnectionToServer> WebIDBConnectionToServer::create()
 {
     return adoptRef(*new WebIDBConnectionToServer);
 }
 
 WebIDBConnectionToServer::WebIDBConnectionToServer()
-    : m_identifier(generateConnectionToServerIdentifier())
 {
     relaxAdoptionRequirement();
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
 
-    send(Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer(m_identifier));
-
-    m_isOpenInServer = true;
+    m_isOpenInServer = sendSync(Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer(), m_identifier);
 }
 
 WebIDBConnectionToServer::~WebIDBConnectionToServer()
@@ -141,7 +132,7 @@ void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, IDBKe
 {
     IDBKeyData keyData(key);
     IPC::DataReference valueData(value.data());
-    send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, valueData, mode != IndexedDB::ObjectStoreOverwriteMode::NoOverwrite));
+    send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, valueData, static_cast<unsigned>(mode)));
 }
 
 void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& range)

@@ -103,8 +103,17 @@ struct MethodTable {
     typedef PassRefPtr<ArrayBufferView> (*GetTypedArrayImpl)(JSArrayBufferView*);
     GetTypedArrayImpl getTypedArrayImpl;
 
+    typedef bool (*PreventExtensionsFunctionPtr)(JSObject*, ExecState*);
+    PreventExtensionsFunctionPtr preventExtensions;
+
+    typedef bool (*IsExtensibleFunctionPtr)(JSObject*, ExecState*);
+    IsExtensibleFunctionPtr isExtensible;
+
     typedef void (*DumpToStreamFunctionPtr)(const JSCell*, PrintStream&);
     DumpToStreamFunctionPtr dumpToStream;
+
+    typedef size_t (*EstimatedSizeFunctionPtr)(JSCell*);
+    EstimatedSizeFunctionPtr estimatedSize;
 };
 
 #define CREATE_MEMBER_CHECKER(member) \
@@ -151,7 +160,10 @@ struct MethodTable {
         &ClassName::defineOwnProperty, \
         &ClassName::slowDownAndWasteMemory, \
         &ClassName::getTypedArrayImpl, \
-        &ClassName::dumpToStream \
+        &ClassName::preventExtensions, \
+        &ClassName::isExtensible, \
+        &ClassName::dumpToStream, \
+        &ClassName::estimatedSize \
     }, \
     ClassName::TypedArrayStorageType
 

@@ -150,6 +150,10 @@
 #include <bindings/ScriptObject.h>
 #endif
 
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/HTMLMediaElementAdditions.cpp>
+#endif
+
 namespace WebCore {
 
 static const double SeekRepeatDelay = 0.1;
@@ -2341,25 +2345,6 @@ void HTMLMediaElement::keyAdded()
 {
     if (m_player)
         m_player->keyAdded();
-}
-#endif
-
-#if ENABLE(MEDIA_STREAM)
-String HTMLMediaElement::mediaPlayerMediaDeviceIdentifierStorageDirectory() const
-{
-    Settings* settings = document().settings();
-    if (!settings)
-        return emptyString();
-
-    String storageDirectory = settings->mediaDeviceIdentifierStorageDirectory();
-    if (storageDirectory.isEmpty())
-        return emptyString();
-
-    SecurityOrigin* origin = document().securityOrigin();
-    if (!origin)
-        return emptyString();
-
-    return pathByAppendingComponent(storageDirectory, origin->databaseIdentifier());
 }
 #endif
 
@@ -5220,6 +5205,19 @@ void HTMLMediaElement::setShouldPlayToPlaybackTarget(bool shouldPlay)
     if (m_player)
         m_player->setShouldPlayToPlaybackTarget(shouldPlay);
 }
+
+#if !USE(APPLE_INTERNAL_SDK)
+void HTMLMediaElement::customPlaybackActionSelected()
+{
+    LOG(Media, "HTMLMediaElement::customPlaybackActionSelected(%p)", this);
+}
+
+String HTMLMediaElement::playbackTargetPickerCustomActionName() const
+{
+    return { };
+}
+#endif
+
 #else // ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 bool HTMLMediaElement::webkitCurrentPlaybackTargetIsWireless() const
@@ -5811,7 +5809,7 @@ void HTMLMediaElement::setMediaGroup(const String& group)
     setController(0);
 
     // 3. If m's mediagroup attribute is being removed, then abort these steps.
-    if (group.isNull() || group.isEmpty())
+    if (group.isEmpty())
         return;
 
     // 4. If there is another media element whose Document is the same as m's Document (even if one or both

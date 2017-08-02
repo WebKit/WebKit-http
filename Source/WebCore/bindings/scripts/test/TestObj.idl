@@ -59,6 +59,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     attribute TestObj                  testObjAttr;
     [LenientThis] attribute TestObj    lenientTestObjAttr;
     [Unforgeable] readonly attribute DOMString unforgeableAttr;
+    [TreatNullAs=EmptyString] attribute DOMString stringAttrTreatingNullAsEmptyString;
 
     // WK_ucfirst, WK_lcfirst exceptional cases.
     attribute TestObj                  XMLObjAttr;
@@ -96,6 +97,12 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     TestObj objMethod();
     TestObj objMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     [Unforgeable] long unforgeableMethod();
+    void methodWithArgTreatingNullAsEmptyString([TreatNullAs=EmptyString] DOMString arg);
+
+    // Nullable String return values.
+    DOMString? nullableStringMethod();
+    static DOMString? nullableStringStaticMethod();
+    getter DOMString? nullableStringSpecialMethod(unsigned long index);
 
     void methodWithSequenceArg(sequence<ScriptProfile> sequenceArg);
     sequence<ScriptProfile> methodReturningSequence(long longArg);
@@ -256,10 +263,10 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [CheckSecurityForNode] readonly attribute Document contentDocument;
     [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
 
-    void convert1([TreatReturnedNullStringAs=Null] TestNode value);
-    void convert2([TreatReturnedNullStringAs=Undefined] TestNode value);
-    void convert4([TreatNullAs=NullString] TestNode value);
-    void convert5([TreatNullAs=NullString, TreatUndefinedAs=NullString] TestNode value);
+    void convert1(TestNode value);
+    void convert2(TestNode? value);
+    void convert3(DOMString value);
+    void convert4(DOMString? value);
 
     attribute SVGPoint mutablePoint;
     [Immutable] attribute SVGPoint immutablePoint;

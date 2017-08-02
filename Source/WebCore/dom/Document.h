@@ -46,6 +46,7 @@
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
 #include "StyleChange.h"
+#include "Supplementable.h"
 #include "TextResourceDecoder.h"
 #include "Timer.h"
 #include "TreeScope.h"
@@ -197,10 +198,6 @@ class ScriptedAnimationController;
 class TextAutosizer;
 #endif
 
-#if ENABLE(CSP_NEXT)
-class DOMSecurityPolicy;
-#endif
-
 class FontFaceSet;
 
 typedef int ExceptionCode;
@@ -290,7 +287,12 @@ enum class HttpEquivPolicy {
     DisabledByContentDispositionAttachmentSandbox
 };
 
-class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext, public FontSelectorClient {
+class Document
+    : public ContainerNode
+    , public TreeScope
+    , public ScriptExecutionContext
+    , public FontSelectorClient
+    , public Supplementable<Document> {
 public:
     static Ref<Document> create(Frame* frame, const URL& url)
     {
@@ -456,10 +458,6 @@ public:
     void setTimerThrottlingEnabled(bool);
     bool isTimerThrottlingEnabled() const { return m_isTimerThrottlingEnabled; }
 
-#if ENABLE(CSP_NEXT)
-    DOMSecurityPolicy& securityPolicy();
-#endif
-
     RefPtr<Node> adoptNode(Node* source, ExceptionCode&);
 
     Ref<HTMLCollection> images();
@@ -505,7 +503,7 @@ public:
     }
     StyleResolver& userAgentShadowTreeStyleResolver();
 
-    CSSFontSelector& fontSelector();
+    CSSFontSelector& fontSelector() { return m_fontSelector; }
 
     void notifyRemovePendingSheetIfNeeded();
 
@@ -1290,12 +1288,15 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(MediaPlaybackTargetClient&);
     void removePlaybackTargetPickerClient(MediaPlaybackTargetClient&);
-    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool);
+
+    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool, const String&);
+
     void playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient&, MediaProducer::MediaStateFlags);
 
     void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     void playbackTargetAvailabilityDidChange(uint64_t, bool);
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
+    void customPlaybackActionSelected(uint64_t);
 #endif
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
@@ -1720,10 +1721,6 @@ private:
 
     RefPtr<NamedFlowCollection> m_namedFlows;
 
-#if ENABLE(CSP_NEXT)
-    RefPtr<DOMSecurityPolicy> m_domSecurityPolicy;
-#endif
-
     void sharedObjectPoolClearTimerFired();
     Timer m_sharedObjectPoolClearTimer;
 
@@ -1745,7 +1742,7 @@ private:
     std::unique_ptr<CustomElementDefinitions> m_customElementDefinitions;
 #endif
 
-    RefPtr<CSSFontSelector> m_fontSelector;
+    Ref<CSSFontSelector> m_fontSelector;
 
 #if ENABLE(WEB_REPLAY)
     RefPtr<JSC::InputCursor> m_inputCursor;

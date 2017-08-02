@@ -1,3 +1,1944 @@
+2016-03-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use a Move without REX byte when possible
+        https://bugs.webkit.org/show_bug.cgi?id=154801
+
+        Reviewed by Alex Christensen.
+
+        Filip wrote an optimization in the register allocator
+        to use 32bit "Move" when we don't care about the top bytes.
+
+        When I moved the commutative ops to the fake 3 operands instruction
+        I largely destroyed this since all the "Moves" became full register.
+
+        In this patch, I switch back to 32bit "Moves" for 32bit operations.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::and32):
+        (JSC::MacroAssemblerX86Common::lshift32):
+        (JSC::MacroAssemblerX86Common::mul32):
+        (JSC::MacroAssemblerX86Common::or32):
+        (JSC::MacroAssemblerX86Common::rshift32):
+        (JSC::MacroAssemblerX86Common::urshift32):
+        (JSC::MacroAssemblerX86Common::xor32):
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        (JSC::MacroAssemblerX86Common::branchMul32):
+        (JSC::MacroAssemblerX86Common::branchSub32):
+        (JSC::MacroAssemblerX86Common::move32IfNeeded):
+
+2016-03-01  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Simplify ArithMod(ArithMod(x, const1), const2) if const2 >= const1
+        https://bugs.webkit.org/show_bug.cgi?id=154904
+
+        Reviewed by Saam Barati.
+
+        The ASM test "ubench" has a "x % 10 % 255".
+        The second modulo should be eliminated.
+
+        This is a 15% improvement on ASMJS' ubench.
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * tests/stress/arith-modulo-twice.js: Added.
+        (opaqueModuloSmaller):
+        (opaqueModuloEqual):
+        (opaqueModuloLarger):
+        (opaqueModuloSmallerNeg):
+        (opaqueModuloEqualNeg):
+        (opaqueModuloLargerNeg):
+        (opaqueExpectedOther):
+
+2016-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Update the status of Proxy objects to "In Development".
+
+        * features.json:
+
+2016-03-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197226 and r197256.
+        https://bugs.webkit.org/show_bug.cgi?id=154910
+
+        Caused crashes on Mac 32-bit and on ARM (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Remove the on demand executable allocator"
+        https://bugs.webkit.org/show_bug.cgi?id=154749
+        http://trac.webkit.org/changeset/197226
+
+        "CLoop build fix."
+        http://trac.webkit.org/changeset/197256
+
+2016-03-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Simplify some StringBuilder appends
+        https://bugs.webkit.org/show_bug.cgi?id=154902
+
+        Reviewed by Mark Lam.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::notAFunctionSourceAppender):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::stackTracesAsJSON):
+        Use StringBuilder::append(char) instead of append(char*) where possible.
+
+2016-03-01  Keith Miller  <keith_miller@apple.com>
+
+        Promise.prototype.then should use Symbol.species to construct the return Promise
+        https://bugs.webkit.org/show_bug.cgi?id=154862
+
+        Reviewed by Saam Barati.
+
+        * builtins/PromisePrototype.js:
+        * tests/stress/promise-species-functions.js: Added.
+        (Symbol.species):
+        (id):
+        (funcThrows):
+        (makeC):
+        (test.species):
+        (test.speciesThrows):
+        (test):
+
+2016-03-01  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Add support for Unicode regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=154842
+
+        Reviewed by Filip Pizlo.
+
+        Added processing of Unicode regular expressions to the Yarr interpreter.
+
+        Changed parsing of regular expression patterns and PatternTerms to process characters as
+        UChar32 in the Yarr code.  The parser converts matched surrogate pairs into the appropriate
+        Unicode character when the expression is parsed.  When matching a unicode expression and
+        reading source characters, we convert proper surrogate pair into a Unicode character and
+        advance the source cursor, "pos", one more position.  The exception to this is when we
+        know when generating a fixed character atom that we need to match a unicode character
+        that doesn't fit in 16 bits.  The code calls this an extendedUnicodeCharacter and has a
+        helper to determine this.
+
+        Added 'u' flag and 'unicode' identifier to regular expression classes.  Added an "isUnicode"
+        parameter to YarrPattern pattern() and internal users of that function.
+
+        Updated the generation of the canonicalization tables to include a new set a tables that
+        follow the ES 6.0, 21.2.2.8.2 Step 2.  Renamed the YarrCanonicalizeUCS2.* files to
+        YarrCanonicalizeUnicode.*. 
+
+        Added a new Layout/js test that tests the added functionality.  Updated other tests that
+        have minor es6 unicode checks and look for valid flags.
+
+        Ran the ChakraCore Unicode regular expression tests as well.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+        * yarr/RegularExpression.cpp:
+        (JSC::Yarr::RegularExpression::Private::compile):
+        Updated use of pattern().
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/RegExp.cpp:
+        (JSC::regExpFlags):
+        (JSC::RegExpFunctionalTestCollector::outputOneTest):
+        (JSC::RegExp::finishCreation):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/RegExp.h:
+        * runtime/RegExpKey.h:
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncCompile):
+        (JSC::flagsString):
+        (JSC::regExpProtoGetterMultiline):
+        (JSC::regExpProtoGetterUnicode):
+        (JSC::regExpProtoGetterFlags):
+        Updated for new 'y' (unicode) flag.  Add check to use the interpreter for unicode regular expressions.
+
+        * tests/es6.yaml:
+        * tests/stress/static-getter-in-names.js:
+        Updated tests for new flag and for passing the minimal es6 regular expression processing.
+
+        * yarr/Yarr.h: Updated the size of information now kept for backtracking.
+
+        * yarr/YarrCanonicalizeUCS2.cpp: Removed.
+        * yarr/YarrCanonicalizeUCS2.h: Removed.
+        * yarr/YarrCanonicalizeUCS2.js: Removed.
+        * yarr/YarrCanonicalizeUnicode.cpp: Copied from Source/JavaScriptCore/yarr/YarrCanonicalizeUCS2.cpp.
+        * yarr/YarrCanonicalizeUnicode.h: Copied from Source/JavaScriptCore/yarr/YarrCanonicalizeUCS2.h.
+        (JSC::Yarr::canonicalCharacterSetInfo):
+        (JSC::Yarr::canonicalRangeInfoFor):
+        (JSC::Yarr::getCanonicalPair):
+        (JSC::Yarr::isCanonicallyUnique):
+        (JSC::Yarr::areCanonicallyEquivalent):
+        (JSC::Yarr::rangeInfoFor): Deleted.
+        * yarr/YarrCanonicalizeUnicode.js: Copied from Source/JavaScriptCore/yarr/YarrCanonicalizeUCS2.js.
+        (printHeader):
+        (printFooter):
+        (hex):
+        (canonicalize):
+        (canonicalizeUnicode):
+        (createUCS2CanonicalGroups):
+        (createUnicodeCanonicalGroups):
+        (cu.in.groupedCanonically.characters.sort): Deleted.
+        (cu.in.groupedCanonically.else): Deleted.
+        Refactored to output two sets of tables, one for UCS2 and one for Unicode.  The UCS2 tables follow
+        the legacy canonicalization rules now specified in ES 6.0, 21.2.2.8.2 Step 3.  The new Unicode
+        tables follow the rules specified in ES 6.0, 21.2.2.8.2 Step 2.  Eliminated the unused Latin1 tables.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::InputStream::InputStream):
+        (JSC::Yarr::Interpreter::InputStream::readChecked):
+        (JSC::Yarr::Interpreter::InputStream::readSurrogatePairChecked):
+        (JSC::Yarr::Interpreter::InputStream::reread):
+        (JSC::Yarr::Interpreter::InputStream::prev):
+        (JSC::Yarr::Interpreter::testCharacterClass):
+        (JSC::Yarr::Interpreter::checkCharacter):
+        (JSC::Yarr::Interpreter::checkSurrogatePair):
+        (JSC::Yarr::Interpreter::checkCasedCharacter):
+        (JSC::Yarr::Interpreter::tryConsumeBackReference):
+        (JSC::Yarr::Interpreter::backtrackPatternCharacter):
+        (JSC::Yarr::Interpreter::matchCharacterClass):
+        (JSC::Yarr::Interpreter::backtrackCharacterClass):
+        (JSC::Yarr::Interpreter::matchParenthesesTerminalEnd):
+        (JSC::Yarr::Interpreter::matchDisjunction):
+        (JSC::Yarr::Interpreter::Interpreter):
+        (JSC::Yarr::ByteCompiler::assertionWordBoundary):
+        (JSC::Yarr::ByteCompiler::atomPatternCharacter):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::ByteTerm::ByteTerm):
+        (JSC::Yarr::BytecodePattern::BytecodePattern):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::optimizeAlternative):
+        (JSC::Yarr::YarrGenerator::matchCharacterClassRange):
+        (JSC::Yarr::YarrGenerator::matchCharacterClass):
+        (JSC::Yarr::YarrGenerator::notAtEndOfInput):
+        (JSC::Yarr::YarrGenerator::jumpIfCharNotEquals):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterOnce):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterFixed):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackPatternCharacterNonGreedy):
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::CharacterClassParserDelegate::atomPatternCharacter):
+        (JSC::Yarr::Parser::Parser):
+        (JSC::Yarr::Parser::parseEscape):
+        (JSC::Yarr::Parser::consumePossibleSurrogatePair):
+        (JSC::Yarr::Parser::parseCharacterClass):
+        (JSC::Yarr::Parser::parseTokens):
+        (JSC::Yarr::Parser::parse):
+        (JSC::Yarr::Parser::atEndOfPattern):
+        (JSC::Yarr::Parser::patternRemaining):
+        (JSC::Yarr::Parser::peek):
+        (JSC::Yarr::parse):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::CharacterClassConstructor::CharacterClassConstructor):
+        (JSC::Yarr::CharacterClassConstructor::append):
+        (JSC::Yarr::CharacterClassConstructor::putChar):
+        (JSC::Yarr::CharacterClassConstructor::putUnicodeIgnoreCase):
+        (JSC::Yarr::CharacterClassConstructor::putRange):
+        (JSC::Yarr::CharacterClassConstructor::charClass):
+        (JSC::Yarr::CharacterClassConstructor::addSorted):
+        (JSC::Yarr::CharacterClassConstructor::addSortedRange):
+        (JSC::Yarr::YarrPatternConstructor::YarrPatternConstructor):
+        (JSC::Yarr::YarrPatternConstructor::assertionWordBoundary):
+        (JSC::Yarr::YarrPatternConstructor::atomPatternCharacter):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassBegin):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassAtom):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassRange):
+        (JSC::Yarr::YarrPatternConstructor::setupAlternativeOffsets):
+        (JSC::Yarr::YarrPattern::compile):
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::CharacterRange::CharacterRange):
+        (JSC::Yarr::CharacterClass::CharacterClass):
+        (JSC::Yarr::PatternTerm::PatternTerm):
+        (JSC::Yarr::YarrPattern::reset):
+        * yarr/YarrSyntaxChecker.cpp:
+        (JSC::Yarr::SyntaxChecker::assertionBOL):
+        (JSC::Yarr::SyntaxChecker::assertionEOL):
+        (JSC::Yarr::SyntaxChecker::assertionWordBoundary):
+        (JSC::Yarr::SyntaxChecker::atomPatternCharacter):
+        (JSC::Yarr::SyntaxChecker::atomBuiltInCharacterClass):
+        (JSC::Yarr::SyntaxChecker::atomCharacterClassBegin):
+        (JSC::Yarr::SyntaxChecker::atomCharacterClassAtom):
+        (JSC::Yarr::checkSyntax):
+
+2016-03-01  Saam barati  <sbarati@apple.com>
+
+        Remove FIXMEs and add valid test cases after necessary patch has landed.
+
+        Rubber stamped by Mark Lam.
+
+        * tests/stress/proxy-prevent-extensions.js:
+        (assert.Object.isSealed):
+        (assert):
+
+2016-03-01  Saam barati  <sbarati@apple.com>
+
+        [ES6] Implement Proxy.[[IsExtensible]]
+        https://bugs.webkit.org/show_bug.cgi?id=154872
+
+        Reviewed by Oliver Hunt.
+
+        This patch is a direct implementation of Proxy.[[IsExtensible]] with respect to section 9.5.3
+        of the ECMAScript 6 spec.
+        https://tc39.github.io/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-isextensible
+
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::preventExtensions):
+        (JSC::ProxyObject::performIsExtensible):
+        (JSC::ProxyObject::isExtensible):
+        (JSC::ProxyObject::visitChildren):
+        * runtime/ProxyObject.h:
+        * tests/es6.yaml:
+        * tests/stress/proxy-is-extensible.js: Added.
+        (assert):
+        (throw.new.Error.let.handler.get isExtensible):
+        (throw.new.Error):
+        (assert.let.handler.isExtensible):
+        (assert.):
+        (let.handler.isExtensible):
+
+2016-03-01  Saam barati  <sbarati@apple.com>
+
+        [ES6] Implement Proxy.[[PreventExtensions]]
+        https://bugs.webkit.org/show_bug.cgi?id=154873
+
+        Reviewed by Oliver Hunt.
+
+        This patch is a direct implementation of Proxy.[[PreventExtensions]] with respect to section 9.5.4
+        of the ECMAScript 6 spec.
+        https://tc39.github.io/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-preventextensions
+
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::deletePropertyByIndex):
+        (JSC::ProxyObject::performPreventExtensions):
+        (JSC::ProxyObject::preventExtensions):
+        (JSC::ProxyObject::visitChildren):
+        * runtime/ProxyObject.h:
+        * tests/es6.yaml:
+        * tests/stress/proxy-prevent-extensions.js: Added.
+        (assert):
+        (throw.new.Error.let.handler.get preventExtensions):
+        (throw.new.Error):
+        (assert.let.handler.preventExtensions):
+        (assert.):
+        (let.handler.preventExtensions):
+        (assert.Object.isSealed.let.handler.preventExtensions):
+        (assert.Object.isSealed):
+
+2016-03-01  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should simplify StringReplace with an empty replacement string
+        https://bugs.webkit.org/show_bug.cgi?id=154871
+
+        Reviewed by Michael Saboff.
+
+        This is a simple and hugely profitable change. If we do a string.replace(/things/, ""), then
+        this calls directly into StringPrototype's replace-with-empty-string logic instead of going
+        through stuff that does checks before reaching that same conclusion.
+
+        This speeds up Octane/regexp by about 6-10%. It also speeds up the attached microbenchmark by
+        about 7%.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+        * runtime/StringPrototype.cpp:
+        (JSC::jsSpliceSubstringsWithSeparators):
+        (JSC::removeUsingRegExpSearch):
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::operationStringProtoFuncReplaceRegExpEmptyStr):
+        (JSC::operationStringProtoFuncReplaceRegExpString):
+        * runtime/StringPrototype.h:
+
+2016-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of internal windows build output
+        https://bugs.webkit.org/show_bug.cgi?id=154763
+
+        Reviewed by Brent Fulgham.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+
+2016-03-01  Saam barati  <sbarati@apple.com>
+
+        [[IsExtensible]] should be a virtual method in the method table
+        https://bugs.webkit.org/show_bug.cgi?id=154799
+
+        Reviewed by Mark Lam.
+
+        This patch makes us more consistent with how the ES6 specification models the
+        [[IsExtensible]] trap. Moving this method into ClassInfo::methodTable 
+        is a prerequisite for implementing Proxy.[[IsExtensible]].
+
+        * runtime/ClassInfo.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::preventExtensions):
+        (JSC::JSCell::isExtensible):
+        * runtime/JSCell.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncProtoSetter):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::preventExtensions):
+        (JSC::JSObject::isExtensible):
+        (JSC::JSObject::reifyAllStaticProperties):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::defineOwnNonIndexProperty):
+        (JSC::JSObject::defineOwnProperty):
+        * runtime/JSObject.h:
+        (JSC::JSObject::isSealed):
+        (JSC::JSObject::isFrozen):
+        (JSC::JSObject::isExtensibleImpl):
+        (JSC::JSObject::isStructureExtensible):
+        (JSC::JSObject::isExtensibleInline):
+        (JSC::JSObject::indexingShouldBeSparse):
+        (JSC::JSObject::putDirectInternal):
+        (JSC::JSObject::isExtensible): Deleted.
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorSetPrototypeOf):
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+        (JSC::objectConstructorIsExtensible):
+        (JSC::objectConstructorIs):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectIsExtensible):
+        (JSC::reflectObjectSetPrototypeOf):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry):
+        (JSC::SparseArrayValueMap::putDirect):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::defineOwnProperty):
+        * runtime/Structure.cpp:
+        (JSC::Structure::isSealed):
+        (JSC::Structure::isFrozen):
+        * runtime/Structure.h:
+
+2016-03-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix CLOOP build.
+
+        * jit/JITOperations.h:
+
+2016-03-01  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function. Some not used byte code is emited
+        https://bugs.webkit.org/show_bug.cgi?id=154639
+
+        Reviewed by Saam Barati.
+
+        Currently bytecode that is generated for arrow function is not optimal. 
+        Current fix removed following unnecessary bytecode:
+        1.create_lexical_environment not emited always for arrow function, only if some of 
+        features(this/super/arguments/eval) is used inside of the arrow function. 
+        2.load 'this' from arrow function scope in constructor is done only if super 
+        contains in arrow function 
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::isSuperCallUsedInInnerArrowFunction):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ThisNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        * parser/Nodes.h:
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseAnyFeature):
+        * tests/stress/arrowfunction-lexical-bind-supercall-4.js:
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Turn String.prototype.replace into an intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=154835
+
+        Reviewed by Michael Saboff.
+
+        Octane/regexp spends a lot of time in String.prototype.replace(). That function does a lot
+        of checks to see if the parameters are what they are likely to often be (a string, a
+        regexp, and a string). The intuition of this patch is that it's good to remove those checks
+        and it's good to call the native function as directly as possible.
+
+        This yields a 10% speed-up on a replace microbenchmark and a 3% speed-up on Octane/regexp.
+        It also improves Octane/jquery.
+
+        This is only the beginning of what I want to do with replace optimizations. The other
+        optimizations will rely on StringReplace being revealed as a construct in DFG IR.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationToAbbreviatedString):
+        (JSC::speculationFromClassInfo):
+        * bytecode/SpeculatedType.h:
+        (JSC::isStringOrStringObjectSpeculation):
+        (JSC::isRegExpObjectSpeculation):
+        (JSC::isBoolInt32Speculation):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::shouldSpeculateStringOrStringObject):
+        (JSC::DFG::Node::shouldSpeculateRegExpObject):
+        (JSC::DFG::Node::shouldSpeculateSymbol):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateFinalObject):
+        (JSC::DFG::SpeculativeJIT::speculateRegExpObject):
+        (JSC::DFG::SpeculativeJIT::speculateObjectOrOther):
+        (JSC::DFG::SpeculativeJIT::speculate):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        (JSC::DFG::isCell):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+        (JSC::FTL::DFG::LowerDFGToB3::didOverflowStack):
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateFinalObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateRegExpObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateString):
+        * jit/JITOperations.h:
+        * runtime/Intrinsic.h:
+        * runtime/JSType.h:
+        * runtime/RegExpObject.h:
+        (JSC::RegExpObject::createStructure):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::removeUsingRegExpSearch):
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::operationStringProtoFuncReplaceRegExpString):
+        (JSC::replaceUsingStringSearch):
+        (JSC::stringProtoFuncRepeat):
+        (JSC::replace):
+        (JSC::stringProtoFuncReplace):
+        (JSC::operationStringProtoFuncReplaceGeneric):
+        (JSC::stringProtoFuncToString):
+        * runtime/StringPrototype.h:
+
+2016-03-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197056.
+        https://bugs.webkit.org/show_bug.cgi?id=154870
+
+        broke win ews (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "[cmake] Moved PRE/POST_BUILD_COMMAND to WEBKIT_FRAMEWORK."
+        https://bugs.webkit.org/show_bug.cgi?id=154651
+        http://trac.webkit.org/changeset/197056
+
+2016-02-29  Saam barati  <sbarati@apple.com>
+
+        [[PreventExtensions]] should be a virtual method in the method table.
+        https://bugs.webkit.org/show_bug.cgi?id=154800
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch makes us more consistent with how the ES6 specification models the
+        [[PreventExtensions]] trap. Moving this method into ClassInfo::methodTable 
+        is a prerequisite for implementing Proxy.[[PreventExtensions]].
+
+        * runtime/ClassInfo.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::getGenericPropertyNames):
+        (JSC::JSCell::preventExtensions):
+        * runtime/JSCell.h:
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::JSModuleNamespaceObject):
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::destroy):
+        * runtime/JSModuleNamespaceObject.h:
+        (JSC::JSModuleNamespaceObject::create):
+        (JSC::JSModuleNamespaceObject::moduleRecord):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::freeze):
+        (JSC::JSObject::preventExtensions):
+        (JSC::JSObject::reifyAllStaticProperties):
+        * runtime/JSObject.h:
+        (JSC::JSObject::isSealed):
+        (JSC::JSObject::isFrozen):
+        (JSC::JSObject::isExtensible):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+        (JSC::objectConstructorPreventExtensions):
+        (JSC::objectConstructorIsSealed):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectPreventExtensions):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::preventExtensionsTransition):
+        * runtime/Structure.h:
+
+2016-02-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Private symbols should not be trapped by proxy handler
+        https://bugs.webkit.org/show_bug.cgi?id=154817
+
+        Reviewed by Mark Lam.
+
+        Since the runtime has some assumptions on the properties associated with the private symbols, ES6 Proxy should not trap these property operations.
+        For example, in ArrayIteratorPrototype.js
+
+            var itemKind = this.@arrayIterationKind;
+            if (itemKind === @undefined)
+                throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| be an Array Iterator instance");
+
+        Here, we assume that only the array iterator has the @arrayIterationKind property that value is non-undefined.
+        But If we implement Proxy with the get handler, that returns a non-undefined value for every operations, we accidentally assumes that the given value is an array iterator.
+
+        To avoid these situation, we perform the default operations onto property operations with private symbols.
+
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::deleteProperty):
+        (JSC::ProxyObject::deletePropertyByIndex):
+        * tests/stress/proxy-basic.js:
+        * tests/stress/proxy-with-private-symbols.js: Added.
+        (assert):
+        (let.handler.getOwnPropertyDescriptor):
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        regress/script-tests/double-pollution-putbyoffset.js.ftl-eager timed out because of a lock ordering deadlock involving InferredType and CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=154841
+
+        Reviewed by Benjamin Poulain.
+
+        Here's the deadlock:
+
+        Main thread:
+            1) Change an InferredType.  This acquires InferredType::m_lock.
+            2) Fire watchpoint set.  This triggers CodeBlock invalidation, which acquires
+               CodeBlock::m_lock.
+
+        DFG thread:
+            1) Iterate over the information in a CodeBlock.  This acquires CodeBlock::m_lock.
+            2) Ask an InferredType for its descriptor().  This acquires InferredType::m_lock.
+
+        I think that the DFG thread's ordering should be legal, because the best logic for lock
+        hierarchies is that locks that protect the largest set of stuff should be acquired first.
+
+        This means that the main thread shouldn't be holding the InferredType::m_lock when firing
+        watchpoint sets.  That's what this patch ensures.
+
+        At the time of writing, this test was deadlocking for me on trunk 100% of the time.  With
+        this change I cannot get it to deadlock.
+
+        * runtime/InferredType.cpp:
+        (JSC::InferredType::willStoreValueSlow):
+        (JSC::InferredType::makeTopSlow):
+        (JSC::InferredType::set):
+        (JSC::InferredType::removeStructure):
+        (JSC::InferredType::InferredStructureWatchpoint::fireInternal):
+        * runtime/InferredType.h:
+
+2016-02-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL][B3] Support floor and ceil
+        https://bugs.webkit.org/show_bug.cgi?id=154683
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements and fixes the following things.
+
+        1. Implement Ceil and Floor in DFG, FTL and B3
+
+        x86 SSE 4.2 and ARM64 have round instructions that can directly perform Ceil or Floor.
+        This patch leverages this functionality. We introduce ArithFloor and ArithCeil.
+        During DFG phase, these nodes attempt to convert itself to Identity (in Fixup phase).
+        As the same to ArithRound, it tracks arith rounding mode.
+        And if these nodes are required to emit machine codes, we emit rounding machine code
+        if it is supported in the current machine. For example, in x86, we emit `round`.
+
+        This `Floor` functionality is nice for @toInteger in builtin.
+        That is used for Array.prototype.{forEach, map, every, some, reduce...}
+        And according to the benchmark results, Kraken audio-oscillator is slightly improved
+        due to its frequent Math.round and Math.floor calls.
+
+        2. Implement Floor in B3 and Air
+
+        As the same to Ceil in B3, we add a new B3 IR and Air opcode, Floor.
+        This Floor is leveraged to implement ArithFloor in DFG.
+
+        3. Fix ArithRound operation
+
+        Currently, we used cvtsd2si (in x86) to convert double value to int32.
+        And we also used this to implement Math.round, like, cvtsd2si(value + 0.5).
+        However, this implementation is not correct. Because cvtsd2si is not floor operation.
+        It is trucate operation. This is OK for positive numbers. But NG for negative numbers.
+        For example, the current implementation accidentally rounds `-0.6` to `-0.0`. This should be `-1.0`.
+        Using Ceil and Floor instructions, we implement correct ArithRound.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerARM::ceilDouble):
+        (JSC::MacroAssemblerARM::floorDouble):
+        (JSC::MacroAssemblerARM::supportsFloatingPointCeil): Deleted.
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerARM64::floorFloat):
+        (JSC::MacroAssemblerARM64::supportsFloatingPointCeil): Deleted.
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerARMv7::ceilDouble):
+        (JSC::MacroAssemblerARMv7::floorDouble):
+        (JSC::MacroAssemblerARMv7::supportsFloatingPointCeil): Deleted.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::ceilDouble):
+        (JSC::MacroAssemblerMIPS::floorDouble):
+        (JSC::MacroAssemblerMIPS::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerMIPS::supportsFloatingPointCeil): Deleted.
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerSH4::ceilDouble):
+        (JSC::MacroAssemblerSH4::floorDouble):
+        (JSC::MacroAssemblerSH4::supportsFloatingPointCeil): Deleted.
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::floorDouble):
+        (JSC::MacroAssemblerX86Common::floorFloat):
+        (JSC::MacroAssemblerX86Common::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerX86Common::supportsFloatingPointCeil): Deleted.
+        * b3/B3ConstDoubleValue.cpp:
+        (JSC::B3::ConstDoubleValue::floorConstant):
+        * b3/B3ConstDoubleValue.h:
+        * b3/B3ConstFloatValue.cpp:
+        (JSC::B3::ConstFloatValue::floorConstant):
+        * b3/B3ConstFloatValue.h:
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Opcode.cpp:
+        (WTF::printInternal):
+        * b3/B3Opcode.h:
+        * b3/B3ReduceDoubleToFloat.cpp:
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::floorConstant):
+        (JSC::B3::Value::isRounded):
+        (JSC::B3::Value::effects):
+        (JSC::B3::Value::key):
+        (JSC::B3::Value::typeFor):
+        * b3/B3Value.h:
+        * b3/air/AirFixPartialRegisterStalls.cpp:
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testFloorCeilArg):
+        (JSC::B3::testFloorArg):
+        (JSC::B3::testFloorImm):
+        (JSC::B3::testFloorMem):
+        (JSC::B3::testFloorFloorArg):
+        (JSC::B3::testCeilFloorArg):
+        (JSC::B3::testFloorIToD64):
+        (JSC::B3::testFloorIToD32):
+        (JSC::B3::testFloorArgWithUselessDoubleConversion):
+        (JSC::B3::testFloorArgWithEffectfulDoubleConversion):
+        (JSC::B3::run):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArithMode.cpp:
+        (WTF::printInternal):
+        * dfg/DFGArithMode.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::roundShouldSpeculateInt32):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::arithNodeFlags):
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::hasArithRoundingMode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithRounding):
+        (JSC::DFG::SpeculativeJIT::compileArithRound): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithRound):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithFloor):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithCeil):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::doubleFloor):
+        * jit/ThunkGenerators.cpp:
+        (JSC::ceilThunkGenerator):
+        * tests/stress/math-ceil-arith-rounding-mode.js: Added.
+        (firstCareAboutZeroSecondDoesNot):
+        (firstDoNotCareAboutZeroSecondDoes):
+        (warmup):
+        (verifyNegativeZeroIsPreserved):
+        * tests/stress/math-ceil-basics.js: Added.
+        (mathCeilOnIntegers):
+        (mathCeilOnDoubles):
+        (mathCeilOnBooleans):
+        (uselessMathCeil):
+        (mathCeilWithOverflow):
+        (mathCeilConsumedAsDouble):
+        (mathCeilDoesNotCareAboutMinusZero):
+        (mathCeilNoArguments):
+        (mathCeilTooManyArguments):
+        (testMathCeilOnConstants):
+        (mathCeilStructTransition):
+        (Math.ceil):
+        * tests/stress/math-floor-arith-rounding-mode.js: Added.
+        (firstCareAboutZeroSecondDoesNot):
+        (firstDoNotCareAboutZeroSecondDoes):
+        (warmup):
+        (verifyNegativeZeroIsPreserved):
+        * tests/stress/math-floor-basics.js: Added.
+        (mathFloorOnIntegers):
+        (mathFloorOnDoubles):
+        (mathFloorOnBooleans):
+        (uselessMathFloor):
+        (mathFloorWithOverflow):
+        (mathFloorConsumedAsDouble):
+        (mathFloorDoesNotCareAboutMinusZero):
+        (mathFloorNoArguments):
+        (mathFloorTooManyArguments):
+        (testMathFloorOnConstants):
+        (mathFloorStructTransition):
+        (Math.floor):
+        * tests/stress/math-round-should-not-use-truncate.js: Added.
+        (mathRoundDoesNotCareAboutMinusZero):
+        * tests/stress/math-rounding-infinity.js: Added.
+        (shouldBe):
+        (testRound):
+        (testFloor):
+        (testCeil):
+        * tests/stress/math-rounding-nan.js: Added.
+        (shouldBe):
+        (testRound):
+        (testFloor):
+        (testCeil):
+        * tests/stress/math-rounding-negative-zero.js: Added.
+        (shouldBe):
+        (testRound):
+        (testFloor):
+        (testCeil):
+        (testRoundNonNegativeZero):
+        (testRoundNonNegativeZero2):
+
+2016-02-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add new MethodTable method to get an estimated size for a cell
+        https://bugs.webkit.org/show_bug.cgi?id=154838
+
+        Reviewed by Filip Pizlo.
+
+        The new class method estimatedSize(JSCell*) estimates the size for a single cell.
+        As the name implies, this is meant to be an approximation. It is more important
+        that big objects report a large size, then to get perfect size information for
+        all objects in the heap.
+
+            Base implementation (JSCell):
+              - returns the MarkedBlock bucket size for this cell.
+              - This gets us the object size include inline storage. Basically a better sizeof.
+
+            Subclasses with "Extra Memory Cost":
+              - Any class that reports extra memory (reportExtraMemoryVisited) should include that in the estimated size.
+              - E.g. CodeBlock, JSGenericTypedArrayView, WeakMapData, etc.
+
+            Subclasses with "Copied Space" storage:
+              - Any class with data in copied space (copyBackingStore) should include that in the estimated size.
+              - E.g. JSObject, JSGenericTypedArrayView, JSMap, JSSet, DirectArguments, etc.
+
+        Add reportExtraMemoryVisited for UnlinkedCodeBlock's compressed unlinked
+        instructions because this can be larger than 1kb, which is significant.
+
+        This has one special case for RegExp generated bytecode / JIT code, which
+        does not currently fall into the extra memory cost or copied space storage.
+        In practice I haven't seen this grow to a significant cost.
+
+        * runtime/ClassInfo.h:
+        Add the new estimatedSize method to the table.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        (JSC::UnlinkedCodeBlock::estimatedSize):
+        (JSC::UnlinkedCodeBlock::setInstructions):
+        * bytecode/UnlinkedCodeBlock.h:
+        Report an extra memory cost for unlinked code blocks like
+        we do for linked code blocks.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::estimatedSize):
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedInstructionStream.cpp:
+        (JSC::UnlinkedInstructionStream::sizeInBytes):
+        * bytecode/UnlinkedInstructionStream.h:
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::estimatedSize):
+        * runtime/DirectArguments.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::estimatedSizeInBytes):
+        (JSC::JSCell::estimatedSize):
+        * runtime/JSCell.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::estimatedSize):
+        * runtime/JSMap.cpp:
+        (JSC::JSMap::estimatedSize):
+        * runtime/JSMap.h:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterfly):
+        * runtime/JSObject.h:
+        * runtime/JSSet.cpp:
+        (JSC::JSSet::estimatedSize):
+        * runtime/JSSet.h:
+        * runtime/JSString.cpp:
+        (JSC::JSString::estimatedSize):
+        * runtime/JSString.h:
+        * runtime/MapData.h:
+        (JSC::MapDataImpl::capacityInBytes):
+        * runtime/WeakMapData.cpp:
+        (JSC::WeakMapData::estimatedSize):
+        (JSC::WeakMapData::visitChildren):
+        * runtime/WeakMapData.h:
+        Implement estimated size following the pattern of reporting
+        extra visited size, or copy space memory.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::estimatedSize):
+        * runtime/RegExp.h:
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::ByteDisjunction::estimatedSizeInBytes):
+        (JSC::Yarr::BytecodePattern::estimatedSizeInBytes):
+        * yarr/YarrJIT.h:
+        (JSC::Yarr::YarrCodeBlock::size):
+        Include generated bytecode / JITCode to a RegExp's size.
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        SpeculatedType should be easier to edit
+        https://bugs.webkit.org/show_bug.cgi?id=154840
+
+        Reviewed by Mark Lam.
+
+        We used to specify the bitmasks in SpeculatedType.h using hex codes. This used to work
+        great because we didn't have so many masks and you could use the mask to visually see
+        which ones overlapped. It also made it easy to visualize subset relationships.
+
+        But now we have a lot of masks with a lot of confusing overlaps, and it's no longer
+        possible to just see their relationship by looking at hex codes. Worse, the use of hex
+        codes makes it super annoying to move the bits around. For example, right now we have two
+        bits free, but if we wanted to reclaim them by editing the old hex masks, it would be a
+        nightmare.
+
+        So this patch replaces the hex masks with shift expressions (1u << 15 for example) and it
+        makes any derived masks (i.e. masks that are the bit-or of other masks) be expressed using
+        an or expression (SpecFoo | SpecBar | SpecBaz for example).
+
+        This makes it easier to see the relationships and it makes it easier to take bits for new
+        types.
+
+        * bytecode/SpeculatedType.h:
+
+2016-02-29  Keith Miller  <keith_miller@apple.com>
+
+        OverridesHasInstance constant folding is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=154833
+
+        Reviewed by Filip Pizlo.
+
+        The current implementation of OverridesHasInstance constant folding
+        is incorrect. Since it relies on OSR exit information it has been
+        moved to the StrengthReductionPhase. Normally, such an optimazation would be
+        put in FixupPhase, however, there are a number of cases where we don't
+        determine an edge of OverridesHasInstance is a constant until after fixup.
+        Performing the optimization during StrengthReductionPhase means we can defer
+        our decision until later.
+
+        In the future we should consider creating a version of this optimization
+        that does not depend on OSR exit information and move the optimization back
+        to ConstantFoldingPhase.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants): Deleted.
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+
+2016-02-28  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should have global store elimination
+        https://bugs.webkit.org/show_bug.cgi?id=154658
+
+        Reviewed by Benjamin Poulain.
+
+        Implements fairly comprehensive global store elimination:
+
+        1) If you store the result of a load with no interference in between, remove the store.
+
+        2) If you store the same thing you stored previously, remove the store.
+
+        3) If you store something that you either loaded previously or stored previously along
+           arbitrarily many paths, remove the store.
+
+        4) If you store to something that is stored to again in the future with no interference in
+           between, remove the store.
+
+        Rule (4) is super relevant to FTL since the DFG does not eliminate redundant PutStructures.
+        A constructor that produces a large object will have many redundant stores to the same base
+        pointer, offset, and heap range, with no code to observe that heap raneg in between.
+
+        This doesn't have a decisive effect on major benchmarks, but it's an enormous win for
+        microbenchmarks:
+
+        - 30% faster to construct an object with many fields.
+
+        - 5x faster to do many stores to a global variable.
+
+        The compile time cost should be very small. Although the optimization is global, it aborts as
+        soon as it sees anything that would confound store elimination. For rules (1)-(3), we
+        piggy-back the existing load elimination, which gives up on interfering stores. For rule (4),
+        we search forward through the current block and then globally a block at a time (skipping
+        block contents thanks to summary data), which could be expensive. But rule (4) aborts as soon
+        as it sees a read, write, or end block (Return or Oops). Any Check will claim to read TOP. Any
+        Patchpoint that results from an InvalidationPoint will claim to read TOP, as will any
+        Patchpoints for ICs. Those are usually sprinkled all over the program.
+
+        In other words, this optimization rarely kicks in. When it does kick in, it makes programs run
+        faster. When it doesn't kick in, it's usually O(1) because there are reasons for aborting all
+        over a "normal" program so the search will halt almost immediately. This of course raises the
+        question: how much more in compile time do we pay when the optimization does kick in? The
+        optimization kicks in the most for the microbenchmarks I wrote for this patch. Amazingly, the
+        effect of the optimization a wash for compile time: whatever cost we pay doing the O(n^2)
+        searches is balanced by the massive reduction in work in the backend. On one of the two
+        microbenchmarks, overall compile time actually shrank with this optimization even though CSE
+        itself cost more. That's not too surprising - the backend costs much more per instruction, so
+        things that remove instructions before we get to the backend tend to be a good idea.
+
+        We could consider adding a more aggressive version of this in the future, which could sink
+        stores into checks. That could be crazy fun: https://bugs.webkit.org/show_bug.cgi?id=152162#c3
+
+        But mainly, I'm adding this optimization because it was super fun to implement during the
+        WebAssembly CG summit.
+
+        * b3/B3EliminateCommonSubexpressions.cpp:
+        * b3/B3MemoryValue.h:
+        * b3/B3SuccessorCollection.h:
+        (JSC::B3::SuccessorCollection::begin):
+        (JSC::B3::SuccessorCollection::end):
+        (JSC::B3::SuccessorCollection::const_iterator::const_iterator):
+        (JSC::B3::SuccessorCollection::const_iterator::operator*):
+        (JSC::B3::SuccessorCollection::const_iterator::operator++):
+        (JSC::B3::SuccessorCollection::const_iterator::operator==):
+        (JSC::B3::SuccessorCollection::const_iterator::operator!=):
+
+2016-02-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it cheap to #include "JITOperations.h"
+        https://bugs.webkit.org/show_bug.cgi?id=154836
+
+        Reviewed by Mark Lam.
+
+        Prior to this change, this header included the whole world even though it did't have any
+        definitions. This patch turns almost all of the includes into forward declarations. Right
+        now this header is very cheap to include.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGSpeculativeJIT.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/Repatch.h:
+        * runtime/CommonSlowPaths.h:
+        (JSC::encodeResult): Deleted.
+        (JSC::decodeResult): Deleted.
+        * runtime/SlowPathReturnType.h: Added.
+        (JSC::encodeResult):
+        (JSC::decodeResult):
+
+2016-02-28  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should be able to run everything in Octane/regexp
+        https://bugs.webkit.org/show_bug.cgi?id=154266
+
+        Reviewed by Saam Barati.
+
+        Adds FTL support for NewRegexp, RegExpTest, and RegExpExec. I couldn't figure out how to
+        make the RegExpExec peephole optimization work in FTL. This optimizations shouldn't be a
+        DFG backend optimization anyway - if we need this optimization then it should be a
+        strength reduction rule over IR. That way, it can be shared by all backends.
+
+        I measured whether removing that optimization had any effect on performance separately
+        from measuring the performance of this patch. Removing that optimization did not change
+        our score on any benchmarks.
+
+        This patch does have an overall negative effect on the Octane/regexp score. This is
+        presumably because tiering up to the FTL has no value to the code in the regexp test. Or
+        maybe it's something else. No matter - the overall effect on the Octane score is not
+        statistically significant and we don't want this kind of coverage blocked by the fact
+        that adding coverage hurts a benchmark.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::setIndexingType):
+        (JSC::DFG::Node::hasRegexpIndex):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNotifyWrite):
+        (JSC::DFG::SpeculativeJIT::compileIsObjectOrNull):
+        (JSC::DFG::SpeculativeJIT::compileRegExpExec): Deleted.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckWatchdogTimer):
+        (JSC::FTL::DFG::LowerDFGToB3::compileRegExpExec):
+        (JSC::FTL::DFG::LowerDFGToB3::compileRegExpTest):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        (JSC::FTL::DFG::LowerDFGToB3::didOverflowStack):
+        * tests/stress/ftl-regexp-exec.js: Added.
+        * tests/stress/ftl-regexp-test.js: Added.
+
+2016-02-28  Andreas Kling  <akling@apple.com>
+
+        Make JSFunction.name allocation fully lazy.
+        <https://webkit.org/b/154806>
+
+        Reviewed by Saam Barati.
+
+        We were reifying the "name" field on functions lazily, but created the string
+        value itself up front. This patch gets rid of the up-front allocation,
+        saving us a JSString allocation per function in most cases.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::createExecutableInternal):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::visitChildren):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/Executable.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::reifyName):
+
+2016-02-28  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r197303): 4 jsc tests failing on bots.
+
+        Unreviewed follow-up fix.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): This function
+        can still get called with !m_rareData, in case the type profiler is active but this
+        particular code block doesn't have type profiler data. Handle it gracefully.
+
+2016-02-28  Andreas Kling  <akling@apple.com>
+
+        Shrink UnlinkedCodeBlock a bit.
+        <https://webkit.org/b/154797>
+
+        Reviewed by Anders Carlsson.
+
+        Move profiler-related members of UnlinkedCodeBlock into its RareData
+        structure, saving 40 bytes, and then reorder the other members of
+        UnlinkedCodeBlock to save another 24 bytes, netting a nice total 64.
+
+        The VM member was removed entirely since UnlinkedCodeBlock is a cell
+        and can retrieve its VM through MarkedBlock header lookup.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::vm):
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset):
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addRegExp):
+        (JSC::UnlinkedCodeBlock::addConstant):
+        (JSC::UnlinkedCodeBlock::addFunctionDecl):
+        (JSC::UnlinkedCodeBlock::addFunctionExpr):
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset):
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets):
+        (JSC::UnlinkedCodeBlock::vm): Deleted.
+
+2016-02-27  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should lower its abstract heaps to B3 heap ranges
+        https://bugs.webkit.org/show_bug.cgi?id=154782
+
+        Reviewed by Saam Barati.
+
+        The FTL can describe the abstract heaps (points-to sets) that a memory operation will
+        affect. The abstract heaps are arranged as a hierarchy. We used to transform this into
+        TBAA hierarchies in LLVM, but we never got around to wiring this up to B3's equivalent
+        notion - the HeapRange. That's what this patch fixes.
+
+        B3 has a minimalistic alias analysis. It represents abstract heaps using unsigned 32-bit
+        integers. There are 1<<32 abstract heaps. The B3 client can describe what an operation
+        affects by specifying a heap range: a begin...end pair that says that the operation
+        affects all abstract heaps H such that begin <= H < end.
+
+        This peculiar scheme was a deliberate attempt to distill what the abstract heap
+        hierarchy is all about. We can assign begin...end numbers to abstract heaps so that:
+
+        - A heap's end is greater than its begin.
+        - A heap's begin is greater than or equal to its parent's begin.
+        - A heap's end is less than or equal to its parent's end.
+
+        This is easy to do using a recursive traversal of the abstract heap hierarchy. I almost
+        went for the iterative traversal, which is a splendid algorithm, but it's totally
+        unnecessary here since we tightly control the height of the heap hierarchy.
+
+        Because abstract heaps are produced on-the-fly by FTL lowering, due to the fact that we
+        generate new ones for field names and constant indices we encounter, we can't actually
+        decorate the B3 instructions we create in lowering until all lowering is done. Adding a
+        new abstract heap to the hierarchy after ranges were already computed would require
+        updating the ranges of any heaps "to the right" of that heap in the hierarchy. This
+        patch solves that problem by recording the associations between abstract heaps and their
+        intended roles in the generated IR, and then decorating all of the relevant B3 values
+        after we compute the ranges of the hierarchy after lowering.
+
+        This is perf-neutral. I was hoping for a small speed-up, but I could not detect a
+        speed-up on any benchmark. That's not too surprising. We already have very precise CSE
+        in the DFG, so there aren't many opportunities left for the B3 CSE and it may have
+        already been getting the big ones even without alias analysis.
+
+        Even without a speed-up, this patch is valuable because it makes it easier to implement
+        other optimizations, like store elimination.
+
+        * b3/B3HeapRange.h:
+        (JSC::B3::HeapRange::HeapRange):
+        * ftl/FTLAbstractHeap.cpp:
+        (JSC::FTL::AbstractHeap::AbstractHeap):
+        (JSC::FTL::AbstractHeap::changeParent):
+        (JSC::FTL::AbstractHeap::compute):
+        (JSC::FTL::AbstractHeap::shallowDump):
+        (JSC::FTL::AbstractHeap::dump):
+        (JSC::FTL::AbstractHeap::deepDump):
+        (JSC::FTL::AbstractHeap::badRangeError):
+        (JSC::FTL::IndexedAbstractHeap::IndexedAbstractHeap):
+        (JSC::FTL::IndexedAbstractHeap::baseIndex):
+        (JSC::FTL::IndexedAbstractHeap::atSlow):
+        (JSC::FTL::IndexedAbstractHeap::initialize):
+        (JSC::FTL::AbstractHeap::decorateInstruction): Deleted.
+        (JSC::FTL::AbstractField::dump): Deleted.
+        * ftl/FTLAbstractHeap.h:
+        (JSC::FTL::AbstractHeap::AbstractHeap):
+        (JSC::FTL::AbstractHeap::isInitialized):
+        (JSC::FTL::AbstractHeap::initialize):
+        (JSC::FTL::AbstractHeap::parent):
+        (JSC::FTL::AbstractHeap::heapName):
+        (JSC::FTL::AbstractHeap::range):
+        (JSC::FTL::AbstractHeap::offset):
+        (JSC::FTL::IndexedAbstractHeap::atAnyIndex):
+        (JSC::FTL::IndexedAbstractHeap::at):
+        (JSC::FTL::IndexedAbstractHeap::operator[]):
+        (JSC::FTL::IndexedAbstractHeap::returnInitialized):
+        (JSC::FTL::IndexedAbstractHeap::WithoutZeroOrOneHashTraits::constructDeletedValue):
+        (JSC::FTL::IndexedAbstractHeap::WithoutZeroOrOneHashTraits::isDeletedValue):
+        (JSC::FTL::AbstractHeap::changeParent): Deleted.
+        (JSC::FTL::AbstractField::AbstractField): Deleted.
+        (JSC::FTL::AbstractField::initialize): Deleted.
+        (JSC::FTL::AbstractField::offset): Deleted.
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::AbstractHeapRepository):
+        (JSC::FTL::AbstractHeapRepository::~AbstractHeapRepository):
+        (JSC::FTL::AbstractHeapRepository::decorateMemory):
+        (JSC::FTL::AbstractHeapRepository::decorateCCallRead):
+        (JSC::FTL::AbstractHeapRepository::decorateCCallWrite):
+        (JSC::FTL::AbstractHeapRepository::decoratePatchpointRead):
+        (JSC::FTL::AbstractHeapRepository::decoratePatchpointWrite):
+        (JSC::FTL::AbstractHeapRepository::computeRangesAndDecorateInstructions):
+        * ftl/FTLAbstractHeapRepository.h:
+        (JSC::FTL::AbstractHeapRepository::forArrayType):
+        (JSC::FTL::AbstractHeapRepository::HeapForValue::HeapForValue):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::load):
+        (JSC::FTL::Output::load8SignExt32):
+        (JSC::FTL::Output::load8ZeroExt32):
+        (JSC::FTL::Output::load16SignExt32):
+        (JSC::FTL::Output::load16ZeroExt32):
+        (JSC::FTL::Output::store):
+        (JSC::FTL::Output::store32As8):
+        (JSC::FTL::Output::store32As16):
+        (JSC::FTL::Output::baseIndex):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::address):
+        (JSC::FTL::Output::absolute):
+        (JSC::FTL::Output::load8SignExt32):
+        (JSC::FTL::Output::load8ZeroExt32):
+        (JSC::FTL::Output::load16SignExt32):
+        (JSC::FTL::Output::load16ZeroExt32):
+        (JSC::FTL::Output::load32):
+        (JSC::FTL::Output::load64):
+        (JSC::FTL::Output::loadPtr):
+        (JSC::FTL::Output::loadDouble):
+        (JSC::FTL::Output::store32):
+        (JSC::FTL::Output::store64):
+        (JSC::FTL::Output::storePtr):
+        (JSC::FTL::Output::storeDouble):
+        (JSC::FTL::Output::ascribeRange):
+        (JSC::FTL::Output::nonNegative32):
+        (JSC::FTL::Output::load32NonNegative):
+        (JSC::FTL::Output::equal):
+        (JSC::FTL::Output::notEqual):
+        * ftl/FTLTypedPointer.h:
+        (JSC::FTL::TypedPointer::operator!):
+        (JSC::FTL::TypedPointer::heap):
+        (JSC::FTL::TypedPointer::value):
+
+2016-02-28  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Emit loading&putting this/super only if they are used in arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=153981
+
+        Reviewed by Saam Barati.
+       
+        In first iteration of implemenation arrow function, we emit load and store variables 'this', 'arguments',
+        'super', 'new.target' in case if arrow function is exist even variables are not used in arrow function. 
+        Current patch added logic that prevent from emiting those varibles if they are not used in arrow function.
+        During syntax analyze parser store information about using variables in arrow function inside of 
+        the ordinary function scope and then put to BytecodeGenerator through UnlinkedCodeBlock
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded):
+        (JSC::BytecodeGenerator::emitLoadArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::emitLoadThisFromArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::emitLoadNewTargetFromArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::emitLoadDerivedConstructorFromArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::isThisUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isArgumentsUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isNewTargetUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isSuperUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::emitPutNewTargetToArrowFunctionContextScope):
+        (JSC::BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope):
+        (JSC::BytecodeGenerator::emitPutThisToArrowFunctionContextScope):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ThisNode::emitBytecode):
+        (JSC::EvalFunctionCallNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createBracketAccess):
+        (JSC::ASTBuilder::createDotAccess):
+        (JSC::ASTBuilder::usesSuperCall):
+        (JSC::ASTBuilder::usesSuperProperty):
+        (JSC::ASTBuilder::makeFunctionCallNode):
+        * parser/Nodes.cpp:
+        (JSC::ScopeNode::ScopeNode):
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::ModuleProgramNode::ModuleProgramNode):
+        (JSC::EvalNode::EvalNode):
+        (JSC::FunctionNode::FunctionNode):
+        * parser/Nodes.h:
+        (JSC::ScopeNode::innerArrowFunctionCodeFeatures):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseArguments):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseSuperCall):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseSuperProperty):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseEval):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseThis):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionsUseNewTarget):
+        (JSC::ScopeNode::doAnyInnerArrowFunctionUseAnyFeature):
+        (JSC::ScopeNode::usesSuperCall):
+        (JSC::ScopeNode::usesSuperProperty):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::isArrowFunctionBoundary):
+        (JSC::Scope::innerArrowFunctionFeatures):
+        (JSC::Scope::setInnerArrowFunctionUsesSuperCall):
+        (JSC::Scope::setInnerArrowFunctionUsesSuperProperty):
+        (JSC::Scope::setInnerArrowFunctionUsesEval):
+        (JSC::Scope::setInnerArrowFunctionUsesThis):
+        (JSC::Scope::setInnerArrowFunctionUsesNewTarget):
+        (JSC::Scope::setInnerArrowFunctionUsesArguments):
+        (JSC::Scope::setInnerArrowFunctionUsesEvalAndUseArgumentsIfNeeded):
+        (JSC::Scope::collectFreeVariables):
+        (JSC::Scope::mergeInnerArrowFunctionFeatures):
+        (JSC::Scope::fillParametersForSourceProviderCache):
+        (JSC::Scope::restoreFromSourceProviderCache):
+        (JSC::Scope::setIsFunction):
+        (JSC::Scope::setIsArrowFunction):
+        (JSC::Parser::closestParentNonArrowFunctionNonLexicalScope):
+        (JSC::Parser::pushScope):
+        (JSC::Parser::popScopeInternal):
+        (JSC::Parser<LexerType>::parse):
+        * parser/ParserModes.h:
+        * parser/SourceProviderCacheItem.h:
+        (JSC::SourceProviderCacheItem::SourceProviderCacheItem):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionMetadata):
+        * tests/stress/arrowfunction-lexical-bind-arguments-non-strict-1.js:
+        * tests/stress/arrowfunction-lexical-bind-arguments-strict.js:
+        * tests/stress/arrowfunction-lexical-bind-newtarget.js:
+        * tests/stress/arrowfunction-lexical-bind-superproperty.js:
+        * tests/stress/arrowfunction-lexical-bind-this-8.js: Added.
+
+2016-02-28  Saam barati  <sbarati@apple.com>
+
+        ProxyObject.[[GetOwnProperty]] is partially broken because it doesn't propagate information back to the slot
+        https://bugs.webkit.org/show_bug.cgi?id=154768
+
+        Reviewed by Ryosuke Niwa.
+
+        This fixes a big bug with ProxyObject.[[GetOwnProperty]]:
+        http://www.ecma-international.org/ecma-262/6.0/index.html#sec-proxy-object-internal-methods-and-internal-slots-getownproperty-p
+        We weren't correctly propagating the result of this operation to the
+        out PropertySlot& parameter. This patch fixes that and adds tests.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyDescriptor):
+        I added a missing exception check after object allocation
+        because I saw that it was missing while reading the code.
+
+        * runtime/PropertyDescriptor.cpp:
+        (JSC::PropertyDescriptor::setUndefined):
+        (JSC::PropertyDescriptor::slowGetterSetter):
+        (JSC::PropertyDescriptor::getter):
+        * runtime/PropertyDescriptor.h:
+        (JSC::PropertyDescriptor::attributes):
+        (JSC::PropertyDescriptor::value):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        * tests/es6.yaml:
+        * tests/stress/proxy-get-own-property.js:
+        (let.handler.getOwnPropertyDescriptor):
+        (set get let.handler.return):
+        (set get let.handler.getOwnPropertyDescriptor):
+        (set get let):
+        (set get let.a):
+        (let.b):
+        (let.setter):
+        (let.getter):
+
+2016-02-27  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Intl.Collator uses POSIX locale (detected by js/intl-collator.html on iOS Simulator)
+        https://bugs.webkit.org/show_bug.cgi?id=152448
+
+        Reviewed by Darin Adler.
+
+        Add defaultLanguage to the globalObjectMethodTable and use it for the
+        default locale in Intl object initializations. Fall back to ICU default
+        locale only if the defaultLanguage function is null, or returns an
+        empty string.
+
+        * jsc.cpp:
+        * runtime/IntlCollator.cpp:
+        (JSC::IntlCollator::initializeCollator):
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::initializeDateTimeFormat):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::initializeNumberFormat):
+        * runtime/IntlObject.cpp:
+        (JSC::defaultLocale):
+        (JSC::lookupMatcher):
+        (JSC::bestFitMatcher):
+        (JSC::resolveLocale):
+        * runtime/IntlObject.h:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSGlobalObject.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::toLocaleCase):
+
+2016-02-27  Oliver Hunt  <oliver@apple.com>
+
+        CLoop build fix.
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+
+2016-02-26  Oliver Hunt  <oliver@apple.com>
+
+        Remove the on demand executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=154749
+
+        Reviewed by Geoffrey Garen.
+
+        Remove all the DemandExecutable code and executable allocator ifdefs.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jit/ExecutableAllocator.cpp: Removed.
+        (JSC::DemandExecutableAllocator::DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::~DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::bytesAllocatedByAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::bytesCommittedByAllocactors): Deleted.
+        (JSC::DemandExecutableAllocator::dumpProfileFromAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocateNewSpace): Deleted.
+        (JSC::DemandExecutableAllocator::notifyNeedPage): Deleted.
+        (JSC::DemandExecutableAllocator::notifyPageIsFree): Deleted.
+        (JSC::DemandExecutableAllocator::allocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocatorsMutex): Deleted.
+        (JSC::ExecutableAllocator::initializeAllocator): Deleted.
+        (JSC::ExecutableAllocator::ExecutableAllocator): Deleted.
+        (JSC::ExecutableAllocator::~ExecutableAllocator): Deleted.
+        (JSC::ExecutableAllocator::isValid): Deleted.
+        (JSC::ExecutableAllocator::underMemoryPressure): Deleted.
+        (JSC::ExecutableAllocator::memoryPressureMultiplier): Deleted.
+        (JSC::ExecutableAllocator::allocate): Deleted.
+        (JSC::ExecutableAllocator::committedByteCount): Deleted.
+        (JSC::ExecutableAllocator::dumpProfile): Deleted.
+        (JSC::ExecutableAllocator::getLock): Deleted.
+        (JSC::ExecutableAllocator::isValidExecutableMemory): Deleted.
+        (JSC::ExecutableAllocator::reprotectRegion): Deleted.
+        * jit/ExecutableAllocator.h:
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        * jit/JITStubRoutine.h:
+        (JSC::JITStubRoutine::canPerformRangeFilter): Deleted.
+        (JSC::JITStubRoutine::filteringStartAddress): Deleted.
+        (JSC::JITStubRoutine::filteringExtentSize): Deleted.
+
+2016-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Reduce direct callers of Structure::findStructuresAndMapForMaterialization
+        https://bugs.webkit.org/show_bug.cgi?id=154751
+
+        Reviewed by Mark Lam.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::toStructureShape):
+        This property name iteration is identical to Structure::forEachPropertyConcurrently.
+        Share the code and reduce callers to the subtle findStructuresAndMapForMaterialization.
+
+2016-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Function.name and Function.length should be configurable.
+        https://bugs.webkit.org/show_bug.cgi?id=154604
+
+        Reviewed by Saam Barati.
+
+        According to https://tc39.github.io/ecma262/#sec-ecmascript-language-functions-and-classes,
+        "Unless otherwise specified, the name property of a built-in Function object,
+        if it exists, has the attributes { [[Writable]]: false, [[Enumerable]]: false,
+        [[Configurable]]: true }."
+
+        Similarly, "the length property of a built-in Function object has the attributes
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }."
+
+        This patch makes Function.name and Function.length configurable.
+
+        We do this by lazily reifying the JSFunction name and length properties on first
+        access.  We track whether each of these properties have been reified using flags
+        in the FunctionRareData.  On first access, if not already reified, we will put
+        the property into the object with its default value and attributes and set the
+        reified flag.  Thereafter, we rely on the base JSObject to handle access to the
+        property.
+
+        Also, lots of test results have to be re-baselined because the old Function.length
+        has attribute DontDelete, which is in conflict with the ES6 requirement that it
+        is configurable.
+
+        * runtime/FunctionRareData.h:
+        (JSC::FunctionRareData::hasReifiedLength):
+        (JSC::FunctionRareData::setHasReifiedLength):
+        (JSC::FunctionRareData::hasReifiedName):
+        (JSC::FunctionRareData::setHasReifiedName):
+        - Flags for tracking whether each property has been reified.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::finishCreation):
+        (JSC::JSFunction::createBuiltinFunction):
+        - Host and builtin functions currently always reify their name and length
+          properties.  Currently, for builtins, the default names that are used may
+          differ from the executable name.  For now, we'll stay with keeping this
+          alternate approach to getting the name and length properties for host and
+          builtin functions.
+          However, we need their default attribute to be configurable as well.
+
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::defineOwnProperty):
+        (JSC::JSFunction::reifyLength):
+        (JSC::JSFunction::reifyName):
+        (JSC::JSFunction::reifyLazyPropertyIfNeeded):
+        (JSC::JSFunction::lengthGetter): Deleted.
+        (JSC::JSFunction::nameGetter): Deleted.
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::hasReifiedLength):
+        (JSC::JSFunction::hasReifiedName):
+
+        * tests/es6.yaml:
+        - 4 new passing tests.
+
+        * tests/mozilla/ecma/Array/15.4.4.3-1.js:
+        * tests/mozilla/ecma/Array/15.4.4.4-1.js:
+        * tests/mozilla/ecma/Array/15.4.4.4-2.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.1-1.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.2-1.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.3-1.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.4.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.5-1.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.6.js:
+        * tests/mozilla/ecma/GlobalObject/15.1.2.7.js:
+        * tests/mozilla/ecma/String/15.5.4.10-1.js:
+        * tests/mozilla/ecma/String/15.5.4.11-1.js:
+        * tests/mozilla/ecma/String/15.5.4.11-5.js:
+        * tests/mozilla/ecma/String/15.5.4.12-1.js:
+        * tests/mozilla/ecma/String/15.5.4.6-2.js:
+        * tests/mozilla/ecma/String/15.5.4.7-2.js:
+        * tests/mozilla/ecma/String/15.5.4.8-1.js:
+        * tests/mozilla/ecma/String/15.5.4.9-1.js:
+        - Rebase expected test results.
+
+        * tests/stress/function-configurable-properties.js: Added.
+
+2016-02-26  Keith Miller  <keith_miller@apple.com>
+
+        Folding of OverridesHasInstance DFG nodes shoud happen in constant folding not fixup
+        https://bugs.webkit.org/show_bug.cgi?id=154743
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+2016-02-26  Keith Miller  <keith_miller@apple.com>
+
+        Native Typed Array functions should use Symbol.species
+        https://bugs.webkit.org/show_bug.cgi?id=154569
+
+        Reviewed by Michael Saboff.
+
+        This patch adds support for Symbol.species in the native Typed Array prototype
+        functions. Additionally, now that other types of typedarrays are creatable inside
+        the slice we use the JSGenericTypedArrayView::set function, which has been beefed
+        up, to put everything into the correct place.
+
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::set):
+        * runtime/JSDataView.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewFromIterator):
+        (JSC::constructGenericTypedArrayViewWithArguments):
+        (JSC::constructGenericTypedArrayView):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::setWithSpecificType):
+        (JSC::JSGenericTypedArrayView<Adaptor>::set):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::speciesConstruct):
+        (JSC::genericTypedArrayViewProtoFuncSet):
+        (JSC::genericTypedArrayViewProtoFuncSlice):
+        (JSC::genericTypedArrayViewProtoFuncSubarray):
+        * tests/stress/typedarray-slice.js:
+        (subclasses.typedArrays.map):
+        (testSpecies):
+        (forEach):
+        (subclasses.forEach):
+        (testSpeciesRemoveConstructor):
+        (testSpeciesWithSameBuffer):
+        * tests/stress/typedarray-subarray.js: Added.
+        (subclasses.typedArrays.map):
+        (testSpecies):
+        (forEach):
+        (subclasses.forEach):
+        (testSpeciesRemoveConstructor):
+
+2016-02-26  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add32(Imm, Tmp, Tmp) does not ZDef the destination if Imm is zero
+        https://bugs.webkit.org/show_bug.cgi?id=154704
+
+        Reviewed by Geoffrey Garen.
+
+        If the Imm is zero, we should still zero the top bits
+        to match the definition in AirOpcodes.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::add32):
+        * b3/testb3.cpp:
+
+2016-02-26  Oliver Hunt  <oliver@apple.com>
+
+        Make testRegExp not crash when given an invalid regexp
+        https://bugs.webkit.org/show_bug.cgi?id=154732
+
+        Reviewed by Mark Lam.
+
+        * testRegExp.cpp:
+        (parseRegExpLine):
+
+2016-02-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Add the test for r197155
+        https://bugs.webkit.org/show_bug.cgi?id=154715
+
+        Reviewed by Mark Lam.
+
+        Silly me. I forgot the test in the latest patch update.
+
+        * tests/stress/class-syntax-tdz-osr-entry-in-loop.js: Added.
+
+2016-02-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Drop unnecessary proved type branch in ToPrimitive
+        https://bugs.webkit.org/show_bug.cgi?id=154716
+
+        Reviewed by Geoffrey Garen.
+
+        This branching based on the proved types is unnecessary because this is already handled in constant folding phase.
+        In fact, the DFGSpeculativeJIT64.cpp case is already removed in r164243.
+        This patch removes the remaining JIT32_64 case.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2016-02-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Be aggressive with OSR Entry to FTL if the DFG function was only used for OSR Entry itself
+        https://bugs.webkit.org/show_bug.cgi?id=154575
+
+        Reviewed by Filip Pizlo.
+
+        I noticed that imaging-gaussian-blur spends most of its
+        samples in DFG code despite executing most of the loop
+        iterations in FTL.
+
+        On this particular test, the main function is only entered
+        once and have a very heavy loop there. What happens is DFG
+        starts by compiling the full function in FTL. That takes about
+        8 to 10 milliseconds during which the DFG code makes very little
+        progress. The calls to triggerOSREntryNow() try to OSR Enter
+        for a while then finally start compiling something. By the time
+        the function is ready, we have wasted a lot of time in DFG code.
+
+        What this patch does is set a flag when a DFG function is entered.
+        If we try to triggerOSREntryNow() and the flag was never set,
+        we start compiling both the full function and the one for OSR Entry.
+
+        * dfg/DFGJITCode.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compileEntryExecutionFlag):
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGJITCompiler.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan): Deleted.
+        * dfg/DFGPlan.h:
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+
+2016-02-25  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Temporal Dead Zone checks on "this" are eliminated when doing OSR Entry to FTL
+        https://bugs.webkit.org/show_bug.cgi?id=154664
+
+        Reviewed by Saam Barati.
+
+        When doing OSR Enter into a constructor, we lose the information
+        that this may have been set to empty by a previously executed block.
+
+        All the code just assumed the type for a FlushedJS value and thus
+        not an empty value. It was then okay to eliminate the TDZ checks.
+
+        In this patch, the values on root entry now assume they may be empty.
+        As a result, the SetArgument() for "this" has "empty" as possible
+        type and the TDZ checks are no longer eliminated.
+
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::initialize):
+
+2016-02-25  Ada Chan  <adachan@apple.com>
+
+        Update the definition of ENABLE_VIDEO_PRESENTATION_MODE for Mac platform
+        https://bugs.webkit.org/show_bug.cgi?id=154702
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-02-25  Saam barati  <sbarati@apple.com>
+
+        [ES6] for...in iteration doesn't comply with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154665
+
+        Reviewed by Michael Saboff.
+
+        If you read ForIn/OfHeadEvaluation inside the spec:
+        https://tc39.github.io/ecma262/#sec-runtime-semantics-forin-div-ofheadevaluation-tdznames-expr-iterationkind
+        It calls EnumerateObjectProperties(obj) to get a set of properties
+        to enumerate over (it models this "set" as en ES6 generator function).
+        EnumerateObjectProperties is defined in section 13.7.5.15:
+        https://tc39.github.io/ecma262/#sec-enumerate-object-properties
+        The implementation calls Reflect.getOwnPropertyDescriptor(.) on the
+        properties it sees. We must do the same by modeling the operation as
+        a [[GetOwnProperty]] instead of a [[HasProperty]] internal method call.
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::hasProperty):
+        (JSC::JSObject::hasPropertyGeneric):
+        * runtime/JSObject.h:
+        * tests/stress/proxy-get-own-property.js:
+        (assert):
+        (let.handler.getOwnPropertyDescriptor):
+        (i.set assert):
+
+2016-02-25  Saam barati  <sbarati@apple.com>
+
+        [ES6] Implement Proxy.[[Set]]
+        https://bugs.webkit.org/show_bug.cgi?id=154511
+
+        Reviewed by Filip Pizlo.
+
+        This patch is mostly an implementation of
+        Proxy.[[Set]] with respect to section 9.5.9
+        of the ECMAScript spec.
+        https://tc39.github.io/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-set-p-v-receiver
+
+        This patch also changes JSObject::putInline and JSObject::putByIndex
+        to be aware that a Proxy in the prototype chain will intercept
+        property accesses.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::attemptToInterceptPutByIndexOnHoleForPrototype):
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::canPerformFastPutInline):
+        (JSC::JSObject::putInline):
+        * runtime/JSType.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::getOwnPropertySlotByIndex):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::put):
+        (JSC::ProxyObject::putByIndexCommon):
+        (JSC::ProxyObject::putByIndex):
+        (JSC::performProxyCall):
+        (JSC::ProxyObject::getCallData):
+        (JSC::performProxyConstruct):
+        (JSC::ProxyObject::deletePropertyByIndex):
+        (JSC::ProxyObject::visitChildren):
+        * runtime/ProxyObject.h:
+        (JSC::ProxyObject::create):
+        (JSC::ProxyObject::createStructure):
+        (JSC::ProxyObject::target):
+        (JSC::ProxyObject::handler):
+        * tests/es6.yaml:
+        * tests/stress/proxy-set.js: Added.
+        (assert):
+        (throw.new.Error.let.handler.set 45):
+        (throw.new.Error):
+        (let.target.set x):
+        (let.target.get x):
+        (set let):
+
+2016-02-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove a useless "Move" in the lowering of Select
+        https://bugs.webkit.org/show_bug.cgi?id=154670
+
+        Reviewed by Geoffrey Garen.
+
+        I left the Move instruction when creating the aliasing form
+        of Select.
+
+        On ARM64, that meant a useless move for any case that can't
+        be coalesced.
+
+        On x86, that meant an extra constraint on child2, making it
+        stupidly hard to alias child1.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::createSelect): Deleted.
+
+2016-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose Proxy target and handler internal properties to Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=154663
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        Expose the ProxyObject's target and handler.
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-02-24  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved PRE/POST_BUILD_COMMAND to WEBKIT_FRAMEWORK.
+        https://bugs.webkit.org/show_bug.cgi?id=154651
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Moved shared code to WEBKIT_FRAMEWORK macro.
+
 2016-02-24  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r197033.

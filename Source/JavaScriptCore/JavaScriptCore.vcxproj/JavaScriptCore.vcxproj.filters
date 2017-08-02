@@ -1062,7 +1062,7 @@
     <ClCompile Include="..\yarr\RegularExpression.cpp">
       <Filter>yarr</Filter>
     </ClCompile>
-    <ClCompile Include="..\yarr\YarrCanonicalizeUCS2.cpp">
+    <ClCompile Include="..\yarr\YarrCanonicalizeUnicode.cpp">
       <Filter>yarr</Filter>
     </ClCompile>
     <ClCompile Include="..\yarr\YarrInterpreter.cpp">
@@ -3202,6 +3202,9 @@
     <ClInclude Include="..\runtime\SmallStrings.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\SlowPathReturnType.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\SparseArrayValueMap.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3316,7 +3319,7 @@
     <ClInclude Include="..\yarr\RegularExpression.h">
       <Filter>yarr</Filter>
     </ClInclude>
-    <ClInclude Include="..\yarr\YarrCanonicalizeUCS2.h">
+    <ClInclude Include="..\yarr\YarrCanonicalizeUnicode.h">
       <Filter>yarr</Filter>
     </ClInclude>
     <ClInclude Include="..\yarr\YarrInterpreter.h">

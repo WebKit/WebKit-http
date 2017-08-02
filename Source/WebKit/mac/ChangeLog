@@ -1,3 +1,98 @@
+2016-02-29  Ada Chan  <adachan@apple.com>
+
+        Adopt the new version of AVOutputDeviceMenuController's showMenuForRect method.
+        https://bugs.webkit.org/show_bug.cgi?id=154823
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::showPlaybackTargetPicker):
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::showPlaybackTargetPicker):
+        (WebMediaPlaybackTargetPicker::customPlaybackActionSelected):
+        * WebView/WebView.mm:
+        (-[WebView _showPlaybackTargetPicker:location:hasVideo:]):
+
+2016-03-01  Tim Horton  <timothy_horton@apple.com>
+
+        Expose MediaElement and VideoElement to the Objective-C DOM bindings
+        https://bugs.webkit.org/show_bug.cgi?id=154830
+
+        Reviewed by Sam Weinig.
+
+        * MigrateHeaders.make:
+
+2016-02-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the experimental feature of antialiased font dilation
+        https://bugs.webkit.org/show_bug.cgi?id=154843
+
+        Reviewed by Zalan Bujtas.
+
+        Remove the "antialiased font dilation" code path, and related prefs.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Deleted.
+        (-[WebPreferences setAntialiasedFontDilationEnabled:]): Deleted.
+        (-[WebPreferences antialiasedFontDilationEnabled]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Deleted.
+
+2016-02-26  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for when WK_OVERRIDE_FRAMEWORKS_DIR contains spaces.
+
+        * Configurations/WebKitLegacy.xcconfig: Added quotes.
+
+2016-02-25  Ada Chan  <adachan@apple.com>
+
+        Update the definition of ENABLE_VIDEO_PRESENTATION_MODE for Mac platform
+        https://bugs.webkit.org/show_bug.cgi?id=154702
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-02-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Restrict information passed with navigation action which is triggered by untrusted event
+        https://bugs.webkit.org/show_bug.cgi?id=154571
+        <rdar://problem/15967937>
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+
+2016-02-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo deviceId and groupId must be unique to the page's origin
+        https://bugs.webkit.org/show_bug.cgi?id=153163
+        <rdar://problem/24334526>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::checkUserMediaPermission):
+        (-[WebUserMediaPolicyCheckerListener allow]):
+        (-[WebUserMediaPolicyCheckerListener deny]):
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2016-02-23  Dan Bernstein  <mitz@apple.com>
 
         [Xcode] Linker errors display mangled names, but no longer should

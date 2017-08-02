@@ -1,3 +1,238 @@
+2016-02-29  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add direct number inputs to Bezier editor
+        https://bugs.webkit.org/show_bug.cgi?id=154809
+        <rdar://problem/24881465>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._updateWindowKeydownListener):
+        Now only adds the shared event listener when the first keydown listener
+        is added via WebInspector.addWindowKeydownListener
+
+        * UserInterface/Controllers/CodeMirrorBezierEditingController.js:
+        (WebInspector.CodeMirrorBezierEditingController.prototype.popoverDidDismiss):
+
+        * UserInterface/Controllers/CodeMirrorEditingController.js:
+        (WebInspector.CodeMirrorEditingController.prototype.popoverDidDismiss):
+        (WebInspector.CodeMirrorEditingController.prototype.didDismissPopover):
+        Added function that is called when the popover is dismissed so that
+        removing event listeners is possible.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor):
+        (.bezier-editor > .number-input-container):
+        (.bezier-editor > .number-input-container > input):
+
+        * UserInterface/Views/BezierEditor.js:
+        (WebInspector.BezierEditor.createControl):
+        (WebInspector.BezierEditor.createBezierInput):
+        (WebInspector.BezierEditor):
+        Added usage of Element.prototype.createChild for ease of readability.
+        Also added input elements for manually changing the values of each bezier
+        point's x and y values.
+
+        (WebInspector.BezierEditor.prototype.set bezier):
+        (WebInspector.BezierEditor.prototype.removeListeners):
+        (WebInspector.BezierEditor.prototype._handleMousedown):
+        (WebInspector.BezierEditor.prototype._updateBezier):
+        (WebInspector.BezierEditor.prototype._updateBezierPreview):
+        (WebInspector.BezierEditor.prototype._triggerPreviewAnimation):
+        (WebInspector.BezierEditor.prototype._handleNumberInputInput):
+        (WebInspector.BezierEditor.prototype._handleNumberInputKeydown):
+        (WebInspector.BezierEditor.prototype._changeBezierForInput):
+        Refactored code to make it more reusable, as well as adding event listeners
+        to the newly created inputs, including value chaning from the arrow keys.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.didDismissPopover): Deleted.
+        Removed unused code.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch):
+        (WebInspector.InlineSwatch.prototype.didDismissPopover):
+        Removes any global event listeners added by the current editor if able.
+
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        Now saves the current editor object as a member variable.
+
+2016-02-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: DataGrid's resizers aren't horizontally centered
+        https://bugs.webkit.org/show_bug.cgi?id=154787
+        <rdar://problem/24876901>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid .resizer):
+        Use CSS transforms as margin-left doesn't support sub-pixel values.
+
+2016-02-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Increase clickable area of the console prompt
+        https://bugs.webkit.org/show_bug.cgi?id=154719
+        <rdar://problem/24854538>
+
+        Reviewed by Timothy Hatcher.
+
+        Clicking on the area around CodeMirror element now moves
+        focus to the console prompt.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.prototype._handleMouseDown):
+        Only capture mousedown events on .quick-console.
+        Don't capture clicks on CodeMirror.
+
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .console-prompt):
+        (.quick-console > .console-prompt > .CodeMirror):
+        Make sure .console-prompt is never an event.target for _handleMouseDown.
+
+2016-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused member variables from overview graphs
+        https://bugs.webkit.org/show_bug.cgi?id=154774
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.reset):
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.reset):
+
+2016-02-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r196741): Web Inspector: Bottom section of Layers sidebar is 1px shorter than the console prompt
+        https://bugs.webkit.org/show_bug.cgi?id=154773
+        <rdar://problem/24873345>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.layer-tree > .content):
+        (.panel.details.layer-tree .bottom-bar):
+
+2016-02-26  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Custom transition bezier curve editor preview should loop when not editing curve
+        https://bugs.webkit.org/show_bug.cgi?id=154738
+        <rdar://problem/24861563>
+
+        Reviewed by Timothy Hatcher.
+
+        Added extra frames to bezier preview animation to allow it to infinitely
+        repeat without being jarring to watch.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor > .bezier-preview-timing.animate):
+        (@keyframes bezierPreview):
+        * UserInterface/Views/BezierEditor.js:
+
+2016-02-26  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Keyboard controls to nudge control points in custom transition bezier curve editor would be nice
+        https://bugs.webkit.org/show_bug.cgi?id=154739
+        <rdar://problem/24861498>
+
+        Reviewed by Timothy Hatcher.
+
+        Adds ability for user to nudge the most recently selected bezier control
+        handle by using the arrow keys. Also makes the currently selected bezier
+        control line snap to an axis, which is defined when the user mouses down,
+        whenever the mouse is dragged while the shift key is pressed.
+
+
+        * UserInterface/Views/BezierEditor.js:
+        (WebInspector.BezierEditor):
+        (WebInspector.BezierEditor.prototype.handleKeydownEvent):
+        (WebInspector.BezierEditor.prototype._handleMouseup):
+        (WebInspector.BezierEditor.prototype._updateControlPointsForMouseEvent):
+
+2016-02-26  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Option-clicking on the a CSS property sometimes doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=154384
+        <rdar://problem/24714755>
+
+        Reviewed by Timothy Hatcher.
+
+        It seems as though there were race conditions between CodeMirror's event
+        and the native mousemove such that if CodeMirror fired second, the current
+        candidate was cleared, and would not reset itself until the cursor was
+        moved, at which point the same issue could happen. To fix this, the current
+        candidate is no longer cleared by CodeMirror's event and is instead only
+        modified by the native mouse-events.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._hidePopover):
+
+2016-02-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Unify selected item colors
+        https://bugs.webkit.org/show_bug.cgi?id=154668
+        <rdar://problem/24832178>
+
+        Reviewed by Timothy Hatcher.
+
+        Use the same CSS variable color for all selected items.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline:matches(:focus, .force-focus) .item.selected):
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.selected):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item.selected):
+        * UserInterface/Views/VisualStyleTabbedPropertiesRow.css:
+        (.visual-style-tabbed-properties-row > .visual-style-tabbed-properties-row-container > button.selected):
+
+2016-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose Proxy target and handler internal properties to Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=154663
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        Improve the native parameter list for the global Reflect object methods.
+        Include "enumerate" even though it is deprecated, because we implement it.
+
+2016-02-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual Styles sidebar should support multiple animations
+        https://bugs.webkit.org/show_bug.cgi?id=154546
+        <rdar://problem/24773861>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection):
+        Set additional flags on the optional properties of transition to ensure
+        that the initial value of a new row is not considered invalid.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateAnimationSection):
+        Added a comma-separated keyword list to provide support for multiple
+        animations per rule.
+
+2016-02-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove unused Profile.png images
+
+        https://bugs.webkit.org/show_bug.cgi?id=154647
+        rdar://problem/24820825
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/Profile.png: Removed.
+        * UserInterface/Images/Profile@2x.png: Removed.
+        * UserInterface/Images/gtk/Profile.png: Removed.
+        * UserInterface/Images/gtk/Profile@2x.png: Removed.
+        * UserInterface/Views/TimelineIcons.css:
+        (.profile-icon .icon): Deleted.
+
 2016-02-24  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: TimelineViews should use the recording's end time when entire ruler range is selected

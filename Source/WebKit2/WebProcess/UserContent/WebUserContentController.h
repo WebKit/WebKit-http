@@ -34,12 +34,13 @@
 
 namespace WebKit {
 
+class InjectedBundleScriptWorld;
 class WebCompiledContentExtensionData;
 class WebUserMessageHandlerDescriptorProxy;
 
 class WebUserContentController final : public RefCounted<WebUserContentController>, private IPC::MessageReceiver  {
 public:
-    static PassRefPtr<WebUserContentController> getOrCreate(uint64_t identifier);
+    static Ref<WebUserContentController> getOrCreate(uint64_t identifier);
     virtual ~WebUserContentController();
 
     WebCore::UserContentController& userContentController() { return m_userContentController; }
@@ -52,13 +53,16 @@ private:
     // IPC::MessageReceiver.
     virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
-    void addUserScripts(const Vector<WebCore::UserScript>&);
-    void removeUserScript(const String& urlString);
-    void removeAllUserScripts();
+    void addUserContentWorlds(const Vector<std::pair<uint64_t, String>>&);
+    void removeUserContentWorlds(const Vector<uint64_t>&);
 
-    void addUserStyleSheets(const Vector<WebCore::UserStyleSheet>&);
-    void removeUserStyleSheet(const String& urlString);
-    void removeAllUserStyleSheets();
+    void addUserScripts(const Vector<std::pair<uint64_t, WebCore::UserScript>>&);
+    void removeUserScript(uint64_t worldIdentifier, const String& urlString);
+    void removeAllUserScripts(const Vector<uint64_t>&);
+
+    void addUserStyleSheets(const Vector<std::pair<uint64_t, WebCore::UserStyleSheet>>&);
+    void removeUserStyleSheet(uint64_t worldIdentifier, const String& urlString);
+    void removeAllUserStyleSheets(const Vector<uint64_t>&);
 
     void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerHandle>&);
     void removeUserScriptMessageHandler(uint64_t);

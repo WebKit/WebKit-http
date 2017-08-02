@@ -93,7 +93,6 @@ public:
     void resume();
     
     typedef uint64_t TaskIdentifier;
-    TaskIdentifier taskIdentifier();
     
     ~NetworkDataTask();
     
@@ -119,10 +118,10 @@ public:
         ASSERT(!m_pendingDownload);
         m_pendingDownload = &pendingDownload;
     }
-    void findPendingDownloadLocation(ResponseCompletionHandler);
     void setPendingDownloadLocation(const String& filename, const SandboxExtension::Handle&);
     const String& pendingDownloadLocation() { return m_pendingDownloadLocation; }
     WebCore::ResourceRequest currentRequest();
+    String suggestedFilename();
     bool tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
     void willPerformHTTPRedirection(const WebCore::ResourceResponse&, WebCore::ResourceRequest&&, RedirectCompletionHandler);
     void transferSandboxExtensionToDownload(Download&);
@@ -146,6 +145,7 @@ private:
     DownloadID m_pendingDownloadID;
     String m_user;
     String m_password;
+    WebCore::StoredCredentials m_storedCredentials;
     String m_lastHTTPMethod;
     String m_pendingDownloadLocation;
     WebCore::ResourceRequest m_firstRequest;

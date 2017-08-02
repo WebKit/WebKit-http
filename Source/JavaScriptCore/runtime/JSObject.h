@@ -94,7 +94,8 @@ class JSObject : public JSCell {
 
 public:
     typedef JSCell Base;
-        
+
+    JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
     JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
@@ -478,6 +479,8 @@ public:
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
+    bool hasPropertyGeneric(ExecState*, PropertyName, PropertySlot::InternalMethodType) const;
+    bool hasPropertyGeneric(ExecState*, unsigned propertyName, PropertySlot::InternalMethodType) const;
     bool hasOwnProperty(ExecState*, PropertyName) const;
     bool hasOwnProperty(ExecState*, unsigned) const;
 
@@ -611,13 +614,34 @@ public:
 
     JS_EXPORT_PRIVATE void seal(VM&);
     JS_EXPORT_PRIVATE void freeze(VM&);
-    JS_EXPORT_PRIVATE void preventExtensions(VM&);
+    JS_EXPORT_PRIVATE static bool preventExtensions(JSObject*, ExecState*);
+    JS_EXPORT_PRIVATE static bool isExtensible(JSObject*, ExecState*);
     bool isSealed(VM& vm) { return structure(vm)->isSealed(vm); }
     bool isFrozen(VM& vm) { return structure(vm)->isFrozen(vm); }
-    bool isExtensible() { return structure()->isExtensible(); }
+private:
+    ALWAYS_INLINE bool isExtensibleImpl() { return isStructureExtensible(); }
+public:
+    // You should only call isStructureExtensible() when:
+    // - Performing this check in a way that isn't described in the specification 
+    //   as calling the virtual [[IsExtensible]] trap.
+    // - When you're guaranteed that object->methodTable()->isExtensible isn't
+    //   overridden.
+    ALWAYS_INLINE bool isStructureExtensible() { return structure()->isStructureExtensible(); }
+    // You should call this when performing [[IsExtensible]] trap in a place
+    // that is described in the specification. This performs the fully virtual
+    // [[IsExtensible]] trap.
+    ALWAYS_INLINE bool isExtensibleInline(ExecState* exec)
+    { 
+        VM& vm = exec->vm();
+        auto isExtensibleMethod = methodTable(vm)->isExtensible;
+        if (LIKELY(isExtensibleMethod == JSObject::isExtensible))
+            return isExtensibleImpl();
+
+        return isExtensibleMethod(this, exec);
+    }
     bool indexingShouldBeSparse()
     {
-        return !isExtensible()
+        return !isStructureExtensible()
             || structure()->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero();
     }
 
@@ -855,6 +879,7 @@ private:
         
     template<PutMode>
     bool putDirectInternal(VM&, PropertyName, JSValue, unsigned attr, PutPropertySlot&);
+    bool canPerformFastPutInline(ExecState* exec, VM&, PropertyName);
 
     JS_EXPORT_PRIVATE NEVER_INLINE void putInlineSlow(ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
@@ -1268,7 +1293,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
             return true;
         }
 
-        if ((mode == PutModePut) && !isExtensible())
+        if ((mode == PutModePut) && !isStructureExtensible())
             return false;
 
         DeferGC deferGC(vm.heap);
@@ -1333,7 +1358,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
         return true;
     }
 
-    if ((mode == PutModePut) && !isExtensible())
+    if ((mode == PutModePut) && !isStructureExtensible())
         return false;
 
     // We want the structure transition watchpoint to fire after this object has switched

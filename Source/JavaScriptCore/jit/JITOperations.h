@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,20 +28,32 @@
 
 #if ENABLE(JIT)
 
-#include "CallFrame.h"
-#include "CommonSlowPaths.h"
-#include "JITExceptions.h"
-#include "JSArray.h"
-#include "JSCJSValue.h"
-#include "MacroAssembler.h"
-#include "PutKind.h"
-#include "SpillRegistersMode.h"
-#include "StructureStubInfo.h"
-
+#include "MacroAssemblerCodeRef.h"
+#include "PropertyOffset.h"
+#include "SlowPathReturnType.h"
+#include "TypedArrayType.h"
+#include <wtf/text/UniquedStringImpl.h>
 
 namespace JSC {
 
 class ArrayAllocationProfile;
+class ArrayProfile;
+class CallLinkInfo;
+class CodeBlock;
+class ExecState;
+class JSArray;
+class JSFunction;
+class JSLexicalEnvironment;
+class JSScope;
+class Register;
+class StructureStubInfo;
+class SymbolTable;
+class WatchpointSet;
+
+struct ByValInfo;
+struct InlineCallFrame;
+
+typedef ExecState CallFrame;
 
 #if CALLING_CONVENTION_IS_STDCALL
 #define JIT_OPERATION CDECL
@@ -242,6 +254,7 @@ typedef char* JIT_OPERATION (*P_JITOperation_EZZ)(ExecState*, int32_t, int32_t);
 typedef SlowPathReturnType JIT_OPERATION (*Sprt_JITOperation_ECli)(ExecState*, CallLinkInfo*);
 typedef StringImpl* JIT_OPERATION (*T_JITOperation_EJss)(ExecState*, JSString*);
 typedef JSString* JIT_OPERATION (*Jss_JITOperation_EZ)(ExecState*, int32_t);
+typedef JSString* JIT_OPERATION (*Jss_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.
@@ -297,7 +310,6 @@ EncodedJSValue JIT_OPERATION operationCompareStringEq(ExecState*, JSCell* left, 
 #else
 size_t JIT_OPERATION operationCompareStringEq(ExecState*, JSCell* left, JSCell* right) WTF_INTERNAL;
 #endif
-size_t JIT_OPERATION operationHasProperty(ExecState*, JSObject*, JSString*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewArrayWithProfile(ExecState*, ArrayAllocationProfile*, const JSValue* values, int32_t size) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewArrayBufferWithProfile(ExecState*, ArrayAllocationProfile*, const JSValue* values, int32_t size) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewArrayWithSizeAndProfile(ExecState*, ArrayAllocationProfile*, EncodedJSValue size) WTF_INTERNAL;
@@ -369,6 +381,10 @@ void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
 } // extern "C"
 
 } // namespace JSC
+
+#else // ENABLE(JIT)
+
+#define JIT_OPERATION
 
 #endif // ENABLE(JIT)
 

@@ -77,7 +77,6 @@ MESSAGE_RECEIVERS = \
     CustomProtocolManager \
     CustomProtocolManagerProxy \
     DatabaseProcess \
-    DatabaseProcessIDBConnection \
     DatabaseProcessProxy \
     DatabaseToWebProcessConnection \
     DownloadProxy \
@@ -118,7 +117,6 @@ MESSAGE_RECEIVERS = \
     WebGeolocationManagerProxy \
     WebIDBConnectionToClient \
     WebIDBConnectionToServer \
-    WebIDBServerConnection \
     WebIconDatabase \
     WebIconDatabaseProxy \
     WebInspector \
@@ -126,7 +124,6 @@ MESSAGE_RECEIVERS = \
     WebInspectorUI \
     WebNotificationManager \
     WebPage \
-    WebPageGroupProxy \
     WebPageProxy \
     WebPasteboardProxy \
     WebProcess \

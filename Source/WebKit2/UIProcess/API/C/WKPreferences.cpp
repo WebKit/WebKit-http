@@ -1172,9 +1172,19 @@ void WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef prefer
     toImpl(preferencesRef)->setHiddenPageDOMTimerThrottlingEnabled(enabled);
 }
 
+void WKPreferencesSetHiddenPageDOMTimerThrottlingAutoIncreases(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setHiddenPageDOMTimerThrottlingAutoIncreases(enabled);
+}
+
 bool WKPreferencesGetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->hiddenPageDOMTimerThrottlingEnabled();
+}
+
+bool WKPreferencesGetHiddenPageDOMTimerThrottlingAutoIncreases(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->hiddenPageDOMTimerThrottlingAutoIncreases();
 }
 
 void WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1377,14 +1387,14 @@ double WKPreferencesGetMinimumZoomFontSize(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->minimumZoomFontSize();
 }
 
-void WKPreferencesSetAntialiasedFontDilationEnabled(WKPreferencesRef preferencesRef, bool enabled)
+void WKPreferencesSetAntialiasedFontDilationEnabled(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setAntialiasedFontDilationEnabled(enabled);
+    // Feature removed.
 }
 
-bool WKPreferencesGetAntialiasedFontDilationEnabled(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetAntialiasedFontDilationEnabled(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->antialiasedFontDilationEnabled();
+    return false; // Feature removed.
 }
 
 void WKPreferencesSetVisibleDebugOverlayRegions(WKPreferencesRef preferencesRef, WKDebugOverlayRegions visibleRegions)

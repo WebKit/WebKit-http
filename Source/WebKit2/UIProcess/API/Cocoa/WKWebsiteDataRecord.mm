@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 
 #if WK_API_ENABLED
 
+#import "_WKWebsiteDataSizeInternal.h"
+
 NSString * const WKWebsiteDataTypeDiskCache = @"WKWebsiteDataTypeDiskCache";
 NSString * const WKWebsiteDataTypeMemoryCache = @"WKWebsiteDataTypeMemoryCache";
 NSString * const WKWebsiteDataTypeOfflineWebApplicationCache = @"WKWebsiteDataTypeOfflineWebApplicationCache";
@@ -42,6 +44,7 @@ NSString * const WKWebsiteDataTypeIndexedDBDatabases = @"WKWebsiteDataTypeIndexe
 NSString * const _WKWebsiteDataTypeMediaKeys = @"_WKWebsiteDataTypeMediaKeys";
 NSString * const _WKWebsiteDataTypeHSTSCache = @"_WKWebsiteDataTypeHSTSCache";
 NSString * const _WKWebsiteDataTypeSearchFieldRecentSearches = @"_WKWebsiteDataTypeSearchFieldRecentSearches";
+NSString * const _WKWebsiteDataTypeResourceLoadStatistics = @"_WKWebsiteDataTypeResourceLoadStatistics";
 
 #if PLATFORM(MAC)
 NSString * const _WKWebsiteDataTypePlugInData = @"_WKWebsiteDataTypePlugInData";
@@ -86,13 +89,21 @@ static NSString *dataTypesToString(NSSet *dataTypes)
     if ([dataTypes containsObject:_WKWebsiteDataTypePlugInData])
         [array addObject:@"Plug-in Data"];
 #endif
+    if ([dataTypes containsObject:_WKWebsiteDataTypeResourceLoadStatistics])
+        [array addObject:@"Resource Load Statistics"];
 
     return [array componentsJoinedByString:@", "];
 }
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; displayName = %@; dataTypes = { %@ }>", NSStringFromClass(self.class), self, self.displayName, dataTypesToString(self.dataTypes)];
+    auto result = adoptNS([[NSMutableString alloc] initWithFormat:@"<%@: %p; displayName = %@; dataTypes = { %@ }", NSStringFromClass(self.class), self, self.displayName, dataTypesToString(self.dataTypes)]);
+
+    if (auto* dataSize = self._dataSize)
+        [result appendFormat:@"; _dataSize = { %llu bytes }", dataSize.totalSize];
+
+    [result appendString:@">"];
+    return result.autorelease();
 }
 
 - (NSString *)displayName
@@ -110,6 +121,20 @@ static NSString *dataTypesToString(NSSet *dataTypes)
 - (API::Object&)_apiObject
 {
     return *_websiteDataRecord;
+}
+
+@end
+
+@implementation WKWebsiteDataRecord (WKPrivate)
+
+- (_WKWebsiteDataSize *)_dataSize
+{
+    auto& size = _websiteDataRecord->websiteDataRecord().size;
+
+    if (!size)
+        return nil;
+
+    return [[[_WKWebsiteDataSize alloc] initWithSize:*size] autorelease];
 }
 
 @end

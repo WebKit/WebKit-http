@@ -53,16 +53,19 @@ public:
     NetworkSession(Type, WebCore::SessionID, CustomProtocolManager*);
     ~NetworkSession();
 
+    static void setCustomProtocolManager(CustomProtocolManager*);
     static NetworkSession& defaultSession();
+    void clearCredentials();
 
-    NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier);
+    NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier, WebCore::StoredCredentials);
 
     void addDownloadID(NetworkDataTask::TaskIdentifier, DownloadID);
     DownloadID downloadID(NetworkDataTask::TaskIdentifier);
     DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
     
 private:
-    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMap;
+    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithCredentials;
+    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithoutCredentials;
     HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
 #if PLATFORM(COCOA)
     RetainPtr<NSURLSession> m_sessionWithCredentialStorage;

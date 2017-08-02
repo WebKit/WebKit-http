@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "MessageReceiver.h"
 #include <wtf/Forward.h>
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
@@ -39,6 +40,7 @@
 
 namespace API {
 class Array;
+class UserContentWorld;
 class UserContentExtension;
 class UserScript;
 class UserStyleSheet;
@@ -73,13 +75,17 @@ public:
 
     API::Array& userScripts() { return m_userScripts.get(); }
     void addUserScript(API::UserScript&);
-    void removeUserScript(const API::UserScript&);
+    void removeUserScript(API::UserScript&);
+    void removeAllUserScripts(API::UserContentWorld&);
     void removeAllUserScripts();
 
     API::Array& userStyleSheets() { return m_userStyleSheets.get(); }
     void addUserStyleSheet(API::UserStyleSheet&);
-    void removeUserStyleSheet(const API::UserStyleSheet&);
+    void removeUserStyleSheet(API::UserStyleSheet&);
+    void removeAllUserStyleSheets(API::UserContentWorld&);
     void removeAllUserStyleSheets();
+
+    void removeAllUserContent(API::UserContentWorld&);
 
     // Returns false if there was a name conflict.
     bool addUserScriptMessageHandler(WebScriptMessageHandler*);
@@ -97,11 +103,17 @@ private:
 
     void didPostMessage(IPC::Connection&, uint64_t pageID, uint64_t frameID, const WebCore::SecurityOriginData&, uint64_t messageHandlerID, const IPC::DataReference&);
 
+    void addUserContentWorldUse(API::UserContentWorld&);
+    void removeUserContentWorldUses(API::UserContentWorld&, unsigned numberOfUsesToRemove);
+    void removeUserContentWorldUses(HashCountedSet<RefPtr<API::UserContentWorld>>&);
+    bool shouldSendRemoveUserContentWorldsMessage(API::UserContentWorld&, unsigned numberOfUsesToRemove);
+
     uint64_t m_identifier;
     HashSet<WebProcessProxy*> m_processes;    
     Ref<API::Array> m_userScripts;
     Ref<API::Array> m_userStyleSheets;
     HashMap<uint64_t, RefPtr<WebScriptMessageHandler>> m_scriptMessageHandlers;
+    HashCountedSet<RefPtr<API::UserContentWorld>> m_userContentWorlds;
 
 #if ENABLE(CONTENT_EXTENSIONS)
     HashMap<String, RefPtr<API::UserContentExtension>> m_userContentExtensions;
