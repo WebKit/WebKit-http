@@ -57,7 +57,7 @@ bool JSStorage::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prope
     // Only perform the custom delete if the object doesn't have a native property by this name.
     // Since hasProperty() would end up calling canGetItemsForName() and be fooled, we need to check
     // the native property slots manually.
-    PropertySlot slot(thisObject);
+    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::GetOwnProperty);
 
     static_assert(!hasStaticPropertyTable, "This function does not handle static instance properties");
 
@@ -76,8 +76,6 @@ bool JSStorage::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prope
 
 bool JSStorage::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned propertyName)
 {
-    JSStorage* thisObject = jsCast<JSStorage*>(cell);
-    PropertySlot slot(thisObject);
     static_assert(!hasStaticPropertyTable, "This function does not handle static instance properties");
     return deleteProperty(cell, exec, Identifier::from(exec, propertyName));
 }
@@ -105,7 +103,7 @@ bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue 
     // Only perform the custom put if the object doesn't have a native property by this name.
     // Since hasProperty() would end up calling canGetItemsForName() and be fooled, we need to check
     // the native property slots manually.
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
     static_assert(!hasStaticPropertyTable, "This function does not handle static instance properties");
 
     JSValue prototype = this->prototype();
@@ -116,8 +114,13 @@ bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue 
         return false;
 
     String stringValue = value.toString(exec)->value(exec);
-    if (exec->hadException())
+    if (exec->hadException()) {
+        // The return value indicates whether putDelegate() should handle the put operation (which
+        // if true, tells the caller not to execute the generic put). It does not indicate whether
+        // putDelegate() did successfully complete the operation or not (which it didn't in this
+        // case due to the exception).
         return true;
+    }
 
     ExceptionCode ec = 0;
     wrapped().setItem(propertyNameToString(propertyName), stringValue, ec);

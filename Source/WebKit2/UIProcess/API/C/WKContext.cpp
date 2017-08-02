@@ -47,7 +47,6 @@
 // Supplements
 #include "WebCookieManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
-#include "WebMediaCacheManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
@@ -433,11 +432,6 @@ WKKeyValueStorageManagerRef WKContextGetKeyValueStorageManager(WKContextRef cont
     return reinterpret_cast<WKKeyValueStorageManagerRef>(WKContextGetWebsiteDataStore(context));
 }
 
-WKMediaCacheManagerRef WKContextGetMediaCacheManager(WKContextRef contextRef)
-{
-    return toAPI(toImpl(contextRef)->supplement<WebMediaCacheManagerProxy>());
-}
-
 WKMediaSessionFocusManagerRef WKContextGetMediaSessionFocusManager(WKContextRef context)
 {
 #if ENABLE(MEDIA_SESSION)
@@ -451,16 +445,6 @@ WKMediaSessionFocusManagerRef WKContextGetMediaSessionFocusManager(WKContextRef 
 WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef)
 {
     return toAPI(toImpl(contextRef)->supplement<WebNotificationManagerProxy>());
-}
-
-WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef context)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    return reinterpret_cast<WKPluginSiteDataManagerRef>(WKContextGetWebsiteDataStore(context));
-#else
-    UNUSED_PARAM(context);
-    return nullptr;
-#endif
 }
 
 WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef context)

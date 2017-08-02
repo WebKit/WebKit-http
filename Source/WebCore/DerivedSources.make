@@ -242,7 +242,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/css/Counter.idl \
     $(WebCore)/css/DOMWindowCSS.idl \
     $(WebCore)/css/FontFace.idl \
-    $(WebCore)/css/FontLoader.idl \
+    $(WebCore)/css/FontFaceSet.idl \
     $(WebCore)/css/MediaList.idl \
     $(WebCore)/css/MediaQueryList.idl \
     $(WebCore)/css/MediaQueryListListener.idl \
@@ -375,6 +375,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLHeadElement.idl \
     $(WebCore)/html/HTMLHeadingElement.idl \
     $(WebCore)/html/HTMLHtmlElement.idl \
+    $(WebCore)/html/HTMLHyperlinkElementUtils.idl \
     $(WebCore)/html/HTMLIFrameElement.idl \
     $(WebCore)/html/HTMLImageElement.idl \
     $(WebCore)/html/HTMLInputElement.idl \

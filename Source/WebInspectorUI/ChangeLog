@@ -1,3 +1,532 @@
+2016-02-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineViews should use the recording's end time when entire ruler range is selected
+        https://bugs.webkit.org/show_bug.cgi?id=154644
+        <rdar://problem/24818442>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._timeRangeSelectionChanged):
+        Update current timeline view when entire range selected.
+
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        Live-update the OverviewTimelineView during recording when entire range selected.
+        
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimelineViewSelection):
+        Update timeline view start and end times. When entire range selected, use the recording
+        end time or current time (while capturing).
+
+2016-02-24  Timothy Hatcher  <timothy@apple.com>
+
+        Follow up fix for the TimelineRuler "select all" mode to fix zeroTime.
+
+        https://bugs.webkit.org/show_bug.cgi?id=154561
+        rdar://problem/24779872
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.set zeroTime): Change selectionStartTime
+        before _zeroTime so the check for entireRangeSelected still works.
+
+2016-02-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineRuler should have a "select all" mode
+        https://bugs.webkit.org/show_bug.cgi?id=154561
+        <rdar://problem/24779872>
+
+        Reviewed by Timothy Hatcher.
+
+        TimelineRuler is initialized with a selected range of [0, Number.MAX_VALUE),
+        indicating the entire timeline is selected. This patch makes it possible to
+        return the ruler to this state, after being overwritten by a custom selection.
+        When no custom selection exists, the selection handles are hidden.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler.selection-hidden > :matches(.selection-drag, .selection-handle, .shaded-area)):
+        Style for hiding selection controls as needed.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        Represent unbounded selection interval as [0, Number.MAX_VALUE).
+
+        (WebInspector.TimelineRuler.prototype.set allowsTimeRangeSelection):
+        Register double-click event listener.
+
+        (WebInspector.TimelineRuler.prototype.set zeroTime):
+        (WebInspector.TimelineRuler.prototype.get entireRangeSelected):
+        (WebInspector.TimelineRuler.prototype.selectEntireRange):
+        Let clients check and set the selection of the entire range without needing
+        to use the internal sentinel values 0 and Number.MAX_VALUE.
+
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Update ruler styles and dispatch selection change event when entire
+        range is selected.
+
+        (WebInspector.TimelineRuler.prototype._handleDoubleClick):
+        If a user-defined selection exists, select the entire range.
+
+2016-02-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dim selected items when docked Inspector window is inactive
+        https://bugs.webkit.org/show_bug.cgi?id=154526
+        <rdar://problem/24764365>
+
+        Abstract selected item and SVG glyph colors into CSS variables.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor > .bezier-preview > div):
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button > .glyph):
+        (.navigation-bar .item.button:not(.disabled):active > .glyph):
+        (.navigation-bar .item.button:not(.disabled):matches(:focus, .activate.activated, .radio.selected) > .glyph):
+        (.navigation-bar .item.button:not(.disabled):active:matches(:focus, .activate.activated, .radio.selected) > .glyph):
+        (.navigation-bar .item.button.disabled > .glyph):
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated) > .glyph):
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated) > .glyph):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-user-command.special-user-log > .console-message-text):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li.pseudo-class-enabled > .selection::before):
+        * UserInterface/Views/Main.css:
+        (input[type=range]::-webkit-slider-runnable-track::before):
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only:hover):
+        (.navigation-bar .item.radio.button.text-only.selected):
+        (.navigation-bar .item.radio.button.text-only:active):
+        (.navigation-bar .item.radio.button.text-only.selected:active):
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li.multiple:matches(.selected, :hover, :active) > .arrows):
+        (.scope-bar > li:hover):
+        (.scope-bar > li.selected):
+        (.scope-bar > li:active):
+        (.scope-bar > li.selected:active):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (body.window-inactive):
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section.has-set-property > .header > span::after):
+        * UserInterface/Views/VisualStyleKeywordIconList.css:
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected)):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected):
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Timelines sidebar and overview attempt to access undefined properties when FPS instrument is absent
+        https://bugs.webkit.org/show_bug.cgi?id=154567
+        <rdar://problem/24781536>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        The viewMode property should be in a valid state before attempting
+        to access the current view mode settings.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.get minimumWidth):
+        (WebInspector.TimelineSidebarPanel.prototype._updateViewModeIfNeeded):
+        (WebInspector.TimelineSidebarPanel):
+        Added missing checks for FPSInstrument support.
+
+2016-02-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r196620): Web Inspector: Filter bar in the left sidebar is 1px shorter than the console prompt
+        https://bugs.webkit.org/show_bug.cgi?id=154529
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow):
+
+2016-02-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Opacity slider thumb sometimes goes past the bar in Visual Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=154497
+
+        Reviewed by Timothy Hatcher.
+
+        Since WebInspector.Slider uses CSS transforms to move the slider knob
+        along the track, if the width of the track changes then the position
+        of the knob would stay the same since it was translated instead of
+        adjusting its position relative to the new width.
+
+        * UserInterface/Views/Slider.js:
+        (WebInspector.Slider.prototype.recalculateKnobX):
+        Resets the maxX value to 0 to ensure that a new maxX is calculated with
+        the current width.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.set specifiedWidth): Deleted.
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.recalculateWidth):
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype.widthDidChange):
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateDisplaySection):
+
+        * UserInterface/Views/VisualStyleUnitSlider.js:
+        (WebInspector.VisualStyleUnitSlider.prototype.recalculateWidth):
+
+2016-02-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual Styles: Modifying background expands Font section
+        https://bugs.webkit.org/show_bug.cgi?id=154491
+        <rdar://problem/24755440>
+
+        Reviewed by Timothy Hatcher.
+
+        When the user selects a new style, the Visual sidebar examines the property
+        editors in each subsection to see if any have a value and expands/collapses
+        the subsection accordingly. This issue was happening because that logic was
+        also being triggered when the user didn't select a new style, which is
+        controlled by DOMNodeStyles and the significantChange value in refresh().
+
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.toCamelCase):
+        Added utility function to transform a string into a camel-cased version.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh.fetchedComputedStyle):
+        Dropped unused variable and added checks to make sure doubly-matching styles
+        don't count as a significant change and cause refreshes of the styles sidebar.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateSections):
+        If this function has an event, meaning it was triggered by a newly selected
+        selector in the selector section, loop through each subsection and perform
+        the logic described above, but instead only to open sections.
+
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection.replaceDashWithCapital): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        Removed logic that was already being called by _sectionModified().
+
+2016-02-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Text Align segmented control blinks while editing other properties in Visual Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=154487
+        <rdar://problem/24754703>
+
+        Reviewed by Timothy Hatcher.
+
+        The icon list property editor blinking issue was caused by the fact that
+        the selected value was toggled on/off each time the value was set on the
+        editor. In order to prevent this, the logic for the setter value() was
+        modified to just match a keyword icon to the given value and select it.
+
+        * UserInterface/Views/VisualStyleKeywordIconList.js:
+        (WebInspector.VisualStyleKeywordIconList.prototype.set value):
+        (WebInspector.VisualStyleKeywordIconList.prototype._handleKeywordChanged):
+
+2016-02-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Placeholder text in Visual Styles sidebar table row should be white
+        https://bugs.webkit.org/show_bug.cgi?id=154488
+        <rdar://problem/24754715>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle):
+
+2016-02-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Inherited selector rows have text too low
+        https://bugs.webkit.org/show_bug.cgi?id=154489
+        <rdar://problem/24754774>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleSelectorSection.css:
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider):
+
+2016-02-19  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Color picker in Visual Styles sidebar should not default to zero alpha
+        https://bugs.webkit.org/show_bug.cgi?id=154474
+        <rdar://problem/24750217>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch.prototype._fallbackValue):
+        Changed the fallback value for color from transparent to white so that
+        the color picker starts out with an alpha value of 1.
+
+        (WebInspector.InlineSwatch.prototype._handleContextMenuEvent):
+        Prevents context menu events from having an effect if there is no value
+        for them to modify.
+
+2016-02-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: CSS var() function should be syntax highlighted
+        https://bugs.webkit.org/show_bug.cgi?id=154406
+        <rdar://problem/24726136>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        Added "var" to CodeMirror value keywords for syntax highlighting.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        Added "var" to accepted keywords for auto-completion.
+
+2016-02-18  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Styles Sidebar focus jumps when trying to edit a color
+        https://bugs.webkit.org/show_bug.cgi?id=154404
+        <rdar://problem/24725744>
+
+        Reviewed by Timothy Hatcher.
+
+        Clicking an inline swatch in the CSS Rules sidebar causes any focused
+        editor, if any, to become blurred and therefore fire its handler function.
+        This causes an issue because when a CodeMirror instance in the styles
+        sidebar becomes blurred, it is possible for the entire Rules sidebar to
+        refresh and recreate all of the sections (r187714), meaning that it will
+        reselect whatever editor was previously selected before the refresh,
+        causing the swatch popup to be blurred and therefore dismiss.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorBlurActiveEditor):
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.createSwatch):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._inlineSwatchBeforeClicked):
+        Add listener for new event and call to delegate function for handling it.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        Now fires an event before the clicked logic happens, but still after the
+        click event is fired on the element.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionBlurActiveEditor):
+        Clears the previously focused editor so when a reset happens no editor
+        is refocused.
+
+2016-02-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Native Parameter Lists to Console prototype functions
+        https://bugs.webkit.org/show_bug.cgi?id=154419
+        <rdar://problem/24730314>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-02-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Align console prompt with execution context selector
+        https://bugs.webkit.org/show_bug.cgi?id=154381
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .console-prompt > .CodeMirror):
+        (.quick-console .execution-context):
+
+2016-02-18  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Storage tab navigation bar should fit on a single line
+        https://bugs.webkit.org/show_bug.cgi?id=152473
+        <rdar://problem/24023435>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        (Number.constrain):
+        Reworked logic to ensure that the returned value is never less than the
+        given minimum value.
+
+2016-02-17  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: In the styles sidebar, Option-clicking on --css-variable should jump to its definition
+        https://bugs.webkit.org/show_bug.cgi?id=154082
+        <rdar://problem/24593361>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked.showRangeInSourceCode):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked):
+        Now tests to see if the highlighted token was a CSS variable and if
+        so, attempts to show the declaration of the CSS variable instead of
+        the location where it is used.
+
+2016-02-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r196620): Web Inspector: DataGrid headers and resizers are misaligned when the scrollbar is visible
+        https://bugs.webkit.org/show_bug.cgi?id=154280
+        <rdar://problem/24670567>
+
+        Reviewed by Timothy Hatcher.
+
+        Revert back to "overflow-y: overlay".
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid .data-container):
+        * UserInterface/Views/DatabaseContentView.css:
+        (.storage-view.query):
+
+2016-02-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r196620): Web Inspector: When the scrollbars are always visible, the console prompt is 1px taller
+        https://bugs.webkit.org/show_bug.cgi?id=154328
+        <rdar://problem/24692996>
+
+        Introduce a CSS variable to ensure that the quick console is the
+        same height as the bottom right section of the styles sidebar.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .options-container):
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container):
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2016-02-17  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add Context menu separators to Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=154360
+
+        Reviewed by Joseph Pecoraro.
+
+        In the Styles sidebar, there are three main sections for the context menu:
+        - Copy and Duplicate/Show-source
+        - Add pseudo-class rules
+        - Add/Select pseudo-element rules
+        These three sections were all put together in the same context menu, which
+        was very crowded as a result. Separators have been added to make it so that
+        these three sections are now separated and clearly show their different uses.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleSelectorPaste):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+
+2016-02-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: add CSS variables for common border/background colors
+        https://bugs.webkit.org/show_bug.cgi?id=154302
+        <rdar://problem/24680944>
+
+        Reviewed by Timothy Hatcher.
+
+        Added CSS variables for commonly used border and background colors, and removed
+        duplicate CSS variables with less generic names. Inactive border colors declared in
+        rules with a body.window-inactive selector have been removed. A new rule using this
+        selector in Variables.css sets "--border-color" to the inactive color.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .pseudo-classes):
+        (.sidebar > .panel.details.css-style > .content ~ :matches(.options-container, .class-list-container)):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .style-declaration-section:not(.filter-section-has-label)):
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid.inline):
+        (.data-grid th):
+        (.data-grid :matches(th, td):not(:last-child)):
+        (body.window-inactive .data-grid th): Deleted.
+        (body.window-inactive .data-grid :matches(th, td):not(:last-child)): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger.paused .details-section.scripts):
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        (.details-section .details-section:first-child):
+        (.details-section > .header):
+        (.details-section > .content > .group):
+        (.details-section > .content > .group:nth-child(even) > .row:matches(.simple:first-child > *, :not(.simple):first-child)):
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar):
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner):
+        (body.window-inactive .find-banner): Deleted.
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        (.panel.details.layer-tree .bottom-bar):
+        * UserInterface/Views/Main.css:
+        (body.docked.bottom):
+        (body.docked.right):
+        (#split-content-browser):
+        (#split-content-browser > .navigation-bar):
+        (body.window-inactive.docked.bottom): Deleted.
+        (body.window-inactive.docked.right): Deleted.
+        (body.window-inactive #split-content-browser): Deleted.
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view):
+        (.memory-category-view > .details):
+        (body.window-inactive .memory-category-view): Deleted.
+        (body.window-inactive .memory-category-view > .details): Deleted.
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory):
+        (.timeline-view.memory > .content > .overview):
+        (.timeline-view.memory > .content > .details > .subtitle):
+        (.timeline-view.memory > .content > .overview > .divider):
+        (body.window-inactive .timeline-view.memory): Deleted.
+        (body.window-inactive .timeline-view.memory > .content > .overview): Deleted.
+        (body.window-inactive .timeline-view.memory > .content > .details > .subtitle): Deleted.
+        (body.window-inactive .timeline-view.memory > .content > .overview > .divider): Deleted.
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar):
+        (body.window-inactive .navigation-bar): Deleted.
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow):
+        (body.window-inactive .sidebar > .panel.navigation > .overflow-shadow): Deleted.
+        * UserInterface/Views/NetworkSidebarPanel.css:
+        (.sidebar > .panel.navigation.network > .title-bar):
+        (body.window-inactive .sidebar > .panel.navigation.network > .title-bar): Deleted.
+        * UserInterface/Views/OverviewTimelineView.css:
+        (.timeline-view.overview > .timeline-ruler > .header):
+        (body.window-inactive .timeline-view.overview > .timeline-ruler > .header): Deleted.
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console):
+        (body.window-inactive .quick-console): Deleted.
+        * UserInterface/Views/Sidebar.css:
+        (.sidebar):
+        (.sidebar.left):
+        (.sidebar.right):
+        (body.window-inactive .sidebar.left): Deleted.
+        (body.window-inactive .sidebar.right): Deleted.
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.data-grid.timeline th):
+        (body.window-inactive .data-grid.timeline th): Deleted.
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .header):
+        (body.window-inactive .timeline-ruler > .header): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .title-bar):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .title-bar): Deleted.
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .title-bar.timeline-events): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (body.latest-mac .toolbar .dashboard-container):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (body.window-inactive *):
+        * UserInterface/Views/VisualStyleSelectorSection.css:
+        (.details-section.visual-style-selector-section:not(.collapsed) > .header):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider):
+
 2016-02-17  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Add singular and plural cases for "Ignore n times before stopping" label in breakpoint editor

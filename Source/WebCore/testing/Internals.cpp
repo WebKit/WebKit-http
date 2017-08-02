@@ -39,6 +39,7 @@
 #include "ChromeClient.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
+#include "ComposedTreeIterator.h"
 #include "Cursor.h"
 #include "DOMPath.h"
 #include "DOMStringList.h"
@@ -578,6 +579,16 @@ static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const Strin
 void Internals::setOverrideCachePolicy(const String& policy)
 {
     frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
+}
+
+void Internals::setCanShowModalDialogOverride(bool allow, ExceptionCode& ec)
+{
+    if (!contextDocument() || !contextDocument()->domWindow()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    contextDocument()->domWindow()->setCanShowModalDialogOverride(allow);
 }
 
 static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
@@ -3449,8 +3460,8 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
     const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().isReadableStreamDisturbedPrivateName();
     JSValue value;
-    PropertySlot propertySlot(value);
-    globalObject->fastGetOwnPropertySlot(&state, state.vm(), *globalObject->structure(), privateName, propertySlot);
+    PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
+    globalObject->methodTable()->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
     value = propertySlot.getValue(&state, privateName);
     ASSERT(value.isFunction());
 
@@ -3475,6 +3486,13 @@ String Internals::resourceLoadStatisticsForOrigin(String origin)
 void Internals::setResourceLoadStatisticsEnabled(bool enable)
 {
     Settings::setResourceLoadStatisticsEnabled(enable);
+}
+
+String Internals::composedTreeAsText(Node* node)
+{
+    if (!is<ContainerNode>(node))
+        return "";
+    return WebCore::composedTreeAsText(downcast<ContainerNode>(*node));
 }
 
 }

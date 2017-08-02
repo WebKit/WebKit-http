@@ -32,8 +32,8 @@
 #include "DatabaseProcess.h"
 #include "DatabaseToWebProcessConnection.h"
 #include "IDBIdentifier.h"
+#include "LegacyUniqueIDBDatabase.h"
 #include "Logging.h"
-#include "UniqueIDBDatabase.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebIDBServerConnectionMessages.h"
 #include <WebCore/IDBDatabaseMetadata.h>
@@ -71,7 +71,7 @@ void DatabaseProcessIDBConnection::disconnectedFromWebProcess()
 
 void DatabaseProcessIDBConnection::establishConnection(const String& databaseName, const SecurityOriginData& openingOrigin, const SecurityOriginData& mainFrameOrigin)
 {
-    m_uniqueIDBDatabase = DatabaseProcess::singleton().getOrCreateUniqueIDBDatabase(UniqueIDBDatabaseIdentifier(databaseName, openingOrigin, mainFrameOrigin));
+    m_uniqueIDBDatabase = DatabaseProcess::singleton().getOrCreateLegacyUniqueIDBDatabase(LegacyUniqueIDBDatabaseIdentifier(databaseName, openingOrigin, mainFrameOrigin));
     m_uniqueIDBDatabase->registerConnection(*this);
 }
 

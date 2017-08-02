@@ -33,7 +33,6 @@
 #include "DFGCommon.h"
 #include "FTLJITCode.h"
 #include "JITOperations.h"
-#include "LLVMAPI.h"
 #include "LinkBuffer.h"
 #include "JSCInlines.h"
 #include "ProfilerCompilation.h"
@@ -49,37 +48,9 @@ void link(State& state)
     CodeBlock* codeBlock = graph.m_codeBlock;
     VM& vm = graph.m_vm;
     
-    // LLVM will create its own jump tables as needed.
+    // B3 will create its own jump tables as needed.
     codeBlock->clearSwitchJumpTables();
 
-#if !FTL_USES_B3
-    // What LLVM's stackmaps call stackSizeForLocals and what we call frameRegisterCount have a simple
-    // relationship, though it's not obvious from reading the code. The easiest way to understand them
-    // is to look at stackOffset, i.e. what you have to add to FP to get SP. For LLVM that is just:
-    //
-    //     stackOffset == -state.jitCode->stackmaps.stackSizeForLocals()
-    //
-    // The way we define frameRegisterCount is that it satisfies this equality:
-    //
-    //     stackOffset == virtualRegisterForLocal(frameRegisterCount - 1).offset() * sizeof(Register)
-    //
-    // We can simplify this when we apply virtualRegisterForLocal():
-    //
-    //     stackOffset == (-1 - (frameRegisterCount - 1)) * sizeof(Register)
-    //     stackOffset == (-1 - frameRegisterCount + 1) * sizeof(Register)
-    //     stackOffset == -frameRegisterCount * sizeof(Register)
-    //
-    // Therefore we just have:
-    //
-    //     frameRegisterCount == -stackOffset / sizeof(Register)
-    //
-    // If we substitute what we have above, we get:
-    //
-    //     frameRegisterCount == -(-state.jitCode->stackmaps.stackSizeForLocals()) / sizeof(Register)
-    //     frameRegisterCount == state.jitCode->stackmaps.stackSizeForLocals() / sizeof(Register)
-    state.jitCode->common.frameRegisterCount = state.jitCode->stackmaps.stackSizeForLocals() / sizeof(void*);
-#endif
-    
     state.jitCode->common.requiredRegisterCountForExit = graph.requiredRegisterCountForExit();
     
     if (!graph.m_plan.inlineCallFrames->isEmpty())
@@ -147,19 +118,7 @@ void link(State& state)
         out.reset();
 
         out.print("    Disassembly:\n");
-#if FTL_USES_B3
         out.print("        <not implemented yet>\n");
-#else
-        for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
-            if (state.codeSectionNames[i] != SECTION_NAME("text"))
-                continue;
-            
-            ExecutableMemoryHandle* handle = state.jitCode->handles()[i].get();
-            disassemble(
-                MacroAssemblerCodePtr(handle->start()), handle->sizeInBytes(),
-                "      ", out, LLVMSubset);
-        }
-#endif
         compilation->addDescription(Profiler::OriginStack(), out.toCString());
         out.reset();
         
@@ -216,7 +175,7 @@ void link(State& state)
         // We jump to here straight from DFG code, after having boxed up all of the
         // values into the scratch buffer. Everything should be good to go - at this
         // point we've even done the stack check. Basically we just have to make the
-        // call to the LLVM-generated code.
+        // call to the B3-generated code.
         CCallHelpers::Label start = jit.label();
         jit.emitFunctionEpilogue();
         CCallHelpers::Jump mainPathJump = jit.jump();

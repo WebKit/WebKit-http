@@ -1,3 +1,153 @@
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-23  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define
+        https://bugs.webkit.org/show_bug.cgi?id=112323
+
+        Reviewed by Chris Dumez.
+
+        This feature is controlled by a runtime switch, and defaults off.
+
+        * wtf/FeatureDefines.h:
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.
+        https://bugs.webkit.org/show_bug.cgi?id=154450
+
+        Reviewed by Alex Christensen.
+
+        * wtf/CMakeLists.txt:
+
+2016-02-20  Mark Lam  <mark.lam@apple.com>
+
+        Use of inlined asm statements causes problems for -std=c99 builds.
+        https://bugs.webkit.org/show_bug.cgi?id=154507
+
+        Reviewed by Dan Bernstein.
+
+        WTF's Assertions.h may inadvertantly get included by other projects that are built
+        with -std=c99.  The use of the inlined asm statements with the keyword "asm" is
+        not recognized when the -std compiler flag is used.
+
+        https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html says "When writing code that
+        can be compiled with -ansi and the various -std options, use __asm__ instead of
+        asm (see Alternate Keywords)."
+
+        So, to be a good citizen, we can change the use of "asm" in CRASH() to "__asm__"
+        so that we don't break the build of such other projects.
+
+        * wtf/Assertions.h:
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        Tested by new TestWebKitAPI tests.
+
+        Update the HashCountedSet class with a new 'add' method to support efficient initialization of
+        the count of a given key. Also provide move and pointer template specializations to expand the
+        types of data that can be used as 'keys' in the HashCountedSet to match the underlying HashMap
+        implementation.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::add): Added new overload supporting a supplied count.
+
+2016-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196791.
+        https://bugs.webkit.org/show_bug.cgi?id=154438
+
+        broke windows build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Extend HashCountedSet with a method to efficiently set the
+        count of an entry"
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+        http://trac.webkit.org/changeset/196791
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        Tested by new TestWebKitAPI tests.
+
+        Update the HashCountedSet class with a new 'add' method to support efficient initialization of
+        the count of a given key. Also provide move and pointer template specializations to expand the
+        types of data that can be used as 'keys' in the HashCountedSet to match the underlying HashMap
+        implementation.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::add): Added new overload supporting a supplied count.
+
+2016-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove LLVM dependencies from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=154323
+
+        Reviewed by Antti Koivisto and Benjamin Poulain.
+
+        * wtf/Platform.h:
+
+2016-02-16  Sam Weinig  <sam@webkit.org>
+
+        Add an ensure function on HashMap that takes a key and a function to make the lazy value initialization idiom easier
+        https://bugs.webkit.org/show_bug.cgi?id=134857
+
+        Reviewed by Geoffrey Garen.
+
+        The current idiom for adding a value to a HashMap if the key is not already present, to allow for not
+        unnecessarily constructing the new value if it won't be used, is:
+        
+        {
+            auto result = map.add(key, Value());
+            if (!result.isNewEntry)
+                return result.iterator->value;
+
+            result.iterator->value = createNewValue();
+            return result.iterator->value;
+        }
+
+        or sometimes
+
+        {
+            auto& value = map.add(key, Value()).iterator->value;
+            if (!value)
+                value = createNewValue();
+            return value;
+        }
+
+        With this patch, you can now use the new function HashMap::ensure(key, functor). This will allow us to 
+        change to using the following idiom:
+
+        {
+            return map.ensure(key, [] { return createNewValue(); });
+        }
+
+        The passed in functor will only be called if the key is not already present in the HashMap.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapTranslator::translate):
+        (WTF::HashMapEnsureTranslator::hash):
+        (WTF::HashMapEnsureTranslator::equal):
+        (WTF::HashMapEnsureTranslator::translate):
+        (WTF::HashMapTranslatorAdapter::hash):
+
 2016-02-16  Filip Pizlo  <fpizlo@apple.com>
 
         FTL_USES_B3 should be unconditionally true

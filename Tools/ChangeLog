@@ -1,3 +1,366 @@
+2016-02-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C importer should generate all web-platform-tests submodules descriptions
+        https://bugs.webkit.org/show_bug.cgi?id=154587
+
+        Reviewed by Darin Adler.
+
+        Updated submodules description format (removing submodule name as it is the last string of the path really).
+        Added git subroutines.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.origin_url):
+        (Git):
+        (Git.init_submodules):
+        (Git.submodules_status):
+        (Git.deinit_submodules):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._install_modules): Updated to submodule name removal.
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader._git_submodules_description): Updated to cope with recursive submodules (use of submodule init/deinit).
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_submodules_generation): Reactivated partially this test.
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * ContentExtensionTester/Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Ditto.
+        * LayoutTestRelay/Configurations/Base.xcconfig: Ditto.
+        * MiniBrowser/Configurations/Base.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/Base.xcconfig: Ditto.
+        * WebEditingTester/Configurations/Base.xcconfig: Ditto.
+        * WebKitTestRunner/Configurations/Base.xcconfig: Ditto.
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebView should implement NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=137160
+
+        Reviewed by Dan Bernstein.
+
+        Add tests.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (TEST):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKProcessPool should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154608
+
+        Reviewed by Sam Weinig.
+
+        Add tests.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (TEST):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebsiteDataStore should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154605
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (TEST):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebViewConfiguration should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154602
+
+        Reviewed by Beth Dakin.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (TEST):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKPreferences should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154597
+
+        Reviewed by Sam Weinig.
+
+        Test encoding and decoding WKPreferences.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (encodeAndDecode):
+        (TEST):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * TestWebKitAPI/mac/SyntheticBackingScaleFactorWindow.m:
+        (-[SyntheticBackingScaleFactorWindow initWithContentRect:styleMask:backing:defer:]):
+
+2016-02-23  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Allow to run the WebKitGTK+ MiniBrowser with the run-benchmark script.
+        https://bugs.webkit.org/show_bug.cgi?id=153993
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow): Support --geometry argument for MiniBrowser.
+        We use this on the gtk_minibrowser_driver script to start the MiniBrowser maximized.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/__init__.py: Fix loading of subclasses:
+        The base class has to be loaded first, otherwise any subclase referencing it will give import error.
+        In OSX the ordering of os.listdir() causes the base class (browser_driver.py) to be first on the list, but not on Linux.
+        By specifiying the name of the base class file, we ensure it is always loaded first on any system despite the ordering of listdir.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver_factory.py:
+        (BrowserDriverFactory.create):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/gtk_browser_driver.py: Added.
+        (GTKBrowserDriver):
+        (GTKBrowserDriver.prepare_env):
+        (GTKBrowserDriver.restore_env):
+        (GTKBrowserDriver.close_browsers):
+        (GTKBrowserDriver._launch_process):
+        (GTKBrowserDriver._terminate_processes):
+        (GTKBrowserDriver._screen_size):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/gtk_minibrowser_driver.py: Added.
+        (GTKMiniBrowserDriver):
+        (GTKMiniBrowserDriver.prepare_env):
+        (GTKMiniBrowserDriver.launch_url):
+        (GTKMiniBrowserDriver.close_browsers):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/__init__.py: Fix loading of subclasses. See description above.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver):
+        (SimpleHTTPServerDriver.kill_server): Check if the server is still running before trying to terminate it.
+        Usually the server ends gracefully (no need to terminate it), so this was causing ugly errors on the log.
+        * Scripts/webkitpy/benchmark_runner/utils.py: Fix loading of subclasses. See description above.
+        (load_subclasses):
+
+2016-02-23  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK] Missing configuration patch for openh264 compilation
+        https://bugs.webkit.org/show_bug.cgi?id=154455
+
+        This patch is required for the openh264 compilation with the
+        jhbuild-webrtc.modules. The code was implemented by Alessandro
+        Decina.
+
+        Reviewed by Philippe Normand.
+
+        * gtk/patches/openh264-configure.patch: Added.
+
+2016-02-20  Olivier Blin  <olivier.blin@softathome.com>
+
+        [cmake] Use ICU include dirs in WebKit2 and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=154479
+
+        Reviewed by Michael Catanzaro.
+
+        * WebKitTestRunner/CMakeLists.txt:
+
+2016-02-19  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [GTK] Fixed link error when G_DEFINE_AUTOPTR_CLEANUP_FUNC is not defined.
+        https://bugs.webkit.org/show_bug.cgi?id=154467
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAutocleanups.cpp:
+        (beforeAll):
+        (afterAll):
+
+2016-02-19  Brady Eidson  <beidson@apple.com>
+
+        Add "databaseProcessDidCrash" to the WKContextClient; Adopt it in WKTR.
+        https://bugs.webkit.org/show_bug.cgi?id=154428
+
+        Reviewed by Jer Noble.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generatePageConfiguration):
+        (WTR::TestController::databaseProcessName):
+        (WTR::TestController::databaseProcessDidCrash):
+        * WebKitTestRunner/TestController.h:
+
+2016-02-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Bump internal jhbuild versions to 1.6.3
+        https://bugs.webkit.org/show_bug.cgi?id=149594
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/jhbuild.modules: Bump to GStreamer 1.6.3.
+        * gtk/patches/gst-plugins-bad-fix-faad2-version-check.patch: Removed.
+        * gtk/patches/gst-plugins-bad-remove-gnustep-support.patch: Removed.
+        * gtk/patches/gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch: Removed.
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/CMakeLists.txt: Add new HashCountedSet test files.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Ditto.
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp: Added.
+
+2016-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196791.
+        https://bugs.webkit.org/show_bug.cgi?id=154438
+
+        broke windows build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Extend HashCountedSet with a method to efficiently set the
+        count of an entry"
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+        http://trac.webkit.org/changeset/196791
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/CMakeLists.txt: Add new HashCountedSet test files.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Ditto.
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp: Added.
+
+2016-02-18  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the --target-web-process and --use-web-process-xpc-service options.
+
+        Rubber-stamped by Dan Bernstein.
+
+        We now always use XPC, and --target-web-process is no longer supported.
+
+        * Scripts/webkitdirs.pm:
+        (execMacWebKitAppForDebugging):
+        (shouldTargetWebProcess): Deleted.
+        (determineShouldTargetWebProcess): Deleted.
+        (shouldUseXPCServiceForWebProcess): Deleted.
+        (determineShouldUseXPCServiceForWebProcess): Deleted.
+        (printHelpAndExitForRunAndDebugWebKitAppIfNeeded): Deleted.
+        (argumentsForRunAndDebugMacWebKitApp): Deleted.
+
+2016-02-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip API test WTF_ParkingLot.UnparkOneFiftyThenFiftyAll on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153997
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/Tests/WTF/ParkingLot.cpp:
+
+2016-02-18  Jer Noble  <jer.noble@apple.com>
+
+        run-webkit-httpd should use webkitpy to run httpd.
+        https://bugs.webkit.org/show_bug.cgi?id=154271
+
+        Reviewed by Alexey Proskuryakov.
+
+        Update run-webkit-httpd to use webkitpy.port to launch httpd. Pass on http_port and http_all_interface
+        options to match the current run-webkit-httpd (optional) behavior.
+
+        * Scripts/run-webkit-httpd:
+        (parse_args):
+        (main):
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        * Scripts/webkitpy/layout_tests/servers/http_server.py:
+        (Lighttpd._prepare_config):
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.start_http_server):
+
+2016-02-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove remaining references to LLVM, and make sure comments refer to the backend as "B3" not "LLVM"
+        https://bugs.webkit.org/show_bug.cgi?id=154383
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove LLVM dependencies from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=154323
+
+        Reviewed by Antti Koivisto and Benjamin Poulain.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+        (isContentOfFileEqualToString):
+        (fileContains): Deleted.
+        (buildLLVM): Deleted.
+        (symlinkLLVMLibrariesIfNeeded): Deleted.
+
+2016-02-16  Sam Weinig  <sam@webkit.org>
+
+        Add an ensure function on HashMap that takes a key and a function to make the lazy value initialization idiom easier
+        https://bugs.webkit.org/show_bug.cgi?id=134857
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        Add tests for HashMap::ensure.
+
+2016-02-17  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement sentence related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154312
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (nextParagraphEndTextMarkerForTextMarkerCallback):
+        (sentenceTextMarkerRangeForTextMarkerCallback):
+        (previousSentenceStartTextMarkerForTextMarkerCallback):
+        (nextSentenceEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
 2016-02-15  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] Gather some rudimentary statistics during resource load 

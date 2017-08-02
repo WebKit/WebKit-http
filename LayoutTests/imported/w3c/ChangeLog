@@ -1,3 +1,242 @@
+2016-02-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C importer should generate all web-platform-tests submodules descriptions
+        https://bugs.webkit.org/show_bug.cgi?id=154587
+
+        Reviewed by Darin Adler.
+
+        * resources/TestRepositories: Reactivated submodules description generation.
+        * resources/web-platform-tests-modules.json: Updated according modified scripts.
+
+2016-02-23  Chris Dumez  <cdumez@apple.com>
+
+        [Reflected] IDL attributes of integer types should use HTML rules for parsing integers
+        https://bugs.webkit.org/show_bug.cgi?id=154573
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C HTML tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/dom/reflection-grouping-expected.txt:
+        * web-platform-tests/html/dom/reflection-metadata-expected.txt:
+        * web-platform-tests/html/dom/reflection-misc-expected.txt:
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+        * web-platform-tests/html/dom/reflection-sections-expected.txt:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+        * web-platform-tests/html/dom/reflection-text-expected.txt:
+
+2016-02-23  Chris Dumez  <cdumez@apple.com>
+
+        Align our implementation of Range.createContextualFragment with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154627
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline as one more check is passing.
+
+        * web-platform-tests/dom/nodes/Node-contains-xhtml-expected.txt:
+
+2016-02-22  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Binding generator should support key value iterable
+        https://bugs.webkit.org/show_bug.cgi?id=154413
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline html/dom/interfaces.html.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        HTMLScriptElement.crossOrigin / HTMLImageElement.crossOrigin should only return known values
+        https://bugs.webkit.org/show_bug.cgi?id=154502
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * web-platform-tests/html/dom/reflection-misc-expected.txt:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Make HTMLSelectElement.size behave as per the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154504
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Add username / password attributes to HTMLAnchorElement / HTMLAreaElement
+        https://bugs.webkit.org/show_bug.cgi?id=154519
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        iframe/frame/object.contentDocument should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154409
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync W3C HTML/DOM web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=154513
+
+        Reviewed by Darin Adler.
+
+        Re-sync W3C HTML/DOM web-platform-tests after:
+        - https://github.com/w3c/web-platform-tests/pull/2597
+        - https://github.com/w3c/web-platform-tests/pull/2598
+        - https://github.com/w3c/web-platform-tests/pull/2599
+
+        * web-platform-tests/html/dom/elements-embedded.js:
+        * web-platform-tests/html/dom/elements-misc.js:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * web-platform-tests/html/dom/reflection-misc-expected.txt:
+        * web-platform-tests/html/dom/reflection.js:
+        (ReflectionTests.doReflects):
+
+2016-02-19  Chris Dumez  <cdumez@apple.com>
+
+        HTMLFormElement.autocomplete should only return known values
+        https://bugs.webkit.org/show_bug.cgi?id=154247
+        <rdar://problem/24658195>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline a couple of W3C HTML tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-autocomplete-expected.txt:
+
+2016-02-19  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync W3C web-platform-tests' html/dom/interfaces.html
+        https://bugs.webkit.org/show_bug.cgi?id=154463
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-sync W3C web-platform-tests' html/dom/interfaces.html after:
+        - https://github.com/w3c/web-platform-tests/pull/2588
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+
+2016-02-18  Chris Dumez  <cdumez@apple.com>
+
+        window.history / window.navigator should not be replaceable
+        https://bugs.webkit.org/show_bug.cgi?id=154412
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-18  Chris Dumez  <cdumez@apple.com>
+
+        HTMLTableHeaderCellElement.scope should only return known values
+        https://bugs.webkit.org/show_bug.cgi?id=154423
+        <rdar://problem/24731018>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-02-18  Chris Dumez  <cdumez@apple.com>
+
+        [Unforgeable] operations should not be writable as per Web IDL
+        https://bugs.webkit.org/show_bug.cgi?id=154396
+        <rdar://problem/24721063>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-18  Chris Dumez  <cdumez@apple.com>
+
+        Fix behavior of reflecting unsigned long IDL attributes that are limited to only non-negative numbers greater than zero
+        https://bugs.webkit.org/show_bug.cgi?id=154398
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196648): http://w3c-test.org/html/dom/interfaces.html redirects at the end of the test
+        https://bugs.webkit.org/show_bug.cgi?id=154357
+
+        Reviewed by Alexey Proskuryakov.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Import W3C HTML reflection tests
+        https://bugs.webkit.org/show_bug.cgi?id=154310
+        <rdar://problem/24685826>
+
+        Reviewed by Ryosuke Niwa.
+
+        Import W3C HTML reflection tests from:
+        https://github.com/w3c/web-platform-tests/tree/master/html/dom
+
+        This improves our test coverage.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-embedded.html: Added.
+        * web-platform-tests/html/dom/reflection-forms-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-forms.html: Added.
+        * web-platform-tests/html/dom/reflection-grouping-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-grouping.html: Added.
+        * web-platform-tests/html/dom/reflection-metadata-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-metadata.html: Added.
+        * web-platform-tests/html/dom/reflection-misc-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-misc.html: Added.
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-obsolete.html: Added.
+        * web-platform-tests/html/dom/reflection-sections-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-sections.html: Added.
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-tabular.html: Added.
+        * web-platform-tests/html/dom/reflection-text-expected.txt: Added.
+        * web-platform-tests/html/dom/reflection-text.html: Added.
+
 2016-02-17  Chris Dumez  <cdumez@apple.com>
 
         Window should have its 'constructor' property on the prototype

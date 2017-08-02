@@ -1,3 +1,103 @@
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-23  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define
+        https://bugs.webkit.org/show_bug.cgi?id=112323
+
+        Reviewed by Chris Dumez.
+
+        This feature is controlled by a runtime switch, and defaults off.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-02-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196935.
+        https://bugs.webkit.org/show_bug.cgi?id=154557
+
+        This change causes timeouts and crashes in LayoutTests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Enable AVFoundationNSURLSessionEnabled by default"
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+        http://trac.webkit.org/changeset/196935
+
+2016-02-22  Keith Rollin  <krollin@apple.com>
+
+        Add mechanism to disable memory pressure handling
+        https://bugs.webkit.org/show_bug.cgi?id=154254
+        <rdar://problem/24662616>
+
+        Reviewed by Chris Dumez.
+
+        Add a mechanism to disable WebKit's response to memory pressure
+        triggers. This was asked for by another group for testing purposes.
+
+        In order to disable WebKit's memory pressure handling, execute the
+        following from the command line:
+
+            defaults write com.apple.Safari WebKitSuppressMemoryPressureHandler -bool true
+
+        To revert to standard behavior, delete the key or set it to False.
+
+        This flag is used when a new sub-process is being spawned. The value
+        is read and stored in an initialization parameter block, which is then
+        sent to the new sub-process.
+
+        In actuality, only the UI, WebContent, and Network processes heed the
+        flag. The Plugin process isn't instrumented to heed this flag for
+        three reasons. First, the Plugin process installs its memory pressure
+        handler in initializeProcess, not initializePluginProcess. This is
+        contrary to when the other processes install their handlers, which is
+        in initialize<PluginType>Process, not initializeProcess. So in order
+        to accomodate the Plugin process, we'd need to modify
+        ChildProcessInitializationParameters. Doing this is awkward at best,
+        but also seems to be opposed to what's supposed to be done in
+        initializeProcess and conveyed in
+        ChildProcessInitializationParameters. And even if we did add a boolean
+        to this structure and added support for conveying it through the XPC
+        port, it would end up being a Plugin process-only boolean in a general
+        parameter block, which seems asymmetric with the other processes.
+        Second, there's no convenient Cocoa function called in the flow that
+        spawns the Plugin process, meaning that there's no convenient place to
+        call NSUserDefaults to get the flag's value. And third, the Plugin
+        process doesn't elegantly respond to the memory pressure trigger
+        anyway. It might terminate itself, but that's it. As for the Database
+        process, it doesn't seem to support responding to memory pressure at
+        all, so we don't send it a flag telling it to ignore it.
+
+        Internally, the memory pressure handler is suppressed by not calling
+        MemoryPressureHandler::install() if the flag is set. In the case of
+        the Network process, the flag is saved so that it can be checked later
+        in other places that manually kick off the memory pressure handling
+        procedure.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (WebInstallMemoryPressureHandler):
+
+2016-02-22  Jer Noble  <jer.noble@apple.com>
+
+        Enable AVFoundationNSURLSessionEnabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
 2016-02-15  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] Gather some rudimentary statistics during resource load 

@@ -324,6 +324,12 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
             this._delegate.cssStyleDeclarationSectionEditorFocused(this);
     }
 
+    cssStyleDeclarationTextEditorBlurActiveEditor()
+    {
+        if (typeof this._delegate.cssStyleDeclarationSectionBlurActiveEditor === "function")
+            this._delegate.cssStyleDeclarationSectionBlurActiveEditor(this);
+    }
+
     cssStyleDeclarationTextEditorSwitchRule(reverse)
     {
         if (!this._delegate)
@@ -463,6 +469,8 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
             return;
 
         if (WebInspector.CSSStyleManager.ForceablePseudoClasses.every((className) => !this._style.selectorText.includes(":" + className))) {
+            contextMenu.appendSeparator();
+
             for (let pseudoClass of WebInspector.CSSStyleManager.ForceablePseudoClasses) {
                 if (pseudoClass === "visited" && this._style.node.nodeName() !== "A")
                     continue;
@@ -485,6 +493,8 @@ WebInspector.CSSStyleDeclarationSection = class CSSStyleDeclarationSection exten
                 });
             }
         }
+
+        contextMenu.appendSeparator();
 
         for (let pseudoElement of WebInspector.CSSStyleManager.PseudoElementNames) {
             let pseudoElementSelector = "::" + pseudoElement;

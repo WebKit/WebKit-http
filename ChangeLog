@@ -1,3 +1,55 @@
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.
+        https://bugs.webkit.org/show_bug.cgi?id=154450
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-02-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Bump internal jhbuild versions to 1.6.3
+        https://bugs.webkit.org/show_bug.cgi?id=149594
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindGStreamer.cmake: Check gst-gl version for the latest stable release of GStreamer.
+
+2016-02-18  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the "All Source (target WebProcess)" scheme.
+
+        Rubber-stamped by Dan Bernstein.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme: Removed.
+
+2016-02-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Remove LLVM support
+        https://bugs.webkit.org/show_bug.cgi?id=154370
+
+        Reviewed by Csaba Osztrogonác.
+
+        After switching all CMake ports to B3, this was only needed for the LLVM disassembler, which
+        has been removed from JSC. Feel free to bring this back if restoring the LLVM disassembler,
+        but for the time being this is dead code.
+
+        * Source/cmake/FindLLVM.cmake: Removed.
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-02-18  Joonghun Park  <jh718.park@samsung.com>
+
+        [CMake] Remove meaningless conditional statements in CMakeLists.txt
+        https://bugs.webkit.org/show_bug.cgi?id=153778
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+        Use CMAKE_FOO_OUTPUT_DIRECTORY located in CMakeLists.txt as default value.
+        And remove conditional statements which has enclosed these one
+        because they don't have meaning anymore.
+
 2016-02-15  Alex Christensen  <achristensen@webkit.org>
 
         Re-enable INTL on WinCairo

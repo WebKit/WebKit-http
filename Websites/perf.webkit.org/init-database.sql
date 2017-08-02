@@ -229,6 +229,7 @@ CREATE TABLE analysis_test_groups (
     testgroup_name varchar(256),
     testgroup_author varchar(256),
     testgroup_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    testgroup_hidden boolean NOT NULL DEFAULT FALSE,
     CONSTRAINT testgroup_name_must_be_unique_for_each_task UNIQUE(testgroup_task, testgroup_name));
 CREATE INDEX testgroup_task_index ON analysis_test_groups(testgroup_task);
 
@@ -239,7 +240,7 @@ CREATE TABLE roots (
     root_set integer REFERENCES root_sets NOT NULL,
     root_commit integer REFERENCES commits NOT NULL);
 
-CREATE TYPE build_request_status_type as ENUM ('pending', 'scheduled', 'running', 'failed', 'completed');
+CREATE TYPE build_request_status_type as ENUM ('pending', 'scheduled', 'running', 'failed', 'completed', 'canceled');
 CREATE TABLE build_requests (
     request_id serial PRIMARY KEY,
     request_triggerable integer REFERENCES build_triggerables NOT NULL,

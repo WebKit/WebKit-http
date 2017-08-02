@@ -46,6 +46,7 @@
 #include "JSCInlines.h"
 #include "PropertyDescriptor.h"
 #include "PropertyNameArray.h"
+#include "ProxyObject.h"
 #include "Reject.h"
 #include "SlotVisitorInlines.h"
 #include <math.h>
@@ -264,7 +265,7 @@ String JSObject::calculatedClassName(JSObject* object)
 {
     String prototypeFunctionName;
     ExecState* exec = object->globalObject()->globalExec();
-    PropertySlot slot(object->structure()->storedPrototype());
+    PropertySlot slot(object->structure()->storedPrototype(), PropertySlot::InternalMethodType::VMInquiry);
     PropertyName constructor(exec->propertyNames().constructor);
     if (object->getPropertySlot(exec, constructor, slot)) {
         if (slot.isValue()) {
@@ -1270,15 +1271,17 @@ void JSObject::putDirectNonIndexAccessor(VM& vm, PropertyName propertyName, JSVa
     structure->setHasGetterSetterPropertiesWithProtoCheck(propertyName == vm.propertyNames->underscoreProto);
 }
 
+// HasProperty(O, P) from Section 7.3.10 of the spec.
+// http://www.ecma-international.org/ecma-262/6.0/index.html#sec-hasproperty
 bool JSObject::hasProperty(ExecState* exec, PropertyName propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::HasProperty);
     return const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
 }
 
 bool JSObject::hasProperty(ExecState* exec, unsigned propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::HasProperty);
     return const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
 }
 
@@ -1304,15 +1307,17 @@ bool JSObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName proper
     return true;
 }
 
+// HasOwnProperty(O, P) from section 7.3.11 in the spec.
+// http://www.ecma-international.org/ecma-262/6.0/index.html#sec-hasownproperty
 bool JSObject::hasOwnProperty(ExecState* exec, PropertyName propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
     return const_cast<JSObject*>(this)->methodTable(exec->vm())->getOwnPropertySlot(const_cast<JSObject*>(this), exec, propertyName, slot);
 }
 
 bool JSObject::hasOwnProperty(ExecState* exec, unsigned propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
     return const_cast<JSObject*>(this)->methodTable(exec->vm())->getOwnPropertySlotByIndex(const_cast<JSObject*>(this), exec, propertyName, slot);
 }
 
@@ -2548,9 +2553,22 @@ static JSBoundSlotBaseFunction* getBoundSlotBaseFunctionForGetterSetter(ExecStat
 
 bool JSObject::getOwnPropertyDescriptor(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
-    JSC::PropertySlot slot(this);
+    JSC::PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
     if (!methodTable(exec->vm())->getOwnPropertySlot(this, exec, propertyName, slot))
         return false;
+
+    // DebuggerScope::getOwnPropertySlot() (and possibly others) may return attributes from the prototype chain
+    // but getOwnPropertyDescriptor() should only work for 'own' properties so we exit early if we detect that
+    // the property is not an own property.
+    if (slot.slotBase() != this && slot.slotBase()) {
+        JSProxy* jsProxy = jsDynamicCast<JSProxy*>(this);
+        if (!jsProxy || jsProxy->target() != slot.slotBase()) {
+            // Try ProxyObject.
+            ProxyObject* proxyObject = jsDynamicCast<ProxyObject*>(this);
+            if (!proxyObject || proxyObject->target() != slot.slotBase())
+                return false;
+        }
+    }
 
     if (slot.isAccessor())
         descriptor.setAccessorDescriptor(slot.getterSetter(), slot.attributes());
@@ -2642,34 +2660,38 @@ private:
     VM& m_vm;
 };
 
-bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
+
+// 9.1.6.3 of the spec
+// http://www.ecma-international.org/ecma-262/6.0/index.html#sec-validateandapplypropertydescriptor
+bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, PropertyName propertyName, bool isExtensible,
+    const PropertyDescriptor& descriptor, bool isCurrentDefined, const PropertyDescriptor& current, bool throwException)
 {
-    // Track on the globaldata that we're in define property.
-    // Currently DefineOwnProperty uses delete to remove properties when they are being replaced
-    // (particularly when changing attributes), however delete won't allow non-configurable (i.e.
-    // DontDelete) properties to be deleted. For now, we can use this flag to make this work.
-    DefineOwnPropertyScope scope(exec);
-    
     // If we have a new property we can just put it on normally
-    PropertyDescriptor current;
-    if (!getOwnPropertyDescriptor(exec, propertyName, current)) {
+    // Step 2.
+    if (!isCurrentDefined) {
         // unless extensions are prevented!
-        if (!isExtensible()) {
+        // Step 2.a
+        if (!isExtensible) {
             if (throwException)
                 exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
             return false;
         }
+        if (!object)
+            return true;
+        // Step 2.c/d
         PropertyDescriptor oldDescriptor;
         oldDescriptor.setValue(jsUndefined());
-        return putDescriptor(exec, this, propertyName, descriptor, descriptor.attributes(), oldDescriptor);
+        // FIXME: spec says to always return true here.
+        return putDescriptor(exec, object, propertyName, descriptor, descriptor.attributes(), oldDescriptor);
     }
-
+    // Step 3.
     if (descriptor.isEmpty())
         return true;
-
+    // Step 4.
     if (current.equalTo(exec, descriptor))
         return true;
 
+    // Step 5.
     // Filter out invalid changes
     if (!current.configurable()) {
         if (descriptor.configurable()) {
@@ -2683,16 +2705,18 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
             return false;
         }
     }
-
+    
+    // Step 6.
     // A generic descriptor is simply changing the attributes of an existing property
     if (descriptor.isGenericDescriptor()) {
-        if (!current.attributesEqual(descriptor)) {
-            methodTable(exec->vm())->deleteProperty(this, exec, propertyName);
-            return putDescriptor(exec, this, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
+        if (!current.attributesEqual(descriptor) && object) {
+            object->methodTable(exec->vm())->deleteProperty(object, exec, propertyName);
+            return putDescriptor(exec, object, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
         }
         return true;
     }
-
+    
+    // Step 7.
     // Changing between a normal property or an accessor property
     if (descriptor.isDataDescriptor() != current.isDataDescriptor()) {
         if (!current.configurable()) {
@@ -2700,10 +2724,15 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
                 exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
             return false;
         }
-        methodTable(exec->vm())->deleteProperty(this, exec, propertyName);
-        return putDescriptor(exec, this, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
+
+        if (!object)
+            return true;
+
+        object->methodTable(exec->vm())->deleteProperty(object, exec, propertyName);
+        return putDescriptor(exec, object, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
     }
 
+    // Step 8.
     // Changing the value and attributes of an existing property
     if (descriptor.isDataDescriptor()) {
         if (!current.configurable()) {
@@ -2722,10 +2751,13 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
         }
         if (current.attributesEqual(descriptor) && !descriptor.value())
             return true;
-        methodTable(exec->vm())->deleteProperty(this, exec, propertyName);
-        return putDescriptor(exec, this, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
+        if (!object)
+            return true;
+        object->methodTable(exec->vm())->deleteProperty(object, exec, propertyName);
+        return putDescriptor(exec, object, propertyName, descriptor, descriptor.attributesOverridingCurrent(current), current);
     }
 
+    // Step 9.
     // Changing the accessor functions of an existing accessor property
     ASSERT(descriptor.isAccessorDescriptor());
     if (!current.configurable()) {
@@ -2745,7 +2777,11 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
             return false;
         }
     }
-    JSValue accessor = getDirect(exec->vm(), propertyName);
+
+    // Step 10/11.
+    if (!object)
+        return true;
+    JSValue accessor = object->getDirect(exec->vm(), propertyName);
     if (!accessor)
         return false;
     GetterSetter* getterSetter;
@@ -2766,10 +2802,22 @@ bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyN
     }
     if (current.attributesEqual(descriptor) && !getterSetterChanged)
         return true;
-    methodTable(exec->vm())->deleteProperty(this, exec, propertyName);
+    object->methodTable(exec->vm())->deleteProperty(object, exec, propertyName);
     unsigned attrs = descriptor.attributesOverridingCurrent(current);
-    putDirectAccessor(exec, propertyName, getterSetter, attrs | Accessor);
+    object->putDirectAccessor(exec, propertyName, getterSetter, attrs | Accessor);
     return true;
+}
+
+bool JSObject::defineOwnNonIndexProperty(ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
+{
+    // Track on the globaldata that we're in define property.
+    // Currently DefineOwnProperty uses delete to remove properties when they are being replaced
+    // (particularly when changing attributes), however delete won't allow non-configurable (i.e.
+    // DontDelete) properties to be deleted. For now, we can use this flag to make this work.
+    DefineOwnPropertyScope scope(exec);
+    PropertyDescriptor current;
+    bool isCurrentDefined = getOwnPropertyDescriptor(exec, propertyName, current);
+    return validateAndApplyPropertyDescriptor(exec, this, propertyName, isExtensible(), descriptor, isCurrentDefined, current, throwException);
 }
 
 bool JSObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
@@ -2889,6 +2937,31 @@ void JSObject::getGenericPropertyNames(JSObject* object, ExecState* exec, Proper
             break;
         prototype = asObject(nextProto);
     }
+}
+
+// Implements GetMethod(O, P) in section 7.3.9 of the spec.
+// http://www.ecma-international.org/ecma-262/6.0/index.html#sec-getmethod
+JSValue JSObject::getMethod(ExecState* exec, CallData& callData, CallType& callType, const Identifier& ident, const String& errorMessage)
+{
+    JSValue method = get(exec, ident);
+    if (exec->hadException())
+        return jsUndefined();
+
+    if (!method.isCell()) {
+        if (method.isUndefinedOrNull())
+            return jsUndefined();
+
+        throwVMTypeError(exec, errorMessage);
+        return jsUndefined();
+    }
+
+    callType = method.asCell()->methodTable()->getCallData(method.asCell(), callData);
+    if (callType == CallTypeNone) {
+        throwVMTypeError(exec, errorMessage);
+        return jsUndefined();
+    }
+
+    return method;
 }
 
 } // namespace JSC

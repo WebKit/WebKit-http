@@ -42,6 +42,7 @@
 #endif
 
 namespace WebCore {
+class DownloadID;
 class CertificateInfo;
 class NetworkStorageSession;
 class SecurityOrigin;
@@ -99,6 +100,10 @@ public:
     void clearHSTSCache(WebCore::NetworkStorageSession&, std::chrono::system_clock::time_point modifiedSince);
 #endif
 
+#if USE(NETWORK_SESSION)
+    void findPendingDownloadLocation(NetworkDataTask&, String suggestedFilename, ResponseCompletionHandler);
+#endif
+    
     void prefetchDNS(const String&);
 
 private:
@@ -157,6 +162,7 @@ private:
 #if USE(NETWORK_SESSION)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
     void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
+    void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle);
 #endif
     void setCacheModel(uint32_t);
     void allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo&, const String& host);
@@ -179,6 +185,7 @@ private:
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
     int64_t m_diskCacheSizeOverride { -1 };
+    bool m_suppressMemoryPressureHandler { false };
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
 

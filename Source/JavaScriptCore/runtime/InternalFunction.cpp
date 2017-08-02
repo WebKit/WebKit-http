@@ -84,7 +84,7 @@ Structure* InternalFunction::createSubclassStructure(ExecState* exec, JSValue ne
     VM& vm = exec->vm();
     // We allow newTarget == JSValue() because the API needs to be able to create classes without having a real JS frame.
     // Since we don't allow subclassing in the API we just treat newTarget == JSValue() as newTarget == exec->callee()
-    ASSERT(!newTarget || newTarget.isFunction());
+    ASSERT(!newTarget || newTarget.isConstructor());
 
     if (newTarget && newTarget != exec->callee()) {
         // newTarget may be an InternalFunction if we were called from Reflect.construct.
@@ -97,10 +97,13 @@ Structure* InternalFunction::createSubclassStructure(ExecState* exec, JSValue ne
 
             // Note, Reflect.construct might cause the profile to churn but we don't care.
             JSObject* prototype = jsDynamicCast<JSObject*>(newTarget.get(exec, exec->propertyNames().prototype));
+            ASSERT(!exec->hadException());
             if (prototype)
                 return targetFunction->rareData(vm)->createInternalFunctionAllocationStructureFromBase(vm, prototype, baseClass);
         } else {
             JSObject* prototype = jsDynamicCast<JSObject*>(newTarget.get(exec, exec->propertyNames().prototype));
+            if (exec->hadException())
+                return nullptr;
             if (prototype) {
                 // This only happens if someone Reflect.constructs our builtin constructor with another builtin constructor as the new.target.
                 // Thus, we don't care about the cost of looking up the structure from our hash table every time.

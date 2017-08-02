@@ -498,6 +498,26 @@ private:
         return Arg();
     }
 
+    Arg bitImm(Value* value)
+    {
+        if (value->hasInt()) {
+            int64_t intValue = value->asInt();
+            if (Arg::isValidBitImmForm(intValue))
+                return Arg::bitImm(intValue);
+        }
+        return Arg();
+    }
+
+    Arg bitImm64(Value* value)
+    {
+        if (value->hasInt()) {
+            int64_t intValue = value->asInt();
+            if (Arg::isValidBitImm64Form(intValue))
+                return Arg::bitImm64(intValue);
+        }
+        return Arg();
+    }
+
     Arg immOrTmp(Value* value)
     {
         if (Arg result = imm(value))
@@ -642,6 +662,36 @@ private:
                 // A non-commutative operation could have an immediate in left.
                 if (imm(left)) {
                     append(opcode, imm(left), tmp(right), result);
+                    return;
+                }
+            }
+        }
+
+        if (isValidForm(opcode, Arg::BitImm, Arg::Tmp, Arg::Tmp)) {
+            if (commutativity == Commutative) {
+                if (Arg rightArg = bitImm(right)) {
+                    append(opcode, rightArg, tmp(left), result);
+                    return;
+                }
+            } else {
+                // A non-commutative operation could have an immediate in left.
+                if (Arg leftArg = bitImm(left)) {
+                    append(opcode, leftArg, tmp(right), result);
+                    return;
+                }
+            }
+        }
+
+        if (isValidForm(opcode, Arg::BitImm64, Arg::Tmp, Arg::Tmp)) {
+            if (commutativity == Commutative) {
+                if (Arg rightArg = bitImm64(right)) {
+                    append(opcode, rightArg, tmp(left), result);
+                    return;
+                }
+            } else {
+                // A non-commutative operation could have an immediate in left.
+                if (Arg leftArg = bitImm64(left)) {
+                    append(opcode, leftArg, tmp(right), result);
                     return;
                 }
             }
@@ -928,10 +978,10 @@ private:
                 if (imm(value.value()))
                     arg = imm(value.value());
                 else if (value.value()->hasInt64())
-                    arg = Arg::imm64(value.value()->asInt64());
+                    arg = Arg::bigImm(value.value()->asInt64());
                 else if (value.value()->hasDouble() && canBeInternal(value.value())) {
                     commitInternal(value.value());
-                    arg = Arg::imm64(bitwise_cast<int64_t>(value.value()->asDouble()));
+                    arg = Arg::bigImm(bitwise_cast<int64_t>(value.value()->asDouble()));
                 } else
                     arg = tmp(value.value());
                 break;
@@ -941,7 +991,7 @@ private:
             case ValueRep::Register:
                 stackmap->earlyClobbered().clear(value.rep().reg());
                 arg = Tmp(value.rep().reg());
-                append(Move, immOrTmp(value.value()), arg);
+                append(relaxedMoveForType(value.value()->type()), immOrTmp(value.value()), arg);
                 break;
             case ValueRep::StackArgument:
                 arg = Arg::callArg(value.rep().offsetFromSP());
@@ -1549,13 +1599,32 @@ private:
         Air::Opcode moveConditionallyTest64;
         Air::Opcode moveConditionallyDouble;
         Air::Opcode moveConditionallyFloat;
-        Tmp source;
-        Tmp destination;
     };
-    Inst createSelect(Value* value, const MoveConditionallyConfig& config, bool inverted = false)
+    Inst createSelect(const MoveConditionallyConfig& config)
     {
+        auto createSelectInstruction = [&] (Air::Opcode opcode, const Arg& condition, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+                Tmp result = tmp(m_value);
+                Tmp thenCase = tmp(m_value->child(1));
+                Tmp elseCase = tmp(m_value->child(2));
+                append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
+                return Inst(
+                    opcode, m_value, condition,
+                    left.consume(*this), right.consume(*this), thenCase, elseCase, result);
+            }
+            if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                Tmp result = tmp(m_value);
+                Tmp source = tmp(m_value->child(1));
+                append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
+                return Inst(
+                    opcode, m_value, condition,
+                    left.consume(*this), right.consume(*this), source, result);
+            }
+            return Inst();
+        };
+
         return createGenericCompare(
-            value,
+            m_value->child(0),
             [&] (
                 Arg::Width width, const Arg& relCond,
                 const ArgPromise& left, const ArgPromise& right) -> Inst {
@@ -1567,19 +1636,9 @@ private:
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
-                    if (isValidForm(config.moveConditionally32, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                        return Inst(
-                            config.moveConditionally32, m_value, relCond,
-                            left.consume(*this), right.consume(*this), config.source, config.destination);
-                    }
-                    return Inst();
+                    return createSelectInstruction(config.moveConditionally32, relCond, left, right);
                 case Arg::Width64:
-                    if (isValidForm(config.moveConditionally64, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                        return Inst(
-                            config.moveConditionally64, m_value, relCond,
-                            left.consume(*this), right.consume(*this), config.source, config.destination);
-                    }
-                    return Inst();
+                    return createSelectInstruction(config.moveConditionally64, relCond, left, right);
                 }
                 ASSERT_NOT_REACHED();
             },
@@ -1594,39 +1653,19 @@ private:
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
-                    if (isValidForm(config.moveConditionallyTest32, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                        return Inst(
-                            config.moveConditionallyTest32, m_value, resCond,
-                            left.consume(*this), right.consume(*this), config.source, config.destination);
-                    }
-                    return Inst();
+                    return createSelectInstruction(config.moveConditionallyTest32, resCond, left, right);
                 case Arg::Width64:
-                    if (isValidForm(config.moveConditionallyTest64, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                        return Inst(
-                            config.moveConditionallyTest64, m_value, resCond,
-                            left.consume(*this), right.consume(*this), config.source, config.destination);
-                    }
-                    return Inst();
+                    return createSelectInstruction(config.moveConditionallyTest64, resCond, left, right);
                 }
                 ASSERT_NOT_REACHED();
             },
             [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
-                if (isValidForm(config.moveConditionallyDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                    return Inst(
-                        config.moveConditionallyDouble, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), config.source, config.destination);
-                }
-                return Inst();
+                return createSelectInstruction(config.moveConditionallyDouble, doubleCond, left, right);
             },
             [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
-                if (isValidForm(config.moveConditionallyFloat, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
-                    return Inst(
-                        config.moveConditionallyFloat, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), config.source, config.destination);
-                }
-                return Inst();
+                return createSelectInstruction(config.moveConditionallyFloat, doubleCond, left, right);
             },
-            inverted);
+            false);
     }
 
     void lower()
@@ -1934,7 +1973,7 @@ private:
             if (imm(m_value))
                 append(Move, imm(m_value), tmp(m_value));
             else
-                append(Move, Arg::imm64(m_value->asInt()), tmp(m_value));
+                append(Move, Arg::bigImm(m_value->asInt()), tmp(m_value));
             return;
         }
 
@@ -1977,13 +2016,7 @@ private:
         }
 
         case Select: {
-            Tmp result = tmp(m_value);
-            append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
-
             MoveConditionallyConfig config;
-            config.source = tmp(m_value->child(1));
-            config.destination = result;
-
             if (isInt(m_value->type())) {
                 config.moveConditionally32 = MoveConditionally32;
                 config.moveConditionally64 = MoveConditionally64;
@@ -2001,7 +2034,7 @@ private:
                 config.moveConditionallyFloat = MoveDoubleConditionallyFloat;
             }
             
-            m_insts.last().append(createSelect(m_value->child(0), config));
+            m_insts.last().append(createSelect(config));
             return;
         }
 

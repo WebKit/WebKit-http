@@ -196,8 +196,9 @@ public:
     void textMarkerDataForPreviousCharacterOffset(TextMarkerData&, const CharacterOffset&);
     VisiblePosition visiblePositionForTextMarkerData(TextMarkerData&);
     CharacterOffset characterOffsetForTextMarkerData(TextMarkerData&);
-    CharacterOffset nextCharacterOffset(const CharacterOffset&, bool ignoreStart = true);
-    CharacterOffset previousCharacterOffset(const CharacterOffset&, bool ignoreStart = true);
+    // Use ignoreNextNodeStart/ignorePreviousNodeEnd to determine the behavior when we are at node boundary. 
+    CharacterOffset nextCharacterOffset(const CharacterOffset&, bool ignoreNextNodeStart = true);
+    CharacterOffset previousCharacterOffset(const CharacterOffset&, bool ignorePreviousNodeEnd = true);
     void startOrEndTextMarkerDataForRange(TextMarkerData&, RefPtr<Range>, bool);
     AccessibilityObject* accessibilityObjectForTextMarkerData(TextMarkerData&);
     RefPtr<Range> rangeForUnorderedCharacterOffsets(const CharacterOffset&, const CharacterOffset&);
@@ -214,6 +215,11 @@ public:
     RefPtr<Range> paragraphForCharacterOffset(const CharacterOffset&);
     CharacterOffset nextParagraphEndCharacterOffset(const CharacterOffset&);
     CharacterOffset previousParagraphStartCharacterOffset(const CharacterOffset&);
+    
+    // Sentence
+    RefPtr<Range> sentenceForCharacterOffset(const CharacterOffset&);
+    CharacterOffset nextSentenceEndCharacterOffset(const CharacterOffset&);
+    CharacterOffset previousSentenceStartCharacterOffset(const CharacterOffset&);
 
     enum AXNotification {
         AXActiveDescendantChanged,
@@ -309,7 +315,7 @@ protected:
     enum TraverseOption { TraverseOptionDefault = 1 << 0, TraverseOptionToNodeEnd = 1 << 1, TraverseOptionIncludeStart = 1 << 2 };
     Node* nextNode(Node*) const;
     Node* previousNode(Node*) const;
-    CharacterOffset traverseToOffsetInRange(RefPtr<Range>, int, bool, bool stayWithinRange = false);
+    CharacterOffset traverseToOffsetInRange(RefPtr<Range>, int, TraverseOption = TraverseOptionDefault, bool stayWithinRange = false);
     VisiblePosition visiblePositionFromCharacterOffset(const CharacterOffset&);
     CharacterOffset characterOffsetFromVisiblePosition(const VisiblePosition&);
     void setTextMarkerDataWithCharacterOffset(TextMarkerData&, const CharacterOffset&);
@@ -317,12 +323,14 @@ protected:
     UChar32 characterBefore(const CharacterOffset&);
     CharacterOffset startOrEndCharacterOffsetForRange(RefPtr<Range>, bool);
     CharacterOffset characterOffsetForNodeAndOffset(Node&, int, TraverseOption = TraverseOptionDefault);
-    CharacterOffset previousWordBoundary(CharacterOffset&, BoundarySearchFunction);
-    CharacterOffset nextWordBoundary(CharacterOffset&, BoundarySearchFunction);
+    CharacterOffset previousBoundary(const CharacterOffset&, BoundarySearchFunction);
+    CharacterOffset nextBoundary(const CharacterOffset&, BoundarySearchFunction);
     CharacterOffset startCharacterOffsetOfWord(const CharacterOffset&, EWordSide = RightWordIfOnBoundary);
     CharacterOffset endCharacterOffsetOfWord(const CharacterOffset&, EWordSide = RightWordIfOnBoundary);
     CharacterOffset startCharacterOffsetOfParagraph(const CharacterOffset&, EditingBoundaryCrossingRule = CannotCrossEditingBoundary);
     CharacterOffset endCharacterOffsetOfParagraph(const CharacterOffset&, EditingBoundaryCrossingRule = CannotCrossEditingBoundary);
+    CharacterOffset startCharacterOffsetOfSentence(const CharacterOffset&);
+    CharacterOffset endCharacterOffsetOfSentence(const CharacterOffset&);
 
 private:
     AccessibilityObject* rootWebArea();

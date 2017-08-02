@@ -118,14 +118,14 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
     {
         super.widthDidChange();
 
-        let width = this.element.realOffsetWidth;
+        let sidebarWidth = this.element.realOffsetWidth;
         for (let key in this._groups) {
             let group = this._groups[key];
             if (!group.specifiedWidthProperties)
                 continue;
 
             for (let editor of group.specifiedWidthProperties)
-                editor.specifiedWidth = width;
+                editor.recalculateWidth(sidebarWidth);
         }
     }
 
@@ -136,11 +136,7 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         if (!id || !displayName)
             return;
 
-        function replaceDashWithCapital(match) {
-            return match.replace("-", "").toUpperCase();
-        }
-
-        let camelCaseId = id.replace(/-\b\w/g, replaceDashWithCapital);
+        let camelCaseId = id.toCamelCase();
 
         function createOptionsElement() {
             let container = document.createElement("div");
@@ -178,12 +174,13 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
                 let section = this._sections[key];
                 let oneSectionExpanded = false;
                 for (let group of section.groups) {
-                    if (!group.collapsed) {
+                    let camelCaseId = group.identifier.toCamelCase();
+                    group.collapsed = !group.expandedByUser && !this._groupHasSetProperty(this._groups[camelCaseId]);
+                    if (!group.collapsed)
                         oneSectionExpanded = true;
-                        break;
-                    }
                 }
-                section.collapsed = !oneSectionExpanded;
+                if (oneSectionExpanded)
+                    section.collapsed = false;
             }
         }
     }
@@ -216,9 +213,6 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         if (initialPropertyTextMissing)
             initialTextList.set(group, initialPropertyText);
 
-        let groupHasSetProperty = this._groupHasSetProperty(group);
-        group.section.collapsed = !groupHasSetProperty && !group.section.expandedByUser;
-        group.section.element.classList.toggle("has-set-property", groupHasSetProperty);
         this._sectionModified(group);
 
         if (group.autocompleteCompatibleProperties) {
@@ -227,9 +221,9 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         }
 
         if (group.specifiedWidthProperties) {
-            let width = this.element.realOffsetWidth;
+            let sidebarWidth = this.element.realOffsetWidth;
             for (let editor of group.specifiedWidthProperties)
-                editor.specifiedWidth = width;
+                editor.recalculateWidth(sidebarWidth);
         }
     }
 
@@ -355,6 +349,8 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         overflowRow.element.appendChild(properties.opacity.element);
         overflowRow.element.appendChild(properties.overflow.element);
+
+        group.specifiedWidthProperties = [properties.opacity];
 
         let displayGroup = new WebInspector.DetailsSectionGroup([displayRow, sizingRow, overflowRow]);
         this._populateSection(group, [displayGroup]);

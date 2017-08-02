@@ -49,10 +49,31 @@ public:
 
     IDBError isolatedCopy() const;
 
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, IDBError&);
+
 private:
     ExceptionCode m_code { IDBDatabaseException::NoError };
     String m_message;
 };
+
+template<class Encoder>
+void IDBError::encode(Encoder& encoder) const
+{
+    encoder << m_code << m_message;
+}
+    
+template<class Decoder>
+bool IDBError::decode(Decoder& decoder, IDBError& error)
+{
+    if (!decoder.decode(error.m_code))
+        return false;
+
+    if (!decoder.decode(error.m_message))
+        return false;
+
+    return true;
+}
 
 } // namespace WebCore
 

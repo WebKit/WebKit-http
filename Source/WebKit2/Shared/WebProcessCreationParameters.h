@@ -105,6 +105,7 @@ struct WebProcessCreationParameters {
 
     bool shouldAlwaysUseComplexTextCodePath;
     bool shouldEnableMemoryPressureReliefLogging;
+    bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseFontSmoothing;
 
     Vector<String> fontWhitelist;
@@ -142,10 +143,6 @@ struct WebProcessCreationParameters {
     RefPtr<API::Data> bundleParameterData;
 
 #endif // PLATFORM(COCOA)
-
-#if PLATFORM(MAC)
-    bool shouldEnableTabSuspension;
-#endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     HashMap<String, bool> notificationPermissions;

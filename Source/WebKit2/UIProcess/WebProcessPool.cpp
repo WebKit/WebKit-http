@@ -51,7 +51,6 @@
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
 #include "WebKit2Initialize.h"
-#include "WebMediaCacheManagerProxy.h"
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
@@ -179,7 +178,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
-    addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
@@ -453,6 +451,7 @@ void WebProcessPool::databaseProcessCrashed(DatabaseProcessProxy* databaseProces
     for (auto& supplement : m_supplements)
         supplement.value->processDidClose(databaseProcessProxy);
 
+    m_client.databaseProcessDidCrash(this);
     m_databaseProcess = nullptr;
 }
 #endif
@@ -684,11 +683,6 @@ bool WebProcessPool::shouldTerminate(WebProcessProxy* process)
     if (!m_processTerminationEnabled)
         return false;
 
-    for (const auto& supplement : m_supplements.values()) {
-        if (!supplement->shouldTerminate(process))
-            return false;
-    }
-
     return true;
 }
 
@@ -843,6 +837,18 @@ pid_t WebProcessPool::networkProcessIdentifier()
         return 0;
 
     return m_networkProcess->processIdentifier();
+}
+
+pid_t WebProcessPool::databaseProcessIdentifier()
+{
+#if ENABLE(DATABASE_PROCESS)
+    if (!m_databaseProcess)
+        return 0;
+
+    return m_databaseProcess->processIdentifier();
+#else
+    return 0;
+#endif
 }
 
 void WebProcessPool::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)

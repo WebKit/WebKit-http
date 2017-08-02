@@ -277,6 +277,7 @@ protected:
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_moduleRecordStructure;
     WriteBarrier<Structure> m_moduleNamespaceObjectStructure;
+    WriteBarrier<Structure> m_proxyObjectStructure;
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_wasmModuleStructure;
 #endif
@@ -292,6 +293,7 @@ protected:
 
     struct TypedArrayData {
         WriteBarrier<JSObject> prototype;
+        WriteBarrier<InternalFunction> constructor;
         WriteBarrier<Structure> structure;
     };
     
@@ -396,7 +398,6 @@ public:
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
 
     JS_EXPORT_PRIVATE static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    bool hasOwnPropertyForWrite(ExecState*, PropertyName);
     JS_EXPORT_PRIVATE static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     JS_EXPORT_PRIVATE static void defineGetter(JSObject*, ExecState*, PropertyName, JSObject* getterFunc, unsigned attributes);
@@ -529,6 +530,7 @@ public:
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
     Structure* moduleRecordStructure() const { return m_moduleRecordStructure.get(); }
     Structure* moduleNamespaceObjectStructure() const { return m_moduleNamespaceObjectStructure.get(); }
+    Structure* proxyObjectStructure() const { return m_proxyObjectStructure.get(); }
 #if ENABLE(WEBASSEMBLY)
     Structure* wasmModuleStructure() const { return m_wasmModuleStructure.get(); }
 #endif
@@ -578,6 +580,11 @@ public:
         if (type == NotTypedArray)
             return false;
         return typedArrayStructure(type) == structure;
+    }
+
+    JSObject* typedArrayConstructor(TypedArrayType type) const
+    {
+        return m_typedArrays[toIndex(type)].constructor.get();
     }
 
     JSCell* actualPointerFor(Special::Pointer pointer)
@@ -717,15 +724,6 @@ inline JSGlobalObject* asGlobalObject(JSValue value)
     return jsCast<JSGlobalObject*>(asObject(value));
 }
 
-inline bool JSGlobalObject::hasOwnPropertyForWrite(ExecState* exec, PropertyName propertyName)
-{
-    PropertySlot slot(this);
-    if (Base::getOwnPropertySlot(this, exec, propertyName, slot))
-        return true;
-    bool slotIsWriteable;
-    return symbolTableGet(this, propertyName, slot, slotIsWriteable);
-}
-
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, unsigned initialLength = 0, JSValue newTarget = JSValue())
 {
     Structure* structure;
@@ -733,6 +731,8 @@ inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* pro
         structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(exec, ArrayWithArrayStorage, newTarget);
     else
         structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
+    if (exec->hadException())
+        return nullptr;
 
     return ArrayAllocationProfile::updateLastAllocationFor(profile, JSArray::create(exec->vm(), structure, initialLength));
 }
@@ -744,7 +744,10 @@ inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* pro
  
 inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, const ArgList& values, JSValue newTarget = JSValue())
 {
-    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget), values));
+    Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
+    if (exec->hadException())
+        return nullptr;
+    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values));
 }
 
 inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile, const ArgList& values, JSValue newTarget = JSValue())
@@ -754,7 +757,10 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
 
 inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, const JSValue* values, unsigned length, JSValue newTarget = JSValue())
 {
-    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget), values, length));
+    Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
+    if (exec->hadException())
+        return nullptr;
+    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values, length));
 }
 
 inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile, const JSValue* values, unsigned length, JSValue newTarget = JSValue())
@@ -764,7 +770,10 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
 
 inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, const JSValue* values, unsigned length, JSValue newTarget = JSValue())
 {
-    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArrayNegativeIndexed(exec, globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget), values, length));
+    Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
+    if (exec->hadException())
+        return nullptr;
+    return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArrayNegativeIndexed(exec, structure, values, length));
 }
 
 inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationProfile* profile, const JSValue* values, unsigned length, JSValue newTarget = JSValue())

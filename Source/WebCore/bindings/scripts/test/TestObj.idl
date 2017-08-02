@@ -58,6 +58,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     attribute DOMString                stringAttr;
     attribute TestObj                  testObjAttr;
     [LenientThis] attribute TestObj    lenientTestObjAttr;
+    [Unforgeable] readonly attribute DOMString unforgeableAttr;
 
     // WK_ucfirst, WK_lcfirst exceptional cases.
     attribute TestObj                  XMLObjAttr;
@@ -81,6 +82,8 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     // TypedArray attribute
     attribute Float32Array typedArrayAttr;
 
+    iterable<DOMString, TestObj>;
+
     // Methods
     void    voidMethod();
     void    voidMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
@@ -92,6 +95,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     long    longMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     TestObj objMethod();
     TestObj objMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
+    [Unforgeable] long unforgeableMethod();
 
     void methodWithSequenceArg(sequence<ScriptProfile> sequenceArg);
     sequence<ScriptProfile> methodReturningSequence(long longArg);
@@ -302,6 +306,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     readonly attribute DOMString? nullableStringAttribute;
 
     attribute long? nullableLongSettableAttribute;
+    attribute DOMString? nullableStringSettableAttribute;
 
     [GetterRaisesException] attribute long? nullableStringValue;
 

@@ -151,7 +151,7 @@ static ALWAYS_INLINE JSValue getProperty(ExecState* exec, JSObject* object, unsi
 {
     if (JSValue result = object->tryGetIndexQuickly(index))
         return result;
-    PropertySlot slot(object);
+    PropertySlot slot(object, PropertySlot::InternalMethodType::Get);
     if (!object->getPropertySlot(exec, index, slot))
         return JSValue();
     return slot.getValue(exec, index);
@@ -632,6 +632,8 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncConcat(ExecState* exec)
     else {
         // We add the newTarget because the compiler gets confused between 0 being a number and a pointer.
         result = constructEmptyArray(exec, nullptr, 0, JSValue());
+        if (exec->hadException())
+            return JSValue::encode(jsUndefined());
     }
 
     curArg = thisValue.toObject(exec);

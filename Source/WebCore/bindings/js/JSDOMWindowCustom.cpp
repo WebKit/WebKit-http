@@ -275,16 +275,18 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
             slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionPostMessage, 2>);
         return true;
     }
+
+    if (propertyName == exec->propertyNames().showModalDialog) {
+        if (Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
+            return true;
+        if (!DOMWindow::canShowModalDialog(frame))
+            return jsDOMWindowGetOwnPropertySlotNamedItemGetter(thisObject, *frame, exec, propertyName, slot);
+    }
+
     // (2) Regular own properties.
     if (getStaticPropertySlot<JSDOMWindow, Base>(exec, *JSDOMWindow::info()->staticPropHashTable, thisObject, propertyName, slot))
         return true;
-    // FIXME: this looks pretty bogus. It seems highly likely that if !canShowModalDialog the
-    // funtion should still be present, or should be omitted entirely - present but reads as
-    // undefined with unspecified attributes is likely wrong.
-    if (propertyName == exec->propertyNames().showModalDialog && !DOMWindow::canShowModalDialog(frame)) {
-        slot.setUndefined();
-        return true;
-    }
+
 #if ENABLE(INDEXED_DATABASE)
     // FIXME: With generated JS bindings built on static property tables there is no way to
     // completely remove a generated property at runtime. So to completely disable IndexedDB
@@ -356,17 +358,6 @@ void JSDOMWindow::put(JSCell* cell, ExecState* exec, PropertyName propertyName, 
         return;
     }
 
-    // Optimization: access JavaScript global variables directly before involving the DOM.
-    if (thisObject->JSGlobalObject::hasOwnPropertyForWrite(exec, propertyName)) {
-        JSGlobalObject::put(thisObject, exec, propertyName, value, slot);
-        return;
-    }
-
-    if (!thisObject->staticFunctionsReified()) {
-        if (lookupPut(exec, propertyName, thisObject, value, *s_info.staticPropHashTable, slot))
-            return;
-    }
-
     Base::put(thisObject, exec, propertyName, value, slot);
 }
 
@@ -375,12 +366,6 @@ void JSDOMWindow::putByIndex(JSCell* cell, ExecState* exec, unsigned index, JSVa
     auto* thisObject = jsCast<JSDOMWindow*>(cell);
     if (!thisObject->wrapped().frame() || !BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped()))
         return;
-    
-    // Optimization: access JavaScript global variables directly before involving the DOM.
-    if (thisObject->JSGlobalObject::hasOwnPropertyForWrite(exec, Identifier::from(exec, index))) {
-        JSGlobalObject::putByIndex(thisObject, exec, index, value, shouldThrow);
-        return;
-    }
     
     Base::putByIndex(thisObject, exec, index, value, shouldThrow);
 }
@@ -563,7 +548,7 @@ inline JSValue DialogHandler::returnValue() const
     if (!globalObject)
         return jsUndefined();
     Identifier identifier = Identifier::fromString(&m_exec, "returnValue");
-    PropertySlot slot(globalObject);
+    PropertySlot slot(globalObject, PropertySlot::InternalMethodType::Get);
     if (!JSGlobalObject::getOwnPropertySlot(globalObject, &m_exec, identifier, slot))
         return jsUndefined();
     return slot.getValue(&m_exec, identifier);

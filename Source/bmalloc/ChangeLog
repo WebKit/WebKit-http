@@ -1,3 +1,413 @@
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixed compilation of bmalloc with GCC 4.8 after r196873.
+        https://bugs.webkit.org/show_bug.cgi?id=154534
+
+        Reviewed by Mark Lam.
+
+        See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55382.
+
+        * bmalloc/LargeChunk.h:
+        * bmalloc/SmallChunk.h:
+
+2016-02-21  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Don't use a whole page for metadata
+        https://bugs.webkit.org/show_bug.cgi?id=154510
+
+        Reviewed by Andreas Kling.
+
+        (1) Don't round up metadata to a page boundary. This saves 1.5% dirty
+        memory on iOS and 0.2% on Mac. It also enables a future patch to allocate
+        smaller chunks without wasting memory.
+
+        (2) Initialize metadata lazily. This saves dirty memory when the program
+        allocates primarily small or large objects (but not both), leaving some
+        metadata uninitialized.
+
+        * bmalloc.xcodeproj/project.pbxproj: Medium objects are gone now.
+
+        * bmalloc/BumpAllocator.h:
+        (bmalloc::BumpAllocator::refill): Added an ASSERT to help debug a bug
+        I cause while working on this patch.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateSmallBumpRanges): Ditto.
+
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::allocateLarge): Updated for interface change.
+
+        * bmalloc/LargeChunk.h: Changed the boundaryTagCount calculation to
+        a static_assert.
+
+        Don't round up to page boundary. (See above.)
+
+        (bmalloc::LargeChunk::LargeChunk): Moved code here from LargeChunk::init.
+        A constructor is a more natural / automatic way to do this initialization.
+
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::init): Deleted. Moved to LargeChunk.
+
+        * bmalloc/Sizes.h: Chagned largeChunkMetadataSize to a simpler constant
+        because metadata size no longer varies by page size.
+
+        * bmalloc/SmallChunk.h:
+        (bmalloc::SmallChunk::begin):
+        (bmalloc::SmallChunk::end):
+        (bmalloc::SmallChunk::lines):
+        (bmalloc::SmallChunk::pages): Use std::array to make begin/end
+        calculations easier.
+
+        (bmalloc::SmallChunk::SmallChunk): Treat our metadata like a series
+        of allocated objects. We used to avoid trampling our metadata by
+        starting object memory at the next page. Now we share the first page
+        between metadata and objects, and we account for metadata explicitly.
+
+        * bmalloc/SuperChunk.h:
+        (bmalloc::SuperChunk::SuperChunk):
+        (bmalloc::SuperChunk::smallChunk):
+        (bmalloc::SuperChunk::largeChunk):
+        (bmalloc::SuperChunk::create): Deleted. Don't eagerly run the SmallChunk
+        and LargeChunk constructors. We'll run them lazily as needed.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::VMHeap):
+        (bmalloc::VMHeap::allocateSmallChunk):
+        (bmalloc::VMHeap::allocateLargeChunk):
+        (bmalloc::VMHeap::allocateSuperChunk):
+        (bmalloc::VMHeap::grow): Deleted. Track small and large chunks explicitly
+        so we can initialize them lazily.
+
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage):
+        (bmalloc::VMHeap::allocateLargeObject): Specify whether we're allocating
+        a small or large chunk since we don't allocate both at once anymore.
+
+2016-02-20  Mark Lam  <mark.lam@apple.com>
+
+        Use of inlined asm statements causes problems for -std=c99 builds.
+        https://bugs.webkit.org/show_bug.cgi?id=154507
+
+        Reviewed by Dan Bernstein.
+
+        * bmalloc/BAssert.h:
+
+2016-02-19  Joonghun Park  <jh718.park@samsung.com>
+
+        Unreviewed. Fix debug build error since r196847
+
+        Fix gcc build warning appeared as below
+        by removing BASSERT(refCount <= maxRefCount).
+        error: comparison is always true due to limited range of data type
+        [-Werror=type-limits]
+
+        * bmalloc/SmallLine.h:
+        (bmalloc::SmallLine::ref): Deleted.
+
+2016-02-19  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Chunk, Page, and Line don't need to be class templates
+        https://bugs.webkit.org/show_bug.cgi?id=154480
+
+        Reviewed by Gavin Barraclough.
+
+        We needed class templates to distinguish between small and medium,
+        but medium is gone now.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Chunk.h: Removed.
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::initializeLineMetadata):
+        (bmalloc::Heap::allocateSmallBumpRanges):
+        * bmalloc/Heap.h:
+        * bmalloc/Line.h: Removed.
+        * bmalloc/Page.h: Removed.
+        * bmalloc/Sizes.h:
+        * bmalloc/SmallChunk.h: Replaced with Source/bmalloc/bmalloc/Chunk.h.
+        (bmalloc::SmallChunk::begin):
+        (bmalloc::SmallChunk::end):
+        (bmalloc::SmallChunk::lines):
+        (bmalloc::SmallChunk::pages):
+        (bmalloc::SmallChunk::get):
+        (bmalloc::SmallLine::get):
+        (bmalloc::SmallLine::begin):
+        (bmalloc::SmallLine::end):
+        (bmalloc::SmallPage::get):
+        (bmalloc::SmallPage::begin):
+        (bmalloc::SmallPage::end):
+        (bmalloc::Chunk::begin): Deleted.
+        (bmalloc::Chunk::end): Deleted.
+        (bmalloc::Chunk::lines): Deleted.
+        (bmalloc::Chunk::pages): Deleted.
+        * bmalloc/SmallLine.h: Replaced with Source/bmalloc/bmalloc/Line.h.
+        (bmalloc::SmallLine::ref):
+        (bmalloc::SmallLine::deref):
+        (bmalloc::Line<Traits>::begin): Deleted.
+        (bmalloc::Line<Traits>::end): Deleted.
+        (bmalloc::Line<Traits>::ref): Deleted.
+        (bmalloc::Line<Traits>::deref): Deleted.
+        * bmalloc/SmallPage.h: Replaced with Source/bmalloc/bmalloc/Page.h.
+        (bmalloc::SmallPage::hasFreeLines):
+        (bmalloc::SmallPage::setHasFreeLines):
+        (bmalloc::SmallPage::ref):
+        (bmalloc::SmallPage::deref):
+        (bmalloc::Page::hasFreeLines): Deleted.
+        (bmalloc::Page::setHasFreeLines): Deleted.
+        (bmalloc::Page<Traits>::ref): Deleted.
+        (bmalloc::Page<Traits>::deref): Deleted.
+        * bmalloc/SmallTraits.h: Removed.
+
+2016-02-18  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Remove the concept of medium objects
+        https://bugs.webkit.org/show_bug.cgi?id=154436
+
+        Reviewed by Sam Weinig.
+
+        There's no need to distinguish medium objects from small: Small object
+        metadata works naturally for both as long as we allow an object to
+        span more than two small lines. (We already allow an object to span
+        more than one small line.)
+
+        This change reduces memory use because it eliminates the 1kB line size,
+        so we don't have to hold down 1kB lines for individual 264+ byte objects.
+
+        1kB lines were always a bit of a compromise. The main point of bump
+        allocation is to take advantage of cache lines. Cache lines are usually
+        64 bytes, so line sizes above 256 bytes are a bit of a stretch.
+
+        This change speeds up small object benchmarks because it eliminates the
+        branch to detect medium objects in deallocation log processing.
+
+        This change reduces virtual memory use from worst cast 4X to worst case
+        2X because the medium chunk is gone. iOS cares about virtual memory use
+        and terminates apps above ~1GB, so this change gives us more breathing room.
+
+        This change slows down medium benchmarks a bit because we end up doing
+        more work to recycle fragmented medium objects. Overall, the tradeoff
+        seems justified, since we have a net speedup and a memory use savings.
+
+        * bmalloc.xcodeproj/project.pbxproj: Removed all the medium files. We
+        can simplify even further in a follow-up patch, removing the base class
+        templates for Chunk, Page, and Line as well.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::Allocator):
+        (bmalloc::Allocator::allocate):
+        (bmalloc::Allocator::reallocate):
+        (bmalloc::Allocator::scavenge):
+        (bmalloc::Allocator::refillAllocatorSlowCase):
+        (bmalloc::Allocator::refillAllocator):
+        (bmalloc::Allocator::allocateSlowCase): Medium is gone. Small max is the
+        new medium max.
+
+        * bmalloc/Allocator.h:
+        (bmalloc::Allocator::allocateFastCase): Ditto.
+
+        * bmalloc/BumpAllocator.h:
+        (bmalloc::BumpAllocator::validate):
+        (bmalloc::BumpAllocator::allocate): No more medium.
+
+        * bmalloc/Chunk.h: No more medium.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::processObjectLog): No check for medium. This is
+        a speedup.
+
+        (bmalloc::Deallocator::deallocateSlowCase): No more medium.
+
+        * bmalloc/Deallocator.h:
+        (bmalloc::Deallocator::deallocateFastCase): Ditto.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::initializeLineMetadata): The algorithm here changed from
+        iterating each line to iterating each object. This helps us accomodate
+        objects that might span more than two lines -- i.e., all objects between
+        (512 bytes, 1024 bytes].
+
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::scavengeSmallPages):
+        (bmalloc::Heap::scavengeLargeObjects): Medium is gone.
+
+        (bmalloc::Heap::allocateSmallBumpRanges): Allow for lines that allocate
+        zero objects. This happens when an object spans more than two lines --
+        the middle lines allocate zero objects.
+
+        Also set the "has free lines" bit to false if we consume the last free
+        line. This needs to be a bit now because not all pages agree on their
+        maximum refcount anymore, so we need an explicit signal for the transition
+        from maximum to maximum - 1.
+
+        (bmalloc::Heap::allocateSmallPage): This code didn't change; I just removed
+        the medium code.
+
+        (bmalloc::Heap::deallocateSmallLine): Changed the algorithm to check
+        hasFreeLines. See allocateSmallBumpRanges.
+
+        (bmalloc::Heap::scavengeMediumPages): Deleted.
+        (bmalloc::Heap::allocateMediumBumpRanges): Deleted.
+        (bmalloc::Heap::allocateMediumPage): Deleted.
+        (bmalloc::Heap::deallocateMediumLine): Deleted.
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::derefMediumLine): Deleted.
+
+        * bmalloc/LargeChunk.h:
+        (bmalloc::LargeChunk::get):
+        (bmalloc::LargeChunk::endTag):
+        * bmalloc/Line.h: No more medium.
+
+        * bmalloc/MediumChunk.h: Removed.
+        * bmalloc/MediumLine.h: Removed.
+        * bmalloc/MediumPage.h: Removed.
+        * bmalloc/MediumTraits.h: Removed.
+
+        * bmalloc/ObjectType.cpp:
+        (bmalloc::objectType):
+        * bmalloc/ObjectType.h:
+        (bmalloc::isSmall):
+        (bmalloc::isXLarge):
+        (bmalloc::isSmallOrMedium): Deleted.
+        (bmalloc::isMedium): Deleted. No more medium.
+
+        * bmalloc/Page.h:
+        (bmalloc::Page::sizeClass):
+        (bmalloc::Page::setSizeClass):
+        (bmalloc::Page::hasFreeLines):
+        (bmalloc::Page::setHasFreeLines): Add the free lines bit. You get better
+        codegen if you make it the low bit, since ref / deref can then add / sub
+        2. So do that.
+
+        * bmalloc/Sizes.h:
+        (bmalloc::Sizes::sizeClass): Expand the small size class to include the
+        medium size class.
+
+        * bmalloc/SuperChunk.h:
+        (bmalloc::SuperChunk::SuperChunk):
+        (bmalloc::SuperChunk::smallChunk):
+        (bmalloc::SuperChunk::largeChunk):
+        (bmalloc::SuperChunk::mediumChunk): Deleted. No more medium.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage): Set the has free lines bit before
+        returning a Page to the Heap since this is the correct default state
+        when we first allocate a page.
+
+        (bmalloc::VMHeap::allocateMediumPage): Deleted.
+        (bmalloc::VMHeap::deallocateMediumPage): Deleted.
+
+2016-02-19  Michael Saboff  <msaboff@apple.com>
+
+        bmalloc: Unify VMHeap and Heap LargeObjects free lists to reduce fragmentation
+        https://bugs.webkit.org/show_bug.cgi?id=154192
+
+        Reviewed by Geoffrey Garen.
+
+        Change the operation of Heap and VMHeap LargeObject free lists.
+        Renamed Owner to VMState to track the state of each LargeObject.
+            Physical - The pages have been allocated.
+            Virtual - The pages have not been allocated.
+            Mixed - The object contains a mixture of Physical and Virtual pages.
+        VMState uses one bit each for Physical and Virtual to simplify merging states
+        when merging two adjacent blocks.  This change enforces the rule that objects in
+        the Heap free list must have have the Physical bit set in their VMState while objects
+        in the VMHeap free list must have the Physical bit clear.  Thie means that the Heap
+        can have LargeObjects in Physical or Mixed VMState, but the VMHeap's free list can
+        only contain Virtual LargeObjects.
+        
+        In both Heap::allocateLarge(), we now allocate physical pages if the LargeObject we
+        pull from the free list has any Virtual pages before we possilby split the 
+        object.  When we merge objects, the result might be made up of Mixed page allocations.
+        When allocating a Mixed LargeObject, we need to allocate memory for them as well.
+        The scavenger deallocates both Physical and Mixed LargeObjects, placing them back into
+        the VMHeap's free list.
+
+        When we allocate or deallocate Mixed LargeObjects, there are pages that within these
+        objects that will be redundantly modified.  It would require additional metadata to
+        eliminate this redundancy.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::vmState): New helper.
+        (bmalloc::BoundaryTag::setVMState): New helper.
+        (bmalloc::BoundaryTag::owner): Deleted.
+        (bmalloc::BoundaryTag::setOwner): Deleted.
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::splitAndAllocate): New helpers.
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::vmState): New helper.
+        (bmalloc::LargeObject::setVMState): New helper.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::splitAndAllocate): New helpers.
+        (bmalloc::Heap::allocateLarge): 
+        (bmalloc::Heap::deallocatePhysicalPages): Refactored from VMHeap::deallocateLargeObjectMemory.
+
+        * bmalloc/FreeList.cpp:
+        (bmalloc::FreeList::takeGreedy):
+        (bmalloc::FreeList::take):
+        (bmalloc::FreeList::removeInvalidAndDuplicateEntries):
+        * bmalloc/FreeList.h:
+        (bmalloc::FreeList::FreeList):
+        (bmalloc::FreeList::push):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::scavengeLargeObjects):
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::isValidAndFree):
+        (bmalloc::LargeObject::validateSelf):
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::SegregatedFreeList): Changed to initialize our required Physical state.
+        * bmalloc/SegregatedFreeList.h:
+        (bmalloc::SegregatedFreeList::SegregatedFreeList):
+        (bmalloc::SegregatedFreeList::insert):
+        (bmalloc::SegregatedFreeList::takeGreedy):
+        (bmalloc::SegregatedFreeList::take):
+        Replaced Owner parameters and checks with VMState::HasPhysical.
+
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::prevCanMerge): Removed owner from tests.
+        (bmalloc::LargeObject::nextCanMerge): Removed owner from tests.
+        (bmalloc::LargeObject::merge): Removed owner from tests.  Updated to merge VMStates andset the
+        VMState after the merge.
+
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::owner): Deleted.
+        (bmalloc::LargeObject::setOwner): Deleted.
+
+        * bmalloc/Owner.h: Removed.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmAllocatePhysicalPagesSloppy): Changed to round begin down to eliminate the left to right
+        allocation constraint.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow): Large space managed like small or medium as a vector of LargeChunks.
+        (bmalloc::VMHeap::VMHeap): Changed to initialize our required Physical state.
+
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateLargeObject): These no longer allocate memory.
+        (bmalloc::VMHeap::deallocateLargeObject): Removed setOwner.  Now we set the VMState after any merges.
+
+        * bmalloc/VMState.h: Copied from Source/bmalloc/bmalloc/Owner.h.
+        (bmalloc::VMState::VMState):
+        (bmalloc::VMState::hasPhysical):
+        (bmalloc::VMState::hasVirtual):
+        (bmalloc::VMState::merge):
+        (bmalloc::VMState::operator ==):
+        (bmalloc::VMState::operator unsigned):
+        New class with various helpers.
+
 2016-02-12  Michael Saboff  <msaboff@apple.com>
 
         BASSERTs added in r196421 are causing debug test failures

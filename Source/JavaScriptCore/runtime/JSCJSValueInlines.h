@@ -679,17 +679,20 @@ inline JSObject* JSValue::toObject(ExecState* exec, JSGlobalObject* globalObject
 
 inline bool JSValue::isFunction() const
 {
-    return isCell() && (asCell()->inherits(JSFunction::info()) || asCell()->inherits(InternalFunction::info()));
+    if (!isCell())
+        return false;
+    JSCell* cell = asCell();
+    CallData ignored;
+    return cell->methodTable()->getCallData(cell, ignored) != CallTypeNone;
 }
 
-// FIXME: We could do this in a smarter way. See: https://bugs.webkit.org/show_bug.cgi?id=153670
 inline bool JSValue::isConstructor() const
 {
-    if (isFunction()) {
-        ConstructData data;
-        return getConstructData(*this, data) != ConstructTypeNone;
-    }
-    return false;
+    if (!isCell())
+        return false;
+    JSCell* cell = asCell();
+    ConstructData ignored;
+    return cell->methodTable()->getConstructData(cell, ignored) != ConstructTypeNone;
 }
 
 // this method is here to be after the inline declaration of JSCell::inherits
@@ -705,7 +708,7 @@ inline JSValue JSValue::toThis(ExecState* exec, ECMAMode ecmaMode) const
 
 ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, PropertyName propertyName) const
 {
-    PropertySlot slot(asValue());
+    PropertySlot slot(asValue(), PropertySlot::InternalMethodType::Get);
     return get(exec, propertyName, slot);
 }
 
@@ -732,7 +735,7 @@ ALWAYS_INLINE bool JSValue::getPropertySlot(ExecState* exec, PropertyName proper
 
 ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, unsigned propertyName) const
 {
-    PropertySlot slot(asValue());
+    PropertySlot slot(asValue(), PropertySlot::InternalMethodType::Get);
     return get(exec, propertyName, slot);
 }
 

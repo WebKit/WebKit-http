@@ -1,3 +1,1357 @@
+2016-02-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197033.
+        https://bugs.webkit.org/show_bug.cgi?id=154649
+
+        "It broke JSC tests when 'this' was loaded from global scope"
+        (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Arrow function syntax. Emit loading&putting this/super
+        only if they are used in arrow function"
+        https://bugs.webkit.org/show_bug.cgi?id=153981
+        http://trac.webkit.org/changeset/197033
+
+2016-02-24  Daniel Bates  <dabates@apple.com>
+
+        CSP: Enable plugin-types directive by default
+        https://bugs.webkit.org/show_bug.cgi?id=154420
+        <rdar://problem/24730322>
+
+        Reviewed by Brent Fulgham.
+
+        * TestExpectations: Mark http/tests/security/contentSecurityPolicy/1.1/plugintypes*.html tests as PASS so that we run them.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid-expected.txt: Update expected result.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html: Call runTests() following changes to multiple-iframe-plugin-test.js.
+        Also add closing tags for <body> and <html> to make the document well-formed.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-data.html: Substitute "Content-Security-Policy" for "X-WebKit-CSP";
+        no behavior change.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-url.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-data.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-url-expected.txt: Update expected result.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-url.html: Substitute "Content-Security-Policy" for "X-WebKit-CSP";
+        no behavior change.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html: Call runTests() following changes to multiple-iframe-plugin-test.js.
+        Also add closing tags for <body> and <html> to make the document well-formed.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html: Ditto.
+        * http/tests/security/contentSecurityPolicy/resources/echo-object-data.pl: Remove logic to support Content Security Policy header X-WebKit-CSP
+        as it is sufficient to make use of the standardized header Content-Security-Policy.
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-plugin-test.js: Simplify code now that we do not pass query string parameter
+        experimental to script echo-object-data.pl.
+        (runTests): Runs all the sub-tests.
+        (runNextTest.iframe.onload): Formerly named testImpl.iframe.onload.
+        (runNextTest): Formerly named testImpl. Runs the next sub-test.
+        (testExperimentalPolicy): Deleted.
+        (test): Deleted.
+        (testImpl.iframe.onload): Deleted.
+        (testImpl): Deleted.
+        (finishTesting): Deleted.
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon-expected.txt: Update expected result based on change to test (below).
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon.html: Modified to test that we emit
+        a console warning when plugin-types is used as a source expression.
+
+2016-02-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline two W3C tests for ios-simulator after r197014
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-24  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Emit loading&putting this/super only if they are used in arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=153981
+
+        Reviewed by Saam Barati.
+
+        Added new benchmark tests for invoking arrow function within function, class's constructor and method
+
+        * js/regress/arrowfunction-call-in-class-constructor-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-class-constructor.html: Added.
+        * js/regress/arrowfunction-call-in-class-method-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-class-method.html: Added.
+        * js/regress/arrowfunction-call-in-function-expected.txt: Added.
+        * js/regress/arrowfunction-call-in-function.html: Added.
+        * js/regress/script-tests/arrowfunction-call-in-class-constructor.js: Added.
+        * js/regress/script-tests/arrowfunction-call-in-class-method.js: Added.
+        * js/regress/script-tests/arrowfunction-call-in-function.js: Added.
+        * js/regress/script-tests/arrowfunction-call.js:
+
+2016-02-24  Zalan Bujtas  <zalan@apple.com>
+
+        Background of an absolutely positioned inline element inside text-indented parent is positioned statically.
+        https://bugs.webkit.org/show_bug.cgi?id=154019
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that statically positioned out-of-flow renderers are also text-aligned
+        even when none of the renderers on the first line generate a linebox (so we end up with no bidi runs at all).
+        The fix is to pass IndentTextOrNot information to startAlignedOffsetForLine through updateStaticInlinePositionForChild
+        so that we can compute the left position for this statically positioned out of flow renderer.
+
+        * fast/css3-text/css3-text-indent/text-indent-with-absolute-pos-child-expected.html: Added.
+        * fast/css3-text/css3-text-indent/text-indent-with-absolute-pos-child.html: Added.
+
+2016-02-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r195949): [GTK] Test /webkit2/WebKitWebView/insert/link is failing since r195949
+        https://bugs.webkit.org/show_bug.cgi?id=153747
+
+        Reviewed by Michael Catanzaro.
+
+        Add test to check that moving to line boundary clears the
+        selection even if the cursor is already at the boundary.
+
+        * editing/selection/move-to-line-boundary-clear-selection-expected.txt: Added.
+        * editing/selection/move-to-line-boundary-clear-selection.html: Added.
+
+2016-02-23  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Swap the order of columns/rows in grid-gap shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=154584
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-gutters-get-set-expected.txt:
+        * fast/css-grid-layout/grid-gutters-get-set.html:
+
+2016-02-24  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: RTCPeerConnection: Sort out responsibilities of close() and stop()
+        https://bugs.webkit.org/show_bug.cgi?id=154581
+
+        Reviewed by Eric Carlson.
+
+        Updated test with replaceTrack() call after the RTCPeerConnection object, that
+        created the RTCRtpSender, is closed.
+
+        * fast/mediastream/RTCRtpSender-replaceTrack-expected.txt:
+        * fast/mediastream/RTCRtpSender-replaceTrack.html:
+
+2016-02-23  Chris Dumez  <cdumez@apple.com>
+
+        Align our implementation of Range.createContextualFragment with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154627
+
+        Reviewed by Ryosuke Niwa.
+
+        Import some more layout tests from blink to improve coverage for
+        Range.createContextualFragment().
+
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-bodyless-document-range-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-bodyless-document-range.html: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-detached-text-node-range-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-detached-text-node-range.html: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-document-fragment-range-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-document-fragment-range.html: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-document-range-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-document-range.html: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-xhtml-document-range-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-from-xhtml-document-range.xhtml: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-script-not-ran-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-script-not-ran.html: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-script-unmark-already-started-expected.txt: Added.
+        * imported/blink/fast/dom/Range/create-contextual-fragment-script-unmark-already-started.html: Added.
+
+2016-02-23  Dean Jackson  <dino@apple.com>
+
+        [WebGL] iOS doesn't respect the alpha:false context creation attribute
+        https://bugs.webkit.org/show_bug.cgi?id=154617
+        <rdar://problem/13417023>
+
+        Reviewed by Sam Weinig.
+
+        Add a test that draws contexts with and without alpha, and then a reference
+        version that hard-codes the non-alpha colors.
+
+        * fast/canvas/webgl/context-attributes-alpha-expected.html: Added.
+        * fast/canvas/webgl/context-attributes-alpha.html: Added.
+
+2016-02-23  Daniel Bates  <dabates@apple.com>
+
+        CSP: Enable base-uri directive by default
+        https://bugs.webkit.org/show_bug.cgi?id=154521
+        <rdar://problem/24762032>
+
+        Reviewed by Brent Fulgham.
+
+        Copy test http/tests/security/contentSecurityPolicy/1.1/base-uri-deny.html to
+        http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-base-uri-deny.html,
+        making some minor stylistic changes, and update TestExpectations to skip it because it depends
+        on the firing of event SecurityPolicyViolationEvent, which is disabled as of the time of writing.
+        We will enable the firing of this event in <https://bugs.webkit.org/show_bug.cgi?id=154522>.
+        Repurpose test name base-uri-deny.html to test that the base-uri directive prevents the use of
+        document base URL without depending on the firing of event SecurityPolicyViolationEvent.
+
+        Additionally, add test http/tests/security/contentSecurityPolicy/1.1/base-uri-default-ignored.html
+        to ensure that we do not fall back to enforcing the default-src directive in absence of
+        a base-uri directive as per section base-uri of the Content Security Policy 2.0 spec.,
+        <https://www.w3.org/TR/2015/CR-CSP2-20150721/>.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/1.1/base-uri-default-ignored-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/base-uri-default-ignored.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/base-uri-deny-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/base-uri-deny.html: Repurpose test.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/base-href/resources/safe-script.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/safe-script.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-base-uri-deny-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/base-uri-deny-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-base-uri-deny.html: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/base-uri-deny.html.
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon-expected.txt: Update expected result based on change to test (below).
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon.html: Modified to test that we emit
+        a console warning when base-uri is used as a source expression.
+
+2016-02-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Calling importNode on shadow root causes a crash
+        https://bugs.webkit.org/show_bug.cgi?id=154570
+
+        Reviewed by Anders Carlsson.
+
+        Added W3C-style testharness tests for calling cloneNode on a shadow root.
+
+        Also added tests for adoptNode and importNode.
+
+        * fast/shadow-dom/Document-prototype-adoptNode-expected.txt: Added.
+        * fast/shadow-dom/Document-prototype-adoptNode.html: Added.
+        * fast/shadow-dom/Document-prototype-importNode-expected.txt: Added.
+        * fast/shadow-dom/Document-prototype-importNode.html: Added.
+        * fast/shadow-dom/Node-prototype-cloneNode-expected.txt: Added.
+        * fast/shadow-dom/Node-prototype-cloneNode.html: Added.
+
+2016-02-23  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r196892): No longer emit error message when CSP form-action directive is used as a source expression
+        https://bugs.webkit.org/show_bug.cgi?id=154555
+        <rdar://problem/24776777>
+
+        Reviewed by Andy Estes.
+
+        Test that we emit a console error message when form-action is used as a source expression.
+
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon.html: Use form-action as a
+        source expression. Also, use a double quoted (") string literal instead of a single quoted (') string
+        literal to represent the CSP policy so as to avoid the need to escape embedded single quote characters.
+
+2016-02-22  Dean Jackson  <dino@apple.com>
+
+        Add tests for fast click change in r196679
+        https://bugs.webkit.org/show_bug.cgi?id=154568
+        <rdar://problem/24782479>
+
+        Reviewed by Myles Maxfield.
+
+        Bug http://webkit.org/b/154318 made some changes to the fast
+        click behaviour, but didn't include any tests. Here they are!
+
+        * fast/events/ios/fast-click-double-tap-sends-click-expected.txt: Added.
+        * fast/events/ios/fast-click-double-tap-sends-click.html: Checks that a double tap on a clickable element sends a click.
+        * fast/events/ios/fast-click-double-tap-zooms-on-image-expected.txt: Added.
+        * fast/events/ios/fast-click-double-tap-zooms-on-image.html: Checks that a double tap on an image can trigger a zoom if there
+        isn't anything else listening.
+        * fast/events/ios/fast-click-double-tap-zooms-on-text-expected.txt: Added.
+        * fast/events/ios/fast-click-double-tap-zooms-on-text.html: Checks that a double tap on a block of text can trigger a zoom
+        if there isn't anything else listening.
+        * fast/events/ios/no-fast-click-double-tap-causes-zoom-expected.txt: Added.
+        * fast/events/ios/no-fast-click-double-tap-causes-zoom.html: When we are not in fast click mode, a double tap should
+        trigger a zoom. This is checking the inverse behaviour to fast-click-double-tap-sends-click.
+        * fast/events/ios/viewport-device-width-allows-double-tap-zoom-out.html: Removed some code that could never be called.
+        * fast/events/ios/viewport-zooms-from-element-to-initial-scale.html: Ditto.
+        * platform/ios-simulator/TestExpectations: Add the new tests.
+
+2016-02-23  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r192251): http/tests/navigation/page-cache-xhr.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=154589
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/navigation/page-cache-xhr.html: Load a file that exists. The content
+        doesn't matter, as we expect to navigate away before the load occurs.
+
+        * http/tests/resources/load-and-stall.cgi: Added cache control, just for a good measure.
+
+2016-02-23  Mark Lam  <mark.lam@apple.com>
+
+        Debug assertion failure while loading http://kangax.github.io/compat-table/es6/.
+        https://bugs.webkit.org/show_bug.cgi?id=154542
+
+        Reviewed by Saam Barati.
+
+        * js/Promise-types-expected.txt:
+        * js/basic-map-expected.txt:
+        * js/basic-set-expected.txt:
+        * js/dom/basic-weakmap-expected.txt:
+        * js/dom/basic-weakset-expected.txt:
+        * js/script-tests/Promise-types.js:
+        * js/typedarray-constructors-expected.txt:
+        - Updated error message string.
+
+2016-02-23  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Rows track sizes are optional in grid-template shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=154586
+
+        Reviewed by Sergio Villar Senin.
+
+        You can omit the size of the rows in grid-template shorthand,
+        even if you specify a named grid line for the end of the row,
+        due to a change in the spec back in 2014:
+        https://github.com/w3c/csswg-drafts/commit/9f660c4183c73c1f5279c46904dc6cb314f76194
+
+        Before if you want to specify a named grid line,
+        you need to set the row size.
+
+        Update parsing, so it nows accepts things like:
+            grid-template: 100px / "a" [bottom];
+
+2016-02-23  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [SVG] Update SVG source to return string literals as ASCIILiteral and add test cases for case sensitivity
+        https://bugs.webkit.org/show_bug.cgi?id=154373
+
+        Reviewed by Youenn Fablet.
+
+        Add test cases for case-sensitivity for SVGAnimatedEnumeration elements.
+
+        * svg/dom/SVGAnimatedEnumeration-case-sensitive-expected.txt: Added.
+        * svg/dom/SVGAnimatedEnumeration-case-sensitive.html: Added.
+        * svg/dom/script-tests/SVGAnimatedEnumeration-case-sensitive.js: Added.
+        (testCaseSensitivity):
+
+2016-02-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font features specified in @font-face blocks don't apply to local() families
+        https://bugs.webkit.org/show_bug.cgi?id=154554
+
+        Reviewed by Dean Jackson.
+
+        * css3/font-feature-font-face-local-expected.html: Added.
+        * css3/font-feature-font-face-local.html: Added.
+
+2016-02-22  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r196563): Images not loading on https://klim.co.nz/blog/paypal-sans-design-information/
+        https://bugs.webkit.org/show_bug.cgi?id=154547
+        <rdar://problem/24772167>
+
+        Reviewed by Gavin Barraclough.
+
+        Add regression test for <rdar://problem/24772167>.
+
+        * fast/dom/Window/addEventListener-implicit-this-expected.txt:
+        * fast/dom/Window/addEventListener-implicit-this.html:
+
+2016-02-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Repeated background images have the wrong position when using bottom/right-relative background-position
+        https://bugs.webkit.org/show_bug.cgi?id=154478
+
+        Reviewed by Dave Hyatt.
+        
+        Enhanced background-position-serialize.html to test values that use right/bottom edge specifiers.
+        
+        Ref test for background-position.
+
+        * fast/css/background-position-serialize-expected.txt:
+        * fast/css/background-position-serialize.html:
+        * fast/images/background-position-expected.html: Added.
+        * fast/images/background-position.html: Added.
+        * fast/images/resources/checker.png: Added.
+
+2016-02-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Split CSSFontSelector into a FontFaceSet implementation and the rest of the class
+        https://bugs.webkit.org/show_bug.cgi?id=153347
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/font-face-javascript.html:
+        * fast/text/font-face-set-document-expected.txt: Added.
+        * fast/text/font-face-set-document.html: Added.
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [JSC shell] Don't put empty arguments array to VM.
+        https://bugs.webkit.org/show_bug.cgi?id=154516
+
+        Reviewed by Geoffrey Garen.
+
+        This allows arrowfunction-lexical-bind-arguments-top-level test to pass
+        in jsc as well as in browser.
+
+        * js/script-tests/arrowfunction-lexical-bind-arguments-top-level.js:
+        Removed @ skip annotation.
+
+2016-02-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests for ios-simulator after W3C HTML/DOM re-sync in r196883
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-02-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-forms.html for ios-simulator after r196893
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Swap columns and rows in grid-template shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=154472
+
+        Reviewed by Darin Adler.
+
+        The spec was modified past December to change the order of
+        columns and rows in the grid-template shorthand:
+        https://github.com/w3c/csswg-drafts/commit/f6c7691679a519017a80ebae44fd86c3eae5c5f9
+
+        Updated the parsing and modified the tests to follow the new syntax.
+
+        * fast/css-grid-layout/absolute-positioning-definite-sizes.html:
+        * fast/css-grid-layout/flex-content-distribution.html:
+        * fast/css-grid-layout/grid-align-content-vertical-lr.html:
+        * fast/css-grid-layout/grid-align-content-vertical-rl.html:
+        * fast/css-grid-layout/grid-align-content.html:
+        * fast/css-grid-layout/grid-gutters-and-alignment.html:
+        * fast/css-grid-layout/grid-gutters-and-flex-content.html:
+        * fast/css-grid-layout/grid-gutters-and-tracks.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-lr.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-rl.html:
+        * fast/css-grid-layout/grid-justify-content.html:
+        * fast/css-grid-layout/grid-shorthand-get-set.html:
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html:
+        * fast/css-grid-layout/relayout-align-items-changed.html:
+        * fast/css-grid-layout/relayout-align-self-changed.html:
+        * fast/css-grid-layout/relayout-indefinite-heights.html:
+        * fast/css-grid-layout/relayout-justify-items-changed.html:
+        * fast/css-grid-layout/relayout-justify-self-changed.html:
+        * fast/repaint/align-items-overflow-change.html:
+        * fast/repaint/align-self-change.html:
+        * fast/repaint/align-self-overflow-change.html:
+        * fast/repaint/justify-items-change.html:
+        * fast/repaint/justify-items-overflow-change.html:
+        * fast/repaint/justify-self-change.html:
+        * fast/repaint/justify-self-overflow-change.html:
+
+2016-02-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Swap columns and rows in grid shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=154449
+
+        Reviewed by Darin Adler.
+
+        The spec was modified past December to change the order of
+        columns and rows in the grid shorthand:
+        https://github.com/w3c/csswg-drafts/commit/7454c7c8c5857b61bbbe2ee5f07803c264bf37e4
+
+        Updated the parsing and modified the tests to follow the new syntax.
+
+        * fast/css-grid-layout/grid-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-shorthand-get-set.html:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Make HTMLSelectElement.size behave as per the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154504
+
+        Reviewed by Darin Adler.
+
+        Update test that was covering the case of an HTMLSelectElement with an
+        invalid size attribute. The test was expecting the bad "size" attribute
+        value to get corrected so that the select element looks like a menu list.
+        This workaround was added back in 2007 to workaround a bug on
+        www.chainreaction.com (rdar://problem/4697438). This patch drops the
+        workaround in HTMLSelectElement::parseAttribute() because:
+        1. This is not standard behavior as per the HTML specification
+        2. This behavior does not match Firefox either
+        3. The workaround is no longer needed for www.chainreaction.com.
+
+        * fast/forms/select-size-expected.html: Added.
+        * fast/forms/select-size.html:
+        * platform/efl/fast/forms/select-size-expected.txt: Removed.
+        * platform/gtk/fast/forms/select-size-expected.txt: Removed.
+        * platform/ios-simulator/fast/forms/select-size-expected.txt: Removed.
+        * platform/mac/fast/forms/select-size-expected.png: Removed.
+        * platform/mac/fast/forms/select-size-expected.txt: Removed.
+        * platform/win/fast/forms/select-size-expected.txt: Removed.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: Enable form-action directive by default
+        https://bugs.webkit.org/show_bug.cgi?id=154520
+        <rdar://problem/24762029>
+
+        Reviewed by Sam Weinig.
+
+        Mark form-action tests as Pass so that we run them.
+
+        * TestExpectations:
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        Add username / password attributes to HTMLAnchorElement / HTMLAreaElement
+        https://bugs.webkit.org/show_bug.cgi?id=154519
+
+        Reviewed by Sam Weinig.
+
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-hash.js:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-host.js:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-hostname.js:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-pathname.js:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-protocol.js:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-search.js:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-hash-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-host-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-hostname-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-pathname-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-protocol-expected.txt:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-search-expected.txt:
+        Update / rebaseline tests now that we no longer treat null as the empty string.
+
+        * fast/dom/HTMLAnchorElement/set-href-attribute-user-pass-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/set-href-attribute-user-pass.html: Added.
+        Add test coverage for setting the username / password attributes.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        Rebaseline now that HTMLAnchorElement / HTMLAreaElement have 2 additional
+        attributes: username and password.
+
+2016-02-21  Chris Dumez  <cdumez@apple.com>
+
+        iframe/frame/object.contentDocument should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=154409
+
+        Reviewed by Sam Weinig.
+
+        Add test coverage for trying to access iframe.contentDocument cross origin
+        to make sure it still fails and logs a security error.
+
+        * http/tests/security/cross-origin-iframe-contentDocument-expected.txt: Added.
+        * http/tests/security/cross-origin-iframe-contentDocument.html: Added.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: sandbox directive should be ignored when contained in a policy defined via a meta element
+        https://bugs.webkit.org/show_bug.cgi?id=154299
+        <rdar://problem/24680433>
+
+        Add iOS Simulator-specific expected result for test http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe.html.
+
+        * platform/ios-simulator/http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe-expected.txt: Added.
+
+2016-02-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding ios-simulator baseline for js/number-toLocaleString.html
+        https://bugs.webkit.org/show_bug.cgi?id=154524
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/js/number-toLocaleString-expected.txt: Added.
+
+2016-02-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-forms.html for ios-simulator after r196846
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        Another attempt to fix the Content Extension test failures following <https://trac.webkit.org/changeset/196875>
+        (https://bugs.webkit.org/show_bug.cgi?id=154307) 
+
+        Rename Content Extension JSON files so that they are associated with tests http/tests/contentextensions/block-cookies-in-csp-report.php
+        http/tests/contentextensions/block-csp-report.php and http/tests/contentextensions/hide-on-csp-report.php. These
+        files were formerly named block-cookies-in-csp-report.html, block-csp-report.html, and hide-on-csp-report.html,
+        respectively, prior to <https://trac.webkit.org/changeset/196878>. Also, update expected result for test block-csp-report.html
+        following <https://trac.webkit.org/changeset/196878>.
+
+        * http/tests/contentextensions/block-cookies-in-csp-report.php.json: Renamed from LayoutTests/http/tests/contentextensions/block-cookies-in-csp-report.html.json.
+        * http/tests/contentextensions/block-csp-report-expected.txt:
+        * http/tests/contentextensions/block-csp-report.php.json: Renamed from LayoutTests/http/tests/contentextensions/block-csp-report.html.json.
+        * http/tests/contentextensions/hide-on-csp-report.php.json: Renamed from LayoutTests/http/tests/contentextensions/hide-on-csp-report.html.json.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the Content Extension test failures following <https://trac.webkit.org/changeset/196875>
+        (https://bugs.webkit.org/show_bug.cgi?id=154307)
+
+        Convert Content Extension tests that use the Content Security Policy directive report-uri from HTML files
+        to PHP scripts and modified them to define the content security policy for the page via the Content-Security-Policy
+        HTTP header instead of via a meta element so that the report-uri directive is honored. Following
+        <https://trac.webkit.org/changeset/196875> the directive report-uri is only honored when contained in a
+        policy that is delivered via an HTTP header. That is, it is no longer honored when delivered in a meta element.
+
+        * http/tests/contentextensions/block-cookies-in-csp-report.php: Renamed from LayoutTests/http/tests/contentextensions/block-cookies-in-csp-report.html.
+        * http/tests/contentextensions/block-csp-report.php: Renamed from LayoutTests/http/tests/contentextensions/block-csp-report.html.
+        * http/tests/contentextensions/hide-on-csp-report.php: Renamed from LayoutTests/http/tests/contentextensions/hide-on-csp-report.html.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: Violation report should include column number
+        https://bugs.webkit.org/show_bug.cgi?id=154418
+        <rdar://problem/24729525>
+
+        Reviewed by Brent Fulgham.
+
+        Update expected results to include source file column information where the violation occurred.
+
+        * http/tests/security/contentSecurityPolicy/report-blocked-file-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-javascript-expected.txt:
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: Violation report should include HTTP status code and effective-directive of protected resource
+        https://bugs.webkit.org/show_bug.cgi?id=154288
+        <rdar://problem/24674982>
+        And
+        https://bugs.webkit.org/show_bug.cgi?id=115707
+        <rdar://problem/24383128>
+
+        Reviewed by Brent Fulgham.
+
+        Add new test http/tests/security/contentSecurityPolicy/report-status-code-zero-when-using-https.html to ensure
+        that the CSP report property status-code is 0 when the protected document is delivered over HTTPS. Fix a
+        correctness issue in the result for test http/tests/security/contentSecurityPolicy/report-blocked-file-uri.html
+        and update the expected results for the following tests now that the CSP violation report includes properties
+        status-code and effective-directive:
+            http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php
+            http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.php
+            http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.php
+            http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.php
+
+        The rest of the changes to the expected results are cosmetic and reflect the difference in wording for inline
+        script violations between WebKit and Blink. We will consider adopting wording similar to Blink in
+        <https://bugs.webkit.org/show_bug.cgi?id=153242>.
+
+        * TestExpectations: Remove entries for tests that now pass. Add test http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive.php.
+        * http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive.html. The report-uri
+        directive is only honored when defined in a policy delivered via an HTTP header. We convert this
+        HTML file to a PHP script to be able to deliver a Content-Security-Policy HTTP header.
+        * http/tests/security/contentSecurityPolicy/report-and-enforce-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-data-uri-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-blocked-file-uri-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-cross-origin-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled-expected.txt: Update expected result now
+        that the report includes properties status-code and effective-directive.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-only-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-only-from-header-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled-expected.txt: Update expected result now
+        that the report includes properties status-code and effective-directive.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled-expected.txt: Update expected result now
+        that the report includes properties status-code and effective-directive.
+        * http/tests/security/contentSecurityPolicy/report-status-code-zero-when-using-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-status-code-zero-when-using-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-uri-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame.html: Fix ill-formed markup; substitute </iframe> for </script>.
+        * http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript-expected.txt: Cosmetic change.
+        * http/tests/security/contentSecurityPolicy/report-uri-from-javascript-expected.txt: Ditto.
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative-expected.txt: Ditto.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: report-url directive should be ignored when contained in a policy defined via a meta element
+        https://bugs.webkit.org/show_bug.cgi?id=154307
+        <rdar://problem/24684817>
+
+        Reviewed by Brent Fulgham.
+
+        Add new test http/tests/security/contentSecurityPolicy/report-uri-in-meta-tag-ignored.html and rename and modify
+        existing tests to make them PHP scripts that emit a Content Security Policy HTTP header.
+
+        In addition, remove file http/tests/security/contentSecurityPolicy/resources/generate-csp-report.html that
+        is no longer meaningful now that we do not honor the report-uri directive defined in a policy via a meta
+        element. Moreover, we have not made use of this file since <http://trac.webkit.org/changeset/176413>.
+
+        * TestExpectations: Update entries for renames.
+        * http/tests/security/contentSecurityPolicy/report-and-enforce-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-and-enforce.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-and-enforce.html.
+        * http/tests/security/contentSecurityPolicy/report-blocked-data-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-data-uri.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-blocked-data-uri.html.
+        * http/tests/security/contentSecurityPolicy/report-blocked-file-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-file-uri.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-blocked-file-uri.html.
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-cross-origin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-cross-origin.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-blocked-uri-cross-origin.html.
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-blocked-uri.html.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.html.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.html.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies.html.
+        * http/tests/security/contentSecurityPolicy/report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-only.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-only.html.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.html.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.html.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies.html.
+        * http/tests/security/contentSecurityPolicy/report-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript.html.
+        * http/tests/security/contentSecurityPolicy/report-uri-from-javascript-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-javascript.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-uri-from-javascript.html.
+        * http/tests/security/contentSecurityPolicy/report-uri-in-meta-tag-ignored-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-uri-in-meta-tag-ignored.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative.html: Removed.
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative.php: Added.
+        * http/tests/security/contentSecurityPolicy/report-uri.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/report-uri.html.
+        * http/tests/security/contentSecurityPolicy/resources/generate-csp-report.html: Removed. For completeness, we have
+        not made use of this file since <http://trac.webkit.org/changeset/176413>.
+        * http/tests/security/contentSecurityPolicy/resources/generate-csp-report.php:
+        * http/tests/security/contentSecurityPolicy/user-style-sheet-font-crasher.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/user-style-sheet-font-crasher.html.
+        * platform/wk2/TestExpectations: Update entries for renames.
+
+2016-02-21  Daniel Bates  <dabates@apple.com>
+
+        CSP: sandbox directive should be ignored when contained in a policy defined via a meta element
+        https://bugs.webkit.org/show_bug.cgi?id=154299
+        <rdar://problem/24680433>
+
+        Reviewed by Brent Fulgham.
+
+        Add test http/tests/security/contentSecurityPolicy/sandbox-in-meta-tag-ignored.html to ensure that we ignore
+        the sandbox directive when delivered via an HTML meta element and log a message to the Web Inspector console.
+
+        Remove tests http/tests/security/contentSecurityPolicy/sandbox-{allow-scripts-subframe, empty, empty-subframe}.html
+        that are no longer meaningful now that we ignore the sandbox directive when delivered via an HTML meta element and
+        create analogous tests for when the sandbox directive is delivered via an HTTP header.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-in-http-header2-expected.txt: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-expected.txt.
+        * http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-in-http-header2.php: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/sandbox-allow-scripts.html.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-subframe-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-subframe.html: Removed.
+        This test is no longer meaningful now that we ignore the sandbox directive when delivered via an HTML meta element.
+        An analogous test for when the directive is delivered via an HTTP header is http/tests/security/contentSecurityPolicy//sandbox-allow-scripts-in-http-header.html.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe.php: Added. Derived from test http/tests/security/contentSecurityPolicy/sandbox-empty-subframe.html.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header.php: Added. Derived from test http/tests/security/contentSecurityPolicy/sandbox-empty.html.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-subframe-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-subframe.html: Removed.
+        This test is no longer meaningful now that we ignore the sandbox directive when delivered via an HTML meta element.
+        The analogous test for when the directive is delivered via an HTTP header is http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe.php.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-empty-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/sandbox-empty.html: Removed.
+        This test is no longer meaningful now that we ignore the sandbox directive when delivered via an HTML meta element.
+        The analogous test for when the directive is delivered via an HTTP header is http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header.php.
+
+        * http/tests/security/contentSecurityPolicy/sandbox-in-meta-tag-ignored-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/sandbox-in-meta-tag-ignored.html: Added.
+
+2016-02-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196866.
+        https://bugs.webkit.org/show_bug.cgi?id=154515
+
+        still crashy on EFL/GTK (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Wheel event callback removing the window causes crash in
+        WebCore."
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+        http://trac.webkit.org/changeset/196866
+
+2016-02-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Wheel event callback removing the window causes crash in WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+
+        Reviewed by Brent Fulgham.
+
+        * fast/events/wheel-event-destroys-frame-expected.txt: Added.
+        * fast/events/wheel-event-destroys-frame.html: Added.
+
+2016-02-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html for Mac after r196846
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-02-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196837.
+        https://bugs.webkit.org/show_bug.cgi?id=154495
+
+        It caused a lot of crashes in EFL and GTK bots (Requested by
+        KaL on #webkit).
+
+        Reverted changeset:
+
+        "Wheel event callback removing the window causes crash in
+        WebCore."
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+        http://trac.webkit.org/changeset/196837
+
+2016-02-19  Doug Russell  <d_russell@apple.com>
+
+        Bug 154366: AX: AXObjectCache::visiblePositionForTextMarkerData() doesn't account for visibly equivalent positions
+        https://bugs.webkit.org/show_bug.cgi?id=154366
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-line-boundary-expected.txt: Added.
+        * accessibility/mac/text-marker-line-boundary.html: Added.
+
+2016-02-19  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Number Format Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147605
+
+        Reviewed by Darin Adler.
+
+        * js/intl-numberformat-expected.txt:
+        * js/intl-numberformat.html:
+        * js/number-toLocaleString-expected.txt:
+        * js/script-tests/intl-numberformat.js:
+        * js/script-tests/number-toLocaleString.js:
+
+2016-02-18  Gavin Barraclough  <barraclough@apple.com>
+
+        JSObject::getPropertySlot - index-as-propertyname, override on prototype, & shadow
+        https://bugs.webkit.org/show_bug.cgi?id=154416
+
+        Reviewed by Geoff Garen.
+
+        * js/index-property-shadows-overriden-get-own-property-slot-expected.txt: Added.
+        * js/index-property-shadows-overriden-get-own-property-slot.html: Added.
+        * js/script-tests/index-property-shadows-overriden-get-own-property-slot.js: Added.
+        (test):
+            - added test case.
+
+2016-02-19  Chris Dumez  <cdumez@apple.com>
+
+        HTMLFormElement.autocomplete should only return known values
+        https://bugs.webkit.org/show_bug.cgi?id=154247
+        <rdar://problem/24658195>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update test to expect Form.autocomplete to return "on" by
+        default instead of the empty string.
+
+        * fast/forms/autocomplete-expected.txt:
+        * fast/forms/autocomplete.html:
+
+2016-02-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Wheel event callback removing the window causes crash in WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+
+        Reviewed by Brent Fulgham.
+
+        * fast/events/wheel-event-destroys-frame-expected.txt: Added.
+        * fast/events/wheel-event-destroys-frame.html: Added.
+
+2016-02-19  Antti Koivisto  <antti@apple.com>
+
+        ComposedTreeIterator traverses normal children for elements with empty shadow root
+        https://bugs.webkit.org/show_bug.cgi?id=154464
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/composed-tree-basic-expected.txt: Added.
+        * fast/shadow-dom/composed-tree-basic.html: Added.
+
+2016-02-19  Nan Wang  <n_wang@apple.com>
+
+        AX: Inconsistency between CharacterOffset and VisiblePostition
+        https://bugs.webkit.org/show_bug.cgi?id=154431
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-word-nav-expected.txt:
+        * accessibility/mac/text-marker-word-nav.html:
+        * accessibility/text-marker/text-marker-previous-next.html:
+
+2016-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196797
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-19  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout Refactoring some layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=154291
+
+        Refactored several tests so they use the shared sizing keywords
+        instead of specific CSS rules.
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/calc-resolution-grid-item.html:
+        * fast/css-grid-layout/flex-and-intrinsic-sizes-expected.txt:
+        * fast/css-grid-layout/flex-and-intrinsic-sizes.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-lr.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-rl.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding.html:
+        * fast/css-grid-layout/grid-align-justify-overflow.html:
+        * fast/css-grid-layout/grid-align-justify-stretch.html:
+        * fast/css-grid-layout/grid-align.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-container-margin-border-padding-scrollbar.html:
+        * fast/css-grid-layout/grid-content-alignment-and-self-alignment.html:
+        * fast/css-grid-layout/grid-content-alignment-overflow.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span-vertical-lr.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span-vertical-rl.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span.html:
+        * fast/css-grid-layout/grid-element-change-columns-repaint.html:
+        * fast/css-grid-layout/grid-element-change-rows-repaint.html:
+        * fast/css-grid-layout/grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/grid-gutters-and-alignment.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment.html:
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch.html:
+        * fast/css-grid-layout/grid-item-auto-sized-align-justify-margin-border-padding.html:
+        * fast/css-grid-layout/grid-item-change-column-repaint.html:
+        * fast/css-grid-layout/grid-item-order-paint-order.html:
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-lr-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-lr.html: Added.
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-rl-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-rl.html: Added.
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding.html: Added.
+        * fast/css-grid-layout/grid-item-z-index-stacking-context-expected.html:
+        * fast/css-grid-layout/grid-item-z-index-stacking-context.html:
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change.html:
+        * fast/css-grid-layout/grid-justify-content-distribution.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-lr.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-rl.html:
+        * fast/css-grid-layout/justify-self-cell.html:
+        * fast/css-grid-layout/min-width-height-auto-and-margins.html:
+        * fast/css-grid-layout/minmax-fixed-logical-height-only.html:
+        * fast/css-grid-layout/minmax-fixed-logical-width-only.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-columns.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-rows.html:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track-in-percent-grid.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-auto.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size.html:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+        * fast/css-grid-layout/place-cell-by-index.html:
+        * fast/css-grid-layout/resources/grid-alignment.css:
+        (.alignSelfCenterSafe):
+        (.alignSelfCenterUnsafe):
+        (.alignSelfEndSafe):
+        (.alignSelfEndUnsafe):
+        (.alignItemsAuto):
+        (.alignItemsStretch):
+        (.alignItemsStart):
+        (.alignItemsEnd):
+        (.alignItemsCenterSafe):
+        (.alignItemsCenterUnsafe):
+        (.alignItemsEndSafe):
+        (.alignItemsEndUnsafe):
+        (.justifySelfAuto):
+        (.justifySelfStretch):
+        (.justifySelfStart):
+        (.justifySelfCenter):
+        (.justifySelfEnd):
+        (.justifySelfRight):
+        (.justifySelfLeft):
+        (.justifySelfFlexStart):
+        (.justifySelfFlexEnd):
+        (.justifySelfSelfStart):
+        (.justifySelfSelfEnd):
+        (.justifySelfCenterSafe):
+        (.justifySelfCenterUnsafe):
+        (.justifyItemsAuto):
+        (.justifyItemsStretch):
+        (.justifyItemsStart):
+        (.justifyItemsCenter):
+        (.justifyItemsEnd):
+        (.justifyItemsCenterSafe):
+        (.justifyItemsCenterUnsafe):
+        (.justifyItemsEndSafe):
+        (.justifyItemsEndUnsafe):
+        (.selfStretch):
+        (.contentStart):
+        (.contentCenter):
+        (.contentEnd):
+        (.contentCenterSafe):
+        (.contentCenterUnsafe):
+        (.contentEndSafe):
+        (.contentEndUnsafe):
+        (.contentSpaceBetween):
+        (.contentSpaceAround):
+        (.contentSpaceEvenly):
+        (.contentStretch):
+        * fast/css-grid-layout/resources/grid.css:
+        (.verticalRL):
+        (.verticalLR):
+        (.horizontalTB):
+        (.horizontalBT):
+        (.inline-grid): Deleted.
+        (.firstRowFirstColumn): Deleted.
+        (.directionRTL): Deleted.
+
+2016-02-18  Andy Estes  <aestes@apple.com>
+
+        Revert to dispatching the popstate event synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=153297
+        rdar://problem/24092294
+
+        Reviewed by Brent Fulgham.
+
+        Renamed and modified this test to expect synchronous dispatch.
+
+        * fast/loader/stateobjects/popstate-is-synchronous-expected.txt: Renamed from LayoutTests/fast/loader/stateobjects/popstate-is-asynchronous-expected.txt.
+        * fast/loader/stateobjects/popstate-is-synchronous.html: Renamed from LayoutTests/fast/loader/stateobjects/popstate-is-asynchronous.html.
+
+2016-02-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Bump internal jhbuild versions to 1.6.3
+        https://bugs.webkit.org/show_bug.cgi?id=149594
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Skipping new failing tests for now.
+
+2016-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196790.
+        https://bugs.webkit.org/show_bug.cgi?id=154439
+
+        made fast/events/wheelevent-basic-actual.txt fail in WK2
+        (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Wheel event callback removing the window causes crash in
+        WebCore."
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+        http://trac.webkit.org/changeset/196790
+
+2016-02-18  Chris Dumez  <cdumez@apple.com>
+
+        window.history / window.navigator should not be replaceable
+        https://bugs.webkit.org/show_bug.cgi?id=154412
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline existing tests now that window.history and
+        window.navigator are no longer replaceable.
+
+        * fast/dom/Window/get-set-properties-expected.txt:
+        * fast/dom/Window/get-set-properties.html:
+        * fast/dom/Window/window-property-shadowing-expected.txt:
+        * fast/dom/Window/window-property-shadowing.html:
+        * http/tests/history/cross-origin-replace-history-object-child-expected.txt:
+        * http/tests/history/resources/cross-origin-replaces-history-object-child-iframe.html:
+        * js/dom/var-declarations-shadowing-expected.txt:
+        * js/dom/var-declarations-shadowing.html:
+        * js/getOwnPropertyDescriptor-window-attributes-expected.txt:
+        * js/getOwnPropertyDescriptor-window-attributes.html:
+
+2016-02-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Wheel event callback removing the window causes crash in WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+
+        Reviewed by Brent Fulgham.
+
+        * fast/events/wheel-event-destroys-frame-expected.txt: Added.
+        * fast/events/wheel-event-destroys-frame.html: Added.
+
+2016-02-18  Zalan Bujtas  <zalan@apple.com>
+
+        Soft hyphen is not shown when it is placed at the end of an inline element
+        https://bugs.webkit.org/show_bug.cgi?id=153980
+
+        Reviewed by David Hyatt.
+
+        This patch handles the case when the character at the breaking position does not fit the
+        line and soft-hyphen, as the first breaking opportunity, is followed by this overflowing character.
+        (foo&shy;bar where b overflows the line).
+        In such cases we don't yet have an item in the breaking history so we need to take a look at
+        the current context instead.    
+
+        * fast/text/soft-hyphen-as-first-breaking-opportunity-expected.html: Added.
+        * fast/text/soft-hyphen-as-first-breaking-opportunity.html: Added.
+
+2016-02-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196770
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/reflection-forms.html for ios-simulator after r196769 
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator after r196742
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        JSC ARM Linux test gardening after r196625
+        https://bugs.webkit.org/show_bug.cgi?id=154392
+
+        Reviewed by Mark Lam.
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-float64array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-osr-entry-hoisted-clobbered-structure-check.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array-overflow-values.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+        * js/script-tests/dfg-uint8clampedarray.js:
+        * js/script-tests/regress-141098.js:
+
+2016-02-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Implement FontFaceSet
+        https://bugs.webkit.org/show_bug.cgi?id=153348
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-face-set-javascript-expected.txt: Added.
+        * fast/text/font-face-set-javascript.html: Added.
+
+2016-02-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196738.
+        https://bugs.webkit.org/show_bug.cgi?id=154380
+
+        broke css3/calc/transforms-translate.html (Requested by
+        alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "WebKitCSSMatrix transformList with calculated relative length
+        crashes Safari."
+        https://bugs.webkit.org/show_bug.cgi?id=153333
+        http://trac.webkit.org/changeset/196738
+
+2016-02-17  Dean Jackson  <dino@apple.com>
+
+        WebKitCSSMatrix transformList with calculated relative length crashes Safari.
+        https://bugs.webkit.org/show_bug.cgi?id=153333
+        <rdar://problem/17198383>
+
+        Reviewed by Simon Fraser.
+
+        Update existing tests to exercise the non-absolute lengths for translation
+        and perspective functions.
+
+        * transforms/cssmatrix-2d-interface-expected.txt:
+        * transforms/cssmatrix-2d-interface.xhtml:
+        * transforms/cssmatrix-3d-interface-expected.txt:
+        * transforms/cssmatrix-3d-interface.xhtml:
+
+2016-02-17  Keith Miller  <keith_miller@apple.com>
+
+        Spread operator should be allowed when not the first argument of parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=152721
+
+        Reviewed by Saam Barati.
+
+        Update tests with new semantics of spread calling. Additionally,
+        adjust benchmarks to run in a more reasonable time now that
+        spread is implemented correctly.
+
+        * js/basic-spread-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        * js/regress/script-tests/deltablue-varargs.js:
+        (deltaBlue):
+        * js/regress/script-tests/varargs-construct.js:
+        * js/script-tests/basic-spread.js:
+        * js/script-tests/parser-syntax-check.js:
+
+2016-02-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add ios-simulator baseline for new W3C HTML tests added with r196710
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt: Added.
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt: Added.
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        SES selftest page crashes on nightly r196694
+        https://bugs.webkit.org/show_bug.cgi?id=154350
+        <rdar://problem/24704334>
+
+        Reviewed by Mark Lam.
+
+        Add test coverage for the crash which happens when shadowing window.length
+        with a value after the window property and then calling
+        Object.getOwnPropertyDescriptor(window, "length").
+
+        * js/window-length-getOwnPropertyDescriptor-crash-expected.txt: Added.
+        * js/window-length-getOwnPropertyDescriptor-crash.html: Added.
+
+2016-02-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add tests for iframe and overflow scrollability after navigating back
+        https://bugs.webkit.org/show_bug.cgi?id=154300
+
+        Fix the tests added in r196665 to be agnostic about how many pixels a wheel event scrolls.
+
+        * fast/scrolling/iframe-scrollable-after-back-expected.txt:
+        * fast/scrolling/iframe-scrollable-after-back.html:
+        * fast/scrolling/overflow-scrollable-after-back-expected.txt:
+        * fast/scrolling/overflow-scrollable-after-back.html:
+
+2016-02-17  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function. Arrow function should raise exception ReferenceError only when access to 'arguments'  on top level
+        https://bugs.webkit.org/show_bug.cgi?id=152570
+
+        Reviewed by Saam Barati.
+
+        Add tests to ensure that arrrow function return error when it binds arguments on top level
+
+        * js/arrowfunction-lexical-bind-arguments-top-level-expected.txt: Added.
+        * js/arrowfunction-lexical-bind-arguments-top-level.html: Added.
+        * js/script-tests/arrowfunction-lexical-bind-arguments-top-level.js: Added.
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Import W3C HTML reflection tests
+        https://bugs.webkit.org/show_bug.cgi?id=154310
+        <rdar://problem/24685826>
+
+        Reviewed by Ryosuke Niwa.
+
+        Skip newly imported tests in Debug builds because they are slow.
+
+        * TestExpectations:
+
+2016-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Copy http body when being redirected with 308 with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=154348
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/navigation/post-308-response-expected.txt: Copied from LayoutTests/http/tests/navigation/post-307-response-expected.txt.
+        * http/tests/navigation/post-308-response.html: Copied from LayoutTests/http/tests/navigation/post-307-response.html.
+        * http/tests/navigation/resources/redirection-response.php:
+        Added a test verifying data is being sent with post requests after being redirected with an http status code of 308.
+        We already had non-CORS tests for 301, 302, 303, and 307, and we already had CORS tests for 301, 302, 303, 307, and 308.
+        This fills in the missing non-CORS test.
+
+2016-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196648): window.showModalDialog is no longer undefined if the client does not allow showing modal dialog
+        https://bugs.webkit.org/show_bug.cgi?id=154330
+
+        Reviewed by Gavin Barraclough.
+
+        Add layout test to make sure that window.showModalDialog is undefined
+        when the client does not allow showing modal dialog and to check that
+        window.showModalDialog can be shadowed.
+
+        * fast/dom/Window/forbid-showModalDialog-expected.txt: Added.
+        * fast/dom/Window/forbid-showModalDialog.html: Added.
+
+2016-02-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196675.
+        https://bugs.webkit.org/show_bug.cgi?id=154344
+
+         "Causes major slowdowns on deltablue-varargs" (Requested by
+        keith_miller on #webkit).
+
+        Reverted changeset:
+
+        "Spread operator should be allowed when not the first argument
+        of parameter list"
+        https://bugs.webkit.org/show_bug.cgi?id=152721
+        http://trac.webkit.org/changeset/196675
+
+2016-02-17  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement sentence related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154312
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-paragraph-nav-expected.txt:
+        * accessibility/mac/text-marker-paragraph-nav.html:
+        * accessibility/mac/text-marker-sentence-nav-expected.txt: Added.
+        * accessibility/mac/text-marker-sentence-nav.html: Added.
+
+2016-02-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding an ios-specific baseline for accessibility/ios-simulator/centerpoint.html during failure investigation
+        https://bugs.webkit.org/show_bug.cgi?id=154137
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/accessibility/ios-simulator/centerpoint-expected.txt: Added.
+
+2016-02-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping tests added with r196688 on ios-simulator due to reliance on unsupported mouse events.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
 2016-02-17  Chris Dumez  <cdumez@apple.com>
 
         Window should have its 'constructor' property on the prototype

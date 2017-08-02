@@ -127,8 +127,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp
     UIProcess/CoordinatedGraphics/PageViewportController.cpp
     UIProcess/CoordinatedGraphics/WebPageProxyCoordinatedGraphics.cpp
-    UIProcess/CoordinatedGraphics/WebView.cpp
-    UIProcess/CoordinatedGraphics/WebViewClient.cpp
 
     UIProcess/Databases/efl/DatabaseProcessProxyEfl.cpp
 
@@ -184,7 +182,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/WebProcessPoolEfl.cpp
     UIProcess/efl/WebProcessProxyEfl.cpp
     UIProcess/efl/WebUIPopupMenuClient.cpp
-    UIProcess/efl/WebViewEfl.cpp
+    UIProcess/efl/WebView.cpp
+    UIProcess/efl/WebViewClient.cpp
 
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp

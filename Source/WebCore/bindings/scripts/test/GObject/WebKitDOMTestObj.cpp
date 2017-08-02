@@ -91,6 +91,7 @@ enum {
     PROP_STRING_ATTR,
     PROP_TEST_OBJ_ATTR,
     PROP_LENIENT_TEST_OBJ_ATTR,
+    PROP_UNFORGEABLE_ATTR,
     PROP_XML_OBJ_ATTR,
     PROP_CREATE,
     PROP_REFLECTED_STRING_ATTR,
@@ -136,6 +137,7 @@ enum {
     PROP_NULLABLE_BOOLEAN_ATTRIBUTE,
     PROP_NULLABLE_STRING_ATTRIBUTE,
     PROP_NULLABLE_LONG_SETTABLE_ATTRIBUTE,
+    PROP_NULLABLE_STRING_SETTABLE_ATTRIBUTE,
     PROP_NULLABLE_STRING_VALUE,
     PROP_ATTRIBUTE,
     PROP_PUT_FORWARDS_ATTRIBUTE,
@@ -250,6 +252,9 @@ static void webkit_dom_test_obj_set_property(GObject* object, guint propertyId, 
     case PROP_NULLABLE_LONG_SETTABLE_ATTRIBUTE:
         webkit_dom_test_obj_set_nullable_long_settable_attribute(self, g_value_get_long(value));
         break;
+    case PROP_NULLABLE_STRING_SETTABLE_ATTRIBUTE:
+        webkit_dom_test_obj_set_nullable_string_settable_attribute(self, g_value_get_string(value));
+        break;
     case PROP_NULLABLE_STRING_VALUE:
         webkit_dom_test_obj_set_nullable_string_value(self, g_value_get_long(value));
         break;
@@ -302,6 +307,9 @@ static void webkit_dom_test_obj_get_property(GObject* object, guint propertyId, 
         break;
     case PROP_LENIENT_TEST_OBJ_ATTR:
         g_value_set_object(value, webkit_dom_test_obj_get_lenient_test_obj_attr(self));
+        break;
+    case PROP_UNFORGEABLE_ATTR:
+        g_value_take_string(value, webkit_dom_test_obj_get_unforgeable_attr(self));
         break;
     case PROP_XML_OBJ_ATTR:
         g_value_set_object(value, webkit_dom_test_obj_get_xml_obj_attr(self));
@@ -437,6 +445,9 @@ static void webkit_dom_test_obj_get_property(GObject* object, guint propertyId, 
         break;
     case PROP_NULLABLE_LONG_SETTABLE_ATTRIBUTE:
         g_value_set_long(value, webkit_dom_test_obj_get_nullable_long_settable_attribute(self));
+        break;
+    case PROP_NULLABLE_STRING_SETTABLE_ATTRIBUTE:
+        g_value_take_string(value, webkit_dom_test_obj_get_nullable_string_settable_attribute(self));
         break;
     case PROP_NULLABLE_STRING_VALUE:
         g_value_set_long(value, webkit_dom_test_obj_get_nullable_string_value(self, nullptr));
@@ -604,6 +615,16 @@ static void webkit_dom_test_obj_class_init(WebKitDOMTestObjClass* requestClass)
             "TestObj:lenient-test-obj-attr",
             "read-only WebKitDOMTestObj* TestObj:lenient-test-obj-attr",
             WEBKIT_DOM_TYPE_TEST_OBJ,
+            WEBKIT_PARAM_READABLE));
+
+    g_object_class_install_property(
+        gobjectClass,
+        PROP_UNFORGEABLE_ATTR,
+        g_param_spec_string(
+            "unforgeable-attr",
+            "TestObj:unforgeable-attr",
+            "read-only gchar* TestObj:unforgeable-attr",
+            "",
             WEBKIT_PARAM_READABLE));
 
     g_object_class_install_property(
@@ -1058,6 +1079,16 @@ static void webkit_dom_test_obj_class_init(WebKitDOMTestObjClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
+        PROP_NULLABLE_STRING_SETTABLE_ATTRIBUTE,
+        g_param_spec_string(
+            "nullable-string-settable-attribute",
+            "TestObj:nullable-string-settable-attribute",
+            "read-write gchar* TestObj:nullable-string-settable-attribute",
+            "",
+            WEBKIT_PARAM_READWRITE));
+
+    g_object_class_install_property(
+        gobjectClass,
         PROP_NULLABLE_STRING_VALUE,
         g_param_spec_long(
             "nullable-string-value",
@@ -1210,6 +1241,15 @@ WebKitDOMTestObj* webkit_dom_test_obj_obj_method_with_args(WebKitDOMTestObj* sel
     WebCore::TestObj* convertedObjArg = WebKit::core(objArg);
     RefPtr<WebCore::TestObj> gobjectResult = WTF::getPtr(item->objMethodWithArgs(longArg, convertedStrArg, convertedObjArg));
     return WebKit::kit(gobjectResult.get());
+}
+
+glong webkit_dom_test_obj_unforgeable_method(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
+    WebCore::TestObj* item = WebKit::core(self);
+    glong result = item->unforgeableMethod();
+    return result;
 }
 
 void webkit_dom_test_obj_method_with_enum_arg(WebKitDOMTestObj* self, WebKitDOMTestEnumType* enumArg)
@@ -1842,6 +1882,15 @@ void webkit_dom_test_obj_set_lenient_test_obj_attr(WebKitDOMTestObj* self, WebKi
     WebCore::TestObj* item = WebKit::core(self);
     WebCore::TestObj* convertedValue = WebKit::core(value);
     item->setLenientTestObjAttr(convertedValue);
+}
+
+gchar* webkit_dom_test_obj_get_unforgeable_attr(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
+    WebCore::TestObj* item = WebKit::core(self);
+    gchar* result = convertToUTF8String(item->unforgeableAttr());
+    return result;
 }
 
 WebKitDOMTestObj* webkit_dom_test_obj_get_xml_obj_attr(WebKitDOMTestObj* self)
@@ -2570,6 +2619,25 @@ void webkit_dom_test_obj_set_nullable_long_settable_attribute(WebKitDOMTestObj* 
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     WebCore::TestObj* item = WebKit::core(self);
     item->setNullableLongSettableAttribute(value);
+}
+
+gchar* webkit_dom_test_obj_get_nullable_string_settable_attribute(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
+    WebCore::TestObj* item = WebKit::core(self);
+    gchar* result = convertToUTF8String(item->nullableStringSettableAttribute());
+    return result;
+}
+
+void webkit_dom_test_obj_set_nullable_string_settable_attribute(WebKitDOMTestObj* self, const gchar* value)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(value);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedValue = WTF::String::fromUTF8(value);
+    item->setNullableStringSettableAttribute(convertedValue);
 }
 
 glong webkit_dom_test_obj_get_nullable_string_value(WebKitDOMTestObj* self, GError** error)

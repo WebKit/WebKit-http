@@ -8,6 +8,22 @@ class AnalysisTaskChartPane extends ChartPaneBase {
 
     setPage(page) { this._page = page; }
     router() { return this._page.router(); }
+
+    _mainSelectionDidChange(selection, didEndDrag)
+    {
+        super._mainSelectionDidChange(selection);
+        if (didEndDrag)
+            this._page._chartSelectionDidChange();
+    }
+
+    selectedPoints()
+    {
+        var selection = this._mainChart ? this._mainChart.currentSelection() : null;
+        if (!selection)
+            return null;
+
+        return this._mainChart.sampledDataBetween('current', selection[0], selection[1]);
+    }
 }
 
 ComponentBase.defineElement('analysis-task-chart-pane', AnalysisTaskChartPane);
@@ -28,11 +44,15 @@ class AnalysisTaskPage extends PageWithHeading {
         this._endPoint = null;
         this._errorMessage = null;
         this._currentTestGroup = null;
+        this._filteredTestGroups = null;
+        this._showHiddenTestGroups = false;
 
         this._chartPane = this.content().querySelector('analysis-task-chart-pane').component();
         this._chartPane.setPage(this);
         this._analysisResultsViewer = this.content().querySelector('analysis-results-viewer').component();
         this._analysisResultsViewer.setTestGroupCallback(this._showTestGroup.bind(this));
+        this._analysisResultsViewer.setRangeSelectorLabels(['A', 'B']);
+        this._analysisResultsViewer.setRangeSelectorCallback(this._selectedRowInAnalysisResultsViewer.bind(this));
         this._testGroupResultsTable = this.content().querySelector('test-group-results-table').component();
         this._taskNameLabel = this.content().querySelector('.analysis-task-name editable-text').component();
         this._taskNameLabel.setStartedEditingCallback(this._didStartEditingTaskName.bind(this));
@@ -45,7 +65,16 @@ class AnalysisTaskPage extends PageWithHeading {
         this._bugTrackerControl = this.content().querySelector('.bug-tracker-control');
         this._bugNumberControl = this.content().querySelector('.bug-number-control');
 
-        this.content().querySelector('.test-group-retry-form').onsubmit = this._retryCurrentTestGroup.bind(this);
+        this._newTestGroupFormForChart = this.content().querySelector('.overview-chart customizable-test-group-form').component();
+        this._newTestGroupFormForChart.setStartCallback(this._createNewTestGroupFromChart.bind(this));
+
+        this._newTestGroupFormForViewer = this.content().querySelector('.analysis-results-view customizable-test-group-form').component();
+        this._newTestGroupFormForViewer.setStartCallback(this._createNewTestGroupFromViewer.bind(this));
+
+        this._retryForm = this.content().querySelector('.test-group-retry-form test-group-form').component();
+        this._retryForm.setStartCallback(this._retryCurrentTestGroup.bind(this));
+        this._hideButton = this.content().querySelector('.test-group-hide-button');
+        this._hideButton.onclick = this._hideCurrentTestGroup.bind(this);
     }
 
     title() { return this._task ? this._task.label() : 'Analysis Task'; }
@@ -132,12 +161,29 @@ class AnalysisTaskPage extends PageWithHeading {
     _didFetchTestGroups(testGroups)
     {
         this._testGroups = testGroups.sort(function (a, b) { return +a.createdAt() - b.createdAt(); });
-        this._currentTestGroup = testGroups.length ? testGroups[testGroups.length - 1] : null;
-
-        this._analysisResultsViewer.setTestGroups(testGroups);
-        this._testGroupResultsTable.setTestGroup(this._currentTestGroup);
+        this._didUpdateTestGroupHiddenState();
         this._assignTestResultsIfPossible();
         this.render();
+    }
+
+    _showAllTestGroups()
+    {
+        this._showHiddenTestGroups = true;
+        this._didUpdateTestGroupHiddenState();
+        this.render();
+    }
+
+    _didUpdateTestGroupHiddenState()
+    {
+        this._renderedCurrentTestGroup = null;
+        this._renderedTestGroups = null;
+        if (!this._showHiddenTestGroups)
+            this._filteredTestGroups = this._testGroups.filter(function (group) { return !group.isHidden(); });
+        else
+            this._filteredTestGroups = this._testGroups;
+        this._currentTestGroup = this._filteredTestGroups ? this._filteredTestGroups[this._filteredTestGroups.length - 1] : null;
+        this._analysisResultsViewer.setTestGroups(this._filteredTestGroups);
+        this._testGroupResultsTable.setTestGroup(this._currentTestGroup);
     }
 
     _didFetchAnalysisResults(results)
@@ -170,12 +216,6 @@ class AnalysisTaskPage extends PageWithHeading {
         Instrumentation.startMeasuringTime('AnalysisTaskPage', 'render');
 
         this.content().querySelector('.error-message').textContent = this._errorMessage || '';
-
-        if (this._task) {
-            var v2URL = `/v2/#/analysis/task/${this._task.id()}`;
-            this.content().querySelector('.error-message').innerHTML =
-                `<p>To schedule a custom A/B testing, use <a href="${v2URL}">v2 UI</a>.</p>`;
-        }
 
         this._chartPane.render();
 
@@ -228,11 +268,22 @@ class AnalysisTaskPage extends PageWithHeading {
                 }));
         }
 
-        this._analysisResultsViewer.setCurrentTestGroup(this._currentTestGroup);
-        this._analysisResultsViewer.render();
+        var selectedRange = this._analysisResultsViewer.selectedRange();
+        var a = selectedRange['A'];
+        var b = selectedRange['B'];
+        this._newTestGroupFormForViewer.setRootSetMap(a && b ? {'A': a.rootSet(), 'B': b.rootSet()} : null);
+        this._newTestGroupFormForViewer.render();
 
         this._renderTestGroupList();
         this._renderTestGroupDetails();
+
+        var points = this._chartPane.selectedPoints();
+        this._newTestGroupFormForChart.setRootSetMap(points && points.length >= 2 ?
+                {'A': points[0].rootSet(), 'B': points[points.length - 1].rootSet()} : null);
+        this._newTestGroupFormForChart.render();
+
+        this._analysisResultsViewer.setCurrentTestGroup(this._currentTestGroup);
+        this._analysisResultsViewer.render();
 
         this._testGroupResultsTable.render();
 
@@ -247,31 +298,43 @@ class AnalysisTaskPage extends PageWithHeading {
             this._renderedTestGroups = this._testGroups;
             this._testGroupLabelMap.clear();
 
-            var self = this;
-            var updateTestGroupName = this._updateTestGroupName.bind(this);
-            var showTestGroup = this._showTestGroup.bind(this);
+            var unhiddenTestGroups = this._filteredTestGroups.filter(function (group) { return !group.isHidden(); });
+            var hiddenTestGroups = this._filteredTestGroups.filter(function (group) { return group.isHidden(); });
 
-            this.renderReplace(this.content().querySelector('.test-group-list'),
-                this._testGroups.map(function (group) {
-                    var text = new EditableText(group.label());
-                    text.setStartedEditingCallback(function () { return text.render(); });
-                    text.setUpdateCallback(function () { return updateTestGroupName(group); });
+            var listItems = [];
+            for (var group of hiddenTestGroups)
+                listItems.unshift(this._createTestGroupListItem(group));
+            for (var group of unhiddenTestGroups)
+                listItems.unshift(this._createTestGroupListItem(group));
 
-                    self._testGroupLabelMap.set(group, text);
-                    return element('li', {class: 'test-group-list-' + group.id()},
-                        link(text, group.label(), function () { showTestGroup(group); }));
-                }).reverse());
+            if (this._testGroups.length != this._filteredTestGroups.length) {
+                listItems.push(element('li', {class: 'test-group-list-show-all'},
+                    link('Show hidden tests', this._showAllTestGroups.bind(this))));
+            }
+
+            this.renderReplace(this.content().querySelector('.test-group-list'), listItems);
 
             this._renderedCurrentTestGroup = null;
         }
 
         if (this._testGroups) {
-            for (var testGroup of this._testGroups) {
+            for (var testGroup of this._filteredTestGroups) {
                 var label = this._testGroupLabelMap.get(testGroup);
                 label.setText(testGroup.label());
                 label.render();
             }
         }
+    }
+
+    _createTestGroupListItem(group)
+    {
+        var text = new EditableText(group.label());
+        text.setStartedEditingCallback(function () { return text.render(); });
+        text.setUpdateCallback(this._updateTestGroupName.bind(this, group));
+
+        this._testGroupLabelMap.set(group, text);
+        return ComponentBase.createElement('li', {class: 'test-group-list-' + group.id()},
+            ComponentBase.createLink(text, group.label(), this._showTestGroup.bind(this, group)));
     }
 
     _renderTestGroupDetails()
@@ -297,16 +360,20 @@ class AnalysisTaskPage extends PageWithHeading {
                     this._chartPane.setMainSelection([startTime, endTime]);
             }
 
-            this.content().querySelector('.test-group-retry-button').textContent = this._currentTestGroup ? 'Retry' : 'Confirm the change';
+            this._retryForm.setLabel('Retry');
+            if (this._currentTestGroup)
+                this._retryForm.setRepetitionCount(this._currentTestGroup.repetitionCount());
+            this._retryForm.element().style.display = this._currentTestGroup ? null : 'none';
 
-            var repetitionCount = this._currentTestGroup ? this._currentTestGroup.repetitionCount() : 4;
-            var repetitionCountController = this.content().querySelector('.test-group-retry-repetition-count');
-            repetitionCountController.value = repetitionCount;
+            this.content().querySelector('.test-group-hide-button').textContent
+                = this._currentTestGroup && this._currentTestGroup.isHidden() ? 'Unhide' : 'Hide';
+
+            this.content().querySelector('.pending-request-cancel-warning').style.display
+                = this._currentTestGroup && this._currentTestGroup.hasPending() ? null : 'none';
 
             this._renderedCurrentTestGroup = this._currentTestGroup;
         }
-
-        this.content().querySelector('.test-group-retry-button').disabled = !(this._currentTestGroup || this._startPoint);
+        this._retryForm.render();
     }
 
     _showTestGroup(testGroup)
@@ -345,7 +412,21 @@ class AnalysisTaskPage extends PageWithHeading {
             self.render();
         }, function (error) {
             self.render();
-            alert('Failed to update the name: ' + error);
+            alert('Failed to hide the test name: ' + error);
+        });
+    }
+
+    _hideCurrentTestGroup()
+    {
+        var self = this;
+        console.assert(this._currentTestGroup);
+        return this._currentTestGroup.updateHiddenFlag(!this._currentTestGroup.isHidden()).then(function () {
+            self._didUpdateTestGroupHiddenState();
+            self.render();
+        }, function (error) {
+            self._mayHaveMutatedTestGroupHiddenState();
+            self.render();
+            alert('Failed to update the group: ' + error);
         });
     }
 
@@ -390,51 +471,74 @@ class AnalysisTaskPage extends PageWithHeading {
         });
     }
 
-    _retryCurrentTestGroup(event)
+    _retryCurrentTestGroup(repetitionCount)
     {
-        event.preventDefault();
-        console.assert(this._currentTestGroup || this._startPoint);
+        console.assert(this._currentTestGroup);
+        var testGroup = this._currentTestGroup;
+        var newName = this._createRetryNameForTestGroup(testGroup.name());
+        var rootSetList = testGroup.requestedRootSets();
 
-        var testGroupName;
-        var rootSetList;
-        var rootSetLabels;
+        var rootSetMap = {};
+        for (var rootSet of rootSetList)
+            rootSetMap[testGroup.labelForRootSet(rootSet)] = rootSet;
 
-        if (this._currentTestGroup) {
-            var testGroup = this._currentTestGroup;
-            testGroupName = this._createRetryNameForTestGroup(testGroup.name());
-            rootSetList = testGroup.requestedRootSets();
-            rootSetLabels = rootSetList.map(function (rootSet) { return testGroup.labelForRootSet(rootSet); });
-        } else {
-            testGroupName = 'Confirming the change';
-            rootSetList = [this._startPoint.rootSet(), this._endPoint.rootSet()];
-            rootSetLabels = ['Point 0', `Point ${this._endPoint.seriesIndex - this._startPoint.seriesIndex}`];
-        }
+        return this._createTestGroupAfterVerifyingRootSetList(newName, repetitionCount, rootSetMap);
+    }
+
+    _chartSelectionDidChange()
+    {
+        this.render();
+    }
+
+    _createNewTestGroupFromChart(name, repetitionCount, rootSetMap)
+    {
+        return this._createTestGroupAfterVerifyingRootSetList(name, repetitionCount, rootSetMap);
+    }
+
+    _selectedRowInAnalysisResultsViewer()
+    {
+        this.render();
+    }
+
+    _createNewTestGroupFromViewer(name, repetitionCount, rootSetMap)
+    {
+        return this._createTestGroupAfterVerifyingRootSetList(name, repetitionCount, rootSetMap);
+    }
+
+    _createTestGroupAfterVerifyingRootSetList(testGroupName, repetitionCount, rootSetMap)
+    {
+        if (this._hasDuplicateTestGroupName(testGroupName))
+            alert(`There is already a test group named "${testGroupName}"`);
 
         var rootSetsByName = {};
-        for (var repository of rootSetList[0].repositories())
-            rootSetsByName[repository.name()] = [];
+        var firstLabel;
+        for (firstLabel in rootSetMap) {
+            var rootSet = rootSetMap[firstLabel];
+            for (var repository of rootSet.repositories())
+                rootSetsByName[repository.name()] = [];
+            break;
+        }
 
         var setIndex = 0;
-        for (var rootSet of rootSetList) {
+        for (var label in rootSetMap) {
+            var rootSet = rootSetMap[label];
             for (var repository of rootSet.repositories()) {
                 var list = rootSetsByName[repository.name()];
                 if (!list) {
-                    alert(`Set ${rootSetLabels[setIndex]} specifies ${repository.label()} but set ${rootSetLabels[0]} does not.`);
+                    alert(`Set ${label} specifies ${repository.label()} but set ${firstLabel} does not.`);
                     return null;
                 }
-                list.push(rootSet.commitForRepository(repository).revision());
+                list.push(rootSet.revisionForRepository(repository));
             }
             setIndex++;
             for (var name in rootSetsByName) {
                 var list = rootSetsByName[name];
                 if (list.length < setIndex) {
-                    alert(`Set ${rootSetLabels[0]} specifies ${repository.label()} but set ${rootSetLabels[setIndex]} does not.`);
+                    alert(`Set ${firstLabel} specifies ${name} but set ${label} does not.`);
                     return null;
                 }
             }
         }
-
-        var repetitionCount = this.content().querySelector('.test-group-retry-repetition-count').value;
 
         TestGroup.createAndRefetchTestGroups(this._task, testGroupName, repetitionCount, rootSetsByName)
             .then(this._didFetchTestGroups.bind(this), function (error) {
@@ -507,31 +611,19 @@ class AnalysisTaskPage extends PageWithHeading {
                 </div>
                 <section class="overview-chart">
                     <analysis-task-chart-pane></analysis-task-chart-pane>
+                    <div class="new-test-group-form"><customizable-test-group-form></customizable-test-group-form></div>
                 </section>
                 <section class="analysis-results-view">
                     <analysis-results-viewer></analysis-results-viewer>
+                    <div class="new-test-group-form"><customizable-test-group-form></customizable-test-group-form></div>
                 </section>
                 <section class="test-group-view">
                     <ul class="test-group-list"></ul>
                     <div class="test-group-details">
                         <test-group-results-table></test-group-results-table>
-                        <form class="test-group-retry-form">
-                            <button class="test-group-retry-button" type="submit">Retry</button>
-                            with
-                            <select class="test-group-retry-repetition-count">
-                                <option>1</option>
-                                <option>2</option>
-                                <option>3</option>
-                                <option>4</option>
-                                <option>5</option>
-                                <option>6</option>
-                                <option>7</option>
-                                <option>8</option>
-                                <option>9</option>
-                                <option>10</option>
-                            </select>
-                            iterations per set
-                        </form>
+                        <div class="test-group-retry-form"><test-group-form></test-group-form></div>
+                        <button class="test-group-hide-button">Hide</button>
+                        <span class="pending-request-cancel-warning">(cancels pending requests)</span>
                     </div>
                 </section>
             </div>
@@ -581,7 +673,9 @@ class AnalysisTaskPage extends PageWithHeading {
             .analysis-task-status {
                 margin: 0;
                 display: flex;
-                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                margin-bottom: 1rem;
+                border-bottom: solid 1px #ccc;
             }
 
             .analysis-task-status > section {
@@ -616,8 +710,12 @@ class AnalysisTaskPage extends PageWithHeading {
                 overflow-y: scroll;
             }
 
+
             .analysis-results-view {
-                margin: 1rem;
+                border-top: solid 1px #ccc;
+                border-bottom: solid 1px #ccc;
+                margin: 1rem 0;
+                padding: 1rem;
             }
 
             .test-configuration h3 {
@@ -641,8 +739,13 @@ class AnalysisTaskPage extends PageWithHeading {
                 margin: 0;
             }
 
+            .new-test-group-form,
             .test-group-retry-form {
                 padding: 0;
+                margin: 0.5rem;
+            }
+
+            .test-group-hide-button {
                 margin: 0.5rem;
             }
 
@@ -653,6 +756,7 @@ class AnalysisTaskPage extends PageWithHeading {
                 list-style: none;
                 border-right: solid 1px #ccc;
                 white-space: nowrap;
+                min-width: 8rem;
             }
 
             .test-group-list:empty {
@@ -663,15 +767,27 @@ class AnalysisTaskPage extends PageWithHeading {
 
             .test-group-list > li {
                 display: block;
+                font-size: 0.9rem;
             }
 
             .test-group-list > li > a {
                 display: block;
                 color: inherit;
                 text-decoration: none;
-                font-size: 0.9rem;
                 margin: 0;
                 padding: 0.2rem;
+            }
+            
+            .test-group-list > li.test-group-list-show-all {
+                font-size: 0.8rem;
+                margin-top: 0.5rem;
+                padding-right: 1rem;
+                text-align: center;
+                color: #999;
+            }
+
+            .test-group-list > li.test-group-list-show-all:not(.selected) a:hover {
+                background: inherit;
             }
 
             .test-group-list > li.selected > a {

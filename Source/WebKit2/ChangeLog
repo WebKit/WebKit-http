@@ -1,3 +1,1381 @@
+2016-02-24  Anders Carlsson  <andersca@apple.com>
+
+        Add more WebKitAdditions extension points
+        https://bugs.webkit.org/show_bug.cgi?id=154648
+        rdar://problem/24820040
+
+        Reviewed by Beth Dakin.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-02-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move FocusNavigationScope into FocusController.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=154630
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::nextAssistableElement):
+
+2016-02-23  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: don't run the protocol generator once per output file
+        https://bugs.webkit.org/show_bug.cgi?id=154635
+
+        Reviewed by Myles C. Maxfield.
+
+        * DerivedSources.make: Use $(firstword, ...) to take just one file as
+        the target to be built so that the generator runs only once. Make isn't
+        really designed to coalesce multiple file outputs to one production rule.
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-23  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define
+        https://bugs.webkit.org/show_bug.cgi?id=112323
+
+        Reviewed by Chris Dumez.
+
+        This feature is controlled by a runtime switch, and defaults off.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebView should implement NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=137160
+        rdar://problem/17380562
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+        (-[WKUserContentController initWithCoder:]):
+        We need to call [self init] here, so that the wrapper will be initialized.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        -initWithCoder: shouldn't be unavailable, it should be a designated initializer.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        Move initialization out into a common method.
+
+        (-[WKWebView initWithFrame:configuration:]):
+        Call -initializeWithConfiguration: here.
+
+        (-[WKWebView initWithCoder:]):
+        Decode everything.
+
+        (-[WKWebView encodeWithCoder:]):
+        Encode everything.
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        Fix an API test.
+
+        * UIProcess/API/APIWebsiteDataStore.cpp:
+        (API::WebsiteDataStore::defaultDataStore):
+        Make sure to initialize WebKit2.
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebViewConfiguration should encode more of its properties
+        https://bugs.webkit.org/show_bug.cgi?id=154611
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration encodeWithCoder:]):
+        (-[WKWebViewConfiguration initWithCoder:]):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKUserContentController should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154609
+
+        Reviewed by Sam Weinig.
+
+        Since we just want to be able to encode WKUserContentController from WKWebViewConfiguration,
+        we don't encode anything inside WKUserContentController.
+
+        * UIProcess/API/Cocoa/WKUserContentController.h:
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+        (-[WKUserContentController encodeWithCoder:]):
+        (-[WKUserContentController initWithCoder:]):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKProcessPool should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154608
+
+        Reviewed by Sam Weinig.
+
+        Add +[WKProcessPool _sharedProcessPool] and encode/decode whether the process pool is shared.
+
+        * UIProcess/API/Cocoa/WKProcessPool.h:
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool encodeWithCoder:]):
+        (-[WKProcessPool initWithCoder:]):
+        (+[WKProcessPool _sharedProcessPool]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebsiteDataStore should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154605
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore initWithCoder:]):
+        (-[WKWebsiteDataStore encodeWithCoder:]):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        Fix iOS build.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration initWithCoder:]):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKWebViewConfiguration should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154602
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration encodeWithCoder:]):
+        (-[WKWebViewConfiguration initWithCoder:]):
+
+2016-02-23  Anders Carlsson  <andersca@apple.com>
+
+        WKPreferences should conform to NSCoding
+        https://bugs.webkit.org/show_bug.cgi?id=154597
+
+        Reviewed by Sam Weinig.
+
+        Add NSCoding implementation.
+
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences encodeWithCoder:]):
+        (-[WKPreferences initWithCoder:]):
+
+2016-02-23  Alex Christensen  <achristensen@webkit.org>
+
+        Implement downloads with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=154473
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::~Download):
+        (WebKit::Download::didStart):
+        (WebKit::Download::shouldDecodeSourceDataOfMIMEType):
+        (WebKit::Download::decideDestinationWithSuggestedFilename):
+        (WebKit::Download::didCreateDestination):
+        * NetworkProcess/Downloads/Download.h:
+        (WebKit::Download::downloadID):
+        (WebKit::Download::setSandboxExtension):
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        (WebKit::DownloadManager::dataTaskBecameDownloadTask):
+        (WebKit::DownloadManager::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::DownloadManager::continueWillSendRequest):
+        (WebKit::DownloadManager::willDecidePendingDownloadDestination):
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination):
+        (WebKit::DownloadManager::convertHandleToDownload):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/NetworkDataTask.h:
+        (WebKit::NetworkDataTask::clearClient):
+
+        NetworkDataTasks can now outlive their client, so we need to make client a pointer
+        with the ability to be nulled from the client's destructor.
+
+        (WebKit::NetworkDataTask::pendingDownloadID):
+        (WebKit::NetworkDataTask::pendingDownload):
+        (WebKit::NetworkDataTask::setPendingDownload):
+        (WebKit::NetworkDataTask::pendingDownloadLocation):
+        (WebKit::NetworkDataTask::client): Deleted.
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::~NetworkLoad):
+        (WebKit::NetworkLoad::convertTaskToDownload):
+        (WebKit::NetworkLoad::setPendingDownloadID):
+        (WebKit::NetworkLoad::didReceiveResponseNetworkSession):
+
+        Don't call the didReceiveResponse completion handler immediately when we know we are
+        going to turn the load into a download.  Instead, save the completion handler until
+        after we have determined the download destination and set it in the NetworkDataTask.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::continueWillSendRequest):
+        (WebKit::NetworkProcess::findPendingDownloadLocation):
+        (WebKit::NetworkProcess::continueDecidePendingDownloadDestination):
+        (WebKit::NetworkProcess::setCacheModel):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::NetworkDataTask):
+        (WebKit::NetworkDataTask::~NetworkDataTask):
+        (WebKit::NetworkDataTask::didSendData):
+        (WebKit::NetworkDataTask::didReceiveChallenge):
+        (WebKit::NetworkDataTask::didCompleteWithError):
+        (WebKit::NetworkDataTask::didReceiveResponse):
+        (WebKit::NetworkDataTask::didReceiveData):
+        (WebKit::NetworkDataTask::didBecomeDownload):
+        (WebKit::NetworkDataTask::willPerformHTTPRedirection):
+        (WebKit::NetworkDataTask::scheduleFailure):
+        (WebKit::NetworkDataTask::failureTimerFired):
+        (WebKit::NetworkDataTask::findPendingDownloadLocation):
+        (WebKit::NetworkDataTask::setPendingDownloadLocation):
+        (WebKit::NetworkDataTask::tryPasswordBasedAuthentication):
+        (WebKit::NetworkDataTask::transferSandboxExtensionToDownload):
+        (WebKit::NetworkDataTask::currentRequest):
+        (WebKit::NetworkDataTask::cancel):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:]):
+        (-[WKNetworkSessionDelegate URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:]):
+        (-[WKNetworkSessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+        (-[WKNetworkSessionDelegate URLSession:task:didCompleteWithError:]):
+        
+        This delegate callback is used for downloads, too.
+
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveData:]):
+        (-[WKNetworkSessionDelegate URLSession:downloadTask:didFinishDownloadingToURL:]):
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didBecomeDownloadTask:]):
+        
+        Call didCreateDestination now, which is after the file has been opened on the disk.
+        A DownloadProxy::DidStart message is now sent from NetworkProcess::findPendingDownloadLocation before
+        we ask the UIProcess where the download should end up on disk.
+        Null check the NetworkDataTask's client before using it because it is now a pointer that could be null. 
+        
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::shouldDecodeSourceDataOfMIMEType):
+        (WebKit::DownloadProxy::decideDestinationWithSuggestedFilenameAsync):
+        (WebKit::DownloadProxy::decideDestinationWithSuggestedFilename):
+        (WebKit::DownloadProxy::didCreateDestination):
+        * UIProcess/Downloads/DownloadProxy.h:
+        * UIProcess/Downloads/DownloadProxy.messages.in:
+
+2016-02-23  Brian Burg  <bburg@apple.com>
+
+        Connect WebAutomationSession to its backend dispatcher as if it were an agent and add stub implementations
+        https://bugs.webkit.org/show_bug.cgi?id=154518
+        <rdar://problem/24761096>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a domain dispatcher for the 'Automation' domain, and register the
+        WebAutomationSession itself as the handler for Automation commands.
+        Stub out these command implementations so the code will compile.
+
+        * UIProcess/Automation/Automation.json:
+        Fix the createWindow command's parameters and description.
+        Add an ErrorMessage string enumeration and document how it can be used
+        to signal well-known errors to the frontend.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::WebAutomationSession):
+        Add the domain backend dispatcher. It further parses commands that were deemed
+        valid by the generic dispatcher and match the 'Automation' domain prefix.
+
+        (WebKit::WebAutomationSession::getWindows):
+        (WebKit::WebAutomationSession::openWindow):
+        (WebKit::WebAutomationSession::closeWindow):
+        Stub these out with our new ErrorMessage enumeration and a macro to
+        make this code pattern more readable.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        Add new declarations and members.
+
+2016-02-23  Antti Koivisto  <antti@apple.com>
+
+        Remove tab suspension code
+        https://bugs.webkit.org/show_bug.cgi?id=154585
+
+        Reviewed by Andreas Kling.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters):
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        (WebKit::WebProcessPool::platformInitializeWebProcess):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2016-02-22  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Merge WebView and WebViewEfl
+        https://bugs.webkit.org/show_bug.cgi?id=154445
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Removed WebViewEfl.cpp from source list.
+        * UIProcess/API/C/efl/WKViewEfl.cpp: Removed type cast for WebViewEfl.
+        * UIProcess/API/efl/EwkView.cpp: Ditto.
+        * UIProcess/API/efl/EwkView.h:
+        * UIProcess/API/efl/GestureRecognizer.cpp: Removed type cast for WebViewEfl.
+        * UIProcess/API/efl/WebAccessibility.cpp: Removed unnecessary includes.
+        * UIProcess/API/efl/ewk_view.cpp: Ditto.
+        * UIProcess/efl/ViewClientEfl.cpp: Ditto.
+        * UIProcess/efl/WebColorPickerClient.cpp: Ditto.
+        * UIProcess/efl/WebColorPickerClient.h:
+        * UIProcess/efl/WebColorPickerEfl.cpp:
+        (WebKit::WebColorPickerEfl::WebColorPickerEfl):
+        * UIProcess/efl/WebColorPickerEfl.h:
+        (WebKit::WebColorPickerEfl::create):
+        * UIProcess/efl/WebView.cpp:
+        * UIProcess/efl/WebView.h:
+        * UIProcess/efl/WebViewEfl.cpp: Removed.
+        * UIProcess/efl/WebViewEfl.h: Ditto.
+
+2016-02-22  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add 'Automation' protocol domain and generate its backend classes separately in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=154509
+        <rdar://problem/24759098>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new 'Automation' domain which presents an RPC interface
+        for sending automation commands to an active WebAutomationSession
+        in the UIProcess via RemoteInspector. This is similar to how the
+        Inspector backend communicates bidirectionally with a remote
+        Inspector frontend.
+
+        Add build system logic to generate JSON-RPC protocol bindings
+        for the 'Automation' domain using the inspector code generators.
+
+        Move automation-related files that are not API or SPI into their
+        own directory.
+
+        * Configurations/BaseTarget.xcconfig: Tell where JavaScriptCore's
+        private headers are, since that's where the code generators live.
+
+        * CMakeLists.txt: Look in UIProcess/Automation directory.
+        * PlatformMac.cmake:
+        * DerivedSources.make: Generate protocol bindings for a single domain.
+        The names of the generated files will be improved in a follow-up patch
+        so that they do not clash with generated files in JavaScriptCore.
+
+        * UIProcess/Automation/Automation.json: Added.
+        * UIProcess/Automation/WebAutomationSession.cpp: Renamed from Source/WebKit2/UIProcess/WebAutomationSession.cpp.
+        (WebKit::WebAutomationSession::WebAutomationSession):
+        (WebKit::WebAutomationSession::~WebAutomationSession):
+        Set up a backend dispatcher and frontend router. They will be used later.
+
+        (WebKit::WebAutomationSession::dispatchMessageFromRemote):
+        Forward messages from the remote to the backend dispatcher. When
+        an agent / command handler is registered, it will receive the message.
+
+        (WebKit::WebAutomationSession::connect):
+        (WebKit::WebAutomationSession::disconnect):
+        Connenct and disconnect the frontend router to the remote channel.
+
+        * UIProcess/Automation/WebAutomationSession.h: Renamed from Source/WebKit2/UIProcess/WebAutomationSession.h.
+        * WebKit2.xcodeproj/project.pbxproj: Add and move files.
+
+2016-02-16  Ada Chan  <adachan@apple.com>
+
+        Implement basic functionality in WebVideoFullscreenInterfaceMac.
+        https://bugs.webkit.org/show_bug.cgi?id=153241
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setupFullscreenWithID):
+        (WebKit::WebVideoFullscreenManagerProxy::exitFullscreen):
+        (WebKit::WebVideoFullscreenManagerProxy::preparedToReturnToInline):
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::rootViewToWindow):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::rootViewToWindow):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::supportsVideoFullscreen):
+        * WebProcess/cocoa/WebVideoFullscreenManager.h:
+        * WebProcess/cocoa/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::supportsVideoFullscreen):
+
+2016-02-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196935.
+        https://bugs.webkit.org/show_bug.cgi?id=154557
+
+        This change causes timeouts and crashes in LayoutTests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Enable AVFoundationNSURLSessionEnabled by default"
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+        http://trac.webkit.org/changeset/196935
+
+2016-02-22  Anders Carlsson  <andersca@apple.com>
+
+        Remove _mockCaptureDevicesEnabled getter and setter
+        https://bugs.webkit.org/show_bug.cgi?id=154550
+
+        Reviewed by Beth Dakin.
+
+        The _mockCaptureDevicesEnabled property isn't declared anywhere, and this
+        should be a WKWebViewConfiguration parameter if we ever want to expose it in the modern API.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _mockCaptureDevicesEnabled]): Deleted.
+        (-[WKPreferences _setMockCaptureDevicesEnabled:]): Deleted.
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.
+        https://bugs.webkit.org/show_bug.cgi?id=154450
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Used WebKit2_SOURCES variable instead of separate
+        WebKit2_DERIVED_SOURCES for compatibility with WEBKIT_FRAMEWORK macro.
+        There is no real need to separate derived sources from others.
+        * PlatformGTK.cmake: Ditto.
+
+2016-02-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Unreviewed build fix after r196942.
+
+        * CMakeLists.txt: WKPluginSiteDataManager.cpp is gone.
+
+2016-02-22  Keith Rollin  <krollin@apple.com>
+
+        Add mechanism to disable memory pressure handling
+        https://bugs.webkit.org/show_bug.cgi?id=154254
+        <rdar://problem/24662616>
+
+        Reviewed by Chris Dumez.
+
+        Add a mechanism to disable WebKit's response to memory pressure
+        triggers. This was asked for by another group for testing purposes.
+
+        In order to disable WebKit's memory pressure handling, execute the
+        following from the command line:
+
+            defaults write com.apple.Safari WebKitSuppressMemoryPressureHandler -bool true
+
+        To revert to standard behavior, delete the key or set it to False.
+
+        This flag is used when a new sub-process is being spawned. The value
+        is read and stored in an initialization parameter block, which is then
+        sent to the new sub-process.
+
+        In actuality, only the UI, WebContent, and Network processes heed the
+        flag. The Plugin process isn't instrumented to heed this flag for
+        three reasons. First, the Plugin process installs its memory pressure
+        handler in initializeProcess, not initializePluginProcess. This is
+        contrary to when the other processes install their handlers, which is
+        in initialize<PluginType>Process, not initializeProcess. So in order
+        to accomodate the Plugin process, we'd need to modify
+        ChildProcessInitializationParameters. Doing this is awkward at best,
+        but also seems to be opposed to what's supposed to be done in
+        initializeProcess and conveyed in
+        ChildProcessInitializationParameters. And even if we did add a boolean
+        to this structure and added support for conveying it through the XPC
+        port, it would end up being a Plugin process-only boolean in a general
+        parameter block, which seems asymmetric with the other processes.
+        Second, there's no convenient Cocoa function called in the flow that
+        spawns the Plugin process, meaning that there's no convenient place to
+        call NSUserDefaults to get the flag's value. And third, the Plugin
+        process doesn't elegantly respond to the memory pressure trigger
+        anyway. It might terminate itself, but that's it. As for the Database
+        process, it doesn't seem to support responding to memory pressure at
+        all, so we don't send it a flag telling it to ignore it.
+
+        Internally, the memory pressure handler is suppressed by not calling
+        MemoryPressureHandler::install() if the flag is set. In the case of
+        the Network process, the flag is saved so that it can be checked later
+        in other places that manually kick off the memory pressure handling
+        procedure.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::lowMemoryHandler):
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess):
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2016-02-22  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WKPluginSiteDataManager
+        https://bugs.webkit.org/show_bug.cgi?id=154470
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/c/WKBase.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetPluginSiteDataManager): Deleted.
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/C/WKPluginSiteDataManager.cpp: Removed.
+        (WKPluginSiteDataManagerGetTypeID): Deleted.
+        (WKPluginSiteDataManagerGetSitesWithData): Deleted.
+        (WKPluginSiteDataManagerClearSiteData): Deleted.
+        (WKPluginSiteDataManagerClearAllSiteData): Deleted.
+        * UIProcess/API/C/WKPluginSiteDataManager.h: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-02-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][Mac] Allow processes to set "fast-dev-casheable" bit
+        https://bugs.webkit.org/show_bug.cgi?id=154503
+        <rdar://problem/22920815>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Update the various sandbox profiles with a declaration that using the
+        system-fctl to touch the "hot file" flag (to support caching operations)
+        is allowed.
+
+        * DatabaseProcess/mac/com.apple.WebKit.Databases.sb.in: Add sandbox permission.
+        * Resources/PlugInSandboxProfiles/com.apple.WebKit.plugin-common.sb: Ditto.
+        * WebProcess/com.apple.WebProcess.sb.in: Ditto.
+
+2016-02-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196891.
+        https://bugs.webkit.org/show_bug.cgi?id=154539
+
+        it broke Production builds (Requested by brrian on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: add 'Automation' protocol domain and generate
+        its backend classes separately in WebKit2"
+        https://bugs.webkit.org/show_bug.cgi?id=154509
+        http://trac.webkit.org/changeset/196891
+
+2016-02-22  Jer Noble  <jer.noble@apple.com>
+
+        Enable AVFoundationNSURLSessionEnabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-02-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add 'Automation' protocol domain and generate its backend classes separately in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=154509
+        <rdar://problem/24759098>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new 'Automation' domain which presents an RPC interface
+        for sending automation commands to an active WebAutomationSession
+        in the UIProcess via RemoteInspector. This is similar to how the
+        Inspector backend communicates bidirectionally with a remote
+        Inspector frontend.
+
+        Add build system logic to generate JSON-RPC protocol bindings
+        for the 'Automation' domain using the inspector code generators.
+
+        Move automation-related files that are not API or SPI into their
+        own directory.
+
+        * Configurations/BaseTarget.xcconfig: Tell where JavaScriptCore's
+        private headers are, since that's where the code generators live.
+
+        * CMakeLists.txt: Look in UIProcess/Automation directory.
+        * PlatformMac.cmake:
+        * DerivedSources.make: Generate protocol bindings for a single domain.
+        The names of the generated files will be improved in a follow-up patch
+        so that they do not clash with generated files in JavaScriptCore.
+
+        * UIProcess/Automation/Automation.json: Added.
+        * UIProcess/Automation/WebAutomationSession.cpp: Renamed from Source/WebKit2/UIProcess/WebAutomationSession.cpp.
+        (WebKit::WebAutomationSession::WebAutomationSession):
+        (WebKit::WebAutomationSession::~WebAutomationSession):
+        Set up a backend dispatcher and frontend router. They will be used later.
+
+        (WebKit::WebAutomationSession::dispatchMessageFromRemote):
+        Forward messages from the remote to the backend dispatcher. When
+        an agent / command handler is registered, it will receive the message.
+
+        (WebKit::WebAutomationSession::connect):
+        (WebKit::WebAutomationSession::disconnect):
+        Connenct and disconnect the frontend router to the remote channel.
+
+        * UIProcess/Automation/WebAutomationSession.h: Renamed from Source/WebKit2/UIProcess/WebAutomationSession.h.
+        * WebKit2.xcodeproj/project.pbxproj: Add and move files.
+
+2016-02-20  Olivier Blin  <olivier.blin@softathome.com>
+
+        [cmake] Use ICU include dirs in WebKit2 and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=154479
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+
+2016-02-19  Brian Burg  <bburg@apple.com>
+
+        WebAutomationSession should tell its delegate when its remote end disconnects
+        https://bugs.webkit.org/show_bug.cgi?id=154426
+        <rdar://problem/24732382>
+
+        Reviewed by Timothy Hatcher.
+
+        The client might want to free up resources or close spawned windows
+        if the remote end has disconnected from the automation session.
+
+        * UIProcess/API/APIAutomationSessionClient.h:
+        (API::AutomationSessionClient::didDisconnectFromRemote): Added.
+        (API::AutomationSessionClient::didRequestNewWindow):
+        Remove WebProcessPool* argument as it is never used.
+
+        * UIProcess/API/Cocoa/_WKAutomationSession.h:
+        * UIProcess/API/Cocoa/_WKAutomationSession.mm:
+        (-[_WKAutomationSession isPaired]):
+        Expose whether the session is paired with a remote end.
+
+        * UIProcess/API/Cocoa/_WKAutomationSessionDelegate.h: Add method.
+        * UIProcess/Cocoa/AutomationSessionClient.h: Add method.
+        Remove WebProcessPool* argument as it is never used.
+
+        * UIProcess/Cocoa/AutomationSessionClient.mm:
+        (WebKit::AutomationSessionClient::AutomationSessionClient):
+        (WebKit::AutomationSessionClient::didRequestNewWindow):
+        (WebKit::AutomationSessionClient::didDisconnectFromRemote):
+        Add necessary forwarding boilerplate.
+
+        * UIProcess/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::disconnect): Inform the client.
+
+2016-02-19  Beth Dakin  <bdakin@apple.com>
+
+        Enhance EditorState to include TypingAttributes, alignment, and color
+        https://bugs.webkit.org/show_bug.cgi?id=154424
+
+        Reviewed by Dean Jackson and Sam Weinig.
+
+        TypingAttributes is already available for iOS and GTK. This patch hooks 
+        that up on Mac as well, and it moves the calculation of that to the shared 
+        file since there is no reason for this to be written in an iOS-only way. This 
+        patch also adds textColor and textAlignment to EditorState, and since those 
+        are not technically platform-specific either, they are also calculated in the 
+        shared editorState() function.
+
+        * Shared/EditorState.cpp:
+        (WebKit::EditorState::PostLayoutData::encode):
+        (WebKit::EditorState::PostLayoutData::decode):
+        * Shared/EditorState.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::editorState):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState):
+
+2016-02-19  Anders Carlsson  <andersca@apple.com>
+
+        Purge as much as we can from WKDeprecatedFunctions.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=154459
+
+        Reviewed by Sam Weinig.
+
+        * Shared/API/c/WKDeprecatedFunctions.cpp:
+        (WKArrayIsMutable): Deleted.
+        (WKPageSetVisibilityState): Deleted.
+        (WKDictionaryIsMutable): Deleted.
+        (WKDictionaryAddItem): Deleted.
+        (WKDictionaryRemoveItem): Deleted.
+        (WKPreferencesSetRegionBasedColumnsEnabled): Deleted.
+        (WKPreferencesGetRegionBasedColumnsEnabled): Deleted.
+        (WKPreferencesSetMultithreadedWebGLEnabled): Deleted.
+        (WKPreferencesGetMultithreadedWebGLEnabled): Deleted.
+        (WKPreferencesSetScreenFontSubstitutionEnabled): Deleted.
+        (WKPreferencesGetScreenFontSubstitutionEnabled): Deleted.
+        (WKInspectorIsDebuggingJavaScript): Deleted.
+        (WKInspectorToggleJavaScriptDebugging): Deleted.
+        (WKInspectorIsProfilingJavaScript): Deleted.
+        (WKInspectorToggleJavaScriptProfiling): Deleted.
+        (WKContextGetProcessModel): Deleted.
+        (WKGraphicsContextGetCGContext): Deleted.
+        (WKContextGetProcessSuppressionEnabled): Deleted.
+        (WKContextSetProcessSuppressionEnabled): Deleted.
+
+2016-02-19  Brady Eidson  <beidson@apple.com>
+
+        Add "databaseProcessDidCrash" to the WKContextClient; Adopt it in WKTR.
+        https://bugs.webkit.org/show_bug.cgi?id=154428
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.mm:
+        (WKContextGetDatabaseProcessIdentifier):
+
+        * UIProcess/WebContextClient.cpp:
+        (WebKit::WebContextClient::databaseProcessDidCrash):
+        * UIProcess/WebContextClient.h:
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::databaseProcessCrashed):
+        (WebKit::WebProcessPool::databaseProcessIdentifier):
+        * UIProcess/WebProcessPool.h:
+
+2016-02-18  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Limit the number of tiles according to the visible area
+        https://bugs.webkit.org/show_bug.cgi?id=126122
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::initialize): Because we creates
+        nonCompositingLayer with a size of current view, we should not apply
+        the currently visible rect when creating / deleting tiles.
+        (WebKit::LayerTreeHostGtk::flushPendingLayerChanges): Passes the current
+        visible rect to the GraphicsLayers.
+
+2016-02-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Fix IDBGetResult encoder/decoder.
+        https://bugs.webkit.org/show_bug.cgi?id=154421
+
+        Reviewed by Alex Christensen.
+
+        No new tests, as Modern IDB is still disabled for WK2.
+        
+        But if you manually enable it, "Basic IndexedDB Seems To Work"
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<IDBGetResult>::encode): Deleted.
+        (IPC::ArgumentCoder<IDBGetResult>::decode): Deleted.
+        * Shared/WebCoreArgumentCoders.h:
+
+2016-02-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Implement server->client operations in WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=154411
+
+        Reviewed by Alex Christensen.
+
+        No change in behavior yet; Just laying the groundwork.
+
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::WebIDBConnectionToClient):
+        (WebKit::WebIDBConnectionToClient::~WebIDBConnectionToClient):
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::didDeleteDatabase):
+        (WebKit::WebIDBConnectionToServer::didOpenDatabase):
+        (WebKit::WebIDBConnectionToServer::didAbortTransaction):
+        (WebKit::WebIDBConnectionToServer::didCommitTransaction):
+        (WebKit::WebIDBConnectionToServer::didCreateObjectStore):
+        (WebKit::WebIDBConnectionToServer::didDeleteObjectStore):
+        (WebKit::WebIDBConnectionToServer::didClearObjectStore):
+        (WebKit::WebIDBConnectionToServer::didCreateIndex):
+        (WebKit::WebIDBConnectionToServer::didDeleteIndex):
+        (WebKit::WebIDBConnectionToServer::didPutOrAdd):
+        (WebKit::WebIDBConnectionToServer::didGetRecord):
+        (WebKit::WebIDBConnectionToServer::didGetCount):
+        (WebKit::WebIDBConnectionToServer::didDeleteRecord):
+        (WebKit::WebIDBConnectionToServer::didOpenCursor):
+        (WebKit::WebIDBConnectionToServer::didIterateCursor):
+        (WebKit::WebIDBConnectionToServer::fireVersionChangeEvent):
+        (WebKit::WebIDBConnectionToServer::didStartTransaction):
+        (WebKit::WebIDBConnectionToServer::notifyOpenDBRequestBlocked):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+        
+        * WebProcess/Databases/WebToDatabaseProcessConnection.cpp:
+        (WebKit::WebToDatabaseProcessConnection::didReceiveMessage):
+
+2016-02-18  Brian Burg  <bburg@apple.com>
+
+        RemoteInspector deadlocks if _WKAutomationDelegate creates/registers a target synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=154359
+        <rdar://problem/24708897>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/Cocoa/AutomationClient.mm:
+        (WebKit::AutomationClient::requestAutomationSession):
+        Make an NSString out of the String reference so it gets captured correctly.
+
+2016-02-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Implement client->server operations in WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=154400
+
+        Reviewed by Alex Christensen.
+
+        No change in behavior yet; Just laying the groundwork.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::idbServer):
+        * DatabaseProcess/DatabaseProcess.h:
+
+        * DatabaseProcess/DatabaseToWebProcessConnection.cpp:
+        (WebKit::DatabaseToWebProcessConnection::didReceiveMessage):
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.h:
+
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::deleteDatabase):
+        (WebKit::WebIDBConnectionToClient::openDatabase):
+        (WebKit::WebIDBConnectionToClient::abortTransaction):
+        (WebKit::WebIDBConnectionToClient::commitTransaction):
+        (WebKit::WebIDBConnectionToClient::didFinishHandlingVersionChangeTransaction):
+        (WebKit::WebIDBConnectionToClient::createObjectStore):
+        (WebKit::WebIDBConnectionToClient::deleteObjectStore):
+        (WebKit::WebIDBConnectionToClient::clearObjectStore):
+        (WebKit::WebIDBConnectionToClient::createIndex):
+        (WebKit::WebIDBConnectionToClient::deleteIndex):
+        (WebKit::WebIDBConnectionToClient::putOrAdd):
+        (WebKit::WebIDBConnectionToClient::getRecord):
+        (WebKit::WebIDBConnectionToClient::getCount):
+        (WebKit::WebIDBConnectionToClient::deleteRecord):
+        (WebKit::WebIDBConnectionToClient::openCursor):
+        (WebKit::WebIDBConnectionToClient::iterateCursor):
+        (WebKit::WebIDBConnectionToClient::establishTransaction):
+        (WebKit::WebIDBConnectionToClient::databaseConnectionClosed):
+        (WebKit::WebIDBConnectionToClient::abortOpenAndUpgradeNeeded):
+        (WebKit::WebIDBConnectionToClient::didFireVersionChangeEvent):
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.h:
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in:
+
+2016-02-18  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK][Threaded Compositor] The web inspector doesn't work when using the threaded compositor
+        https://bugs.webkit.org/show_bug.cgi?id=154067
+
+        Reviewed by Carlos Garcia Campos.
+
+        The forceCompositingMode should be true for threaded compositor. We set it true for a normal webView
+        in _WebKitSettingsPrivate() but we do not for inspector anywhere. So DrawingArea is not
+        properly created for the inspector. Let's move the setting to WebPreferences::platformInitializeStore
+        which is a common place for the webView and the inspector.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (_WebKitSettingsPrivate::_WebKitSettingsPrivate): Deleted.
+        * UIProcess/gtk/WebPreferencesGtk.cpp:
+        (WebKit::WebPreferences::platformInitializeStore):
+
+2016-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196765.
+        https://bugs.webkit.org/show_bug.cgi?id=154402
+
+        Broke Safari (Requested by andersca on #webkit).
+
+        Reverted changeset:
+
+        "Remove two unused functions"
+        https://bugs.webkit.org/show_bug.cgi?id=154397
+        http://trac.webkit.org/changeset/196765
+
+2016-02-18  Anders Carlsson  <andersca@apple.com>
+
+        Remove two unused functions
+        https://bugs.webkit.org/show_bug.cgi?id=154397
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetPluginSiteDataManager): Deleted.
+        (WKContextGetResourceCacheManager): Deleted.
+        * UIProcess/API/C/WKContext.h:
+
+2016-02-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use G_TYPE_ERROR instead of G_TYPE_POINTER for GError parameters of signals
+        https://bugs.webkit.org/show_bug.cgi?id=153786
+
+        Reviewed by Michael Catanzaro.
+
+        It's binary compatible and it's needed by binding generator to
+        properly identify those parameters as GError.
+
+        * UIProcess/API/gtk/WebKitDownload.cpp:
+        (webkit_download_class_init):
+        * UIProcess/API/gtk/WebKitPrintOperation.cpp:
+        (webkit_print_operation_class_init):
+        * UIProcess/API/gtk/WebKitWebResource.cpp:
+        (webkit_web_resource_class_init):
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkit_web_view_class_init):
+        * UIProcess/API/gtk/webkit2marshal.list:
+
+2016-02-18  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Move WebView from CoordinatedGraphics to efl
+        https://bugs.webkit.org/show_bug.cgi?id=154332
+
+        Reviewed by Csaba Osztrogonác.
+
+        * PlatformEfl.cmake:
+        * UIProcess/efl/WebView.cpp: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/WebView.cpp.
+        * UIProcess/efl/WebView.h: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/WebView.h.
+        * UIProcess/efl/WebViewClient.cpp: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/WebViewClient.cpp.
+        * UIProcess/efl/WebViewClient.h: Renamed from Source/WebKit2/UIProcess/CoordinatedGraphics/WebViewClient.h.
+
+2016-02-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Rename some "UniqueIDBDatabase" classes that conflict with new classes in WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=154363.
+
+        Reviewed by Alex Christensen.
+
+        Adding "Legacy" to the front of the name fixes problems for now.
+        
+        And all of this gunk will go away after Modern IDB is done, anyways.
+        
+        * CMakeLists.txt:
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::getOrCreateLegacyUniqueIDBDatabase):
+        (WebKit::DatabaseProcess::removeLegacyUniqueIDBDatabase):
+        (WebKit::DatabaseProcess::getOrCreateUniqueIDBDatabase): Deleted.
+        (WebKit::DatabaseProcess::removeUniqueIDBDatabase): Deleted.
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::establishConnection):
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.h:
+        * DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabase.cpp: Renamed from Source/WebKit2/DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp.
+        (WebKit::LegacyUniqueIDBDatabase::calculateAbsoluteDatabaseFilename):
+        (WebKit::LegacyUniqueIDBDatabase::LegacyUniqueIDBDatabase):
+        (WebKit::LegacyUniqueIDBDatabase::~LegacyUniqueIDBDatabase):
+        (WebKit::LegacyUniqueIDBDatabase::filenameForDatabaseName):
+        (WebKit::LegacyUniqueIDBDatabase::databaseFilenameIdentifier):
+        (WebKit::LegacyUniqueIDBDatabase::canShareDatabases):
+        (WebKit::LegacyUniqueIDBDatabase::registerConnection):
+        (WebKit::LegacyUniqueIDBDatabase::unregisterConnection):
+        (WebKit::LegacyUniqueIDBDatabase::shutdown):
+        (WebKit::LegacyUniqueIDBDatabase::shutdownBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didShutdownBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::deleteDatabase):
+        (WebKit::LegacyUniqueIDBDatabase::getOrEstablishIDBDatabaseMetadata):
+        (WebKit::LegacyUniqueIDBDatabase::openBackingStoreAndReadMetadata):
+        (WebKit::LegacyUniqueIDBDatabase::didOpenBackingStoreAndReadMetadata):
+        (WebKit::LegacyUniqueIDBDatabase::openTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::beginTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::commitTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::resetTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::rollbackTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::postTransactionOperation):
+        (WebKit::LegacyUniqueIDBDatabase::didCompleteTransactionOperation):
+        (WebKit::LegacyUniqueIDBDatabase::changeDatabaseVersion):
+        (WebKit::LegacyUniqueIDBDatabase::didChangeDatabaseVersion):
+        (WebKit::LegacyUniqueIDBDatabase::didCreateObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::didDeleteObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::didClearObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::didCreateIndex):
+        (WebKit::LegacyUniqueIDBDatabase::didDeleteIndex):
+        (WebKit::LegacyUniqueIDBDatabase::didCompleteBoolRequest):
+        (WebKit::LegacyUniqueIDBDatabase::createObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::deleteObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::clearObjectStore):
+        (WebKit::LegacyUniqueIDBDatabase::createIndex):
+        (WebKit::LegacyUniqueIDBDatabase::deleteIndex):
+        (WebKit::LegacyUniqueIDBDatabase::putRecord):
+        (WebKit::LegacyUniqueIDBDatabase::getRecord):
+        (WebKit::LegacyUniqueIDBDatabase::openCursor):
+        (WebKit::LegacyUniqueIDBDatabase::cursorAdvance):
+        (WebKit::LegacyUniqueIDBDatabase::cursorIterate):
+        (WebKit::LegacyUniqueIDBDatabase::count):
+        (WebKit::LegacyUniqueIDBDatabase::deleteRange):
+        (WebKit::LegacyUniqueIDBDatabase::openBackingStoreTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::beginBackingStoreTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::commitBackingStoreTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::resetBackingStoreTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::rollbackBackingStoreTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::changeDatabaseVersionInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::createObjectStoreInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::deleteObjectStoreInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::clearObjectStoreInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::createIndexInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::deleteIndexInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::putRecordInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didPutRecordInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::getRecordFromBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didGetRecordFromBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::openCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didOpenCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::advanceCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didAdvanceCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::iterateCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didIterateCursorInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::countInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didCountInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::deleteRangeInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didDeleteRangeInBackingStore):
+        (WebKit::LegacyUniqueIDBDatabase::didEstablishTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::didResetTransaction):
+        (WebKit::LegacyUniqueIDBDatabase::resetAllTransactions):
+        (WebKit::LegacyUniqueIDBDatabase::finalizeRollback):
+        (WebKit::LegacyUniqueIDBDatabase::absoluteDatabaseDirectory):
+        (WebKit::LegacyUniqueIDBDatabase::postMainThreadTask):
+        (WebKit::LegacyUniqueIDBDatabase::performNextMainThreadTask):
+        (WebKit::LegacyUniqueIDBDatabase::postDatabaseTask):
+        (WebKit::LegacyUniqueIDBDatabase::performNextDatabaseTask):
+        * DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabase.h: Renamed from Source/WebKit2/DatabaseProcess/IndexedDB/UniqueIDBDatabase.h.
+        (WebKit::LegacyUniqueIDBDatabase::create):
+        (WebKit::LegacyUniqueIDBDatabase::identifier):
+        * DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabaseIdentifier.cpp: Renamed from Source/WebKit2/DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp.
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::LegacyUniqueIDBDatabaseIdentifier):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::isHashTableDeletedValue):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::hash):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::isNull):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::isolatedCopy):
+        (WebKit::operator==):
+        * DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabaseIdentifier.h: Renamed from Source/WebKit2/DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.h.
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::databaseName):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::openingOrigin):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifier::mainFrameOrigin):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifierHash::hash):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifierHash::equal):
+        (WebKit::LegacyUniqueIDBDatabaseIdentifierHashTraits::isEmptyValue):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::UniqueIDBDatabaseBackingStoreSQLite):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getOrEstablishMetadata):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+        * Shared/WebCrossThreadCopier.cpp:
+        (WebCore::LegacyUniqueIDBDatabaseIdentifier>::copy):
+        (WebCore::UniqueIDBDatabaseIdentifier>::copy): Deleted.
+        * Shared/WebCrossThreadCopier.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebContextSupplement::shouldTerminate, it's no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=154367
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/WebContextSupplement.h:
+        (WebKit::WebContextSupplement::shouldTerminate): Deleted.
+        * UIProcess/WebCookieManagerProxy.cpp:
+        (WebKit::WebCookieManagerProxy::shouldTerminate): Deleted.
+        * UIProcess/WebCookieManagerProxy.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::shouldTerminate): Deleted.
+
+2016-02-17  Brian Burg  <bburg@apple.com>
+
+        RemoteInspector deadlocks if _WKAutomationDelegate creates/registers a target synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=154359
+        <rdar://problem/24708897>
+
+        Reviewed by Joseph Pecoraro.
+
+        RemoteInspector always grabs a lock whenever receiving or sending XPC messages. If it
+        forwards a new session request via _WKAutomationDelegate, and the client synchronously
+        creates and registers a session, then RemoteInspector will try to grab the lock again
+        while adding the session to its registry, causing a deadlock.
+
+        * UIProcess/Cocoa/AutomationClient.mm:
+        (WebKit::AutomationClient::requestAutomationSession): Add a dispatch_async() to
+        protect clients from accidentally deadlocking. They shouldn't have to care about
+        RemoteInspector's locking mechanisms.
+
+2016-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused function
+        https://bugs.webkit.org/show_bug.cgi?id=154358
+
+        Reviewed by Sam Weinig.
+
+        * Platform/cg/CGUtilities.cpp:
+        (WebKit::paintBitmapContext): Deleted.
+        * Platform/cg/CGUtilities.h:
+
+2016-02-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: More Encoder/Decoder/Messaging scaffolding for WK2 IPC.
+        https://bugs.webkit.org/show_bug.cgi?id=154356
+
+        Reviewed by Alex Christensen.
+
+        No change in behavior yet; Just laying the groundwork.
+
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::didDeleteDatabase):
+        (WebKit::WebIDBConnectionToClient::didOpenDatabase):
+        (WebKit::WebIDBConnectionToClient::didAbortTransaction):
+        (WebKit::WebIDBConnectionToClient::didCommitTransaction):
+        (WebKit::WebIDBConnectionToClient::didCreateObjectStore):
+        (WebKit::WebIDBConnectionToClient::didDeleteObjectStore):
+        (WebKit::WebIDBConnectionToClient::didClearObjectStore):
+        (WebKit::WebIDBConnectionToClient::didCreateIndex):
+        (WebKit::WebIDBConnectionToClient::didDeleteIndex):
+        (WebKit::WebIDBConnectionToClient::didPutOrAdd):
+        (WebKit::WebIDBConnectionToClient::didGetRecord):
+        (WebKit::WebIDBConnectionToClient::didGetCount):
+        (WebKit::WebIDBConnectionToClient::didDeleteRecord):
+        (WebKit::WebIDBConnectionToClient::didOpenCursor):
+        (WebKit::WebIDBConnectionToClient::didIterateCursor):
+        (WebKit::WebIDBConnectionToClient::fireVersionChangeEvent):
+        (WebKit::WebIDBConnectionToClient::didStartTransaction):
+        (WebKit::WebIDBConnectionToClient::notifyOpenDBRequestBlocked):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in:
+
+2016-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Fix GTK build after r196720.
+
+        * UIProcess/API/gtk/WebKitUIClient.cpp:
+
+2016-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Need listener-based version of runBeforeUnloadConfirmPanel
+        https://bugs.webkit.org/show_bug.cgi?id=154354
+        rdar://problem/23736691
+
+        Reviewed by Sam Weinig.
+
+        * Shared/API/APIObject.h:
+        * Shared/API/c/WKBase.h:
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::runBeforeUnloadConfirmPanel):
+        * UIProcess/API/C/WKPage.cpp:
+        (fixUpBotchedPageUIClient):
+        (WebKit::RunBeforeUnloadConfirmPanelResultListener::create):
+        (WebKit::RunBeforeUnloadConfirmPanelResultListener::~RunBeforeUnloadConfirmPanelResultListener):
+        (WebKit::RunBeforeUnloadConfirmPanelResultListener::call):
+        (WKPageRunBeforeUnloadConfirmPanelResultListenerGetTypeID):
+        (WKPageRunBeforeUnloadConfirmPanelResultListenerCall):
+        (WKPageSetPageUIClient):
+        * UIProcess/API/C/WKPageUIClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::runBeforeUnloadConfirmPanel):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+
+2016-02-17  Simon Fraser  <simon.fraser@apple.com>
+
+        PDFPlugin's scrollableArea container is not properly unregistered when page is going into the PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=148182
+
+        Reviewed by Brent Fulgham.
+        
+        When handling Command-arrow key while showing a scrollable PDF, the timing of PDFPlugin
+        teardown and navigation could result in PDFPlugin::destroy() getting the wrong FrameView,
+        so the old FrameView was left with a stale pointer in its scrollableAreaSet.
+
+        Fix this by adding an explicit willDetatchRenderer() which is called on the plugin
+        before the Frame gets a new FrameView.
+
+        Also narrow the scope of the RefPtr<Widget> in HTMLPlugInElement::defaultEventHandler()
+        so that the Widget is not kept alive over a possible navigation.
+
+        I was unable to make an automated test, because reproducing the bug requires handling
+        a Command-arrow key event in a way that the last ref to a Widget is held over the event
+        handling, and this wasn't possible in an iframe.
+
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.h:
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::willDetatchRenderer):
+        * WebProcess/Plugins/Plugin.h:
+        (WebKit::Plugin::willDetatchRenderer):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::willDetatchRenderer):
+        * WebProcess/Plugins/PluginView.h:
+
+2016-02-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Encoder/Decoder/Messaging scaffolding for WK2 IPC.
+        https://bugs.webkit.org/show_bug.cgi?id=154351
+
+        Reviewed by Alex Christensen.
+
+        No change in behavior yet; Just laying the groundwork.
+
+        Implement in all of the client->server message sends, requiring many Encoder/Decoders for
+        IDB objects to also be implemented:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::deleteDatabase):
+        (WebKit::WebIDBConnectionToServer::openDatabase):
+        (WebKit::WebIDBConnectionToServer::abortTransaction):
+        (WebKit::WebIDBConnectionToServer::commitTransaction):
+        (WebKit::WebIDBConnectionToServer::didFinishHandlingVersionChangeTransaction):
+        (WebKit::WebIDBConnectionToServer::createObjectStore):
+        (WebKit::WebIDBConnectionToServer::deleteObjectStore):
+        (WebKit::WebIDBConnectionToServer::clearObjectStore):
+        (WebKit::WebIDBConnectionToServer::createIndex):
+        (WebKit::WebIDBConnectionToServer::deleteIndex):
+        (WebKit::WebIDBConnectionToServer::putOrAdd):
+        (WebKit::WebIDBConnectionToServer::getRecord):
+        (WebKit::WebIDBConnectionToServer::getCount):
+        (WebKit::WebIDBConnectionToServer::deleteRecord):
+        (WebKit::WebIDBConnectionToServer::openCursor):
+        (WebKit::WebIDBConnectionToServer::iterateCursor):
+        (WebKit::WebIDBConnectionToServer::establishTransaction):
+        (WebKit::WebIDBConnectionToServer::databaseConnectionClosed):
+        (WebKit::WebIDBConnectionToServer::abortOpenAndUpgradeNeeded):
+        (WebKit::WebIDBConnectionToServer::didFireVersionChangeEvent):
+
+2016-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Copy http body when being redirected with 308 with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=154348
+
+        Reviewed by Brady Eidson.
+        
+        This fixes http/tests/security/cors-post-redirect-308.html
+        which used to assert in ResourceRequest::doUpdateResourceHTTPBody
+
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::willPerformHTTPRedirection):
+
+2016-02-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: More WK2 IPC Scaffolding.
+        https://bugs.webkit.org/show_bug.cgi?id=154317
+
+        Reviewed by Alex Christensen.
+
+        No change in behavior yet; Just laying the groundwork.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::deleteDatabase):
+        (WebKit::WebIDBConnectionToClient::openDatabase):
+        (WebKit::WebIDBConnectionToClient::abortTransaction):
+        (WebKit::WebIDBConnectionToClient::commitTransaction):
+        (WebKit::WebIDBConnectionToClient::didFinishHandlingVersionChangeTransaction):
+        (WebKit::WebIDBConnectionToClient::createObjectStore):
+        (WebKit::WebIDBConnectionToClient::deleteObjectStore):
+        (WebKit::WebIDBConnectionToClient::clearObjectStore):
+        (WebKit::WebIDBConnectionToClient::createIndex):
+        (WebKit::WebIDBConnectionToClient::deleteIndex):
+        (WebKit::WebIDBConnectionToClient::putOrAdd):
+        (WebKit::WebIDBConnectionToClient::getRecord):
+        (WebKit::WebIDBConnectionToClient::getCount):
+        (WebKit::WebIDBConnectionToClient::deleteRecord):
+        (WebKit::WebIDBConnectionToClient::openCursor):
+        (WebKit::WebIDBConnectionToClient::iterateCursor):
+        (WebKit::WebIDBConnectionToClient::establishTransaction):
+        (WebKit::WebIDBConnectionToClient::databaseConnectionClosed):
+        (WebKit::WebIDBConnectionToClient::abortOpenAndUpgradeNeeded):
+        (WebKit::WebIDBConnectionToClient::didFireVersionChangeEvent):
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.h:
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in: Added.
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::didDeleteDatabase):
+        (WebKit::WebIDBConnectionToServer::didOpenDatabase):
+        (WebKit::WebIDBConnectionToServer::didAbortTransaction):
+        (WebKit::WebIDBConnectionToServer::didCommitTransaction):
+        (WebKit::WebIDBConnectionToServer::didCreateObjectStore):
+        (WebKit::WebIDBConnectionToServer::didDeleteObjectStore):
+        (WebKit::WebIDBConnectionToServer::didClearObjectStore):
+        (WebKit::WebIDBConnectionToServer::didCreateIndex):
+        (WebKit::WebIDBConnectionToServer::didDeleteIndex):
+        (WebKit::WebIDBConnectionToServer::didPutOrAdd):
+        (WebKit::WebIDBConnectionToServer::didGetRecord):
+        (WebKit::WebIDBConnectionToServer::didGetCount):
+        (WebKit::WebIDBConnectionToServer::didDeleteRecord):
+        (WebKit::WebIDBConnectionToServer::didOpenCursor):
+        (WebKit::WebIDBConnectionToServer::didIterateCursor):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in: Added.
+
+2016-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix after r196698.
+
+        * PlatformMac.cmake:
+
+2016-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix after r196698.
+
+        * CMakeLists.txt:
+
+2016-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused media cache manager code
+        https://bugs.webkit.org/show_bug.cgi?id=154339
+
+        Reviewed by Tim Horton.
+
+        * DerivedSources.make:
+        * Shared/API/c/WKBase.h:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetMediaCacheManager): Deleted.
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/C/WKMediaCacheManager.cpp: Removed.
+        (WKMediaCacheManagerGetTypeID): Deleted.
+        (WKMediaCacheManagerGetHostnamesWithMediaCache): Deleted.
+        (WKMediaCacheManagerClearCacheForHostname): Deleted.
+        (WKMediaCacheManagerClearCacheForAllHostnames): Deleted.
+        * UIProcess/API/C/WKMediaCacheManager.h: Removed.
+        * UIProcess/WebMediaCacheManagerProxy.cpp: Removed.
+        (WebKit::WebMediaCacheManagerProxy::supplementName): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::create): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::WebMediaCacheManagerProxy): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::~WebMediaCacheManagerProxy): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::processPoolDestroyed): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::processDidClose): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::shouldTerminate): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::refWebContextSupplement): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::derefWebContextSupplement): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::getHostnamesWithMediaCache): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::didGetHostnamesWithMediaCache): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::clearCacheForHostname): Deleted.
+        (WebKit::WebMediaCacheManagerProxy::clearCacheForAllHostnames): Deleted.
+        * UIProcess/WebMediaCacheManagerProxy.h: Removed.
+        * UIProcess/WebMediaCacheManagerProxy.messages.in: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/MediaCache/WebMediaCacheManager.cpp: Removed.
+        (WebKit::WebMediaCacheManager::supplementName): Deleted.
+        (WebKit::WebMediaCacheManager::WebMediaCacheManager): Deleted.
+        (WebKit::WebMediaCacheManager::getHostnamesWithMediaCache): Deleted.
+        (WebKit::WebMediaCacheManager::clearCacheForHostname): Deleted.
+        (WebKit::WebMediaCacheManager::clearCacheForAllHostnames): Deleted.
+        * WebProcess/MediaCache/WebMediaCacheManager.h: Removed.
+        * WebProcess/MediaCache/WebMediaCacheManager.messages.in: Removed.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_webSQLiteDatabaseTracker): Deleted.
+
 2016-02-16  Dean Jackson  <dino@apple.com>
 
         Allow double tap to zoom in fast-click pages

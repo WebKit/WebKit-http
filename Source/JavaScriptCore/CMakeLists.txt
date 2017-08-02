@@ -27,7 +27,6 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
     "${JAVASCRIPTCORE_DIR}/llint"
-    "${JAVASCRIPTCORE_DIR}/llvm"
     "${JAVASCRIPTCORE_DIR}/parser"
     "${JAVASCRIPTCORE_DIR}/profiler"
     "${JAVASCRIPTCORE_DIR}/replay"
@@ -359,6 +358,8 @@ set(JavaScriptCore_SOURCES
     dfg/DFGThreadData.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
+    dfg/DFGToFTLDeferredCompilationCallback.cpp
+    dfg/DFGToFTLForOSREntryDeferredCompilationCallback.cpp
     dfg/DFGTransition.cpp
     dfg/DFGTypeCheckHoistingPhase.cpp
     dfg/DFGUnificationPhase.cpp
@@ -378,7 +379,6 @@ set(JavaScriptCore_SOURCES
     disassembler/ARM64Disassembler.cpp
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
-    disassembler/LLVMDisassembler.cpp
     disassembler/UDis86Disassembler.cpp
     disassembler/X86Disassembler.cpp
 
@@ -393,6 +393,41 @@ set(JavaScriptCore_SOURCES
     disassembler/udis86/udis86_syn-att.c
     disassembler/udis86/udis86_syn-intel.c
     disassembler/udis86/udis86_syn.c
+
+    ftl/FTLAbstractHeap.cpp
+    ftl/FTLAbstractHeapRepository.cpp
+    ftl/FTLAvailableRecovery.cpp
+    ftl/FTLCapabilities.cpp
+    ftl/FTLCommonValues.cpp
+    ftl/FTLCompile.cpp
+    ftl/FTLExceptionTarget.cpp
+    ftl/FTLExitArgument.cpp
+    ftl/FTLExitArgumentForOperand.cpp
+    ftl/FTLExitPropertyValue.cpp
+    ftl/FTLExitTimeObjectMaterialization.cpp
+    ftl/FTLExitValue.cpp
+    ftl/FTLFail.cpp
+    ftl/FTLForOSREntryJITCode.cpp
+    ftl/FTLJITCode.cpp
+    ftl/FTLJITFinalizer.cpp
+    ftl/FTLLazySlowPath.cpp
+    ftl/FTLLink.cpp
+    ftl/FTLLocation.cpp
+    ftl/FTLLowerDFGToB3.cpp
+    ftl/FTLOSREntry.cpp
+    ftl/FTLOSRExit.cpp
+    ftl/FTLOSRExitCompiler.cpp
+    ftl/FTLOSRExitHandle.cpp
+    ftl/FTLOperations.cpp
+    ftl/FTLOutput.cpp
+    ftl/FTLPatchpointExceptionHandle.cpp
+    ftl/FTLRecoveryOpcode.cpp
+    ftl/FTLSaveRestore.cpp
+    ftl/FTLSlowPathCall.cpp
+    ftl/FTLSlowPathCallKey.cpp
+    ftl/FTLState.cpp
+    ftl/FTLThunks.cpp
+    ftl/FTLValueRange.cpp
 
     heap/CodeBlockSet.cpp
     heap/ConservativeRoots.cpp
@@ -525,6 +560,14 @@ set(JavaScriptCore_SOURCES
     jit/TempRegisterSet.cpp
     jit/ThunkGenerators.cpp
 
+    llint/LLIntCLoop.cpp
+    llint/LLIntData.cpp
+    llint/LLIntEntrypoint.cpp
+    llint/LLIntExceptions.cpp
+    llint/LLIntSlowPaths.cpp
+    llint/LLIntThunks.cpp
+    llint/LowLevelInterpreter.cpp
+
     parser/Lexer.cpp
     parser/ModuleAnalyzer.cpp
     parser/Nodes.cpp
@@ -554,26 +597,6 @@ set(JavaScriptCore_SOURCES
     profiler/ProfilerOriginStack.cpp
     profiler/ProfilerProfiledBytecodes.cpp
 
-    tools/CodeProfile.cpp
-    tools/CodeProfiling.cpp
-    tools/FunctionOverrides.cpp
-    tools/JSDollarVM.cpp
-    tools/JSDollarVMPrototype.cpp
-
-    wasm/JSWASMModule.cpp
-    wasm/WASMFunctionParser.cpp
-    wasm/WASMModuleParser.cpp
-    wasm/WASMReader.cpp
-
-    yarr/RegularExpression.cpp
-    yarr/YarrCanonicalizeUCS2.cpp
-    yarr/YarrInterpreter.cpp
-    yarr/YarrJIT.cpp
-    yarr/YarrPattern.cpp
-    yarr/YarrSyntaxChecker.cpp
-)
-
-set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ArgList.cpp
     runtime/ArrayBuffer.cpp
     runtime/ArrayBufferNeuteringWatchpoint.cpp
@@ -736,6 +759,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/PropertySlot.cpp
     runtime/PropertyTable.cpp
     runtime/PrototypeMap.cpp
+    runtime/ProxyConstructor.cpp
+    runtime/ProxyObject.cpp
     runtime/ReflectObject.cpp
     runtime/RegExp.cpp
     runtime/RegExpCache.cpp
@@ -789,10 +814,24 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/WeakMapPrototype.cpp
     runtime/WeakSetConstructor.cpp
     runtime/WeakSetPrototype.cpp
-)
 
-list(APPEND JavaScriptCore_SOURCES
-    ${JavaScriptCore_RUNTIME_SOURCES}
+    tools/CodeProfile.cpp
+    tools/CodeProfiling.cpp
+    tools/FunctionOverrides.cpp
+    tools/JSDollarVM.cpp
+    tools/JSDollarVMPrototype.cpp
+
+    wasm/JSWASMModule.cpp
+    wasm/WASMFunctionParser.cpp
+    wasm/WASMModuleParser.cpp
+    wasm/WASMReader.cpp
+
+    yarr/RegularExpression.cpp
+    yarr/YarrCanonicalizeUCS2.cpp
+    yarr/YarrInterpreter.cpp
+    yarr/YarrJIT.cpp
+    yarr/YarrPattern.cpp
+    yarr/YarrSyntaxChecker.cpp
 )
 
 set(JavaScriptCore_OBJECT_LUT_SOURCES
@@ -980,108 +1019,6 @@ else ()
     list(APPEND JavaScriptCore_HEADERS
         ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
     )
-endif ()
-
-list(APPEND JavaScriptCore_SOURCES
-    llint/LLIntCLoop.cpp
-    llint/LLIntData.cpp
-    llint/LLIntEntrypoint.cpp
-    llint/LLIntExceptions.cpp
-    llint/LLIntSlowPaths.cpp
-    llint/LLIntThunks.cpp
-    llint/LowLevelInterpreter.cpp
-)
-
-if (ENABLE_FTL_JIT)
-    list(APPEND JavaScriptCore_SOURCES
-        dfg/DFGToFTLDeferredCompilationCallback.cpp
-        dfg/DFGToFTLForOSREntryDeferredCompilationCallback.cpp
-
-        ftl/FTLAbstractHeap.cpp
-        ftl/FTLAbstractHeapRepository.cpp
-        ftl/FTLAvailableRecovery.cpp
-        ftl/FTLB3Compile.cpp
-        ftl/FTLB3Output.cpp
-        ftl/FTLCapabilities.cpp
-        ftl/FTLCommonValues.cpp
-        ftl/FTLCompile.cpp
-        ftl/FTLCompileBinaryOp.cpp
-        ftl/FTLDWARFDebugLineInfo.cpp
-        ftl/FTLDWARFRegister.cpp
-        ftl/FTLDataSection.cpp
-        ftl/FTLExceptionHandlerManager.cpp
-        ftl/FTLExceptionTarget.cpp
-        ftl/FTLExitArgument.cpp
-        ftl/FTLExitArgumentForOperand.cpp
-        ftl/FTLExitPropertyValue.cpp
-        ftl/FTLExitThunkGenerator.cpp
-        ftl/FTLExitTimeObjectMaterialization.cpp
-        ftl/FTLExitValue.cpp
-        ftl/FTLFail.cpp
-        ftl/FTLForOSREntryJITCode.cpp
-        ftl/FTLInlineCacheSize.cpp
-        ftl/FTLIntrinsicRepository.cpp
-        ftl/FTLJITCode.cpp
-        ftl/FTLJITFinalizer.cpp
-        ftl/FTLJSCall.cpp
-        ftl/FTLJSCallBase.cpp
-        ftl/FTLJSCallVarargs.cpp
-        ftl/FTLJSTailCall.cpp
-        ftl/FTLLazySlowPath.cpp
-        ftl/FTLLink.cpp
-        ftl/FTLLocation.cpp
-        ftl/FTLLowerDFGToLLVM.cpp
-        ftl/FTLOSREntry.cpp
-        ftl/FTLOSRExit.cpp
-        ftl/FTLOSRExitCompiler.cpp
-        ftl/FTLOSRExitHandle.cpp
-        ftl/FTLOperations.cpp
-        ftl/FTLOutput.cpp
-        ftl/FTLPatchpointExceptionHandle.cpp
-        ftl/FTLRecoveryOpcode.cpp
-        ftl/FTLSaveRestore.cpp
-        ftl/FTLSlowPathCall.cpp
-        ftl/FTLSlowPathCallKey.cpp
-        ftl/FTLStackMaps.cpp
-        ftl/FTLState.cpp
-        ftl/FTLThunks.cpp
-        ftl/FTLUnwindInfo.cpp
-        ftl/FTLValueRange.cpp
-    )
-endif ()
-
-if (USE_LLVM_DISASSEMBLER)
-    # Configure llvmForJSC.so
-    set(llvmForJSC_SOURCES
-        llvm/library/LLVMAnchor.cpp
-        llvm/library/LLVMExports.cpp
-        llvm/library/LLVMOverrides.cpp
-    )
-    set(llvmForJSC_INCLUDE_DIRECTORIES
-        ${LLVM_INCLUDE_DIRS}
-        "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    )
-
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
-        COMMAND ${CMAKE_COMMAND} -E touch ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
-        VERBATIM)
-
-    # Added extra items for JavaScriptCore
-    list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${LLVM_INCLUDE_DIRS}
-    )
-
-    list(APPEND JavaScriptCore_SOURCES
-        llvm/InitializeLLVM.cpp
-        llvm/LLVMAPI.cpp
-    )
-    if (NOT WIN32)
-        list(APPEND JavaScriptCore_SOURCES
-            llvm/InitializeLLVMLinux.cpp
-            llvm/InitializeLLVMPOSIX.cpp
-        )
-    endif ()
 endif ()
 
 set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)
@@ -1367,37 +1304,13 @@ endif ()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-if (USE_LLVM_DISASSEMBLER AND NOT WIN32)
-    if (NOT llvmForJSC_LIBRARIES)
-        set(llvmForJSC_LIBRARIES ${LLVM_STATIC_LIBRARIES})
-    endif ()
-    if (NOT llvmForJSC_LIBRARIES)
-        message(FATAL_ERROR "No LLVM libs found, but LLVM disassembler is enabled. Stopping build.")
-    endif ()
-
-    WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
-    add_library(llvmForJSC SHARED ${llvmForJSC_SOURCES} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h)
-    target_link_libraries(llvmForJSC ${llvmForJSC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
-    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
-        ADD_TARGET_PROPERTIES(llvmForJSC LINK_FLAGS "-Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version")
-    endif ()
-    if (llvmForJSC_INSTALL_DIR)
-        install(TARGETS llvmForJSC DESTINATION "${llvmForJSC_INSTALL_DIR}")
-    endif ()
-endif ()
-
 WEBKIT_CREATE_FORWARDING_HEADERS(JavaScriptCore DIRECTORIES ${JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${JavaScriptCore_FORWARDING_HEADERS_FILES})
 
 
 add_subdirectory(shell)
 
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
-include_directories(${JavaScriptCore_INCLUDE_DIRECTORIES})
-include_directories(SYSTEM ${JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES})
-add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADERS} ${JavaScriptCore_SOURCES})
-target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
-set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")
-set_target_properties(JavaScriptCore PROPERTIES FOLDER "JavaScriptCore")
+WEBKIT_FRAMEWORK(JavaScriptCore)
 
 if (JavaScriptCore_PRE_BUILD_COMMAND)
     add_custom_command(TARGET JavaScriptCore PRE_BUILD COMMAND ${JavaScriptCore_PRE_BUILD_COMMAND} VERBATIM)
@@ -1407,23 +1320,13 @@ if (JavaScriptCore_POST_BUILD_COMMAND)
     add_custom_command(TARGET JavaScriptCore POST_BUILD COMMAND ${JavaScriptCore_POST_BUILD_COMMAND} VERBATIM)
 endif ()
 
-if (JavaScriptCore_OUTPUT_NAME)
-    set_target_properties(JavaScriptCore PROPERTIES OUTPUT_NAME ${JavaScriptCore_OUTPUT_NAME})
-endif ()
-
 if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
     POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
     set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
     install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
 endif ()
 
-if (USE_LLVM_DISASSEMBLER)
-    add_dependencies(JavaScriptCore llvmForJSC)
-endif ()
-
 # Force staging of shared scripts, even if they aren't directly used to build JavaScriptCore.
 
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
 add_dependencies(JavaScriptCore stageSharedScripts)
-
-WEBKIT_FRAMEWORK(JavaScriptCore)

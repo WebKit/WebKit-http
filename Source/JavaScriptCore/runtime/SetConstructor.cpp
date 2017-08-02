@@ -51,13 +51,15 @@ void SetConstructor::finishCreation(VM& vm, SetPrototype* setPrototype, GetterSe
 
 static EncodedJSValue JSC_HOST_CALL callSet(ExecState* exec)
 {
-    return JSValue::encode(throwTypeError(exec, ASCIILiteral("Set cannot be called as a function")));
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "Set"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
 {
     JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
     Structure* setStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->setStructure());
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
     JSSet* set = JSSet::create(exec, setStructure);
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())

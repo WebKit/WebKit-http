@@ -36,13 +36,6 @@
 
 namespace WebCore {
 
-void FetchHeaders::initializeWith(const FetchHeaders* headers, ExceptionCode&)
-{
-    if (!headers)
-        return;
-    m_headers = headers->m_headers;
-}
-
 // FIXME: Optimize these routines for HTTPHeaderMap keys and/or refactor them with XMLHttpRequest code.
 static bool isForbiddenHeaderName(const String& name)
 {
@@ -179,19 +172,16 @@ void FetchHeaders::fill(const FetchHeaders* headers)
     }
 }
 
-bool FetchHeaders::Iterator::next(String& nextKey, String& nextValue)
+Optional<WTF::KeyValuePair<String, String>> FetchHeaders::Iterator::next(JSC::ExecState&)
 {
     while (m_currentIndex < m_keys.size()) {
-        auto& key = m_keys[m_currentIndex++];
+        String key = m_keys[m_currentIndex++];
         String value = m_headers->m_headers.get(key);
-        if (!value.isNull()) {
-            nextKey = key;
-            nextValue = WTFMove(value);
-            return false;
-        }
+        if (!value.isNull())
+            return WTF::KeyValuePair<String, String>(WTFMove(key), WTFMove(value));
     }
     m_keys.clear();
-    return true;
+    return Nullopt;
 }
 
 FetchHeaders::Iterator::Iterator(FetchHeaders& headers)

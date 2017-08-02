@@ -61,6 +61,10 @@ public:
 
     IDBDatabaseInfo* originalDatabaseInfo() const { return m_originalDatabaseInfo.get(); }
 
+    WEBCORE_EXPORT IDBTransactionInfo();
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, IDBTransactionInfo&);
+
 #ifndef NDEBUG
     String loggingString() const;
 #endif
@@ -75,6 +79,46 @@ private:
     Vector<String> m_objectStores;
     std::unique_ptr<IDBDatabaseInfo> m_originalDatabaseInfo;
 };
+
+template<class Encoder>
+void IDBTransactionInfo::encode(Encoder& encoder) const
+{
+    encoder << m_identifier << m_newVersion << m_objectStores;
+    encoder.encodeEnum(m_mode);
+
+    encoder << !!m_originalDatabaseInfo;
+    if (m_originalDatabaseInfo)
+        encoder << *m_originalDatabaseInfo;
+}
+
+template<class Decoder>
+bool IDBTransactionInfo::decode(Decoder& decoder, IDBTransactionInfo& info)
+{
+    if (!decoder.decode(info.m_identifier))
+        return false;
+
+    if (!decoder.decode(info.m_newVersion))
+        return false;
+
+    if (!decoder.decode(info.m_objectStores))
+        return false;
+
+    if (!decoder.decodeEnum(info.m_mode))
+        return false;
+
+    bool hasObject;
+    if (!decoder.decode(hasObject))
+        return false;
+
+    if (hasObject) {
+        std::unique_ptr<IDBDatabaseInfo> object = std::make_unique<IDBDatabaseInfo>();
+        if (!decoder.decode(*object))
+            return false;
+        info.m_originalDatabaseInfo = WTFMove(object);
+    }
+
+    return true;
+}
 
 } // namespace WebCore
 

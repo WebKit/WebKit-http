@@ -42,6 +42,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -138,7 +139,6 @@ class Page : public Supplementable<Page> {
 public:
     WEBCORE_EXPORT static void updateStyleForAllPagesAfterGlobalChangeInEnvironment();
     WEBCORE_EXPORT static void clearPreviousItemFromAllPages(HistoryItem*);
-    WEBCORE_EXPORT static void setTabSuspensionEnabled(bool);
 
     WEBCORE_EXPORT explicit Page(PageConfiguration&);
     WEBCORE_EXPORT ~Page();
@@ -175,6 +175,8 @@ public:
 
     PageGroup& group();
     PageGroup* groupPtr() { return m_group; } // can return 0
+
+    static void forEachPage(std::function<void(Page&)>);
 
     void incrementSubframeCount() { ++m_subframeCount; }
     void decrementSubframeCount() { ASSERT(m_subframeCount); --m_subframeCount; }
@@ -216,6 +218,8 @@ public:
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
     BackForwardController& backForward() const { return *m_backForwardController; }
+
+    double domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     enum ViewMode {
@@ -368,8 +372,6 @@ public:
     // with exponential growth in the number of frames.
     static const int maxNumberOfFrames = 1000;
 
-    static bool s_tabSuspensionIsEnabled;
-
     void setEditable(bool isEditable) { m_isEditable = isEditable; }
     bool isEditable() { return m_isEditable; }
 
@@ -496,7 +498,6 @@ public:
 
     void setShowAllPlugins(bool showAll) { m_showAllPlugins = showAll; }
     bool showAllPlugins() const;
-    void setIsTabSuspended(bool);
 
 private:
     WEBCORE_EXPORT void initGroup();
@@ -522,9 +523,8 @@ private:
 
     void hiddenPageDOMTimerThrottlingStateChanged();
     void setTimerThrottlingEnabled(bool);
-    bool canTabSuspend();
-    void updateTabSuspensionState();
-    void tabSuspensionTimerFired();
+    void setDOMTimerAlignmentInterval(double);
+    void timerAlignmentIntervalIncreaseTimerFired();
 
     const std::unique_ptr<Chrome> m_chrome;
     const std::unique_ptr<DragCaretController> m_dragCaretController;
@@ -610,7 +610,9 @@ private:
     ViewMode m_viewMode;
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
-    bool m_timerThrottlingEnabled;
+    Optional<double> m_timerThrottlingEnabledTime;
+    double m_timerAlignmentInterval;
+    Timer m_timerAlignmentIntervalIncreaseTimer;
 
     bool m_isEditable;
     bool m_isPrerender;
@@ -666,8 +668,6 @@ private:
     SessionID m_sessionID;
 
     bool m_isClosing;
-    bool m_isTabSuspended { false };
-    Timer m_tabSuspensionTimer;
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     

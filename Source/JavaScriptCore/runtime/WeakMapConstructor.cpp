@@ -48,13 +48,15 @@ void WeakMapConstructor::finishCreation(VM& vm, WeakMapPrototype* prototype)
 
 static EncodedJSValue JSC_HOST_CALL callWeakMap(ExecState* exec)
 {
-    return JSValue::encode(throwTypeError(exec, ASCIILiteral("WeakMap cannot be called as a function")));
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "WeakMap"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
 {
     JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
     Structure* weakMapStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->weakMapStructure());
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
     JSWeakMap* weakMap = JSWeakMap::create(exec, weakMapStructure);
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())

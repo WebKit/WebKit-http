@@ -140,7 +140,8 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/WebMemorySampler.mac.mm
 
     UIProcess/ViewGestureController.cpp
-    UIProcess/WebAutomationSession.cpp
+
+    UIProcess/Automation/WebAutomationSession.cpp
 
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
@@ -280,7 +281,6 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/InjectedBundle/mac/InjectedBundleMac.mm
 
-    WebProcess/MediaCache/WebMediaCacheManager.cpp
     WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 
     WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm

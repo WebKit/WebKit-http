@@ -104,6 +104,8 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
         return throwVMTypeError(exec);
 
     Structure* promiseStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->promiseStructure());
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
     JSPromise* promise = JSPromise::create(vm, promiseStructure);
     promise->initialize(exec, globalObject, exec->argument(0));
 
@@ -112,7 +114,7 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL callPromise(ExecState* exec)
 {
-    return throwVMTypeError(exec);
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "Promise"));
 }
 
 ConstructType JSPromiseConstructor::getConstructData(JSCell*, ConstructData& constructData)

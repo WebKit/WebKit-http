@@ -62,7 +62,7 @@
 #include "EventHandler.h"
 #include "ExtensionStyleSheets.h"
 #include "FocusController.h"
-#include "FontLoader.h"
+#include "FontFaceSet.h"
 #include "FormController.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -985,12 +985,15 @@ RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& 
     }
 
     switch (importedNode->nodeType()) {
+    case DOCUMENT_FRAGMENT_NODE:
+        if (importedNode->isShadowRoot())
+            break;
+        FALLTHROUGH;
     case ELEMENT_NODE:
     case TEXT_NODE:
     case CDATA_SECTION_NODE:
     case PROCESSING_INSTRUCTION_NODE:
     case COMMENT_NODE:
-    case DOCUMENT_FRAGMENT_NODE:
         return importedNode->cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf);
 
     case ATTRIBUTE_NODE:
@@ -2908,7 +2911,7 @@ void Document::writeln(const String& text, Document* ownerDocument)
 
 double Document::minimumTimerInterval() const
 {
-    Page* page = this->page();
+    auto* page = this->page();
     if (!page)
         return ScriptExecutionContext::minimumTimerInterval();
     return page->settings().minimumDOMTimerInterval();
@@ -2925,14 +2928,16 @@ void Document::setTimerThrottlingEnabled(bool shouldThrottle)
 
 double Document::timerAlignmentInterval(bool hasReachedMaxNestingLevel) const
 {
+    double alignmentInterval = ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
+
     // Apply Document-level DOMTimer throttling only if timers have reached their maximum nesting level as the Page may still be visible.
     if (m_isTimerThrottlingEnabled && hasReachedMaxNestingLevel)
-        return DOMTimer::hiddenPageAlignmentInterval();
+        alignmentInterval = std::max(alignmentInterval, DOMTimer::hiddenPageAlignmentInterval());
 
-    Page* page = this->page();
-    if (!page)
-        return ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
-    return page->settings().domTimerAlignmentInterval();
+    if (Page* page = this->page())
+        alignmentInterval = std::max(alignmentInterval, page->domTimerAlignmentInterval());
+
+    return alignmentInterval;
 }
 
 EventTarget* Document::errorEventTarget()
@@ -3271,19 +3276,19 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         break;
 
     case HTTPHeaderName::ContentSecurityPolicy:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Enforce);
+        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Enforce);
         break;
 
     case HTTPHeaderName::ContentSecurityPolicyReportOnly:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Report);
+        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Report);
         break;
 
     case HTTPHeaderName::XWebKitCSP:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
+        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
         break;
 
     case HTTPHeaderName::XWebKitCSPReportOnly:
-        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedReport);
+        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedReport);
         break;
 
     default:
@@ -4078,6 +4083,11 @@ void Document::takeDOMWindowFrom(Document* document)
     ASSERT(m_domWindow->frame() == m_frame);
 }
 
+void Document::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
+{
+    setAttributeEventListener(eventType, JSLazyEventListener::create(*this, attributeName, attributeValue));
+}
+
 void Document::setWindowAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener)
 {
     if (!m_domWindow)
@@ -4087,9 +4097,9 @@ void Document::setWindowAttributeEventListener(const AtomicString& eventType, Pa
 
 void Document::setWindowAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)
 {
-    if (!m_frame)
+    if (!m_domWindow)
         return;
-    setWindowAttributeEventListener(eventType, JSLazyEventListener::createForDOMWindow(*m_frame, attributeName, attributeValue));
+    setWindowAttributeEventListener(eventType, JSLazyEventListener::create(*m_domWindow, attributeName, attributeValue));
 }
 
 EventListener* Document::getWindowAttributeEventListener(const AtomicString& eventType)
@@ -5511,7 +5521,7 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
 
 void Document::enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
 {
-    enqueueWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
+    dispatchWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
 }
 
 void Document::addMediaCanStartListener(MediaCanStartListener* listener)
@@ -6679,14 +6689,10 @@ Document& Document::ensureTemplateDocument()
 }
 #endif
 
-#if ENABLE(FONT_LOAD_EVENTS)
-RefPtr<FontLoader> Document::fonts()
+Ref<FontFaceSet> Document::fonts()
 {
-    if (!m_fontloader)
-        m_fontloader = FontLoader::create(this);
-    return m_fontloader;
+    return fontSelector().fontFaceSet();
 }
-#endif
 
 float Document::deviceScaleFactor() const
 {
