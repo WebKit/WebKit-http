@@ -51,16 +51,6 @@ static Vector<CDMFactory*>& cdmFactories()
     return factories;
 }
 
-static std::unique_ptr<CDMPrivate> createCDMPrivateForKeySystem(const String& keySystem, CDM& cdm)
-{
-    for (auto* factory : cdmFactories()) {
-        if (factory->supportsKeySystem(keySystem))
-            return factory->createCDM(cdm, keySystem);
-    }
-    ASSERT_NOT_REACHED();
-    return nullptr;
-}
-
 void CDM::registerCDMFactory(CDMFactory& factory)
 {
     ASSERT(!cdmFactories().contains(&factory));
@@ -90,14 +80,14 @@ Ref<CDM> CDM::create(Document& document, const String& keySystem)
 CDM::CDM(Document& document, const String& keySystem)
     : ContextDestructionObserver(&document)
     , m_keySystem(keySystem)
-    , m_private(createCDMPrivateForKeySystem(keySystem, *this))
     , m_weakPtrFactory(this)
 {
     ASSERT(supportsKeySystem(keySystem));
     for (auto* factory : cdmFactories()) {
-        if (!factory->supportsKeySystem(keySystem))
-            continue;
-        m_private = factory->createCDM(*this, keySystem);
+        if (factory->supportsKeySystem(keySystem)) {
+            m_private = factory->createCDM(*this, keySystem);
+            break;
+        }
     }
 }
 
