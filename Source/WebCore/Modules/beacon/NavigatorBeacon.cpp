@@ -1,136 +1,53 @@
+/*
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "config.h"
 #include "NavigatorBeacon.h"
 
+#include "Document.h"
 #include "Navigator.h"
-#include "BeaconLoader.h"
-#include "runtime/ArrayBufferView.h"
-#include "DOMFormData.h"
-#include "ContentSecurityPolicy.h"
+#include "URL.h"
 
 namespace WebCore {
 
-NavigatorBeacon::NavigatorBeacon(Frame* frame)
-: DOMWindowProperty(frame)
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, const String& url, std::optional<BodyInit>&& data)
 {
-}
+    URL parsedUrl = document.completeURL(url);
 
-NavigatorBeacon::~NavigatorBeacon()
-{
-}
+    // Set parsedUrl to the result of the URL parser steps with url and base. If the algorithm returns an error, or if
+    // parsedUrl's scheme is not "http" or "https", throw a " TypeError" exception and terminate these steps.
+    if (!parsedUrl.isValid())
+        return Exception { TypeError, ASCIILiteral("This URL is invalid") };
+    if (!parsedUrl.protocolIsInHTTPFamily())
+        return Exception { TypeError, ASCIILiteral("Beacons can only be sent over HTTP(S)") };
 
-const char* NavigatorBeacon::supplementName()
-{
-    return "NavigatorBeacon";
-}
-
-NavigatorBeacon& NavigatorBeacon::from(Navigator& navigator)
-{
-    NavigatorBeacon* supplement = static_cast<NavigatorBeacon*>(Supplement<Navigator>::from(&navigator, supplementName()));
-    if (!supplement) {
-        auto newSupplement = std::make_unique<NavigatorBeacon>(navigator.frame());
-        supplement = newSupplement.get();
-        provideTo(&navigator, supplementName(), WTFMove(newSupplement));
-    }
-    return *supplement;
-}
-
-bool NavigatorBeacon::canSendBeacon(ScriptExecutionContext& context, const URL& url, ExceptionCode& ec)
-{
-    if (!url.isValid()) {
-        ec = SYNTAX_ERR;
-        return false;
-    }
-
-    // For now, only support HTTP and related.
-    if (!url.protocolIsInHTTPFamily()) {
-        ec = SECURITY_ERR;
-        return false;
-    }
-
-    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(url)) {
-        ec = SECURITY_ERR;
-        return false;
-    }
-
-    // If detached from frame, do not allow sending a Beacon.
-    if (!frame())
+    auto* frame = document.frame();
+    if (!frame)
         return false;
 
-    return true;
+    return PingLoader::sendBeacon(*frame, document, parsedUrl, WTFMove(data));
 }
 
-int NavigatorBeacon::maxAllowance() const
-{
-    return m_transmittedBytes;
 }
-
-bool NavigatorBeacon::beaconResult(ScriptExecutionContext&, bool allowed, int sentBytes)
-{
-    if (allowed) {
-        ASSERT(sentBytes >= 0);
-        m_transmittedBytes += sentBytes;
-    }
-    return allowed;
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, Blob* data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, const RefPtr<JSC::ArrayBufferView>& data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data.get(), bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, DOMFormData* data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, const String& data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-} // namespace WebCore

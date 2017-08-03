@@ -97,7 +97,7 @@ public:
 #endif
     
     // Init routine for globals
-    static void init();
+    WEBCORE_EXPORT static void init();
 
 private:
     static QualifiedNameImpl* hashTableDeletedValue() { return RefPtr<QualifiedNameImpl>::hashTableDeletedValue(); }

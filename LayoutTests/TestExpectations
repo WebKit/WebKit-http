@@ -329,6 +329,7 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-text.html  [ Skip ]
 webkit.org/b/171322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/tabular-data/processing-model-1/span-limits.html [ Skip ]
 webkit.org/b/162517 [ Debug ] imported/w3c/web-platform-tests/html/the-xhtml-syntax/parsing-xhtml-documents/xhtml-mathml-dtd-entity-support.htm [ Skip ]
+webkit.org/b/175007 [ Debug ] imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Skip ]
 
 # Tests that are flaky due to console log / error messages
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/basic.htm [ Failure ]
@@ -554,7 +555,6 @@ webkit.org/b/139640 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-uniform-p
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-between-Rs.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-between-Rs.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-between-Rs.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/html/dom/elements/global-attributes/style-01.html [ ImageOnlyFailure ]
 
 imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/010.html [ Failure Timeout ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change.html [ Failure ]
@@ -683,7 +683,7 @@ webkit.org/b/141267 http/tests/misc/detached-frame-console.html [ Pass Failure ]
 # Aborting application cache abort tests are intrinsically flaky.
 webkit.org/b/87633 http/tests/appcache/abort-cache-onchecking-manifest-404.html [ Pass Failure ]
 webkit.org/b/87633 http/tests/appcache/abort-cache-ondownloading-resource-404.html [ Pass Failure ]
-webkit.org/b/87633 http/tests/appcache/deferred-events-delete-while-raising-timer.html [ Pass Failure ]
+webkit.org/b/175107 http/tests/appcache/deferred-events-delete-while-raising-timer.html [ Pass Failure Crash ]
 webkit.org/b/87633 http/tests/appcache/deferred-events-delete-while-raising.html [ Pass Failure ]
 webkit.org/b/87633 http/tests/appcache/deferred-events.html [ Pass Failure ]
 
@@ -1047,6 +1047,10 @@ imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.ht
 
 # WebCryptoAPI features that haven't been enabled for current OS
 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Skip ]
+crypto/subtle/ecdh-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Skip ]
+crypto/subtle/ecdh-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Skip ]
+crypto/subtle/ecdsa-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Skip ]
+crypto/subtle/ecdsa-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Skip ]
 crypto/subtle/ecdh-import-spki-key-ecdh-identifier.html [ Skip ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha1.html [ Skip ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha224.html [ Skip ]
@@ -1158,7 +1162,6 @@ webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/text-level-se
 webkit.org/b/169264 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc.html [ Failure ]
 
 imported/w3c/web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm [ Failure Pass  ]
-imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-synconmain.html [ Failure ]
 imported/w3c/web-platform-tests/cssom/MediaList.html [ Failure ]
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/007.html [ Failure ]
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/joint_session_history/001.html [ Failure ]
@@ -1398,5 +1401,3 @@ webkit.org/b/172609 fetch/closing-while-fetching-blob.html [ Skip ]
 webkit.org/b/172514 [ Debug ] imported/w3c/web-platform-tests/innerText/getter.html [ Skip ]
 
 webkit.org/b/173333 imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Skip ]
-
-webkit.org/b/174988 http/tests/media/video-play-stall.html [ Skip ]

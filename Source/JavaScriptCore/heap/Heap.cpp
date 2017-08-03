@@ -71,6 +71,7 @@
 #include <algorithm>
 #if PLATFORM(IOS)
 #include <bmalloc/bmalloc.h>
+#include <sys/sysctl.h>
 #endif
 #include <wtf/CurrentTime.h>
 #include <wtf/ListDump.h>
@@ -116,9 +117,39 @@ size_t minHeapSize(HeapType heapType, size_t ramSize)
     return Options::smallHeapSize();
 }
 
+#if PLATFORM(IOS)
+static bool useAggressiveGCTrigger()
+{
+    static bool useAggressiveGCTrigger;
+    static std::once_flag once;
+    std::call_once(once, [] {
+        useAggressiveGCTrigger = false;
+
+        if (Options::forceAggressiveGCTrigger()) {
+            useAggressiveGCTrigger = true;
+            return;
+        }
+
+        uint64_t memSizeInBytes;
+        size_t sizeofMemSize = sizeof(memSizeInBytes);
+        if (sysctlbyname("hw.memsize", &memSizeInBytes, &sizeofMemSize, nullptr, 0))
+            return;
+        useAggressiveGCTrigger = memSizeInBytes <= 1 * GB;
+    });
+
+    return useAggressiveGCTrigger;
+}
+#endif
+
 size_t proportionalHeapSize(size_t heapSize, size_t ramSize)
 {
 #if PLATFORM(IOS)
+    if (useAggressiveGCTrigger()) {
+        double memoryUsed = bmalloc::api::percentAvailableMemoryInUse();
+        double result = ((1 - memoryUsed) / Options::aggressiveGCTriggerScalingValue()) + 1;
+        return heapSize * std::max(std::min(result, Options::aggressiveGCTriggerMaxMultiplier()), Options::aggressiveGCTriggerMinMultiplier());
+    }
+
     size_t memoryFootprint = bmalloc::api::memoryFootprint();
     if (memoryFootprint < ramSize * Options::smallHeapRAMFraction())
         return Options::smallHeapGrowthFactor() * heapSize;
@@ -140,7 +171,7 @@ bool isValidSharedInstanceThreadState(VM* vm)
 
 bool isValidThreadState(VM* vm)
 {
-    if (vm->atomicStringTable() != wtfThreadData().atomicStringTable())
+    if (vm->atomicStringTable() != WTF::Thread::current().atomicStringTable())
         return false;
 
     if (vm->isSharedInstance() && !isValidSharedInstanceThreadState(vm))
@@ -268,7 +299,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_sizeAfterLastEdenCollect(0)
     , m_sizeBeforeLastEdenCollect(0)
     , m_bytesAllocatedThisCycle(0)
-    , m_webAssemblyFastMemoriesAllocatedThisCycle(0)
     , m_bytesAbandonedSinceLastFullCollect(0)
     , m_maxEdenSize(m_minBytesPerCycle)
     , m_maxHeapSize(m_minBytesPerCycle)
@@ -437,6 +467,8 @@ void Heap::lastChanceToFinalize()
 
     sweepAllLogicallyEmptyWeakBlocks();
     
+    m_objectSpace.freeMemory();
+    
     if (Options::logGC())
         dataLog((MonotonicTime::now() - before).milliseconds(), "ms]\n");
 }
@@ -485,23 +517,6 @@ void Heap::deprecatedReportExtraMemorySlowCase(size_t size)
     checkedNewSize += size;
     m_deprecatedExtraMemorySize = UNLIKELY(checkedNewSize.hasOverflowed()) ? std::numeric_limits<size_t>::max() : checkedNewSize.unsafeGet();
     reportExtraMemoryAllocatedSlowCase(size);
-}
-
-void Heap::reportWebAssemblyFastMemoriesAllocated(size_t count)
-{
-    didAllocateWebAssemblyFastMemories(count);
-    collectIfNecessaryOrDefer();
-}
-
-bool Heap::webAssemblyFastMemoriesThisCycleAtThreshold() const
-{
-    // WebAssembly fast memories use large amounts of virtual memory and we
-    // don't know how many can exist in this process. We keep track of the most
-    // fast memories that have existed at any point in time. The GC uses this
-    // top watermark as an indication of whether recent allocations should cause
-    // a collection: get too close and we may be close to the actual limit.
-    size_t fastMemoryThreshold = std::max<size_t>(1, Wasm::Memory::maxFastMemoryCount() / 2);
-    return m_webAssemblyFastMemoriesAllocatedThisCycle > fastMemoryThreshold;
 }
 
 bool Heap::overCriticalMemoryThreshold(MemoryThresholdCallType memoryThresholdCallType)
@@ -1998,10 +2013,10 @@ void Heap::finalize()
     }
     
     {
-        SweepingScope helpingGCScope(*this);
+        SweepingScope sweepingScope(*this);
         deleteUnmarkedCompiledCode();
         deleteSourceProviderCaches();
-        sweepLargeAllocations();
+        sweepInFinalize();
     }
     
     if (HasOwnPropertyCache* cache = vm()->hasOwnPropertyCache())
@@ -2024,7 +2039,7 @@ Heap::Ticket Heap::requestCollection(GCRequest request)
     stopIfNecessary();
     
     ASSERT(vm()->currentThreadIsHoldingAPILock());
-    RELEASE_ASSERT(vm()->atomicStringTable() == wtfThreadData().atomicStringTable());
+    RELEASE_ASSERT(vm()->atomicStringTable() == WTF::Thread::current().atomicStringTable());
     
     LockHolder locker(*m_threadLock);
     // We may be able to steal the conn. That only works if the collector is definitely not running
@@ -2052,9 +2067,15 @@ void Heap::waitForCollection(Ticket ticket)
         });
 }
 
-void Heap::sweepLargeAllocations()
+void Heap::sweepInFinalize()
 {
     m_objectSpace.sweepLargeAllocations();
+    
+    auto sweepBlock = [&] (MarkedBlock::Handle* handle) {
+        handle->sweep(nullptr);
+    };
+    
+    vm()->eagerlySweptDestructibleObjectSpace.forEachMarkedBlock(sweepBlock);
 }
 
 void Heap::suspendCompilerThreads()
@@ -2161,7 +2182,6 @@ void Heap::updateAllocationLimits()
     if (verbose) {
         dataLog("\n");
         dataLog("bytesAllocatedThisCycle = ", m_bytesAllocatedThisCycle, "\n");
-        dataLog("webAssemblyFastMemoriesAllocatedThisCycle = ", m_webAssemblyFastMemoriesAllocatedThisCycle, "\n");
     }
     
     // Calculate our current heap size threshold for the purpose of figuring out when we should
@@ -2244,7 +2264,6 @@ void Heap::updateAllocationLimits()
     if (verbose)
         dataLog("sizeAfterLastCollect = ", m_sizeAfterLastCollect, "\n");
     m_bytesAllocatedThisCycle = 0;
-    m_webAssemblyFastMemoriesAllocatedThisCycle = 0;
 
     if (Options::logGC())
         dataLog("=> ", currentHeapSize / 1024, "kb, ");
@@ -2318,11 +2337,6 @@ void Heap::didAllocate(size_t bytes)
     performIncrement(bytes);
 }
 
-void Heap::didAllocateWebAssemblyFastMemories(size_t count)
-{
-    m_webAssemblyFastMemoriesAllocatedThisCycle += count;
-}
-
 bool Heap::isValidAllocation(size_t)
 {
     if (!isValidThreadState(m_vm))
@@ -2375,7 +2389,7 @@ bool Heap::shouldDoFullCollection()
         return true;
 
     if (!m_currentRequest.scope)
-        return m_shouldDoFullCollection || webAssemblyFastMemoriesThisCycleAtThreshold() || overCriticalMemoryThreshold();
+        return m_shouldDoFullCollection || overCriticalMemoryThreshold();
     return *m_currentRequest.scope == CollectionScope::Full;
 }
 
@@ -2533,8 +2547,7 @@ void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
             bytesAllowedThisCycle = std::min(m_maxEdenSizeWhenCritical, bytesAllowedThisCycle);
 #endif
 
-        if (!webAssemblyFastMemoriesThisCycleAtThreshold()
-            && m_bytesAllocatedThisCycle <= bytesAllowedThisCycle)
+        if (m_bytesAllocatedThisCycle <= bytesAllowedThisCycle)
             return;
     }
 

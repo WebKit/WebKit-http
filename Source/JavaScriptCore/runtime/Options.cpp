@@ -407,10 +407,8 @@ static void recomputeDependentOptions()
     if (!Options::useJIT())
         Options::useWebAssembly() = false;
 
-    if (!Options::useWebAssembly()) {
-        Options::webAssemblyFastMemoryPreallocateCount() = 0;
+    if (!Options::useWebAssembly())
         Options::useWebAssemblyFastTLS() = false;
-    }
     
     if (Options::dumpDisassembly()
         || Options::dumpDFGDisassembly()

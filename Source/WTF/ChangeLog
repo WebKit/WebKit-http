@@ -1,3 +1,193 @@
+2017-08-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Linux][WTF] Reduce sizeof(WTF::Thread) by using a pointer to PlatformRegisters
+        https://bugs.webkit.org/show_bug.cgi?id=175119
+
+        Reviewed by Carlos Garcia Campos.
+
+        sizeof(PlatformRegisters) is so large. In my Linux box, it is 256. It enlarges the sizeof(WTF::Thread).
+        However, it is not necessary to hold it in WTF::Thread member. Thread's ucontext data and its stack is
+        effective while suspending the thread. So, we can just use the pointer to the PlatformRegister instead
+        of copying it to the member of the WTF::Thread.
+
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::Thread::getRegisters):
+
+2017-08-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        This ugliness will be fixed in https://bugs.webkit.org/show_bug.cgi?id=175013.
+
+        * wtf/ThreadHolder.h:
+        * wtf/Threading.h:
+
+2017-08-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Mark Lam.
+
+        We placed thread specific data in WTFThreadData previously. But now, we have a new good place
+        to put thread specific data: WTF::Thread. Before this patch, WTFThreadData and WTF::Thread
+        sometimes have the completely same fields (m_stack etc.) due to initialization order limitations.
+        This patch merges WTFThreadData to WTF::Thread. We apply WTFThreadData's initialization style
+        to WTF::Thread. So, WTF::Thread's holder now uses fast TLS for darwin environment. Thus,
+        Thread::current() access is now accelerated. And WTF::Thread::current() can be accessed even
+        before calling WTF::initializeThreading.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/LockAlgorithm.h:
+        * wtf/LockAlgorithmInlines.h:
+        * wtf/MainThread.h:
+        * wtf/ParkingLot.cpp:
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::initializeCurrent):
+        * wtf/ThreadHolder.h:
+        (WTF::ThreadHolder::ThreadHolder):
+        (WTF::ThreadHolder::currentMayBeNull):
+        (WTF::ThreadHolder::current):
+        * wtf/ThreadHolderPthreads.cpp:
+        (WTF::ThreadHolder::initializeKey):
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::destruct):
+        (WTF::ThreadHolder::initializeOnce): Deleted.
+        (WTF::ThreadHolder::current): Deleted.
+        * wtf/ThreadHolderWin.cpp:
+        (WTF::ThreadHolder::initializeKey):
+        (WTF::ThreadHolder::currentDying):
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::initializeOnce): Deleted.
+        (WTF::ThreadHolder::current): Deleted.
+        * wtf/Threading.cpp:
+        (WTF::Thread::initializeInThread):
+        (WTF::Thread::entryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::didExit):
+        (WTF::initializeThreading):
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/Threading.h:
+        (WTF::Thread::current):
+        (WTF::Thread::atomicStringTable):
+        (WTF::Thread::setCurrentAtomicStringTable):
+        (WTF::Thread::stackStats):
+        (WTF::Thread::savedStackPointerAtVMEntry):
+        (WTF::Thread::setSavedStackPointerAtVMEntry):
+        (WTF::Thread::savedLastStackTop):
+        (WTF::Thread::setSavedLastStackTop):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::createCurrentThread):
+        (WTF::Thread::current): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::createCurrentThread):
+        (WTF::Thread::current): Deleted.
+        * wtf/WTFThreadData.cpp: Removed.
+        * wtf/WTFThreadData.h: Removed.
+        * wtf/text/AtomicString.cpp:
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::stringTable):
+        * wtf/text/AtomicStringTable.cpp:
+        (WTF::AtomicStringTable::create):
+        * wtf/text/AtomicStringTable.h:
+
+2017-08-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        NeverDestroyed related leaks seen on bots
+        https://bugs.webkit.org/show_bug.cgi?id=175113
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/NeverDestroyed.h:
+        (WTF::NeverDestroyed::NeverDestroyed):
+        Previously the result of makeNeverDestroyed was not always moving into
+        the `static NeverDestroyed` static local variable. In some cases it would
+        re-invoke the constructor, creating a new NeverDestroyed object. In the
+        case of a Vector it was causing leaks.
+
+        Adding a move constructor convinces the compiler to move the result
+        of makeNeverDestroyed into the NeverDestroyed static. It doesn't actually
+        invoke the move constructor here, which I believe means it is deciding
+        to perform optional copy elision optimization.
+        'http://en.cppreference.com/w/cpp/language/copy_elision
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        All C++ accesses to JSObject::m_butterfly should do caging
+        https://bugs.webkit.org/show_bug.cgi?id=175039
+
+        Reviewed by Keith Miller.
+        
+        Adds a smart pointer class that does various kinds of caging for you.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CagedPtr.h: Added.
+        (WTF::CagedPtr::CagedPtr):
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::getMayBeNull const):
+        (WTF::CagedPtr::operator== const):
+        (WTF::CagedPtr::operator!= const):
+        (WTF::CagedPtr::operator bool const):
+        (WTF::CagedPtr::operator* const):
+        (WTF::CagedPtr::operator-> const):
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        We should be OK with the gigacage being disabled on gmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=175082
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Gigacage.h:
+        (Gigacage::shouldBeEnabled):
+
+2017-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Bmalloc and GC should put auxiliaries (butterflies, typed array backing stores) in a gigacage (separate multi-GB VM region)
+        https://bugs.webkit.org/show_bug.cgi?id=174727
+
+        Reviewed by Mark Lam.
+        
+        For the Gigacage project to have minimal impact, we need to have some abstraction that allows code to
+        avoid having to guard itself with #if's. This adds a Gigacage abstraction that overlays the Gigacage
+        namespace from bmalloc, which always lets you call things like Gigacage::caged and Gigacage::tryMalloc.
+        
+        Because of how many places need to possibly allocate in a gigacage, or possibly perform caged accesses,
+        it's better to hide the question of whether or not it's enabled inside this API.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastMalloc.cpp:
+        * wtf/Gigacage.cpp: Added.
+        (Gigacage::tryMalloc):
+        (Gigacage::tryAllocateVirtualPages):
+        (Gigacage::freeVirtualPages):
+        (Gigacage::tryAlignedMalloc):
+        (Gigacage::alignedFree):
+        (Gigacage::free):
+        * wtf/Gigacage.h: Added.
+        (Gigacage::ensureGigacage):
+        (Gigacage::disableGigacage):
+        (Gigacage::addDisableCallback):
+        (Gigacage::removeDisableCallback):
+        (Gigacage::caged):
+        (Gigacage::isCaged):
+        (Gigacage::tryAlignedMalloc):
+        (Gigacage::alignedFree):
+        (Gigacage::free):
+
 2017-07-31  Matt Lewis  <jlewis3@apple.com>
 
         Unreviewed, rolling out r220060.

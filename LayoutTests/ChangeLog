@@ -1,3 +1,439 @@
+2017-08-03  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Remove obsolete failure expectation for narrow-non-breaking-space.html.
+        https://bugs.webkit.org/show_bug.cgi?id=139493
+
+        Unreviewed test gardening.
+
+        It likely started passing in r205826 due to its change in Font.cpp.
+
+        * platform/gtk/TestExpectations:
+
+2017-08-03  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Skip timezone-dependent Sputnik tests.
+        https://bugs.webkit.org/show_bug.cgi?id=175120
+
+        Unreviewed test gardening.
+
+        These tests are skipped in the platform-neutral TestExpectations file because
+        they only pass in Pacific Time (see bug 42625). There doesn't seem to be a
+        reason for gtk to run them, and they do pass on the buildbot.
+
+        * platform/gtk/TestExpectations:
+
+2017-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add stack trace information for each RecordingAction
+        https://bugs.webkit.org/show_bug.cgi?id=174663
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-2d-expected.txt:
+        * inspector/canvas/recording-2d.html:
+        * inspector/model/recording-expected.txt:
+        * inspector/model/recording.html:
+
+2017-08-02  Chris Dumez  <cdumez@apple.com>
+
+        NetworkResourceLoader::setDefersLoading() may cause start() to be called multiple times
+        https://bugs.webkit.org/show_bug.cgi?id=175109
+        <rdar://problem/33363169>
+
+        Reviewed by Brady Eidson.
+
+        Extend test coverage to cover cacheable redirects to a resource that needs
+        revalidation, similarly to the case in the radar.
+
+        * http/tests/cache/disk-cache/disk-cache-redirect-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-redirect.html:
+
+2017-08-02  Youenn Fablet  <youenn@apple.com>
+
+        HTTP tests with 'https' suffix are only run over HTTPS for WK2, not WK1
+        https://bugs.webkit.org/show_bug.cgi?id=175089
+
+        Reviewed by Chris Dumez.
+
+        Removing no longer needed expectations.
+
+        * platform/ios-wk1/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Removed.
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Removed.
+
+2017-08-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/appcache/deferred-events-delete-while-raising-timer.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=175107
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-08-02  Matt Lewis  <jlewis3@apple.com>
+
+        Removed bad expectations and marked test as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=175061
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+
+2017-08-02  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r207155): Unable to switch sheets when previewing Numbers '09 spreadsheets
+        https://bugs.webkit.org/show_bug.cgi?id=175098
+        <rdar://problem/31416763>
+
+        Reviewed by Daniel Bates.
+
+        * quicklook/multi-sheet-numbers-09-expected.txt: Added.
+        * quicklook/multi-sheet-numbers-09.html: Added.
+        * quicklook/resources/multi-sheet-numbers-09.numbers: Added.
+
+2017-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip newly imported WPT that is slow in Debug builds.
+
+        * TestExpectations:
+
+2017-08-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        inspector/runtime/CommandLineAPI-inspect.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=175092
+
+        Reviewed by Brian Burg.
+
+        * inspector/runtime/CommandLineAPI-inspect-expected.txt:
+        * inspector/runtime/CommandLineAPI-inspect.html:
+
+2017-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip newly imported WPT HTTPS tests on WK2 only.
+
+        The tests seem to work fine on WK1.
+
+        * TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-08-02  Matt Lewis  <jlewis3@apple.com>
+
+        Unmarked imported/w3c/IndexedDB-private-browsing/idbfactory_open.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=174949
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, temporarily skip some HTTPS tests that time out on the bots.
+
+        * TestExpectations:
+
+2017-08-02  Matt Lewis  <jlewis3@apple.com>
+
+        Added new expectations folders and moved expectations to correct folders.
+        https://bugs.webkit.org/show_bug.cgi?id=175061
+
+        Unreviewed gardening.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt.
+
+2017-08-02  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove obsolete expectations for syntax-021.xml.
+        https://bugs.webkit.org/show_bug.cgi?id=86142
+
+        Reviewed by Sam Weinig.
+
+        It may have started passing in r209396.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2017-08-02  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove overridden lines from win's TestExpectations.
+        https://bugs.webkit.org/show_bug.cgi?id=175068
+
+        Reviewed by Darin Adler.
+
+        These lines cause lint errors and block any patch that touches the file from
+        landing.
+
+        * platform/win/TestExpectations:
+
+2017-08-02  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Layout test editing/pasteboard/copy-standalone-image.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=163184
+
+        Unreviewed test gardening.
+
+        Remove obsolete failure expectation for copy-standalone-image.html.
+
+        The bug was fixed in r212428. (The test was also broken by both landings for
+        bug 170956, until r216174 fixed it again.)
+
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for navigator.sendBeacon
+        https://bugs.webkit.org/show_bug.cgi?id=175007
+        <rdar://problem/33547728>
+
+        Reviewed by Sam Weinig.
+
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        Rebaseline test now that sendBeacon is exposed on navigator.
+
+        * http/tests/blink/sendbeacon/beacon-cookie-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-cookie.html: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin-redirect-blob-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin-redirect-blob.html: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin-redirect-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin-redirect.html: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin.html: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin.https-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-cross-origin.https.html: Added.
+        * http/tests/blink/sendbeacon/beacon-detached-no-crash-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-detached-no-crash.html: Added.
+        * http/tests/blink/sendbeacon/beacon-same-origin-expected.txt: Added.
+        * http/tests/blink/sendbeacon/beacon-same-origin.html: Added.
+        * http/tests/blink/sendbeacon/connect-src-beacon-allowed-expected.txt: Added.
+        * http/tests/blink/sendbeacon/connect-src-beacon-allowed.html: Added.
+        * http/tests/blink/sendbeacon/resources/check-beacon.php: Added.
+        * http/tests/blink/sendbeacon/resources/save-beacon.php: Added.
+        Import more beacon test coverage from Blink.
+
+        * http/wpt/beacon/connect-src-beacon-blocked.sub-expected.txt: Added.
+        * http/wpt/beacon/connect-src-beacon-blocked.sub.html: Added.
+        Improve test coverage for sendBeacon and CSP.
+
+        * http/wpt/beacon/headers/header-content-type-same-origin-expected.txt: Added.
+        * http/wpt/beacon/headers/header-content-type-same-origin.html: Added.
+        Improve test coverage for sendBeacon with various types of payload. The test is done
+        using same origin as we do not currently support sending some of those payloads cross
+        origin yet.
+
+        * imported/blink/fast/beacon/beacon-basic-expected.txt: Added.
+        * imported/blink/fast/beacon/beacon-basic.html: Added.
+        Import basic Beacon test coverage from Blink.
+
+        * resources/window-postmessage-open-close.html: Added.
+        * tests-options.json:
+
+2017-08-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: simplify WebInspector with WI
+        https://bugs.webkit.org/show_bug.cgi?id=175058
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/**/*.html:
+        * http/tests/websocket/tests/hybi/inspector/**/*.html:
+        * inspector/**/*.html:
+
+2017-08-01  Matt Lewis  <jlewis3@apple.com>
+
+        Added expectations files for El Capitan.
+        https://bugs.webkit.org/show_bug.cgi?id=175061
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Added.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Added.
+
+2017-08-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create Recording tab for displaying recordings
+        https://bugs.webkit.org/show_bug.cgi?id=174484
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/number-utilities-expected.txt:
+        * inspector/unit-tests/number-utilities.html:
+
+2017-08-01  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r217197): New Yorker website hangs for a long time on load, lots of blank tiles
+        https://bugs.webkit.org/show_bug.cgi?id=175009
+        <rdar://problem/33505791>
+
+        Reviewed by Simon Fraser.
+
+        * fast/frames/flattening/media-query-growing-content-expected.txt: Added.
+        * fast/frames/flattening/media-query-growing-content.html: Added.
+        * fast/frames/flattening/resources/media-query-min-height-with-flattening.html: Added.
+
+2017-08-01  Youenn Fablet  <youenn@apple.com>
+
+        Layout tests with 'https' suffix should be run over HTTPS
+        https://bugs.webkit.org/show_bug.cgi?id=174992
+
+        Reviewed by Chris Dumez.
+
+        Updating test to allow display insecure content as otherwise the test would not complete now that it is run over HTTPS.
+        Adding WK1 expected files as the warning message is not printed.
+
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt:
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https.html:
+        * platform/ios-wk1/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+
+2017-08-01  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/IndexedDB-private-browsing/idbfactory_open.html as flaky.
+        <rdar://problem/33555052>
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-08-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WebCrypto] Add PKCS#8 import test that covers `parameters` and `publicKey` values in ECPrivateKey
+        https://bugs.webkit.org/show_bug.cgi?id=174420
+
+        Reviewed by Darin Adler.
+
+        Add test cases that cover testing of the optional ECParameters and publicKey bit string
+        attributes in the ECPrivateKey ASN.1 structure that's embedded in the PKCS#8 PrivateKeyInfo
+        ASN.1 structure.
+
+        Per the spec, if the ECParameters attribute in the ECPrivateKey structure is present, the
+        relevant curve object identifier should match the same curve identifier that's used in the
+        ECParameters attribute of the AlgorithmIdentifier structure in PrivateKeyInfo. Both of these
+        should of course match the curve that was specified for the import operation.
+
+        For the publicKey bit string, the data contained there should be properly formatted for
+        the specific curve, meaning it should be of proper curve-specific size and that it should
+        use 0x04 as the leading byte, signalling an uncompressed EC point. On top of that the public
+        key should have a valid value that positions it on the specified elliptic curve.
+
+        These cases are covered for PKCS#8 key imports for P-256 and P-384 curves and for both ECDH
+        and ECDSA algorithms in the newly-introduced tests. They are skipped on all platforms since
+        no implementation in WebKit can pass them yet.
+
+        * TestExpectations:
+        * crypto/subtle/ecdh-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey-expected.txt: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey-expected.txt: Added.
+        * crypto/subtle/ecdh-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html: Added.
+        * crypto/subtle/ecdsa-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey-expected.txt: Added.
+        * crypto/subtle/ecdsa-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html: Added.
+        * crypto/subtle/ecdsa-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey-expected.txt: Added.
+        * crypto/subtle/ecdsa-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html: Added.
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Layout test fast/forms/content-with-margins-inside-button.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=174610
+
+        Reviewed by Darin Adler.
+
+        Use an explicit text color for content-with-margins-inside-button.html.
+
+        This makes the test pass in the GTK port.
+
+        I also changed the formatting of the CSS to make it more readable.
+
+        * fast/forms/content-with-margins-inside-button-expected.html:
+        * fast/forms/content-with-margins-inside-button.html:
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove obsolete failure expectations for wpt XHR tests.
+        https://bugs.webkit.org/show_bug.cgi?id=175024
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove obsolete failure expectations for style-01.html.
+        https://bugs.webkit.org/show_bug.cgi?id=175026
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations:
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove obsolete failure expectation for Document-characterSet-normalization.html.
+        https://bugs.webkit.org/show_bug.cgi?id=175022
+
+        Reviewed by Sam Weinig.
+
+        The expectations were updated in r204605.
+
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        Remove obsolete failure expectation for regional-indicators.html.
+        https://bugs.webkit.org/show_bug.cgi?id=175021
+
+        Reviewed by Sam Weinig.
+
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Ms2ger  <Ms2ger@igalia.com>
+
+        REGRESSION(r205909): Layout test editing/pasteboard/image-in-iframe.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=163185
+
+        Reviewed by Sam Weinig.
+
+        Remove obsolete failure expectation for image-in-iframe.html.
+
+        The bug was fixed in r212428. (The test was also broken by both landings for
+        bug 170956, until r216174 fixed it again.)
+
+        * platform/gtk/TestExpectations:
+
+2017-08-01  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r220052): http/tests/media/video-play-stall.html times out
+        https://bugs.webkit.org/show_bug.cgi?id=174988
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations: Stop skipping this test.
+
+        * http/tests/media/video-play-stall.html: Use a 0-duration timeout to sidestep an
+        issue where the test runner never thinks the test is done because of the stalled
+        media loading, and times out. The behaviors here aren't great, but there is no
+        reason to think that this confused state has any effect on web browsing; just on
+        our test runners in a test that intentionally has a still loading video in it.
+
 2017-08-01  Ms2ger  <Ms2ger@igalia.com>
 
         Correct the line numbers in GTK's scheme-about.any-expected.txt.

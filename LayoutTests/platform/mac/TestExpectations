@@ -539,9 +539,6 @@ webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 # Hits assert https://bugs.webkit.org/show_bug.cgi?id=86208
 webkit.org/b/85308 ietestcenter/css3/valuesandunits/units-000.htm [ Skip ]
 
-# IETC namespace failures
-webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
-
 webaudio/mediastreamaudiosourcenode.html [ Skip ]
 webaudio/codec-tests/vorbis/ [ WontFix ]
 webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
@@ -1626,4 +1623,13 @@ webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-
 webkit.org/b/173068 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
 
 webkit.org/b/174682 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
+
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.html [ Pass Failure ]
+webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker.html [ Pass Failure ]
 

@@ -1,3 +1,363 @@
+2017-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add stack trace information for each RecordingAction
+        https://bugs.webkit.org/show_bug.cgi?id=174663
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/ScriptCallFrame.h:
+        Add `operator==` so that when a ScriptCallFrame object is held in a Vector, calling `find`
+        with an existing value doesn't need require a functor and can use existing code.
+
+        * interpreter/StackVisitor.h:
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::isWasmFrame const): Inlined in header.
+
+2017-08-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Mark Lam.
+
+        Use Thread::current() instead.
+
+        * API/JSContext.mm:
+        (+[JSContext currentContext]):
+        (+[JSContext currentThis]):
+        (+[JSContext currentCallee]):
+        (+[JSContext currentArguments]):
+        (-[JSContext beginCallbackWithData:calleeValue:thisValue:argumentCount:arguments:]):
+        (-[JSContext endCallbackWithData:]):
+        * heap/Heap.cpp:
+        (JSC::Heap::requestCollection):
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        (JSC::checkModuleSyntax):
+        (JSC::evaluate):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        (JSC::importModule):
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::checkCurrentAtomicStringTable):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        (JSC::JSLock::willReleaseLock):
+        (JSC::JSLock::dropAllLocks):
+        (JSC::JSLock::grabAllLocks):
+        * runtime/JSLock.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::updateStackLimits):
+        (JSC::VM::committedStackByteCount):
+        * runtime/VM.h:
+        (JSC::VM::isSafeToRecurse const):
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::isSafeToRecurse const):
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        LLInt should do pointer caging
+        https://bugs.webkit.org/show_bug.cgi?id=175036
+
+        Reviewed by Keith Miller.
+
+        Implementing this in the LLInt was challenging because offlineasm did not previously know
+        how to load from globals. This teaches it how to do that on Darwin/x86_64, which happens
+        to be where the Gigacage is enabled right now.
+
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/ast.rb:
+        * offlineasm/x86.rb:
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Sweeping should only scribble when sweeping to free list
+        https://bugs.webkit.org/show_bug.cgi?id=175105
+
+        Reviewed by Saam Barati.
+        
+        I just saw a crash on the bots where a destructor call attempt dereferenced scribbled memory. This
+        can happen because the bump path of specializedSweep will scribble in SweepOnly, which replaces the
+        zap word (i.e. 0) with the scribble word (i.e. 0xbadbeef0). This is a recent regression, since we
+        didn't used to do destruction on the bump path. No destruction, no zapping. Looking at the pop
+        path, we only scribble when we SweepToFreeList. This ensures that we only overwrite the zap word
+        when it doesn't matter anyway because we're building a free list.
+        
+        This is a fix for those crashes on the bots because it means that we'll no longer scribble over the
+        zap.
+
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::specializedSweep):
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        All C++ accesses to JSObject::m_butterfly should do caging
+        https://bugs.webkit.org/show_bug.cgi?id=175039
+
+        Reviewed by Keith Miller.
+        
+        Makes JSObject::m_butterfly a AuxiliaryBarrier<CagedPtr<Butterfly>> and adopts the CagedPtr<> API.
+        This ensures that you can't cause C++ code to access a butterfly that has been rewired to point
+        outside the gigacage.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::pop):
+        (JSC::JSArray::push):
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        (JSC::JSArray::fillArgList):
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::heapSnapshot):
+        (JSC::JSObject::createInitialIndexedStorage):
+        (JSC::JSObject::createArrayStorage):
+        (JSC::JSObject::convertUndecidedToInt32):
+        (JSC::JSObject::convertUndecidedToDouble):
+        (JSC::JSObject::convertUndecidedToContiguous):
+        (JSC::JSObject::convertInt32ToDouble):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToContiguous):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::ensureLengthSlow):
+        (JSC::JSObject::allocateMoreOutOfLineStorage):
+        * runtime/JSObject.h:
+        (JSC::JSObject::canGetIndexQuickly):
+        (JSC::JSObject::getIndexQuickly):
+        (JSC::JSObject::tryGetIndexQuickly const):
+        (JSC::JSObject::canSetIndexQuickly):
+        (JSC::JSObject::setIndexQuickly):
+        (JSC::JSObject::initializeIndex):
+        (JSC::JSObject::initializeIndexWithoutBarrier):
+        (JSC::JSObject::butterfly const):
+        (JSC::JSObject::butterfly):
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        We should be OK with the gigacage being disabled on gmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=175082
+
+        Reviewed by Michael Saboff.
+
+        * jsc.cpp:
+        (jscmain):
+
+2017-08-02  Saam Barati  <sbarati@apple.com>
+
+        On memory-constrained iOS devices, reduce the rate at which the JS heap grows before a GC to try to keep more memory available for the system
+        https://bugs.webkit.org/show_bug.cgi?id=175041
+        <rdar://problem/33659370>
+
+        Reviewed by Filip Pizlo.
+
+        The testing I have done shows that this new function is a ~10%
+        progression running JetStream on 1GB iOS devices. I've also tried
+        this on a few > 1GB iOS devices, and the testing shows this is either neutral
+        or a regression. Right now, we'll just enable this for <= 1GB devices
+        since it's a win. In the future, we might want to either look into
+        tweaking these parameters or coming up with a new function for > 1GB
+        devices.
+
+        * heap/Heap.cpp:
+        * runtime/Options.h:
+
+2017-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Bmalloc and GC should put auxiliaries (butterflies, typed array backing stores) in a gigacage (separate multi-GB VM region)
+        https://bugs.webkit.org/show_bug.cgi?id=174727
+
+        Reviewed by Mark Lam.
+        
+        This adopts the Gigacage for the GigacageSubspace, which we use for Auxiliary allocations. Also, in
+        one place in the code - the FTL codegen for butterfly and typed array access - we "cage" the accesses
+        themselves. Basically, we do masking to ensure that the pointer points into the gigacage.
+        
+        This is neutral on JetStream.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3InsertionSet.cpp:
+        (JSC::B3::InsertionSet::execute):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGClobberize.cpp:
+        (JSC::DFG::readsOverlap):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixedButterflyAccessUncagingPhase.cpp: Added.
+        (JSC::DFG::performFixedButterflyAccessUncaging):
+        * dfg/DFGFixedButterflyAccessUncagingPhase.h: Added.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetButterfly):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantArrayChecks):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetButterfly):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringCharAt):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringCharCodeAt):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMapBucket):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetDirectPname):
+        (JSC::FTL::DFG::LowerDFGToB3::compileToLowerCase):
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * heap/GigacageSubspace.cpp: Added.
+        (JSC::GigacageSubspace::GigacageSubspace):
+        (JSC::GigacageSubspace::~GigacageSubspace):
+        (JSC::GigacageSubspace::tryAllocateAlignedMemory):
+        (JSC::GigacageSubspace::freeAlignedMemory):
+        (JSC::GigacageSubspace::canTradeBlocksWith):
+        * heap/GigacageSubspace.h: Added.
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::finalize):
+        (JSC::Heap::sweepInFinalize):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::shouldDoFullCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::reportWebAssemblyFastMemoriesAllocated): Deleted.
+        (JSC::Heap::webAssemblyFastMemoriesThisCycleAtThreshold const): Deleted.
+        (JSC::Heap::sweepLargeAllocations): Deleted.
+        (JSC::Heap::didAllocateWebAssemblyFastMemories): Deleted.
+        * heap/Heap.h:
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::tryCreate):
+        (JSC::LargeAllocation::destroy):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting):
+        (JSC::MarkedAllocator::tryAllocateBlock):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::tryCreate):
+        (JSC::MarkedBlock::Handle::Handle):
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::Handle::didAddToAllocator):
+        (JSC::MarkedBlock::Handle::subspace const): Deleted.
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::subspace const):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::~MarkedSpace):
+        (JSC::MarkedSpace::freeMemory):
+        (JSC::MarkedSpace::prepareForAllocation):
+        (JSC::MarkedSpace::addMarkedAllocator):
+        (JSC::MarkedSpace::findEmptyBlockToSteal): Deleted.
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::firstAllocator const):
+        (JSC::MarkedSpace::allocatorForEmptyAllocation const): Deleted.
+        * heap/Subspace.cpp:
+        (JSC::Subspace::Subspace):
+        (JSC::Subspace::canTradeBlocksWith):
+        (JSC::Subspace::tryAllocateAlignedMemory):
+        (JSC::Subspace::freeAlignedMemory):
+        (JSC::Subspace::prepareForAllocation):
+        (JSC::Subspace::findEmptyBlockToSteal):
+        * heap/Subspace.h:
+        (JSC::Subspace::didCreateFirstAllocator):
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachAllocator):
+        (JSC::Subspace::forEachMarkedBlock):
+        (JSC::Subspace::forEachNotEmptyMarkedBlock):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitDoubleLoad):
+        (JSC::JIT::emitContiguousLoad):
+        (JSC::JIT::emitArrayStorageLoad):
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emitArrayStoragePutByVal):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitIntTypedArrayGetByVal):
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * jsc.cpp:
+        (fillBufferWithContentsOfFile):
+        (functionReadFile):
+        (gigacageDisabled):
+        (jscmain):
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBuffer::createAdopted):
+        (JSC::ArrayBuffer::createFromBytes):
+        (JSC::ArrayBuffer::tryCreate):
+        * runtime/IndexingHeader.h:
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSArrayBuffer.cpp:
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        (JSC::JSArrayBufferView::finalize):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        * runtime/JSObject.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        (JSC::VM::gigacageDisabledCallback):
+        (JSC::VM::gigacageDisabled):
+        * runtime/VM.h:
+        (JSC::VM::fireGigacageEnabledIfNecessary):
+        (JSC::VM::gigacageEnabled):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+        * wasm/WasmCodeBlock.cpp:
+        (JSC::Wasm::CodeBlock::isSafeToRun):
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::makeString):
+        (JSC::Wasm::Memory::create):
+        (JSC::Wasm::Memory::~Memory):
+        (JSC::Wasm::Memory::addressIsInActiveFastMemory):
+        (JSC::Wasm::Memory::grow):
+        (JSC::Wasm::Memory::initializePreallocations): Deleted.
+        (JSC::Wasm::Memory::maxFastMemoryCount): Deleted.
+        * wasm/WasmMemory.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::grow):
+        (JSC::JSWebAssemblyMemory::finishCreation):
+        * wasm/js/JSWebAssemblyMemory.h:
+        (JSC::JSWebAssemblyMemory::subspaceFor):
+
 2017-07-31  Mark Lam  <mark.lam@apple.com>
 
         Added some UNLIKELYs to operationOptimize().

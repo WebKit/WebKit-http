@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TreeElement = class TreeElement extends WebInspector.Object
+WI.TreeElement = class TreeElement extends WI.Object
 {
     constructor(title, representedObject, options = {})
     {
@@ -38,7 +38,7 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (this.representedObject.__treeElementIdentifier)
             this.identifier = this.representedObject.__treeElementIdentifier;
         else {
-            this.identifier = WebInspector.TreeOutline._knownTreeElementNextIdentifier++;
+            this.identifier = WI.TreeOutline._knownTreeElementNextIdentifier++;
             this.representedObject.__treeElementIdentifier = this.identifier;
         }
 
@@ -57,13 +57,13 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
 
     // Methods
 
-    appendChild() { return WebInspector.TreeOutline.prototype.appendChild.apply(this, arguments); }
-    insertChild() { return WebInspector.TreeOutline.prototype.insertChild.apply(this, arguments); }
-    removeChild() { return WebInspector.TreeOutline.prototype.removeChild.apply(this, arguments); }
-    removeChildAtIndex() { return WebInspector.TreeOutline.prototype.removeChildAtIndex.apply(this, arguments); }
-    removeChildren() { return WebInspector.TreeOutline.prototype.removeChildren.apply(this, arguments); }
-    removeChildrenRecursive() { return WebInspector.TreeOutline.prototype.removeChildrenRecursive.apply(this, arguments); }
-    selfOrDescendant() { return WebInspector.TreeOutline.prototype.selfOrDescendant.apply(this, arguments); }
+    appendChild() { return WI.TreeOutline.prototype.appendChild.apply(this, arguments); }
+    insertChild() { return WI.TreeOutline.prototype.insertChild.apply(this, arguments); }
+    removeChild() { return WI.TreeOutline.prototype.removeChild.apply(this, arguments); }
+    removeChildAtIndex() { return WI.TreeOutline.prototype.removeChildAtIndex.apply(this, arguments); }
+    removeChildren() { return WI.TreeOutline.prototype.removeChildren.apply(this, arguments); }
+    removeChildrenRecursive() { return WI.TreeOutline.prototype.removeChildrenRecursive.apply(this, arguments); }
+    selfOrDescendant() { return WI.TreeOutline.prototype.selfOrDescendant.apply(this, arguments); }
 
     get arrowToggleWidth()
     {
@@ -165,8 +165,11 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (this._childrenListNode)
             this._childrenListNode.hidden = this._hidden;
 
-        if (this.treeOutline)
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementVisibilityDidChange, {element: this});
+        if (this.treeOutline) {
+            this.treeOutline.soon.updateVirtualizedElements(this);
+
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementVisibilityDidChange, {element: this});
+        }
     }
 
     get shouldRefreshChildren()
@@ -233,9 +236,9 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
             if (this.selected)
                 this._listItemNode.classList.add("selected");
 
-            this._listItemNode.addEventListener("mousedown", WebInspector.TreeElement.treeElementMouseDown);
-            this._listItemNode.addEventListener("click", WebInspector.TreeElement.treeElementToggled);
-            this._listItemNode.addEventListener("dblclick", WebInspector.TreeElement.treeElementDoubleClicked);
+            this._listItemNode.addEventListener("mousedown", WI.TreeElement.treeElementMouseDown);
+            this._listItemNode.addEventListener("click", WI.TreeElement.treeElementToggled);
+            this._listItemNode.addEventListener("dblclick", WI.TreeElement.treeElementDoubleClicked);
 
             if (this.onattach)
                 this.onattach(this);
@@ -244,9 +247,16 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         var nextSibling = null;
         if (this.nextSibling && this.nextSibling._listItemNode && this.nextSibling._listItemNode.parentNode === this.parent._childrenListNode)
             nextSibling = this.nextSibling._listItemNode;
-        this.parent._childrenListNode.insertBefore(this._listItemNode, nextSibling);
-        if (this._childrenListNode)
-            this.parent._childrenListNode.insertBefore(this._childrenListNode, this._listItemNode.nextSibling);
+
+        if (!this.treeOutline || !this.treeOutline.virtualized) {
+            this.parent._childrenListNode.insertBefore(this._listItemNode, nextSibling);
+            if (this._childrenListNode)
+                this.parent._childrenListNode.insertBefore(this._childrenListNode, this._listItemNode.nextSibling);
+        }
+
+        if (this.treeOutline)
+            this.treeOutline.soon.updateVirtualizedElements();
+
         if (this.selected)
             this.select();
         if (this.expanded)
@@ -311,7 +321,7 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (element.treeElement.isEventWithinDisclosureTriangle(event))
             return;
 
-        if (element.treeElement.dispatchEventToListeners(WebInspector.TreeElement.Event.DoubleClick))
+        if (element.treeElement.dispatchEventToListeners(WI.TreeElement.Event.DoubleClick))
             return;
 
         if (element.treeElement.ondblclick)
@@ -334,8 +344,11 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (this.oncollapse)
             this.oncollapse(this);
 
-        if (this.treeOutline)
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementDisclosureDidChanged, {element: this});
+        if (this.treeOutline) {
+            this.treeOutline.soon.updateVirtualizedElements(this);
+
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementDisclosureDidChanged, {element: this});
+        }
     }
 
     collapseRecursively()
@@ -398,8 +411,11 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (this.onexpand)
             this.onexpand(this);
 
-        if (this.treeOutline)
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementDisclosureDidChanged, {element: this});
+        if (this.treeOutline) {
+            this.treeOutline.soon.updateVirtualizedElements(this);
+
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementDisclosureDidChanged, {element: this});
+        }
     }
 
     expandRecursively(maxDepth)
@@ -445,6 +461,11 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
                 currentAncestor.expand();
             currentAncestor = currentAncestor.parent;
         }
+
+        // This must be called before onreveal, as some subclasses will scrollIntoViewIfNeeded and
+        // we should update the visible elements before attempting to scroll.
+        if (this.treeOutline)
+            this.treeOutline.updateVirtualizedElements(this);
 
         if (this.onreveal)
             this.onreveal(this);
@@ -512,12 +533,12 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
             if (this.onselect)
                 this.onselect(this, selectedByUser);
 
-            treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.SelectionDidChange, {selectedElement: this, deselectedElement, selectedByUser});
+            treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.SelectionDidChange, {selectedElement: this, deselectedElement, selectedByUser});
         }
 
         treeOutline.processingSelectionChange = false;
 
-        let treeOutlineGroup = WebInspector.TreeOutlineGroup.groupForTreeOutline(treeOutline);
+        let treeOutlineGroup = WI.TreeOutlineGroup.groupForTreeOutline(treeOutline);
         if (!treeOutlineGroup)
             return;
 
@@ -545,7 +566,7 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
             if (this.ondeselect)
                 this.ondeselect(this);
 
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.SelectionDidChange, {deselectedElement: this});
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.SelectionDidChange, {deselectedElement: this});
         }
 
         return true;
@@ -621,7 +642,7 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         // FIXME: We should not use getComputedStyle(). For that we need to get rid of using ::before for disclosure triangle. (http://webk.it/74446)
         let computedStyle = window.getComputedStyle(this._listItemNode);
         let start = 0;
-        if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL)
+        if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
             start += this._listItemNode.totalOffsetRight - computedStyle.getPropertyCSSValue("padding-right").getFloatValue(CSSPrimitiveValue.CSS_PX) - this.arrowToggleWidth;
         else
             start += this._listItemNode.totalOffsetLeft + computedStyle.getPropertyCSSValue("padding-left").getFloatValue(CSSPrimitiveValue.CSS_PX);
@@ -634,12 +655,12 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (this.children.some((child) => child.hasChildren) || (this.hasChildren && !this.children.length)) {
             contextMenu.appendSeparator();
 
-            contextMenu.appendItem(WebInspector.UIString("Expand All"), this.expandRecursively.bind(this));
-            contextMenu.appendItem(WebInspector.UIString("Collapse All"), this.collapseRecursively.bind(this));
+            contextMenu.appendItem(WI.UIString("Expand All"), this.expandRecursively.bind(this));
+            contextMenu.appendItem(WI.UIString("Collapse All"), this.collapseRecursively.bind(this));
         }
     }
 };
 
-WebInspector.TreeElement.Event = {
+WI.TreeElement.Event = {
     DoubleClick: "tree-element-double-click",
 };

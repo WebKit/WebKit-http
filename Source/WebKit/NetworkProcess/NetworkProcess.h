@@ -116,7 +116,7 @@ public:
 
     void ensurePrivateBrowsingSession(WebsiteDataStoreParameters&&);
 
-    void grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler);
+    void grantSandboxExtensionsToStorageProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     void updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool shouldClearFirst);
@@ -198,7 +198,7 @@ private:
     void setAllowsAnySSLCertificateForWebSocket(bool);
     void syncAllCookies();
 
-    void didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID);
+    void didGrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID);
 
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);

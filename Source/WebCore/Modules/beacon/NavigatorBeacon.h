@@ -1,45 +1,42 @@
-#ifndef NavigatorBeacon_h
-#define NavigatorBeacon_h
+/*
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-#include "DOMWindowProperty.h"
-#include "Supplementable.h"
-#include "ExceptionCode.h"
-#include "ScriptExecutionContext.h"
+#pragma once
 
-namespace JSC {
-class ArrayBufferView;
-}
+#include "ExceptionOr.h"
+#include "PingLoader.h"
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
+class Document;
 class Navigator;
-class ScriptExecutionContext;
-class Blob;
-class DOMFormData;
 
-class NavigatorBeacon : public Supplement<Navigator>, public DOMWindowProperty {
-
+class NavigatorBeacon {
 public:
-    NavigatorBeacon(Frame*);
-    virtual ~NavigatorBeacon();
-
-    static NavigatorBeacon& from(Navigator&);
-
-    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, Blob*, ExceptionCode&);
-    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, const RefPtr<JSC::ArrayBufferView>&, ExceptionCode&);
-    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, DOMFormData*, ExceptionCode&);
-    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, const String&, ExceptionCode&);
-
-private:
-    static const char* supplementName();
-
-    bool canSendBeacon(ScriptExecutionContext&, const URL&, ExceptionCode&);
-    int maxAllowance() const;
-    bool beaconResult(ScriptExecutionContext& context, bool allowed, int sentBytes);
-
-    int m_transmittedBytes;
+    static ExceptionOr<bool> sendBeacon(Navigator&, Document&, const String& url, std::optional<BodyInit>&&);
 };
 
-} // namespace WebCore
-
-#endif // NavigatorBeacon_h
+}

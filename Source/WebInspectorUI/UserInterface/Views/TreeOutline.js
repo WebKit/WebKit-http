@@ -26,14 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
+WI.TreeOutline = class TreeOutline extends WI.Object
 {
     constructor(element)
     {
         super();
 
         this.element = element || document.createElement("ol");
-        this.element.classList.add(WebInspector.TreeOutline.ElementStyleClassName);
+        this.element.classList.add(WI.TreeOutline.ElementStyleClassName);
         this.element.addEventListener("contextmenu", this._handleContextmenu.bind(this));
 
         this.children = [];
@@ -54,10 +54,15 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         this._disclosureButtons = true;
         this._customIndent = false;
 
+        this._virtualizedScrollContainer = null;
+        this._virtualizedTreeItemHeight = NaN;
+        this._virtualizedTopSpacer = null;
+        this._virtualizedBottomSpacer = null;
+
         this._childrenListNode.tabIndex = 0;
         this._childrenListNode.addEventListener("keydown", this._treeKeyDown.bind(this), true);
 
-        WebInspector.TreeOutline._generateStyleRulesIfNeeded();
+        WI.TreeOutline._generateStyleRulesIfNeeded();
     }
 
     // Public
@@ -135,7 +140,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             return;
 
         this._customIndent = x;
-        this.element.classList.toggle(WebInspector.TreeOutline.CustomIndentStyleClassName, this._customIndent);
+        this.element.classList.toggle(WI.TreeOutline.CustomIndentStyleClassName, this._customIndent);
     }
 
     appendChild(child)
@@ -175,7 +180,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             child._attach();
 
         if (this.treeOutline)
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementAdded, {element: child});
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementAdded, {element: child});
 
         if (isFirstChild && this.expanded)
             this.expand();
@@ -225,7 +230,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             child._attach();
 
         if (this.treeOutline)
-            this.treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementAdded, {element: child});
+            this.treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementAdded, {element: child});
 
         if (isFirstChild && this.expanded)
             this.expand();
@@ -268,7 +273,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         child.previousSibling = null;
 
         if (treeOutline)
-            treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementRemoved, {element: child});
+            treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementRemoved, {element: child});
     }
 
     removeChild(child, suppressOnDeselect, suppressSelectSibling)
@@ -309,7 +314,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             child.previousSibling = null;
 
             if (treeOutline)
-                treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementRemoved, {element: child});
+                treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementRemoved, {element: child});
         }
 
         this.children = [];
@@ -340,7 +345,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             child.previousSibling = null;
 
             if (treeOutline)
-                treeOutline.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementRemoved, {element: child});
+                treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementRemoved, {element: child});
         }
 
         this.children = [];
@@ -485,7 +490,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         if (treeElement.treeOutline !== this)
             return;
 
-        this.dispatchEventToListeners(WebInspector.TreeOutline.Event.ElementDidChange, {element: treeElement});
+        this.dispatchEventToListeners(WI.TreeOutline.Event.ElementDidChange, {element: treeElement});
     }
 
     treeElementFromNode(node)
@@ -513,7 +518,7 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         if (!this.selectedTreeElement || event.shiftKey || event.metaKey || event.ctrlKey)
             return;
 
-        let isRTL = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL;
+        let isRTL = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL;
 
         var handled = false;
         var nextSelectedElement;
@@ -633,6 +638,93 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         return false;
     }
 
+    get virtualized()
+    {
+        return this._virtualizedScrollContainer && !isNaN(this._virtualizedTreeItemHeight);
+    }
+
+    registerScrollVirtualizer(scrollContainer, treeItemHeight)
+    {
+        console.assert(!isNaN(treeItemHeight));
+
+        this._virtualizedScrollContainer = scrollContainer;
+        this._virtualizedTreeItemHeight = treeItemHeight;
+        this._virtualizedTopSpacer = document.createElement("div");
+        this._virtualizedBottomSpacer = document.createElement("div");
+
+        this._virtualizedScrollContainer.addEventListener("scroll", (event) => {
+            this.updateVirtualizedElements();
+        });
+    }
+
+    updateVirtualizedElements(focusedTreeElement)
+    {
+        if (!this.virtualized)
+            return;
+
+        function walk(parent, callback) {
+            let count = 0;
+            let shouldReturn = false;
+            for (let i = 0; i < parent.children.length; ++i) {
+                if (!parent.children[i].revealed(false))
+                    continue;
+
+                shouldReturn = callback({
+                    parent,
+                    treeElement: parent.children[i],
+                    count,
+                });
+                if (shouldReturn)
+                    break;
+
+                ++count;
+                if (parent.children[i].expanded) {
+                    let result = walk(parent.children[i], callback);
+                    count += result.count;
+                    if (result.shouldReturn)
+                        break;
+                }
+            }
+            return {count, shouldReturn};
+        }
+
+        let numberVisible = Math.ceil(this._virtualizedScrollContainer.offsetHeight / this._virtualizedTreeItemHeight);
+        let extraRows = Math.max(numberVisible * 5, 50);
+        let firstItem = Math.floor(this._virtualizedScrollContainer.scrollTop / this._virtualizedTreeItemHeight) - extraRows;
+        let lastItem = firstItem + numberVisible + (extraRows * 2);
+
+        if (focusedTreeElement && focusedTreeElement.revealed(false)) {
+            let index = walk(this, ({treeElement}) => treeElement === focusedTreeElement).count;
+            if (index < firstItem) {
+                firstItem = index - extraRows;
+                lastItem = index + numberVisible + extraRows;
+            } else if (index > lastItem) {
+                firstItem = index - numberVisible - extraRows;
+                lastItem = index + extraRows;
+            }
+        }
+
+        let totalItems = walk(this, ({parent, treeElement, count}) => {
+            if (count < firstItem || count > lastItem)
+                treeElement.element.remove();
+            else {
+                parent._childrenListNode.appendChild(treeElement.element);
+                if (treeElement._childrenListNode)
+                    parent._childrenListNode.appendChild(treeElement._childrenListNode);
+            }
+            return false;
+        }).count;
+
+        this._virtualizedTopSpacer.style.height = (Math.max(firstItem, 0) * this._virtualizedTreeItemHeight) + "px";
+        this.element.parentNode.insertBefore(this._virtualizedTopSpacer, this.element);
+
+        this._virtualizedBottomSpacer.style.height = (Math.max(totalItems - lastItem, 0) * this._virtualizedTreeItemHeight) + "px";
+        this.element.parentNode.insertBefore(this._virtualizedBottomSpacer, this.element.nextElementSibling);
+
+        if (focusedTreeElement)
+            this._virtualizedScrollContainer.scrollTop = (firstItem + extraRows) * this._virtualizedTreeItemHeight;
+    }
+
     // Protected
 
     treeElementFromEvent(event)
@@ -669,10 +761,10 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
 
     static _generateStyleRulesIfNeeded()
     {
-        if (WebInspector.TreeOutline._styleElement)
+        if (WI.TreeOutline._styleElement)
            return;
 
-        WebInspector.TreeOutline._styleElement = document.createElement("style");
+        WI.TreeOutline._styleElement = document.createElement("style");
 
         let maximumTreeDepth = 32;
         let baseLeftPadding = 5; // Matches the padding in TreeOutline.css for the item class. Keep in sync.
@@ -683,9 +775,9 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         for (let i = 1; i <= maximumTreeDepth; ++i) {
             // Keep all the elements at the same depth once the maximum is reached.
             childrenSubstring += i === maximumTreeDepth ? " .children" : " > .children";
-            styleText += `.${WebInspector.TreeOutline.ElementStyleClassName}:not(.${WebInspector.TreeOutline.CustomIndentStyleClassName})${childrenSubstring} > .item { `;
+            styleText += `.${WI.TreeOutline.ElementStyleClassName}:not(.${WI.TreeOutline.CustomIndentStyleClassName})${childrenSubstring} > .item { `;
 
-            if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL)
+            if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
                 styleText += "padding-right: ";
             else
                 styleText += "padding-left: ";
@@ -693,9 +785,9 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
             styleText += (baseLeftPadding + (depthPadding * i)) + "px; }\n";
         }
 
-        WebInspector.TreeOutline._styleElement.textContent = styleText;
+        WI.TreeOutline._styleElement.textContent = styleText;
 
-        document.head.appendChild(WebInspector.TreeOutline._styleElement);
+        document.head.appendChild(WI.TreeOutline._styleElement);
     }
 
     _handleContextmenu(event)
@@ -704,17 +796,17 @@ WebInspector.TreeOutline = class TreeOutline extends WebInspector.Object
         if (!treeElement)
             return;
 
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+        let contextMenu = WI.ContextMenu.createFromEvent(event);
         this.populateContextMenu(contextMenu, event, treeElement);
     }
 };
 
-WebInspector.TreeOutline._styleElement = null;
+WI.TreeOutline._styleElement = null;
 
-WebInspector.TreeOutline.ElementStyleClassName = "tree-outline";
-WebInspector.TreeOutline.CustomIndentStyleClassName = "custom-indent";
+WI.TreeOutline.ElementStyleClassName = "tree-outline";
+WI.TreeOutline.CustomIndentStyleClassName = "custom-indent";
 
-WebInspector.TreeOutline.Event = {
+WI.TreeOutline.Event = {
     ElementAdded: Symbol("element-added"),
     ElementDidChange: Symbol("element-did-change"),
     ElementRemoved: Symbol("element-removed"),
@@ -723,4 +815,4 @@ WebInspector.TreeOutline.Event = {
     SelectionDidChange: Symbol("selection-did-change")
 };
 
-WebInspector.TreeOutline._knownTreeElementNextIdentifier = 1;
+WI.TreeOutline._knownTreeElementNextIdentifier = 1;

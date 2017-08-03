@@ -27,13 +27,13 @@
 #include "NetworkProcessProxy.h"
 
 #include "AuthenticationChallengeProxy.h"
-#include "DatabaseProcessMessages.h"
 #include "DownloadProxyMessages.h"
 #include "LegacyCustomProtocolManagerProxyMessages.h"
 #include "Logging.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
 #include "SandboxExtension.h"
+#include "StorageProcessMessages.h"
 #include "WebPageProxy.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
@@ -289,19 +289,19 @@ void NetworkProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
     callback();
 }
 
-void NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID, const Vector<String>& paths)
+void NetworkProcessProxy::grantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID, const Vector<String>& paths)
 {
 #if ENABLE(SANDBOX_EXTENSIONS)
     SandboxExtension::HandleArray extensions;
     extensions.allocate(paths.size());
     for (size_t i = 0; i < paths.size(); ++i) {
-        // ReadWrite is required for creating hard links as well as deleting the temporary file, which the DatabaseProcess will do.
+        // ReadWrite is required for creating hard links as well as deleting the temporary file, which the StorageProcess will do.
         SandboxExtension::createHandle(paths[i], SandboxExtension::ReadWrite, extensions[i]);
     }
 
-    m_processPool.sendToDatabaseProcessRelaunchingIfNecessary(Messages::DatabaseProcess::GrantSandboxExtensionsForBlobs(paths, extensions));
+    m_processPool.sendToStorageProcessRelaunchingIfNecessary(Messages::StorageProcess::GrantSandboxExtensionsForBlobs(paths, extensions));
 #endif
-    connection()->send(Messages::NetworkProcess::DidGrantSandboxExtensionsToDatabaseProcessForBlobs(requestID), 0);
+    connection()->send(Messages::NetworkProcess::DidGrantSandboxExtensionsToStorageProcessForBlobs(requestID), 0);
 }
 
 void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)

@@ -40,7 +40,6 @@
 #include "Options.h"
 #include "StructureIDTable.h"
 #include "SuperSampler.h"
-#include "WasmMemory.h"
 #include "WasmThunks.h"
 #include "WriteBarrier.h"
 #include <mutex>
@@ -60,9 +59,6 @@ void initializeThreading()
     std::call_once(initializeThreadingOnceFlag, []{
         WTF::initializeThreading();
         Options::initialize();
-#if ENABLE(WEBASSEMBLY)
-        Wasm::Memory::initializePreallocations();
-#endif
 #if ENABLE(WRITE_BARRIER_PROFILING)
         WriteBarrierCounters::initialize();
 #endif
@@ -75,8 +71,8 @@ void initializeThreading()
         DisallowVMReentry::initialize();
 #endif
         initializeSuperSampler();
-        WTFThreadData& threadData = wtfThreadData();
-        threadData.setSavedLastStackTop(threadData.stack().origin());
+        Thread& thread = Thread::current();
+        thread.setSavedLastStackTop(thread.stack().origin());
 
 #if ENABLE(WEBASSEMBLY)
         Wasm::Thunks::initialize();

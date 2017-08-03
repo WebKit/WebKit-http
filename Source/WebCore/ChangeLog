@@ -1,3 +1,338 @@
+2017-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add stack trace information for each RecordingAction
+        https://bugs.webkit.org/show_bug.cgi?id=174663
+
+        Reviewed by Joseph Pecoraro.
+
+        Tests: inspector/canvas/recording-2d.html
+               inspector/model/recording.html
+
+        * inspector/InspectorCanvas.h:
+        * inspector/InspectorCanvas.cpp:
+        (WebCore::InspectorCanvas::indexForData):
+        (WebCore::InspectorCanvas::buildAction):
+
+2017-08-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Mark Lam.
+
+        Use Thread::current() instead.
+
+        * fileapi/AsyncFileStream.cpp:
+        * platform/ThreadGlobalData.cpp:
+        (WebCore::ThreadGlobalData::ThreadGlobalData):
+        * platform/graphics/cocoa/WebCoreDecompressionSession.h:
+        * platform/ios/wak/WebCoreThread.mm:
+        (StartWebThread):
+        * workers/WorkerThread.cpp:
+        (WebCore::WorkerThread::workerThread):
+
+2017-08-02  Sam Weinig  <sam@webkit.org>
+
+        Fix crashes in GC creating a document fragment on a background thread
+        https://bugs.webkit.org/show_bug.cgi?id=175111
+
+        Reviewed by Chris Dumez.
+
+        r220095 (https://webkit.org/b/175006) change JSHTMLTemplateElement from using a
+        private name + property to manager the lifetime of the reference DocumentFragment
+        to using the idiomatic visitAdditionalChildren. Unfortunately, the function to access
+        the DocumentFragment lazily creates it. If this lazy creation happens on a GC thread,
+        badness ensues. This introduces an accessor that returns the DocumentFragment if it
+        has been created or null if it has not.
+
+        * bindings/js/JSHTMLTemplateElementCustom.cpp:
+        (WebCore::JSHTMLTemplateElement::visitAdditionalChildren):
+        * html/HTMLTemplateElement.cpp:
+        (WebCore::HTMLTemplateElement::contentIfAvailable):
+        * html/HTMLTemplateElement.h:
+
+2017-08-02  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Simplify [EnabledBySettings] extended attribute code to not require passing a global object to finishCreation
+        https://bugs.webkit.org/show_bug.cgi?id=175087
+
+        Reviewed by Chris Dumez.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateImplementation):
+        (GeneratePrototypeDeclaration):
+        Remove unnecessary passing of the global object to finishCreation for [EnabledBySettings].
+
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.cpp:
+        * bindings/scripts/test/JS/JSTestNode.cpp:
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        Update tests.
+
+2017-08-02  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r207155): Unable to switch sheets when previewing Numbers '09 spreadsheets
+        https://bugs.webkit.org/show_bug.cgi?id=175098
+        <rdar://problem/31416763>
+
+        Reviewed by Daniel Bates.
+
+        r207155 enabled sandboxing on the frame displaying a QuickLook preview. This restricted
+        frames within the sandbox from navigating their sandboxed siblings or ancestors, which
+        breaks the functionality of multi-sheet Numbers '09 spreadsheet previews. These previews
+        contain a frameset with a table of contents frame and a content frame, and the table of
+        contents frame needs to be able to navigate the content frame when the sheet selection
+        changes.
+
+        Fix this by disabling the SandboxNavigation flag in the QuickLook sandbox. Frames within the
+        sandbox will be able to navigate each other, but will not be able to navigate the top frame
+        (due to SandboxTopNavigation still being enabled), nor will they be able to navigate any
+        other ancestor frame outside the sandbox (due to QuickLook previews being in a different
+        origin than the hosting frame). These two cases are covered by existing tests.
+
+        Test: quicklook/multi-sheet-numbers-09.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::applyQuickLookSandbox): Added a call to
+        disableSandboxFlags(SandboxNavigation) after applying the content security policy.
+        * dom/SecurityContext.h:
+        (WebCore::SecurityContext::disableSandboxFlags): Defined disableSandboxFlags().
+
+2017-08-02  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Removing samples when presentation order does not match decode order can cause bad behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=175091
+
+        Reviewed by Eric Carlson.
+
+        Address follow-up comments to r219519.
+
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::removeCodedFrames):
+
+2017-08-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Remove unused and obsolete setting mediaDocumentEntersFullscreenAutomatically
+        https://bugs.webkit.org/show_bug.cgi?id=175080
+
+        Reviewed by Jon Lee.
+
+        No new tests because this only removes unused code.
+
+        This is obsolete because of the alternate solution in
+        https://bugs.webkit.org/show_bug.cgi?id=174850
+
+        * page/Settings.in:
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        GPUBuffer::length() should return the size of the array buffer backing the GPU buffer, not the rounded-up GPU buffer length
+        https://bugs.webkit.org/show_bug.cgi?id=175079
+
+        Reviewed by Simon Fraser.
+
+        This fixes a failure in the GPU.BufferCreate unit test.
+        
+        The problem is that in order to have a Metal buffer wrap memory we allocated, we have to tell Metal
+        that the memory is page-aligned. This means that the Metal buffer reports back a page-aligned size,
+        which is different than what the test expected.
+        
+        It seems that it's most convenient for our GPUBuffer class to return the unaligned length, rather
+        than the aligned length. This is just a simple matter of returning the length from the ArrayBuffer
+        rather than the Metal buffer.
+        
+        This fixes the unit test and is probably more sensible for actual users of this class, since the page
+        alignment of the length is a goofy implementation detail.
+
+        * platform/graphics/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::length const):
+
+2017-08-01  Brian Burg  <bburg@apple.com>
+
+        HTML file input elements do not support file extensions in the "accept" attribute
+        https://bugs.webkit.org/show_bug.cgi?id=95698
+        <rdar://problem/12231850>
+
+        Reviewed by Darin Adler.
+
+        Serialize the accepted file extensions so they can be accessed in the UI process.
+
+        * platform/FileChooser.h:
+        * platform/FileChooser.cpp:
+        (WebCore::FileChooser::invalidate): Modernize.
+        (WebCore::FileChooserSettings::acceptTypes const): Deleted.
+        This is dead code, it was only used by Chromium.
+
+2017-08-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for QualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+        <rdar://problem/33647818>
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::isValidCSSSelector):
+        Call QualifiedName::init().
+        * dom/DOMAllInOne.cpp: Remove the warning. Include QualifiedName.cpp.
+        * dom/QualifiedName.cpp:
+        (WebCore::QualifiedName::init): Call LazyNeverDestroyed::construct
+        instead of placement new.
+        * dom/QualifiedName.h: Use LazyNeverDestroyed.
+
+2017-08-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CFString leak dragging an image - allocation under PlatformPasteboard::writeObjectRepresentations
+        https://bugs.webkit.org/show_bug.cgi?id=175064
+
+        Reviewed by Tim Horton.
+
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::writeObjectRepresentations):
+        Adopt a created string into the RetainPtr.
+
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (-[WebItemProviderRegistrationInfoList dealloc]):
+        Release suggestedName and switch from -strong to -copy.
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, update Beacon API status to "In Development".
+
+        * features.json:
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for navigator.sendBeacon
+        https://bugs.webkit.org/show_bug.cgi?id=175007
+        <rdar://problem/33547728>
+
+        Reviewed by Sam Weinig.
+
+        Add initial support for navigator.sendBeacon behind an experimental
+        feature runtime flag. The specification is available at:
+        - https://w3c.github.io/beacon/
+
+        The current implementation supports sending beacons with all types of
+        payloads except for ReadableStream. Some functionality is incomplete
+        and will be taken care of in follow-up patches:
+        - Support for CORS preflight for the cases where it is required. We currently
+          return false and do not send the beacon in such cases.
+        - Better support for redirects.
+        - Use a more power-friendly network priority for beacon requests.
+
+        Tests: http/tests/blink/sendbeacon/*
+               http/tests/security/mixedContent/beacon/insecure-beacon-in-iframe.html
+               http/wpt/beacon/*
+               imported/blink/fast/beacon/*
+               imported/w3c/web-platform-tests/beacon/*
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/beacon/NavigatorBeacon.cpp: Added.
+        (WebCore::NavigatorBeacon::sendBeacon):
+        * Modules/beacon/NavigatorBeacon.h: Added.
+        * Modules/beacon/NavigatorBeacon.idl: Added.
+        * WebCore.xcodeproj/project.pbxproj:
+        * loader/PingLoader.cpp:
+        (WebCore::PingLoader::sendBeacon):
+        * loader/PingLoader.h:
+
+2017-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Bmalloc and GC should put auxiliaries (butterflies, typed array backing stores) in a gigacage (separate multi-GB VM region)
+        https://bugs.webkit.org/show_bug.cgi?id=174727
+
+        Reviewed by Mark Lam.
+
+        No new tests because no change in behavior.
+        
+        Needed to teach Metal how to allocate in the Gigacage.
+
+        * platform/graphics/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::GPUBuffer):
+        (WebCore::GPUBuffer::contents):
+
+2017-08-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Implement Font::platformBoundsForGlyph
+        https://bugs.webkit.org/show_bug.cgi?id=174813
+
+        Reviewed by Alex Christensen.
+
+        Test: fast/text/emphasis.html
+
+        * platform/graphics/win/SimpleFontDataCairoWin.cpp:
+        (WebCore::Font::platformBoundsForGlyph): Implemented by copying
+        the code from Font::boundsForGDIGlyph().
+
+2017-08-01  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r217197): New Yorker website hangs for a long time on load, lots of blank tiles
+        https://bugs.webkit.org/show_bug.cgi?id=175009
+        <rdar://problem/33505791>
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that we report the desktop, non-frame-flattened frame size for media queries in subframes.
+        Some websites don't expect the iframes to be expanded to the size of the content and when the media query
+        callback mutates the content (triggering frame resize), they might end up getting into a never ending layout.
+
+        Test: fast/frames/flattening/media-query-growing-content.html
+
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::orientationEvaluate):
+        (WebCore::aspectRatioEvaluate):
+        (WebCore::heightEvaluate):
+        (WebCore::widthEvaluate):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::layout):
+        (WebCore::FrameView::layoutSizeForMediaQuery const):
+        (WebCore::FrameView::evaluateMediaQueryList):
+        * page/FrameView.h:
+
+2017-07-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add tests to detect mistakes in backward compatibility when the structured clone algorithm is changed in the future
+        https://bugs.webkit.org/show_bug.cgi?id=173998
+
+        Reviewed by Darin Adler.
+
+        * bindings/js/SerializedScriptValue.cpp:
+        Add a comment.
+
+2017-08-01  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220089.
+
+        This caused multiple crashes on macOS Debug testers.
+
+        Reverted changeset:
+
+        "Use LazyNeverDestroyed instead of DEFINE_GLOBAL for
+        QualifiedName"
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+        http://trac.webkit.org/changeset/220089
+
+2017-08-01  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Swap a custom attribute for a custom mark function for HTMLTemplateElement
+        https://bugs.webkit.org/show_bug.cgi?id=175006
+
+        Reviewed by Chris Dumez.
+
+        Use the standard way of augmenting GC, visitAdditionalChildren, rather
+        than using a private name to create ownership.
+
+        * bindings/js/JSHTMLTemplateElementCustom.cpp:
+        (WebCore::JSHTMLTemplateElement::visitAdditionalChildren):
+        (WebCore::JSHTMLTemplateElement::content const): Deleted.
+        * html/HTMLTemplateElement.idl:
+
 2017-08-01  Zan Dobersek  <zdobersek@igalia.com>
 
         [GCrypt] Gather crypto constants in a single location

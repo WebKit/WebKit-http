@@ -1,3 +1,498 @@
+2017-08-02  Chris Dumez  <cdumez@apple.com>
+
+        NetworkResourceLoader::setDefersLoading() may cause start() to be called multiple times
+        https://bugs.webkit.org/show_bug.cgi?id=175109
+        <rdar://problem/33363169>
+
+        Reviewed by Brady Eidson.
+
+        If NetworkResourceLoader::setDefersLoading(false) is called by the client while m_networkLoad is null
+        then we call NetworkResourceLoader::start() to start the load. This is needed in the case where
+        a NetworkResourceLoader is constructed in deferred mode so that the load can later be started via
+        setDefersLoading(). However, it is possible for setDefersLoading(false) to be called when start()
+        has already been called, which causes start() to be called multiple times and leads to an assertion
+        hit in debug.
+
+        Normally, setDefersLoading(false) returns without calling start() if m_networkLoad is not null. It
+        relies on m_networkLoad being non-null to determine if start() should be called. This is bad because
+        start() checks the disk cache asynchronously *before* calling startNetworkLoad() and initializing
+        m_networkLoad. Therefore, if setDefersLoading(false) is called *while* we are checking the cache,
+        then we will call incorrectly call start() again.
+
+        In the case of the radar, this happens when we:
+        1. Call start() and check the disk cache
+        2. Retrieve a cached redirect from the cache, which causes a WillSendRequest IPC to be sent to the
+           WebProcess
+        3. The WebProcess calls setDefersLoading(true), sends the ContinueWillSendRequest IPC back and
+           then calls setDefersLoading(false)
+
+        The call to continueWillSendRequest() causes us to retrieve the redirected entry from the cache,
+        asynchronously, which will return no entry and start a load.
+        The later call to setDefersLoading(false) causes us to call start() again and we end up back to step 1.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::start):
+        (WebKit::NetworkResourceLoader::setDefersLoading):
+        * NetworkProcess/NetworkResourceLoader.h:
+
+2017-08-02  Andreas Kling  <akling@apple.com>
+
+        NetworkRTCProvider::createResolver() leaks CFHost objects
+        https://bugs.webkit.org/show_bug.cgi?id=175103
+        <rdar://problem/33690347>
+
+        Reviewed by Youenn Fablet.
+
+        Add a missing adoptCF() so we don't leak the CFHost.
+
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp:
+        (WebKit::NetworkRTCProvider::createResolver):
+
+2017-08-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Remove unused and obsolete setting mediaDocumentEntersFullscreenAutomatically
+        https://bugs.webkit.org/show_bug.cgi?id=175080
+
+        Reviewed by Jon Lee.
+
+        This is obsolete because of the alternate solution in
+        https://bugs.webkit.org/show_bug.cgi?id=174850
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setMediaDocumentEntersFullscreenAutomatically:]): Deleted.
+        (-[WKPreferences _mediaDocumentEntersFullscreenAutomatically]): Deleted.
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        We should be OK with the gigacage being disabled on gmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=175082
+
+        Reviewed by Michael Saboff.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_webSQLiteDatabaseTracker):
+
+2017-08-02  Brian Burg  <bburg@apple.com>
+
+        Web Automation: files selected for upload should be checked against values of the 'accept' attribute
+        https://bugs.webkit.org/show_bug.cgi?id=174803
+        <rdar://problem/33514190>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use the parsed values of the file input element's "accept" attribute to reject
+        files that don't match the specified values. This is normally done by Safari
+        using NSOpenPanel, but since a real open panel isn't shown during automation,
+        it needs to be done here.
+
+        Support for limiting accepted files by file extensions will be added when the
+        same is implemented in the normal code path for the C and Objective-C APIs.
+
+        This change is covered by internal WebDriver tests that will be rewritten for the
+        public Webdriver W3C test suite someday, when safaridriver runs those tests itself.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::handleRunOpenPanel):
+        Since we already have the proposed files, there's no need to compute a list of
+        supported extensions based on wildcard MIME types. First check the extension,
+        then the inferred MIME type for the extension, and then the wildcard MIME type
+        if the inferred type is not an exact match.
+
+2017-08-02  Tim Horton  <timothy_horton@apple.com>
+
+        WKPDFView doesn't respect safe area insets
+        https://bugs.webkit.org/show_bug.cgi?id=175046
+        <rdar://problem/33558386>
+
+        Reviewed by Wenson Hsieh.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        Add some SPI.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setHasCustomContentView:loadedMIMEType:]):
+        Drive-by fix two small custom content view issues:
+
+        - Reset _scrollViewBackgroundColor; it is used to early-return from
+        updating the background color if it hasn't changed, but if you go from a
+        site with (for example) a white background, to a PDF, to another site
+        with a white background, we will early-return and not reset the background
+        color from the grey WKPDFView background.
+
+        - When installing a custom content view, scroll to the origin. We miss
+        the usual mechanism for scrolling to the origin when custom content views
+        are installed, so do it here.
+
+        (-[WKWebView _effectiveObscuredInsetEdgesAffectedBySafeArea]):
+        Ignore _obscuredInsetEdgesAffectedBySafeArea for custom content views.
+        This is fairly arbitrary, and we should find a different way to
+        express different edge sets for different kinds of content (perhaps
+        bake this into default viewports?), but for now this works.
+
+        (-[WKWebView _computedContentInset]):
+        Use _effectiveObscuredInsetEdgesAffectedBySafeArea instead of the ivar directly.
+
+        (-[WKWebView _safeAreaShouldAffectObscuredInsets]):
+        Force safe areas to not affect obscured insets for custom content views,
+        so that it's up to every custom content view to take safe areas into
+        account themselves.
+
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        Expose _computedUnobscuredSafeAreaInset for WKPDFView's use.
+
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView web_setMinimumSize:]):
+        Avoid rebuilding the WKPDFView if the minimum size didn't change.
+
+        (-[WKPDFView _offsetForPageNumberIndicator]):
+        Take unobscured safe area insets into account when insetting
+        the page number indicator.
+
+        (-[WKPDFView web_computedContentInsetDidChange]):
+        Watch for unobscured safe area inset changes, and apply them to the
+        layout of the WKPDFView.
+
+        (-[WKPDFView _computePageAndDocumentFrames]):
+        Make it possible to only update the WKPDFView's size and position, without
+        rebuilding its subviews, if the width did not change. This prevents lots
+        of flashing of the child UIPDFPageViews when the unobscured safe area
+        insets change dynamically.
+
+        Take the safe area insets into account when determining what width
+        to lay out to.
+
+        (-[WKPDFView _updateDocumentFrame]):
+        Take the safe area insets into account when positioning the WKPDFView
+        inside the WKScrollView.
+
+2017-08-02  John Wilander  <wilander@apple.com>
+
+        ResourceLoadStatisticsClassifierCocoa::singletonPredictionModel() should check the return value of storagePath()
+        https://bugs.webkit.org/show_bug.cgi?id=175055
+        <rdar://problem/32671352>
+
+        Reviewed by David Kilzer.
+
+        * Platform/classifier/cocoa/ResourceLoadStatisticsClassifierCocoa.cpp:
+        (WebKit::ResourceLoadStatisticsClassifierCocoa::singletonPredictionModel):
+            Now uses dispatch_once() instead of NeverDestroyed and checks the
+            return value of storagePath() before using it to load the model.
+
+2017-08-01  Brian Burg  <bburg@apple.com>
+
+        HTML file input elements do not support file extensions in the "accept" attribute
+        https://bugs.webkit.org/show_bug.cgi?id=95698
+        <rdar://problem/12231850>
+
+        Reviewed by Darin Adler.
+
+        Plumb accepted file extensions out to the C API.
+        The Cocoa API will be improved in a later patch.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FileChooserSettings>::encode):
+        (IPC::ArgumentCoder<FileChooserSettings>::decode):
+        * UIProcess/API/APIOpenPanelParameters.cpp:
+        (API::OpenPanelParameters::acceptFileExtensions const):
+        * UIProcess/API/APIOpenPanelParameters.h:
+        * UIProcess/API/C/WKOpenPanelParametersRef.cpp:
+        (WKOpenPanelParametersCopyAcceptedFileExtensions):
+        * UIProcess/API/C/WKOpenPanelParametersRef.h:
+
+2017-08-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for QualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+        <rdar://problem/33647818>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/APIContentRuleListStore.cpp:
+        (API::ContentRuleListStore::compileContentRuleList):
+        Call QualifiedName::init().
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for navigator.sendBeacon
+        https://bugs.webkit.org/show_bug.cgi?id=175007
+        <rdar://problem/33547728>
+
+        Reviewed by Sam Weinig.
+
+        Add experimental feature flag for the Beacon API, disabled by default.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Bmalloc and GC should put auxiliaries (butterflies, typed array backing stores) in a gigacage (separate multi-GB VM region)
+        https://bugs.webkit.org/show_bug.cgi?id=174727
+
+        Reviewed by Mark Lam.
+        
+        The WebProcess should never disable the Gigacage by allocating typed arrays outside the Gigacage. So,
+        we add a callback that crashes the process.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::gigacageDisabled):
+        (WebKit::m_webSQLiteDatabaseTracker):
+
+2017-08-01  Brian Burg  <bburg@apple.com>
+
+        Web Automation: add event to notify service when a page's main frame window object has cleared
+        https://bugs.webkit.org/show_bug.cgi?id=174987
+        <rdar://problem/36602634>
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/Automation/Automation.json: Add new event.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::navigationOccurredForFrame):
+        (WebKit::WebAutomationSession::willClosePage):
+        When a WebPage navigates or closes, send the browsingContextCleared event.
+        Any element handles for elements in the browsing context are no longer valid.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close):
+        Add a new hook into the active automation session so it is notified when a page closes.
+
+2017-08-01  Brady Eidson  <beidson@apple.com>
+
+        API test URLSchemeHandler.Exceptions is Exiting out early on macOS Debug..
+        https://bugs.webkit.org/show_bug.cgi?id=175030
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm:
+        (WebKit::WebURLSchemeHandlerCocoa::platformTaskCompleted): Release the API wrapped on the next
+          spin of the runloop.
+
+2017-08-01  Brady Eidson  <beidson@apple.com>
+
+        Part 2 of: Rename DatabaseProcess to StorageProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+
+        Reviewed by Andy Estes.
+
+        Rename some more variables, classes, etc. to reflect the change.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::grantSandboxExtensionsToStorageProcessForBlobs):
+        (WebKit::NetworkProcess::didGrantSandboxExtensionsToStorageProcessForBlobs):
+        (WebKit::NetworkProcess::grantSandboxExtensionsToDatabaseProcessForBlobs): Deleted.
+        (WebKit::NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs): Deleted.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+
+        * Shared/ProcessExecutablePath.h:
+        * Shared/gtk/ProcessExecutablePathGtk.cpp:
+        (WebKit::executablePathOfStorageProcess):
+        (WebKit::executablePathOfDatabaseProcess): Deleted.
+        * Shared/wpe/ProcessExecutablePathWPE.cpp:
+        (WebKit::executablePathOfStorageProcess):
+        (WebKit::executablePathOfDatabaseProcess): Deleted.
+
+        * StorageProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::putOrAdd):
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::initializeWebsiteDataStore):
+        (WebKit::StorageProcess::postStorageTask):
+        (WebKit::StorageProcess::performNextStorageTask):
+        (WebKit::StorageProcess::createStorageToWebProcessConnection):
+        (WebKit::StorageProcess::fetchWebsiteData):
+        (WebKit::StorageProcess::postDatabaseTask): Deleted.
+        (WebKit::StorageProcess::performNextDatabaseTask): Deleted.
+        (WebKit::StorageProcess::createDatabaseToWebProcessConnection): Deleted.
+        * StorageProcess/StorageProcess.h:
+        * StorageProcess/StorageProcess.messages.in:
+        * StorageProcess/mac/StorageProcessMac.mm:
+        (WebKit::StorageProcess::initializeProcessName):
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetDatabaseProcessIdentifier):
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _terminateStorageProcess]):
+        (-[WKProcessPool _storageProcessIdentifier]):
+        (-[WKProcessPool _terminateDatabaseProcess]): Deleted.
+        (-[WKProcessPool _databaseProcessIdentifier]): Deleted.
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+
+        * UIProcess/ChildProcessProxy.cpp:
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+
+        * UIProcess/Launcher/ProcessLauncher.h:
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::launchProcess):
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::serviceName):
+        * UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp:
+        (WebKit::ProcessLauncher::launchProcess):
+
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::grantSandboxExtensionsToStorageProcessForBlobs):
+        (WebKit::NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs): Deleted.
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+
+        * UIProcess/Storage/StorageProcessProxy.cpp:
+        (WebKit::StorageProcessProxy::getLaunchOptions):
+        (WebKit::StorageProcessProxy::getStorageProcessConnection):
+        (WebKit::StorageProcessProxy::didClose):
+        (WebKit::StorageProcessProxy::didCreateStorageToWebProcessConnection):
+        (WebKit::StorageProcessProxy::didFinishLaunching):
+        (WebKit::StorageProcessProxy::getDatabaseProcessConnection): Deleted.
+        (WebKit::StorageProcessProxy::didCreateDatabaseToWebProcessConnection): Deleted.
+        * UIProcess/Storage/StorageProcessProxy.h:
+        * UIProcess/Storage/StorageProcessProxy.messages.in:
+
+        * UIProcess/WebContextClient.cpp:
+        (WebKit::WebContextClient::storageProcessDidCrash):
+        (WebKit::WebContextClient::databaseProcessDidCrash): Deleted.
+        * UIProcess/WebContextClient.h:
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureStorageProcessAndWebsiteDataStore):
+        (WebKit::WebProcessPool::getStorageProcessConnection):
+        (WebKit::WebProcessPool::storageProcessCrashed):
+        (WebKit::WebProcessPool::pageAddedToProcess):
+        (WebKit::WebProcessPool::storageProcessIdentifier):
+        (WebKit::WebProcessPool::terminateStorageProcess):
+        (WebKit::WebProcessPool::ensureDatabaseProcessAndWebsiteDataStore): Deleted.
+        (WebKit::WebProcessPool::getDatabaseProcessConnection): Deleted.
+        (WebKit::WebProcessPool::databaseProcessCrashed): Deleted.
+        (WebKit::WebProcessPool::databaseProcessIdentifier): Deleted.
+        (WebKit::WebProcessPool::terminateDatabaseProcess): Deleted.
+        * UIProcess/WebProcessPool.h:
+        (WebKit::WebProcessPool::sendToStorageProcessRelaunchingIfNecessary):
+        (WebKit::WebProcessPool::sendToDatabaseProcessRelaunchingIfNecessary): Deleted.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::getStorageProcessConnection):
+        (WebKit::WebProcessProxy::getDatabaseProcessConnection): Deleted.
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in:
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchDataAndApply):
+        (WebKit::WebsiteDataStore::removeData):
+        (WebKit::WebsiteDataStore::storageProcessParameters):
+        (WebKit::WebsiteDataStore::databaseProcessParameters): Deleted.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::messageSenderConnection):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+
+        * WebProcess/Databases/WebDatabaseProvider.cpp:
+        (WebKit::WebDatabaseProvider::idbConnectionToServerForSession):
+
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp:
+        (WebKit::WebToStorageProcessConnection::WebToStorageProcessConnection):
+        (WebKit::WebToStorageProcessConnection::~WebToStorageProcessConnection):
+        (WebKit::WebToStorageProcessConnection::didReceiveMessage):
+        (WebKit::WebToStorageProcessConnection::didClose):
+        (WebKit::WebToStorageProcessConnection::didReceiveInvalidMessage):
+        (WebKit::WebToStorageProcessConnection::idbConnectionToServerForSession):
+        (WebKit::WebToDatabaseProcessConnection::WebToDatabaseProcessConnection): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::didReceiveMessage): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::didClose): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::didReceiveInvalidMessage): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::idbConnectionToServerForSession): Deleted.
+        * WebProcess/Storage/WebToStorageProcessConnection.h:
+        (WebKit::WebToStorageProcessConnection::create):
+        (WebKit::WebToDatabaseProcessConnection::create): Deleted.
+        (WebKit::WebToDatabaseProcessConnection::connection): Deleted.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::webToStorageProcessConnectionClosed):
+        (WebKit::WebProcess::webToStorageProcessConnection):
+        (WebKit::WebProcess::ensureWebToStorageProcessConnection):
+        (WebKit::WebProcess::webToDatabaseProcessConnectionClosed): Deleted.
+        (WebKit::WebProcess::webToDatabaseProcessConnection): Deleted.
+        (WebKit::WebProcess::ensureWebToDatabaseProcessConnection): Deleted.
+        * WebProcess/WebProcess.h:
+
+2017-08-01  Brady Eidson  <beidson@apple.com>
+
+        Part 1 of: Rename DatabaseProcess to StorageProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=174879
+
+        Reviewed by Andy Estes.
+
+        This patch is all about renaming source files and renaming the process itself (touching build system files, etc etc).
+
+        Some renaming in actual code did result (Some class/struct names, method names, etc)
+
+        Part 2 (174880) will go through and update all references in code itself from "Database" to "Storage"
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+        * Configurations/StorageService.xcconfig: Renamed from Source/WebKit/Configurations/DatabaseService.xcconfig.
+        * StorageProcess/EntryPoint/mac/XPCService/StorageService/Info.plist: Renamed from Source/WebKit/DatabaseProcess/EntryPoint/mac/XPCService/DatabaseService/Info.plist.
+        * StorageProcess/mac/com.apple.WebKit.Databases.sb.in: Renamed from Source/WebKit/DatabaseProcess/mac/com.apple.WebKit.Databases.sb.in.
+
+        * Shared/Storage/StorageProcessCreationParameters.cpp: Renamed from Source/WebKit/Shared/Databases/DatabaseProcessCreationParameters.cpp.
+        * Shared/Storage/StorageProcessCreationParameters.h: Renamed from Source/WebKit/Shared/Databases/DatabaseProcessCreationParameters.h.
+
+        * StorageProcess/EntryPoint/mac/XPCService/StorageServiceEntryPoint.mm: Renamed from Source/WebKit/DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm.
+        * StorageProcess/EntryPoint/unix/StorageProcessMain.cpp: Renamed from Source/WebKit/DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp.
+
+        * StorageProcess/IndexedDB/WebIDBConnectionToClient.cpp: Renamed from Source/WebKit/DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp.
+        * StorageProcess/IndexedDB/WebIDBConnectionToClient.h: Renamed from Source/WebKit/DatabaseProcess/IndexedDB/WebIDBConnectionToClient.h.
+        * StorageProcess/IndexedDB/WebIDBConnectionToClient.messages.in: Renamed from Source/WebKit/DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in.
+
+        * StorageProcess/StorageProcess.cpp: Renamed from Source/WebKit/DatabaseProcess/DatabaseProcess.cpp.
+        * StorageProcess/StorageProcess.h: Renamed from Source/WebKit/DatabaseProcess/DatabaseProcess.h.
+        * StorageProcess/StorageProcess.messages.in: Renamed from Source/WebKit/DatabaseProcess/DatabaseProcess.messages.in.
+
+        * StorageProcess/StorageToWebProcessConnection.cpp: Renamed from Source/WebKit/DatabaseProcess/DatabaseToWebProcessConnection.cpp.
+        * StorageProcess/StorageToWebProcessConnection.h: Renamed from Source/WebKit/DatabaseProcess/DatabaseToWebProcessConnection.h.
+        * StorageProcess/StorageToWebProcessConnection.messages.in: Renamed from Source/WebKit/DatabaseProcess/DatabaseToWebProcessConnection.messages.in.
+
+        * StorageProcess/gtk/StorageProcessMainGtk.cpp: Renamed from Source/WebKit/DatabaseProcess/gtk/DatabaseProcessMainGtk.cpp.
+        * StorageProcess/ios/StorageProcessIOS.mm: Renamed from Source/WebKit/DatabaseProcess/ios/DatabaseProcessIOS.mm.
+        * StorageProcess/mac/StorageProcessMac.mm: Renamed from Source/WebKit/DatabaseProcess/mac/DatabaseProcessMac.mm.
+        * StorageProcess/unix/StorageProcessMainUnix.h: Renamed from Source/WebKit/DatabaseProcess/unix/DatabaseProcessMainUnix.h.
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+
+        * UIProcess/Storage/StorageProcessProxy.cpp: Renamed from Source/WebKit/UIProcess/Databases/DatabaseProcessProxy.cpp.
+        * UIProcess/Storage/StorageProcessProxy.h: Renamed from Source/WebKit/UIProcess/Databases/DatabaseProcessProxy.h.
+        * UIProcess/Storage/StorageProcessProxy.messages.in: Renamed from Source/WebKit/UIProcess/Databases/DatabaseProcessProxy.messages.in.
+
+        * UIProcess/WebContextSupplement.h:
+        * UIProcess/WebProcessPool.cpp:
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        * WebProcess/Databases/WebDatabaseProvider.cpp:
+
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp: Renamed from Source/WebKit/WebProcess/Databases/WebToDatabaseProcessConnection.cpp.
+        * WebProcess/Storage/WebToStorageProcessConnection.h: Renamed from Source/WebKit/WebProcess/Databases/WebToDatabaseProcessConnection.h.
+
+        * WebProcess/WebProcess.cpp:
+
 2017-08-01  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] WebKitFS.cmake depends on options set in Option cmake files that are included later

@@ -389,8 +389,12 @@ function performNaNActions() {
 function test() {
     let suite = InspectorTest.createAsyncSuite("Canvas.recording2D");
 
+    function sanitizeURL(url) {
+        return url.replace(/^.*?LayoutTests\//, "");
+    }
+
     function getCanvas() {
-        let canvases = WebInspector.canvasManager.canvases.filter((canvas) => canvas.contextType === WebInspector.Canvas.ContextType.Canvas2D);
+        let canvases = WI.canvasManager.canvases.filter((canvas) => canvas.contextType === WI.Canvas.ContextType.Canvas2D);
         InspectorTest.assert(canvases.length === 1, "There should only be one canvas-2d.");
         if (canvases.length !== 1)
             return null;
@@ -404,11 +408,17 @@ function test() {
             return;
         }
 
-        WebInspector.canvasManager.awaitEvent(WebInspector.CanvasManager.Event.RecordingFinished)
+        WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingFinished)
         .then((event) => {
             InspectorTest.evaluateInPage(`cancelActions()`);
 
             let json = event.data.recording.toJSON();
+            json.data = json.data.map((item) => {
+                if (typeof item !== "string")
+                    return item;
+
+                return sanitizeURL(item);
+            });
             InspectorTest.log(JSON.stringify(json, null, 2));
         })
         .then(resolve, reject);
@@ -468,7 +478,7 @@ function test() {
                 return;
             }
 
-            WebInspector.canvasManager.awaitEvent(WebInspector.CanvasManager.Event.RecordingFinished)
+            WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingFinished)
             .then((event) => {
                 let recording = event.data.recording.toJSON();
 

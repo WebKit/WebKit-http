@@ -1,3 +1,277 @@
+2017-08-02  Youenn Fablet  <youenn@apple.com>
+
+        HTTP tests with 'https' suffix are only run over HTTPS for WK2, not WK1
+        https://bugs.webkit.org/show_bug.cgi?id=175089
+
+        Reviewed by Chris Dumez.
+
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions): Using absolutePath if available.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (computeTestURL): Removing http/tests/ specific URL computation.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._command_from_driver_input): Making webkitpy passing HTTP urls for HTTP served tests to all test runners, including WK1.
+
+2017-08-02  Lucas Forschler  <lforschler@apple.com>
+
+        download-built-product should allow for a proxy option
+        https://bugs.webkit.org/show_bug.cgi?id=174875
+
+        Reviewed by Aakash Jain, Alexey Proskuryakov, Dean Johnson
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (DownloadBuiltProduct.start): Teach buildbot to pass along proxy for Apple bots
+        
+
+2017-08-02  Jonathan Bedard  <jbedard@apple.com>
+
+        check-webkit-style: deleting lines in a file runs the linter on the whole file
+        https://bugs.webkit.org/show_bug.cgi?id=175078
+
+        Reviewed by David Kilzer.
+
+        Deleting lines in a file should not cause linter errors to be blamed on the patch.
+        <https://bugs.webkit.org/show_bug.cgi?id=86142> is an example of this happening.
+
+        * Scripts/webkitpy/style/checkers/test_expectations.py:
+        (TestExpectationsChecker._should_log_linter_warning): Do not log a linter error if the file it is associated with only has deleted lines
+        * Scripts/webkitpy/style/main_unittest.py:
+        (ExpectationLinterInStyleCheckerTest.test_linter_duplicate_line): Added files should have every line number in the file when processing.
+        (ExpectationLinterInStyleCheckerTest.test_linter_duplicate_line_only_deletes): Test case where the file with the linter errors only contained deletes.
+        (ExpectationLinterInStyleCheckerTest.test_linter_added_file_with_error): Added files should have every line number in the file when processing.
+
+2017-08-02  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Allow caller to specify response to unicode encode/decode error in filesystem
+        https://bugs.webkit.org/show_bug.cgi?id=175075
+
+        Reviewed by David Kilzer.
+
+        We have no way of handling text files with illegal unicode characters. Allow the callers of
+        filesystem.read_text_file to specify one of Python 2.7's supported responses ('strict', 'ignore', or
+        'replace'). See https://docs.python.org/2/howto/unicode.html for details on these responses.
+
+        * Scripts/webkitpy/common/system/filesystem.py:
+        (FileSystem.read_text_file): Allow caller to specify unicode error handling.
+        (FileSystem.write_text_file): Ditto.
+        * Scripts/webkitpy/common/system/filesystem_mock.py:
+        (MockFileSystem.read_text_file): Allow caller to specify unicode error handling.
+        (MockFileSystem.write_text_file): Ditto.
+        * Scripts/webkitpy/common/system/filesystem_unittest.py:
+        (RealFileSystemTest.test_read_text_file_unicode_decode_error): Test reading a file with illegal unicode content.
+        (RealFileSystemTest.test_write_text_file_unicode_encode_error): Test writing illegal unicode content to a file.
+
+2017-08-02  Aakash Jain  <aakash_jain@apple.com>
+
+        Intermittent exception in buildPageURLForIteration for Buildbot 0.9 dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=175072
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot): Make sure this._builderNameToIDMap is always defined for Buildbot 0.9.
+
+2017-08-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Remove obsolete code in TestWebKitAPI/CMakeLists.txt
+        https://bugs.webkit.org/show_bug.cgi?id=175019
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2017-08-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Enabling uploading archives to S3
+        https://bugs.webkit.org/show_bug.cgi?id=174198
+
+        Unreviewed unit test fix after r219235.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2017-08-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix JSCOnly ARM buildbots after r220047
+        https://bugs.webkit.org/show_bug.cgi?id=174993
+
+        Unreviewed fix after r220087.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (BuildAndRemoteJSCTestsFactory.__init__):
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for navigator.sendBeacon
+        https://bugs.webkit.org/show_bug.cgi?id=175007
+        <rdar://problem/33547728>
+
+        Reviewed by Sam Weinig.
+
+        Enable the Beacon API at runtime in the context of layout tests since the
+        feature is currently disabled by default.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setModernMediaControlsEnabled):
+        (WTR::TestRunner::setBeaconAPIEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-08-01  Aakash Jain  <aakash_jain@apple.com>
+
+        Update Bot Watcher's Dashboard for Buildbot 0.9
+        https://bugs.webkit.org/show_bug.cgi?id=174777
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot): Check if USE_BUILDBOT_VERSION_LESS_THAN_09 is passed.
+        (Buildbot.prototype._computeBuilderNameToIDMap): Fetch the builder name to ID mapping from buidbot and store
+        in a dictionary.
+        (Buildbot.prototype.buildPageURLForIteration): Updated URL as per Buildbot 0.9 format. Buildbot 0.9 currently does not support
+        builder name in the build url. See <https://github.com/buildbot/buildbot/issues/3465>.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (isMultiCodebaseGotRevisionProperty): Adapting to new data format.
+        (parseRevisionProperty): Ditto.
+        (BuildbotIteration.prototype.failureLogURL): Return the URL to build page if precise failure url is not available. For
+        Buildbot 0.9, build page URL would be appropriate in most cases as per the new UI.
+        (BuildbotIteration.prototype._parseData): Parsing the data as per new data format. Many variable names and data types
+        have changed in Buildbot 0.9.
+        (BuildbotIteration.prototype._adjustBuildDataForBuildbot09): Adjust the Buildbot 0.8 data to new format.
+        (BuildbotIteration.prototype._updateIfDataAvailable): Update method for Buildbot 0.9 data. We are performing two API calls, 
+        one for build information, another for step information of that build. We need to wait until data from both REST API calls are available.
+        (BuildbotIteration.prototype._deprecatedUpdateWithData): Renamed from _updateWithData, used for Buildbot 0.8 data.
+        (BuildbotIteration.prototype.get buildURL): URL to fetch build information from Buildbot. Also fetches got_revision property.
+        (BuildbotIteration.prototype.get buildStepsURL): URL to fetch the steps information from Buildbot.
+        (BuildbotIteration.prototype.urlFailedToLoad): Callback method to be used when URL fails to load. Made it a separate function now.
+        (BuildbotIteration.prototype.update): Modified to support both Buildbot 0.9 and 0.8 data format.
+        (BuildbotIteration.prototype.actualUpdate): Update method for Buildbot 0.9 data.
+        (BuildbotIteration.prototype.deprecatedUpdate): Update method for Buildbot 0.8 data.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.get baseURL): Updated URL as per Buildbot 0.9 format.
+        (BuildbotQueue.prototype.get allIterationsURL): Ditto.
+        (BuildbotQueue.prototype.get overviewURL): Ditto.
+        (BuildbotQueue.prototype.get buildsURL): URL to fetch builds data in Buildbot 0.9.
+        (BuildbotQueue.prototype.get buildsInfoURL): Returns the appropriate URL to use to fetch builds information from
+        Buildbot 0.8 or 0.9.
+        (BuildbotQueue.prototype.getBuilds): Method compatible with both Buildbot 0.8 and 0.9 to get build information from data
+        fetched from Buildbot. Also, reversing the Buildbot 0.8 data to make it similar to 0.9 data format.
+        (BuildbotQueue.prototype.isBuildComplete): Method compatible with both Buildbot 0.8 and 0.9 to check if the build has completed.
+        (BuildbotQueue.prototype.getIterationID):  Method compatible with both Buildbot 0.8 and 0.9 to get the Iteration ID.
+        (BuildbotQueue.prototype.update): Supports both Buildbot 0.8 and 0.9. Buildbot 0.9 REST API doesn't have cachedBuilds and currentBuilds. 
+        Therefore we are fetching information for fixed number of build. 
+        Also iterating the loop incrementally since the build data is already reverse sorted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults.prototype._parseResults): Updated as per Buildbot 0.9 format. Note that we do not
+        need to worry about 0.8 or 0.9 data format here, since the data is already converted to 0.9 format.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot): Pass the USE_BUILDBOT_VERSION_LESS_THAN_09 flag.
+
+2017-08-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: simplify WebInspector with WI
+        https://bugs.webkit.org/show_bug.cgi?id=175058
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/check-inspector-strings:
+        (extract_ui_strings):
+        * Scripts/extract-localizable-js-strings:
+
+2017-08-01  Youenn Fablet  <youenn@apple.com>
+
+        Layout tests with 'https' suffix should be run over HTTPS
+        https://bugs.webkit.org/show_bug.cgi?id=174992
+
+        Reviewed by Chris Dumez.
+
+        Updating the test-name <-> uri conversion routines to use https when test names contain ".https." in them.
+        This covers WPT tests, WPT WebKit tests and HTTP layout tests.
+        Covered by corresponding unit tests.
+
+        * Scripts/webkitpy/layout_tests/servers/run_webkit_httpd.py:
+        (run_server):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (base_http_url):
+        (base_https_url):
+        (base_url): Deleted.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.web_platform_test_server_base_http_url):
+        (Port.to):
+        (Port.to.web_platform_test_server_base_https_url):
+        (Port.to.web_platform_test_server_base_url): Deleted.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.__init__):
+        (Driver.wpt_test_path_to_uri):
+        (Driver):
+        (Driver.http_test_path_to_uri):
+        (Driver.test_to_uri):
+        (Driver.uri_to_test):
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_test_to_uri):
+        (DriverTest.test_uri_to_test):
+
+2017-07-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add tests to detect mistakes in backward compatibility when the structured clone algorithm is changed in the future
+        https://bugs.webkit.org/show_bug.cgi?id=173998
+
+        Reviewed by Darin Adler.
+
+        Since the structured clone algorithm is used for data stored in persistent databases, we need tests to help us
+        detect mistakes in backward compatibility in the future when we change it.
+
+        The way it works is to read from a pre-baked database and see if all the values are matched with the expectations.
+        Surprisedly, some of structured clonable objects cannot be stored into the indexedDB. Those are FileList,
+        ObjectReference, MessagePortReference, ArrayBufferView, ArrayBufferTransfer, NonMapProperties, NonSetProperties,
+        SharedArrayBuffer, WasmModule, DOMPointReadOnly, DOMPoint, DOMRectReadOnly, DOMRect, DOMMatrixReadOnly, DOMMatrix,
+        DOMQuad and Error. CryptoKey objects are not included as well as they need new API for encrypting/decrypting the
+        internal key data slot.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibility.mm: Added.
+        (-[IndexedDBStructuredCloneBackwardCompatibilityMessageHandler userContentController:didReceiveScriptMessage:]):
+        (getNextMessage):
+        (TEST):
+        Here is the API test that moves the pre-baked database to the location where TestWebKitAPI can read from.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibility.sqlite3: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibility.sqlite3-shm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibility.sqlite3-wal: Added.
+        These are the pre-baked databases.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibilityRead.html: Added.
+        This is the actual test that do all the reads and comparisons.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBStructuredCloneBackwardCompatibilityWrite.html: Added.
+        This is the page that bakes the database. It never runs automatically. It is for someone who needs to teach
+        IndexedDB new stuffs. Then it can be used to bake the database again.
+
+2017-08-01  Brady Eidson  <beidson@apple.com>
+
+        API test URLSchemeHandler.Exceptions is Exiting out early on macOS Debug..
+        https://bugs.webkit.org/show_bug.cgi?id=175030
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm:
+        (-[TaskSchemeHandler webView:startURLSchemeTask:]): Stop calling an invalid NSError constructor.
+
+2017-08-01  Brady Eidson  <beidson@apple.com>
+
+        Part 2 of: Rename DatabaseProcess to StorageProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBIndexUpgradeToV2.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBDatabaseProcessKill.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ResourceLoadStatistics.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+
 2017-07-31  Csaba Osztrogonác  <ossy@webkit.org>
 
         Fix JSCOnly ARM buildbots after r220047
