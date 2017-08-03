@@ -34,6 +34,7 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
 
         WebInspector.heapManager.addEventListener(WebInspector.HeapManager.Event.GarbageCollected, this._garbageCollected, this);
+        WebInspector.memoryManager.addEventListener(WebInspector.MemoryManager.Event.MemoryPressure, this._memoryPressure, this);
 
         this._persistentNetworkTimeline = new WebInspector.NetworkTimeline;
 
@@ -45,8 +46,6 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         this._webTimelineScriptRecordsExpectingScriptProfilerEvents = null;
         this._scriptProfilerRecords = null;
 
-        this._callingContextTree = null;
-
         this.reset();
     }
 
@@ -54,14 +53,24 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     static defaultInstruments()
     {
-        if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript)
-            return [new WebInspector.ScriptInstrument];
+        if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript) {
+            let defaults = [new WebInspector.ScriptInstrument];
+            if (WebInspector.HeapAllocationsInstrument.supported())
+                defaults.push(new WebInspector.HeapAllocationsInstrument);
+            return defaults;
+        }
 
         let defaults = [
             new WebInspector.NetworkInstrument,
             new WebInspector.LayoutInstrument,
             new WebInspector.ScriptInstrument,
         ];
+
+        if (WebInspector.MemoryInstrument.supported())
+            defaults.push(new WebInspector.MemoryInstrument);
+
+        if (WebInspector.HeapAllocationsInstrument.supported())
+            defaults.push(new WebInspector.HeapAllocationsInstrument);
 
         if (WebInspector.FPSInstrument.supported())
             defaults.push(new WebInspector.FPSInstrument);
@@ -304,6 +313,29 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
     memoryTrackingComplete()
     {
         // Called from WebInspector.MemoryObserver.
+    }
+
+    heapTrackingStarted(timestamp, snapshot)
+    {
+        // Called from WebInspector.HeapObserver.
+
+        this._addRecord(new WebInspector.HeapAllocationsTimelineRecord(timestamp, snapshot));
+
+        this.capturingStarted(timestamp);
+    }
+
+    heapTrackingCompleted(timestamp, snapshot)
+    {
+        // Called from WebInspector.HeapObserver.
+
+        this._addRecord(new WebInspector.HeapAllocationsTimelineRecord(timestamp, snapshot));
+    }
+
+    heapSnapshotAdded(timestamp, snapshot)
+    {
+        // Called from WebInspector.HeapAllocationsInstrument.
+
+        this._addRecord(new WebInspector.HeapAllocationsTimelineRecord(timestamp, snapshot));
     }
 
     // Private
@@ -672,6 +704,14 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         this._addRecord(new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.GarbageCollected, collection.startTime, collection.endTime, null, null, collection));
     }
 
+    _memoryPressure(event)
+    {
+        if (!this._isCapturing)
+            return;
+
+        this.activeRecording.addMemoryPressureEvent(event.data.memoryPressureEvent);
+    }
+
     _scriptProfilerTypeToScriptTimelineRecordType(type)
     {
         switch (type) {
@@ -712,17 +752,25 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         console.assert(!this._webTimelineScriptRecordsExpectingScriptProfilerEvents || this._scriptProfilerRecords.length >= this._webTimelineScriptRecordsExpectingScriptProfilerEvents.length);
 
         if (samples) {
-            if (!this._callingContextTree)
-                this._callingContextTree = new WebInspector.CallingContextTree;
-
             // Associate the stackTraces with the ScriptProfiler created records.
-            let stackTraces = samples.stackTraces;
-            for (let i = 0; i < stackTraces.length; i++)
-                this._callingContextTree.updateTreeWithStackTrace(stackTraces[i]);
+            let {totalTime: totalExecutionTime, stackTraces} = samples;
+            let topDownCallingContextTree = this.activeRecording.topDownCallingContextTree;
+            let bottomUpCallingContextTree = this.activeRecording.bottomUpCallingContextTree;
 
+            topDownCallingContextTree.increaseExecutionTime(totalExecutionTime);
+            bottomUpCallingContextTree.increaseExecutionTime(totalExecutionTime);
+
+            for (let i = 0; i < stackTraces.length; i++) {
+                topDownCallingContextTree.updateTreeWithStackTrace(stackTraces[i]);
+                bottomUpCallingContextTree.updateTreeWithStackTrace(stackTraces[i]);
+            }
+
+            // FIXME: This transformation should not be needed after introducing ProfileView.
+            // Once we eliminate ProfileNodeTreeElements and ProfileNodeDataGridNodes.
+            // <https://webkit.org/b/154973> Web Inspector: Timelines UI redesign: Remove TimelineSidebarPanel
             for (let i = 0; i < this._scriptProfilerRecords.length; ++i) {
                 let record = this._scriptProfilerRecords[i];
-                record.profilePayload = this._callingContextTree.toCPUProfilePayload(record.startTime, record.endTime);
+                record.profilePayload = topDownCallingContextTree.toCPUProfilePayload(record.startTime, record.endTime);
             }
         }
 

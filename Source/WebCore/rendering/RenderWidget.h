@@ -81,24 +81,24 @@ public:
 protected:
     RenderWidget(HTMLFrameOwnerElement&, Ref<RenderStyle>&&);
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override final;
-    virtual void layout() override;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
+    void layout() override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     virtual void paintContents(PaintInfo&, const LayoutPoint&);
-    virtual bool requiresLayer() const override;
+    bool requiresLayer() const override;
 
 private:
     void element() const = delete;
 
-    virtual bool isWidget() const override final { return true; }
+    bool isWidget() const final { return true; }
 
-    virtual bool needsPreferredWidthsRecalculation() const override final;
-    virtual RenderBox* embeddedContentBox() const override final;
+    bool needsPreferredWidthsRecalculation() const final;
+    RenderBox* embeddedContentBox() const final;
 
-    virtual void willBeDestroyed() override final;
-    virtual void setSelectionState(SelectionState) override final;
-    virtual void setOverlapTestResult(bool) override final;
+    void willBeDestroyed() final;
+    void setSelectionState(SelectionState) final;
+    void setOverlapTestResult(bool) final;
 
     bool setWidgetGeometry(const LayoutRect&);
     bool updateWidgetGeometry();

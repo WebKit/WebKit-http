@@ -342,7 +342,7 @@ sub determineArchitecture
             } elsif ($xcodeSDK =~ /^iphonesimulator/) {
                 $architecture = 'x86_64';
             } elsif ($xcodeSDK =~ /^iphoneos/) {
-                $architecture = 'armv7';
+                $architecture = 'arm64';
             }
         }
     } elsif (isCMakeBuild()) {
@@ -1764,8 +1764,6 @@ sub buildXCodeProject($$@)
         push(@extraOptions, "-alltargets");
         push(@extraOptions, "clean");
     }
-
-    push(@extraOptions, ("-sdk", xcodeSDK())) if isIOSWebKit();
 
     chomp($ENV{DSYMUTIL_NUM_THREADS} = `sysctl -n hw.activecpu`);
     return system "xcodebuild", "-project", "$project.xcodeproj", @extraOptions;

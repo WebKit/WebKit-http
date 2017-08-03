@@ -650,6 +650,7 @@ public:
     // this also makes it cheap to query if the condition holds. Also makes sure that the GC knows
     // what's going on.
     bool watchCondition(const ObjectPropertyCondition&);
+    bool watchConditions(const ObjectPropertyConditionSet&);
 
     // Checks if it's known that loading from the given object at the given offset is fine. This is
     // computed by tracking which conditions we track with watchCondition().
@@ -784,7 +785,7 @@ public:
     
     void registerFrozenValues();
     
-    virtual void visitChildren(SlotVisitor&) override;
+    void visitChildren(SlotVisitor&) override;
     
     NO_RETURN_DUE_TO_CRASH void handleAssertionFailure(
         std::nullptr_t, const char* file, int line, const char* function,
@@ -867,6 +868,7 @@ public:
     Bag<CallVarargsData> m_callVarargsData;
     Bag<LoadVarargsData> m_loadVarargsData;
     Bag<StackAccessData> m_stackAccessData;
+    Bag<LazyJSValue> m_lazyJSValues;
     Vector<InlineVariableData, 4> m_inlineVariableData;
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
@@ -879,6 +881,9 @@ public:
     unsigned m_localVars;
     unsigned m_nextMachineLocal;
     unsigned m_parameterSlots;
+    
+    HashSet<String> m_localStrings;
+    HashMap<const StringImpl*, String> m_copiedStrings;
 
 #if USE(JSVALUE32_64)
     std::unordered_map<int64_t, double*> m_doubleConstantsMap;

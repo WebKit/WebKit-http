@@ -31,7 +31,7 @@
 
 #if ENABLE(FETCH_API)
 
-#include "FetchBody.h"
+#include "FetchBodyOwner.h"
 #include "FetchHeaders.h"
 #include "FetchOptions.h"
 #include "ResourceRequest.h"
@@ -43,7 +43,7 @@ class ScriptExecutionContext;
 
 typedef int ExceptionCode;
 
-class FetchRequest : public RefCounted<FetchRequest> {
+class FetchRequest final : public FetchBodyOwner {
 public:
     static RefPtr<FetchRequest> create(ScriptExecutionContext&, FetchRequest*, const Dictionary&, ExceptionCode&);
     static RefPtr<FetchRequest> create(ScriptExecutionContext&, const String&, const Dictionary&, ExceptionCode&);
@@ -63,15 +63,7 @@ public:
     String redirect() const;
     const String& integrity() const { return m_internalRequest.integrity; }
 
-    RefPtr<FetchRequest> clone(ExceptionCode&);
-
-    // Body API
-    bool isDisturbed() const { return m_body.isDisturbed(); }
-    void arrayBuffer(FetchBody::ArrayBufferPromise&& promise) { m_body.arrayBuffer(WTFMove(promise)); }
-    void formData(FetchBody::FormDataPromise&& promise) { m_body.formData(WTFMove(promise)); }
-    void blob(FetchBody::BlobPromise&& promise) { m_body.blob(WTFMove(promise)); }
-    void json(JSC::ExecState& state, FetchBody::JSONPromise&& promise) { m_body.json(state, WTFMove(promise)); }
-    void text(FetchBody::TextPromise&& promise) { m_body.text(WTFMove(promise)); }
+    RefPtr<FetchRequest> clone(ScriptExecutionContext&, ExceptionCode&);
 
     struct InternalRequest {
         ResourceRequest request;
@@ -80,18 +72,19 @@ public:
         String integrity;
     };
 
-    FetchBody& body() { return m_body; }
-
 private:
-    FetchRequest(FetchBody&&, Ref<FetchHeaders>&&, InternalRequest&&);
+    FetchRequest(ScriptExecutionContext&, FetchBody&&, Ref<FetchHeaders>&&, InternalRequest&&);
 
-    FetchBody m_body;
+    // ActiveDOMObject API.
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+
     Ref<FetchHeaders> m_headers;
     InternalRequest m_internalRequest;
 };
 
-inline FetchRequest::FetchRequest(FetchBody&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
-    : m_body(WTFMove(body))
+inline FetchRequest::FetchRequest(ScriptExecutionContext& context, FetchBody&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
+    : FetchBodyOwner(context, WTFMove(body))
     , m_headers(WTFMove(headers))
     , m_internalRequest(WTFMove(internalRequest))
 {

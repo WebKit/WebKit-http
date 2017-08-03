@@ -33,65 +33,65 @@
 
 namespace WebCore {
 
-    class DOMTimerFireState;
-    class Document;
-    class Element;
-    class HTMLPlugInElement;
-    class IntRect;
-    class ScheduledAction;
+class DOMTimerFireState;
+class Document;
+class Element;
+class HTMLPlugInElement;
+class IntRect;
+class ScheduledAction;
 
-    class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
-        WTF_MAKE_NONCOPYABLE(DOMTimer);
-        WTF_MAKE_FAST_ALLOCATED;
-    public:
-        virtual ~DOMTimer();
+class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
+    WTF_MAKE_NONCOPYABLE(DOMTimer);
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    virtual ~DOMTimer();
 
-        static double defaultMinimumInterval() { return 0.004; } // 4 milliseconds.
-        static double defaultAlignmentInterval() { return 0; }
-        static double hiddenPageAlignmentInterval() { return 1.0; } // 1 second.
+    static std::chrono::milliseconds defaultMinimumInterval() { return std::chrono::milliseconds(4); }
+    static std::chrono::milliseconds defaultAlignmentInterval() { return std::chrono::milliseconds::zero(); }
+    static std::chrono::milliseconds hiddenPageAlignmentInterval() { return std::chrono::milliseconds(1000); }
 
-        // Creates a new timer owned by specified ScriptExecutionContext, starts it
-        // and returns its Id.
-        static int install(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, int timeout, bool singleShot);
-        static void removeById(ScriptExecutionContext&, int timeoutId);
+    // Creates a new timer owned by specified ScriptExecutionContext, starts it
+    // and returns its Id.
+    static int install(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, std::chrono::milliseconds timeout, bool singleShot);
+    static void removeById(ScriptExecutionContext&, int timeoutId);
 
-        // Notify that the interval may need updating (e.g. because the minimum interval
-        // setting for the context has changed).
-        void updateTimerIntervalIfNecessary();
+    // Notify that the interval may need updating (e.g. because the minimum interval
+    // setting for the context has changed).
+    void updateTimerIntervalIfNecessary();
 
-        static void scriptDidInteractWithPlugin(HTMLPlugInElement&);
+    static void scriptDidInteractWithPlugin(HTMLPlugInElement&);
 
-    private:
-        DOMTimer(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, int interval, bool singleShot);
-        friend class Internals;
+private:
+    DOMTimer(ScriptExecutionContext&, std::unique_ptr<ScheduledAction>, std::chrono::milliseconds interval, bool singleShot);
+    friend class Internals;
 
-        double intervalClampedToMinimum() const;
+    std::chrono::milliseconds intervalClampedToMinimum() const;
 
-        bool isDOMTimersThrottlingEnabled(Document&) const;
-        void updateThrottlingStateIfNecessary(const DOMTimerFireState&);
+    bool isDOMTimersThrottlingEnabled(Document&) const;
+    void updateThrottlingStateIfNecessary(const DOMTimerFireState&);
 
-        // SuspendableTimer
-        virtual void fired() override;
-        virtual void didStop() override;
-        virtual double alignedFireTime(double) const override;
+    // SuspendableTimer
+    void fired() override;
+    void didStop() override;
+    Optional<std::chrono::milliseconds> alignedFireTime(std::chrono::milliseconds) const override;
 
-        // ActiveDOMObject API.
-        const char* activeDOMObjectName() const override;
+    // ActiveDOMObject API.
+    const char* activeDOMObjectName() const override;
 
-        enum TimerThrottleState {
-            Undetermined,
-            ShouldThrottle,
-            ShouldNotThrottle
-        };
-
-        int m_timeoutId;
-        int m_nestingLevel;
-        std::unique_ptr<ScheduledAction> m_action;
-        int m_originalInterval;
-        TimerThrottleState m_throttleState;
-        double m_currentTimerInterval;
-        bool m_shouldForwardUserGesture;
+    enum TimerThrottleState {
+        Undetermined,
+        ShouldThrottle,
+        ShouldNotThrottle
     };
+
+    int m_timeoutId;
+    int m_nestingLevel;
+    std::unique_ptr<ScheduledAction> m_action;
+    std::chrono::milliseconds m_originalInterval;
+    TimerThrottleState m_throttleState;
+    std::chrono::milliseconds m_currentTimerInterval;
+    bool m_shouldForwardUserGesture;
+};
 
 } // namespace WebCore
 

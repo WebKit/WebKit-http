@@ -66,7 +66,7 @@ class Notification final : public RefCounted<Notification>, public ActiveDOMObje
 public:
     WEBCORE_EXPORT Notification();
 #if ENABLE(LEGACY_NOTIFICATIONS)
-    static Ref<Notification> create(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter> provider);
+    static Ref<Notification> create(const String& title, const String& body, const String& iconURI, ScriptExecutionContext&, ExceptionCode&, PassRefPtr<NotificationCenter> provider);
 #endif
 #if ENABLE(NOTIFICATIONS)
     static Ref<Notification> create(Document&, const String& title, const Dictionary& options);
@@ -111,8 +111,8 @@ public:
     using RefCounted<Notification>::deref;
 
     // EventTarget interface
-    virtual EventTargetInterface eventTargetInterface() const override { return NotificationEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
+    EventTargetInterface eventTargetInterface() const override { return NotificationEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
 
     void stopLoadingIcon();
 
@@ -122,14 +122,14 @@ public:
     WEBCORE_EXPORT void finalize();
 
 #if ENABLE(NOTIFICATIONS)
-    static const String permission(ScriptExecutionContext*);
+    static const String permission(ScriptExecutionContext&);
     WEBCORE_EXPORT static const String permissionString(NotificationClient::Permission);
-    static void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback> = nullptr);
+    static void requestPermission(ScriptExecutionContext&, PassRefPtr<NotificationPermissionCallback> = nullptr);
 #endif
 
 private:
 #if ENABLE(LEGACY_NOTIFICATIONS)
-    Notification(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter>);
+    Notification(const String& title, const String& body, const String& iconURI, ScriptExecutionContext&, ExceptionCode&, PassRefPtr<NotificationCenter>);
 #endif
 #if ENABLE(NOTIFICATIONS)
     Notification(ScriptExecutionContext&, const String& title);
@@ -143,8 +143,8 @@ private:
     bool canSuspendForDocumentSuspension() const override;
 
     // EventTarget API.
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
 
     void startLoadingIcon();
     void finishLoadingIcon();

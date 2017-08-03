@@ -29,14 +29,17 @@
 
 #include "ContentSecurityPolicyDirective.h"
 #include "ContentSecurityPolicyDirectiveList.h"
+#include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicySource.h"
 #include "ContentSecurityPolicySourceList.h"
+#include "CryptoDigest.h"
 #include "DOMStringList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "FormData.h"
 #include "FormDataList.h"
 #include "Frame.h"
+#include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
 #include "ParsingUtilities.h"
@@ -45,9 +48,11 @@
 #include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicyViolationEvent.h"
+#include "TextEncoding.h"
 #include <inspector/InspectorValues.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/text/TextPosition.h>
 
 using namespace Inspector;
@@ -64,8 +69,9 @@ ContentSecurityPolicy::ContentSecurityPolicy(ScriptExecutionContext& scriptExecu
     m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
 }
 
-ContentSecurityPolicy::ContentSecurityPolicy(const SecurityOrigin& securityOrigin)
-    : m_sandboxFlags(SandboxNone)
+ContentSecurityPolicy::ContentSecurityPolicy(const SecurityOrigin& securityOrigin, const Frame* frame)
+    : m_frame(frame)
+    , m_sandboxFlags(SandboxNone)
 {
     m_selfSourceProtocol = securityOrigin.protocol();
     m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
@@ -91,8 +97,9 @@ ContentSecurityPolicyResponseHeaders ContentSecurityPolicy::responseHeaders() co
     return result;
 }
 
-void ContentSecurityPolicy::didReceiveHeaders(const ContentSecurityPolicyResponseHeaders& headers)
+void ContentSecurityPolicy::didReceiveHeaders(const ContentSecurityPolicyResponseHeaders& headers, ReportParsingErrors reportParsingErrors)
 {
+    TemporaryChange<bool> isReportingEnabled(m_isReportingEnabled, reportParsingErrors == ReportParsingErrors::Yes);
     for (auto& header : headers.m_headers)
         didReceiveHeader(header.first, header.second, ContentSecurityPolicy::PolicyFrom::HTTPHeader);
 }
@@ -153,6 +160,16 @@ bool ContentSecurityPolicy::protocolMatchesSelf(const URL& url) const
     return equalIgnoringASCIICase(url.protocol(), m_selfSourceProtocol);
 }
 
+template<bool (ContentSecurityPolicyDirectiveList::*allowed)(const Frame&, const URL&, ContentSecurityPolicy::ReportingStatus) const>
+static bool isAllowedByAllWithFrame(const CSPDirectiveListVector& policies, const Frame& frame, const URL& url, ContentSecurityPolicy::ReportingStatus reportingStatus)
+{
+    for (auto& policy : policies) {
+        if (!(policy.get()->*allowed)(frame, url, reportingStatus))
+            return false;
+    }
+    return true;
+}
+
 template<bool (ContentSecurityPolicyDirectiveList::*allowed)(ContentSecurityPolicy::ReportingStatus) const>
 bool isAllowedByAll(const CSPDirectiveListVector& policies, ContentSecurityPolicy::ReportingStatus reportingStatus)
 {
@@ -183,6 +200,48 @@ bool isAllowedByAllWithContext(const CSPDirectiveListVector& policies, const Str
     return true;
 }
 
+template<bool (ContentSecurityPolicyDirectiveList::*allowed)(const String& nonce) const>
+static bool isAllowedByAllWithNonce(const CSPDirectiveListVector& policies, const String& nonce)
+{
+    for (auto& policy : policies) {
+        if (!(policy.get()->*allowed)(nonce))
+            return false;
+    }
+    return true;
+}
+
+static CryptoDigest::Algorithm toCryptoDigestAlgorithm(ContentSecurityPolicyHashAlgorithm algorithm)
+{
+    switch (algorithm) {
+    case ContentSecurityPolicyHashAlgorithm::SHA_256:
+        return CryptoDigest::Algorithm::SHA_256;
+    case ContentSecurityPolicyHashAlgorithm::SHA_384:
+        return CryptoDigest::Algorithm::SHA_384;
+    case ContentSecurityPolicyHashAlgorithm::SHA_512:
+        return CryptoDigest::Algorithm::SHA_512;
+    }
+    ASSERT_NOT_REACHED();
+    return CryptoDigest::Algorithm::SHA_512;
+}
+
+template<bool (ContentSecurityPolicyDirectiveList::*allowed)(const ContentSecurityPolicyHash&) const>
+bool isAllowedByAllWithHashFromContent(const CSPDirectiveListVector& policies, const String& content, const TextEncoding& encoding, OptionSet<ContentSecurityPolicyHashAlgorithm> algorithms)
+{
+    // FIXME: Compute the digest with respect to the raw bytes received from the page.
+    // See <https://bugs.webkit.org/show_bug.cgi?id=155184>.
+    CString contentCString = encoding.encode(content, EntitiesForUnencodables);
+    for (auto algorithm : algorithms) {
+        auto cryptoDigest = CryptoDigest::create(toCryptoDigestAlgorithm(algorithm));
+        cryptoDigest->addBytes(contentCString.data(), contentCString.length());
+        Vector<uint8_t> digest = cryptoDigest->computeHash();
+        for (auto& policy : policies) {
+            if ((policy.get()->*allowed)(std::make_pair(algorithm, digest)))
+                return true;
+        }
+    }
+    return false;
+}
+
 template<bool (ContentSecurityPolicyDirectiveList::*allowFromURL)(const URL&, ContentSecurityPolicy::ReportingStatus) const>
 bool isAllowedByAllWithURL(const CSPDirectiveListVector& policies, const URL& url, ContentSecurityPolicy::ReportingStatus reportingStatus)
 {
@@ -206,19 +265,76 @@ bool ContentSecurityPolicy::allowInlineEventHandlers(const String& contextURL, c
     return overrideContentSecurityPolicy || isAllowedByAllWithContext<&ContentSecurityPolicyDirectiveList::allowInlineEventHandlers>(m_policies, contextURL, contextLine, reportingStatus);
 }
 
-bool ContentSecurityPolicy::allowInlineScript(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+// FIXME: We should compute the document encoding once and cache it instead of computing it on each invocation.
+const TextEncoding& ContentSecurityPolicy::documentEncoding() const
 {
-    return overrideContentSecurityPolicy || isAllowedByAllWithContext<&ContentSecurityPolicyDirectiveList::allowInlineScript>(m_policies, contextURL, contextLine, reportingStatus);
+    if (!is<Document>(m_scriptExecutionContext))
+        return UTF8Encoding();
+    Document& document = downcast<Document>(*m_scriptExecutionContext);
+    if (TextResourceDecoder* decoder = document.decoder())
+        return decoder->encoding();
+    return UTF8Encoding();
 }
 
-bool ContentSecurityPolicy::allowInlineStyle(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+bool ContentSecurityPolicy::allowScriptWithNonce(const String& nonce, bool overrideContentSecurityPolicy) const
 {
-    return overrideContentSecurityPolicy || m_overrideInlineStyleAllowed || isAllowedByAllWithContext<&ContentSecurityPolicyDirectiveList::allowInlineStyle>(m_policies, contextURL, contextLine, reportingStatus);
+    if (overrideContentSecurityPolicy)
+        return true;
+    String strippedNonce = stripLeadingAndTrailingHTMLSpaces(nonce);
+    if (strippedNonce.isEmpty())
+        return false;
+    if (isAllowedByAllWithNonce<&ContentSecurityPolicyDirectiveList::allowScriptWithNonce>(m_policies, strippedNonce))
+        return true;
+    return false;
+}
+
+bool ContentSecurityPolicy::allowStyleWithNonce(const String& nonce, bool overrideContentSecurityPolicy) const
+{
+    if (overrideContentSecurityPolicy)
+        return true;
+    String strippedNonce = stripLeadingAndTrailingHTMLSpaces(nonce);
+    if (strippedNonce.isEmpty())
+        return false;
+    if (isAllowedByAllWithNonce<&ContentSecurityPolicyDirectiveList::allowStyleWithNonce>(m_policies, strippedNonce))
+        return true;
+    return false;
+}
+
+bool ContentSecurityPolicy::allowInlineScript(const String& contextURL, const WTF::OrdinalNumber& contextLine, const String& scriptContent, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+{
+    if (overrideContentSecurityPolicy)
+        return true;
+    if (!m_hashAlgorithmsForInlineScripts.isEmpty() && !scriptContent.isEmpty()
+        && isAllowedByAllWithHashFromContent<&ContentSecurityPolicyDirectiveList::allowInlineScriptWithHash>(m_policies, scriptContent, documentEncoding(), m_hashAlgorithmsForInlineScripts))
+        return true;
+    return isAllowedByAllWithContext<&ContentSecurityPolicyDirectiveList::allowInlineScript>(m_policies, contextURL, contextLine, reportingStatus);
+}
+
+bool ContentSecurityPolicy::allowInlineStyle(const String& contextURL, const WTF::OrdinalNumber& contextLine, const String& styleContent, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+{
+    if (overrideContentSecurityPolicy)
+        return true;
+    if (m_overrideInlineStyleAllowed)
+        return true;
+    if (!m_hashAlgorithmsForInlineStylesheets.isEmpty() && !styleContent.isEmpty()
+        && isAllowedByAllWithHashFromContent<&ContentSecurityPolicyDirectiveList::allowInlineStyleWithHash>(m_policies, styleContent, documentEncoding(), m_hashAlgorithmsForInlineStylesheets))
+        return true;
+    return isAllowedByAllWithContext<&ContentSecurityPolicyDirectiveList::allowInlineStyle>(m_policies, contextURL, contextLine, reportingStatus);
 }
 
 bool ContentSecurityPolicy::allowEval(JSC::ExecState* state, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
 {
     return overrideContentSecurityPolicy || isAllowedByAllWithState<&ContentSecurityPolicyDirectiveList::allowEval>(m_policies, state, reportingStatus);
+}
+
+bool ContentSecurityPolicy::allowFrameAncestors(const Frame& frame, const URL& url, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+{
+    if (overrideContentSecurityPolicy)
+        return true;
+    Frame& topFrame = frame.tree().top();
+    if (&frame == &topFrame)
+        return true;
+    return isAllowedByAllWithFrame<&ContentSecurityPolicyDirectiveList::allowFrameAncestors>(m_policies, frame, url, reportingStatus);
 }
 
 String ContentSecurityPolicy::evalDisabledErrorMessage() const
@@ -333,20 +449,37 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
 {
     logToConsole(consoleMessage, contextURL, contextLine, state);
 
-    // FIXME: Support sending reports from worker.
-    if (!is<Document>(m_scriptExecutionContext))
+    if (!m_isReportingEnabled)
         return;
 
-    Document& document = downcast<Document>(*m_scriptExecutionContext);
+    // FIXME: Support sending reports from worker.
+    if (!is<Document>(m_scriptExecutionContext) && !m_frame)
+        return;
+
+    // FIXME: We should not hardcode the directive names. We should make use of the constants in ContentSecurityPolicyDirectiveList.cpp.
+    // See <https://bugs.webkit.org/show_bug.cgi?id=155133>.
+    ASSERT(!m_frame || effectiveDirective == "frame-ancestors");
+
+    Document& document = is<Document>(m_scriptExecutionContext) ? downcast<Document>(*m_scriptExecutionContext) : *m_frame->document();
     Frame* frame = document.frame();
+    ASSERT(!m_frame || m_frame == frame);
     if (!frame)
         return;
 
-    String documentURI = document.url().strippedForUseAsReferrer();
-    String referrer = document.referrer();
-    String blockedURI = stripURLForUseInReport(document, blockedURL);
+    String documentURI;
+    String blockedURI;
+    if (is<Document>(m_scriptExecutionContext)) {
+        documentURI = document.url().strippedForUseAsReferrer();
+        blockedURI = stripURLForUseInReport(document, blockedURL);
+    } else {
+        // The URL of |document| may not have been initialized (say, when reporting a frame-ancestors violation).
+        // So, we use the URL of the blocked document for the protected document URL.
+        documentURI = blockedURL;
+        blockedURI = blockedURL;
+    }
     String violatedDirective = directiveText;
     String originalPolicy = header;
+    String referrer = document.referrer();
     ASSERT(document.loader());
     unsigned short statusCode = document.url().protocolIs("http") && document.loader() ? document.loader()->response().httpStatusCode() : 0;
 
@@ -492,9 +625,14 @@ void ContentSecurityPolicy::reportMissingReportURI(const String& policy) const
 
 void ContentSecurityPolicy::logToConsole(const String& message, const String& contextURL, const WTF::OrdinalNumber& contextLine, JSC::ExecState* state) const
 {
+    if (!m_isReportingEnabled)
+        return;
+
     // FIXME: <http://webkit.org/b/114317> ContentSecurityPolicy::logToConsole should include a column number
     if (m_scriptExecutionContext)
         m_scriptExecutionContext->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, contextURL, contextLine.oneBasedInt(), 0, state);
+    else if (m_frame && m_frame->document())
+        static_cast<ScriptExecutionContext*>(m_frame->document())->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, contextURL, contextLine.oneBasedInt(), 0, state);
 }
 
 void ContentSecurityPolicy::reportBlockedScriptExecutionToInspector(const String& directiveText) const

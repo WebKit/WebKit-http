@@ -52,7 +52,7 @@ private:
     static JSC::CallType getCallData(JSC::JSCell*, JSC::CallData& callData)
     {
         callData.native.function = callThrowTypeError;
-        return JSC::CallTypeHost;
+        return JSC::CallType::Host;
     }
 };
 
@@ -104,7 +104,7 @@ private:
 
 template<typename JSClass> class JSBuiltinConstructor : public DOMConstructorJSBuiltinObject {
 public:
-    typedef DOMConstructorJSBuiltinObject Base;
+    using Base = DOMConstructorJSBuiltinObject;
 
     static JSBuiltinConstructor* create(JSC::VM&, JSC::Structure*, JSDOMGlobalObject&);
     static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject&, JSC::JSValue prototype);
@@ -119,7 +119,9 @@ private:
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
     static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
-    JSC::JSObject* createJSObject();
+
+    JSC::EncodedJSValue callConstructor(JSC::ExecState&, JSC::JSObject&);
+    JSC::EncodedJSValue callConstructor(JSC::ExecState&, JSC::JSObject*);
 
     // Usually defined for each specialization class.
     void initializeProperties(JSC::VM&, JSDOMGlobalObject&) { }
@@ -168,7 +170,7 @@ template<typename JSClass> inline void JSDOMConstructor<JSClass>::finishCreation
 template<typename JSClass> inline JSC::ConstructType JSDOMConstructor<JSClass>::getConstructData(JSC::JSCell*, JSC::ConstructData& constructData)
 {
     constructData.native.function = construct;
-    return JSC::ConstructTypeHost;
+    return JSC::ConstructType::Host;
 }
 
 template<typename JSClass> inline JSDOMNamedConstructor<JSClass>* JSDOMNamedConstructor<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
@@ -193,7 +195,7 @@ template<typename JSClass> inline void JSDOMNamedConstructor<JSClass>::finishCre
 template<typename JSClass> inline JSC::ConstructType JSDOMNamedConstructor<JSClass>::getConstructData(JSC::JSCell*, JSC::ConstructData& constructData)
 {
     constructData.native.function = construct;
-    return JSC::ConstructTypeHost;
+    return JSC::ConstructType::Host;
 }
 
 template<typename JSClass> inline JSBuiltinConstructor<JSClass>* JSBuiltinConstructor<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
@@ -216,23 +218,54 @@ template<typename JSClass> inline void JSBuiltinConstructor<JSClass>::finishCrea
     initializeProperties(vm, globalObject);
 }
 
-template<typename JSClass> inline JSC::EncodedJSValue JSC_HOST_CALL JSBuiltinConstructor<JSClass>::construct(JSC::ExecState* state)
+template<typename JSClass> inline JSC::EncodedJSValue JSBuiltinConstructor<JSClass>::callConstructor(JSC::ExecState& state, JSC::JSObject& object)
 {
-    auto* castedThis = JSC::jsCast<JSBuiltinConstructor*>(state->callee());
-    auto* object = castedThis->createJSObject();
-    callFunctionWithCurrentArguments(*state, *object, *castedThis->initializeFunction());
-    return JSC::JSValue::encode(object);
+    callFunctionWithCurrentArguments(state, object, *initializeFunction());
+    return JSC::JSValue::encode(&object);
 }
 
-template<typename JSClass> inline JSC::JSObject* JSBuiltinConstructor<JSClass>::createJSObject()
+template<typename JSClass> inline JSC::EncodedJSValue JSBuiltinConstructor<JSClass>::callConstructor(JSC::ExecState& state, JSC::JSObject* object)
 {
-    return JSClass::create(getDOMStructure<JSClass>(globalObject()->vm(), *globalObject()), globalObject());
+    if (!object)
+        return throwConstructorDocumentUnavailableError(state, info()->className);
+    return callConstructor(state, *object);
+}
+
+template<typename JSClass> inline
+typename std::enable_if<JSDOMObjectInspector<JSClass>::isSimpleWrapper, JSC::JSObject&>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
+{
+    auto& globalObject = *constructor.globalObject();
+    return *JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject, JSClass::DOMWrapped::create());
+}
+
+template<typename JSClass> inline
+typename std::enable_if<JSDOMObjectInspector<JSClass>::isBuiltin, JSC::JSObject&>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
+{
+    auto& globalObject = *constructor.globalObject();
+    return *JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject);
+}
+
+template<typename JSClass> inline
+typename std::enable_if<JSDOMObjectInspector<JSClass>::isComplexWrapper, JSC::JSObject*>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
+{
+    ScriptExecutionContext* context = constructor.scriptExecutionContext();
+    if (!context)
+        return nullptr;
+    auto& globalObject = *constructor.globalObject();
+    return JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject, JSClass::DOMWrapped::create(*context));
+}
+
+template<typename JSClass> inline JSC::EncodedJSValue JSC_HOST_CALL JSBuiltinConstructor<JSClass>::construct(JSC::ExecState* state)
+{
+    ASSERT(state);
+    auto* castedThis = JSC::jsCast<JSBuiltinConstructor*>(state->callee());
+    return castedThis->callConstructor(*state, createJSObject(*castedThis));
 }
 
 template<typename JSClass> inline JSC::ConstructType JSBuiltinConstructor<JSClass>::getConstructData(JSC::JSCell*, JSC::ConstructData& constructData)
 {
     constructData.native.function = construct;
-    return JSC::ConstructTypeHost;
+    return JSC::ConstructType::Host;
 }
 
 } // namespace WebCore

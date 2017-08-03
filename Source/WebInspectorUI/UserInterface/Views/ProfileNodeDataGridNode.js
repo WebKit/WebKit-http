@@ -36,8 +36,7 @@ WebInspector.ProfileNodeDataGridNode = class ProfileNodeDataGridNode extends Web
         this._rangeStartTime = rangeStartTime || 0;
         this._rangeEndTime = typeof rangeEndTime === "number" ? rangeEndTime : Infinity;
 
-        this._data = this._profileNode.computeCallInfoForTimeRange(this._rangeStartTime, this._rangeEndTime);
-        this._data.location = this._profileNode.sourceCodeLocation;
+        this._cachedData = null;
     }
 
     // Public
@@ -69,7 +68,13 @@ WebInspector.ProfileNodeDataGridNode = class ProfileNodeDataGridNode extends Web
 
     get data()
     {
-        return this._data;
+        if (!this._cachedData) {
+            this._cachedData = this._profileNode.computeCallInfoForTimeRange(this._rangeStartTime, this._rangeEndTime);
+            this._cachedData.name = this.displayName();
+            this._cachedData.location = this._profileNode.sourceCodeLocation;
+        }
+
+        return this._cachedData;
     }
 
     updateRangeTimes(startTime, endTime)
@@ -108,6 +113,10 @@ WebInspector.ProfileNodeDataGridNode = class ProfileNodeDataGridNode extends Web
         var value = this.data[columnIdentifier];
 
         switch (columnIdentifier) {
+        case "name":
+            cell.classList.add(...this.iconClassNames());
+            return value;
+
         case "startTime":
             return isNaN(value) ? emDash : Number.secondsToString(value - this._baseStartTime, true);
 
@@ -118,5 +127,49 @@ WebInspector.ProfileNodeDataGridNode = class ProfileNodeDataGridNode extends Web
         }
 
         return super.createCellContent(columnIdentifier, cell);
+    }
+
+    displayName()
+    {
+        let title = this._profileNode.functionName;
+        if (!title) {
+            switch (this._profileNode.type) {
+            case WebInspector.ProfileNode.Type.Function:
+                title = WebInspector.UIString("(anonymous function)");
+                break;
+            case WebInspector.ProfileNode.Type.Program:
+                title = WebInspector.UIString("(program)");
+                break;
+            default:
+                title = WebInspector.UIString("(anonymous function)");
+                console.error("Unknown ProfileNode type: " + this._profileNode.type);
+            }
+        }
+
+        return title;
+    }
+
+    iconClassNames()
+    {
+        let className;
+        switch (this._profileNode.type) {
+        case WebInspector.ProfileNode.Type.Function:
+            className = WebInspector.CallFrameView.FunctionIconStyleClassName;
+            if (!this._profileNode.sourceCodeLocation)
+                className = WebInspector.CallFrameView.NativeIconStyleClassName;
+            break;
+        case WebInspector.ProfileNode.Type.Program:
+            className = WebInspector.TimelineRecordTreeElement.EvaluatedRecordIconStyleClass;
+            break;
+        }
+
+        console.assert(className);
+
+        // This is more than likely an event listener function with an "on" prefix and it is
+        // as long or longer than the shortest event listener name -- "oncut".
+        if (this._profileNode.functionName && this._profileNode.functionName.startsWith("on") && this._profileNode.functionName.length >= 5)
+            className = WebInspector.CallFrameView.EventListenerIconStyleClassName;
+
+        return [className];
     }
 };

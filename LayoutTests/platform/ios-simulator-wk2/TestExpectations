@@ -87,7 +87,6 @@ storage/domstorage/localstorage/access-storage-after-window-close.html
 storage/domstorage/localstorage/set-value-in-storage-after-window-close.html
 storage/domstorage/localstorage/window-open.html
 storage/domstorage/localstorage/access-storage-then-set-value-in-storage-after-window-close.html
-inspector
 fast/loader/ping-error.html
 fast/loader/stateobjects/popstate-fires-with-page-cache.html
 fast/loader/stateobjects/replacestate-in-iframe.html
@@ -451,7 +450,6 @@ http/tests/uri/css-href.php [ Failure ]
 http/tests/appcache/crash-when-navigating-away-then-back.html
 http/tests/cache/display-image-unset-allows-cached-image-load.html
 http/tests/cache/history-only-cached-subresource-loads.html
-http/tests/inspector/page/loading-iframe-document-node.html
 http/tests/misc/iframe-reparenting-id-collision.html
 http/tests/misc/set-window-opener-to-null.html
 http/tests/misc/slow-preload-cancel.html
@@ -1947,3 +1945,8 @@ webkit.org/b/153380 webarchive/loading/missing-data.html [ Pass Crash ]
 webkit.org/b/153503 http/tests/appcache/404-resource-with-slow-main-resource.php [ Pass Failure ]
 
 webkit.org/b/153050 http/tests/security/cross-frame-access-custom.html [ Pass Failure ]
+
+webkit.org/b/155201 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
+
+# Forcing always allow user scalable is not supported on certain OS version.
+webkit.org/b/155056 fast/viewport/ios/force-always-user-scalable.html [ Skip ]

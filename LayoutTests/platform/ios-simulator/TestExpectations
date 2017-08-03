@@ -87,6 +87,10 @@ http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html
+http/tests/security/contentSecurityPolicy/object-src-param-code-blocked.html
+http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html
+http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html
+http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
@@ -229,6 +233,7 @@ fast/loader/stateobjects/pushstate-frequency-with-user-gesture.html [ Skip ]
 fast/scrolling/scroll-animator-basic-events.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
+fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
@@ -242,6 +247,16 @@ webkit.org/b/150225 fast/custom-elements [ Pass ]
 
 # This test needs to be rewritten to use runUIScript to work on iOS
 webkit.org/b/152993 http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html [ Skip ]
+
+# iOS does not have the required font for these tests
+fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
+fast/text/all-small-caps-whitespace.html [ Skip ]
+
+# <attachment> support is currently half-baked
+fast/attachment [ Skip ]
+
+# This test relies on EventSender.keydown(), which is not supported on iOS
+webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 
 ###
 # Known failures
@@ -588,11 +603,6 @@ ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
 
 # html-templates tests that time-out:
-imported/w3c/html-templates/additions-to-serializing-xhtml-documents/outerhtml.html
-imported/w3c/html-templates/additions-to-the-css-user-agent-style-sheet/css-user-agent-style-sheet-test-001.html
-imported/w3c/html-templates/additions-to-the-steps-to-clone-a-node/template-clone-children.html
-imported/w3c/html-templates/definitions/template-contents-owner-document-type.html
-imported/w3c/html-templates/innerhtml-on-templates/innerhtml.html
 imported/w3c/html-templates/parsing-html-templates/additions-to-foster-parenting/template-is-a-foster-parent-element.html
 imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-body-insertion-mode/generating-of-implied-end-tags.html
 imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-body-insertion-mode/ignore-body-token.html
@@ -2533,7 +2543,11 @@ platform/ios-simulator/ios/scrolling/scrolling-content-clip-to-viewport.html [ F
 platform/ios-simulator/ios/scrolling/textarea-scroll-touch.html [ Failure ]
 platform/ios-simulator/ios/scrolling/touch-stacking.html [ Failure ]
 platform/ios-simulator/ios/touch [ Skip ]
-fast/events/ios/focused-input-should-assist-on-touch.html [ Skip ]
+
+# image inputs get rounded corners on iOS
+fast/css/object-position/object-position-input-image.html [ ImageOnlyFailure ]
+# iOS snapshot is retina, results differ.
+fast/css/object-position/object-position-img.html [ ImageOnlyFailure ]
 
 webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward-after-pageshow.html [ Failure ]
 webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward.html [ Failure ]
@@ -2808,7 +2822,6 @@ imported/blink/fast/events/popup-forwarded-gesture.html [ Skip ]
 imported/blink/fast/forms/select/listbox-line-height.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/forms/select/select-text-transform.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/images/image-hover-display-alt.html [ ImageOnlyFailure Pass ]
-imported/blink/fast/images/image-hover-display-alt.html [ Pass Timeout ]
 imported/blink/fast/inline/reparent-inline-box.html [ Pass Timeout ]
 imported/blink/fast/multicol/client-rects-rtl.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/multicol/composited-layer-single-fragment.html [ ImageOnlyFailure Pass ]
@@ -2934,7 +2947,9 @@ webkit.org/b/153315 fast/css3-text/css3-text-decoration/text-underline-position/
 
 webkit.org/b/153898 pageoverlay/overlay-small-frame-paints.html [ Pass Failure ]
 
-webkit.org/b/153933 css3/filters/multiple-filters-invalidation.html [ Pass Crash ]
+webkit.org/b/153933 css3/filters/huge-region.html [ Skip ]
+webkit.org/b/153933 css3/filters/huge-region-composited.html [ Skip ]
+webkit.org/b/153933 css3/filters/nested-filter.html [ Skip ]
 
 webkit.org/b/154055 perf/adding-radio-buttons.html [ Pass Failure ]
 
@@ -2945,6 +2960,12 @@ webkit.org/b/153029 fast/css-generated-content/details-summary-before-after.html
 webkit.org/b/76121 imported/blink/fast/events/event-trusted.html [ Skip ]
 
 webkit.org/b/154253 animations/animation-delay-changed.html [ Pass Failure ]
+
+webkit.org/b/155095 fast/table/border-collapsing/table-rtl-row-mixed-direction.html [ ImageOnlyFailure Pass ]
+webkit.org/b/155095 fast/table/border-collapsing/table-ltr-rows-mixed-direction.html [ ImageOnlyFailure Pass ]
+
+# Redundant and invalid. fast/table/hidpi-collapsed-border-with-odd-pixel-width.html covers it.
+fast/table/collapsed-border-with-odd-pixel-width.html [ ImageOnlyFailure ]
 
 # Uncategorized reftest failures, uncovered once we made reftests work. Needs triage.
 css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
@@ -2964,3 +2985,11 @@ fast/regions/layers/region-removed-during-animation.html [ ImageOnlyFailure ]
 fast/sub-pixel/table-with-subpixel-cell-size.html [ ImageOnlyFailure ]
 svg/filters/feCompositeOpaque.html [ ImageOnlyFailure ]
 svg/text/tspan-multiple-outline.svg [ ImageOnlyFailure ]
+
+webkit.org/b/155174 svg/animations/animate-marker-orient-from-angle-to-autostartreverse.html [ Skip ]
+
+webkit.org/b/155271 [ Debug ] js/regress/getter-richards-try-catch.html [ Skip ]
+
+# RTL Scrollbars are only implemented on OS X.
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]

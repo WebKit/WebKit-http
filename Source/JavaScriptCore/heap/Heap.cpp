@@ -33,7 +33,9 @@
 #include "GCIncomingRefCountedSetInlines.h"
 #include "HeapHelperPool.h"
 #include "HeapIterationScope.h"
+#include "HeapProfiler.h"
 #include "HeapRootVisitor.h"
+#include "HeapSnapshot.h"
 #include "HeapStatistics.h"
 #include "HeapVerifier.h"
 #include "IncrementalSweeper.h"
@@ -758,6 +760,65 @@ void Heap::removeDeadCompilerWorklistEntries()
 #endif
 }
 
+bool Heap::isHeapSnapshotting() const
+{
+    HeapProfiler* heapProfiler = m_vm->heapProfiler();
+    if (UNLIKELY(heapProfiler))
+        return heapProfiler->activeSnapshotBuilder();
+    return false;
+}
+
+struct GatherHeapSnapshotData : MarkedBlock::CountFunctor {
+    GatherHeapSnapshotData(HeapSnapshotBuilder& builder)
+        : m_builder(builder)
+    {
+    }
+
+    IterationStatus operator()(JSCell* cell)
+    {
+        cell->methodTable()->heapSnapshot(cell, m_builder);
+        return IterationStatus::Continue;
+    }
+
+    HeapSnapshotBuilder& m_builder;
+};
+
+void Heap::gatherExtraHeapSnapshotData(HeapProfiler& heapProfiler)
+{
+    GCPHASE(GatherExtraHeapSnapshotData);
+    if (HeapSnapshotBuilder* builder = heapProfiler.activeSnapshotBuilder()) {
+        HeapIterationScope heapIterationScope(*this);
+        GatherHeapSnapshotData functor(*builder);
+        m_objectSpace.forEachLiveCell(heapIterationScope, functor);
+    }
+}
+
+struct RemoveDeadHeapSnapshotNodes : MarkedBlock::CountFunctor {
+    RemoveDeadHeapSnapshotNodes(HeapSnapshot& snapshot)
+        : m_snapshot(snapshot)
+    {
+    }
+
+    IterationStatus operator()(JSCell* cell)
+    {
+        m_snapshot.sweepCell(cell);
+        return IterationStatus::Continue;
+    }
+
+    HeapSnapshot& m_snapshot;
+};
+
+void Heap::removeDeadHeapSnapshotNodes(HeapProfiler& heapProfiler)
+{
+    GCPHASE(RemoveDeadHeapSnapshotNodes);
+    if (HeapSnapshot* snapshot = heapProfiler.mostRecentSnapshot()) {
+        HeapIterationScope heapIterationScope(*this);
+        RemoveDeadHeapSnapshotNodes functor(*snapshot);
+        m_objectSpace.forEachDeadCell(heapIterationScope, functor);
+        snapshot->shrinkToFit();
+    }
+}
+
 void Heap::visitProtectedObjects(HeapRootVisitor& heapRootVisitor)
 {
     GCPHASE(VisitProtectedObjects);
@@ -1124,6 +1185,12 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
     removeDeadCompilerWorklistEntries();
     deleteUnmarkedCompiledCode();
     deleteSourceProviderCaches();
+
+    if (HeapProfiler* heapProfiler = m_vm->heapProfiler()) {
+        gatherExtraHeapSnapshotData(*heapProfiler);
+        removeDeadHeapSnapshotNodes(*heapProfiler);
+    }
+
     notifyIncrementalSweeper();
     writeBarrierCurrentlyExecutingCodeBlocks();
 

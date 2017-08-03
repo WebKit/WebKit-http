@@ -32,7 +32,6 @@
 #include "JSCJSValueInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
-#include "JSNotAnObject.h"
 #include "NumberObject.h"
 #include "StructureInlines.h"
 #include <wtf/MathExtras.h>
@@ -90,7 +89,7 @@ JSObject* JSValue::toObjectSlowCase(ExecState* exec, JSGlobalObject* globalObjec
     ASSERT(isUndefinedOrNull());
     VM& vm = exec->vm();
     vm.throwException(exec, createNotAnObjectError(exec, *this));
-    return JSNotAnObject::create(vm);
+    return nullptr;
 }
 
 JSValue JSValue::toThisSlowCase(ExecState* exec, ECMAMode ecmaMode) const
@@ -125,29 +124,29 @@ JSObject* JSValue::synthesizePrototype(ExecState* exec) const
     ASSERT(isUndefinedOrNull());
     VM& vm = exec->vm();
     vm.throwException(exec, createNotAnObjectError(exec, *this));
-    return JSNotAnObject::create(vm);
+    return nullptr;
 }
 
 // ECMA 8.7.2
-void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     VM& vm = exec->vm();
 
-    if (Optional<uint32_t> index = parseIndex(propertyName)) {
-        putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
-        return;
-    }
+    if (Optional<uint32_t> index = parseIndex(propertyName))
+        return putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
 
     // Check if there are any setters or getters in the prototype chain
     JSObject* obj = synthesizePrototype(exec);
+    if (UNLIKELY(!obj))
+        return false;
     JSValue prototype;
     if (propertyName != exec->propertyNames().underscoreProto) {
         for (; !obj->structure()->hasReadOnlyOrGetterSetterPropertiesExcludingProto(); obj = asObject(prototype)) {
-            prototype = obj->prototype();
+            prototype = obj->getPrototypeDirect();
             if (prototype.isNull()) {
                 if (slot.isStrictMode())
                     throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-                return;
+                return false;
             }
         }
     }
@@ -159,48 +158,52 @@ void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
             if (attributes & ReadOnly) {
                 if (slot.isStrictMode())
                     exec->vm().throwException(exec, createTypeError(exec, StrictModeReadonlyPropertyWriteError));
-                return;
+                return false;
             }
 
             JSValue gs = obj->getDirect(offset);
-            if (gs.isGetterSetter()) {
-                callSetter(exec, *this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
-                return;
-            }
+            if (gs.isGetterSetter())
+                return callSetter(exec, *this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
 
-            if (gs.isCustomGetterSetter()) {
-                callCustomSetter(exec, gs, attributes & CustomAccessor, obj, slot.thisValue(), value);
-                return;
-            }
+            if (gs.isCustomGetterSetter())
+                return callCustomSetter(exec, gs, attributes & CustomAccessor, obj, slot.thisValue(), value);
 
             // If there's an existing property on the object or one of its 
             // prototypes it should be replaced, so break here.
             break;
         }
 
-        prototype = obj->prototype();
+        prototype = obj->getPrototype(vm, exec);
+        if (vm.exception())
+            return false;
         if (prototype.isNull())
             break;
     }
     
     if (slot.isStrictMode())
         throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-    return;
+    return false;
 }
 
-void JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
     if (propertyName > MAX_ARRAY_INDEX) {
         PutPropertySlot slot(*this, shouldThrow);
-        putToPrimitive(exec, Identifier::from(exec, propertyName), value, slot);
-        return;
+        return putToPrimitive(exec, Identifier::from(exec, propertyName), value, slot);
     }
     
-    if (synthesizePrototype(exec)->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow))
-        return;
+    JSObject* prototype = synthesizePrototype(exec);
+    if (UNLIKELY(!prototype)) {
+        ASSERT(exec->hadException());
+        return false;
+    }
+    bool putResult = false;
+    if (prototype->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow, putResult))
+        return putResult;
     
     if (shouldThrow)
         throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+    return false;
 }
 
 void JSValue::dump(PrintStream& out) const
@@ -361,8 +364,14 @@ bool JSValue::isValidCallee()
     return asObject(asCell())->globalObject();
 }
 
-JSString* JSValue::toStringSlowCase(ExecState* exec) const
+JSString* JSValue::toStringSlowCase(ExecState* exec, bool returnEmptyStringOnError) const
 {
+    auto errorValue = [&] () -> JSString* {
+        if (returnEmptyStringOnError)
+            return jsEmptyString(exec);
+        return nullptr;
+    };
+    
     VM& vm = exec->vm();
     ASSERT(!isString());
     if (isInt32()) {
@@ -383,15 +392,18 @@ JSString* JSValue::toStringSlowCase(ExecState* exec) const
         return vm.smallStrings.undefinedString();
     if (isSymbol()) {
         throwTypeError(exec);
-        return jsEmptyString(exec);
+        return errorValue();
     }
 
     ASSERT(isCell());
     JSValue value = asCell()->toPrimitive(exec, PreferString);
-    if (exec->hadException())
-        return jsEmptyString(exec);
+    if (vm.exception())
+        return errorValue();
     ASSERT(!value.isObject());
-    return value.toString(exec);
+    JSString* result = value.toString(exec);
+    if (vm.exception())
+        return errorValue();
+    return result;
 }
 
 String JSValue::toWTFStringSlowCase(ExecState* exec) const

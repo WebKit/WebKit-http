@@ -24,6 +24,7 @@
 #include "JSLocation.h"
 
 #include "JSDOMBinding.h"
+#include "RuntimeApplicationChecks.h"
 #include <runtime/JSFunction.h>
 
 using namespace JSC;
@@ -59,8 +60,9 @@ bool JSLocation::getOwnPropertySlotDelegate(ExecState* exec, PropertyName proper
     return true;
 }
 
-bool JSLocation::putDelegate(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool JSLocation::putDelegate(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot, bool& putResult)
 {
+    putResult = false;
     Frame* frame = wrapped().frame();
     if (!frame)
         return true;
@@ -74,7 +76,7 @@ bool JSLocation::putDelegate(ExecState* exec, PropertyName propertyName, JSValue
     const HashTableValue* entry = JSLocation::info()->staticPropHashTable->entry(propertyName);
     if (!entry) {
         if (sameDomainAccess)
-            JSObject::put(this, exec, propertyName, value, slot);
+            putResult = JSObject::put(this, exec, propertyName, value, slot);
         return true;
     }
 
@@ -83,6 +85,12 @@ bool JSLocation::putDelegate(ExecState* exec, PropertyName propertyName, JSValue
     // disclose other parts of the original location.
     if (propertyName != exec->propertyNames().href && !sameDomainAccess)
         return true;
+
+#if PLATFORM(MAC)
+    // FIXME: HipChat tries to set Location.reload which causes an exception to be thrown in strict mode (see <rdar://problem/24931959>).
+    if (MacApplication::isHipChat())
+        slot.setStrictMode(false);
+#endif
 
     return false;
 }
@@ -130,8 +138,9 @@ JSValue JSLocation::toStringFunction(ExecState& state)
     return jsStringWithCache(&state, wrapped().toString());
 }
 
-bool JSLocationPrototype::putDelegate(ExecState* exec, PropertyName propertyName, JSValue, PutPropertySlot&)
+bool JSLocationPrototype::putDelegate(ExecState* exec, PropertyName propertyName, JSValue, PutPropertySlot&, bool& putResult)
 {
+    putResult = false;
     return (propertyName == exec->propertyNames().toString || propertyName == exec->propertyNames().valueOf);
 }
 

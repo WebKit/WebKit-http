@@ -1,3 +1,269 @@
+2016-03-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        WTF should have a similar function as equalLettersIgnoringASCIICase to match beginning of strings
+        https://bugs.webkit.org/show_bug.cgi?id=153419
+
+        Reviewed by Darin Adler.
+
+        Introducing startsWithLettersIgnoringASCIICase, to check the beginning of a string.
+        Moving some code from WTF::equalLettersIgnoringASCIICaseCommonWithoutLength in
+        WTF::hasPrefixWithLettersIgnoringASCIICaseCommon to enable reuse in
+        WTF::startsWithLettersIgnoringASCIICaseCommon.
+
+        * wtf/text/StringCommon.h:
+        (WTF::hasPrefixWithLettersIgnoringASCIICaseCommon):
+        (WTF::equalLettersIgnoringASCIICaseCommonWithoutLength):
+        (WTF::startsWithLettersIgnoringASCIICaseCommonWithoutLength):
+        (WTF::startsWithLettersIgnoringASCIICaseCommon):
+        * wtf/text/StringImpl.h:
+        (WTF::startsWithLettersIgnoringASCIICase):
+        * wtf/text/WTFString.h:
+        (WTF::startsWithLettersIgnoringASCIICase):
+
+2016-03-10  Frederic Wang  <fwang@igalia.com>
+
+        [GTK] Add support for WOFF2
+        https://bugs.webkit.org/show_bug.cgi?id=152616
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h: Enable USE_WOFF2 flag on GTK.
+
+2016-03-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add runtime flags for shadow DOM and custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=155213
+
+        Reviewed by Dean Jackson.
+
+        Removed the manual overrides of ENABLE_SHADOW_DOM and ENABLE_CUSTOM_ELEMENTS as they were
+        making --no-shadow-dom and --no-custom-elements flags on build-webkit useless.
+
+        * wtf/FeatureDefines.h:
+
+2016-03-09  Keith Rollin  <krollin@apple.com>
+
+        Add state dumping facility
+        https://bugs.webkit.org/show_bug.cgi?id=154930
+        <rdar://problem/24939135>
+
+        Reviewed by Anders Carlsson.
+
+        Add an OS_STATE flag to control the inclusion of process state dumping
+        functionality.
+
+        * wtf/Platform.h:
+
+2016-03-09  Oliver Hunt  <oliver@apple.com>
+
+        Fix old iOS
+
+        * wtf/Platform.h:
+
+2016-03-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove failing assertion. There are strings that claim to be atomic but that the
+        compiler thread can totally deal with, like the empty string.
+
+        Rubber stamped by Mark Lam.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::ref):
+        (WTF::StringImpl::deref):
+
+2016-03-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to constant-fold strings
+        https://bugs.webkit.org/show_bug.cgi?id=155200
+
+        Reviewed by Geoffrey Garen.
+
+        Also disable assertions about reference counting strings on the JIT thread. We will do
+        that now and it's OK.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::ref):
+        (WTF::StringImpl::deref):
+
+2016-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Fix AppKitCompatibilityDeclarations build.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+        Remove duplicate declarations, conditionally define NSTextAlignment and
+        add a NSWindowStyleMask typedef.
+
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Fil Pizlo.
+
+        Update feature defines.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h: ARM64 for now.
+
+2016-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Add AppKit compatibility header
+        https://bugs.webkit.org/show_bug.cgi?id=155202
+
+        Reviewed by Beth Dakin.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/mac/AppKitCompatibilityDeclarations.h: Added.
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197793 and r197799.
+        https://bugs.webkit.org/show_bug.cgi?id=155195
+
+        something weird happened while landing this and everything
+        broke (Requested by olliej on #webkit).
+
+        Reverted changesets:
+
+        "Start moving to separated writable and executable mappings in
+        the JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+        http://trac.webkit.org/changeset/197793
+
+        "arm64 build fix after r197793."
+        http://trac.webkit.org/changeset/197799
+
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Filip Pizlo.
+
+        Update feature defines.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h: ARM64 for now.
+
+2016-03-08  Daniel Bates  <dabates@apple.com>
+
+        Support iterating over an OptionSet and checking if it is empty
+        https://bugs.webkit.org/show_bug.cgi?id=154941
+        <rdar://problem/24964187>
+
+        Reviewed by Darin Adler.
+
+        Implements support for iterating over the enumerators in an OptionSet as well as
+        determining if the set is empty.
+
+        Iterating over an OptionSet is in Big Theta(N) where N is the number of items in
+        the set. More precisely, it is in Big Theta(log M) where M is the bitmask represented
+        by the bitwise OR-ing of all enumerators in the set.
+
+        * wtf/OptionSet.h: Added comment to describe the purpose of this class and its invariant -
+        the enumerators must be positive powers of two.
+        (WTF::OptionSet::Iterator::operator*): Returns the enumerator pointed to by the iterator.
+        (WTF::OptionSet::Iterator::operator++): Advance to the next smallest enumerator in the set.
+        (WTF::OptionSet::Iterator::operator==): Returns whether the iterator is equal to the specified iterator.
+        (WTF::OptionSet::Iterator::operator!=): Returns whether the iterator is not equal to the specified iterator.
+        (WTF::OptionSet::Iterator::Iterator): Added.
+        (WTF::OptionSet::fromRaw): Instantiate using specialized private constructor to allow
+        instantiation with a raw value of 0.
+        (WTF::OptionSet::OptionSet): Specialized constructor that asserts that the specified value
+        is a positive power of two. This variant is only compiled when assertions are enabled (i.e. !ASSERT_DISABLED).
+        (WTF::OptionSet::isEmpty): Returns whether the set is empty.
+        (WTF::OptionSet::begin): Returns an iterator to the enumerator with the smallest value in the set.
+        (WTF::OptionSet::end): Returns an iterator that represents the end sentinel of the set.
+
+2016-03-07  Keith Rollin  <krollin@apple.com>
+
+        Enhance logging: Use "always on" macros
+        https://bugs.webkit.org/show_bug.cgi?id=154499
+        <rdar://problem/24757730>
+
+        Reviewed by Chris Dumez.
+
+        Update LOG_ALWAYS and LOG_ALWAYS_ERROR macros to take an expression to
+        be evaluated. If the expression evaluates to True, the associated
+        message is logged. This facility is used to prevent logging from being
+        performed in private sessions, but it could be extended to prevent
+        logging under other circumstances as well.
+
+        * wtf/Assertions.h:
+
+2016-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove vcxproj build system
+        https://bugs.webkit.org/show_bug.cgi?id=154388
+
+        Rubber-stamped by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.submit.sln: Removed.
+        * WTF.vcxproj/WTF.vcxproj: Removed.
+        * WTF.vcxproj/WTF.vcxproj.filters: Removed.
+        * WTF.vcxproj/WTFCFLite.props: Removed.
+        * WTF.vcxproj/WTFCommon.props: Removed.
+        * WTF.vcxproj/WTFCoreFoundation.props: Removed.
+        * WTF.vcxproj/WTFDebug.props: Removed.
+        * WTF.vcxproj/WTFDebugWinCairo.props: Removed.
+        * WTF.vcxproj/WTFGenerated.make: Removed.
+        * WTF.vcxproj/WTFGenerated.vcxproj: Removed.
+        * WTF.vcxproj/WTFGenerated.vcxproj.filters: Removed.
+        * WTF.vcxproj/WTFGeneratedCommon.props: Removed.
+        * WTF.vcxproj/WTFGeneratedDebug.props: Removed.
+        * WTF.vcxproj/WTFGeneratedProduction.props: Removed.
+        * WTF.vcxproj/WTFGeneratedRelease.props: Removed.
+        * WTF.vcxproj/WTFPostBuild.cmd: Removed.
+        * WTF.vcxproj/WTFPreBuild.cmd: Removed.
+        * WTF.vcxproj/WTFProduction.props: Removed.
+        * WTF.vcxproj/WTFRelease.props: Removed.
+        * WTF.vcxproj/WTFReleaseWinCairo.props: Removed.
+        * WTF.vcxproj/build-generated-files.pl: Removed.
+        * WTF.vcxproj/copy-files.cmd: Removed.
+        * WTF.vcxproj/work-around-vs-dependency-tracking-bugs.py: Removed.
+
+2016-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Use NSURLSession for loading in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=154993
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+
+2016-03-03  Daniel Bates  <dabates@apple.com>
+
+        Add unit tests for WTF::OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=154925
+        <rdar://problem/24964211>
+
+        Reviewed by Darin Adler.
+
+        * wtf/CMakeLists.txt: Add header OptionSet.h to the list of WTF headers.
+        * wtf/OptionSet.h: Use in-class initialization to initialize m_storage and declare
+        the trivial constexpr constructor as default.
+        (WTF::OptionSet::OptionSet): For convenience add a constructor that takes a std::initializer_list.
+        This code was written by Anders Carlsson.
+
+2016-03-03  Andy Estes  <aestes@apple.com>
+
+        Adopt CFNetwork storage partitioning SPI
+        https://bugs.webkit.org/show_bug.cgi?id=154957
+        rdar://problem/23614620
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h: Defined HAVE_CFNETWORK_STORAGE_PARTITIONING.
+
+2016-03-02  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved PRE/POST_BUILD_COMMAND to WEBKIT_FRAMEWORK.
+        https://bugs.webkit.org/show_bug.cgi?id=154651
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Moved shared code to WEBKIT_FRAMEWORK macro.
+
 2016-03-01  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r197226 and r197256.

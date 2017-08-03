@@ -48,7 +48,9 @@ public:
     void didEditInnerTextValue();
     void forwardEvent(Event*);
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void setMaxLengthForBindings(int, ExceptionCode&);
+
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
 
     // The derived class should return true if placeholder processing is needed.
     bool isPlaceholderVisible() const { return m_isPlaceholderVisible; }
@@ -73,9 +75,8 @@ public:
     PassRefPtr<Range> selection() const;
     String selectedText() const;
 
-    virtual void dispatchFormControlChangeEvent() override final;
+    void dispatchFormControlChangeEvent() final;
 
-    virtual int maxLength() const = 0;
     virtual String value() const = 0;
 
     virtual TextControlInnerTextElement* innerTextElement() const = 0;
@@ -99,10 +100,10 @@ protected:
     bool isPlaceholderEmpty() const;
     virtual void updatePlaceholderText() = 0;
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
-    virtual void disabledStateChanged() override;
-    virtual void readOnlyAttributeChanged() override;
+    void disabledStateChanged() override;
+    void readOnlyAttributeChanged() override;
     void updateInnerTextElementEditability();
 
     void cacheSelection(int start, int end, TextFieldSelectionDirection direction)
@@ -130,9 +131,9 @@ private:
     int computeSelectionEnd() const;
     TextFieldSelectionDirection computeSelectionDirection() const;
 
-    virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection) override final;
-    virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement) override final;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection) final;
+    void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement) final;
+    bool childShouldCreateRenderer(const Node&) const override;
 
     unsigned indexForPosition(const Position&) const;
 

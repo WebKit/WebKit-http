@@ -299,7 +299,7 @@ SVGElement::~SVGElement()
     document().accessSVGExtensions().removeAllElementReferencesForTarget(this);
 }
 
-short SVGElement::tabIndex() const
+int SVGElement::tabIndex() const
 {
     if (supportsFocus())
         return Element::tabIndex();
@@ -518,10 +518,8 @@ void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& v
     if (name == HTMLNames::tabindexAttr) {
         if (value.isEmpty())
             clearTabIndexExplicitlyIfNeeded();
-        else if (Optional<int> tabIndex = parseHTMLInteger(value)) {
-            // Clamp tabindex to the range of 'short' to match Firefox's behavior.
-            setTabIndexExplicitly(std::max(static_cast<int>(std::numeric_limits<short>::min()), std::min(tabIndex.value(), static_cast<int>(std::numeric_limits<short>::max()))));
-        }
+        else if (Optional<int> tabIndex = parseHTMLInteger(value))
+            setTabIndexExplicitly(tabIndex.value());
         return;
     }
 
@@ -788,11 +786,11 @@ void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
     contextElement->synchronizeSystemLanguage();
 }
 
-RefPtr<RenderStyle> SVGElement::customStyleForRenderer(RenderStyle& parentStyle, RenderStyle*)
+Optional<ElementStyle> SVGElement::resolveCustomStyle(RenderStyle& parentStyle, RenderStyle*)
 {
     // If the element is in a <use> tree we get the style from the definition tree.
     if (auto* styleElement = this->correspondingElement())
-        return styleElement->styleResolver().styleForElement(*styleElement, &parentStyle);
+        return styleElement->resolveStyle(&parentStyle);
 
     return resolveStyle(&parentStyle);
 }

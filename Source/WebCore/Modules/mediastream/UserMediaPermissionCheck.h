@@ -66,7 +66,7 @@ private:
     UserMediaPermissionCheck(ScriptExecutionContext&, UserMediaPermissionCheckClient&);
 
     // ContextDestructionObserver
-    virtual void contextDestroyed() override final;
+    void contextDestroyed() final;
 
     UserMediaPermissionCheckClient* m_client;
     String m_mediaDeviceIdentifierHashSalt;

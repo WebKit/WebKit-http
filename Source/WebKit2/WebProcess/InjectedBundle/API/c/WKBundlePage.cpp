@@ -223,6 +223,11 @@ WKArrayRef WKBundlePageCopyContextMenuAtPointInWindow(WKBundlePageRef pageRef, W
 #endif
 }
 
+void WKBundlePageInsertNewlineInQuotedContent(WKBundlePageRef pageRef)
+{
+    toImpl(pageRef)->insertNewlineInQuotedContent();
+}
+
 void* WKAccessibilityRootObject(WKBundlePageRef pageRef)
 {
 #if HAVE(ACCESSIBILITY)
@@ -566,6 +571,11 @@ void WKBundlePageStopExtendingIncrementalRenderingSuppression(WKBundlePageRef pa
 bool WKBundlePageIsUsingEphemeralSession(WKBundlePageRef pageRef)
 {
     return toImpl(pageRef)->usesEphemeralSession();
+}
+
+bool WKBundlePageIsControlledByAutomation(WKBundlePageRef pageRef)
+{
+    return toImpl(pageRef)->isControlledByAutomation();
 }
 
 #if TARGET_OS_IPHONE

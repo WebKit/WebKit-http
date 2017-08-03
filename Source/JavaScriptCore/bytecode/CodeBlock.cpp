@@ -274,6 +274,10 @@ static CString regexpToSourceString(RegExp* regExp)
         postfix[index++] = 'i';
     if (regExp->multiline())
         postfix[index] = 'm';
+    if (regExp->sticky())
+        postfix[index++] = 'y';
+    if (regExp->unicode())
+        postfix[index++] = 'u';
 
     return toCString("/", regExp->pattern().impl(), postfix);
 }
@@ -1724,7 +1728,7 @@ public:
     {
     }
     
-    virtual void dump(PrintStream& out) const override
+    void dump(PrintStream& out) const override
     {
         out.print("Linking put_to_scope in ", FunctionExecutableDump(jsCast<FunctionExecutable*>(m_codeBlock->ownerExecutable())), " for ", m_ident);
     }
@@ -4210,6 +4214,8 @@ DFG::CapabilityLevel CodeBlock::capabilityLevel()
 
 void CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler(RefCountedArray<Instruction>& instructions)
 {
+    if (!unlinkedCodeBlock()->hasOpProfileControlFlowBytecodeOffsets())
+        return;
     const Vector<size_t>& bytecodeOffsets = unlinkedCodeBlock()->opProfileControlFlowBytecodeOffsets();
     for (size_t i = 0, offsetsLength = bytecodeOffsets.size(); i < offsetsLength; i++) {
         // Because op_profile_control_flow is emitted at the beginning of every basic block, finding 

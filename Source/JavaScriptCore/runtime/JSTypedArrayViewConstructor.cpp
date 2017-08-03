@@ -74,10 +74,10 @@ static EncodedJSValue JSC_HOST_CALL constructTypedArrayView(ExecState* exec)
         return JSValue::encode(throwTypeError(exec, "new.target passed to TypedArray is not an object."));
 
     ConstructData data;
-    if (object->methodTable()->getConstructData(object, data) == ConstructTypeNone)
+    if (object->methodTable()->getConstructData(object, data) == ConstructType::None)
         return JSValue::encode(throwTypeError(exec, "new.target passed to TypedArray is not a valid constructor."));
 
-    for (; !value.isNull(); value = jsCast<JSObject*>(value)->prototype()) {
+    for (; !value.isNull(); value = jsCast<JSObject*>(value)->getPrototypeDirect()) {
         if (jsDynamicCast<JSTypedArrayViewConstructor*>(value))
             return JSValue::encode(throwTypeError(exec, "Unable to find TypedArray constructor that inherits from TypedArray."));
         if (jsDynamicCast<JSGenericTypedArrayViewConstructor<JSInt8Array>*>(value))
@@ -106,13 +106,13 @@ static EncodedJSValue JSC_HOST_CALL constructTypedArrayView(ExecState* exec)
 ConstructType JSTypedArrayViewConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructTypedArrayView;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType JSTypedArrayViewConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = nullptr;
-    return CallTypeNone;
+    return CallType::None;
 }
 
 } // namespace JSC

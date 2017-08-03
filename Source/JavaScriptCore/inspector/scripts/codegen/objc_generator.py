@@ -92,9 +92,19 @@ class ObjCGenerator(Generator):
     def __init__(self, model, input_filepath):
         Generator.__init__(self, model, input_filepath)
 
+    # The 'protocol name' is used to prefix filenames for a protocol group (a set of domains generated together).
+    def protocol_name(self):
+        protocol_group = self.model().framework.setting('protocol_group', '')
+        return '%s%s' % (protocol_group, ObjCGenerator.OBJC_SHARED_PREFIX)
+
+    # The 'ObjC prefix' is used to prefix Objective-C class names and enums with a
+    # framework-specific prefix. It is separate from filename prefixes.
     def objc_prefix(self):
-        framework_prefix = self.model().framework.setting('objc_prefix', '')
-        return '%s%s' % (framework_prefix, ObjCGenerator.OBJC_SHARED_PREFIX)
+        framework_prefix = self.model().framework.setting('objc_prefix', None)
+        if not framework_prefix:
+            return ''
+        else:
+            return '%s%s' % (framework_prefix, ObjCGenerator.OBJC_SHARED_PREFIX)
 
     # Adjust identifier names that collide with ObjC keywords.
 
@@ -446,6 +456,35 @@ class ObjCGenerator(Generator):
                     return 'objcDoubleArray(%s)' % sub_expression
                 return 'objcIntegerArray(%s)' % sub_expression
             return 'objcArray<%s>(%s)' % (objc_class, sub_expression)
+
+    def payload_to_objc_expression_for_member(self, declaration, member):
+        _type = member.type
+        if isinstance(_type, AliasedType):
+            _type = _type.aliased_type
+        if isinstance(_type, PrimitiveType):
+            sub_expression = 'payload[@"%s"]' % member.member_name
+            raw_name = _type.raw_name()
+            if raw_name is 'boolean':
+                return '[%s boolValue]' % sub_expression
+            if raw_name is 'integer':
+                return '[%s integerValue]' % sub_expression
+            if raw_name is 'number':
+                return '[%s doubleValue]' % sub_expression
+            if raw_name in ['any', 'object', 'array', 'string']:
+                return sub_expression  # The setter will check the incoming value.
+            return None
+        if isinstance(member.type, EnumType):
+            sub_expression = 'payload[@"%s"]' % member.member_name
+            if member.type.is_anonymous:
+                return 'fromProtocolString<%s>(%s)' % (self.objc_enum_name_for_anonymous_enum_member(declaration, member), sub_expression)
+            else:
+                return 'fromProtocolString<%s>(%s)' % (self.objc_enum_name_for_non_anonymous_enum(member.type), sub_expression)
+        if isinstance(_type, ObjectType):
+            objc_class = self.objc_class_for_type(member.type)
+            return '[[%s alloc] initWithPayload:payload[@"%s"]]' % (objc_class, member.member_name)
+        if isinstance(_type, ArrayType):
+            objc_class = self.objc_class_for_type(member.type.element_type)
+            return 'objcArrayFromPayload<%s>(payload[@"%s"])' % (objc_class, member.member_name)
 
     # JSON object setter/getter selectors for types.
 

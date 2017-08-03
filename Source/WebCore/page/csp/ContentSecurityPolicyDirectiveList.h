@@ -28,6 +28,7 @@
 #define ContentSecurityPolicyDirectiveList_h
 
 #include "ContentSecurityPolicy.h"
+#include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicyMediaListDirective.h"
 #include "ContentSecurityPolicySourceListDirective.h"
 #include "URL.h"
@@ -50,7 +51,11 @@ public:
     bool allowJavaScriptURLs(const String& contextURL, const WTF::OrdinalNumber& contextLine, ContentSecurityPolicy::ReportingStatus) const;
     bool allowInlineEventHandlers(const String& contextURL, const WTF::OrdinalNumber& contextLine, ContentSecurityPolicy::ReportingStatus) const;
     bool allowInlineScript(const String& contextURL, const WTF::OrdinalNumber& contextLine, ContentSecurityPolicy::ReportingStatus) const;
+    bool allowInlineScriptWithHash(const ContentSecurityPolicyHash&) const;
+    bool allowScriptWithNonce(const String& nonce) const;
     bool allowInlineStyle(const String& contextURL, const WTF::OrdinalNumber& contextLine, ContentSecurityPolicy::ReportingStatus) const;
+    bool allowInlineStyleWithHash(const ContentSecurityPolicyHash&) const;
+    bool allowStyleWithNonce(const String& nonce) const;
     bool allowEval(JSC::ExecState*, ContentSecurityPolicy::ReportingStatus) const;
     bool allowPluginType(const String& type, const String& typeAttribute, const URL&, ContentSecurityPolicy::ReportingStatus) const;
 
@@ -65,6 +70,8 @@ public:
     bool allowConnectToSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowFormAction(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowBaseURI(const URL&, ContentSecurityPolicy::ReportingStatus) const;
+
+    bool allowFrameAncestors(const Frame&, const URL&, ContentSecurityPolicy::ReportingStatus) const;
 
     const String& evalDisabledErrorMessage() const { return m_evalDisabledErrorMessage; }
     ContentSecurityPolicy::ReflectedXSSDisposition reflectedXSSDisposition() const { return m_reflectedXSSDisposition; }
@@ -87,17 +94,13 @@ private:
     ContentSecurityPolicySourceListDirective* operativeDirective(ContentSecurityPolicySourceListDirective*) const;
     void reportViolation(const String& directiveText, const String& effectiveDirective, const String& consoleMessage, const URL& blockedURL = URL(), const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
 
-    bool checkEval(ContentSecurityPolicySourceListDirective*) const;
-    bool checkInline(ContentSecurityPolicySourceListDirective*) const;
-    bool checkSource(ContentSecurityPolicySourceListDirective*, const URL&) const;
-    bool checkMediaType(ContentSecurityPolicyMediaListDirective*, const String& type, const String& typeAttribute) const;
-
     void setEvalDisabledErrorMessage(const String& errorMessage) { m_evalDisabledErrorMessage = errorMessage; }
 
     bool checkEvalAndReportViolation(ContentSecurityPolicySourceListDirective*, const String& consoleMessage, const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
     bool checkInlineAndReportViolation(ContentSecurityPolicySourceListDirective*, const String& consoleMessage, const String& contextURL, const WTF::OrdinalNumber& contextLine, bool isScript) const;
 
     bool checkSourceAndReportViolation(ContentSecurityPolicySourceListDirective*, const URL&, const String& effectiveDirective) const;
+    bool checkFrameAncestorsAndReportViolation(ContentSecurityPolicySourceListDirective*, const Frame&, const URL&, const String& effectiveDirective) const;
     bool checkMediaTypeAndReportViolation(ContentSecurityPolicyMediaListDirective*, const String& type, const String& typeAttribute, const String& consoleMessage) const;
 
     bool denyIfEnforcingPolicy() const { return m_reportOnly; }
@@ -119,6 +122,7 @@ private:
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_defaultSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_fontSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_formAction;
+    std::unique_ptr<ContentSecurityPolicySourceListDirective> m_frameAncestors;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_frameSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_imgSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_mediaSrc;

@@ -50,7 +50,7 @@ EncodedJSValue JSC_HOST_CALL boundFunctionCall(ExecState* exec)
     JSObject* targetFunction = boundFunction->targetFunction();
     CallData callData;
     CallType callType = getCallData(targetFunction, callData);
-    ASSERT(callType != CallTypeNone);
+    ASSERT(callType != CallType::None);
     return JSValue::encode(call(exec, targetFunction, callType, callData, boundFunction->boundThis(), args));
 }
 
@@ -70,7 +70,7 @@ EncodedJSValue JSC_HOST_CALL boundFunctionConstruct(ExecState* exec)
     JSObject* targetFunction = boundFunction->targetFunction();
     ConstructData constructData;
     ConstructType constructType = getConstructData(targetFunction, constructData);
-    ASSERT(constructType != ConstructTypeNone);
+    ASSERT(constructType != ConstructType::None);
     return JSValue::encode(construct(exec, targetFunction, constructType, constructData, args));
 }
 
@@ -87,9 +87,11 @@ EncodedJSValue JSC_HOST_CALL hasInstanceBoundFunction(ExecState* exec)
     return JSValue::encode(jsBoolean(boundObject->targetFunction()->hasInstance(exec, value)));
 }
 
-inline Structure* getBoundFunctionStructure(VM& vm, JSGlobalObject* globalObject, JSObject* targetFunction)
+inline Structure* getBoundFunctionStructure(VM& vm, ExecState* exec, JSGlobalObject* globalObject, JSObject* targetFunction)
 {
-    JSValue prototype = targetFunction->structure(vm)->storedPrototype();
+    JSValue prototype = targetFunction->getPrototype(vm, exec);
+    if (UNLIKELY(vm.exception()))
+        return nullptr;
     JSFunction* targetJSFunction = jsDynamicCast<JSFunction*>(targetFunction);
 
     // We only cache the structure of the bound function if the bindee is a JSFunction since there
@@ -117,13 +119,15 @@ inline Structure* getBoundFunctionStructure(VM& vm, JSGlobalObject* globalObject
     return result;
 }
 
-JSBoundFunction* JSBoundFunction::create(VM& vm, JSGlobalObject* globalObject, JSObject* targetFunction, JSValue boundThis, JSValue boundArgs, int length, const String& name)
+JSBoundFunction* JSBoundFunction::create(VM& vm, ExecState* exec, JSGlobalObject* globalObject, JSObject* targetFunction, JSValue boundThis, JSValue boundArgs, int length, const String& name)
 {
     ConstructData constructData;
     ConstructType constructType = JSC::getConstructData(targetFunction, constructData);
-    bool canConstruct = constructType != ConstructTypeNone;
-    NativeExecutable* executable = vm.getHostFunction(boundFunctionCall, canConstruct ? boundFunctionConstruct : callHostFunctionAsConstructor, ASCIILiteral("Function.prototype.bind result"));
-    Structure* structure = getBoundFunctionStructure(vm, globalObject, targetFunction);
+    bool canConstruct = constructType != ConstructType::None;
+    NativeExecutable* executable = vm.getHostFunction(boundFunctionCall, canConstruct ? boundFunctionConstruct : callHostFunctionAsConstructor, name);
+    Structure* structure = getBoundFunctionStructure(vm, exec, globalObject, targetFunction);
+    if (UNLIKELY(vm.exception()))
+        return nullptr;
     JSBoundFunction* function = new (NotNull, allocateCell<JSBoundFunction>(vm.heap)) JSBoundFunction(vm, globalObject, structure, targetFunction, boundThis, boundArgs);
 
     function->finishCreation(vm, executable, length, makeString("bound ", name));
@@ -161,11 +165,6 @@ void JSBoundFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_targetFunction);
     visitor.append(&thisObject->m_boundThis);
     visitor.append(&thisObject->m_boundArgs);
-}
-
-String JSBoundFunction::toStringName(ExecState* exec)
-{
-    return m_targetFunction->get(exec, exec->vm().propertyNames->name).toWTFString(exec);
 }
 
 } // namespace JSC

@@ -585,8 +585,6 @@ public:
 
     inline void ref()
     {
-        ASSERT(!isCompilationThread());
-
         STRING_STATS_REF_STRING(*this);
 
         m_refCount += s_refCountIncrement;
@@ -594,8 +592,6 @@ public:
 
     inline void deref()
     {
-        ASSERT(!isCompilationThread());
-
         STRING_STATS_DEREF_STRING(*this);
 
         unsigned tempRefCount = m_refCount - s_refCountIncrement;
@@ -1183,6 +1179,16 @@ inline bool equalIgnoringASCIICase(const StringImpl& a, const char* b)
 inline bool equalIgnoringASCIICase(const StringImpl* a, const char* b)
 {
     return a && equalIgnoringASCIICase(*a, b);
+}
+
+template<unsigned length> inline bool startsWithLettersIgnoringASCIICase(const StringImpl& string, const char (&lowercaseLetters)[length])
+{
+    return startsWithLettersIgnoringASCIICaseCommon(string, lowercaseLetters);
+}
+
+template<unsigned length> inline bool startsWithLettersIgnoringASCIICase(const StringImpl* string, const char (&lowercaseLetters)[length])
+{
+    return string && startsWithLettersIgnoringASCIICase(*string, lowercaseLetters);
 }
 
 template<unsigned length> inline bool equalLettersIgnoringASCIICase(const StringImpl& string, const char (&lowercaseLetters)[length])

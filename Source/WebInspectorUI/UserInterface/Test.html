@@ -36,6 +36,7 @@
     <script src="External/Esprima/esprima.js"></script>
 
     <script src="Base/WebInspector.js"></script>
+    <script src="Base/InspectorFrontendHostStub.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
     <script src="Base/Object.js"></script>
@@ -58,7 +59,6 @@
 
     <script src="Protocol/InspectorBackend.js"></script>
     <script src="Protocol/InspectorFrontendAPI.js"></script>
-    <script src="Protocol/InspectorFrontendHostStub.js"></script>
     <script src="Protocol/LoadInspectorBackendCommands.js"></script>
     <script src="Protocol/MessageDispatcher.js"></script>
 
@@ -82,6 +82,7 @@
     <script src="Models/SourceCode.js"></script>
     <script src="Models/SourceCodeLocation.js"></script>
     <script src="Models/Timeline.js"></script>
+    <script src="Models/TimelineRange.js"></script>
     <script src="Models/TimelineRecord.js"></script>
 
     <script src="Models/Breakpoint.js"></script>
@@ -94,22 +95,29 @@
     <script src="Models/CSSStyleDeclaration.js"></script>
     <script src="Models/CSSStyleSheet.js"></script>
     <script src="Models/CallFrame.js"></script>
+    <script src="Models/CallingContextTree.js"></script>
     <script src="Models/CollectionEntry.js"></script>
+    <script src="Models/CollectionEntryPreview.js"></script>
     <script src="Models/Color.js"></script>
-    <script src="Models/CookieStorageObject.js"></script>
     <script src="Models/ConsoleCommandResultMessage.js"></script>
     <script src="Models/ContentFlow.js"></script>
+    <script src="Models/CookieStorageObject.js"></script>
     <script src="Models/DOMNode.js"></script>
     <script src="Models/DOMNodeStyles.js"></script>
     <script src="Models/DOMStorageObject.js"></script>
     <script src="Models/DOMTree.js"></script>
-    <script src="Models/CollectionEntryPreview.js"></script>
     <script src="Models/ExecutionContext.js"></script>
     <script src="Models/ExecutionContextList.js"></script>
-    <script src="Models/Frame.js"></script>
     <script src="Models/FPSInstrument.js"></script>
+    <script src="Models/Frame.js"></script>
     <script src="Models/GarbageCollection.js"></script>
     <script src="Models/Geometry.js"></script>
+    <script src="Models/HeapAllocationsInstrument.js"></script>
+    <script src="Models/HeapAllocationsTimelineRecord.js"></script>
+    <script src="Models/HeapSnapshot.js"></script>
+    <script src="Models/HeapSnapshotDiff.js"></script>
+    <script src="Models/HeapSnapshotEdge.js"></script>
+    <script src="Models/HeapSnapshotNode.js"></script>
     <script src="Models/IndexedDatabase.js"></script>
     <script src="Models/IndexedDatabaseObjectStore.js"></script>
     <script src="Models/IndexedDatabaseObjectStoreIndex.js"></script>
@@ -117,6 +125,10 @@
     <script src="Models/LayoutInstrument.js"></script>
     <script src="Models/LayoutTimelineRecord.js"></script>
     <script src="Models/LazySourceCodeLocation.js"></script>
+    <script src="Models/MemoryCategory.js"></script>
+    <script src="Models/MemoryInstrument.js"></script>
+    <script src="Models/MemoryTimeline.js"></script>
+    <script src="Models/MemoryTimelineRecord.js"></script>
     <script src="Models/NetworkInstrument.js"></script>
     <script src="Models/NetworkTimeline.js"></script>
     <script src="Models/ObjectPreview.js"></script>
@@ -157,6 +169,7 @@
     <script src="Controllers/HeapManager.js"></script>
     <script src="Controllers/IssueManager.js"></script>
     <script src="Controllers/LogManager.js"></script>
+    <script src="Controllers/MemoryManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
     <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>

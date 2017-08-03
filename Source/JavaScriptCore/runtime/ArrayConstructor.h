@@ -22,6 +22,7 @@
 #define ArrayConstructor_h
 
 #include "InternalFunction.h"
+#include "ProxyObject.h"
 
 namespace JSC {
 
@@ -35,10 +36,10 @@ public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = OverridesGetOwnPropertySlot | InternalFunction::StructureFlags;
 
-    static ArrayConstructor* create(VM& vm, Structure* structure, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
+    static ArrayConstructor* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
     {
         ArrayConstructor* constructor = new (NotNull, allocateCell<ArrayConstructor>(vm.heap)) ArrayConstructor(vm, structure);
-        constructor->finishCreation(vm, arrayPrototype, speciesSymbol);
+        constructor->finishCreation(vm, globalObject, arrayPrototype, speciesSymbol);
         return constructor;
     }
 
@@ -50,7 +51,7 @@ public:
     }
 
 protected:
-    void finishCreation(VM&, ArrayPrototype*, GetterSetter* speciesSymbol);
+    void finishCreation(VM&, JSGlobalObject*, ArrayPrototype*, GetterSetter* speciesSymbol);
 
 private:
     ArrayConstructor(VM&, Structure*);
@@ -61,6 +62,34 @@ private:
 };
 
 JSObject* constructArrayWithSizeQuirk(ExecState*, ArrayAllocationProfile*, JSGlobalObject*, JSValue length, JSValue prototype = JSValue());
+
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState*);
+
+// ES6 7.2.2
+// https://tc39.github.io/ecma262/#sec-isarray
+inline bool isArray(ExecState* exec, JSValue argumentValue)
+{
+    if (!argumentValue.isObject())
+        return false;
+
+    JSObject* argument = jsCast<JSObject*>(argumentValue);
+    while (true) {
+        if (argument->inherits(JSArray::info()))
+            return true;
+
+        if (argument->type() != ProxyObjectType)
+            return false;
+
+        ProxyObject* proxy = jsCast<ProxyObject*>(argument);
+        if (proxy->isRevoked()) {
+            throwTypeError(exec, ASCIILiteral("Array.isArray can not be called on a Proxy that has been revoked."));
+            return false;
+        }
+        argument = proxy->target();
+    }
+
+    ASSERT_NOT_REACHED();
+}
 
 } // namespace JSC
 

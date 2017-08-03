@@ -71,13 +71,13 @@ class CachedResourceStreamingClient final : public PlatformMediaResourceClient, 
     private:
         // PlatformMediaResourceClient virtual methods.
 #if USE(SOUP)
-        virtual char* getOrCreateReadBuffer(PlatformMediaResource&, size_t requestedSize, size_t& actualSize) override;
+        char* getOrCreateReadBuffer(PlatformMediaResource&, size_t requestedSize, size_t& actualSize) override;
 #endif
-        virtual void responseReceived(PlatformMediaResource&, const ResourceResponse&) override;
-        virtual void dataReceived(PlatformMediaResource&, const char*, int) override;
-        virtual void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) override;
-        virtual void loadFailed(PlatformMediaResource&, const ResourceError&) override;
-        virtual void loadFinished(PlatformMediaResource&) override;
+        void responseReceived(PlatformMediaResource&, const ResourceResponse&) override;
+        void dataReceived(PlatformMediaResource&, const char*, int) override;
+        void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) override;
+        void loadFailed(PlatformMediaResource&, const ResourceError&) override;
+        void loadFinished(PlatformMediaResource&) override;
 };
 
 class ResourceHandleStreamingClient : public ResourceHandleClient, public StreamingClient {
@@ -92,15 +92,17 @@ class ResourceHandleStreamingClient : public ResourceHandleClient, public Stream
 
     private:
         // ResourceHandleClient virtual methods.
-        virtual char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize);
-        virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&);
-        virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-        virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int);
-        virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedLength);
-        virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
-        virtual void didFail(ResourceHandle*, const ResourceError&);
-        virtual void wasBlocked(ResourceHandle*);
-        virtual void cannotShowURL(ResourceHandle*);
+#if USE(SOUP)
+        char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
+#endif
+        void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
+        void didReceiveResponse(ResourceHandle*, const ResourceResponse&) override;
+        void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
+        void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedLength) override;
+        void didFinishLoading(ResourceHandle*, double /*finishTime*/) override;
+        void didFail(ResourceHandle*, const ResourceError&) override;
+        void wasBlocked(ResourceHandle*) override;
+        void cannotShowURL(ResourceHandle*) override;
 
         RefPtr<ResourceHandle> m_resource;
 };
@@ -582,7 +584,7 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
 
     if (priv->loader) {
         PlatformMediaResourceLoader::LoadOptions loadOptions = 0;
-        if (request.url().protocolIs("blob"))
+        if (request.url().protocolIsBlob())
             loadOptions |= PlatformMediaResourceLoader::LoadOption::BufferData;
         priv->resource = priv->loader->requestResource(request, loadOptions);
         loadFailed = !priv->resource;
@@ -708,7 +710,7 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
 
 static bool urlHasSupportedProtocol(const URL& url)
 {
-    return url.isValid() && (url.protocolIsInHTTPFamily() || url.protocolIs("blob"));
+    return url.isValid() && (url.protocolIsInHTTPFamily() || url.protocolIsBlob());
 }
 
 // uri handler interface
@@ -1076,10 +1078,12 @@ void ResourceHandleStreamingClient::setDefersLoading(bool defers)
         m_resource->setDefersLoading(defers);
 }
 
+#if USE(SOUP)
 char* ResourceHandleStreamingClient::getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize)
 {
     return createReadBuffer(requestedSize, actualSize);
 }
+#endif
 
 void ResourceHandleStreamingClient::willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&)
 {

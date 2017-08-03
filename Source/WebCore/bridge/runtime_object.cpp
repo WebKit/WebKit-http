@@ -161,25 +161,27 @@ bool RuntimeObject::getOwnPropertySlot(JSObject* object, ExecState *exec, Proper
     return instance->getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-void RuntimeObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool RuntimeObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     RuntimeObject* thisObject = jsCast<RuntimeObject*>(cell);
     if (!thisObject->m_instance) {
         throwInvalidAccessError(exec);
-        return;
+        return false;
     }
     
     RefPtr<Instance> instance = thisObject->m_instance;
     instance->begin();
 
     // Set the value of the property.
+    bool result = false;
     Field *aField = instance->getClass()->fieldNamed(propertyName, instance.get());
     if (aField)
-        aField->setValueToInstance(exec, instance.get(), value);
+        result = aField->setValueToInstance(exec, instance.get(), value);
     else if (!instance->setValueOfUndefinedField(exec, propertyName, value))
-        instance->put(thisObject, exec, propertyName, value, slot);
+        result = instance->put(thisObject, exec, propertyName, value, slot);
 
     instance->end();
+    return result;
 }
 
 bool RuntimeObject::deleteProperty(JSCell*, ExecState*, PropertyName)
@@ -216,14 +218,14 @@ CallType RuntimeObject::getCallData(JSCell* cell, CallData& callData)
 {
     RuntimeObject* thisObject = jsCast<RuntimeObject*>(cell);
     if (!thisObject->m_instance)
-        return CallTypeNone;
+        return CallType::None;
     
     RefPtr<Instance> instance = thisObject->m_instance;
     if (!instance->supportsInvokeDefaultMethod())
-        return CallTypeNone;
+        return CallType::None;
     
     callData.native.function = callRuntimeObject;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 static EncodedJSValue JSC_HOST_CALL callRuntimeConstructor(ExecState* exec)
@@ -244,14 +246,14 @@ ConstructType RuntimeObject::getConstructData(JSCell* cell, ConstructData& const
 {
     RuntimeObject* thisObject = jsCast<RuntimeObject*>(cell);
     if (!thisObject->m_instance)
-        return ConstructTypeNone;
+        return ConstructType::None;
     
     RefPtr<Instance> instance = thisObject->m_instance;
     if (!instance->supportsConstruct())
-        return ConstructTypeNone;
+        return ConstructType::None;
     
     constructData.native.function = callRuntimeConstructor;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 void RuntimeObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode)

@@ -737,7 +737,9 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
     const FontCascade& font = style.fontCascade();
     bool isFixedPitch = font.isFixedPitch();
     bool canHyphenate = style.hyphens() == HyphensAuto && WebCore::canHyphenate(style.locale());
-
+    bool canHangPunctuationAtStart = style.hangingPunctuation() & FirstHangingPunctuation;
+    bool canHangPunctuationAtEnd = style.hangingPunctuation() & LastHangingPunctuation;
+    int endPunctuationIndex = canHangPunctuationAtEnd && m_collapseWhiteSpace ? renderText.lastCharacterIndexStrippingSpaces() : renderText.textLength() - 1;
     unsigned lastSpace = m_current.offset();
     float wordSpacing = m_currentStyle->fontCascade().wordSpacing();
     float lastSpaceWordSpacing = 0;
@@ -786,6 +788,16 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
         bool previousCharacterIsWS = m_currentCharacterIsWS;
         UChar c = m_current.current();
         m_currentCharacterIsSpace = c == ' ' || c == '\t' || (!m_preservesNewline && (c == '\n'));
+
+        if (canHangPunctuationAtStart && m_width.isFirstLine() && !m_width.committedWidth() && !wrapW && !inlineLogicalWidth(m_current.renderer(), true, false)) {
+            m_width.addUncommittedWidth(-renderText.hangablePunctuationStartWidth(m_current.offset()));
+            canHangPunctuationAtStart = false;
+        }
+        
+        if (canHangPunctuationAtEnd && !m_nextObject && (int)m_current.offset() == endPunctuationIndex && !inlineLogicalWidth(m_current.renderer(), false, true)) {
+            m_width.addUncommittedWidth(-renderText.hangablePunctuationEndWidth(endPunctuationIndex));
+            canHangPunctuationAtStart = false;
+        }
 
         if (!m_collapseWhiteSpace || !m_currentCharacterIsSpace)
             m_lineInfo.setEmpty(false, &m_block, &m_width);

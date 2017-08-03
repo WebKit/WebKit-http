@@ -33,6 +33,8 @@
 #include "SecurityOrigin.h"
 #include "URL.h"
 #include <wtf/ASCIICType.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/Base64.h>
 
 namespace WebCore {
 
@@ -95,13 +97,24 @@ void ContentSecurityPolicySourceList::parse(const String& value)
     parse(characters, characters + value.length());
 }
 
+bool ContentSecurityPolicySourceList::isProtocolAllowedByStar(const URL& url) const
+{
+    // Although not allowed by the Content Security Policy Level 3 spec., we allow a data URL to match
+    // "img-src *" and either a data URL or blob URL to match "media-src *" for web compatibility.
+    // FIXME: We should not hardcode the directive names. We should make use of the constants in ContentSecurityPolicyDirectiveList.cpp.
+    // See <https://bugs.webkit.org/show_bug.cgi?id=155133>.
+    bool isAllowed = url.protocolIsInHTTPFamily();
+    if (equalLettersIgnoringASCIICase(m_directiveName, "img-src"))
+        isAllowed |= url.protocolIsData();
+    else if (equalLettersIgnoringASCIICase(m_directiveName, "media-src"))
+        isAllowed |= url.protocolIsData() || url.protocolIsBlob();
+    return isAllowed;
+}
+
 bool ContentSecurityPolicySourceList::matches(const URL& url)
 {
-    if (m_allowStar) {
-        // FIXME: Should only match for URLs whose scheme is not blob, data or filesystem.
-        // See <https://bugs.webkit.org/show_bug.cgi?id=154122> for more details.
+    if (m_allowStar && isProtocolAllowedByStar(url))
         return true;
-    }
 
     if (m_allowSelf && m_policy.urlMatchesSelf(url))
         return true;
@@ -112,6 +125,16 @@ bool ContentSecurityPolicySourceList::matches(const URL& url)
     }
 
     return false;
+}
+
+bool ContentSecurityPolicySourceList::matches(const ContentSecurityPolicyHash& hash) const
+{
+    return m_hashes.contains(hash);
+}
+
+bool ContentSecurityPolicySourceList::matches(const String& nonce) const
+{
+    return m_nonces.contains(nonce);
 }
 
 // source-list       = *WSP [ source *( 1*WSP source ) *WSP ]
@@ -133,6 +156,12 @@ void ContentSecurityPolicySourceList::parse(const UChar* begin, const UChar* end
         int port = 0;
         bool hostHasWildcard = false;
         bool portHasWildcard = false;
+
+        if (parseNonceSource(beginSource, position))
+            continue;
+
+        if (parseHashSource(beginSource, position))
+            continue;
 
         if (parseSource(beginSource, position, scheme, host, port, path, hostHasWildcard, portHasWildcard)) {
             // Wildcard hosts and keyword sources ('self', 'unsafe-inline',
@@ -372,6 +401,98 @@ bool ContentSecurityPolicySourceList::parsePort(const UChar* begin, const UChar*
     bool ok;
     port = charactersToIntStrict(begin, end - begin, &ok);
     return ok;
+}
+
+static bool isBase64Character(UChar c)
+{
+    return isASCIIAlphanumeric(c) || c == '+' || c == '/' || c == '-' || c == '_';
+}
+
+// Match Blink's behavior of allowing an equal sign to appear anywhere in the value of the nonce
+// even though this does not match the behavior of Content Security Policy Level 3 spec.,
+// <https://w3c.github.io/webappsec-csp/> (29 February 2016).
+static bool isNonceCharacter(UChar c)
+{
+    return isBase64Character(c) || c == '=';
+}
+
+// nonce-source    = "'nonce-" nonce-value "'"
+// nonce-value     = base64-value
+bool ContentSecurityPolicySourceList::parseNonceSource(const UChar* begin, const UChar* end)
+{
+    static NeverDestroyed<String> noncePrefix("'nonce-", String::ConstructFromLiteral);
+    if (!StringView(begin, end - begin).startsWithIgnoringASCIICase(noncePrefix.get()))
+        return false;
+    const UChar* position = begin + noncePrefix.get().length();
+    const UChar* beginNonceValue = position;
+    skipWhile<UChar, isNonceCharacter>(position, end);
+    if (position >= end || position == beginNonceValue || *position != '\'')
+        return false;
+    m_nonces.add(String(beginNonceValue, position - beginNonceValue));
+    return true;
+}
+
+static bool parseHashAlgorithmAdvancingPosition(const UChar*& position, size_t length, ContentSecurityPolicyHashAlgorithm& algorithm)
+{
+    static struct {
+        NeverDestroyed<String> label;
+        ContentSecurityPolicyHashAlgorithm algorithm;
+    } labelToHashAlgorithmTable[] {
+        { ASCIILiteral("sha256"), ContentSecurityPolicyHashAlgorithm::SHA_256 },
+        { ASCIILiteral("sha384"), ContentSecurityPolicyHashAlgorithm::SHA_384 },
+        { ASCIILiteral("sha512"), ContentSecurityPolicyHashAlgorithm::SHA_512 },
+    };
+
+    StringView stringView(position, length);
+    for (auto& entry : labelToHashAlgorithmTable) {
+        String& label = entry.label.get();
+        if (!stringView.startsWithIgnoringASCIICase(label))
+            continue;
+        position += label.length();
+        algorithm = entry.algorithm;
+        return true;
+    }
+    return false;
+}
+
+// hash-source    = "'" hash-algorithm "-" base64-value "'"
+// hash-algorithm = "sha256" / "sha384" / "sha512"
+// base64-value  = 1*( ALPHA / DIGIT / "+" / "/" / "-" / "_" )*2( "=" )
+bool ContentSecurityPolicySourceList::parseHashSource(const UChar* begin, const UChar* end)
+{
+    if (begin == end)
+        return false;
+
+    const UChar* position = begin;
+    if (!skipExactly<UChar>(position, end, '\''))
+        return false;
+
+    ContentSecurityPolicyHashAlgorithm algorithm;
+    if (!parseHashAlgorithmAdvancingPosition(position, end - position, algorithm))
+        return false;
+
+    if (!skipExactly<UChar>(position, end, '-'))
+        return false;
+
+    const UChar* beginHashValue = position;
+    skipWhile<UChar, isBase64Character>(position, end);
+    skipExactly<UChar>(position, end, '=');
+    skipExactly<UChar>(position, end, '=');
+    if (position >= end || position == beginHashValue || *position != '\'')
+        return false;
+    Vector<uint8_t> digest;
+    StringView hashValue(beginHashValue, position - beginHashValue); // base64url or base64 encoded
+    // FIXME: Normalize Base64URL to Base64 instead of decoding twice. See <https://bugs.webkit.org/show_bug.cgi?id=155186>.
+    if (!base64Decode(hashValue.toStringWithoutCopying(), digest, Base64ValidatePadding)) {
+        if (!base64URLDecode(hashValue.toStringWithoutCopying(), digest))
+            return false;
+    }
+    if (digest.size() > maximumContentSecurityPolicyDigestLength)
+        return false;
+
+    m_hashes.add(std::make_pair(algorithm, digest));
+    m_hashAlgorithmsUsed |= algorithm;
+    return true;
 }
 
 } // namespace WebCore

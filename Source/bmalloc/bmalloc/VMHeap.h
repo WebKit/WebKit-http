@@ -50,19 +50,19 @@ class VMHeap {
 public:
     VMHeap();
 
-    SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&);
+    SmallRun* allocateSmallRun(std::lock_guard<StaticMutex>&);
     LargeObject allocateLargeObject(std::lock_guard<StaticMutex>&, size_t);
     LargeObject allocateLargeObject(std::lock_guard<StaticMutex>&, size_t, size_t, size_t);
 
-    void deallocateSmallPage(std::unique_lock<StaticMutex>&, SmallPage*);
+    void deallocateSmallRun(std::unique_lock<StaticMutex>&, SmallRun*);
     void deallocateLargeObject(std::unique_lock<StaticMutex>&, LargeObject);
     
 private:
     void allocateSmallChunk(std::lock_guard<StaticMutex>&);
-    void allocateLargeChunk(std::lock_guard<StaticMutex>&);
+    LargeObject allocateLargeChunk(std::lock_guard<StaticMutex>&);
     void allocateSuperChunk(std::lock_guard<StaticMutex>&);
 
-    Vector<SmallPage*> m_smallPages;
+    List<SmallRun> m_smallRuns;
     SegregatedFreeList m_largeObjects;
 
     Vector<SuperChunk*> m_smallChunks;
@@ -73,47 +73,41 @@ private:
 #endif
 };
 
-inline SmallPage* VMHeap::allocateSmallPage(std::lock_guard<StaticMutex>& lock)
+inline SmallRun* VMHeap::allocateSmallRun(std::lock_guard<StaticMutex>& lock)
 {
-    if (!m_smallPages.size())
+    if (m_smallRuns.isEmpty())
         allocateSmallChunk(lock);
 
-    SmallPage* page = m_smallPages.pop();
-    vmAllocatePhysicalPages(page->begin()->begin(), vmPageSize);
-    return page;
+    SmallRun* run = m_smallRuns.pop();
+    vmAllocatePhysicalPages(run->begin()->begin(), vmPageSize);
+    return run;
 }
 
 inline LargeObject VMHeap::allocateLargeObject(std::lock_guard<StaticMutex>& lock, size_t size)
 {
-    LargeObject largeObject = m_largeObjects.take(size);
-    if (!largeObject) {
-        allocateLargeChunk(lock);
-        largeObject = m_largeObjects.take(size);
-        BASSERT(largeObject);
-    }
+    if (LargeObject largeObject = m_largeObjects.take(size))
+        return largeObject;
 
-    return largeObject;
+    BASSERT(size <= largeMax);
+    return allocateLargeChunk(lock);
 }
 
 inline LargeObject VMHeap::allocateLargeObject(std::lock_guard<StaticMutex>& lock, size_t alignment, size_t size, size_t unalignedSize)
 {
-    LargeObject largeObject = m_largeObjects.take(alignment, size, unalignedSize);
-    if (!largeObject) {
-        allocateLargeChunk(lock);
-        largeObject = m_largeObjects.take(alignment, size, unalignedSize);
-        BASSERT(largeObject);
-    }
+    if (LargeObject largeObject = m_largeObjects.take(alignment, size, unalignedSize))
+        return largeObject;
 
-    return largeObject;
+    BASSERT(unalignedSize <= largeMax);
+    return allocateLargeChunk(lock);
 }
 
-inline void VMHeap::deallocateSmallPage(std::unique_lock<StaticMutex>& lock, SmallPage* page)
+inline void VMHeap::deallocateSmallRun(std::unique_lock<StaticMutex>& lock, SmallRun* run)
 {
     lock.unlock();
-    vmDeallocatePhysicalPages(page->begin()->begin(), vmPageSize);
+    vmDeallocatePhysicalPages(run->begin()->begin(), vmPageSize);
     lock.lock();
     
-    m_smallPages.push(page);
+    m_smallRuns.push(run);
 }
 
 inline void VMHeap::deallocateLargeObject(std::unique_lock<StaticMutex>& lock, LargeObject largeObject)

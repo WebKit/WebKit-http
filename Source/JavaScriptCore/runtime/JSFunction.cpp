@@ -39,7 +39,6 @@
 #include "JSCInlines.h"
 #include "JSFunctionInlines.h"
 #include "JSGlobalObject.h"
-#include "JSNotAnObject.h"
 #include "Interpreter.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
@@ -178,9 +177,13 @@ FunctionRareData* JSFunction::initializeRareData(ExecState* exec, size_t inlineC
     return m_rareData.get();
 }
 
-String JSFunction::name(ExecState* exec)
+String JSFunction::name()
 {
-    return get(exec, exec->vm().propertyNames->name).toWTFString(exec);
+    if (isHostFunction()) {
+        NativeExecutable* executable = jsCast<NativeExecutable*>(this->executable());
+        return executable->name();
+    }
+    return jsExecutable()->name().string();
 }
 
 String JSFunction::displayName(ExecState* exec)
@@ -200,7 +203,7 @@ const String JSFunction::calculatedDisplayName(ExecState* exec)
     if (!explicitName.isEmpty())
         return explicitName;
     
-    const String actualName = name(exec);
+    const String actualName = name();
     if (!actualName.isEmpty() || isHostOrBuiltinFunction())
         return actualName;
     
@@ -230,11 +233,11 @@ CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
     if (thisObject->isHostFunction()) {
         callData.native.function = thisObject->nativeFunction();
-        return CallTypeHost;
+        return CallType::Host;
     }
     callData.js.functionExecutable = thisObject->jsExecutable();
     callData.js.scope = thisObject->scope();
-    return CallTypeJS;
+    return CallType::JS;
 }
 
 class RetrieveArgumentsFunctor {
@@ -421,13 +424,12 @@ void JSFunction::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, 
     Base::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
-void JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
-    if (thisObject->isHostOrBuiltinFunction()) {
-        Base::put(thisObject, exec, propertyName, value, slot);
-        return;
-    }
+    if (thisObject->isHostOrBuiltinFunction())
+        return Base::put(thisObject, exec, propertyName, value, slot);
+
     if (propertyName == exec->propertyNames().prototype) {
         // Make sure prototype has been reified, such that it can only be overwritten
         // following the rules set out in ECMA-262 8.12.9.
@@ -437,23 +439,21 @@ void JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
             thisObject->m_rareData->clear("Store to prototype property of a function");
         // Don't allow this to be cached, since a [[Put]] must clear m_rareData.
         PutPropertySlot dontCache(thisObject);
-        Base::put(thisObject, exec, propertyName, value, dontCache);
-        return;
+        return Base::put(thisObject, exec, propertyName, value, dontCache);
     }
     if (thisObject->jsExecutable()->isStrictMode() && (propertyName == exec->propertyNames().arguments || propertyName == exec->propertyNames().caller)) {
         // This will trigger the property to be reified, if this is not already the case!
         bool okay = thisObject->hasProperty(exec, propertyName);
         ASSERT_UNUSED(okay, okay);
-        Base::put(thisObject, exec, propertyName, value, slot);
-        return;
+        return Base::put(thisObject, exec, propertyName, value, slot);
     }
     if (propertyName == exec->propertyNames().arguments || propertyName == exec->propertyNames().caller) {
         if (slot.isStrictMode())
             throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return;
+        return false;
     }
     thisObject->reifyLazyPropertyIfNeeded(exec, propertyName);
-    Base::put(thisObject, exec, propertyName, value, slot);
+    return Base::put(thisObject, exec, propertyName, value, slot);
 }
 
 bool JSFunction::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
@@ -523,7 +523,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
     }
     if (descriptor.isAccessorDescriptor()) {
         if (throwException)
-            exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
+            exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError)));
         return false;
     }
     if (descriptor.writablePresent() && descriptor.writable()) {
@@ -546,16 +546,16 @@ ConstructType JSFunction::getConstructData(JSCell* cell, ConstructData& construc
 
     if (thisObject->isHostFunction()) {
         constructData.native.function = thisObject->nativeConstructor();
-        return ConstructTypeHost;
+        return ConstructType::Host;
     }
 
     FunctionExecutable* functionExecutable = thisObject->jsExecutable();
     if (functionExecutable->constructAbility() == ConstructAbility::CannotConstruct)
-        return ConstructTypeNone;
+        return ConstructType::None;
 
     constructData.js.functionExecutable = functionExecutable;
     constructData.js.scope = thisObject->scope();
-    return ConstructTypeJS;
+    return ConstructType::JS;
 }
 
 String getCalculatedDisplayName(CallFrame* callFrame, JSObject* object)
@@ -590,9 +590,16 @@ void JSFunction::reifyName(ExecState* exec)
     ASSERT(!hasReifiedName());
     ASSERT(!isHostFunction());
     unsigned initialAttributes = DontEnum | ReadOnly;
-    const Identifier& identifier = exec->propertyNames().name;
-    putDirect(vm, identifier, jsString(exec, jsExecutable()->name().string()), initialAttributes);
+    const Identifier& propID = exec->propertyNames().name;
 
+    String name = jsExecutable()->ecmaName().string();
+
+    if (jsExecutable()->isGetter())
+        name = makeString("get ", name);
+    else if (jsExecutable()->isSetter())
+        name = makeString("set ", name);
+
+    putDirect(vm, propID, jsString(exec, name), initialAttributes);
     rareData->setHasReifiedName();
 }
 

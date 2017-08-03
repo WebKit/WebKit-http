@@ -84,6 +84,9 @@ WK_EXPORT void WKPageBeginPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo
 WK_EXPORT void WKPageDrawPagesToPDF(WKPageRef page, WKFrameRef frame, WKPrintInfo printInfo, uint32_t first, uint32_t count, WKPageDrawToPDFFunction callback, void* context);
 WK_EXPORT void WKPageEndPrinting(WKPageRef page);
 
+WK_EXPORT bool WKPageGetIsControlledByAutomation(WKPageRef page);
+WK_EXPORT void WKPageSetControlledByAutomation(WKPageRef page, bool controlled);
+
 WK_EXPORT bool WKPageGetAllowsRemoteInspection(WKPageRef page);
 WK_EXPORT void WKPageSetAllowsRemoteInspection(WKPageRef page, bool allow);
 
@@ -113,6 +116,16 @@ WK_EXPORT void WKPageSetAddsVisitedLinks(WKPageRef page, bool visitedLinks);
 
 WK_EXPORT bool WKPageIsPlayingAudio(WKPageRef page);
 WK_EXPORT void WKPageSetMuted(WKPageRef page, bool muted);
+
+enum {
+    kWKMediaIsNotPlaying = 0,
+    kWKMediaIsPlayingAudio = 1 << 0,
+    kWKMediaIsPlayingVideo = 1 << 1,
+    kWKMediaHasActiveCaptureDevice = 1 << 2,
+};
+typedef uint32_t WKMediaState;
+
+WK_EXPORT WKMediaState WKPageGetMediaState(WKPageRef page);
 
 enum {
     kWKMediaEventTypePlayPause,

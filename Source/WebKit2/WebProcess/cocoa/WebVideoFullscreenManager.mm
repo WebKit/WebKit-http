@@ -182,6 +182,7 @@ WebVideoFullscreenManager::~WebVideoFullscreenManager()
 
     m_contextMap.clear();
     m_videoElements.clear();
+    m_clientCounts.clear();
 
     WebProcess::singleton().removeMessageReceiver(Messages::WebVideoFullscreenManager::messageReceiverName(), m_page->pageID());
 }
@@ -215,6 +216,44 @@ WebVideoFullscreenInterfaceContext& WebVideoFullscreenManager::ensureInterface(u
     return *std::get<1>(ensureModelAndInterface(contextId));
 }
 
+void WebVideoFullscreenManager::removeContext(uint64_t contextId)
+{
+    RefPtr<WebVideoFullscreenModelVideoElement> model;
+    RefPtr<WebVideoFullscreenInterfaceContext> interface;
+    std::tie(model, interface) = ensureModelAndInterface(contextId);
+
+    RefPtr<HTMLVideoElement> videoElement = model->videoElement();
+    model->setVideoElement(nullptr);
+    model->setWebVideoFullscreenInterface(nullptr);
+    interface->invalidate();
+    m_videoElements.remove(videoElement.get());
+    m_contextMap.remove(contextId);
+}
+
+void WebVideoFullscreenManager::addClientForContext(uint64_t contextId)
+{
+    auto addResult = m_clientCounts.add(contextId, 1);
+    if (!addResult.isNewEntry)
+        addResult.iterator->value++;
+}
+
+void WebVideoFullscreenManager::removeClientForContext(uint64_t contextId)
+{
+    ASSERT(m_clientCounts.contains(contextId));
+
+    int clientCount = m_clientCounts.get(contextId);
+    ASSERT(clientCount > 0);
+    clientCount--;
+
+    if (clientCount <= 0) {
+        m_clientCounts.remove(contextId);
+        removeContext(contextId);
+        return;
+    }
+
+    m_clientCounts.set(contextId, clientCount);
+}
+
 #pragma mark Interface to ChromeClient:
 
 bool WebVideoFullscreenManager::supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode) const
@@ -243,6 +282,9 @@ void WebVideoFullscreenManager::enterVideoFullscreenForVideoElement(HTMLVideoEle
     RefPtr<WebVideoFullscreenModelVideoElement> model;
     RefPtr<WebVideoFullscreenInterfaceContext> interface;
     std::tie(model, interface) = ensureModelAndInterface(contextId);
+    addClientForContext(contextId);
+    if (!interface->layerHostingContext())
+        interface->setLayerHostingContext(LayerHostingContext::createForExternalHostingProcess());
 
     FloatRect clientRect = clientRectForElement(&videoElement);
     FloatRect videoLayerFrame = FloatRect(0, 0, clientRect.width(), clientRect.height());
@@ -277,6 +319,46 @@ void WebVideoFullscreenManager::exitVideoFullscreenForVideoElement(WebCore::HTML
 
     interface.setIsAnimating(true);
     m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreen(contextId, clientRectForElement(&videoElement)), m_page->pageID());
+}
+
+void WebVideoFullscreenManager::setUpVideoControlsManager(WebCore::HTMLVideoElement& videoElement)
+{
+#if PLATFORM(MAC)
+    if (m_videoElements.contains(&videoElement)) {
+        uint64_t contextId = m_videoElements.get(&videoElement);
+        if (m_controlsManagerContextId == contextId)
+            return;
+
+        if (m_controlsManagerContextId)
+            removeClientForContext(m_controlsManagerContextId);
+        m_controlsManagerContextId = contextId;
+    } else {
+        auto addResult = m_videoElements.ensure(&videoElement, [&] { return nextContextId(); });
+        auto contextId = addResult.iterator->value;
+        m_controlsManagerContextId = contextId;
+        ensureModel(contextId).setVideoElement(&videoElement);
+    }
+
+    addClientForContext(m_controlsManagerContextId);
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetUpVideoControlsManagerWithID(m_controlsManagerContextId), m_page->pageID());
+#endif
+}
+
+void WebVideoFullscreenManager::exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode targetMode)
+{
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    ASSERT(m_videoElements.contains(&videoElement));
+
+    uint64_t contextId = m_videoElements.get(&videoElement);
+    auto& interface = ensureInterface(contextId);
+
+    interface.setTargetIsFullscreen(false);
+
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreenWithoutAnimationToMode(contextId, targetMode), m_page->pageID());
+#else
+    UNUSED_PARAM(videoElement);
+    UNUSED_PARAM(targetMode);
+#endif
 }
 
 #pragma mark Interface to WebVideoFullscreenInterfaceContext:
@@ -513,11 +595,8 @@ void WebVideoFullscreenManager::didCleanupFullscreen(uint64_t contextId)
     model->setVideoFullscreenLayer(nil);
     RefPtr<HTMLVideoElement> videoElement = model->videoElement();
 
-    model->setVideoElement(nullptr);
-    model->setWebVideoFullscreenInterface(nullptr);
-    interface->invalidate();
-    m_videoElements.remove(videoElement.get());
-    m_contextMap.remove(contextId);
+    interface->setFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);
+    removeClientForContext(contextId);
 
     if (!videoElement || !targetIsFullscreen)
         return;

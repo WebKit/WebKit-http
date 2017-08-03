@@ -43,13 +43,13 @@ public:
     static Ref<AccessibilityTable> create(RenderObject*);
     virtual ~AccessibilityTable();
 
-    virtual void init() override final;
+    void init() final;
 
-    virtual AccessibilityRole roleValue() const override final;
+    AccessibilityRole roleValue() const final;
     virtual bool isAriaTable() const { return false; }
     
-    virtual void addChildren() override;
-    virtual void clearChildren() override final;
+    void addChildren() override;
+    void clearChildren() final;
     
     const AccessibilityChildrenVector& columns();
     const AccessibilityChildrenVector& rows();
@@ -57,9 +57,9 @@ public:
     virtual bool supportsSelectedRows() { return false; }
     unsigned columnCount();
     unsigned rowCount();
-    virtual int tableLevel() const override final;
+    int tableLevel() const final;
     
-    virtual String title() const override final;
+    String title() const final;
     
     // all the cells in the table
     void cells(AccessibilityChildrenVector&);
@@ -90,15 +90,15 @@ protected:
     bool hasARIARole() const;
 
     // isTable is whether it's an AccessibilityTable object.
-    virtual bool isTable() const override final { return true; }
+    bool isTable() const final { return true; }
     // isDataTable is whether it is exposed as an AccessibilityTable because the heuristic
     // think this "looks" like a data-based table (instead of a table used for layout).
-    virtual bool isDataTable() const override final;
-    virtual bool computeAccessibilityIsIgnored() const override final;
+    bool isDataTable() const final;
+    bool computeAccessibilityIsIgnored() const final;
 
 private:
     virtual bool computeIsTableExposableThroughAccessibility() const;
-    virtual void titleElementText(Vector<AccessibilityText>&) const override final;
+    void titleElementText(Vector<AccessibilityText>&) const final;
     HTMLTableElement* tableElement() const;
     void addChildrenFromSection(RenderTableSection*, unsigned& maxColumnCount);
     void addTableCellChild(AccessibilityObject*, HashSet<AccessibilityObject*>& appendedRows, unsigned& columnCount);

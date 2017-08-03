@@ -96,7 +96,9 @@ static EncodedJSValue JSC_HOST_CALL constructIntlNumberFormat(ExecState* state)
     IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, jsCast<IntlNumberFormatConstructor*>(state->callee()));
     if (numberFormat && !jsDynamicCast<IntlNumberFormatConstructor*>(newTarget)) {
         JSValue proto = asObject(newTarget)->getDirect(vm, vm.propertyNames->prototype);
-        asObject(numberFormat)->setPrototypeWithCycleCheck(state, proto);
+        asObject(numberFormat)->setPrototype(vm, state, proto);
+        if (vm.exception())
+            return JSValue::encode(JSValue());
     }
 
     // 3. ReturnIfAbrupt(numberFormat).
@@ -115,30 +117,48 @@ static EncodedJSValue JSC_HOST_CALL callIntlNumberFormat(ExecState* state)
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
     // NewTarget is always undefined when called as a function.
 
-    // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
+    // FIXME: Workaround to provide compatibility with ECMA-402 1.0 call/apply patterns.
     VM& vm = state->vm();
-    IntlNumberFormat* numberFormat = IntlNumberFormat::create(vm, jsCast<IntlNumberFormatConstructor*>(state->callee()));
+    IntlNumberFormatConstructor* callee = jsCast<IntlNumberFormatConstructor*>(state->callee());
 
+    JSValue thisValue = state->thisValue();
+    IntlNumberFormat* numberFormat = jsDynamicCast<IntlNumberFormat*>(thisValue);
+    if (!numberFormat) {
+        JSValue prototype = callee->getDirect(vm, vm.propertyNames->prototype);
+        if (JSObject::defaultHasInstance(state, thisValue, prototype)) {
+            JSObject* thisObject = thisValue.toObject(state);
+            if (state->hadException())
+                return JSValue::encode(jsUndefined());
+
+            numberFormat = IntlNumberFormat::create(vm, callee);
+            numberFormat->initializeNumberFormat(*state, state->argument(0), state->argument(1));
+            if (state->hadException())
+                return JSValue::encode(jsUndefined());
+
+            thisObject->putDirect(vm, vm.propertyNames->intlSubstituteValuePrivateName, numberFormat);
+            return JSValue::encode(thisValue);
+        }
+    }
+
+    // 2. Let numberFormat be OrdinaryCreateFromConstructor(newTarget, %NumberFormatPrototype%).
     // 3. ReturnIfAbrupt(numberFormat).
-    ASSERT(numberFormat);
+    numberFormat = IntlNumberFormat::create(vm, callee);
 
     // 4. Return InitializeNumberFormat(numberFormat, locales, options).
-    JSValue locales = state->argument(0);
-    JSValue options = state->argument(1);
-    numberFormat->initializeNumberFormat(*state, locales, options);
+    numberFormat->initializeNumberFormat(*state, state->argument(0), state->argument(1));
     return JSValue::encode(numberFormat);
 }
 
 ConstructType IntlNumberFormatConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructIntlNumberFormat;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType IntlNumberFormatConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callIntlNumberFormat;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 bool IntlNumberFormatConstructor::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

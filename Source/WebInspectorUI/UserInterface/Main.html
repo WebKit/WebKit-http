@@ -26,7 +26,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src *; connect-src *; media-src *; font-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src * file: blob:; connect-src *; media-src * blob:; font-src * blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 
     <link rel="stylesheet" href="External/CodeMirror/codemirror.css">
 
@@ -90,6 +90,10 @@
     <link rel="stylesheet" href="Views/GoToLineDialog.css">
     <link rel="stylesheet" href="Views/GradientEditor.css">
     <link rel="stylesheet" href="Views/GradientSlider.css">
+    <link rel="stylesheet" href="Views/HeapAllocationsTimelineOverviewGraph.css">
+    <link rel="stylesheet" href="Views/HeapAllocationsTimelineView.css">
+    <link rel="stylesheet" href="Views/HeapSnapshotInstancesContentView.css">
+    <link rel="stylesheet" href="Views/HeapSnapshotSummaryContentView.css">
     <link rel="stylesheet" href="Views/HierarchicalPathComponent.css">
     <link rel="stylesheet" href="Views/HoverMenu.css">
     <link rel="stylesheet" href="Views/ImageResourceContentView.css">
@@ -118,11 +122,13 @@
     <link rel="stylesheet" href="Views/ObjectTreeMapEntryTreeElement.css">
     <link rel="stylesheet" href="Views/ObjectTreePropertyTreeElement.css">
     <link rel="stylesheet" href="Views/ObjectTreeView.css">
+    <link rel="stylesheet" href="Views/OpenResourceDialog.css">
     <link rel="stylesheet" href="Views/OverviewTimelineView.css">
     <link rel="stylesheet" href="Views/PathComponentIcons.css">
     <link rel="stylesheet" href="Views/Popover.css">
     <link rel="stylesheet" href="Views/ProbeDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/ProbeSetDataGrid.css">
+    <link rel="stylesheet" href="Views/ProfileView.css">
     <link rel="stylesheet" href="Views/QuickConsole.css">
     <link rel="stylesheet" href="Views/RadioButtonNavigationItem.css">
     <link rel="stylesheet" href="Views/RenderingFrameTimelineOverviewGraph.css">
@@ -137,8 +143,8 @@
     <link rel="stylesheet" href="Views/ScopeChainDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/ScopeRadioButtonNavigationItem.css">
     <link rel="stylesheet" href="Views/ScriptContentView.css">
+    <link rel="stylesheet" href="Views/ScriptDetailsTimelineView.css">
     <link rel="stylesheet" href="Views/ScriptTimelineOverviewGraph.css">
-    <link rel="stylesheet" href="Views/ScriptTimelineView.css">
     <link rel="stylesheet" href="Views/SearchBar.css">
     <link rel="stylesheet" href="Views/SearchIcons.css">
     <link rel="stylesheet" href="Views/SearchSidebarPanel.css">
@@ -154,6 +160,7 @@
     <link rel="stylesheet" href="Views/TabBrowser.css">
     <link rel="stylesheet" href="Views/TextContentView.css">
     <link rel="stylesheet" href="Views/TextEditor.css">
+    <link rel="stylesheet" href="Views/TextNavigationItem.css">
     <link rel="stylesheet" href="Views/TextResourceContentView.css">
     <link rel="stylesheet" href="Views/TimelineDataGrid.css">
     <link rel="stylesheet" href="Views/TimelineIcons.css">
@@ -162,7 +169,7 @@
     <link rel="stylesheet" href="Views/TimelineRecordFrame.css">
     <link rel="stylesheet" href="Views/TimelineRecordingContentView.css">
     <link rel="stylesheet" href="Views/TimelineRuler.css">
-    <link rel="stylesheet" href="Views/TimelineSidebarPanel.css">
+    <link rel="stylesheet" href="Views/TimelineTabContentView.css">
     <link rel="stylesheet" href="Views/TimelineView.css">
     <link rel="stylesheet" href="Views/Toolbar.css">
     <link rel="stylesheet" href="Views/TreeElementStatusButton.css">
@@ -217,7 +224,7 @@
     <script src="External/Esprima/esprima.js"></script>
 
     <script src="Base/WebInspector.js"></script>
-    <script src="Protocol/InspectorFrontendHostStub.js"></script>
+    <script src="Base/InspectorFrontendHostStub.js"></script>
     <script src="Base/Platform.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
@@ -265,6 +272,7 @@
     <script src="Models/SourceCode.js"></script>
     <script src="Models/SourceCodeLocation.js"></script>
     <script src="Models/Timeline.js"></script>
+    <script src="Models/TimelineRange.js"></script>
     <script src="Models/TimelineRecord.js"></script>
 
     <script src="Models/AnalyzerMessage.js"></script>
@@ -305,6 +313,12 @@
     <script src="Models/GarbageCollection.js"></script>
     <script src="Models/Geometry.js"></script>
     <script src="Models/Gradient.js"></script>
+    <script src="Models/HeapAllocationsInstrument.js"></script>
+    <script src="Models/HeapAllocationsTimelineRecord.js"></script>
+    <script src="Models/HeapSnapshot.js"></script>
+    <script src="Models/HeapSnapshotDiff.js"></script>
+    <script src="Models/HeapSnapshotEdge.js"></script>
+    <script src="Models/HeapSnapshotNode.js"></script>
     <script src="Models/IndexedDatabase.js"></script>
     <script src="Models/IndexedDatabaseObjectStore.js"></script>
     <script src="Models/IndexedDatabaseObjectStoreIndex.js"></script>
@@ -317,6 +331,8 @@
     <script src="Models/LogObject.js"></script>
     <script src="Models/MemoryCategory.js"></script>
     <script src="Models/MemoryInstrument.js"></script>
+    <script src="Models/MemoryPressureEvent.js"></script>
+    <script src="Models/MemoryTimeline.js"></script>
     <script src="Models/MemoryTimelineRecord.js"></script>
     <script src="Models/NativeFunctionParameters.js"></script>
     <script src="Models/NetworkInstrument.js"></script>
@@ -363,6 +379,7 @@
     <script src="Models/WrappedPromise.js"></script>
 
     <script src="Views/View.js"></script>
+    <script src="Views/Dialog.js"></script>
 
     <script src="Views/ConsoleCommandView.js"></script>
     <script src="Views/ConsoleMessageView.js"></script>
@@ -488,6 +505,7 @@
     <script src="Views/EventListenerSectionGroup.js"></script>
     <script src="Views/FilterBar.js"></script>
     <script src="Views/FilterBarButton.js"></script>
+    <script src="Views/FilterBarNavigationItem.js"></script>
     <script src="Views/FindBanner.js"></script>
     <script src="Views/FlexibleSpaceNavigationItem.js"></script>
     <script src="Views/FontResourceContentView.js"></script>
@@ -499,6 +517,16 @@
     <script src="Views/GoToLineDialog.js"></script>
     <script src="Views/GradientEditor.js"></script>
     <script src="Views/GradientSlider.js"></script>
+    <script src="Views/HeapAllocationsTimelineOverviewGraph.js"></script>
+    <script src="Views/HeapAllocationsTimelineView.js"></script>
+    <script src="Views/HeapAllocationsTimelineDataGridNode.js"></script>
+    <script src="Views/HeapSnapshotClassDataGridNode.js"></script>
+    <script src="Views/HeapSnapshotClusterContentView.js"></script>
+    <script src="Views/HeapSnapshotInstanceDataGridNode.js"></script>
+    <script src="Views/HeapSnapshotInstanceFetchMoreDataGridNode.js"></script>
+    <script src="Views/HeapSnapshotInstancesContentView.js"></script>
+    <script src="Views/HeapSnapshotInstancesDataGridTree.js"></script>
+    <script src="Views/HeapSnapshotSummaryContentView.js"></script>
     <script src="Views/HierarchicalPathNavigationItem.js"></script>
     <script src="Views/HoverMenu.js"></script>
     <script src="Views/ImageResourceContentView.js"></script>
@@ -535,14 +563,18 @@
     <script src="Views/ObjectTreePropertyTreeElement.js"></script>
     <script src="Views/ObjectTreeSetIndexTreeElement.js"></script>
     <script src="Views/ObjectTreeView.js"></script>
+    <script src="Views/OpenResourceDialog.js"></script>
     <script src="Views/OverviewTimelineView.js"></script>
     <script src="Views/Popover.js"></script>
     <script src="Views/ProbeDetailsSidebarPanel.js"></script>
     <script src="Views/ProbeSetDataGrid.js"></script>
     <script src="Views/ProbeSetDataGridNode.js"></script>
     <script src="Views/ProbeSetDetailsSection.js"></script>
+    <script src="Views/ProfileDataGridNode.js"></script>
+    <script src="Views/ProfileDataGridTree.js"></script>
     <script src="Views/ProfileNodeDataGridNode.js"></script>
     <script src="Views/ProfileNodeTreeElement.js"></script>
+    <script src="Views/ProfileView.js"></script>
     <script src="Views/QuickConsole.js"></script>
     <script src="Views/QuickConsoleNavigationBar.js"></script>
     <script src="Views/RadioButtonNavigationItem.js"></script>
@@ -555,17 +587,18 @@
     <script src="Views/ResourceDetailsSidebarPanel.js"></script>
     <script src="Views/ResourceSidebarPanel.js"></script>
     <script src="Views/ResourceTimelineDataGridNode.js"></script>
-    <script src="Views/ResourceTimelineDataGridNodePathComponent.js"></script>
     <script src="Views/RulesStyleDetailsPanel.js"></script>
     <script src="Views/ScopeBar.js"></script>
     <script src="Views/ScopeBarItem.js"></script>
     <script src="Views/ScopeChainDetailsSidebarPanel.js"></script>
     <script src="Views/ScopeRadioButtonNavigationItem.js"></script>
+    <script src="Views/ScriptClusterTimelineView.js"></script>
     <script src="Views/ScriptContentView.js"></script>
+    <script src="Views/ScriptDetailsTimelineView.js"></script>
+    <script src="Views/ScriptProfileTimelineView.js"></script>
     <script src="Views/ScriptTimelineDataGrid.js"></script>
     <script src="Views/ScriptTimelineDataGridNode.js"></script>
     <script src="Views/ScriptTimelineOverviewGraph.js"></script>
-    <script src="Views/ScriptTimelineView.js"></script>
     <script src="Views/ScriptTreeElement.js"></script>
     <script src="Views/SearchBar.js"></script>
     <script src="Views/SearchResultTreeElement.js"></script>
@@ -581,12 +614,13 @@
     <script src="Views/StorageSidebarPanel.js"></script>
     <script src="Views/SyntaxHighlightingSupport.js"></script>
     <script src="Views/TextContentView.js"></script>
+    <script src="Views/TextNavigationItem.js"></script>
     <script src="Views/TextResourceContentView.js"></script>
+    <script src="Views/TimelineDataGridNodePathComponent.js"></script>
     <script src="Views/TimelineRecordBar.js"></script>
     <script src="Views/TimelineRecordFrame.js"></script>
     <script src="Views/TimelineRecordingContentView.js"></script>
     <script src="Views/TimelineRuler.js"></script>
-    <script src="Views/TimelineSidebarPanel.js"></script>
     <script src="Views/ToggleButtonNavigationItem.js"></script>
     <script src="Views/ToggleControlToolbarItem.js"></script>
     <script src="Views/Toolbar.js"></script>
@@ -649,6 +683,7 @@
     <script src="Controllers/JavaScriptRuntimeCompletionProvider.js"></script>
     <script src="Controllers/LayerTreeManager.js"></script>
     <script src="Controllers/LogManager.js"></script>
+    <script src="Controllers/MemoryManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
     <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>

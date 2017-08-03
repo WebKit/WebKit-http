@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-static std::unique_ptr<MediaEndpoint> createMediaEndpoint(MediaEndpointClient*)
+static std::unique_ptr<MediaEndpoint> createMediaEndpoint(MediaEndpointClient&)
 {
     return nullptr;
 }

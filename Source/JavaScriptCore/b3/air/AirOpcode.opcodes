@@ -215,6 +215,24 @@ Mul32 U:G:32, U:G:32, ZD:G:32
 Mul64 U:G:64, U:G:64, D:G:64
     Tmp, Tmp, Tmp
 
+arm64: MultiplyAdd32 U:G:32, U:G:32, U:G:32, ZD:G:32
+    Tmp, Tmp, Tmp, Tmp
+
+arm64: MultiplyAdd64 U:G:64, U:G:64, U:G:64, D:G:64
+    Tmp, Tmp, Tmp, Tmp
+
+arm64: MultiplySub32 U:G:32, U:G:32, U:G:32, ZD:G:32
+    Tmp, Tmp, Tmp, Tmp
+
+arm64: MultiplySub64 U:G:64, U:G:64, U:G:64, D:G:64
+    Tmp, Tmp, Tmp, Tmp
+
+arm64: MultiplyNeg32 U:G:32, U:G:32, ZD:G:32
+    Tmp, Tmp, Tmp
+
+arm64: MultiplyNeg64 U:G:64, U:G:64, ZD:G:64
+    Tmp, Tmp, Tmp
+
 arm64: Div32 U:G:32, U:G:32, ZD:G:32
     Tmp, Tmp, Tmp
 
@@ -595,7 +613,7 @@ Store16 U:G:16, D:G:16
 
 Compare32 U:G:32, U:G:32, U:G:32, ZD:G:32
     RelCond, Tmp, Tmp, Tmp
-    x86: RelCond, Tmp, Imm, Tmp
+    RelCond, Tmp, Imm, Tmp
 
 64: Compare64 U:G:32, U:G:64, U:G:64, ZD:G:32
     RelCond, Tmp, Tmp, Tmp
@@ -604,6 +622,7 @@ Compare32 U:G:32, U:G:32, U:G:32, ZD:G:32
 Test32 U:G:32, U:G:32, U:G:32, ZD:G:32
     x86: ResCond, Addr, Imm, Tmp
     ResCond, Tmp, Tmp, Tmp
+    ResCond, Tmp, BitImm, Tmp
 
 64: Test64 U:G:32, U:G:64, U:G:64, ZD:G:32
     x86: ResCond, Tmp, Imm, Tmp
@@ -632,7 +651,7 @@ Branch32 U:G:32, U:G:32, U:G:32 /branch
 
 64: Branch64 U:G:32, U:G:64, U:G:64 /branch
     RelCond, Tmp, Tmp
-    x86: RelCond, Tmp, Imm
+    RelCond, Tmp, Imm
     x86: RelCond, Tmp, Addr
     x86: RelCond, Addr, Tmp
     x86: RelCond, Addr, Imm
@@ -644,7 +663,7 @@ BranchTest8 U:G:32, U:G:8, U:G:8 /branch
 
 BranchTest32 U:G:32, U:G:32, U:G:32 /branch
     ResCond, Tmp, Tmp
-    x86: ResCond, Tmp, Imm
+    ResCond, Tmp, BitImm
     x86: ResCond, Addr, Imm
     x86: ResCond, Index, Imm
 
@@ -652,7 +671,7 @@ BranchTest32 U:G:32, U:G:32, U:G:32 /branch
 # BranchTest32 in most cases where you use an immediate.
 64: BranchTest64 U:G:32, U:G:64, U:G:64 /branch
     ResCond, Tmp, Tmp
-    x86: ResCond, Tmp, Imm
+    ResCond, Tmp, BitImm64
     x86: ResCond, Addr, Imm
     x86: ResCond, Addr, Tmp
     x86: ResCond, Index, Imm
@@ -723,12 +742,14 @@ MoveConditionally32 U:G:32, U:G:32, U:G:32, U:G:Ptr, UD:G:Ptr
 
 MoveConditionally32 U:G:32, U:G:32, U:G:32, U:G:Ptr, U:G:Ptr, D:G:Ptr
     RelCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    RelCond, Tmp, Imm, Tmp, Tmp, Tmp
 
 64: MoveConditionally64 U:G:32, U:G:64, U:G:64, U:G:Ptr, UD:G:Ptr
     RelCond, Tmp, Tmp, Tmp, Tmp
 
 64: MoveConditionally64 U:G:32, U:G:64, U:G:64, U:G:Ptr, U:G:Ptr, D:G:Ptr
     RelCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    RelCond, Tmp, Imm, Tmp, Tmp, Tmp
 
 MoveConditionallyTest32 U:G:32, U:G:32, U:G:32, U:G:Ptr, UD:G:Ptr
     ResCond, Tmp, Tmp, Tmp, Tmp
@@ -736,7 +757,7 @@ MoveConditionallyTest32 U:G:32, U:G:32, U:G:32, U:G:Ptr, UD:G:Ptr
 
 MoveConditionallyTest32 U:G:32, U:G:32, U:G:32, U:G:Ptr, U:G:Ptr, D:G:Ptr
     ResCond, Tmp, Tmp, Tmp, Tmp, Tmp
-    x86: ResCond, Tmp, Imm, Tmp, Tmp, Tmp
+    ResCond, Tmp, BitImm, Tmp, Tmp, Tmp
 
 64: MoveConditionallyTest64 U:G:32, U:G:64, U:G:64, U:G:Ptr, UD:G:Ptr
     ResCond, Tmp, Tmp, Tmp, Tmp
@@ -758,25 +779,42 @@ MoveConditionallyFloat U:G:32, U:F:32, U:F:32, U:G:Ptr, U:G:Ptr, D:G:Ptr
 MoveConditionallyFloat U:G:32, U:F:32, U:F:32, U:G:Ptr, UD:G:Ptr
     DoubleCond, Tmp, Tmp, Tmp, Tmp
 
-MoveDoubleConditionally32 U:G:32, U:G:32, U:G:32, U:F:64, UD:F:64
-    RelCond, Tmp, Tmp, Tmp, Tmp
+MoveDoubleConditionally32 U:G:32, U:G:32, U:G:32, U:F:64, U:F:64, D:F:64
+    RelCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    RelCond, Tmp, Imm, Tmp, Tmp, Tmp
+    x86: RelCond, Addr, Imm, Tmp, Tmp, Tmp
+    x86: RelCond, Tmp, Addr, Tmp, Tmp, Tmp
+    x86: RelCond, Addr, Tmp, Tmp, Tmp, Tmp
+    x86: RelCond, Index, Imm, Tmp, Tmp, Tmp
 
-64: MoveDoubleConditionally64 U:G:32, U:G:64, U:G:64, U:F:64, UD:F:64
-    RelCond, Tmp, Tmp, Tmp, Tmp
+64: MoveDoubleConditionally64 U:G:32, U:G:64, U:G:64, U:F:64, U:F:64, D:F:64
+    RelCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    RelCond, Tmp, Imm, Tmp, Tmp, Tmp
+    x86_64: RelCond, Tmp, Addr, Tmp, Tmp, Tmp
+    x86_64: RelCond, Addr, Tmp, Tmp, Tmp, Tmp
+    x86_64: RelCond, Addr, Imm, Tmp, Tmp, Tmp
+    x86_64: RelCond, Index, Tmp, Tmp, Tmp, Tmp
 
-MoveDoubleConditionallyTest32 U:G:32, U:G:32, U:G:32, U:F:64, UD:F:64
-    ResCond, Tmp, Tmp, Tmp, Tmp
-    x86: ResCond, Tmp, Imm, Tmp, Tmp
+MoveDoubleConditionallyTest32 U:G:32, U:G:32, U:G:32, U:F:64, U:F:64, D:F:64
+    ResCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    ResCond, Tmp, BitImm, Tmp, Tmp, Tmp
+    x86: ResCond, Addr, Imm, Tmp, Tmp, Tmp
+    x86: ResCond, Index, Imm, Tmp, Tmp, Tmp
 
-64: MoveDoubleConditionallyTest64 U:G:32, U:G:64, U:G:64, U:F:64, UD:F:64
-    ResCond, Tmp, Tmp, Tmp, Tmp
-    ResCond, Tmp, Imm, Tmp, Tmp
+# Warning: forms that take an immediate will sign-extend their immediate. You probably want
+# MoveDoubleConditionallyTest32 in most cases where you use an immediate.
+64: MoveDoubleConditionallyTest64 U:G:32, U:G:64, U:G:64, U:F:64, U:F:64, D:F:64
+    ResCond, Tmp, Tmp, Tmp, Tmp, Tmp
+    x86_64: ResCond, Tmp, Imm, Tmp, Tmp, Tmp
+    x86_64: ResCond, Addr, Imm, Tmp, Tmp, Tmp
+    x86_64: ResCond, Addr, Tmp, Tmp, Tmp, Tmp
+    x86_64: ResCond, Index, Imm, Tmp, Tmp, Tmp
 
-MoveDoubleConditionallyDouble U:G:32, U:F:64, U:F:64, U:F:64, UD:F:64
-    DoubleCond, Tmp, Tmp, Tmp, Tmp
+MoveDoubleConditionallyDouble U:G:32, U:F:64, U:F:64, U:F:64, U:F:64, D:F:64
+    DoubleCond, Tmp, Tmp, Tmp, Tmp, Tmp
 
-MoveDoubleConditionallyFloat U:G:32, U:F:32, U:F:32, U:F:64, UD:F:64
-    DoubleCond, Tmp, Tmp, Tmp, Tmp
+MoveDoubleConditionallyFloat U:G:32, U:F:32, U:F:32, U:F:64, U:F:64, D:F:64
+    DoubleCond, Tmp, Tmp, Tmp, Tmp, Tmp
 
 Jump /branch
 

@@ -28,12 +28,14 @@
     readonly attribute DOMString? tagName;
 
     DOMString? getAttribute([Default=Undefined] optional DOMString name);
-    [ObjCLegacyUnnamedParameters, RaisesException] void setAttribute([Default=Undefined] optional DOMString name,
-                                     [Default=Undefined] optional DOMString value);
-    void removeAttribute([Default=Undefined] optional DOMString name);
+
+    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
+    void setAttribute([Default=Undefined] optional DOMString name, [Default=Undefined] optional DOMString value);
+
+    [InvokesCustomElementLifecycleCallbacks] void removeAttribute([Default=Undefined] optional DOMString name);
     Attr getAttributeNode([Default=Undefined] optional DOMString name);
-    [RaisesException] Attr setAttributeNode([Default=Undefined] optional Attr newAttr);
-    [RaisesException] Attr removeAttributeNode([Default=Undefined] optional Attr oldAttr);
+    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNode([Default=Undefined] optional Attr newAttr);
+    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr removeAttributeNode([Default=Undefined] optional Attr oldAttr);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName([Default=Undefined] optional DOMString name);
@@ -50,10 +52,12 @@
     // DOM Level 2 Core
 
     [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
-    [ObjCLegacyUnnamedParameters, RaisesException] void setAttributeNS([Default=Undefined] optional DOMString? namespaceURI,
-        [Default=Undefined] optional DOMString qualifiedName,
-        [Default=Undefined] optional DOMString value);
-    [ObjCLegacyUnnamedParameters] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
+
+    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
+    void setAttributeNS([Default=Undefined] optional DOMString? namespaceURI,
+        [Default=Undefined] optional DOMString qualifiedName, [Default=Undefined] optional DOMString value);
+
+    [ObjCLegacyUnnamedParameters, InvokesCustomElementLifecycleCallbacks] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(optional DOMString namespaceURI, optional DOMString localName);
@@ -61,7 +65,7 @@
     HTMLCollection getElementsByTagNameNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
 #endif
     [ObjCLegacyUnnamedParameters] Attr getAttributeNodeNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
-    [RaisesException] Attr setAttributeNodeNS([Default=Undefined] optional Attr newAttr);
+    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNodeNS([Default=Undefined] optional Attr newAttr);
     boolean hasAttribute(DOMString name);
     [ObjCLegacyUnnamedParameters] boolean hasAttributeNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
 
@@ -101,8 +105,11 @@
 
     [ImplementedAs=bindingsOffsetParent] readonly attribute Element offsetParent;
 
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     void focus();
     void blur();
+#endif
+
     void scrollIntoView(optional boolean alignWithTop);
 
     // WebKit extensions
@@ -119,7 +126,7 @@
 #endif
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerHTML;
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerHTML;
-             
+
 
     [Reflect=class] attribute DOMString className;
     [PutForwards=value] readonly attribute DOMTokenList classList;
@@ -164,9 +171,9 @@
 
     // Shadow DOM API
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Conditional=SHADOW_DOM, RaisesException] ShadowRoot attachShadow(Dictionary options);
-    [Conditional=SHADOW_DOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot shadowRoot;
-    [Conditional=SHADOW_DOM, Reflect] attribute DOMString slot;
+    [Conditional=SHADOW_DOM, EnabledAtRuntime=ShadowDOM, RaisesException] ShadowRoot attachShadow(Dictionary options);
+    [Conditional=SHADOW_DOM, EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot shadowRoot;
+    [Conditional=SHADOW_DOM, EnabledAtRuntime=ShadowDOM, Reflect] attribute DOMString slot;
 #endif
 
     // Event Handlers

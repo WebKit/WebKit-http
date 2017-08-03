@@ -31,6 +31,7 @@
 #include "ActiveDOMCallbackMicrotask.h"
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
+#include "Autofill.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
 #include "CachedImage.h"
@@ -175,6 +176,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "MockMediaEndpoint.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionHandlerMock.h"
@@ -205,6 +207,16 @@
 #include "MediaPlaybackTargetContext.h"
 #endif
 
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+#if __has_include(<AccessibilitySupport.h>)
+#include <AccessibilitySupport.h>
+#else
+extern "C" {
+void _AXSSetForceAllowWebScaling(Boolean);
+}
+#endif
+#endif
+
 using JSC::CallData;
 using JSC::CallType;
 using JSC::CodeBlock;
@@ -231,20 +243,20 @@ public:
     virtual ~InspectorStubFrontend();
 
     // InspectorFrontendClient API
-    virtual void attachWindow(DockSide) override { }
-    virtual void detachWindow() override { }
-    virtual void closeWindow() override;
-    virtual void bringToFront() override { }
-    virtual String localizedStringsURL() override { return String(); }
-    virtual void inspectedURLChanged(const String&) override { }
+    void attachWindow(DockSide) override { }
+    void detachWindow() override { }
+    void closeWindow() override;
+    void bringToFront() override { }
+    String localizedStringsURL() override { return String(); }
+    void inspectedURLChanged(const String&) override { }
 protected:
-    virtual void setAttachedWindowHeight(unsigned) override { }
-    virtual void setAttachedWindowWidth(unsigned) override { }
+    void setAttachedWindowHeight(unsigned) override { }
+    void setAttachedWindowWidth(unsigned) override { }
 
 public:
     // Inspector::FrontendChannel API
-    virtual bool sendMessageToFrontend(const String& message) override;
-    virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
+    bool sendMessageToFrontend(const String& message) override;
+    ConnectionType connectionType() const override { return ConnectionType::Local; }
 
 private:
     Page* frontendPage() const
@@ -403,6 +415,10 @@ void Internals::resetToConsistentState(Page* page)
 #endif
 
     page->setShowAllPlugins(false);
+    
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    _AXSSetForceAllowWebScaling(false);
+#endif
 }
 
 Internals::Internals(Document* document)
@@ -415,6 +431,7 @@ Internals::Internals(Document* document)
 
 #if ENABLE(MEDIA_STREAM)
     setMockMediaCaptureDevicesEnabled(true);
+    enableMockMediaEndpoint();
     enableMockRTCPeerConnectionHandler();
 #endif
 
@@ -1015,6 +1032,11 @@ void Internals::enableMockSpeechSynthesizer()
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+void Internals::enableMockMediaEndpoint()
+{
+    MediaEndpoint::create = MockMediaEndpoint::create;
+}
+
 void Internals::enableMockRTCPeerConnectionHandler()
 {
     RTCPeerConnectionHandler::create = RTCPeerConnectionHandlerMock::create;
@@ -1367,6 +1389,21 @@ void Internals::scrollElementToRect(Element* element, long x, long y, long w, lo
     }
     FrameView* frameView = element->document().view();
     frameView->scrollElementToRect(*element, IntRect(x, y, w, h));
+}
+
+String Internals::autofillFieldName(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return { };
+    }
+
+    if (!is<HTMLFormControlElement>(*element)) {
+        ec = INVALID_NODE_TYPE_ERR;
+        return { };
+    }
+
+    return downcast<HTMLFormControlElement>(*element).autofillData().fieldName;
 }
 
 void Internals::paintControlTints(ExceptionCode& ec)
@@ -3045,8 +3082,8 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const Str
             restrictions |= MediaElementSession::NoRestrictions;
         if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforload"))
             restrictions |= MediaElementSession::RequireUserGestureForLoad;
-        if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforratechange"))
-            restrictions |= MediaElementSession::RequireUserGestureForRateChange;
+        if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforvideoratechange"))
+            restrictions |= MediaElementSession::RequireUserGestureForVideoRateChange;
         if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforfullscreen"))
             restrictions |= MediaElementSession::RequireUserGestureForFullscreen;
         if (equalLettersIgnoringASCIICase(restrictionString, "requirepageconsenttoloadmedia"))
@@ -3067,6 +3104,8 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const Str
             restrictions |= MediaElementSession::AutoPreloadingNotPermitted;
         if (equalLettersIgnoringASCIICase(restrictionString, "invisibleautoplaynotpermitted"))
             restrictions |= MediaElementSession::InvisibleAutoplayNotPermitted;
+        if (equalLettersIgnoringASCIICase(restrictionString, "overrideusergesturerequirementformaincontent"))
+            restrictions |= MediaElementSession::OverrideUserGestureRequirementForMainContent;
     }
     element->mediaSession().addBehaviorRestriction(restrictions);
 }
@@ -3468,7 +3507,7 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     JSObject* function = value.getObject();
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
-    ASSERT(callType != JSC::CallTypeNone);
+    ASSERT(callType != JSC::CallType::None);
     MarkedArgumentBuffer arguments;
     arguments.append(stream);
     JSValue returnedValue = JSC::call(&state, function, callType, callData, JSC::jsUndefined(), arguments);
@@ -3493,6 +3532,15 @@ String Internals::composedTreeAsText(Node* node)
     if (!is<ContainerNode>(node))
         return "";
     return WebCore::composedTreeAsText(downcast<ContainerNode>(*node));
+}
+
+void Internals::setViewportForceAlwaysUserScalable(bool scalable)
+{
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    _AXSSetForceAllowWebScaling(scalable);
+#else
+    UNUSED_PARAM(scalable);
+#endif
 }
 
 }

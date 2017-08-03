@@ -758,6 +758,16 @@ bool WKPreferencesGetMediaPlaybackRequiresUserGesture(WKPreferencesRef preferenc
     return toImpl(preferencesRef)->requiresUserGestureForMediaPlayback();
 }
 
+void WKPreferencesSetVideoPlaybackRequiresUserGesture(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setRequiresUserGestureForVideoPlayback(flag);
+}
+
+bool WKPreferencesGetVideoPlaybackRequiresUserGesture(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->requiresUserGestureForVideoPlayback();
+}
+
 void WKPreferencesSetAudioPlaybackRequiresUserGesture(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setRequiresUserGestureForAudioPlayback(flag);
@@ -766,6 +776,16 @@ void WKPreferencesSetAudioPlaybackRequiresUserGesture(WKPreferencesRef preferenc
 bool WKPreferencesGetAudioPlaybackRequiresUserGesture(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->requiresUserGestureForAudioPlayback();
+}
+
+void WKPreferencesSetMainContentUserGestureOverrideEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setMainContentUserGestureOverrideEnabled(flag);
+}
+
+bool WKPreferencesGetMainContentUserGestureOverrideEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mainContentUserGestureOverrideEnabled();
 }
 
 void WKPreferencesSetMediaPlaybackAllowsInline(WKPreferencesRef preferencesRef, bool flag)
@@ -1465,4 +1485,24 @@ void WKPreferencesSetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef, 
 bool WKPreferencesGetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->mockCaptureDevicesEnabled();
+}
+
+void WKPreferencesSetShadowDOMEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setShadowDOMEnabled(flag);
+}
+
+bool WKPreferencesGetShadowDOMEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->shadowDOMEnabled();
+}
+
+void WKPreferencesSetCustomElementsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setShadowDOMEnabled(flag);
+}
+
+bool WKPreferencesGetCustomElementsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->shadowDOMEnabled();
 }

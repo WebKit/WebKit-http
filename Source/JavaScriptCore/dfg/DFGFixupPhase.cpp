@@ -418,6 +418,8 @@ private:
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
                 fixEdge<StringUse>(node->child1());
+            else if (node->child1()->shouldSpeculateStringOrOther())
+                fixEdge<StringOrOtherUse>(node->child1());
             break;
         }
 
@@ -879,8 +881,14 @@ private:
             
         case RegExpExec:
         case RegExpTest: {
-            fixEdge<CellUse>(node->child1());
-            fixEdge<CellUse>(node->child2());
+            fixEdge<KnownCellUse>(node->child1());
+            
+            if (node->child2()->shouldSpeculateRegExpObject()) {
+                fixEdge<RegExpObjectUse>(node->child2());
+
+                if (node->child3()->shouldSpeculateString())
+                    fixEdge<StringUse>(node->child3());
+            }
             break;
         }
 
@@ -917,6 +925,8 @@ private:
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
                 fixEdge<StringUse>(node->child1());
+            else if (node->child1()->shouldSpeculateStringOrOther())
+                fixEdge<StringOrOtherUse>(node->child1());
             break;
         }
             
@@ -1045,7 +1055,8 @@ private:
         case SkipScope:
         case GetScope:
         case GetGetter:
-        case GetSetter: {
+        case GetSetter:
+        case GetGlobalObject: {
             fixEdge<KnownCellUse>(node->child1());
             break;
         }
@@ -1058,27 +1069,56 @@ private:
 
         case GetById:
         case GetByIdFlush: {
-            if (!node->child1()->shouldSpeculateCell())
-                break;
-
-            // If we hadn't exited because of BadCache, BadIndexingType, or ExoticObjectMode, then
-            // leave this as a GetById.
-            if (!m_graph.hasExitSite(node->origin.semantic, BadCache)
+            // FIXME: This should be done in the ByteCodeParser based on reading the
+            // PolymorphicAccess, which will surely tell us that this is a AccessCase::ArrayLength.
+            // https://bugs.webkit.org/show_bug.cgi?id=154990
+            if (node->child1()->shouldSpeculateCellOrOther()
+                && !m_graph.hasExitSite(node->origin.semantic, BadType)
+                && !m_graph.hasExitSite(node->origin.semantic, BadCache)
                 && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
                 && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
+                
                 auto uid = m_graph.identifiers()[node->identifierNumber()];
+                
                 if (uid == vm().propertyNames->length.impl()) {
                     attemptToMakeGetArrayLength(node);
                     break;
                 }
+
+                if (uid == vm().propertyNames->lastIndex.impl()
+                    && node->child1()->shouldSpeculateRegExpObject()) {
+                    node->setOp(GetRegExpObjectLastIndex);
+                    node->clearFlags(NodeMustGenerate);
+                    fixEdge<RegExpObjectUse>(node->child1());
+                    break;
+                }
             }
-            fixEdge<CellUse>(node->child1());
+
+            if (node->child1()->shouldSpeculateCell())
+                fixEdge<CellUse>(node->child1());
             break;
         }
             
         case PutById:
         case PutByIdFlush:
         case PutByIdDirect: {
+            if (node->child1()->shouldSpeculateCellOrOther()
+                && !m_graph.hasExitSite(node->origin.semantic, BadType)
+                && !m_graph.hasExitSite(node->origin.semantic, BadCache)
+                && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
+                && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
+                
+                auto uid = m_graph.identifiers()[node->identifierNumber()];
+                
+                if (uid == vm().propertyNames->lastIndex.impl()
+                    && node->child1()->shouldSpeculateRegExpObject()) {
+                    node->setOp(SetRegExpObjectLastIndex);
+                    fixEdge<RegExpObjectUse>(node->child1());
+                    speculateForBarrier(node->child2());
+                    break;
+                }
+            }
+            
             fixEdge<CellUse>(node->child1());
             break;
         }
@@ -1230,7 +1270,6 @@ private:
         case CheckTierUpInLoop:
         case CheckTierUpAtReturn:
         case CheckTierUpAndOSREnter:
-        case CheckTierUpWithNestedTriggerAndOSREnter:
         case InvalidationPoint:
         case CheckArray:
         case CheckInBounds:
@@ -1259,6 +1298,8 @@ private:
         case KillStack:
         case GetStack:
         case StoreBarrier:
+        case GetRegExpObjectLastIndex:
+        case SetRegExpObjectLastIndex:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
@@ -1409,6 +1450,7 @@ private:
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
         case JSConstant:
+        case LazyJSConstant:
         case DoubleConstant:
         case GetLocal:
         case GetCallee:

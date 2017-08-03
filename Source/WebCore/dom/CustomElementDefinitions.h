@@ -48,34 +48,21 @@ class QualifiedName;
 class CustomElementDefinitions {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    bool defineElement(const QualifiedName&, Ref<JSCustomElementInterface>&&);
+    void addElementDefinition(Ref<JSCustomElementInterface>&&);
+    void addUpgradeCandidate(Element&);
 
     JSCustomElementInterface* findInterface(const QualifiedName&) const;
     JSCustomElementInterface* findInterface(const AtomicString&) const;
-    const QualifiedName& findName(const JSC::JSObject*) const;
+    JSCustomElementInterface* findInterface(const JSC::JSObject*) const;
+    bool containsConstructor(const JSC::JSObject*) const;
 
     enum class NameStatus { Valid, ConflictsWithBuiltinNames, NoHyphen, ContainsUpperCase };
     static NameStatus checkName(const AtomicString& tagName);
 
 private:
-    class CustomElementInfo {
-        WTF_MAKE_FAST_ALLOCATED;
-    public:
-        QualifiedName fullName;
-        RefPtr<JSCustomElementInterface> interface;
-
-        CustomElementInfo()
-            : fullName(nullQName())
-        { }
-
-        CustomElementInfo(const QualifiedName& name, Ref<JSCustomElementInterface>&& interface)
-            : fullName(name)
-            , interface(WTFMove(interface))
-        { }
-    };
-
-    HashMap<AtomicString, CustomElementInfo> m_nameMap;
-    HashMap<const JSC::JSObject*, QualifiedName> m_constructorMap;
+    HashMap<AtomicString, Vector<RefPtr<Element>>> m_upgradeCandidatesMap;
+    HashMap<AtomicString, RefPtr<JSCustomElementInterface>> m_nameMap;
+    HashMap<const JSC::JSObject*, JSCustomElementInterface*> m_constructorMap;
 };
     
 }

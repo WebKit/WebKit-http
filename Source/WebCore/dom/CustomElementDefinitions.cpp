@@ -69,35 +69,59 @@ CustomElementDefinitions::NameStatus CustomElementDefinitions::checkName(const A
     return NameStatus::Valid;
 }
 
-bool CustomElementDefinitions::defineElement(const QualifiedName& fullName, Ref<JSCustomElementInterface>&& interface)
+void CustomElementDefinitions::addElementDefinition(Ref<JSCustomElementInterface>&& interface)
 {
-    ASSERT(!m_nameMap.contains(fullName.localName()));
-    auto* constructor = interface->constructor();
-    m_nameMap.add(fullName.localName(), CustomElementInfo(fullName, WTFMove(interface)));
+    AtomicString localName = interface->name().localName();
+    ASSERT(!m_nameMap.contains(localName));
+    m_constructorMap.add(interface->constructor(), interface.ptr());
+    m_nameMap.add(localName, interface.copyRef());
 
-    auto addResult = m_constructorMap.add(constructor, fullName);
-    if (!addResult.isNewEntry)
-        addResult.iterator->value = nullQName(); // The interface has multiple tag names associated with it.
+    auto candidateList = m_upgradeCandidatesMap.find(localName);
+    if (candidateList == m_upgradeCandidatesMap.end())
+        return;
 
-    return true;
+    Vector<RefPtr<Element>> list(WTFMove(candidateList->value));
+
+    m_upgradeCandidatesMap.remove(localName);
+
+    for (auto& candidate : list) {
+        ASSERT(candidate);
+        interface->upgradeElement(*candidate);
+    }
+
+    // We should not be adding more upgrade candidate for this local name.
+    ASSERT(!m_upgradeCandidatesMap.contains(localName));
+}
+
+void CustomElementDefinitions::addUpgradeCandidate(Element& candidate)
+{
+    auto result = m_upgradeCandidatesMap.ensure(candidate.localName(), [] {
+        return Vector<RefPtr<Element>>();
+    });
+    auto& nodeVector = result.iterator->value;
+    ASSERT(!nodeVector.contains(&candidate));
+    nodeVector.append(&candidate);
 }
 
 JSCustomElementInterface* CustomElementDefinitions::findInterface(const QualifiedName& name) const
 {
     auto it = m_nameMap.find(name.localName());
-    return it == m_nameMap.end() || it->value.fullName != name ? nullptr : it->value.interface.get();
+    return it == m_nameMap.end() || it->value->name() != name ? nullptr : it->value.get();
 }
 
 JSCustomElementInterface* CustomElementDefinitions::findInterface(const AtomicString& name) const
 {
-    auto it = m_nameMap.find(name);
-    return it == m_nameMap.end() ? nullptr : it->value.interface.get();
+    return m_nameMap.get(name);
 }
 
-const QualifiedName& CustomElementDefinitions::findName(const JSC::JSObject* constructor) const
+JSCustomElementInterface* CustomElementDefinitions::findInterface(const JSC::JSObject* constructor) const
 {
-    auto it = m_constructorMap.find(constructor);
-    return it == m_constructorMap.end() ? nullQName() : it->value;
+    return m_constructorMap.get(constructor);
+}
+
+bool CustomElementDefinitions::containsConstructor(const JSC::JSObject* constructor) const
+{
+    return m_constructorMap.contains(constructor);
 }
 
 }

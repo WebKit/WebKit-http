@@ -81,18 +81,18 @@ public:
 
 private:
     // WebVideoFullscreenInterface
-    virtual void resetMediaState() override;
-    virtual void setDuration(double) override;
-    virtual void setCurrentTime(double currentTime, double anchorTime) override;
-    virtual void setBufferedTime(double) override;
-    virtual void setRate(bool isPlaying, float playbackRate) override;
-    virtual void setVideoDimensions(bool hasVideo, float width, float height) override;
-    virtual void setSeekableRanges(const WebCore::TimeRanges&) override;
-    virtual void setCanPlayFastReverse(bool value) override;
-    virtual void setAudioMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
-    virtual void setLegibleMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
-    virtual void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
-    virtual void setWirelessVideoPlaybackDisabled(bool) override;
+    void resetMediaState() override;
+    void setDuration(double) override;
+    void setCurrentTime(double currentTime, double anchorTime) override;
+    void setBufferedTime(double) override;
+    void setRate(bool isPlaying, float playbackRate) override;
+    void setVideoDimensions(bool hasVideo, float width, float height) override;
+    void setSeekableRanges(const WebCore::TimeRanges&) override;
+    void setCanPlayFastReverse(bool value) override;
+    void setAudioMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
+    void setLegibleMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
+    void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
+    void setWirelessVideoPlaybackDisabled(bool) override;
 
     WebVideoFullscreenInterfaceContext(WebVideoFullscreenManager&, uint64_t contextId);
 
@@ -116,6 +116,8 @@ public:
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) const;
     void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
     void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&);
+    void exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
+    void setUpVideoControlsManager(WebCore::HTMLVideoElement&);
     
 protected:
     friend class WebVideoFullscreenInterfaceContext;
@@ -127,6 +129,9 @@ protected:
     ModelInterfaceTuple& ensureModelAndInterface(uint64_t contextId);
     WebCore::WebVideoFullscreenModelVideoElement& ensureModel(uint64_t contextId);
     WebVideoFullscreenInterfaceContext& ensureInterface(uint64_t contextId);
+    void removeContext(uint64_t contextId);
+    void addClientForContext(uint64_t contextId);
+    void removeClientForContext(uint64_t contextId);
 
     // Interface to WebVideoFullscreenInterfaceContext
     void resetMediaState(uint64_t contextId);
@@ -168,6 +173,8 @@ protected:
     WebPage* m_page;
     HashMap<WebCore::HTMLVideoElement*, uint64_t> m_videoElements;
     HashMap<uint64_t, ModelInterfaceTuple> m_contextMap;
+    uint64_t m_controlsManagerContextId { 0 };
+    HashMap<uint64_t, int> m_clientCounts;
 };
     
 } // namespace WebKit

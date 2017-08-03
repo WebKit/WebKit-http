@@ -26,21 +26,12 @@
 
 WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 {
-    constructor(representedObject, extraArguments)
+    constructor(representedObject)
     {
-        console.assert(extraArguments);
-        console.assert(extraArguments.timelineSidebarPanel instanceof WebInspector.TimelineSidebarPanel);
-
         super(representedObject);
 
         // This class should not be instantiated directly. Create a concrete subclass instead.
         console.assert(this.constructor !== WebInspector.TimelineView && this instanceof WebInspector.TimelineView);
-
-        this._timelineSidebarPanel = extraArguments.timelineSidebarPanel;
-
-        this._contentTreeOutline = this._timelineSidebarPanel.createContentTreeOutline();
-        this._contentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
-        this._contentTreeOutline.__canShowContentViewForTreeElement = this.canShowContentViewForTreeElement.bind(this);
 
         this.element.classList.add("timeline-view");
 
@@ -52,35 +43,15 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
     // Public
 
-    get navigationSidebarTreeOutline()
-    {
-        return this._contentTreeOutline;
-    }
-
-    get navigationSidebarTreeOutlineLabel()
-    {
-        // Implemented by sub-classes if needed.
-        return null;
-    }
-
     get navigationSidebarTreeOutlineScopeBar()
     {
         return this._scopeBar;
     }
 
-    get timelineSidebarPanel()
-    {
-        return this._timelineSidebarPanel;
-    }
-
     get selectionPathComponents()
     {
-        if (!this._contentTreeOutline.selectedTreeElement || this._contentTreeOutline.selectedTreeElement.hidden)
-            return null;
-
-        var pathComponent = new WebInspector.GeneralTreeElementPathComponent(this._contentTreeOutline.selectedTreeElement);
-        pathComponent.addEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this.treeElementPathComponentSelected, this);
-        return [pathComponent];
+        // Implemented by sub-classes if needed.
+        return null;
     }
 
     get zeroTime()
@@ -167,7 +138,6 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
         this._timelineSidebarPanel.hideEmptyContentPlaceholder();
     }
 
-
     filterDidChange()
     {
         // Implemented by sub-classes if needed.
@@ -222,37 +192,8 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
         WebInspector.showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation);
     }
 
-    treeElementPathComponentSelected(event)
+    userSelectedRecordFromOverview(timelineRecord)
     {
         // Implemented by sub-classes if needed.
-    }
-
-    treeElementDeselected(treeElement)
-    {
-        // Implemented by sub-classes if needed.
-    }
-
-    treeElementSelected(treeElement, selectedByUser)
-    {
-        // Implemented by sub-classes if needed.
-
-        if (!this._timelineSidebarPanel.canShowDifferentContentView())
-            return;
-
-        if (treeElement instanceof WebInspector.FolderTreeElement)
-            return;
-
-        this.showContentViewForTreeElement(treeElement);
-    }
-
-    // Private
-
-    _treeSelectionDidChange(event)
-    {
-        if (event.data.deselectedElement)
-            this.treeElementDeselected(event.data.deselectedElement);
-
-        if (event.data.selectedElement)
-            this.treeElementSelected(event.data.selectedElement, event.data.selectedByUser);
     }
 };

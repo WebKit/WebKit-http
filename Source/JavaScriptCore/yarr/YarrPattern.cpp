@@ -28,7 +28,7 @@
 #include "YarrPattern.h"
 
 #include "Yarr.h"
-#include "YarrCanonicalizeUnicode.h"
+#include "YarrCanonicalize.h"
 #include "YarrParser.h"
 #include <wtf/Vector.h>
 
@@ -68,9 +68,14 @@ public:
 
     void putChar(UChar32 ch)
     {
-        // Handle ascii cases.
-        if (ch <= 0x7f) {
-            if (m_isCaseInsensitive && isASCIIAlpha(ch)) {
+        if (!m_isCaseInsensitive) {
+            addSorted(ch);
+            return;
+        }
+
+        if (m_canonicalMode == CanonicalMode::UCS2 && isASCII(ch)) {
+            // Handle ASCII cases.
+            if (isASCIIAlpha(ch)) {
                 addSorted(m_matches, toASCIIUpper(ch));
                 addSorted(m_matches, toASCIILower(ch));
             } else
@@ -78,16 +83,10 @@ public:
             return;
         }
 
-        // Simple case, not a case-insensitive match.
-        if (!m_isCaseInsensitive) {
-            addSorted(m_matchesUnicode, ch);
-            return;
-        }
-
         // Add multiple matches, if necessary.
         const CanonicalizationRange* info = canonicalRangeInfoFor(ch, m_canonicalMode);
         if (info->type == CanonicalizeUnique)
-            addSorted(m_matchesUnicode, ch);
+            addSorted(ch);
         else
             putUnicodeIgnoreCase(ch, info);
     }
@@ -108,7 +107,7 @@ public:
 
     void putRange(UChar32 lo, UChar32 hi)
     {
-        if (lo <= 0x7f) {
+        if (isASCII(lo)) {
             char asciiLo = lo;
             char asciiHi = std::min(hi, (UChar32)0x7f);
             addSortedRange(m_ranges, lo, asciiHi);
@@ -120,7 +119,7 @@ public:
                     addSortedRange(m_ranges, std::max(asciiLo, 'a')+('A'-'a'), std::min(asciiHi, 'z')+('A'-'a'));
             }
         }
-        if (hi <= 0x7f)
+        if (isASCII(hi))
             return;
 
         lo = std::max(lo, (UChar32)0x80);
@@ -190,7 +189,7 @@ public:
 private:
     void addSorted(UChar32 ch)
     {
-        addSorted(ch <= 0x7f ? m_matches : m_matchesUnicode, ch);
+        addSorted(isASCII(ch) ? m_matches : m_matchesUnicode, ch);
     }
 
     void addSorted(Vector<UChar32>& matches, UChar32 ch)
@@ -277,7 +276,7 @@ class YarrPatternConstructor {
 public:
     YarrPatternConstructor(YarrPattern& pattern)
         : m_pattern(pattern)
-        , m_characterClassConstructor(pattern.m_ignoreCase, pattern.m_unicode ? CanonicalMode::Unicode : CanonicalMode::UCS2)
+        , m_characterClassConstructor(pattern.ignoreCase(), pattern.unicode() ? CanonicalMode::Unicode : CanonicalMode::UCS2)
         , m_invertParentheticalAssertion(false)
     {
         auto body = std::make_unique<PatternDisjunction>();
@@ -323,12 +322,12 @@ public:
     {
         // We handle case-insensitive checking of unicode characters which do have both
         // cases by handling them as if they were defined using a CharacterClass.
-        if (!m_pattern.m_ignoreCase || (isASCII(ch) && !m_pattern.m_unicode)) {
+        if (!m_pattern.ignoreCase() || (isASCII(ch) && !m_pattern.unicode())) {
             m_alternative->m_terms.append(PatternTerm(ch));
             return;
         }
 
-        const CanonicalizationRange* info = canonicalRangeInfoFor(ch, m_pattern.m_unicode ? CanonicalMode::Unicode : CanonicalMode::UCS2);
+        const CanonicalizationRange* info = canonicalRangeInfoFor(ch, m_pattern.unicode() ? CanonicalMode::Unicode : CanonicalMode::UCS2);
         if (info->type == CanonicalizeUnique) {
             m_alternative->m_terms.append(PatternTerm(ch));
             return;
@@ -602,8 +601,8 @@ public:
                     term.frameLocation = currentCallFrameSize;
                     currentCallFrameSize += YarrStackSpaceForBackTrackInfoPatternCharacter;
                     alternative->m_hasFixedSize = false;
-                } else if (m_pattern.m_unicode) {
-                    currentInputPosition += (!U_IS_BMP(term.patternCharacter) ? 2 : 1) * term.quantityCount;
+                } else if (m_pattern.unicode()) {
+                    currentInputPosition += U16_LENGTH(term.patternCharacter) * term.quantityCount;
                 } else
                     currentInputPosition += term.quantityCount;
                 break;
@@ -614,7 +613,7 @@ public:
                     term.frameLocation = currentCallFrameSize;
                     currentCallFrameSize += YarrStackSpaceForBackTrackInfoCharacterClass;
                     alternative->m_hasFixedSize = false;
-                } else if (m_pattern.m_unicode) {
+                } else if (m_pattern.unicode()) {
                     term.frameLocation = currentCallFrameSize;
                     currentCallFrameSize += YarrStackSpaceForBackTrackInfoCharacterClass;
                     currentInputPosition += term.quantityCount;
@@ -734,7 +733,7 @@ public:
         // At this point, this is only valid for non-multiline expressions.
         PatternDisjunction* disjunction = m_pattern.m_body;
         
-        if (!m_pattern.m_containsBOL || m_pattern.m_multiline)
+        if (!m_pattern.m_containsBOL || m_pattern.multiline())
             return;
         
         PatternDisjunction* loopDisjunction = copyDisjunction(disjunction, true);
@@ -845,7 +844,7 @@ const char* YarrPattern::compile(const String& patternString)
 {
     YarrPatternConstructor constructor(*this);
 
-    if (const char* error = parse(constructor, patternString, m_unicode))
+    if (const char* error = parse(constructor, patternString, unicode()))
         return error;
     
     // If the pattern contains illegal backreferences reset & reparse.
@@ -859,7 +858,7 @@ const char* YarrPattern::compile(const String& patternString)
 #if !ASSERT_DISABLED
         const char* error =
 #endif
-            parse(constructor, patternString, m_unicode, numSubpatterns);
+            parse(constructor, patternString, unicode(), numSubpatterns);
 
         ASSERT(!error);
         ASSERT(numSubpatterns == m_numSubpatterns);
@@ -874,13 +873,11 @@ const char* YarrPattern::compile(const String& patternString)
     return 0;
 }
 
-YarrPattern::YarrPattern(const String& pattern, bool ignoreCase, bool multiline, bool unicode, const char** error)
-    : m_ignoreCase(ignoreCase)
-    , m_multiline(multiline)
-    , m_unicode(unicode)
-    , m_containsBackreferences(false)
+YarrPattern::YarrPattern(const String& pattern, RegExpFlags flags, const char** error)
+    : m_containsBackreferences(false)
     , m_containsBOL(false)
     , m_containsUnsignedLengthPattern(false)
+    , m_flags(flags)
     , m_numSubpatterns(0)
     , m_maxBackReference(0)
     , newlineCached(0)

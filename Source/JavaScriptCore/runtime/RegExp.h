@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007, 2008, 2009, 2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2009 Torch Mobile, Inc.
  *
  *  This library is free software; you can redistribute it and/or
@@ -55,6 +55,7 @@ public:
     bool global() const { return m_flags & FlagGlobal; }
     bool ignoreCase() const { return m_flags & FlagIgnoreCase; }
     bool multiline() const { return m_flags & FlagMultiline; }
+    bool sticky() const { return m_flags & FlagSticky; }
     bool unicode() const { return m_flags & FlagUnicode; }
 
     const String& pattern() const { return m_patternString; }
@@ -64,6 +65,11 @@ public:
 
     JS_EXPORT_PRIVATE int match(VM&, const String&, unsigned startOffset, Vector<int, 32>& ovector);
     JS_EXPORT_PRIVATE MatchResult match(VM&, const String&, unsigned startOffset);
+
+    // Call these versions of the match functions if you're desperate for performance.
+    int matchInline(VM&, const String&, unsigned startOffset, Vector<int, 32>& ovector);
+    MatchResult matchInline(VM&, const String&, unsigned startOffset);
+    
     unsigned numSubpatterns() const { return m_numSubpatterns; }
 
     bool hasCode()

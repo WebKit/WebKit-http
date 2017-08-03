@@ -251,7 +251,7 @@ static inline RenderBlock* firstContainingBlockWithLogicalWidth(const RenderRepl
     if (!containingBlock)
         return 0;
 
-    for (; !containingBlock->isRenderView() && !containingBlock->isBody(); containingBlock = containingBlock->containingBlock()) {
+    for (; containingBlock && !is<RenderView>(*containingBlock) && !containingBlock->isBody(); containingBlock = containingBlock->containingBlock()) {
         if (containingBlock->style().logicalWidth().isSpecified())
             return containingBlock;
     }
@@ -338,8 +338,6 @@ LayoutRect RenderReplaced::replacedContentRect(const LayoutSize& intrinsicSize) 
         return contentRect;
 
     ObjectFit objectFit = style().objectFit();
-    if (objectFit == ObjectFitFill)
-        return contentRect;
 
     LayoutRect finalRect = contentRect;
     switch (objectFit) {
@@ -354,13 +352,14 @@ LayoutRect RenderReplaced::replacedContentRect(const LayoutSize& intrinsicSize) 
         finalRect.setSize(intrinsicSize);
         break;
     case ObjectFitFill:
-        ASSERT_NOT_REACHED();
+        break;
     }
 
-    // FIXME: This is where object-position should be taken into account, but since it's not
-    // implemented yet, assume the initial value of "50% 50%".
-    LayoutUnit xOffset = (contentRect.width() - finalRect.width()) / 2;
-    LayoutUnit yOffset = (contentRect.height() - finalRect.height()) / 2;
+    LengthPoint objectPosition = style().objectPosition();
+
+    LayoutUnit xOffset = minimumValueForLength(objectPosition.x(), contentRect.width() - finalRect.width());
+    LayoutUnit yOffset = minimumValueForLength(objectPosition.y(), contentRect.height() - finalRect.height());
+
     finalRect.move(xOffset, yOffset);
 
     return finalRect;

@@ -113,12 +113,17 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case Int52Constant:
         def(PureValue(node, node->constant()));
         return;
-        
+
     case Identity:
     case Phantom:
     case Check:
     case ExtractOSREntryLocal:
     case CheckStructureImmediate:
+        return;
+        
+    case LazyJSConstant:
+        // We should enable CSE of LazyJSConstant. It's a little annoying since LazyJSValue has
+        // more bits than we currently have in PureValue.
         return;
         
     case ArithIMul:
@@ -134,6 +139,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithLog:
     case GetScope:
     case SkipScope:
+    case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
     case IsUndefined:
@@ -337,7 +343,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
-    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case Breakpoint:
     case ProfileWillCall:
@@ -908,6 +913,16 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(AbstractHeap(ScopeProperties, node->scopeOffset().offset()));
         def(HeapLocation(ClosureVariableLoc, AbstractHeap(ScopeProperties, node->scopeOffset().offset()), node->child1()), LazyNode(node->child2().node()));
         return;
+
+    case GetRegExpObjectLastIndex:
+        read(RegExpObject_lastIndex);
+        def(HeapLocation(RegExpObjectLastIndexLoc, RegExpObject_lastIndex, node->child1()), LazyNode(node));
+        return;
+
+    case SetRegExpObjectLastIndex:
+        write(RegExpObject_lastIndex);
+        def(HeapLocation(RegExpObjectLastIndexLoc, RegExpObject_lastIndex, node->child1()), LazyNode(node->child2().node()));
+        return;
         
     case GetFromArguments: {
         AbstractHeap heap(DirectArgumentsProperties, node->capturedArgumentsOffset().offset());
@@ -1068,8 +1083,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case RegExpExec:
     case RegExpTest:
-        read(RegExpState);
-        write(RegExpState);
+        if (node->child2().useKind() == RegExpObjectUse
+            && node->child3().useKind() == StringUse) {
+            read(RegExpState);
+            write(RegExpState);
+            return;
+        }
+        read(World);
+        write(Heap);
         return;
 
     case StringReplace:

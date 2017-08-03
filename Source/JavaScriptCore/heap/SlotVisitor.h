@@ -37,6 +37,7 @@ namespace JSC {
 class ConservativeRoots;
 class GCThreadSharedData;
 class Heap;
+class HeapSnapshotBuilder;
 template<typename T> class JITWriteBarrier;
 class UnconditionalFinalizer;
 template<typename T> class Weak;
@@ -47,6 +48,7 @@ class SlotVisitor {
     WTF_MAKE_NONCOPYABLE(SlotVisitor);
     WTF_MAKE_FAST_ALLOCATED;
 
+    friend class SetCurrentCellScope;
     friend class HeapRootVisitor; // Allowed to mark a JSValue* or JSCell** directly.
     friend class Heap;
 
@@ -65,8 +67,10 @@ public:
     
     template<typename T> void append(JITWriteBarrier<T>*);
     template<typename T> void append(WriteBarrierBase<T>*);
+    template<typename T> void appendHidden(WriteBarrierBase<T>*);
     template<typename Iterator> void append(Iterator begin , Iterator end);
     void appendValues(WriteBarrierBase<Unknown>*, size_t count);
+    void appendValuesHidden(WriteBarrierBase<Unknown>*, size_t count);
     
     template<typename T>
     void appendUnbarrieredPointer(T**);
@@ -111,10 +115,13 @@ public:
 
     void dump(PrintStream&) const;
 
+    bool isBuildingHeapSnapshot() const { return !!m_heapSnapshotBuilder; }
+
 private:
     friend class ParallelModeEnabler;
     
     JS_EXPORT_PRIVATE void append(JSValue); // This is private to encourage clients to use WriteBarrier<T>.
+    void appendHidden(JSValue);
 
     JS_EXPORT_PRIVATE void setMarkedAndAppendToMarkStack(JSCell*);
     void appendToMarkStack(JSCell*);
@@ -136,6 +143,9 @@ private:
     bool m_isInParallelMode;
     
     Heap& m_heap;
+
+    HeapSnapshotBuilder* m_heapSnapshotBuilder { nullptr };
+    JSCell* m_currentCell { nullptr };
 
     CellState m_currentObjectCellStateBeforeVisiting { CellState::NewWhite };
 

@@ -92,7 +92,11 @@ messages -> WebPage LegacyReceiver {
     ExecuteEditCommandWithCallback(String name, uint64_t callbackID)
     GetLookupContextAtPoint(WebCore::IntPoint point, uint64_t callbackID)
     SetAllowsMediaDocumentInlinePlayback(bool allows)
+    HandleTwoFingerTapAtPoint(WebCore::IntPoint point, uint64_t callbackID)
+    UpdateForceAlwaysUserScalable()
 #endif
+
+    SetControlledByAutomation(bool controlled)
 
 #if ENABLE(REMOTE_INSPECTOR)
     SetAllowsRemoteInspection(bool allow)

@@ -50,7 +50,43 @@ WebInspector.SourceCodeTimelineTimelineDataGridNode = class SourceCodeTimelineTi
         return {graph: this._sourceCodeTimeline.startTime};
     }
 
+    createCellContent(columnIdentifier, cell)
+    {
+        if (columnIdentifier === "name" && this.records.length) {
+            cell.classList.add(...this.iconClassNames());
+            return this._createNameCellContent(cell);
+        }
+
+        return super.createCellContent(columnIdentifier, cell);
+    }
+
     // Private
+
+    _createNameCellContent(cellElement)
+    {
+        if (!this.records.length)
+            return null;
+
+        let fragment = document.createDocumentFragment();
+        let mainTitle = this.displayName();
+        fragment.append(mainTitle);
+
+        let sourceCodeLocation = this._sourceCodeTimeline.sourceCodeLocation;
+        if (sourceCodeLocation) {
+            let subtitleElement = document.createElement("span");
+            subtitleElement.classList.add("subtitle");
+            sourceCodeLocation.populateLiveDisplayLocationString(subtitleElement, "textContent", null, WebInspector.SourceCodeLocation.NameStyle.None, WebInspector.UIString("line "));
+
+            let goToArrowButtonLink = WebInspector.createSourceCodeLocationLink(sourceCodeLocation, false, true);
+            fragment.append(goToArrowButtonLink, subtitleElement);
+
+            // Give the whole cell a tooltip and keep it up to date.
+            sourceCodeLocation.populateLiveDisplayLocationTooltip(cellElement, mainTitle + "\n");
+        } else
+            cellElement.title = mainTitle;
+
+        return fragment;
+    }
 
     _timelineRecordAdded(event)
     {

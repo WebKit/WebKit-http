@@ -28,6 +28,7 @@
 
 #include "Handle.h"
 #include "TypedArrayController.h"
+#include "WeakHandleOwner.h"
 
 namespace JSC {
 
@@ -38,6 +39,10 @@ namespace JSC {
 //
 // - If the JSArrayBuffer is live, then the ArrayBuffer stays alive.
 //
+// - If there is a JSArrayBufferView that is holding an ArrayBuffer
+//   then any existing wrapper for that ArrayBuffer will be kept
+//   alive.
+//
 // - If you ask an ArrayBuffer for a JSArrayBuffer after one had
 //   already been created and it didn't die, then you get the same
 //   one.
@@ -47,7 +52,17 @@ public:
     SimpleTypedArrayController();
     virtual ~SimpleTypedArrayController();
     
-    virtual JSArrayBuffer* toJS(ExecState*, JSGlobalObject*, ArrayBuffer*) override;
+    JSArrayBuffer* toJS(ExecState*, JSGlobalObject*, ArrayBuffer*) override;
+    void registerWrapper(JSGlobalObject*, ArrayBuffer*, JSArrayBuffer*) override;
+
+private:
+    class JSArrayBufferOwner : public WeakHandleOwner {
+    public:
+        bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, SlotVisitor&) override;
+        void finalize(JSC::Handle<JSC::Unknown>, void* context) override;
+    };
+
+    JSArrayBufferOwner m_owner;
 };
 
 } // namespace JSC

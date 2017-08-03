@@ -20,7 +20,7 @@
 
 [
 #if defined(ENABLE_CUSTOM_ELEMENTS) && ENABLE_CUSTOM_ELEMENTS
-    CustomConstructor(optional DOMString localName),
+    CustomConstructor(),
 #endif
     JSGenerateToNativeObject,
     JSCustomPushEventHandlerScope,
@@ -69,5 +69,10 @@
 #endif
 
     void click();
+
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+    void focus();
+    void blur();
+#endif
 };
 

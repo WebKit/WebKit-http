@@ -328,7 +328,7 @@ window.suitesManager =
     updateEditsElementsState: function()
     {
         var editsElements = this._editsElements();
-        var showComplexityInputs = optionsManager.valueForOption("adjustment") == "step";
+        var showComplexityInputs = ["fixed", "step"].indexOf(optionsManager.valueForOption("controller")) != -1;
 
         for (var i = 0; i < editsElements.length; ++i) {
             var editElement = editsElements[i];
@@ -471,7 +471,7 @@ Utilities.extendObject(window.benchmarkController, {
 
     onBenchmarkOptionsChanged: function(event)
     {
-        if (event.target.name == "adjustment") {
+        if (event.target.name == "controller") {
             suitesManager.updateEditsElementsState();
             return;
         }
@@ -490,12 +490,12 @@ Utilities.extendObject(window.benchmarkController, {
     showResults: function()
     {
         if (!this.addedKeyEvent) {
-            document.addEventListener("keypress", this.selectResults, false);
+            document.addEventListener("keypress", this.handleKeyPress, false);
             this.addedKeyEvent = true;
         }
 
         var dashboard = benchmarkRunnerClient.results;
-        if (dashboard.options["adjustment"] == "ramp")
+        if (["ramp", "ramp30"].indexOf(dashboard.options["controller"]) != -1)
             Headers.details[3].disabled = true;
         else {
             Headers.details[1].disabled = true;
@@ -509,17 +509,6 @@ Utilities.extendObject(window.benchmarkController, {
         sectionsManager.showSection("results", true);
 
         suitesManager.updateLocalStorageFromJSON(dashboard.results[0]);
-    },
-
-    showJSONResults: function()
-    {
-        var output = {
-            options: benchmarkRunnerClient.results.options,
-            data: benchmarkRunnerClient.results.data
-        };
-        var textarea = document.querySelector("#results-json textarea").textContent = JSON.stringify(output, null, 1);
-        document.querySelector("#results-json button").remove();
-        document.querySelector("#results-json div").classList.remove("hidden");
     },
 
     showTestGraph: function(testName, testResult, testData)

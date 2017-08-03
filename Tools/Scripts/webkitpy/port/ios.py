@@ -47,7 +47,7 @@ class IOSPort(ApplePort):
     port_name = "ios"
 
     ARCHITECTURES = ['armv7', 'armv7s', 'arm64']
-    DEFAULT_ARCHITECTURE = 'armv7'
+    DEFAULT_ARCHITECTURE = 'arm64'
     VERSION_FALLBACK_ORDER = ['ios-7', 'ios-8', 'ios-9']
 
     @classmethod
@@ -136,7 +136,7 @@ class IOSSimulatorPort(Port):
     def default_child_processes(self):
         """Return the number of Simulators instances to use for this port."""
         best_child_process_count_for_cpu = self._executive.cpu_count() / 2
-        system_process_count_limit = int(subprocess.check_output(["launchctl", "limit", "maxproc"]).strip().split()[1])
+        system_process_count_limit = int(subprocess.check_output(["ulimit", "-u"]).strip())
         current_process_count = len(subprocess.check_output(["ps", "aux"]).strip().split('\n'))
         _log.info('Process limit: %d, current #processes: %d' % (system_process_count_limit, current_process_count))
         maximum_simulator_count_on_this_system = (system_process_count_limit - current_process_count) // self.PROCESS_COUNT_ESTIMATE_PER_SIMULATOR_INSTANCE
@@ -232,7 +232,7 @@ class IOSSimulatorPort(Port):
                 '--args', '-CurrentDeviceUDID', device_udid])
 
             if mac_os_version in ['elcapitan', 'yosemite', 'mavericks']:
-                time.sleep(1)
+                time.sleep(2)
 
         _log.info('Waiting for all iOS Simulators to finish booting.')
         for i in xrange(self.child_processes()):

@@ -27,19 +27,13 @@
 #import "MemoryPressureHandler.h"
 
 #import "IOSurfacePool.h"
-#import "GCController.h"
-#import "JSDOMWindow.h"
-#import "JSDOMWindowBase.h"
 #import "LayerPool.h"
 #import "Logging.h"
 #import "ResourceUsageThread.h"
-#import "WebCoreSystemInterface.h"
 #import <mach/mach.h>
 #import <mach/task_info.h>
 #import <malloc/malloc.h>
 #import <notify.h>
-#import <wtf/CurrentTime.h>
-#import <sys/sysctl.h>
 
 #if PLATFORM(IOS)
 #import "SystemMemory.h"
@@ -232,23 +226,6 @@ size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
         return static_cast<size_t>(-1);
 
     return static_cast<size_t>(vmInfo.internal);
-}
-
-void MemoryPressureHandler::ReliefLogger::platformLog()
-{
-    size_t currentMemory = platformMemoryUsage();
-    if (currentMemory == static_cast<size_t>(-1) || m_initialMemory == static_cast<size_t>(-1)) {
-        NSLog(@"%s (Unable to get dirty memory information for process)\n", m_logString);
-        return;
-    }
-
-    ssize_t memoryDiff = currentMemory - m_initialMemory;
-    if (memoryDiff < 0)
-        NSLog(@"Pressure relief: %s: -dirty %ld bytes (from %ld to %ld)\n", m_logString, (memoryDiff * -1), m_initialMemory, currentMemory);
-    else if (memoryDiff > 0)
-        NSLog(@"Pressure relief: %s: +dirty %ld bytes (from %ld to %ld)\n", m_logString, memoryDiff, m_initialMemory, currentMemory);
-    else
-        NSLog(@"Pressure relief: %s: =dirty (at %ld bytes)\n", m_logString, currentMemory);
 }
 
 #if PLATFORM(IOS)

@@ -62,6 +62,8 @@ public:
 
     virtual ~ShadowRoot();
 
+    using TreeScope::rootNode;
+
     StyleResolver& styleResolver();
     AuthorStyleSheets& authorStyleSheets();
     
@@ -81,7 +83,7 @@ public:
 
     Type type() const { return m_type; }
 
-    virtual void removeAllEventListeners() override;
+    void removeAllEventListeners() override;
 
 #if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     HTMLSlotElement* findAssignedSlot(const Node&);
@@ -106,9 +108,9 @@ protected:
     bool isOrphan() const { return !m_host; }
 
 private:
-    virtual bool childTypeAllowed(NodeType) const override;
+    bool childTypeAllowed(NodeType) const override;
 
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
     bool m_resetStyleInheritance { false };
     Type m_type { Type::UserAgent };

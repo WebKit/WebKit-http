@@ -303,8 +303,7 @@ namespace JSC {
         RegisterID* argumentsRegister() { return m_argumentsRegister; }
         RegisterID* newTarget()
         {
-            return !m_codeBlock->isArrowFunction() || m_isNewTargetLoadedInArrowFunction
-                ? m_newTargetRegister : emitLoadNewTargetFromArrowFunctionLexicalEnvironment();
+            return m_newTargetRegister;
         }
 
         RegisterID* scopeRegister() { return m_scopeRegister; }
@@ -709,6 +708,7 @@ namespace JSC {
         enum class ScopeType { CatchScope, LetConstScope, FunctionNameScope };
         enum class ScopeRegisterType { Var, Block };
         void pushLexicalScopeInternal(VariableEnvironment&, TDZCheckOptimization, NestedScopeType, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
+        void initializeBlockScopedFunctions(VariableEnvironment&, FunctionStack&, RegisterID* constantSymbolTable);
         void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
         template<typename LookUpVarKindFunctor>
         bool instantiateLexicalVariables(const VariableEnvironment&, SymbolTable*, ScopeRegisterType, LookUpVarKindFunctor);
@@ -716,7 +716,7 @@ namespace JSC {
         void emitPopScope(RegisterID* dst, RegisterID* scope);
         RegisterID* emitGetParentScope(RegisterID* dst, RegisterID* scope);
         void emitPushFunctionNameScope(const Identifier& property, RegisterID* value, bool isCaptured);
-        void emitNewFunctionExpressionCommon(RegisterID*, BaseFuncExprNode*);
+        void emitNewFunctionExpressionCommon(RegisterID*, FunctionMetadataNode*);
         
         bool isNewTargetUsedInInnerArrowFunction();
         bool isSuperUsedInInnerArrowFunction();
@@ -725,7 +725,7 @@ namespace JSC {
     public:
         bool isSuperCallUsedInInnerArrowFunction();
         bool isThisUsedInInnerArrowFunction();
-        void pushLexicalScope(VariableEnvironmentNode*, TDZCheckOptimization, NestedScopeType = NestedScopeType::IsNotNested, RegisterID** constantSymbolTableResult = nullptr);
+        void pushLexicalScope(VariableEnvironmentNode*, TDZCheckOptimization, NestedScopeType = NestedScopeType::IsNotNested, RegisterID** constantSymbolTableResult = nullptr, bool shouldInitializeBlockScopedFunctions = true);
         void popLexicalScope(VariableEnvironmentNode*);
         void prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode*, RegisterID* loopSymbolTable);
         int labelScopeDepth() const;
@@ -859,7 +859,8 @@ namespace JSC {
             int m_symbolTableConstantIndex;
         };
         Vector<SymbolTableStackEntry> m_symbolTableStack;
-        Vector<std::pair<VariableEnvironment, bool>> m_TDZStack;
+        Vector<std::pair<VariableEnvironment, TDZCheckOptimization>> m_TDZStack;
+        void pushTDZVariables(VariableEnvironment, TDZCheckOptimization);
 
         ScopeNode* const m_scopeNode;
         Strong<UnlinkedCodeBlock> m_codeBlock;
@@ -936,7 +937,6 @@ namespace JSC {
         bool m_usesNonStrictEval { false };
         bool m_inTailPosition { false };
         bool m_needsToUpdateArrowFunctionContext;
-        bool m_isNewTargetLoadedInArrowFunction { false };
         DerivedContextType m_derivedContextType { DerivedContextType::None };
     };
 

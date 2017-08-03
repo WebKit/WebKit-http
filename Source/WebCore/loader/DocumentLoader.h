@@ -313,10 +313,10 @@ namespace WebCore {
         void willSendRequest(ResourceRequest&, const ResourceResponse&);
         void finishedLoading(double finishTime);
         void mainReceivedError(const ResourceError&);
-        WEBCORE_EXPORT virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
-        WEBCORE_EXPORT virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
-        WEBCORE_EXPORT virtual void dataReceived(CachedResource*, const char* data, int length) override;
-        WEBCORE_EXPORT virtual void notifyFinished(CachedResource*) override;
+        WEBCORE_EXPORT void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
+        WEBCORE_EXPORT void responseReceived(CachedResource*, const ResourceResponse&) override;
+        WEBCORE_EXPORT void dataReceived(CachedResource*, const char* data, int length) override;
+        WEBCORE_EXPORT void notifyFinished(CachedResource*) override;
 
         bool maybeLoadEmpty();
 
@@ -328,6 +328,8 @@ namespace WebCore {
 
         void stopLoadingForPolicyChange();
         ResourceError interruptedForPolicyChangeError() const;
+
+        void stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(unsigned long identifier, const ResourceResponse&);
 
 #if HAVE(RUNLOOP_TIMER)
         typedef RunLoopTimer<DocumentLoader> DocumentLoaderTimer;

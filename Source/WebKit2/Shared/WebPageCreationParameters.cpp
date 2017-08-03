@@ -55,6 +55,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << userContentControllerID;
     encoder << visitedLinkTableID;
     encoder << websiteDataStoreID;
+    encoder << mediaShouldUsePersistentCache;
     encoder << canRunBeforeUnloadConfirmPanel;
     encoder << canRunModal;
     encoder << deviceScaleFactor;
@@ -70,6 +71,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << backgroundExtendsBeyondPage;
     encoder.encodeEnum(layerHostingMode);
     encoder << mimeTypesWithCustomContentProviders;
+    encoder << controlledByAutomation;
 
 #if ENABLE(REMOTE_INSPECTOR)
     encoder << allowsRemoteInspection;
@@ -133,6 +135,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
         return false;
     if (!decoder.decode(parameters.websiteDataStoreID))
         return false;
+    if (!decoder.decode(parameters.mediaShouldUsePersistentCache))
+        return false;
     if (!decoder.decode(parameters.canRunBeforeUnloadConfirmPanel))
         return false;
     if (!decoder.decode(parameters.canRunModal))
@@ -162,6 +166,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
     if (!decoder.decodeEnum(parameters.layerHostingMode))
         return false;
     if (!decoder.decode(parameters.mimeTypesWithCustomContentProviders))
+        return false;
+    if (!decoder.decode(parameters.controlledByAutomation))
         return false;
 
 #if ENABLE(REMOTE_INSPECTOR)

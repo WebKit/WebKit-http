@@ -44,18 +44,17 @@ void VMHeap::allocateSmallChunk(std::lock_guard<StaticMutex>& lock)
     // We initialize chunks lazily to avoid dirtying their metadata pages.
     SmallChunk* smallChunk = new (m_smallChunks.pop()->smallChunk()) SmallChunk(lock);
     for (auto* it = smallChunk->begin(); it < smallChunk->end(); ++it)
-        m_smallPages.push(it);
+        m_smallRuns.push(it);
 }
 
-void VMHeap::allocateLargeChunk(std::lock_guard<StaticMutex>& lock)
+LargeObject VMHeap::allocateLargeChunk(std::lock_guard<StaticMutex>& lock)
 {
     if (!m_largeChunks.size())
         allocateSuperChunk(lock);
 
     // We initialize chunks lazily to avoid dirtying their metadata pages.
     LargeChunk* largeChunk = new (m_largeChunks.pop()->largeChunk()) LargeChunk;
-    LargeObject largeObject(largeChunk->begin());
-    m_largeObjects.insert(largeObject);
+    return LargeObject(largeChunk->begin());
 }
 
 void VMHeap::allocateSuperChunk(std::lock_guard<StaticMutex>&)

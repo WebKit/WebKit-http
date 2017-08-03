@@ -50,6 +50,7 @@
 #include "GetterSetter.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
+#include "HeapProfiler.h"
 #include "HostCallReturnValue.h"
 #include "Identifier.h"
 #include "IncrementalSweeper.h"
@@ -64,7 +65,6 @@
 #include "JSInternalPromiseDeferred.h"
 #include "JSLexicalEnvironment.h"
 #include "JSLock.h"
-#include "JSNotAnObject.h"
 #include "JSPromiseDeferred.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSTemplateRegistryKey.h"
@@ -214,7 +214,6 @@ VM::VM(VMType vmType, HeapType heapType)
     structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
-    notAnObjectStructure.set(*this, JSNotAnObject::createStructure(*this, 0, jsNull()));
     propertyNameEnumeratorStructure.set(*this, JSPropertyNameEnumerator::createStructure(*this, 0, jsNull()));
     getterSetterStructure.set(*this, GetterSetter::createStructure(*this, 0, jsNull()));
     customGetterSetterStructure.set(*this, CustomGetterSetter::createStructure(*this, 0, jsNull()));
@@ -443,6 +442,13 @@ Watchdog& VM::ensureWatchdog()
     return *m_watchdog;
 }
 
+HeapProfiler& VM::ensureHeapProfiler()
+{
+    if (!m_heapProfiler)
+        m_heapProfiler = std::make_unique<HeapProfiler>(*this);
+    return *m_heapProfiler;
+}
+
 #if ENABLE(SAMPLING_PROFILER)
 void VM::ensureSamplingProfiler(RefPtr<Stopwatch>&& stopwatch)
 {
@@ -546,6 +552,14 @@ void VM::deleteAllLinkedCode()
 {
     whenIdle([this]() {
         heap.deleteAllCodeBlocks();
+        heap.reportAbandonedObjectGraph();
+    });
+}
+
+void VM::deleteAllRegExpCode()
+{
+    whenIdle([this]() {
+        m_regExpCache->deleteAllCode();
         heap.reportAbandonedObjectGraph();
     });
 }

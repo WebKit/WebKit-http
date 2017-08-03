@@ -628,6 +628,28 @@ inline JSValue JSValue::toPrimitive(ExecState* exec, PreferredPrimitiveType pref
     return isCell() ? asCell()->toPrimitive(exec, preferredType) : asValue();
 }
 
+inline PreferredPrimitiveType toPreferredPrimitiveType(ExecState* exec, JSValue value)
+{
+    if (!value.isString()) {
+        throwTypeError(exec, "Primitive hint is not a string.");
+        return NoPreference;
+    }
+
+    StringImpl* hintString = jsCast<JSString*>(value)->value(exec).impl();
+    if (exec->hadException())
+        return NoPreference;
+
+    if (WTF::equal(hintString, "default"))
+        return NoPreference;
+    if (WTF::equal(hintString, "number"))
+        return PreferNumber;
+    if (WTF::equal(hintString, "string"))
+        return PreferString;
+
+    throwTypeError(exec, "Expected primitive hint to match one of 'default', 'number', 'string'.");
+    return NoPreference;
+}
+
 inline bool JSValue::getPrimitiveNumber(ExecState* exec, double& number, JSValue& value)
 {
     if (isInt32()) {
@@ -683,7 +705,16 @@ inline bool JSValue::isFunction() const
         return false;
     JSCell* cell = asCell();
     CallData ignored;
-    return cell->methodTable()->getCallData(cell, ignored) != CallTypeNone;
+    return cell->methodTable()->getCallData(cell, ignored) != CallType::None;
+}
+
+inline bool JSValue::isFunction(CallType& callType, CallData& callData) const
+{
+    if (!isCell())
+        return false;
+    JSCell* cell = asCell();
+    callType = cell->methodTable()->getCallData(cell, callData);
+    return callType != CallType::None;
 }
 
 inline bool JSValue::isConstructor() const
@@ -692,7 +723,16 @@ inline bool JSValue::isConstructor() const
         return false;
     JSCell* cell = asCell();
     ConstructData ignored;
-    return cell->methodTable()->getConstructData(cell, ignored) != ConstructTypeNone;
+    return cell->methodTable()->getConstructData(cell, ignored) != ConstructType::None;
+}
+
+inline bool JSValue::isConstructor(ConstructType& constructType, ConstructData& constructData) const
+{
+    if (!isCell())
+        return false;
+    JSCell* cell = asCell();
+    constructType = cell->methodTable()->getConstructData(cell, constructData);
+    return constructType != ConstructType::None;
 }
 
 // this method is here to be after the inline declaration of JSCell::inherits
@@ -727,6 +767,8 @@ ALWAYS_INLINE bool JSValue::getPropertySlot(ExecState* exec, PropertyName proper
         if (isString() && asString(*this)->getStringPropertySlot(exec, propertyName, slot))
             return true;
         object = synthesizePrototype(exec);
+        if (UNLIKELY(!object))
+            return false;
     } else
         object = asObject(asCell());
     
@@ -748,6 +790,8 @@ ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, unsigned propertyName, Prope
         if (isString() && asString(*this)->getStringPropertySlot(exec, propertyName, slot))
             return slot.getValue(exec, propertyName);
         object = synthesizePrototype(exec);
+        if (UNLIKELY(!object))
+            return JSValue();
     } else
         object = asObject(asCell());
     
@@ -756,40 +800,43 @@ ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, unsigned propertyName, Prope
     return jsUndefined();
 }
 
-inline void JSValue::put(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint64_t propertyName) const
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitive(exec, propertyName, value, slot);
-        return;
-    }
-    asCell()->methodTable(exec->vm())->put(asCell(), exec, propertyName, value, slot);
+    if (LIKELY(propertyName <= std::numeric_limits<unsigned>::max()))
+        return get(exec, static_cast<unsigned>(propertyName));
+    return get(exec, Identifier::from(exec, static_cast<double>(propertyName)));
 }
 
-ALWAYS_INLINE void JSValue::putInline(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+inline bool JSValue::put(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitive(exec, propertyName, value, slot);
-        return;
-    }
+    if (UNLIKELY(!isCell()))
+        return putToPrimitive(exec, propertyName, value, slot);
+
+    return asCell()->methodTable(exec->vm())->put(asCell(), exec, propertyName, value, slot);
+}
+
+ALWAYS_INLINE bool JSValue::putInline(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+{
+    if (UNLIKELY(!isCell()))
+        return putToPrimitive(exec, propertyName, value, slot);
+
     JSCell* cell = asCell();
     auto putMethod = cell->methodTable(exec->vm())->put;
-    if (LIKELY(putMethod == JSObject::put)) {
-        JSObject::putInline(cell, exec, propertyName, value, slot);
-        return;
-    }
+    if (LIKELY(putMethod == JSObject::put))
+        return JSObject::putInline(cell, exec, propertyName, value, slot);
 
     PutPropertySlot otherSlot = slot;
-    putMethod(cell, exec, propertyName, value, otherSlot);
+    bool result = putMethod(cell, exec, propertyName, value, otherSlot);
     slot = otherSlot;
+    return result;
 }
 
-inline void JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+inline bool JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
-        return;
-    }
-    asCell()->methodTable(exec->vm())->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
+    if (UNLIKELY(!isCell()))
+        return putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
+
+    return asCell()->methodTable(exec->vm())->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
 }
 
 inline JSValue JSValue::structureOrUndefined() const

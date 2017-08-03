@@ -236,7 +236,7 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
 {
-    setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
+    updateTimerThrottlingState();
 
     m_storageNamespaceProvider->addPage(*this);
 
@@ -1031,8 +1031,6 @@ void Page::resumeScriptedAnimations()
 
 void Page::setIsVisuallyIdleInternal(bool isVisuallyIdle)
 {
-    setTimerThrottlingEnabled(isVisuallyIdle);
-    
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())
             frame->document()->scriptedAnimationControllerSetThrottled(isVisuallyIdle);
@@ -1128,6 +1126,17 @@ void Page::invalidateStylesForLink(LinkHash linkHash)
     }
 }
 
+void Page::invalidateInjectedStyleSheetCacheInAllFrames()
+{
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext()) {
+        Document* document = frame->document();
+        if (!document)
+            continue;
+        document->extensionStyleSheets().invalidateInjectedStyleSheetCache();
+        document->styleResolverChanged(DeferRecalcStyle);
+    }
+}
+
 void Page::setDebugger(JSC::Debugger* debugger)
 {
     if (m_debugger == debugger)
@@ -1179,54 +1188,93 @@ void Page::setMemoryCacheClientCallsEnabled(bool enabled)
 void Page::hiddenPageDOMTimerThrottlingStateChanged()
 {
     // Disable & reengage to ensure state is updated.
-    setTimerThrottlingEnabled(false);
-    setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
+    setTimerThrottlingState(TimerThrottlingState::Disabled);
+    updateTimerThrottlingState();
 }
 
-void Page::setTimerThrottlingEnabled(bool enabled)
+void Page::updateTimerThrottlingState()
 {
-    if (!m_settings->hiddenPageDOMTimerThrottlingEnabled())
-        enabled = false;
+    // Timer throttling disabled if page is visually active, or disabled by setting.
+    if (!m_settings->hiddenPageDOMTimerThrottlingEnabled() || !(m_viewState & ViewState::IsVisuallyIdle)) {
+        setTimerThrottlingState(TimerThrottlingState::Disabled);
+        return;
+    }
 
-    if (enabled == timerThrottlingEnabled())
+    // If the page is visible (but idle), there is any activity (loading, media playing, etc), or per setting,
+    // we allow timer throttling, but not increasing timer throttling.
+    if (!m_settings->hiddenPageDOMTimerThrottlingAutoIncreases() || m_viewState & ViewState::IsVisible || m_pageThrottler.activityState()) {
+        setTimerThrottlingState(TimerThrottlingState::Enabled);
+        return;
+    }
+
+    // If we get here increasing timer throttling is enabled.
+    setTimerThrottlingState(TimerThrottlingState::EnabledIncreasing);
+}
+
+void Page::setTimerThrottlingState(TimerThrottlingState state)
+{
+    if (state == m_timerThrottlingState)
         return;
 
-    m_timerThrottlingEnabledTime = enabled ? monotonicallyIncreasingTime() : Optional<double>();
-    setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
+    m_timerThrottlingState = state;
+    m_timerThrottlingStateLastChangedTime = std::chrono::steady_clock::now();
 
-    if (enabled)
-        return;
+    updateDOMTimerAlignmentInterval();
 
-    // If throttling was disabled, release all throttled timers.
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (auto* document = frame->document())
-            document->didChangeTimerAlignmentInterval();
+    // When throttling is disabled, release all throttled timers.
+    if (state == TimerThrottlingState::Disabled) {
+        for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+            if (auto* document = frame->document())
+                document->didChangeTimerAlignmentInterval();
+        }
     }
 }
 
 void Page::setTimerAlignmentIntervalIncreaseLimit(std::chrono::milliseconds limit)
 {
-    // FIXME: std::chrono-ify all timer allignment related code.
-    m_timerAlignmentIntervalIncreaseLimit = limit.count() * 0.001;
-
-    if (!timerThrottlingEnabled())
-        return;
+    m_timerAlignmentIntervalIncreaseLimit = limit;
 
     // If (m_timerAlignmentIntervalIncreaseLimit < m_timerAlignmentInterval) then we need
     // to update m_timerAlignmentInterval, if greater then need to restart the increase timer.
-    setDOMTimerAlignmentInterval(std::min(m_timerAlignmentIntervalIncreaseLimit, m_timerAlignmentInterval));
+    if (m_timerThrottlingState == TimerThrottlingState::EnabledIncreasing)
+        updateDOMTimerAlignmentInterval();
 }
 
-void Page::setDOMTimerAlignmentInterval(double alignmentInterval)
+void Page::updateDOMTimerAlignmentInterval()
 {
-    m_timerAlignmentInterval = alignmentInterval;
+    bool needsIncreaseTimer = false;
+
+    switch (m_timerThrottlingState) {
+    case TimerThrottlingState::Disabled:
+        m_timerAlignmentInterval = DOMTimer::defaultAlignmentInterval();
+        break;
+
+    case TimerThrottlingState::Enabled:
+        m_timerAlignmentInterval = DOMTimer::hiddenPageAlignmentInterval();
+        break;
+
+    case TimerThrottlingState::EnabledIncreasing:
+        // For pages in prerender state maximum throttling kicks in immediately.
+        if (m_isPrerender)
+            m_timerAlignmentInterval = m_timerAlignmentIntervalIncreaseLimit;
+        else {
+            ASSERT(m_timerThrottlingStateLastChangedTime.time_since_epoch() != std::chrono::steady_clock::duration::zero());
+            m_timerAlignmentInterval = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_timerThrottlingStateLastChangedTime);
+            // If we're below the limit, set the timer. If above, clamp to limit.
+            if (m_timerAlignmentInterval < m_timerAlignmentIntervalIncreaseLimit)
+                needsIncreaseTimer = true;
+            else
+                m_timerAlignmentInterval = m_timerAlignmentIntervalIncreaseLimit;
+        }
+        // Alignment interval should not be less than DOMTimer::hiddenPageAlignmentInterval().
+        m_timerAlignmentInterval = std::max(m_timerAlignmentInterval, DOMTimer::hiddenPageAlignmentInterval());
+    }
 
     // If throttling is enabled, auto-increasing of throttling is enabled, and the auto-increase
     // limit has not yet been reached, and then arm the timer to consider an increase. Time to wait
     // between increases is equal to the current throttle time. Since alinment interval increases
     // exponentially, time between steps is exponential too.
-    if (!timerThrottlingEnabled() || !m_settings->hiddenPageDOMTimerThrottlingAutoIncreases()
-        || m_timerAlignmentInterval >= m_timerAlignmentIntervalIncreaseLimit)
+    if (!needsIncreaseTimer)
         m_timerAlignmentIntervalIncreaseTimer.stop();
     else if (!m_timerAlignmentIntervalIncreaseTimer.isActive())
         m_timerAlignmentIntervalIncreaseTimer.startOneShot(m_timerAlignmentInterval);
@@ -1234,13 +1282,12 @@ void Page::setDOMTimerAlignmentInterval(double alignmentInterval)
 
 void Page::timerAlignmentIntervalIncreaseTimerFired()
 {
-    ASSERT(timerThrottlingEnabled() && m_settings->hiddenPageDOMTimerThrottlingAutoIncreases());
+    ASSERT(m_settings->hiddenPageDOMTimerThrottlingAutoIncreases());
+    ASSERT(m_timerThrottlingState == TimerThrottlingState::EnabledIncreasing);
     ASSERT(m_timerAlignmentInterval < m_timerAlignmentIntervalIncreaseLimit);
-        
+    
     // Alignment interval is increased to equal the time the page has been throttled, to a limit.
-    double throttledDuration = monotonicallyIncreasingTime() - m_timerThrottlingEnabledTime.value();
-    double alignmentInterval = std::max(m_timerAlignmentInterval, throttledDuration);
-    setDOMTimerAlignmentInterval(std::min(alignmentInterval, m_timerAlignmentIntervalIncreaseLimit));
+    updateDOMTimerAlignmentInterval();
 }
 
 void Page::dnsPrefetchingStateChanged()
@@ -1384,6 +1431,9 @@ void Page::setViewState(ViewState::Flags viewState)
     if (changed & ViewState::IsVisuallyIdle)
         setIsVisuallyIdleInternal(viewState & ViewState::IsVisuallyIdle);
 
+    if (changed & (ViewState::IsVisible | ViewState::IsVisuallyIdle))
+        updateTimerThrottlingState();
+
     for (auto* observer : m_viewStateChangeObservers)
         observer->viewStateDidChange(oldViewState, m_viewState);
 }
@@ -1391,6 +1441,7 @@ void Page::setViewState(ViewState::Flags viewState)
 void Page::setPageActivityState(PageActivityState::Flags activityState)
 {
     chrome().client().setPageActivityState(activityState);
+    updateTimerThrottlingState();
 }
 
 void Page::setIsVisible(bool isVisible)
@@ -1447,6 +1498,7 @@ void Page::setIsVisibleInternal(bool isVisible)
 void Page::setIsPrerender()
 {
     m_isPrerender = true;
+    updateDOMTimerAlignmentInterval();
 }
 
 PageVisibilityState Page::visibilityState() const
@@ -1777,12 +1829,7 @@ void Page::setUserContentController(UserContentController* userContentController
     if (m_userContentController)
         m_userContentController->addPage(*this);
 
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (Document *document = frame->document()) {
-            document->extensionStyleSheets().invalidateInjectedStyleSheetCache();
-            document->styleResolverChanged(DeferRecalcStyle);
-        }
-    }
+    invalidateInjectedStyleSheetCacheInAllFrames();
 }
 
 void Page::setStorageNamespaceProvider(Ref<StorageNamespaceProvider>&& storageNamespaceProvider)
@@ -1961,5 +2008,25 @@ void Page::setResourceUsageOverlayVisible(bool visible)
         m_resourceUsageOverlay = std::make_unique<ResourceUsageOverlay>(*this);
 }
 #endif
+
+bool Page::isAlwaysOnLoggingAllowed() const
+{
+    return m_sessionID.isAlwaysOnLoggingAllowed();
+}
+
+String Page::captionUserPreferencesStyleSheet()
+{
+    return m_captionUserPreferencesStyleSheet;
+}
+
+void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
+{
+    if (m_captionUserPreferencesStyleSheet == styleSheet)
+        return;
+
+    m_captionUserPreferencesStyleSheet = styleSheet;
+    
+    invalidateInjectedStyleSheetCacheInAllFrames();
+}
 
 } // namespace WebCore

@@ -1,3 +1,57 @@
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r197953; correct the settings added in r197953.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Add separate WK and WK2 preferences for requiring user gestures for video media, distinct from user gestures for media generally
+        https://bugs.webkit.org/show_bug.cgi?id=155141
+
+        Reviewed by Beth Dakin.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-03-07  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][AcceleratedCompositing] Rendering issues on www.bbc.com.
+        https://bugs.webkit.org/show_bug.cgi?id=154912
+
+        Reviewed by Michael Catanzaro.
+
+        If we have a scroll layer, we should not include the scroll position in the visible rectangle,
+        since the scroll position is already reflected in the position of the scroll layer.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::flushPendingLayerChanges):
+
+2016-03-06  Gavin Barraclough  <barraclough@apple.com>
+
+        Convert DOMTimer to std::chrono::milliseconds
+        https://bugs.webkit.org/show_bug.cgi?id=155085
+
+        Reviewed by Andreas Kling.
+
+        DOMTimer currently uses a mix of millisecond (was int, now std::chrono) and second (as double)
+        time values. Constant conversion back and forth is a complete mess. Stop that.
+
+        * WebView.cpp:
+        (WebView::setMinimumTimerInterval):
+            - Convert double argument into std::chrono::milliseconds.
+
+2016-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Support Reflect.construct
+        https://bugs.webkit.org/show_bug.cgi?id=147330
+
+        Reviewed by Saam Barati.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::NPN_Invoke):
+
 2016-02-24  Per Arne Vollan  <peavo@outlook.com>
 
         [WinCairo] Mark layer as non composited.

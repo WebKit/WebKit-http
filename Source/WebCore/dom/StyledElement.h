@@ -43,7 +43,7 @@ class StyledElement : public Element {
 public:
     virtual ~StyledElement();
 
-    virtual const StyleProperties* additionalPresentationAttributeStyle() { return 0; }
+    virtual const StyleProperties* additionalPresentationAttributeStyle() const { return nullptr; }
     void invalidateStyleAttribute();
 
     const StyleProperties* inlineStyle() const { return elementData() ? elementData()->m_inlineStyle.get() : nullptr; }
@@ -58,9 +58,9 @@ public:
     static void synchronizeStyleAttributeInternal(StyledElement*);
     void synchronizeStyleAttributeInternal() const { StyledElement::synchronizeStyleAttributeInternal(const_cast<StyledElement*>(this)); }
     
-    virtual CSSStyleDeclaration* cssomStyle() override final;
+    CSSStyleDeclaration* cssomStyle() final;
 
-    const StyleProperties* presentationAttributeStyle();
+    const StyleProperties* presentationAttributeStyle() const;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) { }
 
     static void clearPresentationAttributeCache();
@@ -71,7 +71,7 @@ protected:
     {
     }
 
-    virtual void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) override;
+    void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) override;
 
     virtual bool isPresentationAttribute(const QualifiedName&) const { return false; }
 
@@ -79,7 +79,7 @@ protected:
     void addPropertyToPresentationAttributeStyle(MutableStyleProperties&, CSSPropertyID, double value, CSSPrimitiveValue::UnitTypes);
     void addPropertyToPresentationAttributeStyle(MutableStyleProperties&, CSSPropertyID, const String& value);
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
 private:
     void styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason);
@@ -100,12 +100,12 @@ inline void StyledElement::invalidateStyleAttribute()
     setNeedsStyleRecalc(InlineStyleChange);
 }
 
-inline const StyleProperties* StyledElement::presentationAttributeStyle()
+inline const StyleProperties* StyledElement::presentationAttributeStyle() const
 {
     if (!elementData())
         return nullptr;
     if (elementData()->presentationAttributeStyleIsDirty())
-        rebuildPresentationAttributeStyle();
+        const_cast<StyledElement&>(*this).rebuildPresentationAttributeStyle();
     return elementData()->presentationAttributeStyle();
 }
 

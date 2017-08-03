@@ -64,6 +64,11 @@ webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html
 
 webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
 
+webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Pass Failure ]
+
+webkit.org/b/155196 media/video-with-blob-url-allowed-by-csp-media-src-star.html [ Skip ]
+webkit.org/b/155196 media/video-with-data-url-allowed-by-csp-media-src-star.html [ Skip ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -146,6 +151,10 @@ webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/oes-texture-half-float.html 
 # This test gives a different output on ElCapitan-wk1 only.
 webkit.org/b/152178 [ Yosemite+ ] fast/replaced/replaced-breaking.html [ Failure ]
 
+# DRT can open way more files than the DatabaseProcess with WebKitTestRunner, and the number is reasonable.
+# So we shouldn't bother with this test in WebKit1.
+storage/indexeddb/modern/exceed-open-file-limit.html
+
 ### END OF (2) Failures without bug reports
 ########################################
 
@@ -177,8 +186,16 @@ imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeou
 # ASAN test only fails on WK1:
 webgl/1.0.3/151055_asan.html [ Failure ]
 
-# Lacking WK1 TestRunner API that evaluates JavaScript through JSC APIs and not WebCore APIs
-inspector/script-profiler/event-type-API.html
+# Lacking WK1 TestRunner API that evaluates JavaScript through JSC APIs and not WebCore APIs.
+inspector/script-profiler/event-type-API.html [ Skip ]
+
+# WK1 Inspector running in the same VM as the inspected page skews heap snapshot results.
+inspector/heap/getPreview.html [ Skip ]
+inspector/heap/getRemoteObject.html [ Skip ]
 
 # This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
+
+# RTL Scrollbars are only implemented in WK2
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]

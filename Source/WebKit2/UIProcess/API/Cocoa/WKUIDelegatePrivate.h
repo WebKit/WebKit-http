@@ -29,8 +29,8 @@
 
 #import <WebKit/WKSecurityOrigin.h>
 #import <WebKit/_WKActivatedElementInfo.h>
+#import <WebKit/_WKPreviewAction.h>
 
-@class UIPreviewActionItem;
 @class UIScrollView;
 @class UIViewController;
 @class _WKContextMenuElementInfo;
@@ -71,6 +71,10 @@ struct UIEdgeInsets;
 - (void)_webView:(WKWebView *)webView commitPreviewedImageWithURL:(NSURL *)imageURL WK_AVAILABLE(NA, 9_0);
 - (void)_webView:(WKWebView *)webView didDismissPreviewViewController:(UIViewController *)previewedViewController committing:(BOOL)committing WK_AVAILABLE(NA, 9_0);
 - (void)_webView:(WKWebView *)webView didDismissPreviewViewController:(UIViewController *)previewedViewController WK_AVAILABLE(NA, 9_0);
+- (BOOL)_webView:(WKWebView *)webView showCustomSheetForElement:(_WKActivatedElementInfo *)element WK_AVAILABLE(NA, WK_IOS_TBA);
+- (void)_webView:(WKWebView *)webView alternateActionForURL:(NSURL *)url WK_AVAILABLE(NA, WK_IOS_TBA);
+- (NSArray *)_attachmentListForWebView:(WKWebView *)webView WK_AVAILABLE(NA, WK_IOS_TBA);
+- (NSUInteger)_webView:(WKWebView *)webView indexIntoAttachmentListForElement:(_WKActivatedElementInfo *)element WK_AVAILABLE(NA, WK_IOS_TBA);
 - (UIEdgeInsets)_webView:(WKWebView *)webView finalObscuredInsetsForScrollView:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset WK_AVAILABLE(NA, 9_0);
 - (UIViewController *)_webView:(WKWebView *)webView previewViewControllerForURL:(NSURL *)url defaultActions:(WK_ARRAY(_WKElementAction *) *)actions elementInfo:(_WKActivatedElementInfo *)elementInfo WK_AVAILABLE(NA, 9_0);
 - (UIViewController *)_webView:(WKWebView *)webView previewViewControllerForAnimatedImageAtURL:(NSURL *)url defaultActions:(WK_ARRAY(_WKElementAction *) *)actions elementInfo:(_WKActivatedElementInfo *)elementInfo imageSize:(CGSize)imageSize WK_AVAILABLE(NA, 9_0);
@@ -79,9 +83,10 @@ struct UIEdgeInsets;
 // shouldPreviewElement. Returning NO in shouldPreviewElement will prevent the other methods from being invoked.
 // The client can provide a custom preview by returning their own UIViewController from
 // previewingViewControllerForElement:defaultActions:. Returning nil will result in the default preview behavior
-// for that element.
+// for that element. If the client want to use the defaultActions, then the client is responsible for
+// returning those actions in their UIViewController's implementation of previewActionItems.
 - (BOOL)_webView:(WKWebView *)webView shouldPreviewElement:(_WKPreviewElementInfo *)elementInfo;
-- (UIViewController *)_webView:(WKWebView *)webView previewingViewControllerForElement:(_WKPreviewElementInfo *)elementInfo defaultActions:(NSArray<UIPreviewActionItem *> *)previewActions WK_AVAILABLE(NA, WK_IOS_TBA);
+- (UIViewController *)_webView:(WKWebView *)webView previewingViewControllerForElement:(_WKPreviewElementInfo *)elementInfo defaultActions:(NSArray <id <_WKPreviewActionItem>> *)previewActions WK_AVAILABLE(NA, WK_IOS_TBA);
 - (void)_webView:(WKWebView *)webView commitPreviewingViewController:(UIViewController *)previewingViewController WK_AVAILABLE(NA, WK_IOS_TBA);
 
 - (UIViewController *)_presentingViewControllerForWebView:(WKWebView *)webView WK_AVAILABLE(NA, WK_IOS_TBA);

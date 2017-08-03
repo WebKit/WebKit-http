@@ -140,6 +140,7 @@
 #import <WebCore/GCController.h>
 #import <WebCore/GeolocationController.h>
 #import <WebCore/GeolocationError.h>
+#import <WebCore/GraphicsLayer.h>
 #import <WebCore/HTMLNames.h>
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCore/HistoryController.h>
@@ -252,7 +253,8 @@
 #import <WebCore/MobileGestaltSPI.h>
 #import <WebCore/NetworkStateNotifier.h>
 #import <WebCore/PlatformScreen.h>
-#import <WebCore/RuntimeApplicationChecksIOS.h>
+#import <WebCore/ResourceLoadStatistics.h>
+#import <WebCore/ResourceLoadStatisticsStore.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SmartReplace.h>
 #import <WebCore/TextRun.h>
@@ -606,6 +608,7 @@ enum { WebViewVersion = 4 };
 #define timedLayoutSize 4096
 
 static NSMutableSet *schemesWithRepresentationsSet;
+static WebCore::ResourceLoadStatisticsStore* resourceLoadStatisticsStore;
 
 #if !PLATFORM(IOS)
 NSString *_WebCanGoBackKey =            @"canGoBack";
@@ -738,7 +741,7 @@ static void WebKitInitializeApplicationCachePathIfNecessary()
     if (!appName)
         appName = [[NSProcessInfo processInfo] processName];
 #if PLATFORM(IOS)
-    if (WebCore::applicationIsMobileSafari() || WebCore::applicationIsWebApp())
+    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp())
         appName = @"com.apple.WebAppCache";
 #endif
 
@@ -757,21 +760,19 @@ static void WebKitInitializeApplicationStatisticsStoragePathIfNecessary()
     if (initialized)
         return;
     
-    NSString *appName = [[NSBundle mainBundle] bundleIdentifier];
-    if (!appName)
-        appName = [[NSProcessInfo processInfo] processName];
-    
-    ASSERT(appName);
-    
-    NSString *supportDirectory = [NSString _webkit_localStorageDirectoryWithBundleIdentifier:appName];
-    ResourceLoadObserver::sharedObserver().setStatisticsStorageDirectory(supportDirectory);
+    resourceLoadStatisticsStore = &WebCore::ResourceLoadStatisticsStore::create().leakRef();
+    ResourceLoadObserver::sharedObserver().setStatisticsStore(*resourceLoadStatisticsStore);
     
     initialized = YES;
 }
 
 static bool shouldEnableLoadDeferring()
 {
-    return !applicationIsAdobeInstaller();
+#if PLATFORM(IOS)
+    return true;
+#else
+    return !MacApplication::isAdobeInstaller();
+#endif
 }
 
 static bool shouldRestrictWindowFocus()
@@ -779,7 +780,7 @@ static bool shouldRestrictWindowFocus()
 #if PLATFORM(IOS)
     return true;
 #else
-    return !applicationIsHRBlock();
+    return !MacApplication::isHRBlock();
 #endif
 }
 
@@ -802,7 +803,7 @@ static bool shouldRestrictWindowFocus()
 static bool needsOutlookQuirksScript()
 {
     static bool isOutlookNeedingQuirksScript = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_HTML5_PARSER)
-        && applicationIsMicrosoftOutlook();
+        && MacApplication::isMicrosoftOutlook();
     return isOutlookNeedingQuirksScript;
 }
 
@@ -837,13 +838,13 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
 #if PLATFORM(IOS)
 static bool shouldTransformsAffectOverflow()
 {
-    static bool shouldTransformsAffectOverflow = !applicationIsOkCupid() || WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CSS_TRANSFORMS_AFFECTING_OVERFLOW);
+    static bool shouldTransformsAffectOverflow = !IOSApplication::isOkCupid() || WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CSS_TRANSFORMS_AFFECTING_OVERFLOW);
     return shouldTransformsAffectOverflow;
 }
 
 static bool shouldDispatchJavaScriptWindowOnErrorEvents()
 {
-    static bool shouldDispatchJavaScriptWindowOnErrorEvents = !applicationIsFacebook() || WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_WINDOW_ON_ERROR);
+    static bool shouldDispatchJavaScriptWindowOnErrorEvents = !IOSApplication::isFacebook() || WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_WINDOW_ON_ERROR);
     return shouldDispatchJavaScriptWindowOnErrorEvents;
 }
 
@@ -861,7 +862,7 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
 #if PLATFORM(IOS)
     static bool shouldUseLegacyBackgroundSizeShorthandBehavior = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_LEGACY_BACKGROUNDSIZE_SHORTHAND_BEHAVIOR);
 #else
-    static bool shouldUseLegacyBackgroundSizeShorthandBehavior = applicationIsVersions()
+    static bool shouldUseLegacyBackgroundSizeShorthandBehavior = MacApplication::isVersions()
         && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_LEGACY_BACKGROUNDSIZE_SHORTHAND_BEHAVIOR);
 #endif
     return shouldUseLegacyBackgroundSizeShorthandBehavior;
@@ -971,7 +972,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         Settings::setShouldRespectPriorityInCSSAttributeSetters(shouldRespectPriorityInCSSAttributeSetters());
 
 #if PLATFORM(IOS)
-        if (applicationIsMobileSafari())
+        if (IOSApplication::isMobileSafari())
             Settings::setShouldManageAudioSessionCategory(true);
 #endif
 
@@ -1196,7 +1197,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         WebCoreObjCDeallocOnWebThread([WebPolicyDecisionListener class]);
         WebCoreObjCDeallocOnWebThread([WebView class]);
         WebCoreObjCDeallocOnWebThread([WebVisiblePosition class]);
-        if (applicationIsTheEconomistOnIPhone() && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_DELEGATE_CALLS_IN_COMMON_RUNLOOP_MODES))
+        if (IOSApplication::isTheEconomistOnIphone() && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_DELEGATE_CALLS_IN_COMMON_RUNLOOP_MODES))
             WebThreadSetDelegateSourceRunLoopMode(kCFRunLoopDefaultMode);
         WebThreadEnable();
         isWebThreadEnabled = YES;
@@ -1322,7 +1323,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 + (void)registerForMemoryNotifications
 {
-    BOOL shouldAutoClearPressureOnMemoryRelease = !WebCore::applicationIsMobileSafari();
+    BOOL shouldAutoClearPressureOnMemoryRelease = !WebCore::IOSApplication::isMobileSafari();
 
     MemoryPressureHandler::singleton().installMemoryReleaseBlock(^{
         [WebView _handleMemoryWarning];
@@ -2143,7 +2144,7 @@ static bool fastDocumentTeardownEnabled()
 
 - (BOOL)_needsKeyboardEventDisambiguationQuirks
 {
-    static BOOL needsQuirks = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_IE_COMPATIBLE_KEYBOARD_EVENT_DISPATCH) && !applicationIsSafari();
+    static BOOL needsQuirks = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_IE_COMPATIBLE_KEYBOARD_EVENT_DISPATCH) && !MacApplication::isSafari();
     return needsQuirks;
 }
 
@@ -2155,7 +2156,7 @@ static bool fastDocumentTeardownEnabled()
 
 static bool needsSelfRetainWhileLoadingQuirk()
 {
-    static bool needsQuirk = applicationIsAperture();
+    static bool needsQuirk = MacApplication::isAperture();
     return needsQuirk;
 }
 #endif // !PLATFORM(IOS)
@@ -2170,10 +2171,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     // <https://bugs.webkit.org/show_bug.cgi?id=46134> and
     // <https://bugs.webkit.org/show_bug.cgi?id=46334>.
     static bool isApplicationNeedingParserQuirks = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_HTML5_PARSER)
-        && (applicationIsAOLInstantMessenger() || applicationIsMicrosoftMyDay());
+        && (MacApplication::isAOLInstantMessenger() || MacApplication::isMicrosoftMyDay());
     
     // Mail.app must continue to display HTML email that contains quirky markup.
-    static bool isAppleMail = applicationIsAppleMail();
+    static bool isAppleMail = MacApplication::isAppleMail();
 
     return isApplicationNeedingParserQuirks
         || isAppleMail
@@ -2184,7 +2185,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
         || [[self preferences] usePreHTML5ParserQuirks];
 #else
-    static bool isApplicationNeedingParserQuirks = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_HTML5_PARSER) && applicationIsDaijisenDictionary();
+    static bool isApplicationNeedingParserQuirks = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_HTML5_PARSER) && IOSApplication::isDaijisenDictionary();
     return isApplicationNeedingParserQuirks || [[self preferences] usePreHTML5ParserQuirks];
 #endif
 }
@@ -2331,8 +2332,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
     settings.setValidationMessageTimerMagnification([self validationMessageTimerMagnification]);
 
-    settings.setRequiresUserGestureForMediaPlayback([preferences mediaPlaybackRequiresUserGesture]);
-    settings.setAudioPlaybackRequiresUserGesture([preferences audioPlaybackRequiresUserGesture]);
+    BOOL mediaPlaybackRequiresUserGesture = [preferences mediaPlaybackRequiresUserGesture];
+    settings.setVideoPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences videoPlaybackRequiresUserGesture]);
+    settings.setAudioPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences audioPlaybackRequiresUserGesture]);
+    settings.setMainContentUserGestureOverrideEnabled([preferences overrideUserGestureRequirementForMainContent]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute([preferences inlineMediaPlaybackRequiresPlaysInlineAttribute]);
     settings.setInvisibleAutoplayNotPermitted([preferences invisibleAutoplayNotPermitted]);
@@ -2472,7 +2475,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
 
     settings.setResourceLoadStatisticsEnabled([preferences resourceLoadStatisticsEnabled]);
-    ResourceLoadObserver::sharedObserver().readDataFromDiskIfNeeded();
 
 #if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
@@ -2481,6 +2483,14 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(INDEXED_DATABASE)
     RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
 #endif
+
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
+#endif
+#if ENABLE(CUSTOM_ELEMENTS)
+    RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
+#endif
+
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -3225,6 +3235,16 @@ static inline IMP getMethod(id o, SEL s)
 + (BOOL)_shouldUseFontSmoothing
 {
     return FontCascade::shouldUseSmoothing();
+}
+
++ (void)_setSmoothedLayerTextEnabled:(BOOL)f
+{
+    GraphicsLayer::setSmoothedLayerTextEnabled(f);
+}
+
++ (BOOL)_smoothedLayerTextEnabled
+{
+    return GraphicsLayer::smoothedLayerTextEnabled();
 }
 
 #if !PLATFORM(IOS)
@@ -4842,8 +4862,6 @@ static Vector<String> toStringVector(NSArray* patterns)
 {   
     applicationIsTerminating = YES;
 
-    ResourceLoadObserver::sharedObserver().writeDataToDisk();
-
     if (fastDocumentTeardownEnabled())
         [self closeAllWebViews];
 
@@ -6023,7 +6041,10 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         flags |= DragApplicationHasAttachedSheet;
     if ([draggingInfo draggingSource] == self)
         flags |= DragApplicationIsSource;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if ([[NSApp currentEvent] modifierFlags] & NSAlternateKeyMask)
+#pragma clang diagnostic pop
         flags |= DragApplicationIsCopyKeyDown;
     return static_cast<DragApplicationFlags>(flags);
 }
@@ -7869,9 +7890,7 @@ static WebFrameView *containingFrameView(NSView *view)
     }
     case WebCacheModelDocumentBrowser: {
         // Page cache capacity (in pages)
-        if (memSize >= 1024)
-            pageCacheSize = 3;
-        else if (memSize >= 512)
+        if (memSize >= 512)
             pageCacheSize = 2;
         else if (memSize >= 256)
             pageCacheSize = 1;
@@ -7922,10 +7941,7 @@ static WebFrameView *containingFrameView(NSView *view)
     }
     case WebCacheModelPrimaryWebBrowser: {
         // Page cache capacity (in pages)
-        // Research indicates that value / page drops substantially after 3 pages.
-        if (memSize >= 1024)
-            pageCacheSize = 3;
-        else if (memSize >= 512)
+        if (memSize >= 512)
             pageCacheSize = 2;
         else if (memSize >= 256)
             pageCacheSize = 1;

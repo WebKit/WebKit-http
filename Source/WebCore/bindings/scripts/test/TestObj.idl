@@ -328,10 +328,16 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     Promise testPromiseFunctionWithFloatArgument(float a);
     [RaisesException] Promise testPromiseFunctionWithException();
     Promise testPromiseFunctionWithOptionalIntArgument(optional long a);
+    Promise testPromiseOverloadedFunction(float a);
+    Promise testPromiseOverloadedFunction(FetchRequest request);
 
     // PutForwards
     [PutForwards=name] readonly attribute TestNode putForwardsAttribute;
     [PutForwards=name] readonly attribute TestNode? putForwardsNullableAttribute;
+
+#if defined(TESTING_JS)
+    [InvokesCustomElementLifecycleCallbacks] void methodWithNeedsLifecycleProcessingStack();
+#endif
 };
 
 // The following comment should not generate any code.

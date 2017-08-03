@@ -33,6 +33,7 @@
 #include "FloatQuad.h"
 #include "LayoutRect.h"
 #include "Path.h"
+#include "Range.h"
 #include "TextIteratorBehavior.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
@@ -202,6 +203,9 @@ enum AccessibilityRole {
     SwitchRole,
     SystemWideRole,
     SVGRootRole,
+    SVGTextRole,
+    SVGTSpanRole,
+    SVGTextPathRole,
     TabGroupRole,
     TabListRole,
     TabPanelRole,            
@@ -465,6 +469,7 @@ public:
     virtual bool isAccessibilityScrollbar() const { return false; }
     virtual bool isAccessibilityScrollView() const { return false; }
     virtual bool isAccessibilitySVGRoot() const { return false; }
+    virtual bool isAccessibilitySVGElement() const { return false; }
 
     bool accessibilityObjectContainsText(String *) const;
 
@@ -831,10 +836,13 @@ public:
     VisiblePositionRange styleRangeForPosition(const VisiblePosition&) const;
     VisiblePositionRange visiblePositionRangeForRange(const PlainTextRange&) const;
     VisiblePositionRange lineRangeForPosition(const VisiblePosition&) const;
+    
+    RefPtr<Range> rangeForPlainTextRange(const PlainTextRange&) const;
 
     String stringForVisiblePositionRange(const VisiblePositionRange&) const;
     String stringForRange(RefPtr<Range>) const;
     virtual IntRect boundsForVisiblePositionRange(const VisiblePositionRange&) const { return IntRect(); }
+    virtual IntRect boundsForRange(const RefPtr<Range>) const { return IntRect(); }
     int lengthForVisiblePositionRange(const VisiblePositionRange&) const;
     virtual void setSelectedVisiblePositionRange(const VisiblePositionRange&) const { }
 
@@ -868,6 +876,7 @@ public:
 
     virtual String doAXStringForRange(const PlainTextRange&) const { return String(); }
     virtual IntRect doAXBoundsForRange(const PlainTextRange&) const { return IntRect(); }
+    virtual IntRect doAXBoundsForRangeUsingCharacterOffset(const PlainTextRange&) const { return IntRect(); }
     String listMarkerTextForNodeAndPosition(Node*, const VisiblePosition&) const;
 
     unsigned doAXLineForIndex(unsigned);

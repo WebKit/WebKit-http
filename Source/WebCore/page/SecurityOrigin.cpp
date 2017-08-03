@@ -56,7 +56,7 @@ static bool schemeRequiresHost(const URL& url)
 bool SecurityOrigin::shouldUseInnerURL(const URL& url)
 {
     // FIXME: Blob URLs don't have inner URLs. Their form is "blob:<inner-origin>/<UUID>", so treating the part after "blob:" as a URL is incorrect.
-    if (url.protocolIs("blob"))
+    if (url.protocolIsBlob())
         return true;
     UNUSED_PARAM(url);
     return false;
@@ -76,7 +76,7 @@ URL SecurityOrigin::extractInnerURL(const URL& url)
 
 static RefPtr<SecurityOrigin> getCachedOrigin(const URL& url)
 {
-    if (url.protocolIs("blob"))
+    if (url.protocolIsBlob())
         return ThreadableBlobRegistry::getCachedOrigin(url);
     return nullptr;
 }
@@ -373,6 +373,9 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
         return false;
 
     if (m_storageBlockingPolicy == BlockAllStorage)
+        return false;
+
+    if (isLocal() && !m_universalAccess)
         return false;
 
     // FIXME: This check should be replaced with an ASSERT once we can guarantee that topOrigin is not null.

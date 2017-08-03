@@ -104,6 +104,78 @@ T compileAndRun(Procedure& procedure, Arguments... arguments)
     return invoke<T>(*compile(procedure), arguments...);
 }
 
+template<typename Type>
+struct Operand {
+    const char* name;
+    Type value;
+};
+
+typedef Operand<int64_t> Int64Operand;
+typedef Operand<int32_t> Int32Operand;
+
+template<typename FloatType>
+void populateWithInterestingValues(Vector<Operand<FloatType>>& operands)
+{
+    operands.append({ "0.", static_cast<FloatType>(0.) });
+    operands.append({ "-0.", static_cast<FloatType>(-0.) });
+    operands.append({ "0.4", static_cast<FloatType>(0.5) });
+    operands.append({ "-0.4", static_cast<FloatType>(-0.5) });
+    operands.append({ "0.5", static_cast<FloatType>(0.5) });
+    operands.append({ "-0.5", static_cast<FloatType>(-0.5) });
+    operands.append({ "0.6", static_cast<FloatType>(0.5) });
+    operands.append({ "-0.6", static_cast<FloatType>(-0.5) });
+    operands.append({ "1.", static_cast<FloatType>(1.) });
+    operands.append({ "-1.", static_cast<FloatType>(-1.) });
+    operands.append({ "2.", static_cast<FloatType>(2.) });
+    operands.append({ "-2.", static_cast<FloatType>(-2.) });
+    operands.append({ "M_PI", static_cast<FloatType>(M_PI) });
+    operands.append({ "-M_PI", static_cast<FloatType>(-M_PI) });
+    operands.append({ "min", std::numeric_limits<FloatType>::min() });
+    operands.append({ "max", std::numeric_limits<FloatType>::max() });
+    operands.append({ "lowest", std::numeric_limits<FloatType>::lowest() });
+    operands.append({ "epsilon", std::numeric_limits<FloatType>::epsilon() });
+    operands.append({ "infiniti", std::numeric_limits<FloatType>::infinity() });
+    operands.append({ "-infiniti", - std::numeric_limits<FloatType>::infinity() });
+    operands.append({ "PNaN", static_cast<FloatType>(PNaN) });
+}
+
+template<typename FloatType>
+Vector<Operand<FloatType>> floatingPointOperands()
+{
+    Vector<Operand<FloatType>> operands;
+    populateWithInterestingValues(operands);
+    return operands;
+};
+
+static Vector<Int64Operand> int64Operands()
+{
+    Vector<Int64Operand> operands;
+    operands.append({ "1", 1 });
+    operands.append({ "-1", -1 });
+    operands.append({ "42", 42 });
+    operands.append({ "-42", -42 });
+    operands.append({ "int64-max", std::numeric_limits<int64_t>::max() });
+    operands.append({ "int64-min", std::numeric_limits<int64_t>::min() });
+    operands.append({ "int32-max", std::numeric_limits<int32_t>::max() });
+    operands.append({ "int32-min", std::numeric_limits<int32_t>::min() });
+
+    return operands;
+}
+
+static Vector<Int32Operand> int32Operands()
+{
+    Vector<Int32Operand> operands({
+        { "0", 0 },
+        { "1", 1 },
+        { "-1", -1 },
+        { "42", 42 },
+        { "-42", -42 },
+        { "int32-max", std::numeric_limits<int32_t>::max() },
+        { "int32-min", std::numeric_limits<int32_t>::min() }
+    });
+    return operands;
+}
+
 void add32(CCallHelpers& jit, GPRReg src1, GPRReg src2, GPRReg dest)
 {
     if (src2 == dest)
@@ -788,6 +860,256 @@ void testMulLoadTwice()
 
     test(0);
     test(1);
+}
+
+void testMulAddArgsLeft()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* added = root->appendNew<Value>(proc, Add, Origin(), multiplied, arg2);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int64Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int64_t>(*code, a.value, b.value, c.value) == a.value * b.value + c.value);
+            }
+        }
+    }
+}
+
+void testMulAddArgsRight()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg1, arg2);
+    Value* added = root->appendNew<Value>(proc, Add, Origin(), arg0, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int64Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int64_t>(*code, a.value, b.value, c.value) == a.value + b.value * c.value);
+            }
+        }
+    }
+}
+
+void testMulAddArgsLeft32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* arg2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2));
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* added = root->appendNew<Value>(proc, Add, Origin(), multiplied, arg2);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int32Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int32_t>(*code, a.value, b.value, c.value) == a.value * b.value + c.value);
+            }
+        }
+    }
+}
+
+void testMulAddArgsRight32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* arg2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2));
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg1, arg2);
+    Value* added = root->appendNew<Value>(proc, Add, Origin(), arg0, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int32Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int32_t>(*code, a.value, b.value, c.value) == a.value + b.value * c.value);
+            }
+        }
+    }
+}
+
+void testMulSubArgsLeft()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), multiplied, arg2);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int64Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int64_t>(*code, a.value, b.value, c.value) == a.value * b.value - c.value);
+            }
+        }
+    }
+}
+
+void testMulSubArgsRight()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg1, arg2);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), arg0, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int64Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int64_t>(*code, a.value, b.value, c.value) == a.value - b.value * c.value);
+            }
+        }
+    }
+}
+
+void testMulSubArgsLeft32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* arg2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2));
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), multiplied, arg2);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int32Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int32_t>(*code, a.value, b.value, c.value) == a.value * b.value - c.value);
+            }
+        }
+    }
+}
+
+void testMulSubArgsRight32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* arg2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2));
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg1, arg2);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), arg0, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int32Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            for (auto c : testValues) {
+                CHECK(invoke<int32_t>(*code, a.value, b.value, c.value) == a.value - b.value * c.value);
+            }
+        }
+    }
+}
+
+void testMulNegArgs()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* zero = root->appendNew<Const64Value>(proc, Origin(), 0);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), zero, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int64Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            CHECK(invoke<int64_t>(*code, a.value, b.value) == -(a.value * b.value));
+        }
+    }
+}
+
+void testMulNegArgs32()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg0 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* multiplied = root->appendNew<Value>(proc, Mul, Origin(), arg0, arg1);
+    Value* zero = root->appendNew<Const32Value>(proc, Origin(), 0);
+    Value* added = root->appendNew<Value>(proc, Sub, Origin(), zero, multiplied);
+    root->appendNew<ControlValue>(proc, Return, Origin(), added);
+
+    auto code = compile(proc);
+
+    auto testValues = int32Operands();
+    for (auto a : testValues) {
+        for (auto b : testValues) {
+            CHECK(invoke<int32_t>(*code, a.value, b.value) == -(a.value * b.value));
+        }
+    }
 }
 
 void testMulArgDouble(double a)
@@ -8500,7 +8822,8 @@ void genericTestCompare(
     }
 }
 
-int modelCompare(B3::Opcode opcode, int left, int right)
+template<typename InputType>
+InputType modelCompare(B3::Opcode opcode, InputType left, InputType right)
 {
     switch (opcode) {
     case Equal:
@@ -8516,13 +8839,17 @@ int modelCompare(B3::Opcode opcode, int left, int right)
     case GreaterEqual:
         return left >= right;
     case Above:
-        return static_cast<unsigned>(left) > static_cast<unsigned>(right);
+        return static_cast<typename std::make_unsigned<InputType>::type>(left) >
+            static_cast<typename std::make_unsigned<InputType>::type>(right);
     case Below:
-        return static_cast<unsigned>(left) < static_cast<unsigned>(right);
+        return static_cast<typename std::make_unsigned<InputType>::type>(left) <
+            static_cast<typename std::make_unsigned<InputType>::type>(right);
     case AboveEqual:
-        return static_cast<unsigned>(left) >= static_cast<unsigned>(right);
+        return static_cast<typename std::make_unsigned<InputType>::type>(left) >=
+            static_cast<typename std::make_unsigned<InputType>::type>(right);
     case BelowEqual:
-        return static_cast<unsigned>(left) <= static_cast<unsigned>(right);
+        return static_cast<typename std::make_unsigned<InputType>::type>(left) <=
+            static_cast<typename std::make_unsigned<InputType>::type>(right);
     case BitAnd:
         return !!(left & right);
     default:
@@ -8617,7 +8944,8 @@ void testCompareLoad(B3::Opcode opcode, B3::Opcode loadOpcode, int left, int rig
 
 void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
 {
-    int result = modelCompare(opcode, left, right);
+    int64_t result = modelCompare(opcode, left, right);
+    int32_t int32Result = modelCompare(opcode, static_cast<int32_t>(left), static_cast<int32_t>(right));
     
     // Test tmp-to-tmp.
     genericTestCompare(
@@ -8641,7 +8969,7 @@ void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
                 proc, Trunc, Origin(),
                 block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
         },
-        left, right, result);
+        left, right, int32Result);
 
     // Test imm-to-tmp.
     genericTestCompare(
@@ -8663,7 +8991,7 @@ void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
                 proc, Trunc, Origin(),
                 block->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
         },
-        left, right, result);
+        left, right, int32Result);
 
     // Test tmp-to-imm.
     genericTestCompare(
@@ -8685,7 +9013,7 @@ void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
         [&] (BasicBlock* block, Procedure& proc) {
             return block->appendNew<Const32Value>(proc, Origin(), right);
         },
-        left, right, result);
+        left, right, int32Result);
 
     // Test imm-to-imm.
     genericTestCompare(
@@ -8705,7 +9033,7 @@ void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
         [&] (BasicBlock* block, Procedure& proc) {
             return block->appendNew<Const32Value>(proc, Origin(), right);
         },
-        left, right, result);
+        left, right, int32Result);
 
     testCompareLoad<int32_t>(opcode, Load, left, right);
     testCompareLoad<int8_t>(opcode, Load8S, left, right);
@@ -8714,37 +9042,11 @@ void testCompareImpl(B3::Opcode opcode, int64_t left, int64_t right)
     testCompareLoad<uint16_t>(opcode, Load16Z, left, right);
 }
 
-void testCompare(B3::Opcode opcode, int left, int right)
+void testCompare(B3::Opcode opcode, int64_t left, int64_t right)
 {
-    auto variants = [&] (int left, int right) {
-        testCompareImpl(opcode, left, right);
-        testCompareImpl(opcode, left, right + 1);
-        testCompareImpl(opcode, left, right - 1);
-
-        auto multipliedTests = [&] (int factor) {
-            testCompareImpl(opcode, left * factor, right);
-            testCompareImpl(opcode, left * factor, right + 1);
-            testCompareImpl(opcode, left * factor, right - 1);
-        
-            testCompareImpl(opcode, left, right * factor);
-            testCompareImpl(opcode, left, (right + 1) * factor);
-            testCompareImpl(opcode, left, (right - 1) * factor);
-        
-            testCompareImpl(opcode, left * factor, right * factor);
-            testCompareImpl(opcode, left * factor, (right + 1) * factor);
-            testCompareImpl(opcode, left * factor, (right - 1) * factor);
-        };
-
-        multipliedTests(10);
-        multipliedTests(100);
-        multipliedTests(1000);
-        multipliedTests(100000);
-    };
-
-    variants(left, right);
-    variants(-left, right);
-    variants(left, -right);
-    variants(-left, -right);
+    testCompareImpl(opcode, left, right);
+    testCompareImpl(opcode, left, right + 1);
+    testCompareImpl(opcode, left, right - 1);
 }
 
 void testEqualDouble(double left, double right, bool result)
@@ -9856,6 +10158,7 @@ void testSelectCompareFloat(float a, float b)
     testSelectCompareFloat<GreaterThan>(a, b, [](float a, float b) -> bool { return a > b; });
     testSelectCompareFloat<LessEqual>(a, b, [](float a, float b) -> bool { return a <= b; });
     testSelectCompareFloat<GreaterEqual>(a, b, [](float a, float b) -> bool { return a >= b; });
+    testSelectCompareFloat<EqualOrUnordered>(a, b, [](float a, float b) -> bool { return a != a || b != b || a == b; });
 }
 
 template<B3::Opcode opcode>
@@ -9893,6 +10196,7 @@ void testSelectCompareFloatToDouble(float a, float b)
     testSelectCompareFloatToDouble<GreaterThan>(a, b, [](float a, float b) -> bool { return a > b; });
     testSelectCompareFloatToDouble<LessEqual>(a, b, [](float a, float b) -> bool { return a <= b; });
     testSelectCompareFloatToDouble<GreaterEqual>(a, b, [](float a, float b) -> bool { return a >= b; });
+    testSelectCompareFloatToDouble<EqualOrUnordered>(a, b, [](float a, float b) -> bool { return a != a || b != b || a == b; });
 }
 
 void testSelectDouble()
@@ -10013,6 +10317,406 @@ void testSelectFloatCompareFloat(float a, float b)
             floatValue4));
 
     CHECK(isIdentical(compileAndRun<float>(proc, bitwise_cast<int32_t>(a), bitwise_cast<int32_t>(b), bitwise_cast<int32_t>(1.1f), bitwise_cast<int32_t>(-42.f)), a < b ? 1.1f : -42.f));
+}
+
+
+template<B3::Opcode opcode>
+void testSelectDoubleCompareDouble(bool (*operation)(double, double))
+{
+    { // Compare arguments and selected arguments are all different.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+        Value* arg3 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR3);
+
+        root->appendNew<ControlValue>(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, Select, Origin(),
+                root->appendNew<Value>(
+                    proc, opcode, Origin(),
+                    arg0,
+                    arg1),
+                arg2,
+                arg3));
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, -66.5), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. "thenCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+        Value* arg3 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR3);
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, -66.5), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. "elseCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+        Value* arg3 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR3);
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg3, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, -66.5), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. Both cases are live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+        Value* arg3 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR3);
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->append(ConstrainedValue(arg3, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, -66.5), expected));
+            }
+        }
+    }
+    { // The left argument is the same as the "elseCase" argument.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+
+        root->appendNew<ControlValue>(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, Select, Origin(),
+                root->appendNew<Value>(
+                    proc, opcode, Origin(),
+                    arg0,
+                    arg1),
+                arg2,
+                arg0));
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : left.value;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, left.value), expected));
+            }
+        }
+    }
+    { // The left argument is the same as the "elseCase" argument. "thenCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+        Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+        Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR2);
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg0);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<double>()) {
+            for (auto& right : floatingPointOperands<double>()) {
+                double expected = operation(left.value, right.value) ? 42.5 : left.value;
+                CHECK(isIdentical(invoke<double>(*code, left.value, right.value, 42.5, left.value), expected));
+            }
+        }
+    }
+}
+
+void testSelectDoubleCompareDoubleWithAliasing()
+{
+    testSelectDoubleCompareDouble<Equal>([](double a, double b) -> bool { return a == b; });
+    testSelectDoubleCompareDouble<NotEqual>([](double a, double b) -> bool { return a != b; });
+    testSelectDoubleCompareDouble<LessThan>([](double a, double b) -> bool { return a < b; });
+    testSelectDoubleCompareDouble<GreaterThan>([](double a, double b) -> bool { return a > b; });
+    testSelectDoubleCompareDouble<LessEqual>([](double a, double b) -> bool { return a <= b; });
+    testSelectDoubleCompareDouble<GreaterEqual>([](double a, double b) -> bool { return a >= b; });
+    testSelectDoubleCompareDouble<EqualOrUnordered>([](double a, double b) -> bool { return a != a || b != b || a == b; });
+}
+
+template<B3::Opcode opcode>
+void testSelectFloatCompareFloat(bool (*operation)(float, float))
+{
+    { // Compare arguments and selected arguments are all different.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+        Value* arg3 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR3)));
+
+        root->appendNew<ControlValue>(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, Select, Origin(),
+                root->appendNew<Value>(
+                    proc, opcode, Origin(),
+                    arg0,
+                    arg1),
+                arg2,
+                arg3));
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(-66.5f)), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. "thenCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+        Value* arg3 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR3)));
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(-66.5f)), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. "elseCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+        Value* arg3 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR3)));
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg3, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(-66.5f)), expected));
+            }
+        }
+    }
+    { // Compare arguments and selected arguments are all different. Both cases are live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+        Value* arg3 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR3)));
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg3);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->append(ConstrainedValue(arg3, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : -66.5;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(-66.5f)), expected));
+            }
+        }
+    }
+    { // The left argument is the same as the "elseCase" argument.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+
+        root->appendNew<ControlValue>(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, Select, Origin(),
+                root->appendNew<Value>(
+                    proc, opcode, Origin(),
+                    arg0,
+                    arg1),
+                arg2,
+                arg0));
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : left.value;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(left.value)), expected));
+            }
+        }
+    }
+    { // The left argument is the same as the "elseCase" argument. "thenCase" is live after operation.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* arg0 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+        Value* arg1 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+        Value* arg2 = root->appendNew<Value>(proc, BitwiseCast, Origin(),
+            root->appendNew<Value>(proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2)));
+
+        Value* result = root->appendNew<Value>(proc, Select, Origin(),
+            root->appendNew<Value>(proc, opcode, Origin(), arg0, arg1),
+            arg2,
+            arg0);
+
+        PatchpointValue* keepValuesLive = root->appendNew<PatchpointValue>(proc, Void, Origin());
+        keepValuesLive->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
+        keepValuesLive->setGenerator([&] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+        root->appendNew<ControlValue>(proc, Return, Origin(), result);
+        auto code = compile(proc);
+
+        for (auto& left : floatingPointOperands<float>()) {
+            for (auto& right : floatingPointOperands<float>()) {
+                float expected = operation(left.value, right.value) ? 42.5 : left.value;
+                CHECK(isIdentical(invoke<float>(*code, bitwise_cast<int32_t>(left.value), bitwise_cast<int32_t>(right.value), bitwise_cast<int32_t>(42.5f), bitwise_cast<int32_t>(left.value)), expected));
+            }
+        }
+    }
+}
+
+void testSelectFloatCompareFloatWithAliasing()
+{
+    testSelectFloatCompareFloat<Equal>([](float a, float b) -> bool { return a == b; });
+    testSelectFloatCompareFloat<NotEqual>([](float a, float b) -> bool { return a != b; });
+    testSelectFloatCompareFloat<LessThan>([](float a, float b) -> bool { return a < b; });
+    testSelectFloatCompareFloat<GreaterThan>([](float a, float b) -> bool { return a > b; });
+    testSelectFloatCompareFloat<LessEqual>([](float a, float b) -> bool { return a <= b; });
+    testSelectFloatCompareFloat<GreaterEqual>([](float a, float b) -> bool { return a >= b; });
+    testSelectFloatCompareFloat<EqualOrUnordered>([](float a, float b) -> bool { return a != a || b != b || a == b; });
 }
 
 void testSelectFold(intptr_t value)
@@ -10175,6 +10879,20 @@ void testCheckSelectCheckSelect()
     CHECK(invoke<int>(*code, true, false) == 667);
 }
 
+double b3Pow(double x, int y)
+{
+    if (y < 0 || y > 1000)
+        return pow(x, y);
+    double result = 1;
+    while (y) {
+        if (y & 1)
+            result *= x;
+        x *= x;
+        y >>= 1;
+    }
+    return result;
+}
+
 void testPowDoubleByIntegerLoop(double xOperand, int32_t yOperand)
 {
     Procedure proc;
@@ -10187,7 +10905,7 @@ void testPowDoubleByIntegerLoop(double xOperand, int32_t yOperand)
     BasicBlock* continuation = result.first;
     continuation->appendNew<ControlValue>(proc, Return, Origin(), result.second);
 
-    CHECK(isIdentical(compileAndRun<double>(proc, xOperand, yOperand), pow(xOperand, yOperand)));
+    CHECK(isIdentical(compileAndRun<double>(proc, xOperand, yOperand), b3Pow(xOperand, yOperand)));
 }
 
 void testTruncOrHigh()
@@ -10701,77 +11419,7 @@ double negativeZero()
     return -zero();
 }
 
-template<typename Type>
-struct Operand {
-    const char* name;
-    Type value;
-};
 
-typedef Operand<int64_t> Int64Operand;
-typedef Operand<int32_t> Int32Operand;
-
-template<typename FloatType>
-void populateWithInterestingValues(Vector<Operand<FloatType>>& operands)
-{
-    operands.append({ "0.", static_cast<FloatType>(0.) });
-    operands.append({ "-0.", static_cast<FloatType>(-0.) });
-    operands.append({ "0.4", static_cast<FloatType>(0.5) });
-    operands.append({ "-0.4", static_cast<FloatType>(-0.5) });
-    operands.append({ "0.5", static_cast<FloatType>(0.5) });
-    operands.append({ "-0.5", static_cast<FloatType>(-0.5) });
-    operands.append({ "0.6", static_cast<FloatType>(0.5) });
-    operands.append({ "-0.6", static_cast<FloatType>(-0.5) });
-    operands.append({ "1.", static_cast<FloatType>(1.) });
-    operands.append({ "-1.", static_cast<FloatType>(-1.) });
-    operands.append({ "2.", static_cast<FloatType>(2.) });
-    operands.append({ "-2.", static_cast<FloatType>(-2.) });
-    operands.append({ "M_PI", static_cast<FloatType>(M_PI) });
-    operands.append({ "-M_PI", static_cast<FloatType>(-M_PI) });
-    operands.append({ "min", std::numeric_limits<FloatType>::min() });
-    operands.append({ "max", std::numeric_limits<FloatType>::max() });
-    operands.append({ "lowest", std::numeric_limits<FloatType>::lowest() });
-    operands.append({ "epsilon", std::numeric_limits<FloatType>::epsilon() });
-    operands.append({ "infiniti", std::numeric_limits<FloatType>::infinity() });
-    operands.append({ "-infiniti", - std::numeric_limits<FloatType>::infinity() });
-    operands.append({ "PNaN", static_cast<FloatType>(PNaN) });
-}
-
-template<typename FloatType>
-Vector<Operand<FloatType>> floatingPointOperands()
-{
-    Vector<Operand<FloatType>> operands;
-    populateWithInterestingValues(operands);
-    return operands;
-};
-
-static Vector<Int64Operand> int64Operands()
-{
-    Vector<Int64Operand> operands;
-    for (const auto& doubleOperand : floatingPointOperands<double>())
-        operands.append({ doubleOperand.name, bitwise_cast<int64_t>(doubleOperand.value) });
-    operands.append({ "1", 1 });
-    operands.append({ "-1", -1 });
-    operands.append({ "int64-max", std::numeric_limits<int64_t>::max() });
-    operands.append({ "int64-min", std::numeric_limits<int64_t>::min() });
-    operands.append({ "int32-max", std::numeric_limits<int32_t>::max() });
-    operands.append({ "int32-min", std::numeric_limits<int32_t>::min() });
-
-    return operands;
-}
-
-static Vector<Int32Operand> int32Operands()
-{
-    Vector<Int32Operand> operands({
-        { "0", 0 },
-        { "1", 1 },
-        { "-1", -1 },
-        { "42", 42 },
-        { "-42", -42 },
-        { "int32-max", std::numeric_limits<int32_t>::max() },
-        { "int32-min", std::numeric_limits<int32_t>::min() }
-    });
-    return operands;
-}
 
 #define RUN(test) do {                          \
         if (!shouldRun(#test))                  \
@@ -10929,6 +11577,16 @@ void run(const char* filter)
     RUN(testMulArgs32(1, 1));
     RUN(testMulArgs32(1, 2));
     RUN(testMulLoadTwice());
+    RUN(testMulAddArgsLeft());
+    RUN(testMulAddArgsRight());
+    RUN(testMulAddArgsLeft32());
+    RUN(testMulAddArgsRight32());
+    RUN(testMulSubArgsLeft());
+    RUN(testMulSubArgsRight());
+    RUN(testMulSubArgsLeft32());
+    RUN(testMulSubArgsRight32());
+    RUN(testMulNegArgs());
+    RUN(testMulNegArgs32());
 
     RUN_UNARY(testMulArgDouble, floatingPointOperands<double>());
     RUN_BINARY(testMulArgsDouble, floatingPointOperands<double>(), floatingPointOperands<double>());
@@ -11584,19 +12242,17 @@ void run(const char* filter)
     RUN(testCheckMulArgumentAliasing64());
     RUN(testCheckMulArgumentAliasing32());
 
-    RUN(testCompare(Equal, 42, 42));
-    RUN(testCompare(NotEqual, 42, 42));
-    RUN(testCompare(LessThan, 42, 42));
-    RUN(testCompare(GreaterThan, 42, 42));
-    RUN(testCompare(LessEqual, 42, 42));
-    RUN(testCompare(GreaterEqual, 42, 42));
-    RUN(testCompare(Below, 42, 42));
-    RUN(testCompare(Above, 42, 42));
-    RUN(testCompare(BelowEqual, 42, 42));
-    RUN(testCompare(AboveEqual, 42, 42));
-
-    RUN(testCompare(BitAnd, 42, 42));
-    RUN(testCompare(BitAnd, 42, 0));
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(Equal, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(NotEqual, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(LessThan, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(GreaterThan, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(LessEqual, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(GreaterEqual, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(Below, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(Above, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(BelowEqual, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(AboveEqual, a, b); }, int64Operands(), int64Operands());
+    RUN_BINARY([](int32_t a, int32_t b) { testCompare(BitAnd, a, b); }, int64Operands(), int64Operands());
 
     RUN(testEqualDouble(42, 42, true));
     RUN(testEqualDouble(0, -0, true));
@@ -11978,6 +12634,8 @@ void run(const char* filter)
     RUN(testSelectDoubleCompareDouble());
     RUN_BINARY(testSelectDoubleCompareFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testSelectFloatCompareFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN(testSelectDoubleCompareDoubleWithAliasing());
+    RUN(testSelectFloatCompareFloatWithAliasing());
     RUN(testSelectFold(42));
     RUN(testSelectFold(43));
     RUN(testSelectInvert());

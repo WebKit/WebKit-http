@@ -5305,7 +5305,8 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = prefsPrivate->mediaPlaybackRequiresUserGesture(&enabled);
     if (FAILED(hr))
         return hr;
-    settings.setRequiresUserGestureForMediaPlayback(enabled);
+    settings.setVideoPlaybackRequiresUserGesture(enabled);
+    settings.setAudioPlaybackRequiresUserGesture(enabled);
 
     hr = prefsPrivate->mediaPlaybackAllowsInline(&enabled);
     if (FAILED(hr))
@@ -7220,7 +7221,7 @@ HRESULT WebView::defaultMinimumTimerInterval(_Out_ double* interval)
 {
     if (!interval)
         return E_POINTER;
-    *interval = DOMTimer::defaultMinimumInterval();
+    *interval = DOMTimer::defaultMinimumInterval().count() / 1000.;
     return S_OK;
 }
 
@@ -7229,7 +7230,8 @@ HRESULT WebView::setMinimumTimerInterval(double interval)
     if (!m_page)
         return E_FAIL;
 
-    page()->settings().setMinimumDOMTimerInterval(interval);
+    auto intervalMS = std::chrono::milliseconds((std::chrono::milliseconds::rep)(interval * 1000));
+    page()->settings().setMinimumDOMTimerInterval(intervalMS);
     return S_OK;
 }
 

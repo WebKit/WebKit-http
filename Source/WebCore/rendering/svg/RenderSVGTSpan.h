@@ -37,8 +37,11 @@ public:
 
 private:
     void graphicsElement() const = delete;
-    virtual const char* renderName() const override { return "RenderSVGTSpan"; }
+    const char* renderName() const override { return "RenderSVGTSpan"; }
+    bool isSVGTSpan() const override { return true; }
 };
 }
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGTSpan, isSVGTSpan())
 
 #endif // !RenderSVGTSpan_h

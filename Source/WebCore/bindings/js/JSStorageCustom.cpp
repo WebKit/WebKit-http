@@ -61,7 +61,7 @@ bool JSStorage::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prope
 
     static_assert(!hasStaticPropertyTable, "This function does not handle static instance properties");
 
-    JSValue prototype = thisObject->prototype();
+    JSValue prototype = thisObject->getPrototypeDirect();
     if (prototype.isObject() && asObject(prototype)->getPropertySlot(exec, propertyName, slot))
         return Base::deleteProperty(thisObject, exec, propertyName);
 
@@ -98,7 +98,7 @@ void JSStorage::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyN
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
-bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot&)
+bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot&, bool& putResult)
 {
     // Only perform the custom put if the object doesn't have a native property by this name.
     // Since hasProperty() would end up calling canGetItemsForName() and be fooled, we need to check
@@ -106,7 +106,7 @@ bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue 
     PropertySlot slot(this, PropertySlot::InternalMethodType::GetOwnProperty);
     static_assert(!hasStaticPropertyTable, "This function does not handle static instance properties");
 
-    JSValue prototype = this->prototype();
+    JSValue prototype = this->getPrototypeDirect();
     if (prototype.isObject() && asObject(prototype)->getPropertySlot(exec, propertyName, slot))
         return false;
 
@@ -119,13 +119,14 @@ bool JSStorage::putDelegate(ExecState* exec, PropertyName propertyName, JSValue 
         // if true, tells the caller not to execute the generic put). It does not indicate whether
         // putDelegate() did successfully complete the operation or not (which it didn't in this
         // case due to the exception).
+        putResult = false;
         return true;
     }
 
     ExceptionCode ec = 0;
     wrapped().setItem(propertyNameToString(propertyName), stringValue, ec);
     setDOMException(exec, ec);
-
+    putResult = !ec;
     return true;
 }
 

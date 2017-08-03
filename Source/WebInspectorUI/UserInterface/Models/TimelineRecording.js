@@ -35,6 +35,8 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         this._capturing = false;
         this._readonly = false;
         this._instruments = instruments || [];
+        this._topDownCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.TopDown);
+        this._bottomUpCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.BottomUp);
 
         let timelines = [
             WebInspector.TimelineRecord.Type.Network,
@@ -42,6 +44,7 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
             WebInspector.TimelineRecord.Type.Script,
             WebInspector.TimelineRecord.Type.RenderingFrame,
             WebInspector.TimelineRecord.Type.Memory,
+            WebInspector.TimelineRecord.Type.HeapAllocations,
         ];
 
         for (let type of timelines) {
@@ -100,6 +103,16 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         return this._endTime;
     }
 
+    get topDownCallingContextTree()
+    {
+        return this._topDownCallingContextTree;
+    }
+
+    get bottomUpCallingContextTree()
+    {
+        return this._bottomUpCallingContextTree;
+    }
+
     start()
     {
         console.assert(!this._capturing, "Attempted to start an already started session.");
@@ -155,6 +168,9 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         this._eventMarkers = [];
         this._startTime = NaN;
         this._endTime = NaN;
+
+        this._topDownCallingContextTree.reset();
+        this._bottomUpCallingContextTree.reset();
 
         for (var timeline of this._timelines.values())
             timeline.reset(suppressEvents);
@@ -228,7 +244,8 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         // Some records don't have source code timelines.
         if (record.type === WebInspector.TimelineRecord.Type.Network
             || record.type === WebInspector.TimelineRecord.Type.RenderingFrame
-            || record.type === WebInspector.TimelineRecord.Type.Memory)
+            || record.type === WebInspector.TimelineRecord.Type.Memory
+            || record.type === WebInspector.TimelineRecord.Type.HeapAllocations)
             return;
 
         if (!WebInspector.TimelineRecording.sourceCodeTimelinesSupported())
@@ -257,6 +274,16 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
 
         if (newTimeline)
             this.dispatchEventToListeners(WebInspector.TimelineRecording.Event.SourceCodeTimelineAdded, {sourceCodeTimeline});
+    }
+
+    addMemoryPressureEvent(memoryPressureEvent)
+    {
+        let memoryTimeline = this._timelines.get(WebInspector.TimelineRecord.Type.Memory);
+        console.assert(memoryTimeline, this._timelines);
+        if (!memoryTimeline)
+            return;
+
+        memoryTimeline.addMemoryPressureEvent(memoryPressureEvent);
     }
 
     computeElapsedTime(timestamp)

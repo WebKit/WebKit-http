@@ -124,6 +124,9 @@ using namespace WebCore;
 
 - (void)_clearImmediateActionState
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
     if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
         [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
@@ -183,6 +186,9 @@ using namespace WebCore;
 
 - (void)immediateActionRecognizerWillBeginAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
@@ -318,11 +324,19 @@ using namespace WebCore;
         customClientAnimationController = [(id)[_webView UIDelegate] _webView:_webView immediateActionAnimationControllerForHitTestResult:webHitTestResult.get() withType:_type];
     }
 
-    // FIXME: We should not permanently disable this for iTunes. rdar://problem/19461358
-    if (customClientAnimationController == [NSNull null] || applicationIsITunes()) {
+    if (customClientAnimationController == [NSNull null]) {
         [self _cancelImmediateAction];
         return;
     }
+
+#if PLATFORM(MAC)
+    // FIXME: We should not permanently disable this for iTunes. rdar://problem/19461358
+    if (MacApplication::isITunes()) {
+        [self _cancelImmediateAction];
+        return;
+    }
+#endif
+
     if (customClientAnimationController && [customClientAnimationController conformsToProtocol:@protocol(NSImmediateActionAnimationController)])
         [_immediateActionRecognizer setAnimationController:(id <NSImmediateActionAnimationController>)customClientAnimationController];
     else
@@ -401,6 +415,9 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
 - (id <NSImmediateActionAnimationController>)_animationControllerForDataDetectedText
 {
+    if (!DataDetectorsLibrary())
+        return nil;
+
     RefPtr<Range> detectedDataRange;
     FloatRect detectedDataBoundingBox;
     RetainPtr<DDActionContext> actionContext;
@@ -450,6 +467,9 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
 - (id <NSImmediateActionAnimationController>)_animationControllerForDataDetectedLink
 {
+    if (!DataDetectorsLibrary())
+        return nil;
+
     RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
 
     if (!actionContext)

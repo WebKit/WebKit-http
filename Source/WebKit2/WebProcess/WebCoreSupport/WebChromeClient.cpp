@@ -701,7 +701,7 @@ String WebChromeClient::generateReplacementFile(const String& path)
 #if ENABLE(INPUT_TYPE_COLOR)
 std::unique_ptr<ColorChooser> WebChromeClient::createColorChooser(ColorChooserClient* client, const Color& initialColor)
 {
-    return std::unique_ptr<WebColorChooser>(new WebColorChooser(m_page, client, initialColor));
+    return std::make_unique<WebColorChooser>(m_page, client, initialColor);
 }
 #endif
 
@@ -855,6 +855,11 @@ bool WebChromeClient::supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::Vi
     return m_page->videoFullscreenManager()->supportsVideoFullscreen(mode);
 }
 
+void WebChromeClient::setUpVideoControlsManager(WebCore::HTMLVideoElement& videoElement)
+{
+    m_page->videoFullscreenManager()->setUpVideoControlsManager(videoElement);
+}
+
 void WebChromeClient::enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     ASSERT(mode != HTMLMediaElementEnums::VideoFullscreenModeNone);
@@ -865,6 +870,14 @@ void WebChromeClient::exitVideoFullscreenForVideoElement(WebCore::HTMLVideoEleme
 {
     m_page->videoFullscreenManager()->exitVideoFullscreenForVideoElement(videoElement);
 }
+
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+void WebChromeClient::exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode targetMode)
+{
+    m_page->videoFullscreenManager()->exitVideoFullscreenToModeWithoutAnimation(videoElement, targetMode);
+}
+#endif
+
 #endif
     
 #if ENABLE(FULLSCREEN_API)
@@ -1132,6 +1145,11 @@ void WebChromeClient::requestInstallMissingMediaPlugins(const String& details, c
 void WebChromeClient::didInvalidateDocumentMarkerRects()
 {
     m_page->findController().didInvalidateDocumentMarkerRects();
+}
+    
+bool WebChromeClient::mediaShouldUsePersistentCache() const
+{
+    return m_page->mediaShouldUsePersistentCache();
 }
 
 } // namespace WebKit

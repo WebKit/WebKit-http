@@ -89,6 +89,7 @@ struct WebPageCreationParameters {
     uint64_t userContentControllerID;
     uint64_t visitedLinkTableID;
     uint64_t websiteDataStoreID;
+    bool mediaShouldUsePersistentCache;
     bool canRunBeforeUnloadConfirmPanel;
     bool canRunModal;
 
@@ -115,6 +116,8 @@ struct WebPageCreationParameters {
     LayerHostingMode layerHostingMode;
 
     Vector<String> mimeTypesWithCustomContentProviders;
+
+    bool controlledByAutomation;
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection;

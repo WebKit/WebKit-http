@@ -151,17 +151,28 @@ bool JSArrayBufferView::getOwnPropertySlot(
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-void JSArrayBufferView::put(
+void JSArrayBufferView::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    JSArrayBufferView* thisObject = jsCast<JSArrayBufferView*>(cell);
+
+    if (thisObject->hasArrayBuffer()) {
+        ArrayBuffer* buffer = thisObject->buffer();
+        RELEASE_ASSERT(buffer);
+        visitor.addOpaqueRoot(buffer);
+    }
+    
+    Base::visitChildren(thisObject, visitor);
+}
+
+bool JSArrayBufferView::put(
     JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value,
     PutPropertySlot& slot)
 {
     JSArrayBufferView* thisObject = jsCast<JSArrayBufferView*>(cell);
-    if (propertyName == exec->propertyNames().buffer) {
-        reject(exec, slot.isStrictMode(), "Attempting to write to read-only typed array property.");
-        return;
-    }
+    if (propertyName == exec->propertyNames().buffer)
+        return reject(exec, slot.isStrictMode(), "Attempting to write to read-only typed array property.");
     
-    Base::put(thisObject, exec, propertyName, value, slot);
+    return Base::put(thisObject, exec, propertyName, value, slot);
 }
 
 bool JSArrayBufferView::defineOwnProperty(

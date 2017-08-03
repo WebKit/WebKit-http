@@ -97,7 +97,9 @@ static EncodedJSValue JSC_HOST_CALL constructIntlCollator(ExecState* state)
     IntlCollator* collator = IntlCollator::create(vm, jsCast<IntlCollatorConstructor*>(state->callee()));
     if (collator && !jsDynamicCast<IntlCollatorConstructor*>(newTarget)) {
         JSValue proto = asObject(newTarget)->getDirect(vm, vm.propertyNames->prototype);
-        asObject(collator)->setPrototypeWithCycleCheck(state, proto);
+        asObject(collator)->setPrototype(vm, state, proto);
+        if (vm.exception())
+            return JSValue::encode(JSValue());
     }
 
     // 3. ReturnIfAbrupt(collator).
@@ -133,13 +135,13 @@ static EncodedJSValue JSC_HOST_CALL callIntlCollator(ExecState* state)
 ConstructType IntlCollatorConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructIntlCollator;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType IntlCollatorConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callIntlCollator;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 bool IntlCollatorConstructor::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

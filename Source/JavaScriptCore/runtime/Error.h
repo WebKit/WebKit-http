@@ -74,6 +74,7 @@ JSObject* addErrorInfo(ExecState*, JSObject* error, int line, const SourceCode&)
 // Convenience wrappers, create an throw an exception with a default message.
 JS_EXPORT_PRIVATE JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState*, const char* constructorName);
 JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*);
+JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, const String& errorMessage);
 JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*);
 JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*, const String& errorMessage);
 inline JSObject* throwRangeError(ExecState* state, const String& errorMessage) { return state->vm().throwException(state, createRangeError(state, errorMessage)); }
@@ -114,7 +115,7 @@ public:
     static ConstructType getConstructData(JSCell*, ConstructData& constructData)
     {
         constructData.native.function = constructThrowTypeError;
-        return ConstructTypeHost;
+        return ConstructType::Host;
     }
 
     static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
@@ -126,7 +127,7 @@ public:
     static CallType getCallData(JSCell*, CallData& callData)
     {
         callData.native.function = callThrowTypeError;
-        return CallTypeHost;
+        return CallType::Host;
     }
 
     DECLARE_INFO;

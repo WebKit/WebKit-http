@@ -2,6 +2,7 @@
 <html>
 <head>
 <link href="resources/grid.css" rel="stylesheet">
+<link href="resources/grid-alignment.css" rel="stylesheet">
 <script src="../../resources/check-layout.js"></script>
 <style type="text/css">
     .grid {
@@ -54,8 +55,8 @@ function testGridDefinitions(gridTemplateRows, gridTemplateColumns, firstGridIte
 function testChangingGridDefinitions()
 {
     testGridDefinitions('10px [row] 20px', '30px [column]', { 'width': '0', 'height': '10', 'x': '30', 'y': '0' }, { 'width': '30', 'height': '20', 'x': '0', 'y': '10' }, { 'width': '30', 'height': '10', 'x': '0', 'y': '0' });
-    testGridDefinitions('10px [row] 20px', '30px', { 'width': '30', 'height': '10', 'x': '0', 'y': '0' }, { 'width': '30', 'height': '20', 'x': '0', 'y': '10' }, { 'width': '30', 'height': '0', 'x': '0', 'y': '30' });
-    testGridDefinitions('10px 20px [row]', '30px', { 'width': '30', 'height': '10', 'x': '0', 'y': '0' }, { 'width': '30', 'height': '0', 'x': '0', 'y': '30' }, { 'width': '30', 'height': '20', 'x': '0', 'y': '10' });
+    testGridDefinitions('10px [row] 20px', '30px', { 'width': '0', 'height': '10', 'x': '30', 'y': '0' }, { 'width': '30', 'height': '20', 'x': '0', 'y': '10' }, { 'width': '30', 'height': '10', 'x': '0', 'y': '0' });
+    testGridDefinitions('10px 20px [row]', '30px', { 'width': '0', 'height': '10', 'x': '30', 'y': '0' }, { 'width': '30', 'height': '0', 'x': '0', 'y': '30' }, { 'width': '30', 'height': '10', 'x': '0', 'y': '0' });
     testGridDefinitions('10px 20px [row]', '30px [column]', { 'width': '0', 'height': '10', 'x': '30', 'y': '0' }, { 'width': '30', 'height': '0', 'x': '0', 'y': '30' }, { 'width': '30', 'height': '10', 'x': '0', 'y': '0' });
 }
 
@@ -66,7 +67,7 @@ window.addEventListener("load", testChangingGridDefinitions, false);
 <div>This test checks that updating the named grid lines definitions in grid-template-{rows|columns} recomputes the positions of automatically placed grid items.</div>
 
 <div style="position: relative">
-    <div class="grid">
+    <div class="grid justifyContentStart">
         <div class="sizedToGridArea" id="firstGridItem"></div>
         <div class="sizedToGridArea" id="secondGridItem"></div>
         <div class="sizedToGridArea" id="thirdGridItem"></div>

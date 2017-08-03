@@ -1054,7 +1054,7 @@ LayoutUnit RenderTableCell::borderHalfStart(bool outer) const
 {
     CollapsedBorderValue border = collapsedStartBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isLeftToRightDirection() ^ outer) ? 1 : 0)) / 2); // Give the extra pixel to top and left.
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), styleForCellFlow().isLeftToRightDirection() ^ outer);
     return 0;
 }
     
@@ -1062,7 +1062,7 @@ LayoutUnit RenderTableCell::borderHalfEnd(bool outer) const
 {
     CollapsedBorderValue border = collapsedEndBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isLeftToRightDirection() ^ outer) ? 0 : 1)) / 2);
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), !(styleForCellFlow().isLeftToRightDirection() ^ outer));
     return 0;
 }
 
@@ -1070,7 +1070,7 @@ LayoutUnit RenderTableCell::borderHalfBefore(bool outer) const
 {
     CollapsedBorderValue border = collapsedBeforeBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isFlippedBlocksWritingMode() ^ outer) ? 0 : 1)) / 2); // Give the extra pixel to top and left.
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), !(styleForCellFlow().isFlippedBlocksWritingMode() ^ outer));
     return 0;
 }
 
@@ -1078,7 +1078,7 @@ LayoutUnit RenderTableCell::borderHalfAfter(bool outer) const
 {
     CollapsedBorderValue border = collapsedAfterBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isFlippedBlocksWritingMode() ^ outer) ? 1 : 0)) / 2);
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), styleForCellFlow().isFlippedBlocksWritingMode() ^ outer);
     return 0;
 }
 
@@ -1204,20 +1204,26 @@ void RenderTableCell::paintCollapsedBorders(PaintInfo& paintInfo, const LayoutPo
     LayoutUnit leftWidth = leftVal.width();
     LayoutUnit rightWidth = rightVal.width();
 
-    LayoutRect borderRect = LayoutRect(paintRect.x() - floorToInt(leftWidth / 2),
-        paintRect.y() - floorToInt(topWidth / 2),
-        paintRect.width() + floorToInt(leftWidth / 2) + floorToInt((rightWidth + 1) / 2),
-        paintRect.height() + floorToInt(topWidth / 2) + floorToInt((bottomWidth + 1) / 2));
+    float deviceScaleFactor = document().deviceScaleFactor();
+    LayoutUnit leftHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(leftWidth , deviceScaleFactor, false);
+    LayoutUnit topHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(topWidth, deviceScaleFactor, false);
+    LayoutUnit righHalftCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(rightWidth, deviceScaleFactor, true);
+    LayoutUnit bottomHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(bottomWidth, deviceScaleFactor, true);
     
+    LayoutRect borderRect = LayoutRect(paintRect.x() - leftHalfCollapsedBorder,
+        paintRect.y() - topHalfCollapsedBorder,
+        paintRect.width() + leftHalfCollapsedBorder + righHalftCollapsedBorder,
+        paintRect.height() + topHalfCollapsedBorder + bottomHalfCollapsedBorder);
+
     EBorderStyle topStyle = collapsedBorderStyle(topVal.style());
     EBorderStyle bottomStyle = collapsedBorderStyle(bottomVal.style());
     EBorderStyle leftStyle = collapsedBorderStyle(leftVal.style());
     EBorderStyle rightStyle = collapsedBorderStyle(rightVal.style());
     
-    bool renderTop = topStyle > BHIDDEN && !topVal.isTransparent() && floorToInt(topWidth);
-    bool renderBottom = bottomStyle > BHIDDEN && !bottomVal.isTransparent() && floorToInt(bottomWidth);
-    bool renderLeft = leftStyle > BHIDDEN && !leftVal.isTransparent() && floorToInt(leftWidth);
-    bool renderRight = rightStyle > BHIDDEN && !rightVal.isTransparent() && floorToInt(rightWidth);
+    bool renderTop = topStyle > BHIDDEN && !topVal.isTransparent() && floorToDevicePixel(topWidth, deviceScaleFactor);
+    bool renderBottom = bottomStyle > BHIDDEN && !bottomVal.isTransparent() && floorToDevicePixel(bottomWidth, deviceScaleFactor);
+    bool renderLeft = leftStyle > BHIDDEN && !leftVal.isTransparent() && floorToDevicePixel(leftWidth, deviceScaleFactor);
+    bool renderRight = rightStyle > BHIDDEN && !rightVal.isTransparent() && floorToDevicePixel(rightWidth, deviceScaleFactor);
 
     // We never paint diagonals at the joins.  We simply let the border with the highest
     // precedence paint on top of borders with lower precedence.  
@@ -1277,8 +1283,8 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return;
 
-    RenderTable* tableElt = table();
-    if (!tableElt->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
+    RenderTable* table = this->table();
+    if (!table->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
         return;
 
     LayoutRect paintRect = LayoutRect(paintOffset, frameRect().size());
@@ -1289,7 +1295,7 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
 
     paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
-    if (!style().hasBorder() || tableElt->collapseBorders() || (!firstChild() && document().inQuirksMode()))
+    if (!style().hasBorder() || table->collapseBorders())
         return;
 
     paintBorder(paintInfo, paintRect, style());

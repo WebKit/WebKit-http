@@ -26,6 +26,7 @@
 #ifndef InspectorHeapAgent_h
 #define InspectorHeapAgent_h
 
+#include "HeapSnapshot.h"
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
 #include "heap/HeapObserver.h"
@@ -35,6 +36,7 @@
 
 namespace Inspector {
 
+class InjectedScriptManager;
 typedef String ErrorString;
 
 class JS_EXPORT_PRIVATE InspectorHeapAgent final : public InspectorAgentBase, public HeapBackendDispatcherHandler, public JSC::HeapObserver {
@@ -43,23 +45,35 @@ public:
     InspectorHeapAgent(AgentContext&);
     virtual ~InspectorHeapAgent();
 
-    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(DisconnectReason) override;
+    void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(DisconnectReason) override;
 
     // HeapBackendDispatcherHandler
-    virtual void enable(ErrorString&) override;
-    virtual void disable(ErrorString&) override;
-    virtual void gc(ErrorString&) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void gc(ErrorString&) override;
+    void snapshot(ErrorString&, double* timestamp, String* snapshotData) override;
+    void startTracking(ErrorString&) override;
+    void stopTracking(ErrorString&) override;
+    void getPreview(ErrorString&, int heapObjectId, Inspector::Protocol::OptOutput<String>* resultString, RefPtr<Inspector::Protocol::Debugger::FunctionDetails>& functionDetails, RefPtr<Inspector::Protocol::Runtime::ObjectPreview>& objectPreview) override;
+    void getRemoteObject(ErrorString&, int heapObjectId, const String* optionalObjectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) override;
 
     // HeapObserver
-    virtual void willGarbageCollect() override;
-    virtual void didGarbageCollect(JSC::HeapOperation) override;
+    void willGarbageCollect() override;
+    void didGarbageCollect(JSC::HeapOperation) override;
 
 private:
+    void clearHeapSnapshots();
+
+    Optional<JSC::HeapSnapshotNode> nodeForHeapObjectIdentifier(ErrorString&, unsigned heapObjectIdentifier);
+
+    InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<HeapFrontendDispatcher> m_frontendDispatcher;
     RefPtr<HeapBackendDispatcher> m_backendDispatcher;
     InspectorEnvironment& m_environment;
+
     bool m_enabled { false };
+    bool m_tracking { false };
     double m_gcStartTime { NAN };
 };
 

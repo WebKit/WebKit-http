@@ -1232,6 +1232,17 @@ bool WebPageProxy::canShowMIMEType(const String& mimeType)
     return false;
 }
 
+void WebPageProxy::setControlledByAutomation(bool controlled)
+{
+    if (m_controlledByAutomation == controlled)
+        return;
+
+    m_controlledByAutomation = controlled;
+
+    if (isValid())
+        m_process->send(Messages::WebPage::SetControlledByAutomation(controlled), m_pageID);
+}
+
 #if ENABLE(REMOTE_INSPECTOR)
 void WebPageProxy::setAllowsRemoteInspection(bool allow)
 {
@@ -5156,6 +5167,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.userContentControllerID = m_userContentController->identifier();
     parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
     parameters.websiteDataStoreID = m_websiteDataStore->identifier();
+    parameters.mediaShouldUsePersistentCache = m_websiteDataStore->isPersistent();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
@@ -5173,6 +5185,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
         parameters.scrollbarOverlayStyle = Nullopt;
     parameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
     parameters.layerHostingMode = m_layerHostingMode;
+    parameters.controlledByAutomation = m_controlledByAutomation;
 #if ENABLE(REMOTE_INSPECTOR)
     parameters.allowsRemoteInspection = m_allowsRemoteInspection;
     parameters.remoteInspectionNameOverride = m_remoteInspectionNameOverride;
@@ -5988,13 +6001,23 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state,
     if (state == m_mediaState)
         return;
 
+    MediaProducer::MediaStateFlags playingMediaMask = MediaProducer::IsPlayingAudio | MediaProducer::IsPlayingVideo;
     MediaProducer::MediaStateFlags oldState = m_mediaState;
     m_mediaState = state;
 
-    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
-        return;
+#if PLATFORM(MAC)
+    if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
+        m_pageClient.isPlayingMediaDidChange();
+#endif
 
-    m_uiClient->isPlayingAudioDidChange(*this);
+    playingMediaMask |= MediaProducer::HasActiveMediaCaptureDevice;
+    if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
+        m_uiClient->isPlayingAudioDidChange(*this);
+}
+
+bool WebPageProxy::isPlayingVideoWithAudio() const
+{
+    return m_mediaState & MediaProducer::IsPlayingAudio && m_mediaState & MediaProducer::IsPlayingVideo;
 }
 
 #if ENABLE(MEDIA_SESSION)

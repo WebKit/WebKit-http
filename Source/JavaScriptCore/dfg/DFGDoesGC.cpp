@@ -47,6 +47,7 @@ bool doesGC(Graph& graph, Node* node)
     case JSConstant:
     case DoubleConstant:
     case Int52Constant:
+    case LazyJSConstant:
     case Identity:
     case GetCallee:
     case GetArgumentCount:
@@ -111,8 +112,11 @@ bool doesGC(Graph& graph, Node* node)
     case CheckArray:
     case GetScope:
     case SkipScope:
+    case GetGlobalObject:
     case GetClosureVar:
     case PutClosureVar:
+    case GetRegExpObjectLastIndex:
+    case SetRegExpObjectLastIndex:
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
     case PutGlobalVariable:
@@ -176,7 +180,6 @@ bool doesGC(Graph& graph, Node* node)
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
-    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case StoreBarrier:
     case InvalidationPoint:

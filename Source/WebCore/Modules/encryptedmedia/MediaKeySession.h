@@ -47,7 +47,7 @@ class MediaKeys;
 
 class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CDMSessionClient {
 public:
-    static Ref<MediaKeySession> create(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
+    static Ref<MediaKeySession> create(ScriptExecutionContext&, MediaKeys*, const String& keySystem);
     ~MediaKeySession();
 
     const String& keySystem() const { return m_keySystem; }
@@ -73,21 +73,21 @@ public:
 
     void enqueueEvent(PassRefPtr<Event>);
 
-    virtual EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
+    EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
 
     // ActiveDOMObject API.
     bool hasPendingActivity() const override;
 
 protected:
-    MediaKeySession(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
+    MediaKeySession(ScriptExecutionContext&, MediaKeys*, const String& keySystem);
     void keyRequestTimerFired();
     void addKeyTimerFired();
 
     // CDMSessionClient
-    virtual void sendMessage(Uint8Array*, String destinationURL) override;
-    virtual void sendError(MediaKeyErrorCode, uint32_t systemCode) override;
-    virtual String mediaKeysStorageDirectory() const override;
+    void sendMessage(Uint8Array*, String destinationURL) override;
+    void sendError(MediaKeyErrorCode, uint32_t systemCode) override;
+    String mediaKeysStorageDirectory() const override;
 
     MediaKeys* m_keys;
     String m_keySystem;
@@ -108,8 +108,8 @@ protected:
     Timer m_addKeyTimer;
 
 private:
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
 
     // ActiveDOMObject API.
     void stop() override;

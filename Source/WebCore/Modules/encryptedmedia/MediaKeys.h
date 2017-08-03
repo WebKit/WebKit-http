@@ -47,7 +47,7 @@ public:
     static RefPtr<MediaKeys> create(const String& keySystem, ExceptionCode&);
     virtual ~MediaKeys();
 
-    RefPtr<MediaKeySession> createSession(ScriptExecutionContext*, const String& mimeType, Uint8Array* initData, ExceptionCode&);
+    RefPtr<MediaKeySession> createSession(ScriptExecutionContext&, const String& mimeType, Uint8Array* initData, ExceptionCode&);
 
     static bool isTypeSupported(const String& keySystem, const String& mimeType);
 
@@ -62,7 +62,7 @@ public:
 
 protected:
     // CDMClient:
-    virtual MediaPlayer* cdmMediaPlayer(const CDM*) const override;
+    MediaPlayer* cdmMediaPlayer(const CDM*) const override;
 
     MediaKeys(const String& keySystem, std::unique_ptr<CDM>);
 

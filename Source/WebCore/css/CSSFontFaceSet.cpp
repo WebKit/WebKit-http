@@ -242,8 +242,6 @@ void CSSFontFaceSet::clear()
     m_facesLookupTable.clear();
     m_locallyInstalledFacesLookupTable.clear();
     m_cache.clear();
-    m_facesPartitionIndex = 0;
-    m_status = Status::Loaded;
 }
 
 CSSFontFace& CSSFontFaceSet::operator[](size_t i)
@@ -400,13 +398,13 @@ CSSSegmentedFontFace* CSSFontFaceSet::getFontFace(FontTraitsMask traitsMask, con
         return nullptr;
     auto& familyFontFaces = iterator->value;
 
-    auto& segmentedFontFaceCache = m_cache.add(family, HashMap<unsigned, std::unique_ptr<CSSSegmentedFontFace>>()).iterator->value;
+    auto& segmentedFontFaceCache = m_cache.add(family, HashMap<unsigned, RefPtr<CSSSegmentedFontFace>>()).iterator->value;
 
     auto& face = segmentedFontFaceCache.add(traitsMask, nullptr).iterator->value;
     if (face)
         return face.get();
 
-    face = std::make_unique<CSSSegmentedFontFace>();
+    face = CSSSegmentedFontFace::create();
 
     Vector<std::reference_wrapper<CSSFontFace>, 32> candidateFontFaces;
     for (int i = familyFontFaces.size() - 1; i >= 0; --i) {

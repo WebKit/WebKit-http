@@ -68,7 +68,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
 
     CallData adderFunctionCallData;
     CallType adderFunctionCallType = getCallData(adderFunction, adderFunctionCallData);
-    if (adderFunctionCallType == CallTypeNone)
+    if (adderFunctionCallType == CallType::None)
         return JSValue::encode(throwTypeError(exec));
 
     JSValue iteratorFunction = iterable.get(exec, exec->propertyNames().iteratorSymbol);
@@ -77,7 +77,7 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
 
     CallData iteratorFunctionCallData;
     CallType iteratorFunctionCallType = getCallData(iteratorFunction, iteratorFunctionCallData);
-    if (iteratorFunctionCallType == CallTypeNone)
+    if (iteratorFunctionCallType == CallType::None)
         return JSValue::encode(throwTypeError(exec));
 
     ArgList iteratorFunctionArguments;
@@ -106,13 +106,13 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
             return JSValue::encode(jsUndefined());
         }
 
-        JSValue key = nextItem.get(exec, 0);
+        JSValue key = nextItem.get(exec, static_cast<unsigned>(0));
         if (exec->hadException()) {
             iteratorClose(exec, iterator);
             return JSValue::encode(jsUndefined());
         }
 
-        JSValue value = nextItem.get(exec, 1);
+        JSValue value = nextItem.get(exec, static_cast<unsigned>(1));
         if (exec->hadException()) {
             iteratorClose(exec, iterator);
             return JSValue::encode(jsUndefined());
@@ -134,13 +134,13 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
 ConstructType WeakMapConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructWeakMap;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType WeakMapConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callWeakMap;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 }

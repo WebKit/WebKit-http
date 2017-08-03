@@ -55,6 +55,10 @@
 #import <JavaScriptCore/APICast.h>
 #import <wtf/HashMap.h>
 
+#if ENABLE(VIDEO)
+#import "DOMHTMLVideoElement.h"
+#endif
+
 #if PLATFORM(IOS)
 #import "FocusController.h"
 #import "HTMLLinkElement.h"
@@ -163,6 +167,9 @@ static void createElementClassMap()
     addElementClass(HTMLNames::titleTag, [DOMHTMLTitleElement class]);
     addElementClass(HTMLNames::trTag, [DOMHTMLTableRowElement class]);
     addElementClass(HTMLNames::ulTag, [DOMHTMLUListElement class]);
+#if ENABLE(VIDEO)
+    addElementClass(HTMLNames::videoTag, [DOMHTMLVideoElement class]);
+#endif
     addElementClass(HTMLNames::xmpTag, [DOMHTMLPreElement class]);
 }
 

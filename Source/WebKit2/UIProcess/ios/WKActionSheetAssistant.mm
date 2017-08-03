@@ -281,6 +281,8 @@ static LSAppLink *appLinkForURL(NSURL *url)
 
     NSURL *targetURL = [NSURL _web_URLWithWTFString:positionInformation.url];
     auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:positionInformation.point title:positionInformation.title rect:positionInformation.bounds image:positionInformation.image.get()]);
+    if ([delegate respondsToSelector:@selector(actionSheetAssistant:showCustomSheetForElement:)] && [delegate actionSheetAssistant:self showCustomSheetForElement:elementInfo.get()])
+        return;
     auto defaultActions = [self defaultActionsForImageSheet:elementInfo.get()];
 
     RetainPtr<NSArray> actions = [delegate actionSheetAssistant:self decideActionsForElement:elementInfo.get() defaultActions:WTFMove(defaultActions)];
@@ -395,6 +397,9 @@ static LSAppLink *appLinkForURL(NSURL *url)
         return;
 
     auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:positionInformation.point title:positionInformation.title rect:positionInformation.bounds image:positionInformation.image.get()]);
+    if ([delegate respondsToSelector:@selector(actionSheetAssistant:showCustomSheetForElement:)] && [delegate actionSheetAssistant:self showCustomSheetForElement:elementInfo.get()])
+        return;
+
     auto defaultActions = [self defaultActionsForLinkSheet:elementInfo.get()];
 
     RetainPtr<NSArray> actions = [delegate actionSheetAssistant:self decideActionsForElement:elementInfo.get() defaultActions:WTFMove(defaultActions)];
@@ -431,11 +436,22 @@ static LSAppLink *appLinkForURL(NSURL *url)
     if ([controller respondsToSelector:@selector(actionsForURL:identifier:selectedText:results:context:)]) {
         NSDictionary *context = nil;
         NSString *textAtSelection = nil;
+        RetainPtr<NSMutableDictionary> extendedContext;
 
         if ([delegate respondsToSelector:@selector(dataDetectionContextForActionSheetAssistant:)])
             context = [delegate dataDetectionContextForActionSheetAssistant:self];
         if ([delegate respondsToSelector:@selector(selectedTextForActionSheetAssistant:)])
             textAtSelection = [delegate selectedTextForActionSheetAssistant:self];
+        if (!positionInformation.textBefore.isEmpty() || !positionInformation.textAfter.isEmpty()) {
+            extendedContext = adoptNS([@{
+                getkDataDetectorsLeadingText() : positionInformation.textBefore,
+                getkDataDetectorsTrailingText() : positionInformation.textAfter,
+            } mutableCopy]);
+            
+            if (context)
+                [extendedContext addEntriesFromDictionary:context];
+            context = extendedContext.get();
+        }
         dataDetectorsActions = [controller actionsForURL:targetURL identifier:positionInformation.dataDetectorIdentifier selectedText:textAtSelection results:positionInformation.dataDetectorResults.get() context:context];
     } else
         dataDetectorsActions = [controller actionsForAnchor:nil url:targetURL forFrame:nil];

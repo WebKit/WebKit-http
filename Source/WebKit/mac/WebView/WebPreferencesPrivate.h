@@ -248,11 +248,19 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)hyperlinkAuditingEnabled;
 - (void)setHyperlinkAuditingEnabled:(BOOL)enabled;
 
+// Deprecated. Use -setVideoPlaybackRequiresUserGesture and -setAudioPlaybackRequiresUserGesture instead.
 - (void)setMediaPlaybackRequiresUserGesture:(BOOL)flag;
+// Deprecated. Use -videoPlaybackRequiresUserGesture and -audioPlaybackRequiresUserGesture instead.
 - (BOOL)mediaPlaybackRequiresUserGesture;
+
+- (void)setVideoPlaybackRequiresUserGesture:(BOOL)flag;
+- (BOOL)videoPlaybackRequiresUserGesture;
 
 - (void)setAudioPlaybackRequiresUserGesture:(BOOL)flag;
 - (BOOL)audioPlaybackRequiresUserGesture;
+
+- (void)setOverrideUserGestureRequirementForMainContent:(BOOL)flag;
+- (BOOL)overrideUserGestureRequirementForMainContent;
 
 - (void)setMediaPlaybackAllowsInline:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsInline;
@@ -466,6 +474,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
+
+- (void)setShadowDOMEnabled:(BOOL)flag;
+- (BOOL)shadowDOMEnabled;
+
+- (void)setCustomElementsEnabled:(BOOL)flag;
+- (BOOL)customElementsEnabled;
 
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;

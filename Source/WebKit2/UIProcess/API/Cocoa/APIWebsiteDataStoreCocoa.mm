@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 #include "SandboxUtilities.h"
 
 #if PLATFORM(IOS)
-#import <WebCore/RuntimeApplicationChecksIOS.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #endif
 
 namespace API {
@@ -42,7 +42,7 @@ String WebsiteDataStore::defaultApplicationCacheDirectory()
     // Preserving it avoids the need to migrate data when upgrading.
     // FIXME: Ideally we should just have Safari and WebApp create a data store with
     // this application cache path, but that's not supported as of right now.
-    if (WebCore::applicationIsMobileSafari() || WebCore::applicationIsWebApp()) {
+    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp()) {
         NSString *cachePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.apple.WebAppCache"];
 
         return WebKit::stringByResolvingSymlinksInPath(cachePath.stringByStandardizingPath);
@@ -75,6 +75,11 @@ String WebsiteDataStore::defaultMediaKeysStorageDirectory()
 String WebsiteDataStore::defaultWebSQLDatabaseDirectory()
 {
     return websiteDataDirectoryFileSystemRepresentation("WebSQL");
+}
+
+String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
+{
+    return websiteDataDirectoryFileSystemRepresentation("ResourceLoadStatistics");
 }
 
 String WebsiteDataStore::cacheDirectoryFileSystemRepresentation(const String& directoryName)
@@ -143,6 +148,7 @@ WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfig
     configuration.webSQLDatabaseDirectory = defaultWebSQLDatabaseDirectory();
     configuration.localStorageDirectory = defaultLocalStorageDirectory();
     configuration.mediaKeysStorageDirectory = defaultMediaKeysStorageDirectory();
+    configuration.resourceLoadStatisticsDirectory = defaultResourceLoadStatisticsDirectory();
 
     return configuration;
 }

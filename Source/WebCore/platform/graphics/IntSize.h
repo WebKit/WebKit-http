@@ -125,6 +125,8 @@ public:
             m_height = minimumSize.height();
     }
 
+    IntSize constrainedBetween(const IntSize& min, const IntSize& max) const;
+
     int area() const
     {
         return m_width * m_height;

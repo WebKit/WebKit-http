@@ -1,3 +1,169 @@
+2016-03-10  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Rename SmallPage to SmallRun
+        https://bugs.webkit.org/show_bug.cgi?id=155320
+
+        Reviewed by Alex Christensen.
+
+        A page is a fixed-size set of lines.
+
+        A run is an variable-sized set of lines.
+
+        We want to start using runs because:
+
+            (a) we want to support varying the hardware page size by OS;
+
+            (b) we want to support allocations larger than our current page size.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::initializeSmallRunMetadata):
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::scavengeSmallRuns):
+        (bmalloc::Heap::allocateSmallBumpRanges):
+        (bmalloc::Heap::allocateSmallRun):
+        (bmalloc::Heap::deallocateSmallLine):
+        (bmalloc::Heap::initializeLineMetadata): Deleted.
+        (bmalloc::Heap::scavengeSmallPages): Deleted.
+        (bmalloc::Heap::allocateSmallPage): Deleted.
+        * bmalloc/Heap.h:
+        * bmalloc/LineMetadata.h:
+        * bmalloc/SmallChunk.h:
+        (bmalloc::SmallChunk::begin):
+        (bmalloc::SmallChunk::end):
+        (bmalloc::SmallChunk::lines):
+        (bmalloc::SmallChunk::runs):
+        (bmalloc::SmallChunk::SmallChunk):
+        (bmalloc::SmallLine::end):
+        (bmalloc::SmallRun::get):
+        (bmalloc::SmallRun::begin):
+        (bmalloc::SmallRun::end):
+        (bmalloc::SmallChunk::pages): Deleted.
+        (bmalloc::SmallPage::get): Deleted.
+        (bmalloc::SmallPage::begin): Deleted.
+        (bmalloc::SmallPage::end): Deleted.
+        * bmalloc/SmallPage.h: Removed.
+        * bmalloc/SmallRun.h: Copied from Source/bmalloc/bmalloc/SmallPage.h.
+        (bmalloc::SmallRun::SmallRun):
+        (bmalloc::SmallRun::ref):
+        (bmalloc::SmallRun::deref):
+        (bmalloc::SmallPage::SmallPage): Deleted.
+        (bmalloc::SmallPage::ref): Deleted.
+        (bmalloc::SmallPage::deref): Deleted.
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk):
+        (bmalloc::VMHeap::allocateLargeChunk):
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallRun):
+        (bmalloc::VMHeap::allocateLargeObject):
+        (bmalloc::VMHeap::deallocateSmallRun):
+        (bmalloc::VMHeap::deallocateLargeObject):
+        (bmalloc::VMHeap::allocateSmallPage): Deleted.
+        (bmalloc::VMHeap::deallocateSmallPage): Deleted.
+
+2016-03-08  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling in r197722.
+        https://bugs.webkit.org/show_bug.cgi?id=155171
+
+        The right calculation for our static_assert is actually:
+
+            sizeof(SmallChunk) % vmPageSize + 2 * smallMax <= vmPageSize
+
+        instead of:
+
+            sizeof(SmallChunk) % vmPageSize + smallMax <= vmPageSize
+
+        smallMax is not enough because line metadata might require us to begin
+        allocation at an offset as large as smallMax, so we need 2 * smallMax.
+
+        Once correct, this static_assert fires, and we fix it by increasing
+        the alignment of SmallChunk.
+
+        Restored changeset:
+
+        "bmalloc: Use List<T> instead of Vector<T> in some places"
+        https://bugs.webkit.org/show_bug.cgi?id=155150
+        http://trac.webkit.org/changeset/197722
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197722.
+        https://bugs.webkit.org/show_bug.cgi?id=155171
+
+        This change caused 800+ JSC test failures (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "bmalloc: Use List<T> instead of Vector<T> in some places"
+        https://bugs.webkit.org/show_bug.cgi?id=155150
+        http://trac.webkit.org/changeset/197722
+
+2016-03-07  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Use List<T> instead of Vector<T> in some places
+        https://bugs.webkit.org/show_bug.cgi?id=155150
+
+        Reviewed by Andreas Kling.
+
+        Vector<T> is expensive when you want a lot of them because our minimum
+        allocation size is the system page size.
+
+        * bmalloc.xcodeproj/project.pbxproj: Added a List<T> class.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::scavengeSmallPages):
+        (bmalloc::Heap::allocateSmallPage): Use the List<T> API. No need to check
+        for stale entries anymore because List<T> supports O(1) eager removal
+        and we remove eagerly now.
+
+        (bmalloc::Heap::deallocateSmallLine): Remove eagerly. This simplifies
+        the allocation code and it is also required for correctness since we
+        only have enough metadata to be in one list at a time.
+
+        * bmalloc/Heap.h: List!
+
+        * bmalloc/SmallChunk.h: Made this assert a little more precise since this
+        patch triggered the old version in a benign way.
+
+        (bmalloc::SmallChunk::SmallChunk): This code moved to the SmallPage
+        constructor.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::SmallPage): Accomodate the List<T> data structure.
+        This is a net memory savings on Mac for heaps smaller than ~128MB and on
+        iOS for heaps smaller than ~512MB. The maximum memory saved is 512kB on
+        Mac and 2MB on iOS. For larger heaps, there's a memory cost of 0.4% on
+        Mac and 0.1% on iOS.
+
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage): Use List<T> API.
+
+2016-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling in r197174.
+        https://bugs.webkit.org/show_bug.cgi?id=154762
+
+        The right calculation for alignment is actually:
+
+            vmAlignment - getpagesize() + vmSize
+
+        instead of:
+
+            vmAlignment - vmPageSize + vmSize
+
+        The vmPageSize might be larger than getpagesize().
+
+        Restored changeset:
+
+        "bmalloc: Added a fast XLarge allocator"
+        https://bugs.webkit.org/show_bug.cgi?id=154720
+        http://trac.webkit.org/changeset/197174
+
 2016-02-26  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r197174.

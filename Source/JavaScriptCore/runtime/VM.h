@@ -87,6 +87,7 @@ class Exception;
 class HandleStack;
 class TypeProfiler;
 class TypeProfilerLog;
+class HeapProfiler;
 class Identifier;
 class Interpreter;
 class JSBoundSlotBaseFunction;
@@ -249,6 +250,9 @@ public:
     JS_EXPORT_PRIVATE Watchdog& ensureWatchdog();
     JS_EXPORT_PRIVATE Watchdog* watchdog() { return m_watchdog.get(); }
 
+    JS_EXPORT_PRIVATE HeapProfiler* heapProfiler() const { return m_heapProfiler.get(); }
+    JS_EXPORT_PRIVATE HeapProfiler& ensureHeapProfiler();
+
 #if ENABLE(SAMPLING_PROFILER)
     JS_EXPORT_PRIVATE SamplingProfiler* samplingProfiler() { return m_samplingProfiler.get(); }
     JS_EXPORT_PRIVATE void ensureSamplingProfiler(RefPtr<Stopwatch>&&);
@@ -280,7 +284,6 @@ public:
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
     Strong<Structure> stringStructure;
-    Strong<Structure> notAnObjectStructure;
     Strong<Structure> propertyNameIteratorStructure;
     Strong<Structure> propertyNameEnumeratorStructure;
     Strong<Structure> getterSetterStructure;
@@ -575,6 +578,7 @@ public:
 
     JS_EXPORT_PRIVATE void deleteAllCode();
     JS_EXPORT_PRIVATE void deleteAllLinkedCode();
+    JS_EXPORT_PRIVATE void deleteAllRegExpCode();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
     
@@ -672,6 +676,7 @@ private:
     Deque<std::unique_ptr<QueuedTask>> m_microtaskQueue;
     MallocPtr<EncodedJSValue> m_exceptionFuzzBuffer;
     RefPtr<Watchdog> m_watchdog;
+    std::unique_ptr<HeapProfiler> m_heapProfiler;
 #if ENABLE(SAMPLING_PROFILER)
     RefPtr<SamplingProfiler> m_samplingProfiler;
 #endif

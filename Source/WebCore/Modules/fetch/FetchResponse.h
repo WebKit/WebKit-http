@@ -31,7 +31,7 @@
 
 #if ENABLE(FETCH_API)
 
-#include "FetchBody.h"
+#include "FetchBodyOwner.h"
 #include "FetchHeaders.h"
 #include "ResourceResponse.h"
 
@@ -45,13 +45,13 @@ class Dictionary;
 
 typedef int ExceptionCode;
 
-class FetchResponse : public RefCounted<FetchResponse> {
+class FetchResponse final : public FetchBodyOwner {
 public:
-    static Ref<FetchResponse> create() { return adoptRef(*new FetchResponse(Type::Default, { }, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
-    static Ref<FetchResponse> error();
-    static RefPtr<FetchResponse> redirect(ScriptExecutionContext*, const String&, int, ExceptionCode&);
+    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, Type::Default, { }, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
+    static Ref<FetchResponse> error(ScriptExecutionContext&);
+    static RefPtr<FetchResponse> redirect(ScriptExecutionContext&, const String&, int, ExceptionCode&);
     // FIXME: Binding generator should not require below method to handle optional status parameter.
-    static RefPtr<FetchResponse> redirect(ScriptExecutionContext* context, const String& url, ExceptionCode& ec) { return redirect(context, url, 302, ec); }
+    static RefPtr<FetchResponse> redirect(ScriptExecutionContext& context, const String& url, ExceptionCode& ec) { return redirect(context, url, 302, ec); }
 
     void initializeWith(const Dictionary&, ExceptionCode&);
 
@@ -63,24 +63,19 @@ public:
     const String& statusText() const { return m_response.httpStatusText(); }
 
     FetchHeaders& headers() { return m_headers; }
-    RefPtr<FetchResponse> clone(ExceptionCode&);
-
-    // Body API
-    bool isDisturbed() const { return m_body.isDisturbed(); }
-    void arrayBuffer(FetchBody::ArrayBufferPromise&& promise) { m_body.arrayBuffer(WTFMove(promise)); }
-    void formData(FetchBody::FormDataPromise&& promise) { m_body.formData(WTFMove(promise)); }
-    void blob(FetchBody::BlobPromise&& promise) { m_body.blob(WTFMove(promise)); }
-    void json(JSC::ExecState& state, FetchBody::JSONPromise&& promise) { m_body.json(state, WTFMove(promise)); }
-    void text(FetchBody::TextPromise&& promise) { m_body.text(WTFMove(promise)); }
+    RefPtr<FetchResponse> clone(ScriptExecutionContext&, ExceptionCode&);
 
 private:
     enum class Type { Basic, Cors, Default, Error, Opaque, OpaqueRedirect };
 
-    FetchResponse(Type, FetchBody&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+    FetchResponse(ScriptExecutionContext&, Type, FetchBody&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+
+    // ActiveDOMObject API
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
 
     Type m_type;
     ResourceResponse m_response;
-    FetchBody m_body;
     Ref<FetchHeaders> m_headers;
     bool m_isLocked = false;
     bool m_isRedirected = false;

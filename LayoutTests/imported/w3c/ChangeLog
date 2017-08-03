@@ -1,3 +1,208 @@
+2016-03-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Use DeferredWrapper directly in FetchBody promise handling
+        https://bugs.webkit.org/show_bug.cgi?id=155291
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/request/request-consume-empty-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-consume-empty.html: Added.
+        * web-platform-tests/fetch/api/response/response-consume-empty-expected.txt: Added.
+        * web-platform-tests/fetch/api/response/response-consume-empty.html: Added.
+
+2016-03-09  Chris Dumez  <cdumez@apple.com>
+
+        focus() / blur() should be on HTMLElement / SVGElement, not Element
+        https://bugs.webkit.org/show_bug.cgi?id=155216
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-03-09  Chris Dumez  <cdumez@apple.com>
+
+        Move attributes to the instance for most interfaces that have "Error" in their name
+        https://bugs.webkit.org/show_bug.cgi?id=155231
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-03-09  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLKeygenElement.keytype with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=155214
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-03-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Implement fetch skeleton
+        https://bugs.webkit.org/show_bug.cgi?id=155111
+
+        Reviewed by Darin Adler.
+
+        Importing basic fetch api tests.
+
+        * resources/ImportExpectations: Activating fetch/api/basic import.
+        * web-platform-tests/fetch/api/basic/accept-header-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/accept-header-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/accept-header-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/accept-header.html: Added.
+        * web-platform-tests/fetch/api/basic/accept-header.js: Added.
+        (promise_test):
+        * web-platform-tests/fetch/api/basic/integrity-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/integrity-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/integrity-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/integrity.html: Added.
+        * web-platform-tests/fetch/api/basic/integrity.js: Added.
+        (integrity):
+        * web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/mode-no-cors-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/mode-no-cors.html: Added.
+        * web-platform-tests/fetch/api/basic/mode-no-cors.js: Added.
+        (fetchNoCors):
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/mode-same-origin.html: Added.
+        * web-platform-tests/fetch/api/basic/mode-same-origin.js: Added.
+        (fetchSameOrigin):
+        * web-platform-tests/fetch/api/basic/request-forbidden-headers-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-forbidden-headers-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-forbidden-headers-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/request-forbidden-headers.html: Added.
+        * web-platform-tests/fetch/api/basic/request-forbidden-headers.js: Added.
+        (requestForbiddenHeaders):
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-headers-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/request-headers.html: Added.
+        * web-platform-tests/fetch/api/basic/request-headers.js: Added.
+        (requestHeaders):
+        * web-platform-tests/fetch/api/basic/scheme-about-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-about-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-about-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-about.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-about.js: Added.
+        (checkFetchResponse):
+        (checkKoUrl):
+        * web-platform-tests/fetch/api/basic/scheme-blob-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-blob-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-blob-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-blob.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-blob.js: Added.
+        (checkFetchResponse):
+        (checkKoUrl):
+        * web-platform-tests/fetch/api/basic/scheme-data-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-data-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-data-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-data.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-data.js: Added.
+        (checkFetchResponse):
+        (checkKoUrl):
+        * web-platform-tests/fetch/api/basic/scheme-others-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-others-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/scheme-others-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-others.html: Added.
+        * web-platform-tests/fetch/api/basic/scheme-others.js: Added.
+        (checkKoUrl):
+        * web-platform-tests/fetch/api/basic/stream-response-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/stream-response-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/stream-response-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/stream-response.html: Added.
+        * web-platform-tests/fetch/api/basic/stream-response.js: Added.
+        (streamBody):
+        (promise_test.):
+        (promise_test):
+        * web-platform-tests/fetch/api/basic/w3c-import.log: Added.
+
+2016-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLCanvasElement.width / height with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=155156
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Stop clamping HTMLElement.tabIndex to the range of a short
+        https://bugs.webkit.org/show_bug.cgi?id=155159
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/dom/reflection-grouping-expected.txt:
+        * web-platform-tests/html/dom/reflection-metadata-expected.txt:
+        * web-platform-tests/html/dom/reflection-misc-expected.txt:
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+        * web-platform-tests/html/dom/reflection-sections-expected.txt:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+        * web-platform-tests/html/dom/reflection-text-expected.txt:
+
+2016-03-05  Sam Weinig  <sam@webkit.org>
+
+        Update tests to match the latest version of the HTML5 spec.
+
+        * web-platform-tests/html/semantics/forms/the-form-element/form-autocomplete.html:
+        Fields that don't have any value set for their autocomplete attribute should return the the empty string.
+
+2016-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTML parser instantiates a custom element inside a template element with a wrong owner document
+        https://bugs.webkit.org/show_bug.cgi?id=154936
+
+        Reviewed by Chris Dumez.
+
+        Updated the expected results for newly passing test cases.
+
+        One test case in additions-to-parsing-xhtml-documents/node-document.html starts failing due to a bug in the test.
+        The bug in the test will be fixed in https://github.com/w3c/web-platform-tests/pull/2651
+
+        Finally, remove duplicated HTML template element tests in html-templates since there is a new copy under
+        web-platform-tests/html/semantics/scripting-1/the-template-element/. Unfortunately, we can't remove
+        html-templates/parsing-html-templates/ because we haven't imported web-platform-tests/html/syntax yet.
+
+        * html-templates/additions-to-parsing-xhtml-documents: Removed.
+        * html-templates/additions-to-serializing-xhtml-documents: Removed.
+        * html-templates/additions-to-the-css-user-agent-style-sheet: Removed.
+        * html-templates/additions-to-the-steps-to-clone-a-node: Removed.
+        * html-templates/definitions: Removed.
+        * html-templates/innerhtml-on-templates: Removed.
+        * html-templates/serializing-html-templates: Removed.
+        * html-templates/template-element: Removed.
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/node-document.html:
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/definitions/template-contents-owner-test-001-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/template-element/node-document-changes-expected.txt:
+
+2016-03-02  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLInputElement.maxLength with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154906
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/maxlength-expected.txt:
+
 2016-03-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Fetch API] Support Request and Response blob() when body data is a blob

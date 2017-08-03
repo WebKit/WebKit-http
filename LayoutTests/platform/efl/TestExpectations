@@ -2824,8 +2824,9 @@ webkit.org/b/148470 svg/text/selection-doubleclick.svg [ Failure ]
 # Mocking the system language is not implemented in EFL.
 fast/text/international/system-language [ Failure ]
 fast/text/international/system-language/system-font-punctuation.html [ Missing ]
-# This test relies on iOS-specific font fallback.
+# These tests rely on iOS-specific font fallback.
 fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
@@ -2956,3 +2957,7 @@ webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gest
 webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag.html [ Crash ]
 
 webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+
+# RTL Scrollbars are only implemented on OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]

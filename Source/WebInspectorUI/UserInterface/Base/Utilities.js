@@ -24,6 +24,7 @@
  */
 
 var emDash = "\u2014";
+var enDash = "\u2013";
 var ellipsis = "\u2026";
 
 Object.defineProperty(Object, "shallowCopy",
@@ -90,6 +91,17 @@ Object.defineProperty(Object.prototype, "valueForCaseInsensitiveKey",
         }
 
         return undefined;
+    }
+});
+
+Object.defineProperty(Map, "fromObject",
+{
+    value: function(object)
+    {
+        let map = new Map;
+        for (let key in object)
+            map.set(key, object[key]);
+        return map;
     }
 });
 
@@ -871,6 +883,27 @@ Object.defineProperty(Number, "constrain",
         else if (num > max)
             num = max;
         return num;
+    }
+});
+
+Object.defineProperty(Number, "percentageString",
+{
+    value: function(percent, precision = 1)
+    {
+        console.assert(percent >= 0 && percent <= 100);
+        return percent.toFixed(precision) + "%";
+    }
+});
+
+Object.defineProperty(Number, "secondsToMillisecondsString",
+{
+    value: function(seconds, higherResolution)
+    {
+        let ms = seconds * 1000;
+
+        if (higherResolution)
+            return WebInspector.UIString("%.2fms").format(ms);
+        return WebInspector.UIString("%.1fms").format(ms);
     }
 });
 

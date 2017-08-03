@@ -77,11 +77,12 @@ static void invalidateAfterGenericFamilyChange(Page* page)
 
 #if USE(AVFOUNDATION)
 bool Settings::gAVFoundationEnabled = true;
-bool Settings::gAVFoundationNSURLSessionEnabled = false;
+bool Settings::gAVFoundationNSURLSessionEnabled = true;
 #endif
 
 #if PLATFORM(COCOA)
 bool Settings::gQTKitEnabled = false;
+bool Settings::gCookieStoragePartitioningEnabled = false;
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -137,7 +138,7 @@ static const bool defaultFixedBackgroundsPaintRelativeToDocument = true;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = true;
 static const bool defaultAllowsInlineMediaPlayback = false;
 static const bool defaultInlineMediaPlaybackRequiresPlaysInlineAttribute = true;
-static const bool defaultRequiresUserGestureForMediaPlayback = true;
+static const bool defaultVideoPlaybackRequiresUserGesture = true;
 static const bool defaultAudioPlaybackRequiresUserGesture = true;
 static const bool defaultMediaDataLoadsAutomatically = false;
 static const bool defaultShouldRespectImageOrientation = true;
@@ -150,7 +151,7 @@ static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = false;
 static const bool defaultAllowsInlineMediaPlayback = true;
 static const bool defaultInlineMediaPlaybackRequiresPlaysInlineAttribute = false;
-static const bool defaultRequiresUserGestureForMediaPlayback = false;
+static const bool defaultVideoPlaybackRequiresUserGesture = false;
 static const bool defaultAudioPlaybackRequiresUserGesture = false;
 static const bool defaultMediaDataLoadsAutomatically = true;
 static const bool defaultShouldRespectImageOrientation = false;
@@ -463,9 +464,9 @@ void Settings::setNeedsAdobeFrameReloadingQuirk(bool shouldNotReloadIFramesForUn
     m_needsAdobeFrameReloadingQuirk = shouldNotReloadIFramesForUnchangedSRC;
 }
 
-void Settings::setMinimumDOMTimerInterval(double interval)
+void Settings::setMinimumDOMTimerInterval(std::chrono::milliseconds interval)
 {
-    double oldTimerInterval = m_minimumDOMTimerInterval;
+    auto oldTimerInterval = m_minimumDOMTimerInterval;
     m_minimumDOMTimerInterval = interval;
 
     if (!m_page)
@@ -597,6 +598,11 @@ void Settings::setQTKitEnabled(bool enabled)
 
     gQTKitEnabled = enabled;
     HTMLMediaElement::resetMediaEngines();
+}
+    
+void Settings::setCookieStoragePartitioningEnabled(bool enabled)
+{
+    gCookieStoragePartitioningEnabled = enabled;
 }
 #endif
 

@@ -156,7 +156,7 @@ public:
     }
         
 protected:
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     JS_EXPORT_PRIVATE static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -340,6 +340,13 @@ inline JSArray* constructArrayNegativeIndexed(ExecState* exec, Structure* arrayS
     for (int i = 0; i < static_cast<int>(length); ++i)
         array->initializeIndex(vm, i, values[-i]);
     return array;
+}
+
+ALWAYS_INLINE unsigned getLength(ExecState* exec, JSObject* obj)
+{
+    if (isJSArray(obj))
+        return jsCast<JSArray*>(obj)->length();
+    return obj->get(exec, exec->propertyNames().length).toUInt32(exec);
 }
 
 } // namespace JSC

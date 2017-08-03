@@ -30,20 +30,36 @@
     right: 0;
 }
 
-.content-view.timeline-recording > .content-view-container {
+.content-view.timeline-recording > .content-browser {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     overflow: hidden;
+
+    border-top: 1px solid var(--border-color);
 }
 
-.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid td {
+.content-view.timeline-recording > .content-browser > .navigation-bar {
+    background-color: var(--panel-background-color);
+    border-bottom: none;
+}
+
+.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple {
+    background-color: transparent;
+    color: black;
+}
+
+.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple .arrows {
+    color: black;
+}
+
+.content-view.timeline-recording > .content-browser > .content-view-container > .timeline-view > .data-grid td {
     height: 16px;
     line-height: 16px;
 }
 
-.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid table.data {
+.content-view.timeline-recording > .content-browser > .content-view-container > .timeline-view > .data-grid table.data {
     background-image: linear-gradient(to bottom, white, white 50%, hsl(0, 0%, 95%) 50%, hsl(0, 0%, 95%));
     background-size: 100% 40px;
 }

@@ -556,7 +556,7 @@ public:
     WebCore::IntRect rectForElementAtInteractionLocation();
     void updateSelectionAppearance();
     void getLookupContextAtPoint(const WebCore::IntPoint, uint64_t callbackID);
-
+    void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t callbackID);
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
 #endif
@@ -574,6 +574,8 @@ public:
 
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
+    
+    void updateForceAlwaysUserScalable();
 #endif
 
     void setLayerTreeStateIsFrozen(bool);
@@ -929,12 +931,23 @@ public:
 
     void didRestoreScrollPosition();
 
+    bool mediaShouldUsePersistentCache() const { return m_mediaShouldUsePersistentCache; }
+
+    bool isControlledByAutomation() const;
+    void setControlledByAutomation(bool);
+
+    void insertNewlineInQuotedContent();
+
+#if USE(OS_STATE)
+    std::chrono::system_clock::time_point loadCommitTime() const { return m_loadCommitTime; }
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
     // IPC::MessageSender
-    virtual IPC::Connection* messageSenderConnection() override;
-    virtual uint64_t messageSenderDestinationID() override;
+    IPC::Connection* messageSenderConnection() override;
+    uint64_t messageSenderDestinationID() override;
 
     void platformInitialize();
     void platformDetach();
@@ -1386,6 +1399,7 @@ private:
     bool m_hasPendingBlurNotification;
     bool m_useTestingViewportConfiguration;
     bool m_isInStableState;
+    bool m_forceAlwaysUserScalable { false };
     std::chrono::milliseconds m_oldestNonStableUpdateVisibleContentRectsTimestamp;
     std::chrono::milliseconds m_estimatedLatency;
     WebCore::FloatSize m_screenSize;
@@ -1437,6 +1451,12 @@ private:
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     RefPtr<WebCore::MediaPlayerRequestInstallMissingPluginsCallback> m_installMediaPluginsCallback;
 #endif
+
+#if USE(OS_STATE)
+    std::chrono::system_clock::time_point m_loadCommitTime;
+#endif
+
+    bool m_mediaShouldUsePersistentCache;
 };
 
 } // namespace WebKit

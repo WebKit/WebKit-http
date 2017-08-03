@@ -78,9 +78,13 @@ public:
 
     static RefPtr<CSSValue> parseString(const String&, CSSPropertyID);
 
-    virtual void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) override;
+    void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) override;
 
     WeakPtr<FontFace> createWeakPtr() const;
+
+    // CSSFontFace::Client needs to be able to be held in a RefPtr.
+    void ref() override { RefCounted<FontFace>::ref(); }
+    void deref() override { RefCounted<FontFace>::deref(); }
 
 private:
     FontFace(JSC::ExecState&, CSSFontSelector&);

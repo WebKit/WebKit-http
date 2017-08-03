@@ -178,6 +178,7 @@ fast/mediastream/RTCPeerConnection-stats.html
 fast/mediastream/RTCPeerConnection-statsSelector.html
 fast/mediastream/RTCPeerConnection-stable.html
 fast/mediastream/RTCPeerConnection.html
+fast/mediastream/RTCPeerConnection-inspect-offer.html
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -1201,8 +1202,9 @@ webkit.org/b/147763 [ Yosemite ] accessibility/mac/loaded-notification.html [ Sk
 webkit.org/b/147390 [ Yosemite ElCapitan ] fast/text/fallback-language-han.html [ ImageOnlyFailure ]
 webkit.org/b/147390 [ Yosemite ElCapitan ] fast/text/fallback-language-han-2.html [ ImageOnlyFailure ]
 
-# This test relies on iOS-specific font fallback.
+# These tests rely on iOS-specific font fallback.
 [ Yosemite ElCapitan ] fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ Pass ImageOnlyFailure ]
+[ Yosemite ElCapitan ] fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
 
 # Started to fail after r188390
 webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
@@ -1296,6 +1298,7 @@ webkit.org/b/152009 [ Debug ElCapitan ] fast/canvas/canvas-too-large-to-draw.htm
 # Yosemite and El Capitan do not support font feature coverage queries.
 [ Yosemite ElCapitan ] css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 [ Yosemite ElCapitan ] css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+[ Yosemite ElCapitan ] fast/text/all-small-caps-whitespace.html [ ImageOnlyFailure ]
 
 # Temporarily disable font feature synthesis tests.
 [ Yosemite ElCapitan ] css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
@@ -1328,3 +1331,11 @@ webkit.org/b/154748 storage/indexeddb/deletedatabase-delayed-by-open-and-version
 webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass Timeout ]
 
 webkit.org/b/154709 [ ElCapitan+ ] fast/text/crash-complex-text-surrogate.html [ Pass Failure ]
+
+webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
+
+webkit.org/b/155140 js/promises-tests/promises-tests-2-3-3.html [ Pass Failure ]
+
+# RTL Scrollbars are only implemented on certain OSes.
+[ Yosemite ElCapitan ] fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+[ Yosemite ElCapitan ] fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]

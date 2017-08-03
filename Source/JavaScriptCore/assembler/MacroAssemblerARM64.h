@@ -31,6 +31,7 @@
 #include "ARM64Assembler.h"
 #include "AbstractMacroAssembler.h"
 #include <wtf/MathExtras.h>
+#include <wtf/Optional.h>
 
 namespace JSC {
 
@@ -487,6 +488,36 @@ public:
         m_assembler.mul<64>(dest, left, right);
     }
 
+    void multiplyAdd32(RegisterID mulLeft, RegisterID mulRight, RegisterID summand, RegisterID dest)
+    {
+        m_assembler.madd<32>(dest, mulLeft, mulRight, summand);
+    }
+
+    void multiplySub32(RegisterID mulLeft, RegisterID mulRight, RegisterID minuend, RegisterID dest)
+    {
+        m_assembler.msub<32>(dest, mulLeft, mulRight, minuend);
+    }
+
+    void multiplyNeg32(RegisterID mulLeft, RegisterID mulRight, RegisterID dest)
+    {
+        m_assembler.msub<32>(dest, mulLeft, mulRight, ARM64Registers::zr);
+    }
+
+    void multiplyAdd64(RegisterID mulLeft, RegisterID mulRight, RegisterID summand, RegisterID dest)
+    {
+        m_assembler.madd<64>(dest, mulLeft, mulRight, summand);
+    }
+
+    void multiplySub64(RegisterID mulLeft, RegisterID mulRight, RegisterID minuend, RegisterID dest)
+    {
+        m_assembler.msub<64>(dest, mulLeft, mulRight, minuend);
+    }
+
+    void multiplyNeg64(RegisterID mulLeft, RegisterID mulRight, RegisterID dest)
+    {
+        m_assembler.msub<64>(dest, mulLeft, mulRight, ARM64Registers::zr);
+    }
+
     void div32(RegisterID dividend, RegisterID divisor, RegisterID dest)
     {
         m_assembler.sdiv<32>(dest, dividend, divisor);
@@ -730,6 +761,11 @@ public:
     {
         m_assembler.sub<64>(dest, dest, src);
     }
+
+    void sub64(RegisterID a, RegisterID b, RegisterID dest)
+    {
+        m_assembler.sub<64>(dest, a, b);
+    }
     
     void sub64(TrustedImm32 imm, RegisterID dest)
     {
@@ -929,6 +965,11 @@ public:
         load<64>(address, dest);
     }
 
+    void load64(RegisterID src, PostIndex simm, RegisterID dest)
+    {
+        m_assembler.ldr<64>(dest, src, simm);
+    }
+
     DataLabel32 load64WithAddressOffsetPatch(Address address, RegisterID dest)
     {
         DataLabel32 label(this);
@@ -943,6 +984,26 @@ public:
         DataLabelCompact label(this);
         m_assembler.ldr<64>(dest, address.base, address.offset);
         return label;
+    }
+
+    void loadPair64(RegisterID src, RegisterID dest1, RegisterID dest2)
+    {
+        loadPair64(src, TrustedImm32(0), dest1, dest2);
+    }
+
+    void loadPair64(RegisterID src, TrustedImm32 offset, RegisterID dest1, RegisterID dest2)
+    {
+        m_assembler.ldp<64>(dest1, dest2, src, offset.m_value);
+    }
+
+    void loadPair64WithNonTemporalAccess(RegisterID src, RegisterID dest1, RegisterID dest2)
+    {
+        loadPair64WithNonTemporalAccess(src, TrustedImm32(0), dest1, dest2);
+    }
+
+    void loadPair64WithNonTemporalAccess(RegisterID src, TrustedImm32 offset, RegisterID dest1, RegisterID dest2)
+    {
+        m_assembler.ldnp<64>(dest1, dest2, src, offset.m_value);
     }
 
     void abortWithReason(AbortReason reason)
@@ -1098,6 +1159,11 @@ public:
             cachedMemoryTempRegister().invalidate();
     }
 
+    void load8(RegisterID src, PostIndex simm, RegisterID dest)
+    {
+        m_assembler.ldrb(dest, src, simm);
+    }
+
     void load8SignedExtendTo32(ImplicitAddress address, RegisterID dest)
     {
         if (tryLoadSignedWithOffset<8>(dest, address.base, address.offset))
@@ -1181,6 +1247,11 @@ public:
         moveToCachedReg(imm, dataMemoryTempRegister());
         store64(dataTempRegister, address);
     }
+
+    void store64(RegisterID src, RegisterID dest, PostIndex simm)
+    {
+        m_assembler.str<64>(src, dest, simm);
+    }
     
     DataLabel32 store64WithAddressOffsetPatch(RegisterID src, Address address)
     {
@@ -1188,6 +1259,26 @@ public:
         signExtend32ToPtrWithFixedWidth(address.offset, getCachedMemoryTempRegisterIDAndInvalidate());
         m_assembler.str<64>(src, address.base, memoryTempRegister, ARM64Assembler::SXTW, 0);
         return label;
+    }
+
+    void storePair64(RegisterID src1, RegisterID src2, RegisterID dest)
+    {
+        storePair64(src1, src2, dest, TrustedImm32(0));
+    }
+
+    void storePair64(RegisterID src1, RegisterID src2, RegisterID dest, TrustedImm32 offset)
+    {
+        m_assembler.stp<64>(src1, src2, dest, offset.m_value);
+    }
+
+    void storePair64WithNonTemporalAccess(RegisterID src1, RegisterID src2, RegisterID dest)
+    {
+        storePair64WithNonTemporalAccess(src1, src2, dest, TrustedImm32(0));
+    }
+
+    void storePair64WithNonTemporalAccess(RegisterID src1, RegisterID src2, RegisterID dest, TrustedImm32 offset)
+    {
+        m_assembler.stnp<64>(src1, src2, dest, offset.m_value);
     }
 
     void store32(RegisterID src, ImplicitAddress address)
@@ -1273,7 +1364,7 @@ public:
             return;
 
         signExtend32ToPtr(TrustedImm32(address.offset), getCachedMemoryTempRegisterIDAndInvalidate());
-        m_assembler.str<16>(src, address.base, memoryTempRegister);
+        m_assembler.strh(src, address.base, memoryTempRegister);
     }
 
     void store16(RegisterID src, BaseIndex address)
@@ -1312,7 +1403,7 @@ public:
             return;
 
         signExtend32ToPtr(TrustedImm32(address.offset), getCachedMemoryTempRegisterIDAndInvalidate());
-        m_assembler.str<8>(src, address.base, memoryTempRegister);
+        m_assembler.strb(src, address.base, memoryTempRegister);
     }
 
     void store8(TrustedImm32 imm, void* address)
@@ -1335,6 +1426,11 @@ public:
 
         move(imm, getCachedDataTempRegisterIDAndInvalidate());
         store8(dataTempRegister, address);
+    }
+
+    void store8(RegisterID src, RegisterID dest, PostIndex simm)
+    {
+        m_assembler.strb(src, dest, simm);
     }
 
     // Floating-point operations:
@@ -1655,15 +1751,48 @@ public:
             return;
         }
         if (cond == DoubleEqualOrUnordered) {
-            // If the compare is unordered, thenCase is copied to dest and the
+            // If the compare is unordered, thenCase is copied to elseCase and the
             // next csel has all arguments equal to thenCase.
             // If the compare is ordered, dest is unchanged and EQ decides
             // what value to set.
-            m_assembler.csel<datasize>(dest, thenCase, elseCase, ARM64Assembler::ConditionVS);
-            m_assembler.csel<datasize>(dest, thenCase, dest, ARM64Assembler::ConditionEQ);
+            m_assembler.csel<datasize>(elseCase, thenCase, elseCase, ARM64Assembler::ConditionVS);
+            m_assembler.csel<datasize>(dest, thenCase, elseCase, ARM64Assembler::ConditionEQ);
             return;
         }
         m_assembler.csel<datasize>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    template<int datasize>
+    void moveDoubleConditionallyAfterFloatingPointCompare(DoubleCondition cond, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        if (cond == DoubleNotEqual) {
+            Jump unordered = makeBranch(ARM64Assembler::ConditionVS);
+            m_assembler.fcsel<datasize>(dest, thenCase, elseCase, ARM64Assembler::ConditionNE);
+            unordered.link(this);
+            return;
+        }
+        if (cond == DoubleEqualOrUnordered) {
+            // If the compare is unordered, thenCase is copied to elseCase and the
+            // next csel has all arguments equal to thenCase.
+            // If the compare is ordered, dest is unchanged and EQ decides
+            // what value to set.
+            m_assembler.fcsel<datasize>(elseCase, thenCase, elseCase, ARM64Assembler::ConditionVS);
+            m_assembler.fcsel<datasize>(dest, thenCase, elseCase, ARM64Assembler::ConditionEQ);
+            return;
+        }
+        m_assembler.fcsel<datasize>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionallyDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.fcmp<64>(left, right);
+        moveDoubleConditionallyAfterFloatingPointCompare<64>(cond, thenCase, elseCase, dest);
+    }
+
+    void moveDoubleConditionallyFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.fcmp<32>(left, right);
+        moveDoubleConditionallyAfterFloatingPointCompare<64>(cond, thenCase, elseCase, dest);
     }
 
     void mulDouble(FPRegisterID src, FPRegisterID dest)
@@ -1938,6 +2067,26 @@ public:
         m_assembler.csel<32>(dest, thenCase, elseCase, ARM64Condition(cond));
     }
 
+    void moveConditionally32(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                moveConditionallyTest32(*resultCondition, left, left, thenCase, elseCase, dest);
+                return;
+            }
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<32>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<32>(left, UInt12(-right.m_value));
+        else {
+            moveToCachedReg(right, dataMemoryTempRegister());
+            m_assembler.cmp<32>(left, dataTempRegister);
+        }
+        m_assembler.csel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
     void moveConditionally64(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID src, RegisterID dest)
     {
         m_assembler.cmp<64>(left, right);
@@ -1947,6 +2096,26 @@ public:
     void moveConditionally64(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
     {
         m_assembler.cmp<64>(left, right);
+        m_assembler.csel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveConditionally64(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                moveConditionallyTest64(*resultCondition, left, left, thenCase, elseCase, dest);
+                return;
+            }
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<64>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<64>(left, UInt12(-right.m_value));
+        else {
+            moveToCachedReg(right, dataMemoryTempRegister());
+            m_assembler.cmp<64>(left, dataTempRegister);
+        }
         m_assembler.csel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
     }
 
@@ -1962,6 +2131,12 @@ public:
         m_assembler.csel<32>(dest, thenCase, elseCase, ARM64Condition(cond));
     }
 
+    void moveConditionallyTest32(ResultCondition cond, RegisterID left, TrustedImm32 right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        test32(left, right);
+        m_assembler.csel<32>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
     void moveConditionallyTest64(ResultCondition cond, RegisterID testReg, RegisterID mask, RegisterID src, RegisterID dest)
     {
         m_assembler.tst<64>(testReg, mask);
@@ -1972,6 +2147,76 @@ public:
     {
         m_assembler.tst<64>(left, right);
         m_assembler.csel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionally32(RelationalCondition cond, RegisterID left, RegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.cmp<32>(left, right);
+        m_assembler.fcsel<32>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionally32(RelationalCondition cond, RegisterID left, TrustedImm32 right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                moveDoubleConditionallyTest32(*resultCondition, left, left, thenCase, elseCase, dest);
+                return;
+            }
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<32>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<32>(left, UInt12(-right.m_value));
+        else {
+            moveToCachedReg(right, dataMemoryTempRegister());
+            m_assembler.cmp<32>(left, dataTempRegister);
+        }
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionally64(RelationalCondition cond, RegisterID left, RegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.cmp<64>(left, right);
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionally64(RelationalCondition cond, RegisterID left, TrustedImm32 right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                moveDoubleConditionallyTest64(*resultCondition, left, left, thenCase, elseCase, dest);
+                return;
+            }
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<64>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<64>(left, UInt12(-right.m_value));
+        else {
+            moveToCachedReg(right, dataMemoryTempRegister());
+            m_assembler.cmp<64>(left, dataTempRegister);
+        }
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionallyTest32(ResultCondition cond, RegisterID left, RegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.tst<32>(left, right);
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionallyTest32(ResultCondition cond, RegisterID left, TrustedImm32 right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        test32(left, right);
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    void moveDoubleConditionallyTest64(ResultCondition cond, RegisterID left, RegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
+    {
+        m_assembler.tst<64>(left, right);
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
     }
 
     // Forwards / external control flow operations:
@@ -2000,6 +2245,11 @@ public:
 
     Jump branch32(RelationalCondition cond, RegisterID left, TrustedImm32 right)
     {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond))
+                return branchTest32(*resultCondition, left, left);
+        }
+
         if (isUInt12(right.m_value))
             m_assembler.cmp<32>(left, UInt12(right.m_value));
         else if (isUInt12(-right.m_value))
@@ -2063,9 +2313,32 @@ public:
         return Jump(makeBranch(cond));
     }
 
+    Jump branch64(RelationalCondition cond, RegisterID left, TrustedImm32 right)
+    {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond))
+                return branchTest64(*resultCondition, left, left);
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<64>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<64>(left, UInt12(-right.m_value));
+        else {
+            moveToCachedReg(right, dataMemoryTempRegister());
+            m_assembler.cmp<64>(left, dataTempRegister);
+        }
+        return Jump(makeBranch(cond));
+    }
+
     Jump branch64(RelationalCondition cond, RegisterID left, TrustedImm64 right)
     {
         intptr_t immediate = right.m_value;
+        if (!immediate) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond))
+                return branchTest64(*resultCondition, left, left);
+        }
+
         if (isUInt12(immediate))
             m_assembler.cmp<64>(left, UInt12(static_cast<int32_t>(immediate)));
         else if (isUInt12(-immediate))
@@ -2130,25 +2403,22 @@ public:
     
     Jump branchTest32(ResultCondition cond, RegisterID reg, RegisterID mask)
     {
+        if (reg == mask && (cond == Zero || cond == NonZero))
+            return Jump(makeCompareAndBranch<32>(static_cast<ZeroCondition>(cond), reg));
         m_assembler.tst<32>(reg, mask);
         return Jump(makeBranch(cond));
     }
 
-    void test32(ResultCondition cond, RegisterID reg, TrustedImm32 mask = TrustedImm32(-1))
+    void test32(RegisterID reg, TrustedImm32 mask = TrustedImm32(-1))
     {
         if (mask.m_value == -1)
             m_assembler.tst<32>(reg, reg);
         else {
-            bool testedWithImmediate = false;
-            if ((cond == Zero) || (cond == NonZero)) {
-                LogicalImmediate logicalImm = LogicalImmediate::create32(mask.m_value);
+            LogicalImmediate logicalImm = LogicalImmediate::create32(mask.m_value);
 
-                if (logicalImm.isValid()) {
-                    m_assembler.tst<32>(reg, logicalImm);
-                    testedWithImmediate = true;
-                }
-            }
-            if (!testedWithImmediate) {
+            if (logicalImm.isValid())
+                m_assembler.tst<32>(reg, logicalImm);
+            else {
                 move(mask, getCachedDataTempRegisterIDAndInvalidate());
                 m_assembler.tst<32>(reg, dataTempRegister);
             }
@@ -2169,13 +2439,10 @@ public:
         } else if (hasOneBitSet(mask.m_value) && ((cond == Zero) || (cond == NonZero)))
             return Jump(makeTestBitAndBranch(reg, getLSBSet(mask.m_value), static_cast<ZeroCondition>(cond)));
         else {
-            if ((cond == Zero) || (cond == NonZero)) {
-                LogicalImmediate logicalImm = LogicalImmediate::create32(mask.m_value);
-
-                if (logicalImm.isValid()) {
-                    m_assembler.tst<32>(reg, logicalImm);
-                    return Jump(makeBranch(cond));
-                }
+            LogicalImmediate logicalImm = LogicalImmediate::create32(mask.m_value);
+            if (logicalImm.isValid()) {
+                m_assembler.tst<32>(reg, logicalImm);
+                return Jump(makeBranch(cond));
             }
 
             move(mask, getCachedDataTempRegisterIDAndInvalidate());
@@ -2198,6 +2465,8 @@ public:
 
     Jump branchTest64(ResultCondition cond, RegisterID reg, RegisterID mask)
     {
+        if (reg == mask && (cond == Zero || cond == NonZero))
+            return Jump(makeCompareAndBranch<64>(static_cast<ZeroCondition>(cond), reg));
         m_assembler.tst<64>(reg, mask);
         return Jump(makeBranch(cond));
     }
@@ -2211,13 +2480,11 @@ public:
         } else if (hasOneBitSet(mask.m_value) && ((cond == Zero) || (cond == NonZero)))
             return Jump(makeTestBitAndBranch(reg, getLSBSet(mask.m_value), static_cast<ZeroCondition>(cond)));
         else {
-            if ((cond == Zero) || (cond == NonZero)) {
-                LogicalImmediate logicalImm = LogicalImmediate::create64(mask.m_value);
+            LogicalImmediate logicalImm = LogicalImmediate::create64(mask.m_value);
 
-                if (logicalImm.isValid()) {
-                    m_assembler.tst<64>(reg, logicalImm);
-                    return Jump(makeBranch(cond));
-                }
+            if (logicalImm.isValid()) {
+                m_assembler.tst<64>(reg, logicalImm);
+                return Jump(makeBranch(cond));
             }
 
             signExtend32ToPtr(mask, getCachedDataTempRegisterIDAndInvalidate());
@@ -2384,6 +2651,13 @@ public:
         return branchAdd64(cond, dest, imm, dest);
     }
 
+    Jump branchAdd64(RelationalCondition cond, TrustedImm32 imm, RegisterID dest)
+    {
+        ASSERT(isUInt12(imm.m_value));
+        m_assembler.add<64, S>(dest, dest, UInt12(imm.m_value));
+        return Jump(makeBranch(cond));
+    }
+
     Jump branchMul32(ResultCondition cond, RegisterID src1, RegisterID src2, RegisterID scratch1, RegisterID scratch2, RegisterID dest)
     {
         ASSERT(cond != Signed);
@@ -2529,6 +2803,13 @@ public:
         return branchSub64(cond, dest, imm, dest);
     }
 
+    Jump branchSub64(RelationalCondition cond, TrustedImm32 imm, RegisterID dest)
+    {
+        ASSERT(isUInt12(imm.m_value));
+        m_assembler.sub<64, S>(dest, dest, UInt12(imm.m_value));
+        return Jump(makeBranch(cond));
+    }
+
 
     // Jumps, calls, returns
 
@@ -2634,8 +2915,21 @@ public:
 
     void compare32(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
     {
-        move(right, getCachedDataTempRegisterIDAndInvalidate());
-        m_assembler.cmp<32>(left, dataTempRegister);
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                test32(*resultCondition, left, left, dest);
+                return;
+            }
+        }
+
+        if (isUInt12(right.m_value))
+            m_assembler.cmp<32>(left, UInt12(right.m_value));
+        else if (isUInt12(-right.m_value))
+            m_assembler.cmn<32>(left, UInt12(-right.m_value));
+        else {
+            move(right, getCachedDataTempRegisterIDAndInvalidate());
+            m_assembler.cmp<32>(left, dataTempRegister);
+        }
         m_assembler.cset<32>(dest, ARM64Condition(cond));
     }
 
@@ -2647,6 +2941,13 @@ public:
     
     void compare64(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
     {
+        if (!right.m_value) {
+            if (auto resultCondition = commuteCompareToZeroIntoTest(cond)) {
+                test64(*resultCondition, left, left, dest);
+                return;
+            }
+        }
+
         signExtend32ToPtr(right, getCachedDataTempRegisterIDAndInvalidate());
         m_assembler.cmp<64>(left, dataTempRegister);
         m_assembler.cset<32>(dest, ARM64Condition(cond));
@@ -2667,12 +2968,7 @@ public:
 
     void test32(ResultCondition cond, RegisterID src, TrustedImm32 mask, RegisterID dest)
     {
-        if (mask.m_value == -1)
-            m_assembler.tst<32>(src, src);
-        else {
-            signExtend32ToPtr(mask, getCachedDataTempRegisterIDAndInvalidate());
-            m_assembler.tst<32>(src, dataTempRegister);
-        }
+        test32(src, mask);
         m_assembler.cset<32>(dest, ARM64Condition(cond));
     }
 
@@ -2853,6 +3149,23 @@ public:
     static RelationalCondition invert(RelationalCondition cond)
     {
         return static_cast<RelationalCondition>(ARM64Assembler::invert(static_cast<ARM64Assembler::Condition>(cond)));
+    }
+
+    static Optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
+    {
+        switch (cond) {
+        case Equal:
+            return Zero;
+        case NotEqual:
+            return NonZero;
+        case LessThan:
+            return Signed;
+        case GreaterThanOrEqual:
+            return PositiveOrZero;
+            break;
+        default:
+            return Nullopt;
+        }
     }
 
     static FunctionPtr readCallTarget(CodeLocationCall call)

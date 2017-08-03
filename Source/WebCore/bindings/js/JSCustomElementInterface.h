@@ -30,6 +30,7 @@
 #if ENABLE(CUSTOM_ELEMENTS)
 
 #include "ActiveDOMCallback.h"
+#include "QualifiedName.h"
 #include <heap/Weak.h>
 #include <heap/WeakInlines.h>
 #include <runtime/JSObject.h>
@@ -54,23 +55,36 @@ class SVGElement;
 
 class JSCustomElementInterface : public RefCounted<JSCustomElementInterface>, public ActiveDOMCallback {
 public:
-    static Ref<JSCustomElementInterface> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
+    static Ref<JSCustomElementInterface> create(const QualifiedName& name, JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
-        return adoptRef(*new JSCustomElementInterface(callback, globalObject));
+        return adoptRef(*new JSCustomElementInterface(name, callback, globalObject));
     }
 
-    RefPtr<Element> constructElement(const AtomicString&);
+    enum class ShouldClearException { Clear, DoNotClear };
+    RefPtr<Element> constructElement(const AtomicString&, ShouldClearException);
+
+    void upgradeElement(Element&);
+
+    void attributeChanged(Element&, const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
 
     ScriptExecutionContext* scriptExecutionContext() const { return ContextDestructionObserver::scriptExecutionContext(); }
     JSC::JSObject* constructor() { return m_constructor.get(); }
 
+    const QualifiedName& name() const { return m_name; }
+
+    bool isUpgradingElement() const { return !m_constructionStack.isEmpty(); }
+    Element* lastElementInConstructionStack() const { return m_constructionStack.last().get(); }
+    void didUpgradeLastElementInConstructionStack();
+
     virtual ~JSCustomElementInterface();
 
 private:
-    JSCustomElementInterface(JSC::JSObject* callback, JSDOMGlobalObject*);
+    JSCustomElementInterface(const QualifiedName&, JSC::JSObject* callback, JSDOMGlobalObject*);
 
+    QualifiedName m_name;
     mutable JSC::Weak<JSC::JSObject> m_constructor;
     RefPtr<DOMWrapperWorld> m_isolatedWorld;
+    Vector<RefPtr<Element>, 1> m_constructionStack;
 };
 
 } // namespace WebCore

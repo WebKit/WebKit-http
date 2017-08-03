@@ -87,6 +87,7 @@ webkit.org/b/98348 accessibility/internal-link-anchors2.html [ WontFix Missing ]
 # Things specific to AX API (at least at the moment)
 webkit.org/b/98348 accessibility/radio-button-group-members.html [ Skip ]
 webkit.org/b/141074 accessibility/auto-filled-value.html [ Skip ]
+webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Skip ]
 
 # Feature disabled, see: https://bugs.webkit.org/show_bug.cgi?id=85425
 webkit.org/b/98925 fast/viewport/viewport-legacy-handheldfriendly.html [ Skip ]
@@ -334,6 +335,37 @@ webkit.org/b/95582 batterystatus/event-after-navigation.html [ Timeout ]
 # IETC flexbox failures
 webkit.org/b/85211 ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
 webkit.org/b/85212 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
+
+# Mediastream implementation is not complete yet.
+webkit.org/b/79203 fast/mediastream/MediaStream-MediaElement-srcObject.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/MediaStreamTrack.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/MediaStreamTrack-onended.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createAnswer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createOffer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-dtmf.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-events.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-getConfiguration.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-offer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-remote-pranswer.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-ice.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-localDescription.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-statsSelector.html [ Skip ]
+webkit.org/b/79203 fast/events/constructors/media-stream-event-constructor.html [ Skip ]
+webkit.org/b/79203 webaudio/mediastreamaudiodestinationnode.html [ Skip ]
+webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/MediaStream-video-element.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ Skip ]
+webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Skip ]
+webkit.org/b/151344 fast/mediastream/MediaStream-add-remove-tracks.html [ Skip ]
+webkit.org/b/79203 fast/mediastream/mock-media-source.html [ Skip ]
 
 # Text Autosizing is not yet enabled.
 webkit.org/b/99063 fast/text-autosizing [ Skip ]
@@ -585,9 +617,6 @@ webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 # Text marker tests are not supported
 webkit.org/b/153292 accessibility/text-marker [ Skip ]
 
-# WebKitGTK+ needs WOFF2 support.
-webkit.org/b/152616 fast/text/woff2.html [ ImageOnlyFailure ]
-
 # WebKitGTK+ doesn't have killring support.
 webkit.org/b/152379 editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
 webkit.org/b/152379 editing/pasteboard/emacs-killring-backward-delete-prepend.html [ Failure ]
@@ -632,10 +661,6 @@ media/controls [ Skip ]
 
 # WIRELESS_PLAYBACK_TARGET not enabled.
 media/airplay-target-availability.html
-
-# Mediastream implementation requires new Gstreamer/OpenWebRTC
-webkit.org/b/153540 fast/mediastream [ Skip ]
-webkit.org/b/153540 http/tests/media/media-stream [ Skip ]
 
 # Skip tests requiring UIScriptController
 webkit.org/b/153833 css3/touch-action/touch-action-manipulation-fast-clicks.html [ Skip ]
@@ -1420,7 +1445,6 @@ webkit.org/b/132128 fast/text/international/embed-bidi-style-in-isolate-crash.ht
 
 webkit.org/b/132266 js/slow-stress/emscripten-memops.html [ Timeout Pass ]
 
-webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Crash Timeout ]
 webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
 
 webkit.org/b/133151 js/cached-window-properties.html [ Timeout Crash Pass ]
@@ -2676,3 +2700,10 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-elemen
 webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Pass ]
 
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
+
+# This test relies on iOS-specific font fallback.
+fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
+
+# RTL Scrollbars are only implemented on OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]

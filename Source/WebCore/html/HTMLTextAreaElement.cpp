@@ -92,10 +92,6 @@ HTMLTextAreaElement::HTMLTextAreaElement(const QualifiedName& tagName, Document&
     : HTMLTextFormControlElement(tagName, document, form)
     , m_rows(defaultRows)
     , m_cols(defaultCols)
-    , m_wrap(SoftWrap)
-    , m_placeholder(0)
-    , m_isDirty(false)
-    , m_wasModifiedByUser(false)
 {
     ASSERT(hasTagName(textareaTag));
     setFormControlValueMatchesRenderer(true);
@@ -201,9 +197,15 @@ void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const Atomic
     } else if (name == accesskeyAttr) {
         // ignore for the moment
     } else if (name == maxlengthAttr)
-        updateValidity();
+        maxLengthAttributeChanged(value);
     else
         HTMLTextFormControlElement::parseAttribute(name, value);
+}
+
+void HTMLTextAreaElement::maxLengthAttributeChanged(const AtomicString& newValue)
+{
+    m_maxLength = parseHTMLNonNegativeInteger(newValue).valueOr(-1);
+    updateValidity();
 }
 
 RenderPtr<RenderElement> HTMLTextAreaElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
@@ -291,7 +293,7 @@ void HTMLTextAreaElement::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*
 {
     ASSERT(event);
     ASSERT(renderer());
-    int signedMaxLength = maxLength();
+    int signedMaxLength = effectiveMaxLength();
     if (signedMaxLength < 0)
         return;
     unsigned unsignedMaxLength = static_cast<unsigned>(signedMaxLength);
@@ -421,19 +423,6 @@ void HTMLTextAreaElement::setDefaultValue(const String& defaultValue)
         setNonDirtyValue(value);
 }
 
-int HTMLTextAreaElement::maxLength() const
-{
-    return parseHTMLNonNegativeInteger(fastGetAttribute(maxlengthAttr)).valueOr(-1);
-}
-
-void HTMLTextAreaElement::setMaxLength(int newValue, ExceptionCode& ec)
-{
-    if (newValue < 0)
-        ec = INDEX_SIZE_ERR;
-    else
-        setIntegralAttribute(maxlengthAttr, newValue);
-}
-
 String HTMLTextAreaElement::validationMessage() const
 {
     if (!willValidate())
@@ -446,7 +435,7 @@ String HTMLTextAreaElement::validationMessage() const
         return validationMessageValueMissingText();
 
     if (tooLong())
-        return validationMessageTooLongText(computeLengthForSubmission(value()), maxLength());
+        return validationMessageTooLongText(computeLengthForSubmission(value()), effectiveMaxLength());
 
     return String();
 }
@@ -468,7 +457,7 @@ bool HTMLTextAreaElement::tooLong(const String& value, NeedsToCheckDirtyFlag che
     if (check == CheckDirtyFlag && !m_wasModifiedByUser)
         return false;
 
-    int max = maxLength();
+    int max = effectiveMaxLength();
     if (max < 0)
         return false;
     unsigned unsignedMax = static_cast<unsigned>(max);
@@ -504,7 +493,7 @@ bool HTMLTextAreaElement::shouldUseInputMethod()
 
 HTMLElement* HTMLTextAreaElement::placeholderElement() const
 {
-    return m_placeholder;
+    return m_placeholder.get();
 }
 
 bool HTMLTextAreaElement::matchesReadWritePseudoClass() const
@@ -523,10 +512,7 @@ void HTMLTextAreaElement::updatePlaceholderText()
         return;
     }
     if (!m_placeholder) {
-        RefPtr<HTMLDivElement> placeholder = HTMLDivElement::create(document());
-        m_placeholder = placeholder.get();
-        m_placeholder->setPseudo(AtomicString("-webkit-input-placeholder", AtomicString::ConstructFromLiteral));
-        m_placeholder->setInlineStyleProperty(CSSPropertyDisplay, isPlaceholderVisible() ? CSSValueBlock : CSSValueNone, true);
+        m_placeholder = TextControlPlaceholderElement::create(document());
         userAgentShadowRoot()->insertBefore(*m_placeholder, innerTextElement()->nextSibling());
     }
     m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);

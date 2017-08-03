@@ -60,6 +60,10 @@ ResultsDashboard = Utilities.createClass(
         data[Strings.json.result] = result;
         var samples = data[Strings.json.samples];
 
+        var desiredFrameLength = 1000/60;
+        if (this._options["controller"] == "ramp30")
+            desiredFrameLength = 1000/30;
+
         function findRegression(series) {
             var minIndex = Math.round(.025 * series.length);
             var maxIndex = Math.round(.975 * (series.length - 1));
@@ -80,7 +84,7 @@ ResultsDashboard = Utilities.createClass(
                     series,
                     function (datum, i) { return datum[i].complexity; },
                     function (datum, i) { return datum[i].frameLength; },
-                    minIndex, maxIndex)
+                    minIndex, maxIndex, desiredFrameLength)
             };
         }
 
@@ -107,7 +111,7 @@ ResultsDashboard = Utilities.createClass(
             regression[Strings.json.measurements.stdev] = Math.sqrt(calculation.error / samples[seriesName].length);
         });
 
-        if (this._options["adjustment"] == "ramp") {
+        if (["ramp", "ramp30"].indexOf(this._options["controller"]) != -1) {
             var timeComplexity = new Experiment;
             data[Strings.json.controller].forEach(function(regression) {
                 timeComplexity.sample(regression[Strings.json.complexity]);
@@ -364,10 +368,9 @@ window.benchmarkController = {
     startBenchmark: function()
     {
         var options = {
-            "test-interval": 10,
+            "test-interval": 20,
             "display": "minimal",
-            "adjustment": "adaptive",
-            "frame-rate": 50,
+            "controller": "ramp",
             "kalman-process-error": 1,
             "kalman-measurement-error": 4,
             "time-measurement": "performance"
@@ -378,7 +381,7 @@ window.benchmarkController = {
     showResults: function()
     {
         if (!this.addedKeyEvent) {
-            document.addEventListener("keypress", this.selectResults, false);
+            document.addEventListener("keypress", this.handleKeyPress, false);
             this.addedKeyEvent = true;
         }
 
@@ -390,28 +393,86 @@ window.benchmarkController = {
         sectionsManager.showSection("results", true);
     },
 
-    selectResults: function(event)
+    handleKeyPress: function(event)
     {
-        if (event.charCode != 115) // 's'
+        switch (event.charCode)
+        {
+        case 27:  // esc
+            benchmarkController.hideDebugInfo();
+            break;
+        case 106: // j
+            benchmarkController.showDebugInfo();
+            break;
+        case 115: // s
+            benchmarkController.selectResults(event.target);
+            break;
+        }
+    },
+
+    hideDebugInfo: function()
+    {
+        var overlay = document.getElementById("overlay");
+        if (!overlay)
+            return;
+        document.body.removeChild(overlay);
+    },
+
+    showDebugInfo: function()
+    {
+        if (document.getElementById("overlay"))
             return;
 
-        event.target.selectRange = ((event.target.selectRange || 0) + 1) % 3;
+        var overlay = Utilities.createElement("div", {
+            id: "overlay"
+        }, document.body);
+        var container = Utilities.createElement("div", {}, overlay);
+
+        var header = Utilities.createElement("h3", {}, container);
+        header.textContent = "Debug output";
+
+        var data = Utilities.createElement("div", {}, container);
+        data.textContent = "Please wait...";
+        setTimeout(function() {
+            var output = {
+                options: benchmarkRunnerClient.results.options,
+                data: benchmarkRunnerClient.results.data
+            };
+            data.textContent = JSON.stringify(output, null, 1);
+        }, 0);
+        data.onclick = function() {
+            var selection = window.getSelection();
+            selection.removeAllRanges();
+            var range = document.createRange();
+            range.selectNode(data);
+            selection.addRange(range);
+        };
+
+        var button = Utilities.createElement("button", {}, container);
+        button.textContent = "Done";
+        button.onclick = function() {
+            benchmarkController.hideDebugInfo();
+        };
+    },
+
+    selectResults: function(target)
+    {
+        target.selectRange = ((target.selectRange || 0) + 1) % 3;
 
         var selection = window.getSelection();
         selection.removeAllRanges();
         var range = document.createRange();
-        switch (event.target.selectRange) {
+        switch (target.selectRange) {
             case 0: {
+                range.selectNode(document.getElementById("results-score"));
+                break;
+            }
+            case 1: {
                 range.setStart(document.querySelector("#results .score"), 0);
                 range.setEndAfter(document.querySelector("#results-score > tr:last-of-type"), 0);
                 break;
             }
-            case 1: {
-                range.selectNodeContents(document.querySelector("#results .score"));
-                break;
-            }
             case 2: {
-                range.selectNode(document.getElementById("results-score"));
+                range.selectNodeContents(document.querySelector("#results .score"));
                 break;
             }
         }

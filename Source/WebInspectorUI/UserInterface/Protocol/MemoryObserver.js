@@ -27,6 +27,11 @@ WebInspector.MemoryObserver = class MemoryObserver
 {
     // Events defined by the "Memory" domain.
 
+    memoryPressure(timestamp, severity)
+    {
+        WebInspector.memoryManager.memoryPressure(timestamp, severity);
+    }
+
     trackingStart(timestamp)
     {
         WebInspector.timelineManager.memoryTrackingStart(timestamp);

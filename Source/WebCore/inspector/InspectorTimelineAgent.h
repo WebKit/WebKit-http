@@ -95,11 +95,11 @@ public:
     InspectorTimelineAgent(WebAgentContext&, InspectorPageAgent*);
     virtual ~InspectorTimelineAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
-    virtual void start(ErrorString&, const int* maxCallStackDepth = nullptr) override;
-    virtual void stop(ErrorString&) override;
+    void start(ErrorString&, const int* maxCallStackDepth = nullptr) override;
+    void stop(ErrorString&) override;
 
     int id() const { return m_id; }
 
@@ -110,7 +110,7 @@ public:
     RefPtr<JSC::Profile> stopFromConsole(JSC::ExecState*, const String& title);
 
     // InspectorInstrumentation callbacks.
-    void didInstallTimer(int timerId, int timeout, bool singleShot, Frame*);
+    void didInstallTimer(int timerId, std::chrono::milliseconds timeout, bool singleShot, Frame*);
     void didRemoveTimer(int timerId, Frame*);
     void willFireTimer(int timerId, Frame*);
     void didFireTimer();
@@ -140,14 +140,14 @@ public:
 
 protected:
     // ScriptDebugListener
-    virtual void didParseSource(JSC::SourceID, const Script&) override { }
-    virtual void failedToParseSource(const String&, const String&, int, int, const String&) override { }
-    virtual void didPause(JSC::ExecState*, const Deprecated::ScriptValue&, const Deprecated::ScriptValue&) override { }
-    virtual void didContinue() override { }
+    void didParseSource(JSC::SourceID, const Script&) override { }
+    void failedToParseSource(const String&, const String&, int, int, const String&) override { }
+    void didPause(JSC::ExecState*, const Deprecated::ScriptValue&, const Deprecated::ScriptValue&) override { }
+    void didContinue() override { }
 
-    virtual void breakpointActionLog(JSC::ExecState*, const String&) override { }
-    virtual void breakpointActionSound(int) override { }
-    virtual void breakpointActionProbe(JSC::ExecState*, const Inspector::ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue& result) override;
+    void breakpointActionLog(JSC::ExecState*, const String&) override { }
+    void breakpointActionSound(int) override { }
+    void breakpointActionProbe(JSC::ExecState*, const Inspector::ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue& result) override;
 
 private:
     friend class TimelineRecordStack;

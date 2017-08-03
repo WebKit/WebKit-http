@@ -219,7 +219,7 @@ public:
     ProgressTracker& progress() const { return *m_progress; }
     BackForwardController& backForward() const { return *m_backForwardController; }
 
-    double domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
+    std::chrono::milliseconds domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     enum ViewMode {
@@ -356,6 +356,8 @@ public:
 
     WEBCORE_EXPORT void invalidateStylesForAllLinks();
     WEBCORE_EXPORT void invalidateStylesForLink(LinkHash);
+
+    void invalidateInjectedStyleSheetCacheInAllFrames();
 
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(RefPtr<StorageNamespace>&&);
@@ -504,6 +506,14 @@ public:
 
     WEBCORE_EXPORT void setTimerAlignmentIntervalIncreaseLimit(std::chrono::milliseconds);
 
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool controlled) { m_controlledByAutomation = controlled; }
+
+    bool isAlwaysOnLoggingAllowed() const;
+
+    String captionUserPreferencesStyleSheet();
+    void setCaptionUserPreferencesStyleSheet(const String&);
+
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -526,11 +536,12 @@ private:
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
+    enum class TimerThrottlingState { Disabled, Enabled, EnabledIncreasing };
     void hiddenPageDOMTimerThrottlingStateChanged();
-    void setTimerThrottlingEnabled(bool);
-    void setDOMTimerAlignmentInterval(double);
+    void setTimerThrottlingState(TimerThrottlingState);
+    void updateTimerThrottlingState();
+    void updateDOMTimerAlignmentInterval();
     void timerAlignmentIntervalIncreaseTimerFired();
-    bool timerThrottlingEnabled() const { return !!m_timerThrottlingEnabledTime; }
 
     const std::unique_ptr<Chrome> m_chrome;
     const std::unique_ptr<DragCaretController> m_dragCaretController;
@@ -603,6 +614,8 @@ private:
     mutable bool m_didLoadUserStyleSheet;
     mutable time_t m_userStyleSheetModificationTime;
 
+    String m_captionUserPreferencesStyleSheet;
+
     std::unique_ptr<PageGroup> m_singlePageGroup;
     PageGroup* m_group;
 
@@ -616,10 +629,11 @@ private:
     ViewMode m_viewMode;
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
-    Optional<double> m_timerThrottlingEnabledTime;
-    double m_timerAlignmentInterval;
+    TimerThrottlingState m_timerThrottlingState { TimerThrottlingState::Disabled };
+    std::chrono::steady_clock::time_point m_timerThrottlingStateLastChangedTime { std::chrono::steady_clock::duration::zero() };
+    std::chrono::milliseconds m_timerAlignmentInterval;
     Timer m_timerAlignmentIntervalIncreaseTimer;
-    double m_timerAlignmentIntervalIncreaseLimit { 0 };
+    std::chrono::milliseconds m_timerAlignmentIntervalIncreaseLimit { 0 };
 
     bool m_isEditable;
     bool m_isPrerender;
@@ -680,6 +694,8 @@ private:
     
     bool m_allowsMediaDocumentInlinePlayback { false };
     bool m_showAllPlugins { false };
+
+    bool m_controlledByAutomation { false };
 };
 
 inline PageGroup& Page::group()

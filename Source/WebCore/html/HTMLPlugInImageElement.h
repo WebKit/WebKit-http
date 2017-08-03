@@ -45,7 +45,7 @@ public:
 
     RenderEmbeddedObject* renderEmbeddedObject() const;
 
-    virtual void setDisplayState(DisplayState) override;
+    void setDisplayState(DisplayState) override;
 
     virtual void updateWidget(PluginCreationOption) = 0;
 
@@ -93,8 +93,8 @@ public:
 protected:
     HTMLPlugInImageElement(const QualifiedName& tagName, Document&, bool createdByParser);
 
-    virtual void didMoveToNewDocument(Document* oldDocument) override;
-    virtual bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues) override final;
+    void didMoveToNewDocument(Document* oldDocument) override;
+    bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues) final;
 
     bool isImageType();
     HTMLImageLoader* imageLoader() { return m_imageLoader.get(); }
@@ -108,25 +108,25 @@ protected:
     std::unique_ptr<HTMLImageLoader> m_imageLoader;
 
 private:
-    virtual bool isPlugInImageElement() const override final { return true; }
-    virtual bool isRestartedPlugin() const override final { return m_isRestartedPlugin; }
+    bool isPlugInImageElement() const final { return true; }
+    bool isRestartedPlugin() const final { return m_isRestartedPlugin; }
 
-    virtual void finishParsingChildren() override final;
-    virtual void didAddUserAgentShadowRoot(ShadowRoot*) override final;
+    void finishParsingChildren() final;
+    void didAddUserAgentShadowRoot(ShadowRoot*) final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
-    virtual bool willRecalcStyle(Style::Change) override final;
-    virtual void didAttachRenderers() override final;
-    virtual void willDetachRenderers() override final;
+    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    bool childShouldCreateRenderer(const Node&) const override;
+    bool willRecalcStyle(Style::Change) final;
+    void didAttachRenderers() final;
+    void willDetachRenderers() final;
 
-    virtual void prepareForDocumentSuspension() override final;
-    virtual void resumeFromDocumentSuspension() override final;
+    void prepareForDocumentSuspension() final;
+    void resumeFromDocumentSuspension() final;
 
-    virtual void defaultEventHandler(Event*) override final;
-    virtual void dispatchPendingMouseClick() override final;
+    void defaultEventHandler(Event*) final;
+    void dispatchPendingMouseClick() final;
 
-    virtual void updateSnapshot(PassRefPtr<Image>) override final;
+    void updateSnapshot(PassRefPtr<Image>) final;
 
     void startLoadingImage();
     void updateWidgetIfNecessary();

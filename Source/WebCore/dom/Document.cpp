@@ -103,6 +103,7 @@
 #include "JSModuleLoader.h"
 #include "KeyboardEvent.h"
 #include "Language.h"
+#include "LifecycleCallbackQueue.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
 #include "MainFrame.h"
@@ -532,14 +533,13 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_scheduledTasksAreSuspended(false)
     , m_visualUpdatesAllowed(true)
     , m_visualUpdatesSuppressionTimer(*this, &Document::visualUpdatesSuppressionTimerFired)
-    , m_sharedObjectPoolClearTimer(*this, &Document::sharedObjectPoolClearTimerFired)
+    , m_sharedObjectPoolClearTimer(*this, &Document::clearSharedObjectPool)
 #ifndef NDEBUG
     , m_didDispatchViewportPropertiesChanged(false)
 #endif
 #if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(nullptr)
 #endif
-    , m_fontSelector(CSSFontSelector::create(*this))
 #if ENABLE(WEB_REPLAY)
     , m_inputCursor(EmptyInputCursor::create())
 #endif
@@ -573,8 +573,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 
     initSecurityContext();
     initDNSPrefetch();
-
-    m_fontSelector->registerForInvalidationCallbacks(*this);
 
     for (auto& nodeListAndCollectionCount : m_nodeListAndCollectionCounts)
         nodeListAndCollectionCount = 0;
@@ -652,8 +650,6 @@ Document::~Document()
     extensionStyleSheets().detachFromDocument();
 
     clearStyleResolver(); // We need to destroy CSSFontSelector before destroying m_cachedResourceLoader.
-    m_fontSelector->clearDocument();
-    m_fontSelector->unregisterForInvalidationCallbacks(*this);
 
     // It's possible for multiple Documents to end up referencing the same CachedResourceLoader (e.g., SVGImages
     // load the initial empty document and the SVGDocument with the same DocumentLoader).
@@ -884,24 +880,35 @@ void Document::childrenChanged(const ChildChange& change)
     clearStyleResolver();
 }
 
-static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const QualifiedName qualifiedName, ExceptionCode& ec)
+static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const AtomicString& localName, ExceptionCode& ec)
 {
-    RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(qualifiedName, document);
+    RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(localName, document);
     if (LIKELY(element))
         return element;
 
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(qualifiedName))
-            return interface->constructElement(qualifiedName.localName());
+        if (auto* interface = definitions->findInterface(localName))
+            return interface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
     }
 #endif
 
-    if (UNLIKELY(!Document::isValidName(qualifiedName.localName()))) {
+    if (UNLIKELY(!Document::isValidName(localName))) {
         ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
+
+    QualifiedName qualifiedName(nullAtom, localName, xhtmlNamespaceURI);
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    if (CustomElementDefinitions::checkName(localName) == CustomElementDefinitions::NameStatus::Valid) {
+        Ref<HTMLElement> element = HTMLElement::create(qualifiedName, document);
+        element->setIsUnresolvedCustomElement();
+        document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
+        return WTFMove(element);
+    }
+#endif
 
     return HTMLUnknownElement::create(qualifiedName, document);
 }
@@ -909,10 +916,10 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
 RefPtr<Element> Document::createElementForBindings(const AtomicString& name, ExceptionCode& ec)
 {
     if (isHTMLDocument())
-        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name.convertToASCIILowercase(), xhtmlNamespaceURI), ec);
+        return createHTMLElementWithNameValidation(*this, name.convertToASCIILowercase(), ec);
 
     if (isXHTMLDocument())
-        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name, xhtmlNamespaceURI), ec);
+        return createHTMLElementWithNameValidation(*this, name, ec);
 
     if (!isValidName(name)) {
         ec = INVALID_CHARACTER_ERR;
@@ -1077,15 +1084,40 @@ bool Document::hasValidNamespaceForAttributes(const QualifiedName& qName)
     return hasValidNamespaceForElements(qName);
 }
 
+static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const QualifiedName& name)
+{
+#if ENABLE(CUSTOM_ELEMENTS)
+    auto* definitions = document.customElementDefinitions();
+    if (UNLIKELY(definitions)) {
+        if (auto* interface = definitions->findInterface(name)) {
+            Ref<HTMLElement> element = HTMLElement::create(name, document);
+            element->setIsUnresolvedCustomElement();
+            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *interface);
+            return element;
+        }
+    }
+    // FIXME: Should we also check the equality of prefix between the custom element and name?
+    if (CustomElementDefinitions::checkName(name.localName()) == CustomElementDefinitions::NameStatus::Valid) {
+        Ref<HTMLElement> element = HTMLElement::create(name, document);
+        element->setIsUnresolvedCustomElement();
+        document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
+        return element;
+    }
+#endif
+    return HTMLUnknownElement::create(name, document);
+}
+
 // FIXME: This should really be in a possible ElementFactory class.
 Ref<Element> Document::createElement(const QualifiedName& name, bool createdByParser)
 {
     RefPtr<Element> element;
 
     // FIXME: Use registered namespaces and look up in a hash to find the right factory.
-    if (name.namespaceURI() == xhtmlNamespaceURI)
-        element = HTMLElementFactory::createElement(name, *this, nullptr, createdByParser);
-    else if (name.namespaceURI() == SVGNames::svgNamespaceURI)
+    if (name.namespaceURI() == xhtmlNamespaceURI) {
+        element = HTMLElementFactory::createKnownElement(name, *this, nullptr, createdByParser);
+        if (UNLIKELY(!element))
+            element = createFallbackHTMLElement(*this, name);
+    } else if (name.namespaceURI() == SVGNames::svgNamespaceURI)
         element = SVGElementFactory::createElement(name, *this, createdByParser);
 #if ENABLE(MATHML)
     else if (name.namespaceURI() == MathMLNames::mathmlNamespaceURI)
@@ -2018,7 +2050,11 @@ Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& el
     ResourceLoadSuspender suspender;
 
     TemporaryChange<bool> change(m_ignorePendingStylesheets, true);
-    return element.resolveStyle(parentStyle);
+    auto elementStyle = element.resolveStyle(parentStyle);
+
+    Style::commitRelationsToDocument(WTFMove(elementStyle.relations));
+
+    return WTFMove(elementStyle.renderStyle);
 }
 
 bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsCheck dimensionsCheck)
@@ -2194,12 +2230,26 @@ void Document::fontsNeedUpdate(FontSelector&)
     scheduleForcedStyleRecalc();
 }
 
+CSSFontSelector& Document::fontSelector()
+{
+    if (!m_fontSelector) {
+        m_fontSelector = CSSFontSelector::create(*this);
+        m_fontSelector->registerForInvalidationCallbacks(*this);
+    }
+    return *m_fontSelector;
+}
+
 void Document::clearStyleResolver()
 {
     m_styleResolver = nullptr;
     m_userAgentShadowTreeStyleResolver = nullptr;
 
-    m_fontSelector->buildStarted();
+    // FIXME: It would be better if the FontSelector could survive this operation.
+    if (m_fontSelector) {
+        m_fontSelector->clearDocument();
+        m_fontSelector->unregisterForInvalidationCallbacks(*this);
+        m_fontSelector = nullptr;
+    }
 }
 
 void Document::createRenderTree()
@@ -2887,7 +2937,7 @@ void Document::writeln(const String& text, Document* ownerDocument)
     write("\n", ownerDocument);
 }
 
-double Document::minimumTimerInterval() const
+std::chrono::milliseconds Document::minimumTimerInterval() const
 {
     auto* page = this->page();
     if (!page)
@@ -2904,9 +2954,9 @@ void Document::setTimerThrottlingEnabled(bool shouldThrottle)
     didChangeTimerAlignmentInterval();
 }
 
-double Document::timerAlignmentInterval(bool hasReachedMaxNestingLevel) const
+std::chrono::milliseconds Document::timerAlignmentInterval(bool hasReachedMaxNestingLevel) const
 {
-    double alignmentInterval = ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
+    auto alignmentInterval = ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
 
     // Apply Document-level DOMTimer throttling only if timers have reached their maximum nesting level as the Page may still be visible.
     if (m_isTimerThrottlingEnabled && hasReachedMaxNestingLevel)
@@ -4590,6 +4640,7 @@ void Document::setInPageCache(bool flag)
 
         clearStyleResolver();
         clearSelectorQueryCache();
+        clearSharedObjectPool();
     } else {
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
@@ -5036,9 +5087,10 @@ void Document::finishedParsing()
     m_cachedResourceLoader->clearPreloads();
 }
 
-void Document::sharedObjectPoolClearTimerFired()
+void Document::clearSharedObjectPool()
 {
     m_sharedObjectPool = nullptr;
+    m_sharedObjectPoolClearTimer.stop();
 }
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -5793,6 +5845,9 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
 
     unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
 
+    if (element)
+        element->willBecomeFullscreenElement();
+    
     m_fullScreenElement = element;
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)
@@ -6669,6 +6724,7 @@ Document& Document::ensureTemplateDocument()
 
 Ref<FontFaceSet> Document::fonts()
 {
+    updateStyleIfNeeded();
     return fontSelector().fontFaceSet();
 }
 

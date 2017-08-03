@@ -43,11 +43,19 @@ public:
     // Part of TimerBase interface used by SuspendableTimer clients, modified to work when suspended.
     bool isActive() const { return TimerBase::isActive() || (m_suspended && m_savedIsActive); }
     bool isSuspended() const { return m_suspended; }
+
     void startRepeating(double repeatInterval);
     void startOneShot(double interval);
     double repeatInterval() const;
     void augmentFireInterval(double delta);
     void augmentRepeatInterval(double delta);
+
+    void startRepeating(std::chrono::milliseconds repeatInterval) { startRepeating(msToSeconds(repeatInterval)); }
+    void startOneShot(std::chrono::milliseconds interval) { startOneShot(msToSeconds(interval)); }
+    std::chrono::milliseconds repeatIntervalMS() const { return secondsToMS(repeatInterval()); }
+    void augmentFireInterval(std::chrono::milliseconds delta) { augmentFireInterval(msToSeconds(delta)); }
+    void augmentRepeatInterval(std::chrono::milliseconds delta) { augmentRepeatInterval(msToSeconds(delta)); }
+
     using TimerBase::didChangeAlignmentInterval;
     using TimerBase::operator new;
     using TimerBase::operator delete;
@@ -55,14 +63,14 @@ public:
     void cancel(); // Equivalent to TimerBase::stop(), whose name conflicts with ActiveDOMObject::stop().
 
 private:
-    virtual void fired() override = 0;
+    void fired() override = 0;
 
     // ActiveDOMObject API.
-    bool hasPendingActivity() const override final;
-    void stop() override final;
-    bool canSuspendForDocumentSuspension() const override final;
-    void suspend(ReasonForSuspension) override final;
-    void resume() override final;
+    bool hasPendingActivity() const final;
+    void stop() final;
+    bool canSuspendForDocumentSuspension() const final;
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
 
     bool m_suspended;
 

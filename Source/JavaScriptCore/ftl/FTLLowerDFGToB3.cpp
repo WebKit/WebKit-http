@@ -154,18 +154,18 @@ public:
         // We use prologue frequency for all of the initialization code.
         m_out.setFrequency(1);
         
-        m_prologue = FTL_NEW_BLOCK(m_out, ("Prologue"));
-        LBasicBlock stackOverflow = FTL_NEW_BLOCK(m_out, ("Stack overflow"));
-        m_handleExceptions = FTL_NEW_BLOCK(m_out, ("Handle Exceptions"));
+        m_prologue = m_out.newBlock();
+        LBasicBlock stackOverflow = m_out.newBlock();
+        m_handleExceptions = m_out.newBlock();
         
-        LBasicBlock checkArguments = FTL_NEW_BLOCK(m_out, ("Check arguments"));
+        LBasicBlock checkArguments = m_out.newBlock();
 
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
             m_highBlock = m_graph.block(blockIndex);
             if (!m_highBlock)
                 continue;
             m_out.setFrequency(m_highBlock->executionCount);
-            m_blocks.add(m_highBlock, FTL_NEW_BLOCK(m_out, ("Block ", *m_highBlock)));
+            m_blocks.add(m_highBlock, m_out.newBlock());
         }
 
         // Back to prologue frequency for any bocks that get sneakily created in the initialization code.
@@ -445,6 +445,9 @@ private:
             break;
         case Int52Constant:
             compileInt52Constant();
+            break;
+        case LazyJSConstant:
+            compileLazyJSConstant();
             break;
         case DoubleRep:
             compileDoubleRep();
@@ -748,6 +751,9 @@ private:
         case SkipScope:
             compileSkipScope();
             break;
+        case GetGlobalObject:
+            compileGetGlobalObject();
+            break;
         case GetClosureVar:
             compileGetClosureVar();
             break;
@@ -926,6 +932,12 @@ private:
         case StringReplace:
             compileStringReplace();
             break;
+        case GetRegExpObjectLastIndex:
+            compileGetRegExpObjectLastIndex();
+            break;
+        case SetRegExpObjectLastIndex:
+            compileSetRegExpObjectLastIndex();
+            break;
 
         case PhantomLocal:
         case LoopHint:
@@ -1035,6 +1047,18 @@ private:
         setStrictInt52(m_out.constInt64(value));
     }
 
+    void compileLazyJSConstant()
+    {
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        LazyJSValue value = m_node->lazyJSValue();
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                value.emit(jit, JSValueRegs(params[0].gpr()));
+            });
+        patchpoint->effects = Effects::none();
+        setJSValue(patchpoint);
+    }
+
     void compileDoubleRep()
     {
         switch (m_node->child1().useKind()) {
@@ -1043,8 +1067,8 @@ private:
             
             LValue doubleValue = unboxDouble(value);
             
-            LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("DoubleRep RealNumberUse int case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("DoubleRep continuation"));
+            LBasicBlock intCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             ValueFromBlock fastResult = m_out.anchor(doubleValue);
             m_out.branch(
@@ -1071,11 +1095,11 @@ private:
             
             LValue value = lowJSValue(m_node->child1(), ManualOperandSpeculation);
 
-            LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing int case"));
-            LBasicBlock doubleTesting = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing double case"));
-            LBasicBlock doubleCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing double case"));
-            LBasicBlock nonDoubleCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing undefined case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing continuation"));
+            LBasicBlock intCase = m_out.newBlock();
+            LBasicBlock doubleTesting = m_out.newBlock();
+            LBasicBlock doubleCase = m_out.newBlock();
+            LBasicBlock nonDoubleCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 isNotInt32(value, provenType(m_node->child1())),
@@ -1096,12 +1120,12 @@ private:
             m_out.jump(continuation);
 
             if (shouldConvertNonNumber) {
-                LBasicBlock undefinedCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble converting undefined case"));
-                LBasicBlock testNullCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing null case"));
-                LBasicBlock nullCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble converting null case"));
-                LBasicBlock testBooleanTrueCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing boolean true case"));
-                LBasicBlock convertBooleanTrueCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble convert boolean true case"));
-                LBasicBlock convertBooleanFalseCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble convert boolean false case"));
+                LBasicBlock undefinedCase = m_out.newBlock();
+                LBasicBlock testNullCase = m_out.newBlock();
+                LBasicBlock nullCase = m_out.newBlock();
+                LBasicBlock testBooleanTrueCase = m_out.newBlock();
+                LBasicBlock convertBooleanTrueCase = m_out.newBlock();
+                LBasicBlock convertBooleanFalseCase = m_out.newBlock();
 
                 m_out.appendTo(nonDoubleCase, undefinedCase);
                 LValue valueIsUndefined = m_out.equal(value, m_out.constInt64(ValueUndefined));
@@ -1269,8 +1293,8 @@ private:
                 return;
             }
             
-            LBasicBlock booleanCase = FTL_NEW_BLOCK(m_out, ("BooleanToNumber boolean case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("BooleanToNumber continuation"));
+            LBasicBlock booleanCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             ValueFromBlock notBooleanResult = m_out.anchor(value);
             m_out.branch(
@@ -1378,9 +1402,9 @@ private:
     {
         LValue value = lowJSValue(m_node->child1());
         
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("ToThis is cell case"));
-        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("ToThis slow case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ToThis continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(
             isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
@@ -1513,8 +1537,8 @@ private:
             }
             
             if (shouldCheckNegativeZero(m_node->arithMode())) {
-                LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("ArithMul slow case"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithMul continuation"));
+                LBasicBlock slowCase = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
                 
                 m_out.branch(
                     m_out.notZero32(result), usually(continuation), rarely(slowCase));
@@ -1539,8 +1563,8 @@ private:
             blessSpeculation(result, Overflow, noValue(), nullptr, m_origin);
 
             if (shouldCheckNegativeZero(m_node->arithMode())) {
-                LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("ArithMul slow case"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithMul continuation"));
+                LBasicBlock slowCase = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
                 
                 m_out.branch(
                     m_out.notZero64(result), usually(continuation), rarely(slowCase));
@@ -1581,8 +1605,8 @@ private:
             LValue denominator = lowInt32(m_node->child2());
 
             if (shouldCheckNegativeZero(m_node->arithMode())) {
-                LBasicBlock zeroNumerator = FTL_NEW_BLOCK(m_out, ("ArithDiv zero numerator"));
-                LBasicBlock numeratorContinuation = FTL_NEW_BLOCK(m_out, ("ArithDiv numerator continuation"));
+                LBasicBlock zeroNumerator = m_out.newBlock();
+                LBasicBlock numeratorContinuation = m_out.newBlock();
 
                 m_out.branch(
                     m_out.isZero32(numerator),
@@ -1599,8 +1623,8 @@ private:
             }
             
             if (shouldCheckOverflow(m_node->arithMode())) {
-                LBasicBlock unsafeDenominator = FTL_NEW_BLOCK(m_out, ("ArithDiv unsafe denominator"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithDiv continuation"));
+                LBasicBlock unsafeDenominator = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
 
                 LValue adjustedDenominator = m_out.add(denominator, m_out.int32One);
                 m_out.branch(
@@ -1651,8 +1675,8 @@ private:
 
             LValue remainder;
             if (shouldCheckOverflow(m_node->arithMode())) {
-                LBasicBlock unsafeDenominator = FTL_NEW_BLOCK(m_out, ("ArithMod unsafe denominator"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithMod continuation"));
+                LBasicBlock unsafeDenominator = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
 
                 LValue adjustedDenominator = m_out.add(denominator, m_out.int32One);
                 m_out.branch(
@@ -1672,8 +1696,8 @@ private:
                 remainder = m_out.chillMod(numerator, denominator);
 
             if (shouldCheckNegativeZero(m_node->arithMode())) {
-                LBasicBlock negativeNumerator = FTL_NEW_BLOCK(m_out, ("ArithMod negative numerator"));
-                LBasicBlock numeratorContinuation = FTL_NEW_BLOCK(m_out, ("ArithMod numerator continuation"));
+                LBasicBlock negativeNumerator = m_out.newBlock();
+                LBasicBlock numeratorContinuation = m_out.newBlock();
 
                 m_out.branch(
                     m_out.lessThan(numerator, m_out.int32Zero),
@@ -1724,8 +1748,8 @@ private:
             LValue left = lowDouble(m_node->child1());
             LValue right = lowDouble(m_node->child2());
             
-            LBasicBlock notLessThan = FTL_NEW_BLOCK(m_out, ("ArithMin/ArithMax not less than"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithMin/ArithMax continuation"));
+            LBasicBlock notLessThan = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             Vector<ValueFromBlock, 2> results;
             
@@ -1765,7 +1789,7 @@ private:
             LValue result = m_out.bitXor(mask, m_out.add(mask, value));
 
             if (shouldCheckOverflow(m_node->arithMode()))
-                speculate(Overflow, noValue(), 0, m_out.equal(result, m_out.constInt32(1 << 31)));
+                speculate(Overflow, noValue(), 0, m_out.lessThan(result, m_out.int32Zero));
 
             setInt32(result);
             break;
@@ -1794,14 +1818,14 @@ private:
             LValue base = lowDouble(m_node->child1());
             LValue exponent = lowDouble(m_node->child2());
 
-            LBasicBlock integerExponentIsSmallBlock = FTL_NEW_BLOCK(m_out, ("ArithPow test integer exponent is small."));
-            LBasicBlock integerExponentPowBlock = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, (int)double)."));
-            LBasicBlock doubleExponentPowBlockEntry = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, double)."));
-            LBasicBlock nanExceptionExponentIsInfinity = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check exponent is infinity."));
-            LBasicBlock nanExceptionBaseIsOne = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check base is one."));
-            LBasicBlock powBlock = FTL_NEW_BLOCK(m_out, ("ArithPow regular pow"));
-            LBasicBlock nanExceptionResultIsNaN = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, result is NaN."));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithPow continuation"));
+            LBasicBlock integerExponentIsSmallBlock = m_out.newBlock();
+            LBasicBlock integerExponentPowBlock = m_out.newBlock();
+            LBasicBlock doubleExponentPowBlockEntry = m_out.newBlock();
+            LBasicBlock nanExceptionExponentIsInfinity = m_out.newBlock();
+            LBasicBlock nanExceptionBaseIsOne = m_out.newBlock();
+            LBasicBlock powBlock = m_out.newBlock();
+            LBasicBlock nanExceptionResultIsNaN = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             LValue integerExponent = m_out.doubleToInt(exponent);
             LValue integerExponentConvertedToDouble = m_out.intToDouble(integerExponent);
@@ -1905,8 +1929,8 @@ private:
             LValue value = lowDouble(m_node->child1());
             result = m_out.doubleFloor(m_out.doubleAdd(value, m_out.constDouble(0.5)));
         } else {
-            LBasicBlock realPartIsMoreThanHalf = FTL_NEW_BLOCK(m_out, ("ArithRound should round down"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithRound continuation"));
+            LBasicBlock realPartIsMoreThanHalf = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             LValue value = lowDouble(m_node->child1());
             LValue integerValue = m_out.doubleCeil(value);
@@ -2111,9 +2135,9 @@ private:
         case CellOrOtherUse: {
             LValue value = lowJSValue(m_node->child1(), ManualOperandSpeculation);
 
-            LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("CheckStructure CellOrOtherUse cell case"));
-            LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("CheckStructure CellOrOtherUse not cell case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CheckStructure CellOrOtherUse continuation"));
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             m_out.branch(
                 isCell(value, provenType(m_node->child1())), unsure(cellCase), unsure(notCellCase));
@@ -2186,8 +2210,8 @@ private:
         LValue cell = lowCell(m_node->child1());
         LValue property = !!m_node->child2() ? lowInt32(m_node->child2()) : 0;
         
-        LBasicBlock unexpectedStructure = FTL_NEW_BLOCK(m_out, ("ArrayifyToStructure unexpected structure"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArrayifyToStructure continuation"));
+        LBasicBlock unexpectedStructure = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
         
@@ -2269,9 +2293,9 @@ private:
             // https://bugs.webkit.org/show_bug.cgi?id=127830
             LValue value = lowJSValue(m_node->child1());
             
-            LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("GetById untyped cell case"));
-            LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("GetById untyped not cell case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetById untyped continuation"));
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 isCell(value, provenType(m_node->child1())), unsure(cellCase), unsure(notCellCase));
@@ -2388,8 +2412,8 @@ private:
         LValue cell = lowCell(m_node->child1());
         
         if (m_node->arrayMode().type() == Array::String) {
-            LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("GetIndexedPropertyStorage String slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetIndexedPropertyStorage String continuation"));
+            LBasicBlock slowPath = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             LValue fastResultValue = m_out.loadPtr(cell, m_heaps.JSString_value);
             ValueFromBlock fastResult = m_out.anchor(fastResultValue);
@@ -2430,9 +2454,9 @@ private:
     {
         LValue basePtr = lowCell(m_node->child1());    
 
-        LBasicBlock simpleCase = FTL_NEW_BLOCK(m_out, ("GetTypedArrayByteOffset wasteless typed array"));
-        LBasicBlock wastefulCase = FTL_NEW_BLOCK(m_out, ("GetTypedArrayByteOffset wasteful typed array"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetTypedArrayByteOffset continuation"));
+        LBasicBlock simpleCase = m_out.newBlock();
+        LBasicBlock wastefulCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue mode = m_out.load32(basePtr, m_heaps.JSArrayBufferView_mode);
         m_out.branch(
@@ -2540,9 +2564,9 @@ private:
             
             LValue base = lowCell(m_node->child1());
             
-            LBasicBlock fastCase = FTL_NEW_BLOCK(m_out, ("GetByVal int/contiguous fast case"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("GetByVal int/contiguous slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetByVal int/contiguous continuation"));
+            LBasicBlock fastCase = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.aboveOrEqual(
@@ -2587,10 +2611,10 @@ private:
             
             LValue base = lowCell(m_node->child1());
             
-            LBasicBlock inBounds = FTL_NEW_BLOCK(m_out, ("GetByVal double in bounds"));
-            LBasicBlock boxPath = FTL_NEW_BLOCK(m_out, ("GetByVal double boxing"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("GetByVal double slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetByVal double continuation"));
+            LBasicBlock inBounds = m_out.newBlock();
+            LBasicBlock boxPath = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.aboveOrEqual(
@@ -2658,9 +2682,9 @@ private:
             LValue table = m_out.loadPtr(base, m_heaps.ScopedArguments_table);
             LValue namedLength = m_out.load32(table, m_heaps.ScopedArgumentsTable_length);
             
-            LBasicBlock namedCase = FTL_NEW_BLOCK(m_out, ("GetByVal ScopedArguments named case"));
-            LBasicBlock overflowCase = FTL_NEW_BLOCK(m_out, ("GetByVal ScopedArguments overflow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetByVal ScopedArguments continuation"));
+            LBasicBlock namedCase = m_out.newBlock();
+            LBasicBlock overflowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.aboveOrEqual(index, namedLength), unsure(overflowCase), unsure(namedCase));
@@ -2866,7 +2890,7 @@ private:
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous: {
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("PutByVal continuation"));
+            LBasicBlock continuation = m_out.newBlock();
             LBasicBlock outerLastNext = m_out.appendTo(m_out.m_block, continuation);
             
             switch (m_node->arrayMode().type()) {
@@ -2960,8 +2984,8 @@ private:
                         if (isClamped(type)) {
                             ASSERT(elementSize(type) == 1);
                             
-                            LBasicBlock atLeastZero = FTL_NEW_BLOCK(m_out, ("PutByVal int clamp atLeastZero"));
-                            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("PutByVal int clamp continuation"));
+                            LBasicBlock atLeastZero = m_out.newBlock();
+                            LBasicBlock continuation = m_out.newBlock();
                             
                             Vector<ValueFromBlock, 2> intValues;
                             intValues.append(m_out.anchor(m_out.int32Zero));
@@ -2989,9 +3013,9 @@ private:
                         if (isClamped(type)) {
                             ASSERT(elementSize(type) == 1);
                             
-                            LBasicBlock atLeastZero = FTL_NEW_BLOCK(m_out, ("PutByVal double clamp atLeastZero"));
-                            LBasicBlock withinRange = FTL_NEW_BLOCK(m_out, ("PutByVal double clamp withinRange"));
-                            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("PutByVal double clamp continuation"));
+                            LBasicBlock atLeastZero = m_out.newBlock();
+                            LBasicBlock withinRange = m_out.newBlock();
+                            LBasicBlock continuation = m_out.newBlock();
                             
                             Vector<ValueFromBlock, 3> intValues;
                             intValues.append(m_out.anchor(m_out.int32Zero));
@@ -3053,8 +3077,8 @@ private:
                 if (m_node->arrayMode().isInBounds() || m_node->op() == PutByValAlias)
                     m_out.store(valueToStore, pointer, storeType);
                 else {
-                    LBasicBlock isInBounds = FTL_NEW_BLOCK(m_out, ("PutByVal typed array in bounds case"));
-                    LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("PutByVal typed array continuation"));
+                    LBasicBlock isInBounds = m_out.newBlock();
+                    LBasicBlock continuation = m_out.newBlock();
                     
                     m_out.branch(
                         m_out.aboveOrEqual(index, lowInt32(child5)),
@@ -3140,9 +3164,9 @@ private:
 
             LValue prevLength = m_out.load32(storage, m_heaps.Butterfly_publicLength);
             
-            LBasicBlock fastPath = FTL_NEW_BLOCK(m_out, ("ArrayPush fast path"));
-            LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("ArrayPush slow path"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArrayPush continuation"));
+            LBasicBlock fastPath = m_out.newBlock();
+            LBasicBlock slowPath = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.aboveOrEqual(
@@ -3190,9 +3214,9 @@ private:
         case Array::Contiguous: {
             IndexedAbstractHeap& heap = m_heaps.forArrayType(m_node->arrayMode().type());
             
-            LBasicBlock fastCase = FTL_NEW_BLOCK(m_out, ("ArrayPop fast case"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("ArrayPop slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArrayPop continuation"));
+            LBasicBlock fastCase = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             LValue prevLength = m_out.load32(storage, m_heaps.Butterfly_publicLength);
             
@@ -3252,8 +3276,8 @@ private:
             return;
         }
         
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("CreateActivation slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CreateActivation continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -3311,8 +3335,8 @@ private:
             isGeneratorFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->generatorFunctionStructure() :
             m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
         
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("NewFunction slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewFunction continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -3366,8 +3390,8 @@ private:
         
         unsigned minCapacity = m_graph.baselineCodeBlockFor(m_node->origin.semantic)->numParameters() - 1;
         
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("CreateDirectArguments slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CreateDirectArguments continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -3424,8 +3448,8 @@ private:
         } else {
             LValue stackBase = getArgumentsStart();
             
-            LBasicBlock loop = FTL_NEW_BLOCK(m_out, ("CreateDirectArguments loop body"));
-            LBasicBlock end = FTL_NEW_BLOCK(m_out, ("CreateDirectArguments loop end"));
+            LBasicBlock loop = m_out.newBlock();
+            LBasicBlock end = m_out.newBlock();
 
             ValueFromBlock originalLength;
             if (minCapacity) {
@@ -3484,8 +3508,8 @@ private:
 
     void compileCopyRest()
     {            
-        LBasicBlock doCopyRest = FTL_NEW_BLOCK(m_out, ("CopyRest C call"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("FillRestParameter continuation"));
+        LBasicBlock doCopyRest = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         LValue arrayLength = lowInt32(m_node->child2());
 
@@ -3506,8 +3530,8 @@ private:
 
     void compileGetRestLength()
     {
-        LBasicBlock nonZeroLength = FTL_NEW_BLOCK(m_out, ("GetRestLength non zero"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetRestLength continuation"));
+        LBasicBlock nonZeroLength = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         ValueFromBlock zeroLengthResult = m_out.anchor(m_out.constInt32(0));
 
@@ -3663,11 +3687,11 @@ private:
                 || hasDouble(structure->indexingType())
                 || hasContiguous(structure->indexingType()));
 
-            LBasicBlock fastCase = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize fast case"));
-            LBasicBlock largeCase = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize large case"));
-            LBasicBlock failCase = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize fail case"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize continuation"));
+            LBasicBlock fastCase = m_out.newBlock();
+            LBasicBlock largeCase = m_out.newBlock();
+            LBasicBlock failCase = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.aboveOrEqual(publicLength, m_out.constInt32(MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH)),
@@ -3694,8 +3718,8 @@ private:
             m_out.store32(vectorLength, butterfly, m_heaps.Butterfly_vectorLength);
             
             if (hasDouble(m_node->indexingType())) {
-                LBasicBlock initLoop = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize double init loop"));
-                LBasicBlock initDone = FTL_NEW_BLOCK(m_out, ("NewArrayWithSize double init done"));
+                LBasicBlock initLoop = m_out.newBlock();
+                LBasicBlock initDone = m_out.newBlock();
                 
                 ValueFromBlock originalIndex = m_out.anchor(vectorLength);
                 ValueFromBlock originalPointer = m_out.anchor(butterfly);
@@ -3768,10 +3792,10 @@ private:
 
             LValue size = lowInt32(m_node->child1());
 
-            LBasicBlock smallEnoughCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray small enough case"));
-            LBasicBlock nonZeroCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray non-zero case"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("NewTypedArray slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewTypedArray continuation"));
+            LBasicBlock smallEnoughCase = m_out.newBlock();
+            LBasicBlock nonZeroCase = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             m_out.branch(
                 m_out.above(size, m_out.constInt32(JSArrayBufferView::fastSizeLimit)),
@@ -3870,8 +3894,8 @@ private:
             LValue cell = lowCell(m_node->child1());
             LValue structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
             
-            LBasicBlock notString = FTL_NEW_BLOCK(m_out, ("ToString StringOrStringObject not string case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ToString StringOrStringObject continuation"));
+            LBasicBlock notString = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             ValueFromBlock simpleResult = m_out.anchor(cell);
             m_out.branch(
@@ -3899,9 +3923,9 @@ private:
             else
                 value = lowJSValue(m_node->child1());
             
-            LBasicBlock isCell = FTL_NEW_BLOCK(m_out, ("ToString CellUse/UntypedUse is cell"));
-            LBasicBlock notString = FTL_NEW_BLOCK(m_out, ("ToString CellUse/UntypedUse not string"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ToString CellUse/UntypedUse continuation"));
+            LBasicBlock isCell = m_out.newBlock();
+            LBasicBlock notString = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             LValue isCellPredicate;
             if (m_node->child1().useKind() == CellUse)
@@ -3943,9 +3967,9 @@ private:
     {
         LValue value = lowJSValue(m_node->child1());
         
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("ToPrimitive cell case"));
-        LBasicBlock isObjectCase = FTL_NEW_BLOCK(m_out, ("ToPrimitive object case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ToPrimitive continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock isObjectCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<ValueFromBlock, 3> results;
         
@@ -3982,8 +4006,8 @@ private:
             numKids = 2;
         }
         
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MakeRope slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MakeRope continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -4053,9 +4077,9 @@ private:
         LValue index = lowInt32(m_node->child2());
         LValue storage = lowStorage(m_node->child3());
             
-        LBasicBlock fastPath = FTL_NEW_BLOCK(m_out, ("GetByVal String fast path"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("GetByVal String slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetByVal String continuation"));
+        LBasicBlock fastPath = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
             
         m_out.branch(
             m_out.aboveOrEqual(
@@ -4066,10 +4090,10 @@ private:
             
         LValue stringImpl = m_out.loadPtr(base, m_heaps.JSString_value);
             
-        LBasicBlock is8Bit = FTL_NEW_BLOCK(m_out, ("GetByVal String 8-bit case"));
-        LBasicBlock is16Bit = FTL_NEW_BLOCK(m_out, ("GetByVal String 16-bit case"));
-        LBasicBlock bitsContinuation = FTL_NEW_BLOCK(m_out, ("GetByVal String bitness continuation"));
-        LBasicBlock bigCharacter = FTL_NEW_BLOCK(m_out, ("GetByVal String big character"));
+        LBasicBlock is8Bit = m_out.newBlock();
+        LBasicBlock is16Bit = m_out.newBlock();
+        LBasicBlock bitsContinuation = m_out.newBlock();
+        LBasicBlock bigCharacter = m_out.newBlock();
             
         m_out.branch(
             m_out.testIsZero32(
@@ -4131,7 +4155,7 @@ private:
                 m_graph.watchpoints().addLazily(globalObject->stringPrototype()->structure()->transitionWatchpointSet());
                 m_graph.watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
                 
-                LBasicBlock negativeIndex = FTL_NEW_BLOCK(m_out, ("GetByVal String negative index"));
+                LBasicBlock negativeIndex = m_out.newBlock();
                     
                 results.append(m_out.anchor(m_out.constInt64(JSValue::encode(jsUndefined()))));
                 m_out.branch(
@@ -4153,9 +4177,9 @@ private:
     
     void compileStringCharCodeAt()
     {
-        LBasicBlock is8Bit = FTL_NEW_BLOCK(m_out, ("StringCharCodeAt 8-bit case"));
-        LBasicBlock is16Bit = FTL_NEW_BLOCK(m_out, ("StringCharCodeAt 16-bit case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("StringCharCodeAt continuation"));
+        LBasicBlock is8Bit = m_out.newBlock();
+        LBasicBlock is16Bit = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         LValue base = lowCell(m_node->child1());
         LValue index = lowInt32(m_node->child2());
@@ -4211,9 +4235,9 @@ private:
 
         LValue value = lowInt32(childEdge);
         
-        LBasicBlock smallIntCase = FTL_NEW_BLOCK(m_out, ("StringFromCharCode small int case"));
-        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("StringFromCharCode slow case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("StringFromCharCode continuation"));
+        LBasicBlock smallIntCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
             m_out.aboveOrEqual(value, m_out.constInt32(0xff)),
@@ -4273,9 +4297,9 @@ private:
         
         Vector<LBasicBlock, 2> blocks(data.cases.size());
         for (unsigned i = data.cases.size(); i--;)
-            blocks[i] = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset case ", i));
-        LBasicBlock exit = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset fail"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset continuation"));
+            blocks[i] = m_out.newBlock();
+        LBasicBlock exit = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<SwitchCase, 2> cases;
         StructureSet baseSet;
@@ -4355,9 +4379,9 @@ private:
         
         Vector<LBasicBlock, 2> blocks(data.variants.size());
         for (unsigned i = data.variants.size(); i--;)
-            blocks[i] = FTL_NEW_BLOCK(m_out, ("MultiPutByOffset case ", i));
-        LBasicBlock exit = FTL_NEW_BLOCK(m_out, ("MultiPutByOffset fail"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MultiPutByOffset continuation"));
+            blocks[i] = m_out.newBlock();
+        LBasicBlock exit = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<SwitchCase, 2> cases;
         StructureSet baseSet;
@@ -4430,8 +4454,8 @@ private:
     {
         WatchpointSet* set = m_node->watchpointSet();
         
-        LBasicBlock isNotInvalidated = FTL_NEW_BLOCK(m_out, ("NotifyWrite not invalidated case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NotifyWrite continuation"));
+        LBasicBlock isNotInvalidated = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue state = m_out.load8ZeroExt32(m_out.absolute(set->addressOfState()));
         m_out.branch(
@@ -4468,6 +4492,12 @@ private:
     void compileSkipScope()
     {
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSScope_next));
+    }
+
+    void compileGetGlobalObject()
+    {
+        LValue structure = loadStructure(lowCell(m_node->child1()));
+        setJSValue(m_out.loadPtr(structure, m_heaps.Structure_globalObject));
     }
     
     void compileGetClosureVar()
@@ -4582,8 +4612,8 @@ private:
             LValue left = lowCell(m_node->child1());
             LValue right = lowCell(m_node->child2());
 
-            LBasicBlock notTriviallyEqualCase = FTL_NEW_BLOCK(m_out, ("CompareStrictEq/String not trivially equal case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CompareStrictEq/String continuation"));
+            LBasicBlock notTriviallyEqualCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             speculateString(m_node->child1(), left);
 
@@ -4660,9 +4690,9 @@ private:
             LValue left = lowStringIdent(leftEdge);
             LValue rightValue = lowJSValue(rightEdge, ManualOperandSpeculation);
             
-            LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("CompareStrictEq StringIdent to NotStringVar is cell case"));
-            LBasicBlock isStringCase = FTL_NEW_BLOCK(m_out, ("CompareStrictEq StringIdent to NotStringVar is string case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CompareStrictEq StringIdent to NotStringVar continuation"));
+            LBasicBlock isCellCase = m_out.newBlock();
+            LBasicBlock isStringCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
             m_out.branch(
@@ -5278,10 +5308,10 @@ private:
         LValue sourceStart = getArgumentsStart(inlineCallFrame);
         LValue targetStart = addressFor(data->machineStart).value();
 
-        LBasicBlock undefinedLoop = FTL_NEW_BLOCK(m_out, ("ForwardVarargs undefined loop body"));
-        LBasicBlock mainLoopEntry = FTL_NEW_BLOCK(m_out, ("ForwardVarargs main loop entry"));
-        LBasicBlock mainLoop = FTL_NEW_BLOCK(m_out, ("ForwardVarargs main loop body"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ForwardVarargs continuation"));
+        LBasicBlock undefinedLoop = m_out.newBlock();
+        LBasicBlock mainLoopEntry = m_out.newBlock();
+        LBasicBlock mainLoop = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue lengthAsPtr = m_out.zeroExtPtr(length);
         LValue loopBoundValue = m_out.constIntPtr(data->mandatoryMinimum);
@@ -5342,7 +5372,7 @@ private:
         switch (data->kind) {
         case SwitchImm: {
             Vector<ValueFromBlock, 2> intValues;
-            LBasicBlock switchOnInts = FTL_NEW_BLOCK(m_out, ("Switch/SwitchImm int case"));
+            LBasicBlock switchOnInts = m_out.newBlock();
             
             LBasicBlock lastNext = m_out.appendTo(m_out.m_block, switchOnInts);
             
@@ -5354,9 +5384,9 @@ private:
             }
                 
             case UntypedUse: {
-                LBasicBlock isInt = FTL_NEW_BLOCK(m_out, ("Switch/SwitchImm is int"));
-                LBasicBlock isNotInt = FTL_NEW_BLOCK(m_out, ("Switch/SwitchImm is not int"));
-                LBasicBlock isDouble = FTL_NEW_BLOCK(m_out, ("Switch/SwitchImm is double"));
+                LBasicBlock isInt = m_out.newBlock();
+                LBasicBlock isNotInt = m_out.newBlock();
+                LBasicBlock isDouble = m_out.newBlock();
                 
                 LValue boxedValue = lowJSValue(m_node->child1());
                 m_out.branch(isNotInt32(boxedValue), unsure(isNotInt), unsure(isInt));
@@ -5409,8 +5439,8 @@ private:
             case UntypedUse: {
                 LValue unboxedValue = lowJSValue(m_node->child1());
                 
-                LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar is cell"));
-                LBasicBlock isStringCase = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar is string"));
+                LBasicBlock isCellCase = m_out.newBlock();
+                LBasicBlock isStringCase = m_out.newBlock();
                 
                 m_out.branch(
                     isNotCell(unboxedValue, provenType(m_node->child1())),
@@ -5432,12 +5462,12 @@ private:
                 break;
             }
             
-            LBasicBlock lengthIs1 = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar length is 1"));
-            LBasicBlock needResolution = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar resolution"));
-            LBasicBlock resolved = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar resolved"));
-            LBasicBlock is8Bit = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar 8bit"));
-            LBasicBlock is16Bit = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar 16bit"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar continuation"));
+            LBasicBlock lengthIs1 = m_out.newBlock();
+            LBasicBlock needResolution = m_out.newBlock();
+            LBasicBlock resolved = m_out.newBlock();
+            LBasicBlock is8Bit = m_out.newBlock();
+            LBasicBlock is16Bit = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             m_out.branch(
                 m_out.notEqual(
@@ -5506,8 +5536,8 @@ private:
             case UntypedUse: {
                 LValue value = lowJSValue(m_node->child1());
                 
-                LBasicBlock isCellBlock = FTL_NEW_BLOCK(m_out, ("Switch/SwitchString Untyped cell case"));
-                LBasicBlock isStringBlock = FTL_NEW_BLOCK(m_out, ("Switch/SwitchString Untyped string case"));
+                LBasicBlock isCellBlock = m_out.newBlock();
+                LBasicBlock isStringBlock = m_out.newBlock();
                 
                 m_out.branch(
                     isCell(value, provenType(m_node->child1())),
@@ -5542,7 +5572,7 @@ private:
                 
             case UntypedUse: {
                 LValue value = lowJSValue(m_node->child1());
-                LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("Switch/SwitchCell cell case"));
+                LBasicBlock cellCase = m_out.newBlock();
                 m_out.branch(
                     isCell(value, provenType(m_node->child1())),
                     unsure(cellCase), unsure(lowBlock(data->fallThrough.block)));
@@ -5652,8 +5682,8 @@ private:
     {
         LValue value = lowJSValue(m_node->child1());
         
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("IsString cell case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsString continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
         m_out.branch(
@@ -5671,8 +5701,8 @@ private:
     {
         LValue value = lowJSValue(m_node->child1());
 
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("IsObject cell case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsObject continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
         m_out.branch(
@@ -5693,12 +5723,12 @@ private:
         Edge child = m_node->child1();
         LValue value = lowJSValue(child);
         
-        LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull cell case"));
-        LBasicBlock notFunctionCase = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull not function case"));
-        LBasicBlock objectCase = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull object case"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull slow path"));
-        LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull not cell case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsObjectOrNull continuation"));
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock notFunctionCase = m_out.newBlock();
+        LBasicBlock objectCase = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock notCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(isCell(value, provenType(child)), unsure(cellCase), unsure(notCellCase));
         
@@ -5749,10 +5779,10 @@ private:
         Edge child = m_node->child1();
         LValue value = lowJSValue(child);
         
-        LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("IsFunction cell case"));
-        LBasicBlock notFunctionCase = FTL_NEW_BLOCK(m_out, ("IsFunction not function case"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("IsFunction slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsFunction continuation"));
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock notFunctionCase = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
         m_out.branch(
@@ -5791,7 +5821,7 @@ private:
         Edge child = m_node->child1();
         LValue value = lowJSValue(child);
         
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("TypeOf continuation"));
+        LBasicBlock continuation = m_out.newBlock();
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
         
         Vector<ValueFromBlock> results;
@@ -5888,8 +5918,8 @@ private:
         LValue constructor = lowCell(m_node->child1());
         LValue hasInstance = lowJSValue(m_node->child2());
 
-        LBasicBlock defaultHasInstance = FTL_NEW_BLOCK(m_out, ("OverridesHasInstance Symbol.hasInstance is default"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("OverridesHasInstance continuation"));
+        LBasicBlock defaultHasInstance = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         // Unlike in the DFG, we don't worry about cleaning this code up for the case where we have proven the hasInstanceValue is a constant as B3 should fix it for us.
 
@@ -5928,10 +5958,12 @@ private:
         
         LValue prototype = lowCell(m_node->child2());
         
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("InstanceOf cell case"));
-        LBasicBlock loop = FTL_NEW_BLOCK(m_out, ("InstanceOf loop"));
-        LBasicBlock notYetInstance = FTL_NEW_BLOCK(m_out, ("InstanceOf not yet instance"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("InstanceOf continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock loop = m_out.newBlock();
+        LBasicBlock notYetInstance = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+        LBasicBlock loadPrototypeDirect = m_out.newBlock();
+        LBasicBlock defaultHasInstanceSlow = m_out.newBlock();
         
         LValue condition;
         if (m_node->child1().useKind() == UntypedUse)
@@ -5949,8 +5981,14 @@ private:
         ValueFromBlock originalValue = m_out.anchor(cell);
         m_out.jump(loop);
         
-        m_out.appendTo(loop, notYetInstance);
+        m_out.appendTo(loop, loadPrototypeDirect);
         LValue value = m_out.phi(m_out.int64, originalValue);
+        LValue type = m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoType);
+        m_out.branch(
+            m_out.notEqual(type, m_out.constInt32(ProxyObjectType)),
+            usually(loadPrototypeDirect), rarely(defaultHasInstanceSlow));
+
+        m_out.appendTo(loadPrototypeDirect, notYetInstance);
         LValue structure = loadStructure(value);
         LValue currentPrototype = m_out.load64(structure, m_heaps.Structure_prototype);
         ValueFromBlock isInstanceResult = m_out.anchor(m_out.booleanTrue);
@@ -5958,14 +5996,22 @@ private:
             m_out.equal(currentPrototype, prototype),
             unsure(continuation), unsure(notYetInstance));
         
-        m_out.appendTo(notYetInstance, continuation);
+        m_out.appendTo(notYetInstance, defaultHasInstanceSlow);
         ValueFromBlock notInstanceResult = m_out.anchor(m_out.booleanFalse);
         m_out.addIncomingToPhi(value, m_out.anchor(currentPrototype));
         m_out.branch(isCell(currentPrototype), unsure(loop), unsure(continuation));
+
+        m_out.appendTo(defaultHasInstanceSlow, continuation);
+        // We can use the value that we're looping with because we
+        // can just continue off from wherever we bailed from the
+        // loop.
+        ValueFromBlock defaultHasInstanceResult = m_out.anchor(
+            vmCall(m_out.boolean, m_out.operation(operationDefaultHasInstance), m_callFrame, value, prototype));
+        m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
         setBoolean(
-            m_out.phi(m_out.boolean, notCellResult, isInstanceResult, notInstanceResult));
+            m_out.phi(m_out.boolean, notCellResult, isInstanceResult, notInstanceResult, defaultHasInstanceResult));
     }
 
     void compileInstanceOfCustom()
@@ -6000,9 +6046,9 @@ private:
             IndexedAbstractHeap& heap = m_node->arrayMode().type() == Array::Int32 ?
                 m_heaps.indexedInt32Properties : m_heaps.indexedContiguousProperties;
 
-            LBasicBlock checkHole = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty int/contiguous check hole"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty int/contiguous slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty int/contiguous continuation"));
+            LBasicBlock checkHole = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             if (!m_node->arrayMode().isInBounds()) {
                 m_out.branch(
@@ -6035,9 +6081,9 @@ private:
             
             IndexedAbstractHeap& heap = m_heaps.indexedDoubleProperties;
             
-            LBasicBlock checkHole = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty double check hole"));
-            LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty double slow case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("HasIndexedProperty double continuation"));
+            LBasicBlock checkHole = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             if (!m_node->arrayMode().isInBounds()) {
                 m_out.branch(
@@ -6083,9 +6129,9 @@ private:
         LValue property = lowString(m_node->child2());
         LValue enumerator = lowCell(m_node->child3());
 
-        LBasicBlock correctStructure = FTL_NEW_BLOCK(m_out, ("HasStructureProperty correct structure"));
-        LBasicBlock wrongStructure = FTL_NEW_BLOCK(m_out, ("HasStructureProperty wrong structure"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("HasStructureProperty continuation"));
+        LBasicBlock correctStructure = m_out.newBlock();
+        LBasicBlock wrongStructure = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(m_out.notEqual(
             m_out.load32(base, m_heaps.JSCell_structureID),
@@ -6114,11 +6160,11 @@ private:
         LValue index = lowInt32(m_graph.varArgChild(m_node, 2));
         LValue enumerator = lowCell(m_graph.varArgChild(m_node, 3));
 
-        LBasicBlock checkOffset = FTL_NEW_BLOCK(m_out, ("GetDirectPname check offset"));
-        LBasicBlock inlineLoad = FTL_NEW_BLOCK(m_out, ("GetDirectPname inline load"));
-        LBasicBlock outOfLineLoad = FTL_NEW_BLOCK(m_out, ("GetDirectPname out-of-line load"));
-        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("GetDirectPname slow case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetDirectPname continuation"));
+        LBasicBlock checkOffset = m_out.newBlock();
+        LBasicBlock inlineLoad = m_out.newBlock();
+        LBasicBlock outOfLineLoad = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(m_out.notEqual(
             m_out.load32(base, m_heaps.JSCell_structureID),
@@ -6170,9 +6216,9 @@ private:
         LValue enumerator = lowCell(m_node->child1());
         LValue index = lowInt32(m_node->child2());
 
-        LBasicBlock inBounds = FTL_NEW_BLOCK(m_out, ("GetEnumeratorStructurePname in bounds"));
-        LBasicBlock outOfBounds = FTL_NEW_BLOCK(m_out, ("GetEnumeratorStructurePname out of bounds"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetEnumeratorStructurePname continuation"));
+        LBasicBlock inBounds = m_out.newBlock();
+        LBasicBlock outOfBounds = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(m_out.below(index, m_out.load32(enumerator, m_heaps.JSPropertyNameEnumerator_endStructurePropertyIndex)),
             usually(inBounds), rarely(outOfBounds));
@@ -6196,9 +6242,9 @@ private:
         LValue enumerator = lowCell(m_node->child1());
         LValue index = lowInt32(m_node->child2());
 
-        LBasicBlock inBounds = FTL_NEW_BLOCK(m_out, ("GetEnumeratorGenericPname in bounds"));
-        LBasicBlock outOfBounds = FTL_NEW_BLOCK(m_out, ("GetEnumeratorGenericPname out of bounds"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetEnumeratorGenericPname continuation"));
+        LBasicBlock inBounds = m_out.newBlock();
+        LBasicBlock outOfBounds = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(m_out.below(index, m_out.load32(enumerator, m_heaps.JSPropertyNameEnumerator_endGenericPropertyIndex)),
             usually(inBounds), rarely(outOfBounds));
@@ -6247,9 +6293,9 @@ private:
         
         Vector<LBasicBlock, 1> blocks(set.size());
         for (unsigned i = set.size(); i--;)
-            blocks[i] = FTL_NEW_BLOCK(m_out, ("MaterializeNewObject case ", i));
-        LBasicBlock dummyDefault = FTL_NEW_BLOCK(m_out, ("MaterializeNewObject default case"));
-        LBasicBlock outerContinuation = FTL_NEW_BLOCK(m_out, ("MaterializeNewObject continuation"));
+            blocks[i] = m_out.newBlock();
+        LBasicBlock dummyDefault = m_out.newBlock();
+        LBasicBlock outerContinuation = m_out.newBlock();
         
         Vector<SwitchCase, 1> cases(set.size());
         for (unsigned i = set.size(); i--;)
@@ -6273,8 +6319,8 @@ private:
                 size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
                 MarkedAllocator* allocator = &vm().heap.allocatorForObjectWithoutDestructor(allocationSize);
                 
-                LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeNewObject complex object allocation slow path"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MaterializeNewObject complex object allocation continuation"));
+                LBasicBlock slowPath = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
                 
                 LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
                 
@@ -6353,8 +6399,8 @@ private:
         ASSERT(table == m_graph.varArgChild(m_node, 0)->castConstant<SymbolTable*>());
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
 
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
 
@@ -6414,8 +6460,8 @@ private:
 
     void compileCheckWatchdogTimer()
     {
-        LBasicBlock timerDidFire = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer timer did fire"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer continuation"));
+        LBasicBlock timerDidFire = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue state = m_out.load8ZeroExt32(m_out.absolute(vm().watchdog()->timerDidFireAddress()));
         m_out.branch(m_out.isZero32(state),
@@ -6434,18 +6480,66 @@ private:
 
     void compileRegExpExec()
     {
-        LValue base = lowCell(m_node->child1());
-        LValue argument = lowCell(m_node->child2());
-        setJSValue(
-            vmCall(Int64, m_out.operation(operationRegExpExec), m_callFrame, base, argument));
+        LValue globalObject = lowCell(m_node->child1());
+        
+        if (m_node->child2().useKind() == RegExpObjectUse) {
+            LValue base = lowRegExpObject(m_node->child2());
+            
+            if (m_node->child3().useKind() == StringUse) {
+                LValue argument = lowString(m_node->child3());
+                LValue result = vmCall(
+                    Int64, m_out.operation(operationRegExpExecString), m_callFrame, globalObject,
+                    base, argument);
+                setJSValue(result);
+                return;
+            }
+            
+            LValue argument = lowJSValue(m_node->child3());
+            LValue result = vmCall(
+                Int64, m_out.operation(operationRegExpExec), m_callFrame, globalObject, base,
+                argument);
+            setJSValue(result);
+            return;
+        }
+        
+        LValue base = lowJSValue(m_node->child2());
+        LValue argument = lowJSValue(m_node->child3());
+        LValue result = vmCall(
+            Int64, m_out.operation(operationRegExpExecGeneric), m_callFrame, globalObject, base,
+            argument);
+        setJSValue(result);
     }
 
     void compileRegExpTest()
     {
-        LValue base = lowCell(m_node->child1());
-        LValue argument = lowCell(m_node->child2());
-        setBoolean(
-            vmCall(Int32, m_out.operation(operationRegExpTest), m_callFrame, base, argument));
+        LValue globalObject = lowCell(m_node->child1());
+        
+        if (m_node->child2().useKind() == RegExpObjectUse) {
+            LValue base = lowRegExpObject(m_node->child2());
+            
+            if (m_node->child3().useKind() == StringUse) {
+                LValue argument = lowString(m_node->child3());
+                LValue result = vmCall(
+                    Int32, m_out.operation(operationRegExpTestString), m_callFrame, globalObject,
+                    base, argument);
+                setBoolean(result);
+                return;
+            }
+
+            LValue argument = lowJSValue(m_node->child3());
+            LValue result = vmCall(
+                Int32, m_out.operation(operationRegExpTest), m_callFrame, globalObject, base,
+                argument);
+            setBoolean(result);
+            return;
+        }
+
+        LValue base = lowJSValue(m_node->child2());
+        LValue argument = lowJSValue(m_node->child3());
+        LValue result = vmCall(
+            Int32, m_out.operation(operationRegExpTestGeneric), m_callFrame, globalObject, base,
+            argument);
+        setBoolean(result);
     }
 
     void compileNewRegexp()
@@ -6471,8 +6565,7 @@ private:
             if (JSString* replace = m_node->child3()->dynamicCastConstant<JSString*>()) {
                 if (!replace->length()) {
                     LValue string = lowString(m_node->child1());
-                    LValue regExp = lowCell(m_node->child2());
-                    speculateRegExpObject(m_node->child2(), regExp);
+                    LValue regExp = lowRegExpObject(m_node->child2());
 
                     LValue result = vmCall(
                         Int64, m_out.operation(operationStringProtoFuncReplaceRegExpEmptyStr),
@@ -6484,8 +6577,7 @@ private:
             }
             
             LValue string = lowString(m_node->child1());
-            LValue regExp = lowCell(m_node->child2());
-            speculateRegExpObject(m_node->child2(), regExp);
+            LValue regExp = lowRegExpObject(m_node->child2());
             LValue replace = lowString(m_node->child3());
 
             LValue result = vmCall(
@@ -6502,6 +6594,23 @@ private:
             lowJSValue(m_node->child3()));
 
         setJSValue(result);
+    }
+
+    void compileGetRegExpObjectLastIndex()
+    {
+        setJSValue(m_out.load64(lowRegExpObject(m_node->child1()), m_heaps.RegExpObject_lastIndex));
+    }
+
+    void compileSetRegExpObjectLastIndex()
+    {
+        LValue regExp = lowRegExpObject(m_node->child1());
+        LValue value = lowJSValue(m_node->child2());
+
+        speculate(
+            ExoticObjectMode, noValue(), nullptr,
+            m_out.isZero32(m_out.load8ZeroExt32(regExp, m_heaps.RegExpObject_lastIndexIsWritable)));
+        
+        m_out.store64(value, regExp, m_heaps.RegExpObject_lastIndex);
     }
 
     LValue didOverflowStack()
@@ -6618,11 +6727,11 @@ private:
             return;
         }
         
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("checkStructure continuation"));
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
         for (unsigned i = 0; i < set.size() - 1; ++i) {
-            LBasicBlock nextStructure = FTL_NEW_BLOCK(m_out, ("checkStructure nextStructure"));
+            LBasicBlock nextStructure = m_out.newBlock();
             m_out.branch(
                 m_out.equal(structureDiscriminant, weakStructureDiscriminant(set[i])),
                 unsure(continuation), unsure(nextStructure));
@@ -6639,15 +6748,15 @@ private:
     
     LValue numberOrNotCellToInt32(Edge edge, LValue value)
     {
-        LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("ValueToInt32 int case"));
-        LBasicBlock notIntCase = FTL_NEW_BLOCK(m_out, ("ValueToInt32 not int case"));
+        LBasicBlock intCase = m_out.newBlock();
+        LBasicBlock notIntCase = m_out.newBlock();
         LBasicBlock doubleCase = 0;
         LBasicBlock notNumberCase = 0;
         if (edge.useKind() == NotCellUse) {
-            doubleCase = FTL_NEW_BLOCK(m_out, ("ValueToInt32 double case"));
-            notNumberCase = FTL_NEW_BLOCK(m_out, ("ValueToInt32 not number case"));
+            doubleCase = m_out.newBlock();
+            notNumberCase = m_out.newBlock();
         }
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ValueToInt32 continuation"));
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<ValueFromBlock> results;
         
@@ -6751,9 +6860,9 @@ private:
             return;
 
         case InferredType::ObjectWithStructureOrOther: {
-            LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectWithStructureOrOther cell case"));
-            LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectWithStructureOrOther not cell case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectWithStructureOrOther continuation"));
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
 
@@ -6787,9 +6896,9 @@ private:
             return;
 
         case InferredType::ObjectOrOther: {
-            LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectOrOther cell case"));
-            LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectOrOther not cell case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("checkInferredType ObjectOrOther continuation"));
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
             m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
 
@@ -6908,8 +7017,8 @@ private:
     
     LValue allocatePropertyStorageWithSizeImpl(size_t sizeInValues)
     {
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("allocatePropertyStorageWithSizeImpl slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("allocatePropertyStorageWithSizeImpl continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -7028,8 +7137,8 @@ private:
         return copyBarrier(
             fastResultValue,
             [&] () -> LValue {
-                LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("loadVectorWithBarrier slow path"));
-                LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("loadVectorWithBarrier continuation"));
+                LBasicBlock slowPath = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
 
                 ValueFromBlock fastResult = m_out.anchor(fastResultValue);
                 m_out.branch(isFastTypedArray(object), rarely(slowPath), usually(continuation));
@@ -7066,8 +7175,8 @@ private:
     template<typename Functor>
     LValue copyBarrier(LValue pointer, const Functor& functor)
     {
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("copyBarrier slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("copyBarrier continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         ValueFromBlock fastResult = m_out.anchor(pointer);
         m_out.branch(isInToSpace(pointer), usually(continuation), rarely(slowPath));
@@ -7095,8 +7204,8 @@ private:
     {
         LValue fastResultValue = m_out.loadPtr(object, m_heaps.JSArrayBufferView_vector);
 
-        LBasicBlock possiblyFromSpace = FTL_NEW_BLOCK(m_out, ("loadVectorReadOnly possibly from space"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("loadVectorReadOnly continuation"));
+        LBasicBlock possiblyFromSpace = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         ValueFromBlock fastResult = m_out.anchor(fastResultValue);
 
@@ -7175,9 +7284,9 @@ private:
         
         speculateTruthyObject(rightChild, rightCell, SpecObject);
         
-        LBasicBlock leftCellCase = FTL_NEW_BLOCK(m_out, ("CompareEqObjectOrOtherToObject left cell case"));
-        LBasicBlock leftNotCellCase = FTL_NEW_BLOCK(m_out, ("CompareEqObjectOrOtherToObject left not cell case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CompareEqObjectOrOtherToObject continuation"));
+        LBasicBlock leftCellCase = m_out.newBlock();
+        LBasicBlock leftNotCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(
             isCell(leftValue, provenType(leftChild)),
@@ -7219,10 +7328,10 @@ private:
         LValue left = lowJSValue(m_node->child1());
         LValue right = lowJSValue(m_node->child2());
         
-        LBasicBlock leftIsInt = FTL_NEW_BLOCK(m_out, ("CompareEq untyped left is int"));
-        LBasicBlock fastPath = FTL_NEW_BLOCK(m_out, ("CompareEq untyped fast path"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("CompareEq untyped slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CompareEq untyped continuation"));
+        LBasicBlock leftIsInt = m_out.newBlock();
+        LBasicBlock fastPath = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(isNotInt32(left), rarely(slowPath), usually(leftIsInt));
         
@@ -7244,18 +7353,18 @@ private:
 
     LValue stringsEqual(LValue leftJSString, LValue rightJSString)
     {
-        LBasicBlock notTriviallyUnequalCase = FTL_NEW_BLOCK(m_out, ("stringsEqual not trivially unequal case"));
-        LBasicBlock notEmptyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual not empty case"));
-        LBasicBlock leftReadyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual left ready case"));
-        LBasicBlock rightReadyCase = FTL_NEW_BLOCK(m_out, ("stringsEqual right ready case"));
-        LBasicBlock left8BitCase = FTL_NEW_BLOCK(m_out, ("stringsEqual left 8-bit case"));
-        LBasicBlock right8BitCase = FTL_NEW_BLOCK(m_out, ("stringsEqual right 8-bit case"));
-        LBasicBlock loop = FTL_NEW_BLOCK(m_out, ("stringsEqual loop"));
-        LBasicBlock bytesEqual = FTL_NEW_BLOCK(m_out, ("stringsEqual bytes equal"));
-        LBasicBlock trueCase = FTL_NEW_BLOCK(m_out, ("stringsEqual true case"));
-        LBasicBlock falseCase = FTL_NEW_BLOCK(m_out, ("stringsEqual false case"));
-        LBasicBlock slowCase = FTL_NEW_BLOCK(m_out, ("stringsEqual slow case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("stringsEqual continuation"));
+        LBasicBlock notTriviallyUnequalCase = m_out.newBlock();
+        LBasicBlock notEmptyCase = m_out.newBlock();
+        LBasicBlock leftReadyCase = m_out.newBlock();
+        LBasicBlock rightReadyCase = m_out.newBlock();
+        LBasicBlock left8BitCase = m_out.newBlock();
+        LBasicBlock right8BitCase = m_out.newBlock();
+        LBasicBlock loop = m_out.newBlock();
+        LBasicBlock bytesEqual = m_out.newBlock();
+        LBasicBlock trueCase = m_out.newBlock();
+        LBasicBlock falseCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         LValue length = m_out.load32(leftJSString, m_heaps.JSString_length);
 
@@ -7530,7 +7639,7 @@ private:
 
     LValue allocateCell(LValue allocator, LBasicBlock slowPath)
     {
-        LBasicBlock success = FTL_NEW_BLOCK(m_out, ("object allocation success"));
+        LBasicBlock success = m_out.newBlock();
     
         LValue result;
         LValue condition;
@@ -7600,10 +7709,10 @@ private:
 
         LValue subspace = m_out.constIntPtr(&vm().heap.subspaceForObjectOfType<ClassType>());
         
-        LBasicBlock smallCaseBlock = FTL_NEW_BLOCK(m_out, ("allocateVariableSizedObject small case"));
-        LBasicBlock largeOrOversizeCaseBlock = FTL_NEW_BLOCK(m_out, ("allocateVariableSizedObject large or oversize case"));
-        LBasicBlock largeCaseBlock = FTL_NEW_BLOCK(m_out, ("allocateVariableSizedObject large case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("allocateVariableSizedObject continuation"));
+        LBasicBlock smallCaseBlock = m_out.newBlock();
+        LBasicBlock largeOrOversizeCaseBlock = m_out.newBlock();
+        LBasicBlock largeCaseBlock = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue uproundedSize = m_out.add(size, m_out.constInt32(MarkedSpace::preciseStep - 1));
         LValue isSmall = m_out.below(uproundedSize, m_out.constInt32(MarkedSpace::preciseCutoff));
@@ -7639,7 +7748,7 @@ private:
     {
         CopiedAllocator& allocator = vm().heap.storageAllocator();
         
-        LBasicBlock success = FTL_NEW_BLOCK(m_out, ("storage allocation success"));
+        LBasicBlock success = m_out.newBlock();
         
         LValue remaining = m_out.loadPtr(m_out.absolute(&allocator.m_currentRemaining));
         LValue newRemaining = m_out.sub(remaining, size);
@@ -7665,8 +7774,8 @@ private:
         size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
         MarkedAllocator* allocator = &vm().heap.allocatorForObjectWithoutDestructor(allocationSize);
         
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("allocateObject slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("allocateObject continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -7743,8 +7852,8 @@ private:
     
     ArrayValues allocateJSArray(Structure* structure, unsigned numElements)
     {
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("JSArray allocation slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("JSArray allocation continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
@@ -7795,6 +7904,31 @@ private:
             LValue length = m_out.load32NonNegative(stringValue, m_heaps.JSString_length);
             return m_out.notEqual(length, m_out.int32Zero);
         }
+        case StringOrOtherUse: {
+            LValue value = lowJSValue(edge, ManualOperandSpeculation);
+
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
+            
+            LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
+            
+            FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCell) | SpecString, isNotString(value));
+            LValue length = m_out.load32NonNegative(value, m_heaps.JSString_length);
+            ValueFromBlock cellResult = m_out.anchor(m_out.notEqual(length, m_out.int32Zero));
+            m_out.jump(continuation);
+            
+            m_out.appendTo(notCellCase, continuation);
+            
+            FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+            ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+            m_out.jump(continuation);
+            m_out.appendTo(continuation, lastNext);
+
+            return m_out.phi(Int32, cellResult, notCellResult);
+        }
         case UntypedUse: {
             LValue value = lowJSValue(edge);
             
@@ -7814,15 +7948,15 @@ private:
             //     result = value == jsTrue
             // }
             
-            LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped cell case"));
-            LBasicBlock stringCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped string case"));
-            LBasicBlock notStringCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped not string case"));
-            LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped not cell case"));
-            LBasicBlock int32Case = FTL_NEW_BLOCK(m_out, ("Boolify untyped int32 case"));
-            LBasicBlock notInt32Case = FTL_NEW_BLOCK(m_out, ("Boolify untyped not int32 case"));
-            LBasicBlock doubleCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped double case"));
-            LBasicBlock notDoubleCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped not double case"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Boolify untyped continuation"));
+            LBasicBlock cellCase = m_out.newBlock();
+            LBasicBlock stringCase = m_out.newBlock();
+            LBasicBlock notStringCase = m_out.newBlock();
+            LBasicBlock notCellCase = m_out.newBlock();
+            LBasicBlock int32Case = m_out.newBlock();
+            LBasicBlock notInt32Case = m_out.newBlock();
+            LBasicBlock doubleCase = m_out.newBlock();
+            LBasicBlock notDoubleCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             
             Vector<ValueFromBlock> results;
             
@@ -7844,7 +7978,7 @@ private:
             if (masqueradesAsUndefinedWatchpointIsStillValid())
                 isTruthyObject = m_out.booleanTrue;
             else {
-                LBasicBlock masqueradesCase = FTL_NEW_BLOCK(m_out, ("Boolify untyped masquerades case"));
+                LBasicBlock masqueradesCase = m_out.newBlock();
                 
                 results.append(m_out.anchor(m_out.booleanTrue));
                 
@@ -7916,9 +8050,9 @@ private:
         
         LValue value = lowJSValue(edge, operandMode);
         
-        LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("EqualNullOrUndefined cell case"));
-        LBasicBlock primitiveCase = FTL_NEW_BLOCK(m_out, ("EqualNullOrUndefined primitive case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("EqualNullOrUndefined continuation"));
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock primitiveCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(isNotCell(value, provenType(edge)), unsure(primitiveCase), unsure(cellCase));
         
@@ -7940,7 +8074,7 @@ private:
             m_out.jump(continuation);
         } else {
             LBasicBlock masqueradesCase =
-                FTL_NEW_BLOCK(m_out, ("EqualNullOrUndefined masquerades case"));
+                m_out.newBlock();
                 
             results.append(m_out.anchor(m_out.booleanFalse));
             
@@ -7997,9 +8131,9 @@ private:
             index, m_out.load32NonNegative(storage, m_heaps.Butterfly_publicLength));
         if (!m_node->arrayMode().isInBounds()) {
             LBasicBlock notInBoundsCase =
-                FTL_NEW_BLOCK(m_out, ("PutByVal not in bounds"));
+                m_out.newBlock();
             LBasicBlock performStore =
-                FTL_NEW_BLOCK(m_out, ("PutByVal perform store"));
+                m_out.newBlock();
                 
             m_out.branch(isNotInBounds, unsure(notInBoundsCase), unsure(performStore));
                 
@@ -8012,9 +8146,9 @@ private:
                 speculate(OutOfBounds, noValue(), 0, isOutOfBounds);
             else {
                 LBasicBlock outOfBoundsCase =
-                    FTL_NEW_BLOCK(m_out, ("PutByVal out of bounds"));
+                    m_out.newBlock();
                 LBasicBlock holeCase =
-                    FTL_NEW_BLOCK(m_out, ("PutByVal hole case"));
+                    m_out.newBlock();
                     
                 m_out.branch(isOutOfBounds, rarely(outOfBoundsCase), usually(holeCase));
                     
@@ -8089,9 +8223,9 @@ private:
         LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
         LValue length = m_out.load32(string, m_heaps.JSString_length);
         
-        LBasicBlock hasImplBlock = FTL_NEW_BLOCK(m_out, ("Switch/SwitchString has impl case"));
-        LBasicBlock is8BitBlock = FTL_NEW_BLOCK(m_out, ("Switch/SwitchString is 8 bit case"));
-        LBasicBlock slowBlock = FTL_NEW_BLOCK(m_out, ("Switch/SwitchString slow case"));
+        LBasicBlock hasImplBlock = m_out.newBlock();
+        LBasicBlock is8BitBlock = m_out.newBlock();
+        LBasicBlock slowBlock = m_out.newBlock();
         
         m_out.branch(m_out.isNull(stringImpl), unsure(slowBlock), unsure(hasImplBlock));
         
@@ -8266,8 +8400,8 @@ private:
         characterCases.append(currentCase);
         
         Vector<LBasicBlock> characterBlocks;
-        for (CharacterCase& myCase : characterCases)
-            characterBlocks.append(FTL_NEW_BLOCK(m_out, ("Switch/SwitchString case for ", myCase.character, " at index ", commonChars)));
+        for (unsigned i = characterCases.size(); i--;)
+            characterBlocks.append(m_out.newBlock());
         
         Vector<SwitchCase> switchCases;
         for (unsigned i = 0; i < characterCases.size(); ++i) {
@@ -8361,7 +8495,7 @@ private:
     // contination and set it as the nextBlock (m_out.insertNewBlocksBefore(continuation)) before
     // calling this. For example:
     //
-    // LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("My continuation"));
+    // LBasicBlock continuation = m_out.newBlock();
     // LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
     // buildTypeOf(
     //     child, value,
@@ -8401,22 +8535,22 @@ private:
         //     return undefined
         // }
         
-        LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf cell case"));
-        LBasicBlock objectCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf object case"));
-        LBasicBlock functionCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf function case"));
-        LBasicBlock notFunctionCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf not function case"));
-        LBasicBlock reallyObjectCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf really object case"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("buildTypeOf slow path"));
-        LBasicBlock unreachable = FTL_NEW_BLOCK(m_out, ("buildTypeOf unreachable"));
-        LBasicBlock notObjectCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf not object case"));
-        LBasicBlock stringCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf string case"));
-        LBasicBlock symbolCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf symbol case"));
-        LBasicBlock notCellCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf not cell case"));
-        LBasicBlock numberCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf number case"));
-        LBasicBlock notNumberCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf not number case"));
-        LBasicBlock notNullCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf not null case"));
-        LBasicBlock booleanCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf boolean case"));
-        LBasicBlock undefinedCase = FTL_NEW_BLOCK(m_out, ("buildTypeOf undefined case"));
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock objectCase = m_out.newBlock();
+        LBasicBlock functionCase = m_out.newBlock();
+        LBasicBlock notFunctionCase = m_out.newBlock();
+        LBasicBlock reallyObjectCase = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock unreachable = m_out.newBlock();
+        LBasicBlock notObjectCase = m_out.newBlock();
+        LBasicBlock stringCase = m_out.newBlock();
+        LBasicBlock symbolCase = m_out.newBlock();
+        LBasicBlock notCellCase = m_out.newBlock();
+        LBasicBlock numberCase = m_out.newBlock();
+        LBasicBlock notNumberCase = m_out.newBlock();
+        LBasicBlock notNullCase = m_out.newBlock();
+        LBasicBlock booleanCase = m_out.newBlock();
+        LBasicBlock undefinedCase = m_out.newBlock();
         
         m_out.branch(isCell(value, provenType(child)), unsure(cellCase), unsure(notCellCase));
         
@@ -8496,10 +8630,10 @@ private:
     
     LValue doubleToInt32(LValue doubleValue, double low, double high, bool isSigned = true)
     {
-        LBasicBlock greatEnough = FTL_NEW_BLOCK(m_out, ("doubleToInt32 greatEnough"));
-        LBasicBlock withinRange = FTL_NEW_BLOCK(m_out, ("doubleToInt32 withinRange"));
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("doubleToInt32 slowPath"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("doubleToInt32 continuation"));
+        LBasicBlock greatEnough = m_out.newBlock();
+        LBasicBlock withinRange = m_out.newBlock();
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<ValueFromBlock, 2> results;
         
@@ -8540,8 +8674,8 @@ private:
     
     LValue sensibleDoubleToInt32(LValue doubleValue)
     {
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("sensible doubleToInt32 slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("sensible doubleToInt32 continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         LValue fastResultValue = m_out.doubleToInt(doubleValue);
         ValueFromBlock fastResult = m_out.anchor(fastResultValue);
@@ -8907,6 +9041,13 @@ private:
         speculateObject(edge, result);
         return result;
     }
+
+    LValue lowRegExpObject(Edge edge)
+    {
+        LValue result = lowCell(edge);
+        speculateRegExpObject(edge, result);
+        return result;
+    }
     
     LValue lowString(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
@@ -9048,9 +9189,9 @@ private:
     
     LValue strictInt52ToJSValue(LValue value)
     {
-        LBasicBlock isInt32 = FTL_NEW_BLOCK(m_out, ("strictInt52ToJSValue isInt32 case"));
-        LBasicBlock isDouble = FTL_NEW_BLOCK(m_out, ("strictInt52ToJSValue isDouble case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("strictInt52ToJSValue continuation"));
+        LBasicBlock isInt32 = m_out.newBlock();
+        LBasicBlock isDouble = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         Vector<ValueFromBlock, 2> results;
             
@@ -9128,9 +9269,9 @@ private:
     
     LValue jsValueToStrictInt52(Edge edge, LValue boxedValue)
     {
-        LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("jsValueToInt52 unboxing int case"));
-        LBasicBlock doubleCase = FTL_NEW_BLOCK(m_out, ("jsValueToInt52 unboxing double case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("jsValueToInt52 unboxing continuation"));
+        LBasicBlock intCase = m_out.newBlock();
+        LBasicBlock doubleCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
             
         LValue isNotInt32;
         if (!m_interpreter.needsTypeCheck(edge, SpecInt32))
@@ -9182,8 +9323,8 @@ private:
         speculate(Overflow, FormattedValue(DataFormatDouble, value), m_node, valueNotConvertibleToInteger);
 
         if (shouldCheckNegativeZero) {
-            LBasicBlock valueIsZero = FTL_NEW_BLOCK(m_out, ("ConvertDoubleToInt32 on zero"));
-            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ConvertDoubleToInt32 continuation"));
+            LBasicBlock valueIsZero = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
             m_out.branch(m_out.isZero32(integerValue), unsure(valueIsZero), unsure(continuation));
 
             LBasicBlock lastNext = m_out.appendTo(valueIsZero, continuation);
@@ -9336,6 +9477,9 @@ private:
         case StringUse:
             speculateString(edge);
             break;
+        case StringOrOtherUse:
+            speculateStringOrOther(edge);
+            break;
         case StringIdentUse:
             speculateStringIdent(edge);
             break;
@@ -9399,8 +9543,8 @@ private:
     {
         LValue value = lowJSValue(edge, ManualOperandSpeculation);
 
-        LBasicBlock isNotCell = FTL_NEW_BLOCK(m_out, ("Speculate CellOrOther not cell"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Speculate CellOrOther continuation"));
+        LBasicBlock isNotCell = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(isCell(value, provenType(edge)), unsure(continuation), unsure(isNotCell));
 
@@ -9575,9 +9719,9 @@ private:
         
         LValue value = lowJSValue(edge, ManualOperandSpeculation);
         
-        LBasicBlock cellCase = FTL_NEW_BLOCK(m_out, ("speculateObjectOrOther cell case"));
-        LBasicBlock primitiveCase = FTL_NEW_BLOCK(m_out, ("speculateObjectOrOther primitive case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("speculateObjectOrOther continuation"));
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock primitiveCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(isNotCell(value, provenType(edge)), unsure(primitiveCase), unsure(cellCase));
         
@@ -9630,6 +9774,32 @@ private:
         speculateString(edge, lowCell(edge));
     }
     
+    void speculateStringOrOther(Edge edge, LValue value)
+    {
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock notCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
+
+        LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
+
+        FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCell) | SpecString, isNotString(value));
+
+        m_out.jump(continuation);
+        m_out.appendTo(notCellCase, continuation);
+
+        FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+
+        m_out.jump(continuation);
+        m_out.appendTo(continuation, lastNext);
+    }
+    
+    void speculateStringOrOther(Edge edge)
+    {
+        speculateStringOrOther(edge, lowJSValue(edge, ManualOperandSpeculation));
+    }
+    
     void speculateStringIdent(Edge edge, LValue string, LValue stringImpl)
     {
         if (!m_interpreter.needsTypeCheck(edge, SpecStringIdent | ~SpecString))
@@ -9663,8 +9833,8 @@ private:
         if (!m_interpreter.needsTypeCheck(edge, SpecString | SpecStringObject))
             return;
         
-        LBasicBlock notString = FTL_NEW_BLOCK(m_out, ("Speculate StringOrStringObject not string case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Speculate StringOrStringObject continuation"));
+        LBasicBlock notString = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue structureID = m_out.load32(lowCell(edge), m_heaps.JSCell_structureID);
         m_out.branch(
@@ -9736,8 +9906,8 @@ private:
         LValue value = lowJSValue(edge, ManualOperandSpeculation);
         LValue doubleValue = unboxDouble(value);
         
-        LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("speculateRealNumber int case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("speculateRealNumber continuation"));
+        LBasicBlock intCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(
             m_out.doubleEqual(doubleValue, doubleValue),
@@ -9785,9 +9955,9 @@ private:
         
         LValue value = lowJSValue(edge, ManualOperandSpeculation);
         
-        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("Speculate NotStringVar is cell case"));
-        LBasicBlock isStringCase = FTL_NEW_BLOCK(m_out, ("Speculate NotStringVar is string case"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Speculate NotStringVar continuation"));
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock isStringCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         m_out.branch(isCell(value, provenType(edge)), unsure(isCellCase), unsure(continuation));
         
@@ -9840,8 +10010,8 @@ private:
 
     void emitStoreBarrier(LValue base)
     {
-        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("Store barrier slow path"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Store barrier continuation"));
+        LBasicBlock slowPath = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
             m_out.notZero32(loadCellState(base)), usually(continuation), rarely(slowPath));
@@ -9964,7 +10134,7 @@ private:
             return;
         }
 
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Exception check continuation"));
+        LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
             hadException, rarely(m_handleExceptions), usually(continuation));

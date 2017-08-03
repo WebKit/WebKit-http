@@ -48,12 +48,15 @@ void InteractionInformationAtPosition::encode(IPC::ArgumentEncoder& encoder) con
     encoder << touchCalloutEnabled;
     encoder << isLink;
     encoder << isImage;
+    encoder << isAttachment;
     encoder << isAnimatedImage;
     encoder << isElement;
     encoder << url;
     encoder << imageURL;
     encoder << title;
     encoder << bounds;
+    encoder << textBefore;
+    encoder << textAfter;
     encoder << linkIndicator;
 
     ShareableBitmap::Handle handle;
@@ -98,6 +101,9 @@ bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, Int
     if (!decoder.decode(result.isImage))
         return false;
 
+    if (!decoder.decode(result.isAttachment))
+        return false;
+    
     if (!decoder.decode(result.isAnimatedImage))
         return false;
     
@@ -116,6 +122,12 @@ bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, Int
     if (!decoder.decode(result.bounds))
         return false;
 
+    if (!decoder.decode(result.textBefore))
+        return false;
+    
+    if (!decoder.decode(result.textAfter))
+        return false;
+    
     if (!decoder.decode(result.linkIndicator))
         return false;
 

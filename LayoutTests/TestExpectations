@@ -316,6 +316,9 @@ imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-bogus.htm [ Skip ]
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-cors.htm [ Skip ]
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ Skip ]
 
+# Tests that are flaky as failing assertions print a new token generated for each test run.
+imported/w3c/web-platform-tests/fetch/api/basic/scheme-blob.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/basic/scheme-blob-worker.html [ Failure ]
 
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
@@ -805,6 +808,7 @@ webkit.org/b/52185 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnly
 # Content Security Policy failures
 webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1
 http/tests/security/contentSecurityPolicy/1.1/child-src [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/frame-ancestors [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-blocked.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-default-ignored.html [ Pass ]
@@ -816,15 +820,30 @@ http/tests/security/contentSecurityPolicy/1.1/base-uri-allow.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/base-uri-default-ignored.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/base-uri-deny.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive.php [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-default-src.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-ignore-unsafeinline.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-malformed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-tests.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-unicode-normalization.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-and-scripthash.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-basic-blocked.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-ignore-unsafeinline.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scriptnonce-redirect.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-basics.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-from-script.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-from-script.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-https.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image.html [ Pass ]
-webkit.org/b/154203 http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html
-webkit.org/b/154203 http/tests/security/contentSecurityPolicy/1.1/scripthash-default-src.html
-webkit.org/b/154203 http/tests/security/contentSecurityPolicy/1.1/stylehash-default-src.html
+http/tests/security/contentSecurityPolicy/1.1/stylehash-allowed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/stylenonce-allowed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/stylenonce-blocked.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-data.html [ Pass ]
@@ -835,6 +854,7 @@ http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html [ P
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html [ Pass ]
+webkit.org/b/154203 http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html
 webkit.org/b/111869 http/tests/security/contentSecurityPolicy/eval-blocked-and-sends-report.html
 webkit.org/b/115700 http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta.html [ Failure ]
 webkit.org/b/153148 http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode-and-sends-report.html
@@ -845,12 +865,13 @@ webkit.org/b/153151 http/tests/security/contentSecurityPolicy/icon-allowed.html 
 webkit.org/b/153151 http/tests/security/contentSecurityPolicy/icon-blocked.html [ Failure ]
 webkit.org/b/153152 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html # Needs testRunner.getManifestThen()
 webkit.org/b/153152 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html # Needs testRunner.getManifestThen()
-webkit.org/b/153153 http/tests/security/contentSecurityPolicy/object-src-param-code-blocked.html
-webkit.org/b/153153 http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html
-webkit.org/b/153153 http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html
-webkit.org/b/153153 http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html
 webkit.org/b/153154 http/tests/security/contentSecurityPolicy/redirect-does-not-match-paths.html
 webkit.org/b/153155 http/tests/security/contentSecurityPolicy/style-src-blocked-error-event.html
+webkit.org/b/153155 http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked-error-event.html
+webkit.org/b/153155 http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked-error-event.html
+webkit.org/b/153155 http/tests/security/contentSecurityPolicy/1.1/stylehash-svg-style-basic-blocked-error-event.html
+webkit.org/b/153155 http/tests/security/contentSecurityPolicy/1.1/stylenonce-basic-blocked-error-event.html
+webkit.org/b/153155 http/tests/security/contentSecurityPolicy/1.1/stylenonce-svg-style-basic-blocked-error-event.html
 webkit.org/b/153159 http/tests/security/contentSecurityPolicy/image-document-default-src-none.html [ Failure ]
 webkit.org/b/153160 http/tests/security/contentSecurityPolicy/object-src-does-not-affect-child.html [ Failure ]
 webkit.org/b/153160 http/tests/security/contentSecurityPolicy/plugin-in-iframe-with-csp.html [ Failure ]
@@ -858,6 +879,7 @@ webkit.org/b/153161 http/tests/security/contentSecurityPolicy/register-bypassing
 webkit.org/b/153162 http/tests/security/contentSecurityPolicy/report-multiple-violations-01.html [ Failure ]
 webkit.org/b/153162 http/tests/security/contentSecurityPolicy/report-multiple-violations-02.html [ Failure ]
 webkit.org/b/154522 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-base-uri-deny.html
+webkit.org/b/155132 http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star.html [ Failure ]
 http/tests/security/contentSecurityPolicy/script-src-blocked-error-event.html [ Pass Failure ]
 
 # These state object tests purposefully stress a resource limit, and take multiple seconds to run.
@@ -931,9 +953,6 @@ storage/indexeddb/transaction-complete-workers-private.html
 storage/indexeddb/transaction-complete-workers.html
 storage/indexeddb/unprefix-workers.html
 
-# Need a different way to get database names to the web inspector
-inspector/indexeddb/requestDatabaseNames.html
-
 # Test's behavior specific to Legacy IDB with LevelDB backend
 # Modern IDB is spec-compliant without supporting this behavior
 storage/indexeddb/transaction-starvation.html [ Skip ]
@@ -959,6 +978,11 @@ storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
 
 # Inspector doesn't support modern IDB yet
 webkit.org/b/154686 inspector/indexeddb/requestDatabaseNames.html [ Skip ]
+
+# These two IDB tests are, by their nature, very slow
+# Skip these until we have a fix for webkit.org/b/155041
+storage/indexeddb/modern/exceed-open-file-limit.html [ Skip ]
+webkit.org/b/155028 storage/indexeddb/modern/256-open-databases.html [ Skip ]
 
 ### END OF IndexedDB failures
 ########################################

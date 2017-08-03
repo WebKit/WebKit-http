@@ -38,6 +38,7 @@
 #include "Frame.h"
 #include "HitTestResult.h"
 #include "InspectorInstrumentationCookie.h"
+#include "MemoryPressureHandler.h"
 #include "Page.h"
 #include "ScriptExecutionContext.h"
 #include "ScriptState.h"
@@ -137,10 +138,10 @@ public:
     static void mouseDidMoveOverElement(Page&, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePress(Frame&);
     static bool handleTouchEvent(Frame&, Node&);
-    static bool forcePseudoState(Element&, CSSSelector::PseudoClassType);
+    static bool forcePseudoState(const Element&, CSSSelector::PseudoClassType);
 
     static void willSendXMLHttpRequest(ScriptExecutionContext*, const String& url);
-    static void didInstallTimer(ScriptExecutionContext*, int timerId, int timeout, bool singleShot);
+    static void didInstallTimer(ScriptExecutionContext*, int timerId, std::chrono::milliseconds timeout, bool singleShot);
     static void didRemoveTimer(ScriptExecutionContext*, int timerId);
 
     static InspectorInstrumentationCookie willCallFunction(ScriptExecutionContext*, const String& scriptName, int scriptLine);
@@ -258,6 +259,10 @@ public:
     static Deprecated::ScriptObject wrapWebGLRenderingContextForInstrumentation(Document*, const Deprecated::ScriptObject&);
 #endif
 
+#if ENABLE(RESOURCE_USAGE)
+    static void didHandleMemoryPressure(Page&, Critical);
+#endif
+
     static void networkStateChanged(Page*);
     static void updateApplicationCacheStatus(Frame*);
 
@@ -306,10 +311,10 @@ private:
     static void mouseDidMoveOverElementImpl(InstrumentingAgents&, const HitTestResult&, unsigned modifierFlags);
     static bool handleTouchEventImpl(InstrumentingAgents&, Node&);
     static bool handleMousePressImpl(InstrumentingAgents&);
-    static bool forcePseudoStateImpl(InstrumentingAgents&, Element&, CSSSelector::PseudoClassType);
+    static bool forcePseudoStateImpl(InstrumentingAgents&, const Element&, CSSSelector::PseudoClassType);
 
     static void willSendXMLHttpRequestImpl(InstrumentingAgents&, const String& url);
-    static void didInstallTimerImpl(InstrumentingAgents&, int timerId, int timeout, bool singleShot, ScriptExecutionContext*);
+    static void didInstallTimerImpl(InstrumentingAgents&, int timerId, std::chrono::milliseconds timeout, bool singleShot, ScriptExecutionContext*);
     static void didRemoveTimerImpl(InstrumentingAgents&, int timerId, ScriptExecutionContext*);
 
     static InspectorInstrumentationCookie willCallFunctionImpl(InstrumentingAgents&, const String& scriptName, int scriptLine, ScriptExecutionContext*);
@@ -420,6 +425,10 @@ private:
     static void didReceiveWebSocketFrameImpl(InstrumentingAgents&, unsigned long identifier, const WebSocketFrame&);
     static void didSendWebSocketFrameImpl(InstrumentingAgents&, unsigned long identifier, const WebSocketFrame&);
     static void didReceiveWebSocketFrameErrorImpl(InstrumentingAgents&, unsigned long identifier, const String&);
+#endif
+
+#if ENABLE(RESOURCE_USAGE)
+    static void didHandleMemoryPressureImpl(InstrumentingAgents&, Critical);
 #endif
 
     static void networkStateChangedImpl(InstrumentingAgents&);
@@ -626,7 +635,7 @@ inline bool InspectorInstrumentation::handleMousePress(Frame& frame)
     return false;
 }
 
-inline bool InspectorInstrumentation::forcePseudoState(Element& element, CSSSelector::PseudoClassType pseudoState)
+inline bool InspectorInstrumentation::forcePseudoState(const Element& element, CSSSelector::PseudoClassType pseudoState)
 {
     FAST_RETURN_IF_NO_FRONTENDS(false);
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(element.document()))
@@ -648,7 +657,7 @@ inline void InspectorInstrumentation::willSendXMLHttpRequest(ScriptExecutionCont
         willSendXMLHttpRequestImpl(*instrumentingAgents, url);
 }
 
-inline void InspectorInstrumentation::didInstallTimer(ScriptExecutionContext* context, int timerId, int timeout, bool singleShot)
+inline void InspectorInstrumentation::didInstallTimer(ScriptExecutionContext* context, int timerId, std::chrono::milliseconds timeout, bool singleShot)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
@@ -1161,27 +1170,36 @@ inline void InspectorInstrumentation::captureStopped(Page& page)
 inline void InspectorInstrumentation::playbackStarted(Page& page)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-        playbackStartedImpl(instrumentingAgentsForPage(page));
+    playbackStartedImpl(instrumentingAgentsForPage(page));
 }
 
 inline void InspectorInstrumentation::playbackPaused(Page& page, const ReplayPosition& position)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-        playbackPausedImpl(instrumentingAgentsForPage(page), position);
+    playbackPausedImpl(instrumentingAgentsForPage(page), position);
 }
 
 inline void InspectorInstrumentation::playbackFinished(Page& page)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-        playbackFinishedImpl(instrumentingAgentsForPage(page));
+    playbackFinishedImpl(instrumentingAgentsForPage(page));
 }
 
 inline void InspectorInstrumentation::playbackHitPosition(Page& page, const ReplayPosition& position)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
-        playbackHitPositionImpl(instrumentingAgentsForPage(page), position);
+    playbackHitPositionImpl(instrumentingAgentsForPage(page), position);
 }
 #endif // ENABLE(WEB_REPLAY)
+
+#if ENABLE(RESOURCE_USAGE)
+inline void InspectorInstrumentation::didHandleMemoryPressure(Page& page, Critical critical)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForPage(&page))
+        didHandleMemoryPressureImpl(*instrumentingAgents, critical);
+}
+#endif
 
 inline void InspectorInstrumentation::networkStateChanged(Page* page)
 {

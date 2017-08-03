@@ -66,13 +66,16 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
                 return new WebInspector.LayoutTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.Script)
-                return new WebInspector.ScriptTimelineView(representedObject, extraArguments);
+                return new WebInspector.ScriptClusterTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.RenderingFrame)
                 return new WebInspector.RenderingFrameTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.Memory)
                 return new WebInspector.MemoryTimelineView(representedObject, extraArguments);
+
+            if (timelineType === WebInspector.TimelineRecord.Type.HeapAllocations)
+                return new WebInspector.HeapAllocationsTimelineView(representedObject, extraArguments);
         }
 
         if (representedObject instanceof WebInspector.Breakpoint) {
@@ -131,6 +134,12 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
 
         if (representedObject instanceof WebInspector.ContentFlow)
             return new WebInspector.ContentFlowDOMTreeContentView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.CallingContextTree)
+            return new WebInspector.ProfileView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.HeapSnapshot)
+            return new WebInspector.HeapSnapshotClusterContentView(representedObject, extraArguments);
 
         if (typeof representedObject === "string" || representedObject instanceof String)
             return new WebInspector.TextContentView(representedObject, extraArguments);
@@ -225,6 +234,10 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.LogObject)
             return true;
         if (representedObject instanceof WebInspector.ContentFlow)
+            return true;
+        if (representedObject instanceof WebInspector.CallingContextTree)
+            return true;
+        if (representedObject instanceof WebInspector.HeapSnapshot)
             return true;
         if (typeof representedObject === "string" || representedObject instanceof String)
             return true;
