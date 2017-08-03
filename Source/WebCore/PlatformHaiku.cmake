@@ -68,6 +68,8 @@ list(APPEND WebCore_SOURCES
 
   page/PointerLockController.cpp
 
+  platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
+
   platform/haiku/CursorHaiku.cpp
   platform/haiku/DragImageHaiku.cpp
   platform/haiku/DragDataHaiku.cpp
@@ -207,6 +209,7 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/haiku/RenderThemeHaiku.cpp)
 
 list(APPEND WebCore_LIBRARIES
+  ${GNUTLS_LIBRARIES}
   ${ICU_LIBRARIES}
   ${JPEG_LIBRARY}
   ${LIBXML2_LIBRARIES}
@@ -219,6 +222,7 @@ list(APPEND WebCore_LIBRARIES
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+  ${GNUTLS_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR}
   ${LIBXSLT_INCLUDE_DIR}
