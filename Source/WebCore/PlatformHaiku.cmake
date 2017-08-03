@@ -28,31 +28,6 @@ list(APPEND WebCore_SOURCES
   bindings/js/JSSubtleCryptoCustom.cpp
   bindings/js/ScriptControllerHaiku.cpp
 
-  crypto/CryptoAlgorithm.cpp
-  crypto/CryptoAlgorithmDescriptionBuilder.cpp
-  crypto/CryptoAlgorithmRegistry.cpp
-  crypto/CryptoKey.cpp
-  crypto/CryptoKeyPair.cpp
-  crypto/SubtleCrypto.cpp
-
-  crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
-  crypto/algorithms/CryptoAlgorithmAES_KW.cpp
-  crypto/algorithms/CryptoAlgorithmHMAC.cpp
-  crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
-  crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
-  crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
-  crypto/algorithms/CryptoAlgorithmSHA1.cpp
-  crypto/algorithms/CryptoAlgorithmSHA224.cpp
-  crypto/algorithms/CryptoAlgorithmSHA256.cpp
-  crypto/algorithms/CryptoAlgorithmSHA384.cpp
-  crypto/algorithms/CryptoAlgorithmSHA512.cpp
-
-  crypto/keys/CryptoKeyAES.cpp
-  crypto/keys/CryptoKeyDataOctetSequence.cpp
-  crypto/keys/CryptoKeyDataRSAComponents.cpp
-  crypto/keys/CryptoKeyHMAC.cpp
-  crypto/keys/CryptoKeySerializationRaw.cpp
-
   editing/haiku/EditorHaiku.cpp
 
   html/shadow/MediaControlsApple.cpp
@@ -180,6 +155,45 @@ list(APPEND WebCore_SOURCES
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
 )
+
+if (ENABLE_SUBTLE_CRYPTO)
+    list(APPEND WebCore_SOURCES
+        crypto/CryptoAlgorithm.cpp
+        crypto/CryptoAlgorithmDescriptionBuilder.cpp
+        crypto/CryptoAlgorithmRegistry.cpp
+        crypto/CryptoKey.cpp
+        crypto/CryptoKeyPair.cpp
+        crypto/SubtleCrypto.cpp
+
+        crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+        crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+        crypto/algorithms/CryptoAlgorithmHMAC.cpp
+        crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+        crypto/algorithms/CryptoAlgorithmSHA1.cpp
+        crypto/algorithms/CryptoAlgorithmSHA224.cpp
+        crypto/algorithms/CryptoAlgorithmSHA256.cpp
+        crypto/algorithms/CryptoAlgorithmSHA384.cpp
+        crypto/algorithms/CryptoAlgorithmSHA512.cpp
+
+        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
+        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
+        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+
+        crypto/keys/CryptoKeyAES.cpp
+        crypto/keys/CryptoKeyDataOctetSequence.cpp
+        crypto/keys/CryptoKeyDataRSAComponents.cpp
+        crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeySerializationRaw.cpp
+    )
+endif ()
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
