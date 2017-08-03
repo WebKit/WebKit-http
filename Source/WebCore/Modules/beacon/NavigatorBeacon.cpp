@@ -51,3 +51,4 @@ ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, co
 }
 
 }
+

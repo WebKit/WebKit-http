@@ -68,7 +68,7 @@ public:
     static void sendPing(Frame&, const URL& pingURL, const URL& destinationURL);
     static void sendViolationReport(Frame&, const URL& reportURL, Ref<FormData>&& report, ViolationReportType);
 
-protected:
+private:
     enum class ShouldFollowRedirects { No, Yes };
     static void startPingLoad(Frame&, ResourceRequest&, ShouldFollowRedirects);
 };

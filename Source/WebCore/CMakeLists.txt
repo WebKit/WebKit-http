@@ -1985,7 +1985,6 @@ set(WebCore_SOURCES
     inspector/WorkerRuntimeAgent.cpp
     inspector/WorkerScriptDebugServer.cpp
 
-    loader/BeaconLoader.cpp
     loader/ContentFilter.cpp
     loader/CookieJar.cpp
     loader/CrossOriginAccessControl.cpp
