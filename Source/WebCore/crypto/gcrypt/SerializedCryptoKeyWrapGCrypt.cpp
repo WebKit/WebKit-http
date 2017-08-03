@@ -29,15 +29,14 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "NotImplemented.h"
-#include <pal/crypto/gcrypt/Handle.h>
-#include <pal/crypto/gcrypt/Utilities.h>
-#include <wtf/CryptographicUtilities.h>
 
 namespace WebCore {
 
-bool getDefaultWebCryptoMasterKey(Vector<uint8_t>&)
+bool getDefaultWebCryptoMasterKey(Vector<uint8_t>& masterKey)
 {
     notImplemented();
+    UNUSED_PARAM(masterKey);
+
     return false;
 }
 
