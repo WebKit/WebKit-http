@@ -499,7 +499,6 @@ void MediaKeySession::close(Ref<DeferredPromise>&& promise)
             m_taskQueue.enqueueTask([this, promise = WTFMove(promise)] () mutable {
                 // 5.3.1. Run the Session Closed algorithm on the session.
                 sessionClosed();
-                m_closed = true;
 
                 // 5.3.2. Resolve promise.
                 promise->resolve();

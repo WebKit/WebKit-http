@@ -326,7 +326,7 @@ size_t CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string&
     return length;
 }
 
-void CDMInstanceOpenCDM::loadSession(LicenseType licenseType, const String& sessionId, const String&, LoadSessionCallback callback)
+void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const String&, LoadSessionCallback callback)
 {
     std::string responseMessage;
     SessionLoadFailure sessionFailure = SessionLoadFailure::None;
@@ -338,6 +338,7 @@ void CDMInstanceOpenCDM::loadSession(LicenseType licenseType, const String& sess
             GST_TRACE("message length %u", length);
             auto message = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
+            // FIXME: Maybe we need to send the message for partially remove scenario.
             return;
         }
 
@@ -359,7 +360,7 @@ void CDMInstanceOpenCDM::closeSession(const String&, CloseSessionCallback callba
     callback();
 }
 
-void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType licenseType, RemoveSessionDataCallback callback)
+void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback callback)
 {
     std::string responseMessage;
     KeyStatusVector keys;
@@ -379,13 +380,12 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType 
             return;
         }
     }
-    //FIXME:Check the working of removeSession sequence from OpenCDMi and make the required change for KeyStatus
-#if 1
+
     SharedBuffer* initData = sessionIdMap.get(sessionId);
     MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
     keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-#endif
-    callback(WTFMove(keys), std::nullopt, SuccessValue::Succeeded);
+    callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
+    return;
 }
 
 void CDMInstanceOpenCDM::storeRecordOfKeyUsage(const String&)
