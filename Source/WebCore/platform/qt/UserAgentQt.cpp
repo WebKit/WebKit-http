@@ -37,7 +37,7 @@ namespace WebCore {
 
     This implementation returns the following value:
 
-    "Mozilla/5.0 (%Platform%%Security%%Subplatform%) AppleWebKit/%WebKitVersion% (KHTML, like Gecko) %AppVersion Version/9.0 Safari/%WebKitVersion%"
+    "Mozilla/5.0 (%Platform%%Security%%Subplatform%) AppleWebKit/%WebKitVersion% (KHTML, like Gecko) %AppVersion Version/10.0 Safari/%WebKitVersion%"
 
     In this string the following values are replaced the first time the function is called:
     \list
@@ -58,7 +58,7 @@ String UserAgentQt::standardUserAgent(const String &applicationNameForUserAgent,
 
     if (ua.isNull()) {
 
-        ua = QStringLiteral("Mozilla/5.0 (%1%2%3) AppleWebKit/%4 (KHTML, like Gecko) %99 Version/9.0 Safari/%5");
+        ua = QStringLiteral("Mozilla/5.0 (%1%2%3) AppleWebKit/%4 (KHTML, like Gecko) %99 Version/10.0 Safari/%5");
 
         // Platform.
         ua = ua.arg(
