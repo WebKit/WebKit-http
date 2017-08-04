@@ -40,11 +40,15 @@ namespace WebCore {
 
 class CDMFactoryClearKey final : public CDMFactory {
 public:
-    CDMFactoryClearKey();
+    static CDMFactoryClearKey& singleton();
+
     virtual ~CDMFactoryClearKey();
 
     std::unique_ptr<CDMPrivate> createCDM(const String&) override;
     bool supportsKeySystem(const String&) override;
+
+private:
+    CDMFactoryClearKey();
 };
 
 class CDMPrivateClearKey final : public CDMPrivate {
