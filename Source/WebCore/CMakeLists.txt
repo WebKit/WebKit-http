@@ -2255,6 +2255,8 @@ set(WebCore_SOURCES
     platform/audio/VectorMath.cpp
     platform/audio/ZeroPole.cpp
 
+    platform/encryptedmedia/CDMFactory.cpp
+
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
     platform/graphics/ComplexTextController.cpp

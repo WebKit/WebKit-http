@@ -25,6 +25,7 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDM.h"
+#include "CDMFactory.h"
 #include "CDMInstance.h"
 #include "MediaKeyStatus.h"
 #include <wtf/HashMap.h>
@@ -40,7 +41,7 @@ public:
     CDMFactoryOpenCDM();
     virtual ~CDMFactoryOpenCDM();
 
-    std::unique_ptr<CDMPrivate> createCDM(CDM&, const String&) override;
+    std::unique_ptr<CDMPrivate> createCDM(const String&) override;
     bool supportsKeySystem(const String&) override;
 };
 

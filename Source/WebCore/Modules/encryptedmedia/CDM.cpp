@@ -28,7 +28,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDMClearKey.h"
+#include "CDMFactory.h"
 #include "CDMPrivate.h"
 #include "Document.h"
 #include "InitDataRegistry.h"
@@ -42,30 +42,9 @@
 
 namespace WebCore {
 
-static Vector<CDMFactory*>& cdmFactories()
-{
-    static NeverDestroyed<Vector<CDMFactory*>> factories;
-    if (factories.get().isEmpty())
-        factories.get().append(new CDMFactoryClearKey);
-
-    return factories;
-}
-
-void CDM::registerCDMFactory(CDMFactory& factory)
-{
-    ASSERT(!cdmFactories().contains(&factory));
-    cdmFactories().append(&factory);
-}
-
-void CDM::unregisterCDMFactory(CDMFactory& factory)
-{
-    ASSERT(cdmFactories().contains(&factory));
-    cdmFactories().removeAll(&factory);
-}
-
 bool CDM::supportsKeySystem(const String& keySystem)
 {
-    for (auto* factory : cdmFactories()) {
+    for (auto* factory : CDMFactory::registeredFactories()) {
         if (factory->supportsKeySystem(keySystem))
             return true;
     }
@@ -83,9 +62,9 @@ CDM::CDM(Document& document, const String& keySystem)
     , m_weakPtrFactory(this)
 {
     ASSERT(supportsKeySystem(keySystem));
-    for (auto* factory : cdmFactories()) {
+    for (auto* factory : CDMFactory::registeredFactories()) {
         if (factory->supportsKeySystem(keySystem)) {
-            m_private = factory->createCDM(*this, keySystem);
+            m_private = factory->createCDM(keySystem);
             break;
         }
     }

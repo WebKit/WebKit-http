@@ -30,10 +30,11 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDM.h"
+#include "CDMFactory.h"
 #include "CDMInstance.h"
 #include "CDMPrivate.h"
 #include <wtf/HashMap.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -42,7 +43,7 @@ public:
     CDMFactoryClearKey();
     virtual ~CDMFactoryClearKey();
 
-    std::unique_ptr<CDMPrivate> createCDM(CDM&, const String&) override;
+    std::unique_ptr<CDMPrivate> createCDM(const String&) override;
     bool supportsKeySystem(const String&) override;
 };
 

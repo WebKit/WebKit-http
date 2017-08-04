@@ -31,6 +31,8 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
+
+#include "SharedBuffer.h"
 #include "inspector/InspectorValues.h"
 #include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
@@ -43,8 +45,13 @@ const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
 CDMFactoryClearKey::CDMFactoryClearKey() = default;
 CDMFactoryClearKey::~CDMFactoryClearKey() = default;
 
-std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(CDM&, const String&)
+std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(const String& keySystem)
 {
+#ifdef NDEBUG
+    UNUSED_PARAM(keySystem);
+#else
+    ASSERT(supportsKeySystem(keySystem));
+#endif
     return std::unique_ptr<CDMPrivate>(new CDMPrivateClearKey);
 }
 
