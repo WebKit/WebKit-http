@@ -99,6 +99,7 @@ use constant {
     AppleWin => "AppleWin",
     GTK      => "GTK",
     Efl      => "Efl",
+    Haiku    => "Haiku",
     iOS      => "iOS",
     Mac      => "Mac",
     WinCairo => "WinCairo",
@@ -1055,6 +1056,7 @@ sub determinePortName()
     my %argToPortName = (
         efl => Efl,
         gtk => GTK,
+        haiku => Haiku,
         wincairo => WinCairo
     );
 
@@ -1085,6 +1087,7 @@ sub determinePortName()
             my $portsChoice = join "\n\t", qw(
                 --efl
                 --gtk
+                --haiku
             );
             die "Please specify which WebKit port to build using one of the following options:"
                 . "\n\t$portsChoice\n";
@@ -1850,7 +1853,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub wrapperPrefixIfNeeded()
 {
-    if (isAnyWindows()) {
+    if (isAnyWindows() || isHaiku()) {
         return ();
     }
     if (isAppleMacWebKit()) {
