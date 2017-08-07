@@ -75,6 +75,7 @@ static void webkit_media_opencdm_decrypt_init(WebKitOpenCDMDecrypt* self)
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
     self->priv = priv;
     new (priv) WebKitOpenCDMDecryptPrivate();
+    GST_TRACE_OBJECT(self, "created");
 }
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)

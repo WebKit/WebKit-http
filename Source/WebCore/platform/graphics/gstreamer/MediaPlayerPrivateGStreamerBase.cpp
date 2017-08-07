@@ -268,9 +268,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_isEndReached(false)
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
     , m_usingFallbackVideoSink(false)
-#if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
-    , m_initDataProcessed(false)
-#endif
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -289,7 +286,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
 #if ENABLE(ENCRYPTED_MEDIA)
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 #endif
     m_notifier->invalidate();
 
@@ -426,18 +423,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             const char* eventKeySystemId = nullptr;
             GstBuffer* data = nullptr;
             gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
-
-#if USE(OPENCDM)
-            if (canWebKitMediaOpenCDMPlayReadyDecryptorAcceptUuid(eventKeySystemId)) {
-                LockHolder locker(m_protectInitDataProcessing);
-                if (m_initDataProcessed) {
-                    GST_DEBUG("init data already processed already for %s, bailing out", eventKeySystemId);
-                    m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
-                    return false;
-                } else
-                    m_initDataProcessed = true;
-            }
-#endif
 
             GstMapInfo mapInfo;
             if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
@@ -1320,28 +1305,12 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerBase::emitSession(const String& sessionId)
-{
-    if (sessionId.isEmpty())
-        return;
-    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
-    GST_TRACE("emitted OpenCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
-}
-
-void MediaPlayerPrivateGStreamerBase::resetOpenCDMFlag()
-{
-    m_initDataProcessed = false;
-}
-#endif
-
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& instance)
 {
     ASSERT(!m_cdmInstance);
     m_cdmInstance = &instance;
     GST_DEBUG("CDM instance %p set", m_cdmInstance.get());
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
@@ -1352,42 +1321,61 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& ins
     ASSERT(m_cdmInstance.get() == &instance);
     GST_DEBUG("detaching CDM instance %p", m_cdmInstance.get());
     m_cdmInstance = nullptr;
-    m_protectionCondition.notifyOne();
+    m_protectionCondition.notifyAll();
 }
 
-void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance&)
+void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
+    ASSERT(m_cdmInstance.get() == &instance);
+    GST_TRACE("instance %p, current stored %p", &instance, m_cdmInstance.get());
+    attemptToDecryptWithLocalInstance();
+}
+
+void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
+{
+#if USE(OPENCDM)
+    if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
+        GST_DEBUG("handling OpenCDM %s keys", m_cdmInstance->keySystem().utf8().data());
+        auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
+        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+        ASSERT(!sessionId.isEmpty());
+        dispatchDecryptionSession(sessionId);
+    }
+#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 {
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
+    m_needToResendCredentials = m_handledProtectionEvents.size() > 0;
+    GST_TRACE("emitted decryption cipher key on pipeline, event handled %s, need to resend credentials %s", boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
+}
+
+void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId)
+{
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+    m_needToResendCredentials = m_handledProtectionEvents.size() > 0;
+    GST_TRACE("emitted decryption session %s on pipeline, event handled %s, need to resend credentials %s", sessionId.utf8().data(), boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
 }
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
-    const gchar* eventKeySystemId = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, &data, nullptr);
-
-    GstMapInfo mapInfo;
-    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemId);
-        return;
-    }
-
-    GST_MEMDUMP("init datas", mapInfo.data, mapInfo.size);
-
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
         GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
         m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
+        if (m_needToResendCredentials) {
+            GST_DEBUG("resending credentials");
+            attemptToDecryptWithLocalInstance();
+        }
         return;
     }
 
-    GST_WARNING("FIXME: scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
+    const gchar* eventKeySystemId = nullptr;
+    gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
+    GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
     ASSERT_NOT_REACHED();
-    gst_buffer_unmap(data, &mapInfo);
 }
 
 static AtomicString keySystemIdToUuid(const AtomicString& id)

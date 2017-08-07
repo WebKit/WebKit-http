@@ -607,13 +607,6 @@ void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
     m_private->attemptToDecryptWithInstance(instance);
 }
-
-#if USE(OPENCDM)
-void MediaPlayer::emitSession(const String& sessionId)
-{
-    m_private->emitSession(sessionId);
-}
-#endif
 #endif
 
 MediaTime MediaPlayer::duration() const

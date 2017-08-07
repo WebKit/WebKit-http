@@ -82,9 +82,6 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&) override;
-#if USE(OPENCDM)
-    void emitSession(const String&) override;
-#endif
 #endif
 
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);

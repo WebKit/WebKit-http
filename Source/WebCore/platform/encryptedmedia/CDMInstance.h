@@ -34,6 +34,7 @@
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
+#include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -47,8 +48,8 @@ public:
     virtual ~CDMInstance() { }
 
     enum class ImplementationType {
-        ClearKey,
         Mock,
+        ClearKey,
 #if USE(OPENCDM)
         OpenCDM,
 #endif

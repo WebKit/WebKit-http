@@ -3198,8 +3198,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/NavigatorEME.cpp
 
         html/MediaEncryptedEvent.cpp
-
-        platform/encryptedmedia/CDMClearKey.cpp
     )
     list(APPEND WebCore_IDL_FILES
     )

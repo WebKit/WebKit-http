@@ -28,7 +28,6 @@
 #include "CDMPrivate.h"
 #include "inspector/InspectorValues.h"
 #include "MediaKeyMessageType.h"
-#include "MediaKeyStatus.h"
 #include "MediaKeysRequirement.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
@@ -72,37 +71,6 @@ public:
 };
 
 std::unique_ptr<media::OpenCdm> CDMPrivateOpenCDM::s_openCdm;
-
-class CDMInstanceOpenCDM : public CDMInstance {
-public:
-    CDMInstanceOpenCDM(media::OpenCdm*, const String&);
-    virtual ~CDMInstanceOpenCDM();
-
-    ImplementationType implementationType() const final { return  ImplementationType::OpenCDM; }
-    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
-    SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
-    SuccessValue setPersistentStateAllowed(bool) override;
-    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
-
-    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) override;
-    void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) override;
-    void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) override;
-    void closeSession(const String&, CloseSessionCallback) override;
-    void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
-    void storeRecordOfKeyUsage(const String&) override;
-
-    void gatherAvailableKeys(AvailableKeysCallback) override;
-
-    const String& keySystem() const override { return m_keySystem; }
-
-private:
-    MediaKeyStatus getKeyStatus(std::string &);
-    SessionLoadFailure getSessionLoadStatus(std::string &);
-    size_t checkMessageLength(std::string &, std::string &);
-    media::OpenCdm* m_openCdmSession;
-    HashMap<String, Ref<SharedBuffer>> sessionIdMap;
-    String m_keySystem;
-};
 
 CDMPrivateOpenCDM::CDMPrivateOpenCDM(const String& keySystem)
     : m_openCdmKeySystem(keySystem)
@@ -421,6 +389,20 @@ void CDMInstanceOpenCDM::storeRecordOfKeyUsage(const String&)
 
 void CDMInstanceOpenCDM::gatherAvailableKeys(AvailableKeysCallback)
 {
+}
+
+String CDMInstanceOpenCDM::getCurrentSessionId() const
+{
+    ASSERT(sessionIdMap.size() == 1);
+
+    if (sessionIdMap.size() == 0) {
+        GST_WARNING("no sessions");
+        return { };
+    }
+    if (sessionIdMap.size() > 1)
+        GST_WARNING("more than one session");
+
+    return sessionIdMap.begin()->key;
 }
 
 } // namespace WebCore

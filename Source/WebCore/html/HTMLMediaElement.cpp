@@ -2681,14 +2681,6 @@ void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& 
         m_player->attemptToDecryptWithInstance(instance);
 }
 
-#if USE(OPENCDM)
-void HTMLMediaElement::emitSession(const String& sessionId)
-{
-    if (m_player)
-        m_player->emitSession(sessionId);
-}
-#endif
-
 void HTMLMediaElement::attemptToDecrypt()
 {
     // https://w3c.github.io/encrypted-media/#attempt-to-decrypt

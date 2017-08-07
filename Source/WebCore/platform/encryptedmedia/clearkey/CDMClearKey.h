@@ -33,6 +33,7 @@
 #include "CDMFactory.h"
 #include "CDMInstance.h"
 #include "CDMPrivate.h"
+#include <wtf/HashMap.h>
 
 namespace WebCore {
 
@@ -42,7 +43,7 @@ public:
 
     virtual ~CDMFactoryClearKey();
 
-    std::unique_ptr<CDMPrivate> createCDM() override;
+    std::unique_ptr<CDMPrivate> createCDM(const String&) override;
     bool supportsKeySystem(const String&) override;
 
 private:
@@ -89,6 +90,26 @@ public:
     void closeSession(const String&, CloseSessionCallback) override;
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
     void storeRecordOfKeyUsage(const String&) override;
+
+    void gatherAvailableKeys(AvailableKeysCallback) override;
+    const String& keySystem() const override;
+
+    struct Key {
+        Key() = default;
+        Key(Key&&) = default;
+        Key& operator=(Key&&) = default;
+        String keyID;
+        KeyStatus status;
+        RefPtr<SharedBuffer> keyIDData;
+        RefPtr<SharedBuffer> keyValueData;
+    };
+
+    const HashMap<String, Vector<Key>>& keys() const { return m_keys; }
+
+    static const String s_keySystem;
+
+private:
+    HashMap<String, Vector<Key>> m_keys;
 };
 
 } // namespace WebCore
