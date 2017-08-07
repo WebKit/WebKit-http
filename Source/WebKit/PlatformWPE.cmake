@@ -135,6 +135,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/WKGrammarDetail.cpp
 
+    UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupSession.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
@@ -403,6 +404,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/wpe"
     "${WEBKIT2_DIR}/StorageProcess/unix"
     "${WEBKIT2_DIR}/UIProcess/API/C/cairo"
+    "${WEBKIT2_DIR}/UIProcess/API/C/soup"
     "${WEBKIT2_DIR}/UIProcess/API/C/wpe"
     "${WEBKIT2_DIR}/UIProcess/API/glib"
     "${WEBKIT2_DIR}/UIProcess/API/wpe"
@@ -648,6 +650,7 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKWebAutomation.h
 
         ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKSoupSession.h
+        ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKCookieManagerSoup.h
     )
 
     install(FILES ${WPE_INSTALLED_WEBKIT_HEADERS}
