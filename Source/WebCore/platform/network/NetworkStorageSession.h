@@ -33,6 +33,8 @@
 #if PLATFORM(COCOA) || USE(CFNETWORK)
 #include "CFNetworkSPI.h"
 #include <wtf/RetainPtr.h>
+#elif PLATFORM(HAIKU)
+class BUrlContext;
 #endif
 
 namespace WebCore {
@@ -64,6 +66,12 @@ public:
 
     SoupNetworkSession& soupNetworkSession() const;
     void setSoupNetworkSession(std::unique_ptr<SoupNetworkSession>);
+#elif USE(HAIKU)
+    NetworkStorageSession(SessionID, BUrlContext*);
+    ~NetworkStorageSession();
+
+    BUrlContext& platformSession() const;
+    void setPlatformSession(BUrlContext*);
 #else
     NetworkStorageSession(SessionID, NetworkingContext*);
     ~NetworkStorageSession();
@@ -78,6 +86,8 @@ private:
     RetainPtr<CFURLStorageSessionRef> m_platformSession;
 #elif USE(SOUP)
     std::unique_ptr<SoupNetworkSession> m_session;
+#elif USE(HAIKU)
+    BUrlContext* m_context;
 #else
     RefPtr<NetworkingContext> m_context;
 #endif

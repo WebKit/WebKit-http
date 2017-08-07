@@ -57,7 +57,7 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const U
         url.string().utf8().data());
 	printf("  from %s\n", value.utf8().data());
 #endif
-    session.context()->context()->GetCookieJar().AddCookie(heapCookie);
+    session.platformSession().GetCookieJar().AddCookie(heapCookie);
 }
 
 String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
@@ -72,7 +72,7 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 
 	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
-            session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
+            session.platformSession().GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
         // filter out httpOnly cookies,as this method is used to get cookies
         // from JS code and these shouldn't be visible there.
@@ -95,7 +95,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 
 	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
-            session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
+            session.platformSession().GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
 		result << "; " << c->RawCookie(false);
 	}

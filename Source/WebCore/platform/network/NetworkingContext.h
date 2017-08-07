@@ -28,10 +28,6 @@
 #include <wtf/SchedulePair.h>
 #endif
 
-#if PLATFORM(HAIKU)
-class BUrlContext;
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSOperationQueue;
 #endif
@@ -62,12 +58,8 @@ public:
 
     virtual String sourceApplicationIdentifier() const { return emptyString(); }
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP) || USE(HAIKU)
     virtual NetworkStorageSession& storageSession() const = 0;
-#endif
-
-#if PLATFORM(HAIKU)
-    virtual BUrlContext* context() = 0;
 #endif
 
 #if PLATFORM(WIN)

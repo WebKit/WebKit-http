@@ -34,23 +34,25 @@
 #include "ResourceHandle.h"
 
 #include <UrlContext.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+static std::unique_ptr<NetworkStorageSession>& privateSession()
+{
+    static NeverDestroyed<std::unique_ptr<NetworkStorageSession>> session;
+    return session;
+}
 
 PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext* context)
 {
     return adoptRef(new FrameNetworkingContextHaiku(frame, context));
 }
 
-BReference<BUrlContext> FrameNetworkingContextHaiku::gDefaultContext = new BUrlContext();
-
 FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame, BUrlContext* context)
     : FrameNetworkingContext(frame)
 {
-    m_context = context;
-    if(m_context == NULL) {
-        m_context = gDefaultContext;
-    }
+    storageSession().setPlatformSession(context);
 }
 
 FrameNetworkingContextHaiku::~FrameNetworkingContextHaiku()
@@ -59,13 +61,24 @@ FrameNetworkingContextHaiku::~FrameNetworkingContextHaiku()
 
 BUrlContext* FrameNetworkingContextHaiku::context()
 {
-    return m_context.Get();
+    return &storageSession().platformSession();
 }
 
 uint64_t FrameNetworkingContextHaiku::initiatingPageID() const
 {
     notImplemented();
     return 0;
+}
+
+
+NetworkStorageSession& FrameNetworkingContextHaiku::storageSession() const
+{
+    ASSERT(isMainThread());
+
+    if (frame() && frame()->page()->usesEphemeralSession())
+        return *privateSession();
+
+    return NetworkStorageSession::defaultStorageSession();
 }
 
 }

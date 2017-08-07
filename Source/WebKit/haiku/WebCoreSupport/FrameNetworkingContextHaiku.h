@@ -47,10 +47,7 @@ public:
 
 private:
     FrameNetworkingContextHaiku(Frame*, BUrlContext* context);
-
-    BReference<BUrlContext> m_context;
-
-    static BReference<BUrlContext> gDefaultContext;
+    WebCore::NetworkStorageSession& storageSession() const override;
 };
 
 }

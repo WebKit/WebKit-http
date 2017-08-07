@@ -48,7 +48,7 @@ static NetworkingContext* networkingContext(const Document* document)
     return frame->loader().networkingContext();
 }
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP) || PLATFORM(HAIKU)
 inline NetworkStorageSession& storageSession(const Document* document)
 {
     NetworkingContext* context = networkingContext(document);
