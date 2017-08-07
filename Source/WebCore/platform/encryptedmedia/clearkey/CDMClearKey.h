@@ -34,6 +34,7 @@
 #include "CDMInstance.h"
 #include "CDMPrivate.h"
 #include <wtf/HashMap.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 

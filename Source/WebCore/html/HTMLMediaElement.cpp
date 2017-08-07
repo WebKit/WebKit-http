@@ -2568,7 +2568,7 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
 
     // 2. If this object's attaching media keys value is true, return a promise rejected with an InvalidStateError.
     if (m_attachingMediaKeys) {
-        promise->reject(INVALID_STATE_ERR);
+        promise->reject(InvalidStateError);
         return;
     }
 

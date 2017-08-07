@@ -381,6 +381,11 @@ void MockCDMInstance::gatherAvailableKeys(AvailableKeysCallback)
 {
 }
 
+const String& MockCDMInstance::keySystem() const
+{
+    return emptyString();
+}
+
 }
 
 #endif

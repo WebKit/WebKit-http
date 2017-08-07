@@ -140,6 +140,7 @@ private:
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) final;
     void storeRecordOfKeyUsage(const String&) final;
     void gatherAvailableKeys(AvailableKeysCallback) final;
+    const String& keySystem() const final;
 
     WeakPtr<MockCDM> m_cdm;
     bool m_distinctiveIdentifiersAllowed { true };
