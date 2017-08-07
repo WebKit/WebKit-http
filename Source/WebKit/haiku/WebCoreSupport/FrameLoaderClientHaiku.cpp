@@ -890,7 +890,7 @@ String FrameLoaderClientHaiku::userAgent(const URL&)
 
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now.
     // We have to look as close to Safari as possible for some sites like gmail.com 
-    BString userAgent("Mozilla/5.0 (Macintosh; Intel Haiku R1 x86) AppleWebKit/%webkit% (KHTML, like Gecko) WebPositive/1.2 Version/8.0 Safari/%webkit%");
+    BString userAgent("Mozilla/5.0 (Macintosh; Intel Haiku R1 x86) AppleWebKit/%webkit% (KHTML, like Gecko) WebPositive/1.2 Version/9.2 Safari/%webkit%");
     userAgent.ReplaceAll("%webkit%", WebKitInfo::WebKitVersion().String());
     return userAgent;
 }
