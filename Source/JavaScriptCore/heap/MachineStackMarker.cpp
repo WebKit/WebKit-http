@@ -63,7 +63,7 @@
 #include <pthread_np.h>
 #endif
 
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU)
 #include <signal.h>
 
 // We use SIGUSR2 to suspend and resume machine threads in JavaScriptCore.
@@ -344,7 +344,7 @@ MachineThreads::Thread::Thread(const PlatformThread& platThread, void* base, voi
         DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
             &platformThreadHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
     RELEASE_ASSERT(isSuccessful);
-#elif USE(PTHREADS) && !OS(DARWIN)
+#elif USE(PTHREADS) && !OS(DARWIN) && !OS(HAIKU)
     threadLocalCurrentThread.store(this);
 
     // Signal handlers are process global configuration.
@@ -374,7 +374,7 @@ MachineThreads::Thread::~Thread()
 {
 #if OS(WINDOWS)
     CloseHandle(platformThreadHandle);
-#elif USE(PTHREADS) && !OS(DARWIN)
+#elif USE(PTHREADS) && !OS(DARWIN) && !OS(HAIKU)
     sem_destroy(&semaphoreForSuspendResume);
 #endif
 }
