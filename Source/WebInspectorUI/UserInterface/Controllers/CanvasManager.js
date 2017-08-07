@@ -32,6 +32,7 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
         this._canvasIdentifierMap = new Map;
+        this._shaderProgramIdentifierMap = new Map;
 
         if (window.CanvasAgent)
             CanvasAgent.enable();
@@ -42,6 +43,11 @@ WI.CanvasManager = class CanvasManager extends WI.Object
     get canvases()
     {
         return [...this._canvasIdentifierMap.values()];
+    }
+
+    get shaderPrograms()
+    {
+        return [...this._shaderProgramIdentifierMap.values()];
     }
 
     canvasAdded(canvasPayload)
@@ -66,6 +72,11 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         console.assert(canvas);
         if (!canvas)
             return;
+
+        for (let program of canvas.shaderProgramCollection.items) {
+            this._shaderProgramIdentifierMap.delete(program.identifier);
+            this._dispatchShaderProgramRemoved(program);
+        }
 
         canvas.frame.canvasCollection.remove(canvas);
 
@@ -111,6 +122,39 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingFinished, {canvas, recording});
     }
 
+    programCreated(canvasIdentifier, programIdentifier)
+    {
+        // Called from WI.CanvasObserver.
+
+        let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
+        console.assert(canvas);
+        if (!canvas)
+            return;
+
+        console.assert(!this._shaderProgramIdentifierMap.has(programIdentifier), `ShaderProgram already exists with id ${programIdentifier}.`);
+
+        let program = new WI.ShaderProgram(programIdentifier, canvas);
+        this._shaderProgramIdentifierMap.set(program.identifier, program);
+
+        canvas.shaderProgramCollection.add(program);
+
+        this.dispatchEventToListeners(WI.CanvasManager.Event.ShaderProgramAdded, {program});
+    }
+
+    programDeleted(programIdentifier)
+    {
+        // Called from WI.CanvasObserver.
+
+        let program = this._shaderProgramIdentifierMap.take(programIdentifier);
+        console.assert(program);
+        if (!program)
+            return;
+
+        program.canvas.shaderProgramCollection.remove(program);
+
+        this._dispatchShaderProgramRemoved(program);
+    }
+
     // Private
 
     _mainResourceDidChange(event)
@@ -121,10 +165,17 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
         WI.Canvas.resetUniqueDisplayNameNumbers();
 
+        this._shaderProgramIdentifierMap.clear();
+
         if (this._canvasIdentifierMap.size) {
             this._canvasIdentifierMap.clear();
             this.dispatchEventToListeners(WI.CanvasManager.Event.Cleared);
         }
+    }
+
+    _dispatchShaderProgramRemoved(program)
+    {
+        this.dispatchEventToListeners(WI.CanvasManager.Event.ShaderProgramRemoved, {program});
     }
 };
 
@@ -133,4 +184,6 @@ WI.CanvasManager.Event = {
     CanvasWasAdded: "canvas-manager-canvas-was-added",
     CanvasWasRemoved: "canvas-manager-canvas-was-removed",
     RecordingFinished: "canvas-managger-recording-finished",
+    ShaderProgramAdded: "canvas-manager-shader-program-added",
+    ShaderProgramRemoved: "canvas-manager-shader-program-removed",
 };

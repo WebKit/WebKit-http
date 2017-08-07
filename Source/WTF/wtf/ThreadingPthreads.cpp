@@ -37,10 +37,10 @@
 #include <errno.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/RawPointer.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/ThreadGroup.h>
-#include <wtf/ThreadHolder.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/WordLock.h>
 
@@ -56,6 +56,7 @@
 
 #if !OS(DARWIN) && OS(UNIX)
 
+#include <semaphore.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -75,21 +76,40 @@ namespace WTF {
 
 static StaticLock globalSuspendLock;
 
-Thread::Thread()
-{
-#if !OS(DARWIN)
-    sem_init(&m_semaphoreForSuspendResume, /* Only available in this process. */ 0, /* Initial value for the semaphore. */ 0);
-#endif
-}
-
 Thread::~Thread()
 {
-#if !OS(DARWIN)
-    sem_destroy(&m_semaphoreForSuspendResume);
-#endif
 }
 
 #if !OS(DARWIN)
+class Semaphore {
+    WTF_MAKE_NONCOPYABLE(Semaphore);
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    explicit Semaphore(unsigned initialValue)
+    {
+        int sharedBetweenProcesses = 0;
+        sem_init(&m_platformSemaphore, sharedBetweenProcesses, initialValue);
+    }
+
+    ~Semaphore()
+    {
+        sem_destroy(&m_platformSemaphore);
+    }
+
+    void wait()
+    {
+        sem_wait(&m_platformSemaphore);
+    }
+
+    void post()
+    {
+        sem_post(&m_platformSemaphore);
+    }
+
+private:
+    sem_t m_platformSemaphore;
+};
+static LazyNeverDestroyed<Semaphore> globalSemaphoreForSuspendResume;
 
 // We use SIGUSR1 to suspend and resume machine threads in JavaScriptCore.
 static constexpr const int SigThreadSuspendResume = SIGUSR1;
@@ -156,9 +176,9 @@ void Thread::signalHandlerSuspendResume(int, siginfo_t*, void* ucontext)
     // sem_post is async-signal-safe function. It means that we can call this from a signal handler.
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/xsh_chap02_04.html#tag_02_04_03
     //
-    // And sem_post emits memory barrier that ensures that suspendedMachineContext is correctly saved.
+    // And sem_post emits memory barrier that ensures that PlatformRegisters are correctly saved.
     // http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_11
-    sem_post(&thread->m_semaphoreForSuspendResume);
+    globalSemaphoreForSuspendResume->post();
 
     // Reaching here, SigThreadSuspendResume is blocked in this handler (this is configured by sigaction's sa_mask).
     // So before calling sigsuspend, SigThreadSuspendResume to this thread is deferred. This ensures that the handler is not executed recursively.
@@ -170,7 +190,7 @@ void Thread::signalHandlerSuspendResume(int, siginfo_t*, void* ucontext)
     thread->m_platformRegisters = nullptr;
 
     // Allow resume caller to see that this thread is resumed.
-    sem_post(&thread->m_semaphoreForSuspendResume);
+    globalSemaphoreForSuspendResume->post();
 }
 
 #endif // !OS(DARWIN)
@@ -178,6 +198,8 @@ void Thread::signalHandlerSuspendResume(int, siginfo_t*, void* ucontext)
 void Thread::initializePlatformThreading()
 {
 #if !OS(DARWIN)
+    globalSemaphoreForSuspendResume.construct(0);
+
     // Signal handlers are process global configuration.
     // Intentionally block SigThreadSuspendResume in the handler.
     // SigThreadSuspendResume will be allowed in the handler by sigsuspend.
@@ -271,7 +293,7 @@ int Thread::waitForCompletion()
     ASSERT(joinableState() == Joinable);
 
     // If the thread has already exited, then do nothing. If the thread hasn't exited yet, then just signal that we've already joined on it.
-    // In both cases, ThreadHolder::destruct() will take care of destroying Thread.
+    // In both cases, Thread::destructTLS() will take care of destroying Thread.
     if (!hasExited())
         didJoin();
 
@@ -289,15 +311,15 @@ void Thread::detach()
         didBecomeDetached();
 }
 
-
-Ref<Thread> Thread::createCurrentThread()
+Thread& Thread::initializeCurrentTLS()
 {
     // Not a WTF-created thread, ThreadIdentifier is not established yet.
     Ref<Thread> thread = adoptRef(*new Thread());
     thread->establishPlatformSpecificHandle(pthread_self());
     thread->initializeInThread();
     initializeCurrentThreadEvenIfNonWTFCreated();
-    return thread;
+
+    return initializeTLS(WTFMove(thread));
 }
 
 ThreadIdentifier Thread::currentID()
@@ -343,7 +365,7 @@ auto Thread::suspend() -> Expected<void, PlatformSuspendError>
         int result = pthread_kill(m_handle, SigThreadSuspendResume);
         if (result)
             return makeUnexpected(result);
-        sem_wait(&m_semaphoreForSuspendResume);
+        globalSemaphoreForSuspendResume->wait();
         // Release barrier ensures that this operation is always executed after all the above processing is done.
         m_suspended.store(true, std::memory_order_release);
     }
@@ -370,7 +392,7 @@ void Thread::resume()
         targetThread.store(this);
         if (pthread_kill(m_handle, SigThreadSuspendResume) == ESRCH)
             return;
-        sem_wait(&m_semaphoreForSuspendResume);
+        globalSemaphoreForSuspendResume->wait();
         // Release barrier ensures that this operation is always executed after all the above processing is done.
         m_suspended.store(false, std::memory_order_release);
     }
@@ -441,6 +463,49 @@ void Thread::establishPlatformSpecificHandle(pthread_t handle)
         m_platformThread = pthread_mach_thread_np(handle);
 #endif
     }
+}
+
+#if !HAVE(FAST_TLS)
+void Thread::initializeTLSKey()
+{
+    threadSpecificKeyCreate(&s_key, destructTLS);
+}
+#endif
+
+Thread& Thread::initializeTLS(Ref<Thread>&& thread)
+{
+    // We leak the ref to keep the Thread alive while it is held in TLS. destructTLS will deref it later at thread destruction time.
+    auto& threadInTLS = thread.leakRef();
+#if !HAVE(FAST_TLS)
+    ASSERT(s_key != InvalidThreadSpecificKey);
+    threadSpecificSet(s_key, &threadInTLS);
+#else
+    _pthread_setspecific_direct(WTF_THREAD_DATA_KEY, &threadInTLS);
+    pthread_key_init_np(WTF_THREAD_DATA_KEY, &destructTLS);
+#endif
+    return threadInTLS;
+}
+
+void Thread::destructTLS(void* data)
+{
+    Thread* thread = static_cast<Thread*>(data);
+    ASSERT(thread);
+
+    if (thread->m_isDestroyedOnce) {
+        thread->didExit();
+        thread->deref();
+        return;
+    }
+
+    thread->m_isDestroyedOnce = true;
+    // Re-setting the value for key causes another destructTLS() call after all other thread-specific destructors were called.
+#if !HAVE(FAST_TLS)
+    ASSERT(s_key != InvalidThreadSpecificKey);
+    threadSpecificSet(s_key, thread);
+#else
+    _pthread_setspecific_direct(WTF_THREAD_DATA_KEY, thread);
+    pthread_key_init_np(WTF_THREAD_DATA_KEY, &destructTLS);
+#endif
 }
 
 Mutex::Mutex()

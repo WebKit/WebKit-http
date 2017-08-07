@@ -432,10 +432,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_ENCRYPTED_MEDIA 0
 #endif
 
-#if !defined(ENABLE_FETCH_API)
-#define ENABLE_FETCH_API 1
-#endif
-
 #if !defined(ENABLE_FILTERS_LEVEL_2)
 #define ENABLE_FILTERS_LEVEL_2 0
 #endif
@@ -712,10 +708,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_WEB_AUDIO 0
 #endif
 
-#if !defined(ENABLE_WEB_SOCKETS)
-#define ENABLE_WEB_SOCKETS 1
-#endif
-
 #if !defined(ENABLE_XSLT)
 #define ENABLE_XSLT 1
 #endif
@@ -730,6 +722,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_DATA_INTERACTION)
 #define ENABLE_DATA_INTERACTION 0
+#endif
+
+#if !defined(ENABLE_SERVICE_WORKER)
+#define ENABLE_SERVICE_WORKER 1
 #endif
 
 /* Asserts, invariants for macro definitions */

@@ -115,6 +115,13 @@ imported/w3c/web-platform-tests/secure-contexts/basic-shared-worker.https.html [
 imported/w3c/web-platform-tests/secure-contexts/shared-worker-insecure-first.https.html [ Skip ]
 imported/w3c/web-platform-tests/secure-contexts/shared-worker-secure-first.https.html [ Skip ]
 
+# Skip service worker tests until the implementation is more actionnable
+imported/w3c/web-platform-tests/service-workers [ Skip ]
+imported/w3c/web-platform-tests/service-workers/stub-4.6.2-cache.html [ Pass ]
+imported/w3c/web-platform-tests/service-workers/stub-4.6.3-cache-storage.html [ Pass ]
+imported/w3c/web-platform-tests/service-workers/cache-storage [ Pass ]
+imported/w3c/web-platform-tests/service-workers/cache-storage/window [ Pass Failure ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -296,6 +303,10 @@ imported/w3c/web-platform-tests/IndexedDB/clone-before-keypath-eval.html [ Pass 
 imported/w3c/web-platform-tests/IndexedDB/bindings-inject-key.html [ Pass Failure ]
 imported/w3c/web-platform-tests/fetch/dangling-markup-mitigation.tentative.html [ Pass Failure ]
 
+# Those WPT tests are flaky when failing.
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-1.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-2.html [ Pass Failure ]
+
 # css alignment tests
 webkit.org/b/172711 css3/parse-alignment-of-root-elements.html [ Failure ]
 
@@ -329,7 +340,6 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-text.html  [ Skip ]
 webkit.org/b/171322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/tabular-data/processing-model-1/span-limits.html [ Skip ]
 webkit.org/b/162517 [ Debug ] imported/w3c/web-platform-tests/html/the-xhtml-syntax/parsing-xhtml-documents/xhtml-mathml-dtd-entity-support.htm [ Skip ]
-webkit.org/b/175007 [ Debug ] imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Skip ]
 
 # Tests that are flaky due to console log / error messages
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/basic.htm [ Failure ]
@@ -1044,6 +1054,10 @@ imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.work
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Slow ]
+
+# Imported Beacon test that is flaky because its last check is very slow.
+webkit.org/b/175202 imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Pass Failure ]
+
 
 # WebCryptoAPI features that haven't been enabled for current OS
 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Skip ]

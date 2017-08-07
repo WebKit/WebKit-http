@@ -135,6 +135,8 @@ NetworkLoad::~NetworkLoad()
 #if USE(NETWORK_SESSION)
     if (m_responseCompletionHandler)
         m_responseCompletionHandler(PolicyIgnore);
+    if (m_redirectCompletionHandler)
+        m_redirectCompletionHandler({ });
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     if (m_challengeCompletionHandler)
         m_challengeCompletionHandler(AuthenticationChallengeDisposition::Cancel, { });
@@ -337,7 +339,8 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
 
 void NetworkLoad::completeAuthenticationChallenge(ChallengeCompletionHandler&& completionHandler)
 {
-    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials) {
+    bool isServerTrustEvaluation = m_challenge->protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
+    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials && !isServerTrustEvaluation) {
         completionHandler(AuthenticationChallengeDisposition::UseCredential, { });
         return;
     }

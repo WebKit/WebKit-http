@@ -28,7 +28,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDMClearKey.h"
+#include "CDMFactory.h"
 #include "CDMPrivate.h"
 #include "Document.h"
 #include "InitDataRegistry.h"
@@ -42,40 +42,9 @@
 
 namespace WebCore {
 
-static Vector<CDMFactory*>& cdmFactories()
-{
-    static NeverDestroyed<Vector<CDMFactory*>> factories;
-    if (factories.get().isEmpty())
-        factories.get().append(new CDMFactoryClearKey);
-
-    return factories;
-}
-
-static std::unique_ptr<CDMPrivate> createCDMPrivateForKeySystem(const String& keySystem, CDM& cdm)
-{
-    for (auto* factory : cdmFactories()) {
-        if (factory->supportsKeySystem(keySystem))
-            return factory->createCDM(cdm, keySystem);
-    }
-    ASSERT_NOT_REACHED();
-    return nullptr;
-}
-
-void CDM::registerCDMFactory(CDMFactory& factory)
-{
-    ASSERT(!cdmFactories().contains(&factory));
-    cdmFactories().append(&factory);
-}
-
-void CDM::unregisterCDMFactory(CDMFactory& factory)
-{
-    ASSERT(cdmFactories().contains(&factory));
-    cdmFactories().removeAll(&factory);
-}
-
 bool CDM::supportsKeySystem(const String& keySystem)
 {
-    for (auto* factory : cdmFactories()) {
+    for (auto* factory : CDMFactory::registeredFactories()) {
         if (factory->supportsKeySystem(keySystem))
             return true;
     }
@@ -90,14 +59,14 @@ Ref<CDM> CDM::create(Document& document, const String& keySystem)
 CDM::CDM(Document& document, const String& keySystem)
     : ContextDestructionObserver(&document)
     , m_keySystem(keySystem)
-    , m_private(createCDMPrivateForKeySystem(keySystem, *this))
     , m_weakPtrFactory(this)
 {
     ASSERT(supportsKeySystem(keySystem));
-    for (auto* factory : cdmFactories()) {
-        if (!factory->supportsKeySystem(keySystem))
-            continue;
-        m_private = factory->createCDM(*this, keySystem);
+    for (auto* factory : CDMFactory::registeredFactories()) {
+        if (factory->supportsKeySystem(keySystem)) {
+            m_private = factory->createCDM(keySystem);
+            break;
+        }
     }
 }
 

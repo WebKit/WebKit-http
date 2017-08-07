@@ -1210,9 +1210,6 @@ public:
     void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle& fileReadHandle, SandboxExtension::HandleArray& fileUploadHandles);
 #endif
 
-    void setAvoidsUnsafeArea(bool);
-    bool avoidsUnsafeArea() const { return m_avoidsUnsafeArea; }
-
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
@@ -2012,8 +2009,6 @@ private:
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };
-
-    bool m_avoidsUnsafeArea { true };
 
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 

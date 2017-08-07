@@ -1,3 +1,203 @@
+2017-08-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add source view for WebGL shader programs
+        https://bugs.webkit.org/show_bug.cgi?id=138593
+        <rdar://problem/18936194>
+
+        Reviewed by Matt Baker.
+
+        Shader programs are now listed in the Resources sidebar as items within the owner Canvas
+        context. When selected, the shown content view has two editors, one for the Vertex shader
+        and one for the Fragment shader. These editors use CodeMirror's "clike" mode for GLSL syntax.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        * UserInterface/Main.html:
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.canvasRemoved):
+        (WI.CanvasManager.prototype.programCreated):
+        (WI.CanvasManager.prototype.programDeleted):
+        (WI.CanvasManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.get shaderProgramCollection)
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram.prototype.requestVertexShaderSource):
+        (WI.ShaderProgram.prototype.requestFragmentShaderSource):
+        (WI.ShaderProgram.prototype._requestShaderSource):
+
+        * UserInterface/Views/CanvasTreeElement.js:
+        (WI.CanvasTreeElement):
+        (WI.CanvasTreeElement.prototype.onattach):
+        (WI.CanvasTreeElement.prototype.ondetach):
+        (WI.CanvasTreeElement.prototype.onpopulate):
+        (WI.CanvasTreeElement.prototype._shaderProgramAdded):
+        (WI.CanvasTreeElement.prototype._shaderProgramRemoved):
+
+        * UserInterface/Views/ShaderProgramTreeElement.js: Added.
+        (WI.ShaderProgramTreeElement):
+
+        * UserInterface/Views/ShaderProgramContentView.js: Added.
+        (WI.ShaderProgramContentView):
+        (WI.ShaderProgramContentView.prototype.shown):
+        (WI.ShaderProgramContentView.prototype.hidden):
+        (WI.ShaderProgramContentView.prototype.closed):
+        (WI.ShaderProgramContentView.prototype.get supportsSave):
+        (WI.ShaderProgramContentView.prototype.get saveData):
+        (WI.ShaderProgramContentView.prototype.get supportsSearch):
+        (WI.ShaderProgramContentView.prototype.get numberOfSearchResults):
+        (WI.ShaderProgramContentView.prototype.get hasPerformedSearch):
+        (WI.ShaderProgramContentView.prototype.set automaticallyRevealFirstSearchResult):
+        (WI.ShaderProgramContentView.prototype.performSearch):
+        (WI.ShaderProgramContentView.prototype.searchCleared):
+        (WI.ShaderProgramContentView.prototype.searchQueryWithSelection):
+        (WI.ShaderProgramContentView.prototype.revealPreviousSearchResult):
+        (WI.ShaderProgramContentView.prototype.revealNextSearchResult):
+        (WI.ShaderProgramContentView.prototype.revealPosition):
+        (WI.ShaderProgramContentView.prototype._editorFocused):
+        (WI.ShaderProgramContentView.prototype._numberOfSearchResultsDidChange):
+        * UserInterface/Views/ShaderProgramContentView.css: Added.
+        (.content-view.shader-program > .text-editor.shader):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader.vertex,):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader.fragment,):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader + .text-editor.shader):
+        (body[dir=rtl] .content-view.shader-program > .text-editor.shader + .text-editor.shader):
+        (.content-view.shader-program > .text-editor.shader > .type-title):
+        (.content-view.shader-program > .text-editor.shader > .CodeMirror):
+
+        * UserInterface/Images/DocumentGL.png: Added.
+        * UserInterface/Images/DocumentGL@2x.png: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.shader-program .icon):
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        (WI.ContentView.isViewable):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WI.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WI.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WI.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        Plumbing for displaying ShaderProgram content.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype._editorFocused):
+
+        * Scripts/update-codemirror-resources.rb:
+        * UserInterface/External/CodeMirror/clike.js: Added.
+        Add C-like mode for highlighting GLSL.
+
+2017-08-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Scripts sometimes do not show in resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=175153
+        <rdar://problem/33708683>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.initialLayout):
+        When the ResourceSidebar is lazily created, be sure to add any scripts
+        to the sidebar that are not backed by Resources.
+
+        (WI.ResourceSidebarPanel.prototype._scriptWasAdded):
+        (WI.ResourceSidebarPanel.prototype._addScript):
+        Extract so it can be used outside of an event handler.
+
+2017-08-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add button to open Inspector^2
+        https://bugs.webkit.org/show_bug.cgi?id=175108
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Debug/Bootstrap.js:
+        (updateDebugUI):
+        (WI.runBootstrapOperations):
+
+        * UserInterface/Views/ButtonToolbarItem.js:
+        (WI.ButtonToolbarItem):
+        (WI.ButtonToolbarItem.prototype.get label): Deleted.
+        (WI.ButtonToolbarItem.prototype.set label): Deleted.
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button):
+        (.toolbar .item.button:not(.disabled):active):
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated)):
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated)):
+        (.toolbar .item.button > .glyph):
+        (.toolbar .item.button:not(.disabled):active > .glyph): Deleted.
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated) > .glyph): Deleted.
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated) > .glyph): Deleted.
+        (.toolbar .item.button > .label): Deleted.
+        * UserInterface/Views/ActivateButtonToolbarItem.js:
+        (WI.ActivateButtonToolbarItem):
+        (WI.ActivateButtonToolbarItem.prototype.get label): Deleted.
+        (WI.ActivateButtonToolbarItem.prototype.set label): Deleted.
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Remove unused `label` parameter from Toolbar objects.
+
+2017-08-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument WebGLProgram created/deleted
+        https://bugs.webkit.org/show_bug.cgi?id=175059
+
+        Reviewed by Devin Rousso.
+
+        This patch adds frontend support for shader program instrumentation.
+        The frontend creates a ShaderProgram model object for each WebGLProgram.
+        Since only canvases with a WebGL context have programs, the Canvas model
+        object does not contain any logic specific to programs. CanvasManager
+        dispatches program added/removed events, and the parent Canvas can be
+        accessed from ShaderProgram but not the other way around.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get shaderPrograms):
+        (WI.CanvasManager.prototype.canvasRemoved):
+        (WI.CanvasManager.prototype.programCreated):
+        (WI.CanvasManager.prototype.programDeleted):
+        (WI.CanvasManager.prototype._mainResourceDidChange):
+        (WI.CanvasManager.prototype._dispatchShaderProgramRemoved):
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.nextShaderProgramDisplayNumber):
+        (WI.Canvas):
+
+        * UserInterface/Models/ShaderProgram.js: Added.
+        (WI.ShaderProgram):
+        (WI.ShaderProgram.prototype.get identifier):
+        (WI.ShaderProgram.prototype.get canvas):
+        (WI.ShaderProgram.prototype.get displayName):
+
+        * UserInterface/Protocol/CanvasObserver.js:
+        (WI.CanvasObserver.prototype.programCreated):
+        (WI.CanvasObserver.prototype.programDeleted):
+        (WI.CanvasObserver):
+
+        * UserInterface/Test.html:
+
+2017-08-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Recording tab should not be available in New Tab picker
+        https://bugs.webkit.org/show_bug.cgi?id=175155
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView.isTabAllowed):
+        Only allow the Recording Tab if we have a CanvasAgent.
+
 2017-08-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: add stack trace information for each RecordingAction

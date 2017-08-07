@@ -64,6 +64,10 @@ enum class WebsiteDataType;
 struct NetworkProcessCreationParameters;
 struct WebsiteDataStoreParameters;
 
+namespace NetworkCache {
+class Cache;
+}
+
 class NetworkProcess : public ChildProcess, private DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
     friend class NeverDestroyed<NetworkProcess>;
@@ -87,6 +91,11 @@ public:
 
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
+
+#if ENABLE(NETWORK_CACHE)
+    NetworkCache::Cache* cache() { return m_cache.get(); }
+#endif
+
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
     void processWillSuspendImminently(bool& handled);
@@ -221,6 +230,10 @@ private:
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
     Seconds m_loadThrottleLatency;
+
+#if ENABLE(NETWORK_CACHE)
+    RefPtr<NetworkCache::Cache> m_cache;
+#endif
 
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;

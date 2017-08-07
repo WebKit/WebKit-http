@@ -1138,6 +1138,7 @@ webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failur
 webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgpu.html [ Pass Timeout ]
 webkit.org/b/174272 inspector/canvas/css-canvas-clients.html [ Pass Timeout ]
+webkit.org/b/174066 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Pass Timeout ]
 webkit.org/b/170615 inspector/codemirror/prettyprinting-css.html [ Pass Timeout ]
 webkit.org/b/153460 inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
@@ -1623,13 +1624,4 @@ webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-
 webkit.org/b/173068 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
 
 webkit.org/b/174682 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
-
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.html [ Pass Failure ]
-webkit.org/b/175061 imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker.html [ Pass Failure ]
 

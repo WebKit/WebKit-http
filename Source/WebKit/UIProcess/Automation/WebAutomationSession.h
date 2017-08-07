@@ -94,6 +94,7 @@ public:
     void setProcessPool(WebProcessPool*);
 
     void navigationOccurredForFrame(const WebFrameProxy&);
+    void documentLoadedForFrame(const WebFrameProxy&);
     void inspectorFrontendLoaded(const WebPageProxy&);
     void keyboardEventsFlushedForPage(const WebPageProxy&);
     void willClosePage(const WebPageProxy&);
@@ -163,8 +164,8 @@ private:
     String handleForWebFrameID(uint64_t frameID);
     String handleForWebFrameProxy(const WebFrameProxy&);
 
-    void waitForNavigationToCompleteOnPage(WebPageProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
-    void waitForNavigationToCompleteOnFrame(WebFrameProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void waitForNavigationToCompleteOnPage(WebPageProxy&, Inspector::Protocol::Automation::PageLoadStrategy, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void waitForNavigationToCompleteOnFrame(WebFrameProxy&, Inspector::Protocol::Automation::PageLoadStrategy, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
     void loadTimerFired();
 
     // Implemented in generated WebAutomationSessionMessageReceiver.cpp.
@@ -174,7 +175,7 @@ private:
     void didEvaluateJavaScriptFunction(uint64_t callbackID, const String& result, const String& errorType);
     void didResolveChildFrame(uint64_t callbackID, uint64_t frameID, const String& errorType);
     void didResolveParentFrame(uint64_t callbackID, uint64_t frameID, const String& errorType);
-    void didComputeElementLayout(uint64_t callbackID, WebCore::IntRect, const String& errorType);
+    void didComputeElementLayout(uint64_t callbackID, WebCore::IntRect, std::optional<WebCore::IntPoint>, bool isObscured, const String& errorType);
     void didTakeScreenshot(uint64_t callbackID, const ShareableBitmap::Handle&, const String& errorType);
     void didGetCookiesForFrame(uint64_t callbackID, Vector<WebCore::Cookie>, const String& errorType);
     void didDeleteCookie(uint64_t callbackID, const String& errorType);
@@ -212,8 +213,10 @@ private:
     HashMap<uint64_t, String> m_webFrameHandleMap;
     HashMap<String, uint64_t> m_handleWebFrameMap;
 
-    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerPage;
-    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerFrame;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNormalNavigationInBrowsingContextCallbacksPerPage;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingEagerNavigationInBrowsingContextCallbacksPerPage;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNormalNavigationInBrowsingContextCallbacksPerFrame;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingEagerNavigationInBrowsingContextCallbacksPerFrame;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingInspectorCallbacksPerPage;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingKeyboardEventsFlushedCallbacksPerPage;
 

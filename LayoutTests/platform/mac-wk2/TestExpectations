@@ -402,6 +402,15 @@ webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 # This test fails every time on El Capitan
 [ ElCapitan ] fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ Skip ]
 
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.html [ Failure ]
+webkit.org/b/175061 [ ElCapitan ] imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker.html [ Failure ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -719,8 +728,9 @@ webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
 
 webkit.org/b/172397 [ Sierra Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
-# Currently only tests with click, not tap.
+# Move to general wk2 expectations once webkit.org/b/175170 is resolved.
 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Pass ]
 
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Pass Timeout ]
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Pass Timeout ]

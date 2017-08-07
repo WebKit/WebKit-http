@@ -29,8 +29,6 @@
 #include "config.h"
 #include "FetchRequest.h"
 
-#if ENABLE(FETCH_API)
-
 #include "HTTPParsers.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
@@ -105,6 +103,9 @@ static std::optional<Exception> buildOptions(FetchRequest::InternalRequest& requ
 
     if (!init.integrity.isNull())
         request.options.integrity = init.integrity;
+
+    if (init.keepalive && init.keepalive.value())
+        request.options.keepAlive = true;
 
     if (!init.method.isNull()) {
         if (auto exception = setMethod(request.request, init.method))
@@ -299,4 +300,3 @@ bool FetchRequest::canSuspendForDocumentSuspension() const
 
 } // namespace WebCore
 
-#endif // ENABLE(FETCH_API)

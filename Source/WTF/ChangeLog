@@ -1,3 +1,169 @@
+2017-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r219895-219897): Number of leaks on Open Source went from 9240 to 235983 and is now at 302372
+        https://bugs.webkit.org/show_bug.cgi?id=175083
+
+        Reviewed by Oliver Hunt.
+        
+        Adds a classic ReadWriteLock class. I wrote my own because I can never remember if the pthread one is
+        guaranted to bias in favor of writers or not.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Condition.h:
+        (WTF::ConditionBase::construct):
+        (WTF::Condition::Condition):
+        * wtf/Lock.h:
+        (WTF::LockBase::construct):
+        (WTF::Lock::Lock):
+        * wtf/ReadWriteLock.cpp: Added.
+        (WTF::ReadWriteLockBase::construct):
+        (WTF::ReadWriteLockBase::readLock):
+        (WTF::ReadWriteLockBase::readUnlock):
+        (WTF::ReadWriteLockBase::writeLock):
+        (WTF::ReadWriteLockBase::writeUnlock):
+        * wtf/ReadWriteLock.h: Added.
+        (WTF::ReadWriteLockBase::ReadLock::tryLock):
+        (WTF::ReadWriteLockBase::ReadLock::lock):
+        (WTF::ReadWriteLockBase::ReadLock::unlock):
+        (WTF::ReadWriteLockBase::WriteLock::tryLock):
+        (WTF::ReadWriteLockBase::WriteLock::lock):
+        (WTF::ReadWriteLockBase::WriteLock::unlock):
+        (WTF::ReadWriteLockBase::read):
+        (WTF::ReadWriteLockBase::write):
+        (WTF::ReadWriteLock::ReadWriteLock):
+
+2017-08-04  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220271.
+
+        Rolling out due to Layout Test failing on iOS Simulator.
+
+        Reverted changeset:
+
+        "Remove STREAMS_API compilation guard"
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+        http://trac.webkit.org/changeset/220271
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        Remove STREAMS_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-03  Brian Burg  <bburg@apple.com>
+
+        Remove ENABLE(WEB_SOCKET) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167044
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove FETCH_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175154
+
+        Reviewed by Chris Dumez.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-03  Brady Eidson  <beidson@apple.com>
+
+        Add SW IDLs and stub out basic functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=175115
+
+        Reviewed by Chris Dumez.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=175013
+
+        * wtf/Threading.h:
+
+2017-08-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge ThreadHolder to WTF::Thread itself
+        https://bugs.webkit.org/show_bug.cgi?id=175013
+
+        Reviewed by Mark Lam.
+
+        Currently, we store ThreadHolder* to the TLS, and ThreadHolder* holds Ref<Thread>.
+        When we get Thread& from the current thread TLS, we need to dereference the ThreadHolder*.
+        However, ideally, we can store Thread* directly to the current thread TLS.
+        While the ThreadHolder design is beautiful, it's worth optimizing by storing Thread* directly
+        since Thread::current() is so frequently executed.
+
+        This patch merges ThreadHolder to Thread. And we now store Thread* directly in the TLS.
+        When storing it to TLS, we call leakRef() to keep Thread ref count incremented by the TLS.
+        And when destroying the TLS, we call `deref()` to ensure that Thread* is dereferenced from
+        the TLS.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/ThreadHolder.cpp: Removed.
+        * wtf/ThreadHolder.h: Removed.
+        * wtf/ThreadHolderPthreads.cpp: Removed.
+        * wtf/ThreadHolderWin.cpp: Removed.
+        * wtf/Threading.cpp:
+        (WTF::Thread::entryPoint):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::current):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::initializeCurrentTLS):
+        (WTF::Thread::initializeTLSKey):
+        (WTF::Thread::initializeTLS):
+        (WTF::Thread::destructTLS):
+        (WTF::Thread::createCurrentThread): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentTLS):
+        (WTF::threadMapMutex):
+        (WTF::Thread::initializeTLSKey):
+        (WTF::Thread::currentDying):
+        (WTF::Thread::get):
+        (WTF::Thread::initializeTLS):
+        (WTF::Thread::destructTLS):
+        (WTF::waitForThreadCompletion):
+        (WTF::Thread::createCurrentThread): Deleted.
+
+2017-08-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Linux][WTF] Use one global semaphore to notify thread suspend and resume completion
+        https://bugs.webkit.org/show_bug.cgi?id=175124
+
+        Reviewed by Carlos Garcia Campos.
+
+        POSIX sem_t is used to notify thread suspend and resume completion in Linux ports
+        since sem_post is async-signal-safe function. Since we guard suspend() and resume()
+        with one global lock, this semaphore is also guarded by this lock. So we do not need
+        to have semaphore per WTF::Thread.
+
+        This patch introduces one global Semaphore. And drop per thread semaphore.
+
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::~Thread):
+        (WTF::Semaphore::Semaphore):
+        (WTF::Semaphore::~Semaphore):
+        (WTF::Semaphore::wait):
+        (WTF::Semaphore::post):
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::Thread::initializePlatformThreading):
+        (WTF::Thread::suspend):
+        (WTF::Thread::resume):
+        (WTF::Thread::Thread): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::Thread): Deleted.
+
 2017-08-03  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [Linux][WTF] Reduce sizeof(WTF::Thread) by using a pointer to PlatformRegisters

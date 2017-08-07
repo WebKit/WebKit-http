@@ -465,7 +465,9 @@ RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportPkcs8(CryptoAlgorithmIdentifier i
             }
         }
 
-        // Retrieve the `q` point. Since only `d` is provided, libgcrypt will compute it on-the-fly.
+        // Retrieve the `q` point. If the public key was provided through the PKCS#8 import, that
+        // key value will be retrieved as an gcry_mpi_point_t. Otherwise, the `q` point value will
+        // be computed on-the-fly by libgcrypt for the specified elliptic curve.
         PAL::GCrypt::Handle<gcry_mpi_point_t> point(gcry_mpi_ec_get_point("q", context, 1));
         if (!point)
             return nullptr;

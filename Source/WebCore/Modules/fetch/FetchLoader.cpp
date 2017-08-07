@@ -29,8 +29,6 @@
 #include "config.h"
 #include "FetchLoader.h"
 
-#if ENABLE(FETCH_API)
-
 #include "BlobURL.h"
 #include "CachedResourceRequestInitiators.h"
 #include "ContentSecurityPolicy.h"
@@ -77,7 +75,7 @@ void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& req
     ThreadableLoaderOptions options(request.fetchOptions(), ConsiderPreflight,
         context.shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective,
         String(cachedResourceRequestInitiators().fetch),
-        ResponseFilteringPolicy::Enable);
+        ResponseFilteringPolicy::Disable);
     options.sendLoadCallbacks = SendCallbacks;
     options.dataBufferingPolicy = DoNotBufferData;
     options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
@@ -96,7 +94,7 @@ void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& req
 
     String referrer = request.internalRequestReferrer();
     if (referrer == "no-referrer") {
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrer;
+        options.referrerPolicy = ReferrerPolicy::NoReferrer;
         referrer = String();
     } else
         referrer = (referrer == "client") ? context.url().strippedForUseAsReferrer() : URL(context.url(), referrer).strippedForUseAsReferrer();
@@ -152,5 +150,3 @@ void FetchLoader::didFail(const ResourceError&)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

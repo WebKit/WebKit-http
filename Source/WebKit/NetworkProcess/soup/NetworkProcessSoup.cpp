@@ -123,7 +123,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 #if ENABLE(NETWORK_CACHE)
     SoupNetworkSession::clearCache(WebCore::directoryName(m_diskCacheDirectory));
 
-    OptionSet<NetworkCache::Cache::Option> cacheOptions;
+    OptionSet<NetworkCache::Cache::Option> cacheOptions { NetworkCache::Cache::Option::RegisterNotify };
     if (parameters.shouldEnableNetworkCacheEfficacyLogging)
         cacheOptions |= NetworkCache::Cache::Option::EfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
@@ -131,7 +131,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
         cacheOptions |= NetworkCache::Cache::Option::SpeculativeRevalidation;
 #endif
 
-    NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheOptions);
+    m_cache = NetworkCache::Cache::open(m_diskCacheDirectory, cacheOptions);
 #else
     // We used to use the given cache directory for the soup cache, but now we use a subdirectory to avoid
     // conflicts with other cache files in the same directory. Remove the old cache files if they still exist.
@@ -189,7 +189,9 @@ void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
 void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, Function<void ()>&& completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
-    NetworkCache::singleton().clear(modifiedSince, WTFMove(completionHandler));
+    if (!m_cache)
+        return;
+    m_cache->clear(modifiedSince, WTFMove(completionHandler));
 #else
     UNUSED_PARAM(modifiedSince);
     UNUSED_PARAM(completionHandler);

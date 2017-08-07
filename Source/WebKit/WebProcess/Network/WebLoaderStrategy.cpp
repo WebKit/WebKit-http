@@ -85,7 +85,7 @@ RefPtr<SubresourceLoader> WebLoaderStrategy::loadResource(Frame& frame, CachedRe
 {
     RefPtr<SubresourceLoader> loader = SubresourceLoader::create(frame, resource, request, options);
     if (loader)
-        scheduleLoad(*loader, &resource, frame.document()->referrerPolicy() == ReferrerPolicy::Default);
+        scheduleLoad(*loader, &resource, frame.document()->referrerPolicy() == ReferrerPolicy::NoReferrerWhenDowngrade);
     else
         RELEASE_LOG_IF_ALLOWED(frame, "loadResource: Unable to create SubresourceLoader (frame = %p", &frame);
     return loader;
@@ -95,7 +95,7 @@ RefPtr<NetscapePlugInStreamLoader> WebLoaderStrategy::schedulePluginStreamLoad(F
 {
     RefPtr<NetscapePlugInStreamLoader> loader = NetscapePlugInStreamLoader::create(frame, client, request);
     if (loader)
-        scheduleLoad(*loader, 0, frame.document()->referrerPolicy() == ReferrerPolicy::Default);
+        scheduleLoad(*loader, 0, frame.document()->referrerPolicy() == ReferrerPolicy::NoReferrerWhenDowngrade);
     return loader;
 }
 
@@ -105,6 +105,7 @@ static Seconds maximumBufferingTime(CachedResource* resource)
         return 0_s;
 
     switch (resource->type()) {
+    case CachedResource::Beacon:
     case CachedResource::CSSStyleSheet:
     case CachedResource::Script:
 #if ENABLE(SVG_FONTS)

@@ -17,6 +17,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/applepay"
+    "${WEBCORE_DIR}/Modules/cache"
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/encryptedmedia/legacy"
@@ -149,6 +150,7 @@ set(WebCore_IDL_INCLUDES
     xml
 
     Modules/airplay
+    Modules/cache
     Modules/credentials
     Modules/encryptedmedia/legacy
     Modules/fetch
@@ -179,6 +181,12 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
 
     Modules/beacon/NavigatorBeacon.idl
+
+    Modules/cache/Cache.idl
+    Modules/cache/CacheQueryOptions.idl
+    Modules/cache/CacheStorage.idl
+    Modules/cache/DOMWindowCaches.idl
+    Modules/cache/WorkerGlobalScopeCaches.idl
 
     Modules/credentials/BasicCredential.idl
     Modules/credentials/CredentialCreationOptions.idl
@@ -481,6 +489,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/MessagePort.idl
     dom/MouseEvent.idl
     dom/MouseEventInit.idl
+    dom/MutationCallback.idl
     dom/MutationEvent.idl
     dom/MutationObserver.idl
     dom/MutationRecord.idl
@@ -675,6 +684,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/NavigatorID.idl
     page/NavigatorLanguage.idl
     page/NavigatorOnLine.idl
+    page/NavigatorServiceWorker.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceMark.idl
@@ -702,6 +712,10 @@ set(WebCore_NON_SVG_IDL_FILES
 
     workers/AbstractWorker.idl
     workers/DedicatedWorkerGlobalScope.idl
+    workers/ServiceWorker.idl
+    workers/ServiceWorkerContainer.idl
+    workers/ServiceWorkerGlobalScope.idl
+    workers/ServiceWorkerRegistration.idl
     workers/Worker.idl
     workers/WorkerGlobalScope.idl
     workers/WorkerLocation.idl
@@ -878,6 +892,11 @@ set(WebCore_SOURCES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
 
     Modules/beacon/NavigatorBeacon.cpp
+
+    Modules/cache/Cache.cpp
+    Modules/cache/CacheStorage.cpp
+    Modules/cache/DOMWindowCaches.cpp
+    Modules/cache/WorkerGlobalScopeCaches.cpp
 
     Modules/credentials/BasicCredential.cpp
     Modules/credentials/CredentialsContainer.cpp
@@ -1222,7 +1241,6 @@ set(WebCore_SOURCES
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp
-    bindings/js/JSMutationCallback.cpp
     bindings/js/JSMutationObserverCustom.cpp
     bindings/js/JSNodeCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
@@ -1233,6 +1251,7 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
+    bindings/js/JSServiceWorkerContainerCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
@@ -1259,7 +1278,6 @@ set(WebCore_SOURCES
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
-    bindings/js/ScriptGlobalObject.cpp
     bindings/js/ScriptModuleLoader.cpp
     bindings/js/ScriptState.cpp
     bindings/js/StructuredClone.cpp
@@ -2219,6 +2237,7 @@ set(WebCore_SOURCES
     platform/FileSystem.cpp
     platform/GenericTaskQueue.cpp
     platform/Language.cpp
+    platform/LayoutUnit.cpp
     platform/Length.cpp
     platform/LengthBox.cpp
     platform/LengthPoint.cpp
@@ -2301,6 +2320,8 @@ set(WebCore_SOURCES
     platform/audio/UpSampler.cpp
     platform/audio/VectorMath.cpp
     platform/audio/ZeroPole.cpp
+
+    platform/encryptedmedia/CDMFactory.cpp
 
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
@@ -2967,6 +2988,10 @@ set(WebCore_SOURCES
     workers/AbstractWorker.cpp
     workers/DedicatedWorkerGlobalScope.cpp
     workers/DedicatedWorkerThread.cpp
+    workers/ServiceWorker.cpp
+    workers/ServiceWorkerContainer.cpp
+    workers/ServiceWorkerGlobalScope.cpp
+    workers/ServiceWorkerRegistration.cpp
     workers/Worker.cpp
     workers/WorkerConsoleClient.cpp
     workers/WorkerEventQueue.cpp
@@ -3245,6 +3270,8 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLVertexArrayObject.cpp
         html/canvas/WebGLVertexArrayObjectBase.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
+
+        inspector/InspectorShaderProgram.cpp
     )
     list(APPEND WebCore_IDL_FILES
         html/canvas/ANGLEInstancedArrays.idl
@@ -3625,6 +3652,7 @@ set(SUPPLEMENTAL_DEPENDENCY_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/supplemental_dep
 set(WINDOW_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DOMWindowConstructors.idl)
 set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlobalScopeConstructors.idl)
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
+set(SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/ServiceWorkerGlobalScopeConstructors.idl)
 
 WEBKIT_FRAMEWORK_DECLARE(WebCore)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -3819,7 +3847,8 @@ GENERATE_BINDINGS(WebCoreBindings
     PP_EXTRA_ARGS
         --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE}
         --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-        --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+        --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+        --serviceWorkerGlobalScopeConstructorsFile ${SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
 
 GENERATE_BINDINGS(WebCoreTestSupportBindings
     OUTPUT_SOURCE WebCoreTestSupport_SOURCES

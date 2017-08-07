@@ -1,3 +1,363 @@
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to provide browser information required by automation
+        https://bugs.webkit.org/show_bug.cgi?id=175130
+
+        Reviewed by Michael Catanzaro.
+
+        * MiniBrowser/gtk/main.c:
+        (automationStartedCallback): Set browser information when a new automation session is started.
+        * TestWebKitAPI/Tests/WebKitGLib/TestAutomationSession.cpp:
+        (testAutomationSessionApplicationInfo):
+        (beforeAll):
+
+2017-08-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220295.
+
+        This change introduced 4 errors in webkitpy tests.
+
+        Reverted changeset:
+
+        "[XCode] webkit-patch should run sort-Xcode-project-file"
+        https://bugs.webkit.org/show_bug.cgi?id=174036
+        http://trac.webkit.org/changeset/220295
+
+2017-08-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable API test NowPlayingControlsTests.NowPlayingControlsIOS.
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/NowPlayingControlsTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r219895-219897): Number of leaks on Open Source went from 9240 to 235983 and is now at 302372
+        https://bugs.webkit.org/show_bug.cgi?id=175083
+
+        Reviewed by Oliver Hunt.
+        
+        Leaks results are super confusing if leaks runs while some VMs are destructing. This calls a new SPI
+        to wait for VM destructions to finish before running the next test. This makes it easier to 
+        understand leaks results from workers tests, and leads to fewer reported leaks.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (runTest):
+
+2017-08-05  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        check-webkit-style: fix path-specific rules for WebKit2 rename
+        https://bugs.webkit.org/show_bug.cgi?id=175182
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/style/checker.py:
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add Cache and CacheStorage IDL definitions
+        https://bugs.webkit.org/show_bug.cgi?id=175201
+
+        Reviewed by Brady Eidson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCacheAPIEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-08-04  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Report user interaction immediately, but only when needed
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        <rdar://problem/33685546>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+            Now calls WebCore::ResourceLoadObserver::clearState().
+
+2017-08-04  Tim Horton  <timothy_horton@apple.com>
+
+        Add an API test for r220286
+        https://bugs.webkit.org/show_bug.cgi?id=175206
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+        (-[AnimatedResizeWebView _webView:didChangeSafeAreaShouldAffectObscuredInsets:]):
+        (createAnimatedResizeWebView):
+        (TEST):
+        Add a test to ensure that we don't call
+        _webView:didChangeSafeAreaShouldAffectObscuredInsets: during an
+        animated resize.
+
+2017-08-04  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [XCode] webkit-patch should run sort-Xcode-project-file
+        https://bugs.webkit.org/show_bug.cgi?id=174036
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        * Scripts/webkitpy/tool/commands/download.py:
+        * Scripts/webkitpy/tool/commands/upload.py:
+        * Scripts/webkitpy/tool/steps/__init__.py:
+        * Scripts/webkitpy/tool/steps/options.py:
+        * Scripts/webkitpy/tool/steps/sortxcodeprojectfiles.py: Added.
+
+2017-08-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r219857): run-benchmark --allplans broken
+        https://bugs.webkit.org/show_bug.cgi?id=175186
+
+        Reviewed by Saam Barati.
+
+        r219857 forgot to update also the calls to BenchmarkRunner() that
+        is done when the script is run with --allplans.
+
+        To fix this (and avoid future issues like this), let's factorize
+        the calls to the benchhmark runner in a run_benchmark_plan()
+        function.
+
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (run_benchmark_plan):
+        (start):
+
+2017-08-04  Aakash Jain  <aakash_jain@apple.com>
+
+        Dashboard bubbles sometimes show failure count instead of crash count
+        https://bugs.webkit.org/show_bug.cgi?id=175157
+        <rdar://problem/33709009>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults.prototype.resultSummarizer): Use the regex for the precise match first.
+
+2017-08-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add tests for NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=175146
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        New files and sort.
+
+        * TestWebKitAPI/Tests/WTF/Logger.h:
+        * TestWebKitAPI/Tests/WTF/Logger.cpp:
+        (TestWebKitAPI::log):
+        (TestWebKitAPI::takeLogStr):
+        * TestWebKitAPI/Tests/WTF/RefLogger.h:
+        * TestWebKitAPI/Tests/WTF/RefLogger.cpp:
+        (TestWebKitAPI::log): Deleted.
+        (TestWebKitAPI::takeLogStr): Deleted.
+        Extract log() / takeLogStr() from RefLogger to a general Logger.h/cpp.
+
+        * TestWebKitAPI/Tests/WTF/LifecycleLogger.h:
+        * TestWebKitAPI/Tests/WTF/LifecycleLogger.cpp: Added.
+        (TestWebKitAPI::LifecycleLogger::LifecycleLogger):
+        (TestWebKitAPI::LifecycleLogger::operator=):
+        (TestWebKitAPI::LifecycleLogger::~LifecycleLogger):
+        (TestWebKitAPI::LifecycleLogger::setName):
+        (TestWebKitAPI::TEST):
+        Add a class that logs construction / assignment / modifications.
+
+        * TestWebKitAPI/Tests/WTF/NeverDestroyed.cpp: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::list):
+        Test construction behavior is as expected both directly and using makeNeverDestroyed.
+
+2017-08-04  Lucas Forschler  <lforschler@apple.com>
+
+        minification logic is not implemented for ios builds
+        <rdar://problem/33726561>
+
+        Reviewed by Dean Johnson
+
+        * BuildSlaveSupport/built-product-archive:
+        (minifyDirectory): refactor minifySource -> minifyDirectory
+        (archiveBuiltProduct): add ios minification logic
+        (minifySource): Deleted.
+
+2017-08-04  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220271.
+
+        Rolling out due to Layout Test failing on iOS Simulator.
+
+        Reverted changeset:
+
+        "Remove STREAMS_API compilation guard"
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+        http://trac.webkit.org/changeset/220271
+
+2017-08-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220268.
+
+        This change caused assertion failures on macOS and iOS Debug
+        WK2.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Report user interaction
+        immediately, but only when needed"
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        http://trac.webkit.org/changeset/220268
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        Remove STREAMS_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-08-04  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Report user interaction immediately, but only when needed
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        <rdar://problem/33685546>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+            Now calls WebCore::ResourceLoadObserver::clearState().
+
+2017-08-03  Brian Burg  <bburg@apple.com>
+
+        Remove ENABLE(WEB_SOCKET) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167044
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r219850): run-benchmark script broken on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=175126
+
+        Reviewed by Stephanie Lewis.
+
+        The run-benchmark script dynamically generates the list of supported
+        browsers and platforms (currently Linux and OSX) by loading all
+        python files from Tools/Scripts/webkitpy/benchmark_runner/browser_driver
+        and getting the browser_name and platform variables from the
+        classes defined there.
+
+        This means that this classes should not raise an exception when
+        loaded on other platforms or otherwise they will broke the whole
+        script. Its fine if they raise an exception when executing any of
+        the methods they implement, but not when just loading/importing
+        the class.
+
+        Move the argument variable definitions that call on the platform
+        specific OSXBrowserDriver._screen_size() function from beeing
+        variables that are evaluated when loading the file, to be functions
+        that are only evaluated when the actual functionality needs to be
+        executed.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver.launch_url):
+        (OSXChromeCanaryDriver.launch_url):
+        (create_args):
+        (create_chrome_options):
+        (create_window_size_arg):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver.launch_url):
+        (OSXFirefoxNightlyDriver.launch_url):
+        (OSXFirefoxNightlyDriver.launch_driver):
+        (create_args):
+
+2017-08-03  Yoshiaki Jitsukawa  <jitsu@rd.scei.sony.co.jp>
+
+        [PAL] Move spi/cf directory into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175057
+
+        Reviewed by Antti Koivisto.
+
+        * Scripts/webkitpy/style/checker.py:
+        * Scripts/webkitpy/style/checker_unittest.py:
+        (GlobalVariablesTest.test_path_rules_specifier):
+
+        Ignore "readability/naming/underscores" style errors for sources
+        under the WebCore/PAL/pal/spi directory.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/CookieAcceptPolicy.mm:
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove FETCH_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175154
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Lucas Forschler  <lforschler@apple.com>
+
+        Enable archive minification on iOS builds
+        https://bugs.webkit.org/show_bug.cgi?id=174718
+        
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (BuildFactory.__init__):
+
+2017-08-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WKE] Pass the --memory-limited option on the GTK and WPE buildbots for the JSC tests.
+        https://bugs.webkit.org/show_bug.cgi?id=175140
+
+        Reviewed by Alexey Proskuryakov.
+
+        We are having lately issues with JSC tests causing problems on
+        the GTK+ and WPE bots due to the high amount of memory some tests
+        need to run.
+
+        The best thing we can do now is to workaround this by disabling
+        all the tests marked as memoryLimited on the GTK and WPE bots.
+        We may revise this on the future.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests.start):
+
+2017-08-03  Brady Eidson  <beidson@apple.com>
+
+        Add SW IDLs and stub out basic functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=175115
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+        * Scripts/webkitpy/bindings/main.py:
+
+2017-08-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade.https.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159510
+
+        Reviewed by Daniel Bates.
+
+        Allow any https certificate when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+
 2017-08-02  Youenn Fablet  <youenn@apple.com>
 
         HTTP tests with 'https' suffix are only run over HTTPS for WK2, not WK1

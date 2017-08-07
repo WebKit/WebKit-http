@@ -31,7 +31,7 @@ namespace JSC {
 
 class JSDestructibleObjectSubspace : public Subspace {
 public:
-    JS_EXPORT_PRIVATE JSDestructibleObjectSubspace(CString name, Heap&);
+    JS_EXPORT_PRIVATE JSDestructibleObjectSubspace(CString name, Heap&, AlignedMemoryAllocator*);
     JS_EXPORT_PRIVATE virtual ~JSDestructibleObjectSubspace();
     
     void finishSweep(MarkedBlock::Handle&, FreeList*) override;

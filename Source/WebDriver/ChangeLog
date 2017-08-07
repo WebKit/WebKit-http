@@ -1,3 +1,118 @@
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to provide browser information required by automation
+        https://bugs.webkit.org/show_bug.cgi?id=175130
+
+        Reviewed by Brian Burg.
+
+        * Session.cpp:
+        (WebDriver::Session::createTopLevelBrowsingContext): Check if startAutomationSession and complete the command
+        with error in that case.
+        * SessionHost.h:
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::matchCapabilities): Match the capabilities that are known only after the browser has
+        been launched.
+        (WebDriver::SessionHost::startAutomationSession): Handle the StartAutomationSession response, extracting the
+        capabilities and calling matchCapabilities() to match them.
+        (WebDriver::SessionHost::setTargetList): Return early if the session was rejected before due to invalid
+        capabilities.
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: Implement page load strategy
+        https://bugs.webkit.org/show_bug.cgi?id=175183
+
+        Reviewed by Brian Burg.
+
+        Validate and parse page load strategy when processing capabilities.
+
+        * Capabilities.h:
+        * Session.cpp:
+        (WebDriver::Session::pageLoadStrategyString const): Helper to get the page load strategy as a String to be
+        passed to Automation.
+        (WebDriver::Session::go): Pass page load strategy if present.
+        (WebDriver::Session::back): Ditto.
+        (WebDriver::Session::forward): Ditto.
+        (WebDriver::Session::refresh): Ditto.
+        (WebDriver::Session::waitForNavigationToComplete): Ditto.
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::deserializePageLoadStrategy):
+        (WebDriver::WebDriverService::parseCapabilities const):
+        (WebDriver::WebDriverService::validatedCapabilities const):
+        (WebDriver::WebDriverService::newSession):
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Try to fix build with clang after r220315.
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::validatedCapabilities const):
+        (WebDriver::WebDriverService::mergeCapabilities const):
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: properly handle capabilities and process firstMatch too
+        https://bugs.webkit.org/show_bug.cgi?id=174618
+
+        Reviewed by Brian Burg.
+
+        Implement processing of capabilities following the spec. This patch adds validation, merging and matching of
+        capabilities.
+
+        7.2 Processing Capabilities.
+        https://w3c.github.io/webdriver/webdriver-spec.html#processing-capabilities
+
+        * Capabilities.h: Make all capabilities optional and move Timeouts struct here.
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::deserializeTimeouts): Helper to extract timeouts from JSON object.
+        (WebDriver::WebDriverService::parseCapabilities const): At this point capabilities have already been validated,
+        so we just need to get them without checking the value type.
+        (WebDriver::WebDriverService::validatedCapabilities const): Validate the given capabilities, ensuring types of
+        values are the expected one.
+        (WebDriver::WebDriverService::mergeCapabilities const): Merge the alwaysMatch and firstMatch capabilities into a
+        single object ensuring that the same capability is not in both.
+        (WebDriver::WebDriverService::matchCapabilities const): Try to match the merged capabilities againt the platform
+        expected capabilities.
+        (WebDriver::WebDriverService::processCapabilities const): Validate, merge and match the capabilities.
+        (WebDriver::WebDriverService::newSession): Use processCapabilities(). Also initialize the timeouts from
+        capabilities and add all capabilities to the command result.
+        (WebDriver::WebDriverService::setTimeouts): Use deserializeTimeouts().
+        * WebDriverService.h:
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::launchBrowser): Updated to properly access the capabilities that are now optional.
+        (WebDriver::SessionHost::startAutomationSession): Add FIXME.
+        * gtk/WebDriverServiceGtk.cpp:
+        (WebDriver::WebDriverService::platformCapabilities): Return the Capabilities with the known required ones filled.
+        (WebDriver::WebDriverService::platformValidateCapability const): Validate webkitgtk:browserOptions.
+        (WebDriver::WebDriverService::platformMatchCapability const): This does nothing for now.
+        (WebDriver::WebDriverService::platformCompareBrowserVersions): Compare the given browser versions.
+        (WebDriver::WebDriverService::platformParseCapabilities const): Updated now that capabilites have already been
+        validated before.
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: use in-view center point for clicks instead of bounding box center point
+        https://bugs.webkit.org/show_bug.cgi?id=174863
+
+        Reviewed by Simon Fraser.
+
+        The center of the element bounding box is not always part of the element, like in multiline links, for example.
+
+        11.1 Element Interactability.
+        https://www.w3.org/TR/webdriver/#dfn-in-view-center-point
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::httpStatusCode): Add ElementClickIntercepted and ElementNotInteractable errors.
+        (WebDriver::CommandResult::errorString): Ditto.
+        * CommandResult.h: Ditto.
+        * Session.cpp:
+        (WebDriver::Session::computeElementLayout): Get the in-view center point and isObscured from the result too.
+        (WebDriver::Session::getElementRect): Ignore in-view center point and isObscured.
+        (WebDriver::Session::elementClick): Fail in case the element is not interactable or is obscured.
+        * Session.h:
+
 2017-08-01  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] WebKitFS.cmake depends on options set in Option cmake files that are included later

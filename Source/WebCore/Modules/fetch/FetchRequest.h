@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
 #include "FetchOptions.h"
@@ -53,7 +51,6 @@ public:
     using Destination = FetchOptions::Destination;
     using Mode = FetchOptions::Mode;
     using Redirect = FetchOptions::Redirect;
-    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
     using Type = FetchOptions::Type;
 
     static ExceptionOr<Ref<FetchRequest>> create(ScriptExecutionContext&, Info&&, Init&&);
@@ -70,6 +67,7 @@ public:
     Credentials credentials() const;
     Cache cache() const;
     Redirect redirect() const;
+    bool keepalive() const { return m_internalRequest.options.keepAlive; };
 
     const String& integrity() const { return m_internalRequest.options.integrity; }
 
@@ -145,5 +143,3 @@ inline auto FetchRequest::type() const -> Type
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

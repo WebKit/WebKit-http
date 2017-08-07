@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "FetchBodyOwner.h"
 #include "FetchHeaders.h"
 #include "ResourceResponse.h"
@@ -132,10 +130,9 @@ private:
     ResourceResponse m_response;
     std::optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
+    bool m_shouldExposeBody { true };
 
     FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::ArrayBuffer  };
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

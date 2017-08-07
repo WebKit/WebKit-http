@@ -51,4 +51,14 @@ WI.CanvasObserver = class CanvasObserver
     {
         WI.canvasManager.recordingFinished(canvasId, recording);
     }
+
+    programCreated(canvasId, programId)
+    {
+        WI.canvasManager.programCreated(canvasId, programId);
+    }
+
+    programDeleted(programId)
+    {
+        WI.canvasManager.programDeleted(programId);
+    }
 };

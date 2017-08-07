@@ -1,3 +1,249 @@
+2017-08-05  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add Cache and CacheStorage IDL definitions
+        https://bugs.webkit.org/show_bug.cgi?id=175201
+        <rdar://problem/33738001>
+
+        Unreviewed.
+        Rebasing test expectations after http://trac.webkit.org/changeset/220310.
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-add.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-delete.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-keys.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-matchAll.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-keys.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage.https-expected.txt:
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add Cache and CacheStorage IDL definitions
+        https://bugs.webkit.org/show_bug.cgi?id=175201
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/service-workers/cache-storage/common.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-add.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-delete.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-matchAll.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-put.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/serviceworker/credentials.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-add.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-delete.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-matchAll.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-put.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-storage-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-storage-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/cache-storage.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/window/sandboxed-iframes.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-add.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-delete.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-matchAll.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-put.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-storage-keys.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-storage-match.https-expected.txt: Added.
+        * web-platform-tests/service-workers/cache-storage/worker/cache-storage.https-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.6.2-cache-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.6.3-cache-storage-expected.txt: Added.
+
+2017-08-04  Brady Eidson  <beidson@apple.com>
+
+        Have navigator.serviceWorker() actually return a ServiceWorkerContainer object.
+        https://bugs.webkit.org/show_bug.cgi?id=175215
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/FileAPI/historical.https-expected.txt:
+        * web-platform-tests/background-fetch/interfaces-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https-expected.txt:
+        * web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/count-queuing-strategy.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/flow-control.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/multiple-propagation.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/pipe-through.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/transform-streams.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/cancel.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/default-reader.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/pipe-through.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/templated.serviceworker.https-expected.txt:
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        [Beacon] Update sendBeacon to use the CachedResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=175192
+        <rdar://problem/33725923>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline test as our Content-Type header has changed for ArrayBuffer / ArrayBufferView
+        payloads.
+
+        * web-platform-tests/beacon/headers/header-content-type-expected.txt:
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Match newly-clarified spec on textarea defaultValue/value/child text content
+        https://bugs.webkit.org/show_bug.cgi?id=173878
+
+        Reviewed by Darin Adler.
+
+        Re-sync WPT test from upstream and rebaseline to improve test coverage.
+
+        * web-platform-tests/html/semantics/forms/the-textarea-element/value-defaultValue-textContent-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-textarea-element/value-defaultValue-textContent.html:
+
+2017-08-04  Brady Eidson  <beidson@apple.com>
+
+        Enable ServiceWorkers at runtime for WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=175174
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/background-fetch/interfaces-expected.txt:
+        * web-platform-tests/background-fetch/interfaces-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https-expected.txt:
+        * web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/count-queuing-strategy.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/flow-control.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/multiple-propagation.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/pipe-through.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/piping/transform-streams.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/cancel.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/default-reader.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/general.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/pipe-through.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/templated.serviceworker.https-expected.txt:
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Fix parsing of <meta http-equiv=refresh> to allow time starting with a '.' without a leading 0
+        https://bugs.webkit.org/show_bug.cgi?id=175132
+
+        Reviewed by Darin Adler.
+
+        Re-sync WPT tests from upstream c8bf1bbe9296. This extends test coverage.
+
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-1-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-2-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/moving-documents-expected.txt: Removed.
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/remove-from-document-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/remove-from-document.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/moving-documents.html.
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/support/refresh.sub.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/support/w3c-import.log:
+        * web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/w3c-import.log:
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Multiple Layout tests from web-platform-tests/beacon/ are timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=175076
+        <rdar://problem/33704752>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Rebaseline tests that are now passing.
+
+        * web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt:
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Add support for Request keepalive getter
+        https://bugs.webkit.org/show_bug.cgi?id=175151
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl.html:
+        * web-platform-tests/fetch/api/request/request-keepalive-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-keepalive.html: Added.
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Import WPT service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=175053
+
+        Reviewed by Brady Eidson.
+
+        Importing service-worker tests up to cfdfb48329b20e19b6492a317ac5181a99506fd2.
+
+        * resources/resource-files.json:
+        * resources/import-expectations.json:
+        * web-platform-tests/service-workers/:
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Improve our support for referrer policies
+        https://bugs.webkit.org/show_bug.cgi?id=175069
+        <rdar://problem/33677313>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several WPT tests now that more checks are passing.
+
+        * web-platform-tests/beacon/headers/header-referrer-origin-when-cross-origin-expected.txt:
+        * web-platform-tests/beacon/headers/header-referrer-same-origin-expected.txt:
+        * web-platform-tests/beacon/headers/header-referrer-strict-origin-when-cross-origin.https-expected.txt:
+        * web-platform-tests/beacon/headers/header-referrer-strict-origin.https-expected.txt:
+        * web-platform-tests/beacon/headers/header-referrer-unsafe-url.https-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-referrer-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-001.sub-expected.txt:
+
 2017-08-01  Chris Dumez  <cdumez@apple.com>
 
         Add initial support for navigator.sendBeacon

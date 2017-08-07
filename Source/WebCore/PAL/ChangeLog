@@ -1,3 +1,75 @@
+2017-08-04  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220271.
+
+        Rolling out due to Layout Test failing on iOS Simulator.
+
+        Reverted changeset:
+
+        "Remove STREAMS_API compilation guard"
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+        http://trac.webkit.org/changeset/220271
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        Remove STREAMS_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Brian Burg  <bburg@apple.com>
+
+        Remove ENABLE(WEB_SOCKET) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167044
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Yoshiaki Jitsukawa  <jitsu@rd.scei.sony.co.jp>
+
+        [PAL] Move spi/cf directory into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175057
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cf/CFLocaleSPI.h: Renamed from Source/WebCore/platform/spi/cf/CFLocaleSPI.h.
+        * pal/spi/cf/CFNetworkConnectionCacheSPI.h: Renamed from Source/WebCore/platform/spi/cf/CFNetworkConnectionCacheSPI.h.
+        * pal/spi/cf/CFNetworkSPI.h: Renamed from Source/WebCore/platform/spi/cf/CFNetworkSPI.h.
+        * pal/spi/cf/CFUtilitiesSPI.h: Renamed from Source/WebCore/platform/spi/cf/CFUtilitiesSPI.h.
+        * pal/spi/cf/CoreAudioSPI.h: Renamed from Source/WebCore/platform/spi/cf/CoreAudioSPI.h.
+        * pal/spi/cf/CoreMediaSPI.h: Renamed from Source/WebCore/platform/spi/cf/CoreMediaSPI.h.
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove FETCH_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175154
+
+        Reviewed by Chris Dumez.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Brady Eidson  <beidson@apple.com>
+
+        Add SW IDLs and stub out basic functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=175115
+
+        Reviewed by Chris Dumez.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Yoshiaki Jitsukawa  <jitsu@rd.scei.sony.co.jp>
+
+        [WebCore] Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=175121
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+
 2017-08-01  Yoshiaki Jitsukawa  <jitsu@rd.scei.sony.co.jp>
 
         [PAL][Win] Copy forwarding headers

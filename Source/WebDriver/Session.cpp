@@ -102,10 +102,31 @@ void Session::switchToBrowsingContext(std::optional<String> browsingContext)
         m_currentBrowsingContext = browsingContext;
 }
 
+std::optional<String> Session::pageLoadStrategyString() const
+{
+    if (!capabilities().pageLoadStrategy)
+        return std::nullopt;
+
+    switch (capabilities().pageLoadStrategy.value()) {
+    case PageLoadStrategy::None:
+        return String("None");
+    case PageLoadStrategy::Normal:
+        return String("Normal");
+    case PageLoadStrategy::Eager:
+        return String("Eager");
+    }
+
+    return std::nullopt;
+}
+
 void Session::createTopLevelBrowsingContext(Function<void (CommandResult&&)>&& completionHandler)
 {
     ASSERT(!m_toplevelBrowsingContext.value());
-    m_host->startAutomationSession(m_id, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)]() mutable {
+    m_host->startAutomationSession(m_id, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<String> errorMessage) mutable {
+        if (errorMessage) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError, errorMessage.value()));
+            return;
+        }
         m_host->sendCommandToBackend(ASCIILiteral("createBrowsingContext"), nullptr, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
             if (response.isError || !response.responseObject) {
                 completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
@@ -134,6 +155,8 @@ void Session::go(const String& url, Function<void (CommandResult&&)>&& completio
     parameters->setString(ASCIILiteral("url"), url);
     if (m_timeouts.pageLoad)
         parameters->setInteger(ASCIILiteral("pageLoadTimeout"), m_timeouts.pageLoad.value().millisecondsAs<int>());
+    if (auto pageLoadStrategy = pageLoadStrategyString())
+        parameters->setString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy.value());
     m_host->sendCommandToBackend(ASCIILiteral("navigateBrowsingContext"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
         if (response.isError) {
             completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
@@ -183,6 +206,8 @@ void Session::back(Function<void (CommandResult&&)>&& completionHandler)
     parameters->setString(ASCIILiteral("handle"), m_toplevelBrowsingContext.value());
     if (m_timeouts.pageLoad)
         parameters->setInteger(ASCIILiteral("pageLoadTimeout"), m_timeouts.pageLoad.value().millisecondsAs<int>());
+    if (auto pageLoadStrategy = pageLoadStrategyString())
+        parameters->setString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy.value());
     m_host->sendCommandToBackend(ASCIILiteral("goBackInBrowsingContext"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
         if (response.isError) {
             completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
@@ -204,6 +229,8 @@ void Session::forward(Function<void (CommandResult&&)>&& completionHandler)
     parameters->setString(ASCIILiteral("handle"), m_toplevelBrowsingContext.value());
     if (m_timeouts.pageLoad)
         parameters->setInteger(ASCIILiteral("pageLoadTimeout"), m_timeouts.pageLoad.value().millisecondsAs<int>());
+    if (auto pageLoadStrategy = pageLoadStrategyString())
+        parameters->setString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy.value());
     m_host->sendCommandToBackend(ASCIILiteral("goForwardInBrowsingContext"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
         if (response.isError) {
             completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
@@ -225,6 +252,8 @@ void Session::refresh(Function<void (CommandResult&&)>&& completionHandler)
     parameters->setString(ASCIILiteral("handle"), m_toplevelBrowsingContext.value());
     if (m_timeouts.pageLoad)
         parameters->setInteger(ASCIILiteral("pageLoadTimeout"), m_timeouts.pageLoad.value().millisecondsAs<int>());
+    if (auto pageLoadStrategy = pageLoadStrategyString())
+        parameters->setString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy.value());
     m_host->sendCommandToBackend(ASCIILiteral("reloadBrowsingContext"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
         if (response.isError) {
             completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
@@ -580,7 +609,7 @@ String Session::extractElementID(InspectorValue& value)
     return elementID;
 }
 
-void Session::computeElementLayout(const String& elementID, OptionSet<ElementLayoutOption> options, Function<void (std::optional<Rect>&&, RefPtr<InspectorObject>&&)>&& completionHandler)
+void Session::computeElementLayout(const String& elementID, OptionSet<ElementLayoutOption> options, Function<void (std::optional<Rect>&&, std::optional<Point>&&, bool, RefPtr<InspectorObject>&&)>&& completionHandler)
 {
     ASSERT(m_toplevelBrowsingContext.value());
 
@@ -592,12 +621,12 @@ void Session::computeElementLayout(const String& elementID, OptionSet<ElementLay
     parameters->setBoolean(ASCIILiteral("useViewportCoordinates"), options.contains(ElementLayoutOption::UseViewportCoordinates));
     m_host->sendCommandToBackend(ASCIILiteral("computeElementLayout"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
         if (response.isError || !response.responseObject) {
-            completionHandler(std::nullopt, WTFMove(response.responseObject));
+            completionHandler(std::nullopt, std::nullopt, false, WTFMove(response.responseObject));
             return;
         }
         RefPtr<InspectorObject> rectObject;
         if (!response.responseObject->getObject(ASCIILiteral("rect"), rectObject)) {
-            completionHandler(std::nullopt, nullptr);
+            completionHandler(std::nullopt, std::nullopt, false, nullptr);
             return;
         }
         std::optional<int> elementX;
@@ -611,7 +640,7 @@ void Session::computeElementLayout(const String& elementID, OptionSet<ElementLay
             }
         }
         if (!elementX || !elementY) {
-            completionHandler(std::nullopt, nullptr);
+            completionHandler(std::nullopt, std::nullopt, false, nullptr);
             return;
         }
         std::optional<int> elementWidth;
@@ -625,11 +654,29 @@ void Session::computeElementLayout(const String& elementID, OptionSet<ElementLay
             }
         }
         if (!elementWidth || !elementHeight) {
-            completionHandler(std::nullopt, nullptr);
+            completionHandler(std::nullopt, std::nullopt, false, nullptr);
             return;
         }
         Rect rect = { { elementX.value(), elementY.value() }, { elementWidth.value(), elementHeight.value() } };
-        completionHandler(rect, nullptr);
+
+        bool isObscured;
+        if (!response.responseObject->getBoolean(ASCIILiteral("isObscured"), isObscured)) {
+            completionHandler(std::nullopt, std::nullopt, false, nullptr);
+            return;
+        }
+        RefPtr<InspectorObject> inViewCenterPointObject;
+        if (!response.responseObject->getObject(ASCIILiteral("inViewCenterPoint"), inViewCenterPointObject)) {
+            completionHandler(rect, std::nullopt, isObscured, nullptr);
+            return;
+        }
+        int inViewCenterPointX, inViewCenterPointY;
+        if (!inViewCenterPointObject->getInteger(ASCIILiteral("x"), inViewCenterPointX)
+            || !inViewCenterPointObject->getInteger(ASCIILiteral("y"), inViewCenterPointY)) {
+            completionHandler(std::nullopt, std::nullopt, isObscured, nullptr);
+            return;
+        }
+        Point inViewCenterPoint = { inViewCenterPointX, inViewCenterPointY };
+        completionHandler(rect, inViewCenterPoint, isObscured, nullptr);
     });
 }
 
@@ -830,7 +877,7 @@ void Session::getElementRect(const String& elementID, Function<void (CommandResu
         return;
     }
 
-    computeElementLayout(elementID, { }, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<Rect>&& rect, RefPtr<InspectorObject>&& error) {
+    computeElementLayout(elementID, { }, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<Rect>&& rect, std::optional<Point>&&, bool, RefPtr<InspectorObject>&& error) {
         if (!rect || error) {
             completionHandler(CommandResult::fail(WTFMove(error)));
             return;
@@ -963,6 +1010,8 @@ void Session::waitForNavigationToComplete(Function<void (CommandResult&&)>&& com
         parameters->setString(ASCIILiteral("frameHandle"), m_currentBrowsingContext.value());
     if (m_timeouts.pageLoad)
         parameters->setInteger(ASCIILiteral("pageLoadTimeout"), m_timeouts.pageLoad.value().millisecondsAs<int>());
+    if (auto pageLoadStrategy = pageLoadStrategyString())
+        parameters->setString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy.value());
     m_host->sendCommandToBackend(ASCIILiteral("waitForNavigationToComplete"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
         if (response.isError) {
             auto result = CommandResult::fail(WTFMove(response.responseObject));
@@ -987,15 +1036,21 @@ void Session::elementClick(const String& elementID, Function<void (CommandResult
 
     OptionSet<ElementLayoutOption> options = ElementLayoutOption::ScrollIntoViewIfNeeded;
     options |= ElementLayoutOption::UseViewportCoordinates;
-    computeElementLayout(elementID, options, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<Rect>&& rect, RefPtr<InspectorObject>&& error) mutable {
+    computeElementLayout(elementID, options, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<Rect>&& rect, std::optional<Point>&& inViewCenter, bool isObscured, RefPtr<InspectorObject>&& error) mutable {
         if (!rect || error) {
             completionHandler(CommandResult::fail(WTFMove(error)));
             return;
         }
+        if (isObscured) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::ElementClickIntercepted));
+            return;
+        }
+        if (!inViewCenter) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::ElementNotInteractable));
+            return;
+        }
 
-        // FIXME: the center of the bounding box is not always part of the element.
-        performMouseInteraction(rect.value().origin.x + rect.value().size.width / 2, rect.value().origin.y + rect.value().size.height / 2,
-            MouseButton::Left, MouseInteraction::SingleClick, WTFMove(completionHandler));
+        performMouseInteraction(inViewCenter.value().x, inViewCenter.value().y, MouseButton::Left, MouseInteraction::SingleClick, WTFMove(completionHandler));
 
         waitForNavigationToComplete(WTFMove(completionHandler));
     });

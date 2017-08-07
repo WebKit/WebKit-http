@@ -36,7 +36,6 @@
 #include "ExceptionEventLocation.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
-#include "GigacageSubspace.h"
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "JITThunks.h"
@@ -221,7 +220,7 @@ struct ScratchBuffer {
     static size_t allocationSize(Checked<size_t> bufferSize) { return (sizeof(ScratchBuffer) + bufferSize).unsafeGet(); }
     void setActiveLength(size_t activeLength) { u.m_activeLength = activeLength; }
     size_t activeLength() const { return u.m_activeLength; };
-    size_t* activeLengthPtr() { return &u.m_activeLength; };
+    size_t* addressOfActiveLength() { return &u.m_activeLength; };
     void* dataBuffer() { return m_buffer; }
 
     union {
@@ -286,7 +285,7 @@ private:
 public:
     Heap heap;
     
-    GigacageSubspace auxiliarySpace;
+    Subspace auxiliarySpace;
     
     // Whenever possible, use subspaceFor<CellType>(vm) to get one of these subspaces.
     Subspace cellSpace;

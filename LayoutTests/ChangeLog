@@ -1,3 +1,536 @@
+2017-08-05  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response should keep all ResourceResponse information
+        https://bugs.webkit.org/show_bug.cgi?id=175099
+
+        Reviewed by Sam Weinig.
+
+        Updating test now that we are no longer cancelling the load in case of opaque responses.
+
+        * http/tests/inspector/network/fetch-network-data-expected.txt:
+        * http/tests/inspector/network/fetch-network-data.html:
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        getClientRects doesn't work with list box option elements
+        https://bugs.webkit.org/show_bug.cgi?id=175016
+
+        Reviewed by Darin Adler.
+
+        Add new test to check list box option elements client rects.
+
+        * fast/dom/HTMLSelectElement/listbox-items-client-rects-expected.txt: Added.
+        * fast/dom/HTMLSelectElement/listbox-items-client-rects.html: Added.
+        * platform/ios-simulator-wk2/fast/dom/HTMLSelectElement/listbox-items-client-rects-expected.txt: Added.
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add Cache and CacheStorage IDL definitions
+        https://bugs.webkit.org/show_bug.cgi?id=175201
+
+        Reviewed by Brady Eidson.
+
+        * TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/mac-highsierra/js/dom/global-constructors-attributes-expected.txt:
+
+2017-08-04  Brady Eidson  <beidson@apple.com>
+
+        Have navigator.serviceWorker() actually return a ServiceWorkerContainer object.
+        https://bugs.webkit.org/show_bug.cgi?id=175215
+
+        Reviewed by Youenn Fablet.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/FileAPI/historical.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/FileAPI/historical.https-expected.txt.
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Add test coverage for sendBeacon() keepalive flag
+        https://bugs.webkit.org/show_bug.cgi?id=175212
+
+        Reviewed by Youenn Fablet.
+
+        * http/wpt/beacon/keepalive-after-navigation-expected.txt: Added.
+        * http/wpt/beacon/keepalive-after-navigation.html: Added.
+        * http/wpt/beacon/support/sendBeacon-onunload-iframe.html: Added.
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        [Beacon] Update sendBeacon to use the CachedResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=175192
+        <rdar://problem/33725923>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline a few tests now that the Origin header is properly set of our Beacon
+        requests. This is a progression and matches the results from Blink.
+
+        Our Content-Type header for ArrayBuffer / ArrayBufferView payloads has also
+        changed. It is unclear which one is best but at least we are now consistent
+        with Fetch.
+
+        * http/tests/blink/sendbeacon/beacon-cookie-expected.txt:
+        * http/tests/blink/sendbeacon/beacon-cross-origin-expected.txt:
+        * http/tests/blink/sendbeacon/beacon-same-origin-expected.txt:
+        * http/wpt/beacon/headers/header-content-type-same-origin.html:
+
+2017-08-04  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Report user interaction immediately, but only when needed
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        <rdar://problem/33685546>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html:
+            Now no longer needs to disable throttling since reports of
+            user interaction happen immediately (when needed).
+        * http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            user-interaction-only-reported-once-within-short-period-of-time.html marked as [ Pass ].
+
+2017-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: capture async stack trace when workers/main context posts a message
+        https://bugs.webkit.org/show_bug.cgi?id=167084
+        <rdar://problem/30033673>
+
+        Reviewed by Brian Burg.
+
+        Add a test to check for asynchronous stack trace data when the debugger
+        pauses inside a MessageEvent handler.
+
+        * inspector/debugger/async-stack-trace-expected.txt:
+        * inspector/debugger/async-stack-trace.html:
+        * inspector/debugger/resources/postMessage-echo.html: Added.
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        LayoutTest imported/w3c/web-platform-tests/beacon/beacon-basic-string.html is a flaky failure (harness timeout)
+        https://bugs.webkit.org/show_bug.cgi?id=175202
+
+        Unreviewed, mark test as flaky.
+
+        * TestExpectations:
+
+2017-08-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add source view for WebGL shader programs
+        https://bugs.webkit.org/show_bug.cgi?id=138593
+        <rdar://problem/18936194>
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/requestShaderSource-expected.txt: Added.
+        * inspector/canvas/requestShaderSource.html: Added.
+
+        * inspector/canvas/resources/shaderProgram-utilities.js:
+        (linkProgram):
+        (linkProgram.typeForScript):
+        (linkProgram.createShaderFromScript):
+
+        * platform/win/TestExpectations:
+
+2017-08-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        RenderImageResourceStyleImage::image() should return the nullImage() if the image is not available
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        <rdar://problem/33530130>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/image-element-image-content-data-expected.txt: Added.
+        * fast/images/image-element-image-content-data.html: Added.
+
+2017-08-04  Matt Lewis  <jlewis3@apple.com>
+
+        Rebaslining fast/text/font-selection-font-loading-api-parse.html for iOS 11.
+
+        Unreviewed test gardening.
+
+        * platform/ios-11/fast/text/font-selection-font-loading-api-parse-expected.txt:
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        PROGRESSION? Multiple imported/w3c/web-platform-tests/fetch/api/ test have started to fail.
+        https://bugs.webkit.org/show_bug.cgi?id=175061
+
+        Unreviewed, mark Fetch/Cors tests as failing on wk2 ElCapitan only, as those tests seem to be passing
+        everywhere else.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-08-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220268.
+
+        This change caused assertion failures on macOS and iOS Debug
+        WK2.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Report user interaction
+        immediately, but only when needed"
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        http://trac.webkit.org/changeset/220268
+
+2017-08-04  Chris Dumez  <cdumez@apple.com>
+
+        Mark beacon-basic-string.html as slow.
+
+        * TestExpectations:
+
+2017-08-04  Brady Eidson  <beidson@apple.com>
+
+        Enable ServiceWorkers at runtime for WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=175174
+
+        Reviewed by Youenn Fablet.
+
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/mac-wk1/fast/dom/navigator-detached-no-crash-expected.txt: Copied from LayoutTests/fast/dom/navigator-detached-no-crash-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/background-fetch/interfaces-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/background-fetch/interfaces-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/count-queuing-strategy.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/flow-control.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/flow-control.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/multiple-propagation.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/multiple-propagation.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/pipe-through.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/pipe-through.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/piping/transform-streams.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/transform-streams.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-byte-streams/general.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/cancel.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/cancel.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/default-reader.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/default-reader.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/general.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/pipe-through.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/piping/pipe-through.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/tee.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/tee.serviceworker.https-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/streams/readable-streams/templated.serviceworker.https-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/streams/readable-streams/templated.serviceworker.https-expected.txt.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-08-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME][GStreamer] Register ClearKey CDMFactory
+        https://bugs.webkit.org/show_bug.cgi?id=175136
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update WPE baselines for EME ClearKey tests following some advancements in
+        ClearKey support.
+
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-events-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-events-session-closed-event-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-invalid-license-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-keystatuses-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-keystatuses-multiple-sessions-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-events-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multisession-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-after-src-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-after-update-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-immediately-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-onencrypted-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-two-videos-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-requestmediakeysystemaccess-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-reset-src-after-setmediakeys-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-playback-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-resetting-src-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-at-same-time-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-the-same-mediakeys-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-to-multiple-video-elements-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeys-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysession-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysystemaccess-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-update-disallowed-input-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-not-callable-after-createsession-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-update-non-ascii-input-expected.txt:
+
+2017-08-04  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Report user interaction immediately, but only when needed
+        https://bugs.webkit.org/show_bug.cgi?id=175090
+        <rdar://problem/33685546>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html:
+            Now no longer needs to disable throttling since reports of
+            user interaction happen immediately (when needed).
+        * http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            user-interaction-only-reported-once-within-short-period-of-time.html marked as [ Pass ].
+
+2017-08-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Test gardening around MOUSE_CURSOR_SCALE.
+        https://bugs.webkit.org/show_bug.cgi?id=109469
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove obsolete expectation for cursor-parsing-image-set.html; it may have
+        started passing in r209396.
+
+        Mark mouse-cursor-image-set.html as failing rather than using an incorrect
+        -expected file.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/events/mouse-cursor-image-set-expected.txt: Removed.
+
+2017-08-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening. Update test expectations and layout test baselines
+        for Web Crypto tests now that the implementation is complete.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_cbc.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/import_export: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pkcs.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pss.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pkcs.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pss.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker-expected.txt: Added.
+
+2017-08-04  Frederic Wang  <fwang@igalia.com>
+
+        ScrollingTreeOverflowScrollingNodeIOS uses the wrong fixed position rectangle
+        https://bugs.webkit.org/show_bug.cgi?id=175135
+
+        Reviewed by Simon Fraser.
+
+        This patch adds a new test for a position:fixed element inside an overflow node inside an
+        iframe. When scrolling the overflow node, the position of such an element should remain fixed
+        relative to the inner frame. Before that change, ScrollingTreeOverflowScrollingNodeIOS used
+        to take the main frame as a reference instead, causing the element to flicker and even to
+        disappear when the user scrolls that overflow node. We add a reftest to verify that the
+        element is visible and positioned at the correct location when the user scrolls.
+
+        * fast/scrolling/ios/fixed-inside-overflow-inside-iframe-expected.html: Added.
+        * fast/scrolling/ios/fixed-inside-overflow-inside-iframe.html: Added.
+
+2017-08-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Update test expectations and layout test baselines
+        for Web Crypto tests now that the implementation is complete.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/import_export: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pkcs.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pss.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pkcs.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pss.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker-expected.txt: Added.
+
+2017-08-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC PKCS#8 imports
+        https://bugs.webkit.org/show_bug.cgi?id=173647
+
+        Reviewed by Jiewen Tan.
+
+        * platform/wpe/TestExpectations:
+        Unskip passing Web Crypto tests that cover PKCS#8 imports of EC keys.
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Fix parsing of <meta http-equiv=refresh> to allow time starting with a '.' without a leading 0
+        https://bugs.webkit.org/show_bug.cgi?id=175132
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations:
+        Mark as flaky tests that used to not run because they were missing a subresource. Now that I imported
+        this subresource, the tests run but are failing. When they fail, those tests are flaky due to the lines
+        they log.
+
+        * tests-options.json:
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Multiple Layout tests from web-platform-tests/beacon/ are timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=175076
+        <rdar://problem/33704752>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Removed.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Removed.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt: Removed.
+        * platform/mac-wk2/imported/w3c/web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt: Removed.
+        Drop platform-specific expectations as those tests are now passing everywhere.
+
+        * platform/wk2/TestExpectations:
+        Unskip tests that are now passing.
+
+2017-08-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument WebGLProgram created/deleted
+        https://bugs.webkit.org/show_bug.cgi?id=175059
+
+        Reviewed by Devin Rousso.
+
+        Add tests for CanvasManager shader program events and ShaderProgram model object.
+        WebGL and WebGL2 contexts are tested separately based on platform support.
+
+        * inspector/canvas/resources/shaderProgram-utilities.js: Added.
+        (createProgram):
+        (deleteProgram):
+        (deleteContext):
+        (TestPage.registerInitializer.awaitProgramAdded):
+        (TestPage.registerInitializer):
+        (TestPage.registerInitializer.window.initializeTestSuite):
+        (TestPage.registerInitializer.window.addSimpleTestCase):
+        (TestPage.registerInitializer.window.addParentCanvasRemovedTestCase):
+
+        * inspector/canvas/shaderProgram-add-remove-webgl-expected.txt: Added.
+        * inspector/canvas/shaderProgram-add-remove-webgl.html: Added.
+        * inspector/canvas/shaderProgram-add-remove-webgl2-expected.txt: Added.
+        * inspector/canvas/shaderProgram-add-remove-webgl2.html: Added.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Import WPT service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=175053
+
+        Reviewed by Brady Eidson.
+
+        * TestExpectations: skipping service worker tests.
+
+2017-08-03  Ms2ger  <Ms2ger@igalia.com>
+
+        Test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=175137
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/images/async-image-multiple-clients-repaint-expected.txt: Added.
+        * platform/gtk/fast/text/atsui-pointtooffset-calls-cg-expected.txt:
+        * platform/win/TestExpectations:
+
+2017-08-01  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Convert MutationCallback to be a normal generate callback
+        https://bugs.webkit.org/show_bug.cgi?id=174140
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/MutationObserver/mutation-observer-constructor-expected.txt:
+        Update results for standard error messages.
+
+2017-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Improve our support for referrer policies
+        https://bugs.webkit.org/show_bug.cgi?id=175069
+        <rdar://problem/33677313>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/referrer-policy/origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy/origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy/origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy/origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy/origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy/origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy/resources/document.html: Added.
+        * http/tests/referrer-policy/same-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy/same-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy/same-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy/same-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy/same-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy/same-origin/same-origin.html: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy/strict-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy/strict-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy/strict-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy/strict-origin/same-origin.html: Added.
+        Add layout test coverage.
+
+        * http/tests/security/referrer-policy-invalid-expected.txt:
+        Rebaseline test now that console message has changed.
+
+2017-08-03  Daniel Bates  <dabates@apple.com>
+
+        Support ::marker pseudo-element
+        https://bugs.webkit.org/show_bug.cgi?id=141477
+
+        Reviewed by David Hyatt.
+
+        Add tests that check we respect ::marker when rendering the list item marker. I will
+        submit all the tests in http/wpt/css/css-pseudo-4 to the Web Platform Tests repository
+        shortly and then import them into the WebKit repository in a subsequent commit.
+
+        * fast/lists/list-marker-with-display-expected.html: Added.
+        * fast/lists/list-marker-with-display.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-and-other-pseudo-elements-expected.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-and-other-pseudo-elements.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-color-expected.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-color.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-font-properties-expected.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-font-properties.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-inherit-values-expected.html: Added.
+        * http/wpt/css/css-pseudo-4/marker-inherit-values.html: Added.
+
 2017-08-03  Ms2ger  <Ms2ger@igalia.com>
 
         [GTK] Remove obsolete failure expectation for narrow-non-breaking-space.html.

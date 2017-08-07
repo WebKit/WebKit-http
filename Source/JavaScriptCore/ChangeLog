@@ -1,3 +1,486 @@
+2017-08-07  Keith Miller  <keith_miller@apple.com>
+
+        REGRESSION: wasm.yaml/wasm/js-api/dont-mmap-zero-byte-memory.js failing on JSC Debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=175256
+
+        Reviewed by Saam Barati.
+
+        The check in createFromBytes just needed to check that the buffer was not null before
+        calling isCaged.
+
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBuffer::createFromBytes):
+
+2017-08-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to provide browser information required by automation
+        https://bugs.webkit.org/show_bug.cgi?id=175130
+
+        Reviewed by Brian Burg.
+
+        Add browserName and browserVersion to RemoteInspector::Client::Capabilities and virtual methods to the Client to
+        get them.
+
+        * inspector/remote/RemoteInspector.cpp:
+        (Inspector::RemoteInspector::updateClientCapabilities): Update also browserName and browserVersion.
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        (Inspector::RemoteInspector::requestAutomationSession): Call updateClientCapabilities() after the session is
+        requested to ensure they are updated before StartAutomationSession reply is sent.
+        * inspector/remote/glib/RemoteInspectorServer.cpp: Add browserName and browserVersion as return values of
+        StartAutomationSession mesasage.
+
+2017-08-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Promise resolve and reject function should have length = 1
+        https://bugs.webkit.org/show_bug.cgi?id=175242
+
+        Reviewed by Saam Barati.
+
+        Previously we have separate system for "length" and "name" for builtin functions.
+        The builtin functions do not use lazy reifying system. Instead, they have direct
+        properties when instantiating it. While the function created for properties (like
+        Array.prototype.filter) is created by JSFunction::createBuiltin(), function inside
+        these builtin functions are just created by JSFunction::create(). Since it does
+        not set any values for "length", these functions do not have "length" property.
+        So, the resolve and reject functions passed to Promise's executor do not have
+        "length" property.
+
+        This patch make builtin functions use standard lazy reifying system for "length".
+        So, "length" property of the builtin function just works as if the normal functions
+        do.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::createBuiltinFunction):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::defineOwnProperty):
+        (JSC::JSFunction::reifyLazyPropertyIfNeeded):
+        (JSC::JSFunction::reifyLazyPropertyForHostOrBuiltinIfNeeded):
+        (JSC::JSFunction::reifyLazyLengthIfNeeded):
+        (JSC::JSFunction::reifyLazyBoundNameIfNeeded):
+        (JSC::JSFunction::reifyBoundNameIfNeeded): Deleted.
+        * runtime/JSFunction.h:
+
+2017-08-06  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - Implement Async Generator - parser
+        https://bugs.webkit.org/show_bug.cgi?id=175210
+
+        Reviewed by Yusuke Suzuki.
+
+        Current implementation is draft version of Async Iteration. 
+        Link to spec https://tc39.github.io/proposal-async-iteration/
+
+        Current patch implement only parser part of the Async generator
+        Runtime part will be in next ptches
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionMetadata):
+        * parser/Parser.cpp:
+        (JSC::getAsynFunctionBodyParseMode):
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::parseAsyncFunctionSourceElements):
+        (JSC::Parser<LexerType>::parseAsyncGeneratorFunctionSourceElements):
+        (JSC::stringArticleForFunctionMode):
+        (JSC::stringForFunctionMode):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseAsyncFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parseAsyncFunctionExpression):
+        * parser/Parser.h:
+        (JSC::Scope::setSourceParseMode):
+        * parser/ParserModes.h:
+        (JSC::isFunctionParseMode):
+        (JSC::isAsyncFunctionParseMode):
+        (JSC::isAsyncArrowFunctionParseMode):
+        (JSC::isAsyncGeneratorFunctionParseMode):
+        (JSC::isAsyncFunctionOrAsyncGeneratorWrapperParseMode):
+        (JSC::isAsyncFunctionWrapperParseMode):
+        (JSC::isAsyncFunctionBodyParseMode):
+        (JSC::isGeneratorMethodParseMode):
+        (JSC::isAsyncMethodParseMode):
+        (JSC::isAsyncGeneratorMethodParseMode):
+        (JSC::isMethodParseMode):
+        (JSC::isGeneratorOrAsyncFunctionBodyParseMode):
+        (JSC::isGeneratorOrAsyncFunctionWrapperParseMode):
+
+2017-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r219895-219897): Number of leaks on Open Source went from 9240 to 235983 and is now at 302372
+        https://bugs.webkit.org/show_bug.cgi?id=175083
+
+        Reviewed by Oliver Hunt.
+        
+        This fixes the leak by making MarkedBlock::specializedSweep call destructors when the block is empty,
+        even if we are using the pop path.
+        
+        Also, this fixes HeapCellInlines.h to no longer include MarkedBlockInlines.h. That's pretty
+        important, since MarkedBlockInlines.h is the GC's internal guts - we don't want to have to recompile
+        the world just because we changed it.
+        
+        Finally, this adds a new testing SPI for waiting for all VMs to finish destructing. This makes it
+        easier to debug leaks.
+
+        * bytecode/AccessCase.cpp:
+        * bytecode/PolymorphicAccess.cpp:
+        * heap/HeapCell.cpp:
+        (JSC::HeapCell::isLive):
+        * heap/HeapCellInlines.h:
+        (JSC::HeapCell::isLive): Deleted.
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting):
+        (JSC::MarkedAllocator::endMarking):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        * jit/AssemblyHelpers.cpp:
+        * jit/Repatch.cpp:
+        * runtime/TestRunnerUtils.h:
+        * runtime/VM.cpp:
+        (JSC::waitForVMDestruction):
+        (JSC::VM::~VM):
+
+2017-08-05  Mark Lam  <mark.lam@apple.com>
+
+        Move DFG::OSRExitCompiler methods into DFG::OSRExit [step 3].
+        https://bugs.webkit.org/show_bug.cgi?id=175228
+        <rdar://problem/33735737>
+
+        Reviewed by Saam Barati.
+
+        Merge the 32-bit OSRExit::compileExit() method into the 64-bit version, and
+        delete OSRExit32_64.cpp.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::compileExit):
+        * dfg/DFGOSRExit32_64.cpp: Removed.
+        * jit/GPRInfo.h:
+        (JSC::JSValueSource::payloadGPR const):
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add Cache and CacheStorage IDL definitions
+        https://bugs.webkit.org/show_bug.cgi?id=175201
+
+        Reviewed by Brady Eidson.
+
+        * runtime/CommonIdentifiers.h:
+
+2017-08-04  Mark Lam  <mark.lam@apple.com>
+
+        Fix typo in testmasm.cpp: ENABLE(JSVALUE64) should be USE(JSVALUE64).
+        https://bugs.webkit.org/show_bug.cgi?id=175230
+        <rdar://problem/33735857>
+
+        Reviewed by Saam Barati.
+
+        * assembler/testmasm.cpp:
+        (JSC::testProbeReadsArgumentRegisters):
+        (JSC::testProbeWritesArgumentRegisters):
+
+2017-08-04  Mark Lam  <mark.lam@apple.com>
+
+        Move DFG::OSRExitCompiler methods into DFG::OSRExit [step 2].
+        https://bugs.webkit.org/show_bug.cgi?id=175214
+        <rdar://problem/33733308>
+
+        Rubber-stamped by Michael Saboff.
+
+        Copy the 64-bit and common methods into DFGOSRExit.cpp, and delete the unused
+        DFGOSRExitCompiler files.
+
+        Also renamed DFGOSRExitCompiler32_64.cpp to DFGOSRExit32_64.cpp.
+
+        Also move debugOperationPrintSpeculationFailure() into DFGOSRExit.cpp.  It's only
+        used by compileOSRExit(), and will be changed to not be a DFG operation function
+        when we use JIT probes for DFG OSR exits later in
+        https://bugs.webkit.org/show_bug.cgi?id=175144.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGJITCompiler.cpp:
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::emitRestoreArguments):
+        (JSC::DFG::OSRExit::compileOSRExit):
+        (JSC::DFG::OSRExit::compileExit):
+        (JSC::DFG::OSRExit::debugOperationPrintSpeculationFailure):
+        * dfg/DFGOSRExit.h:
+        * dfg/DFGOSRExit32_64.cpp: Copied from Source/JavaScriptCore/dfg/DFGOSRExitCompiler32_64.cpp.
+        * dfg/DFGOSRExitCompiler.cpp: Removed.
+        * dfg/DFGOSRExitCompiler.h: Removed.
+        * dfg/DFGOSRExitCompiler32_64.cpp: Removed.
+        * dfg/DFGOSRExitCompiler64.cpp: Removed.
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGThunks.cpp:
+
+2017-08-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: capture async stack trace when workers/main context posts a message
+        https://bugs.webkit.org/show_bug.cgi?id=167084
+        <rdar://problem/30033673>
+
+        Reviewed by Brian Burg.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        Add `PostMessage` async call type.
+
+2017-08-04  Mark Lam  <mark.lam@apple.com>
+
+        Move DFG::OSRExitCompiler methods into DFG::OSRExit [step 1].
+        https://bugs.webkit.org/show_bug.cgi?id=175208
+        <rdar://problem/33732402>
+
+        Reviewed by Saam Barati.
+
+        This will minimize the code diff and make it easier to review the patch for
+        https://bugs.webkit.org/show_bug.cgi?id=175144 later.  We'll do this patch in 3
+        steps:
+
+        1. Do the code changes to move methods into OSRExit.
+        2. Copy the 64-bit and common methods into DFGOSRExit.cpp, and delete the unused DFGOSRExitCompiler files.
+        3. Merge the 32-bit OSRExitCompiler methods into the 64-bit version, and delete DFGOSRExitCompiler32_64.cpp.
+
+        Splitting this refactoring into these 3 steps also makes it easier to review this
+        patch and understand what is being changed.
+
+        * dfg/DFGOSRExit.h:
+        * dfg/DFGOSRExitCompiler.cpp:
+        (JSC::DFG::OSRExit::emitRestoreArguments):
+        (JSC::DFG::OSRExit::compileOSRExit):
+        (JSC::DFG::OSRExitCompiler::emitRestoreArguments): Deleted.
+        (): Deleted.
+        * dfg/DFGOSRExitCompiler.h:
+        (JSC::DFG::OSRExitCompiler::OSRExitCompiler): Deleted.
+        (): Deleted.
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExit::compileExit):
+        (JSC::DFG::OSRExitCompiler::compileExit): Deleted.
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExit::compileExit):
+        (JSC::DFG::OSRExitCompiler::compileExit): Deleted.
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+
+2017-08-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add source view for WebGL shader programs
+        https://bugs.webkit.org/show_bug.cgi?id=138593
+        <rdar://problem/18936194>
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/Canvas.json:
+         - Add `ShaderType` enum that contains "vertex" and "fragment".
+         - Add `requestShaderSource` command that will return the original source code for a given
+           shader program and shader type.
+
+2017-08-03  Filip Pizlo  <fpizlo@apple.com>
+
+        The allocator used to allocate memory for MarkedBlocks and LargeAllocations should not be the Subspace itself
+        https://bugs.webkit.org/show_bug.cgi?id=175141
+
+        Reviewed by Mark Lam.
+        
+        To make it easier to have multiple gigacages and maybe even fancier methods of allocating, this
+        decouples the allocator used to allocate memory from the GC Subspace. This means we no longer have
+        to create a new Subspace subclass to allocate memory a different way. Instead, the allocator is now
+        determined by the AlignedMemoryAllocator object.
+        
+        This also simplifies trading of blocks. Before, Subspaces had to determine if other Subspaces could
+        trade blocks with them using canTradeBlocksWith(). This makes it difficult for two different
+        Subspaces that both use the same underlying allocator to realize that they can trade blocks with
+        each other. Now, you just need to ask the block being stolen and the subspace doing the stealing if
+        they use the same AlignedMemoryAllocator.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/AlignedMemoryAllocator.cpp: Added.
+        (JSC::AlignedMemoryAllocator::AlignedMemoryAllocator):
+        (JSC::AlignedMemoryAllocator::~AlignedMemoryAllocator):
+        * heap/AlignedMemoryAllocator.h: Added.
+        * heap/FastMallocAlignedMemoryAllocator.cpp: Added.
+        (JSC::FastMallocAlignedMemoryAllocator::singleton):
+        (JSC::FastMallocAlignedMemoryAllocator::FastMallocAlignedMemoryAllocator):
+        (JSC::FastMallocAlignedMemoryAllocator::~FastMallocAlignedMemoryAllocator):
+        (JSC::FastMallocAlignedMemoryAllocator::tryAllocateAlignedMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::freeAlignedMemory):
+        (JSC::FastMallocAlignedMemoryAllocator::dump const):
+        * heap/FastMallocAlignedMemoryAllocator.h: Added.
+        * heap/GigacageAlignedMemoryAllocator.cpp: Added.
+        (JSC::GigacageAlignedMemoryAllocator::singleton):
+        (JSC::GigacageAlignedMemoryAllocator::GigacageAlignedMemoryAllocator):
+        (JSC::GigacageAlignedMemoryAllocator::~GigacageAlignedMemoryAllocator):
+        (JSC::GigacageAlignedMemoryAllocator::tryAllocateAlignedMemory):
+        (JSC::GigacageAlignedMemoryAllocator::freeAlignedMemory):
+        (JSC::GigacageAlignedMemoryAllocator::dump const):
+        * heap/GigacageAlignedMemoryAllocator.h: Added.
+        * heap/GigacageSubspace.cpp: Removed.
+        * heap/GigacageSubspace.h: Removed.
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::tryCreate):
+        (JSC::LargeAllocation::destroy):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::tryCreate):
+        (JSC::MarkedBlock::Handle::Handle):
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::Handle::didAddToAllocator):
+        (JSC::MarkedBlock::Handle::subspace const):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::alignedMemoryAllocator const):
+        (JSC::MarkedBlock::Handle::subspace const): Deleted.
+        * heap/Subspace.cpp:
+        (JSC::Subspace::Subspace):
+        (JSC::Subspace::findEmptyBlockToSteal):
+        (JSC::Subspace::canTradeBlocksWith): Deleted.
+        (JSC::Subspace::tryAllocateAlignedMemory): Deleted.
+        (JSC::Subspace::freeAlignedMemory): Deleted.
+        * heap/Subspace.h:
+        (JSC::Subspace::name const):
+        (JSC::Subspace::alignedMemoryAllocator const):
+        * runtime/JSDestructibleObjectSubspace.cpp:
+        (JSC::JSDestructibleObjectSubspace::JSDestructibleObjectSubspace):
+        * runtime/JSDestructibleObjectSubspace.h:
+        * runtime/JSSegmentedVariableObjectSubspace.cpp:
+        (JSC::JSSegmentedVariableObjectSubspace::JSSegmentedVariableObjectSubspace):
+        * runtime/JSSegmentedVariableObjectSubspace.h:
+        * runtime/JSStringSubspace.cpp:
+        (JSC::JSStringSubspace::JSStringSubspace):
+        * runtime/JSStringSubspace.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.cpp:
+        (JSC::JSWebAssemblyCodeBlockSubspace::JSWebAssemblyCodeBlockSubspace):
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.h:
+
+2017-08-04  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - update feature.json
+        https://bugs.webkit.org/show_bug.cgi?id=175197
+
+        Reviewed by Yusuke Suzuki.
+
+        Update feature.json to add status of the Async Iteration
+
+        * features.json:
+
+2017-08-04  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220271.
+
+        Rolling out due to Layout Test failing on iOS Simulator.
+
+        Reverted changeset:
+
+        "Remove STREAMS_API compilation guard"
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+        http://trac.webkit.org/changeset/220271
+
+2017-08-04  Youenn Fablet  <youenn@apple.com>
+
+        Remove STREAMS_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175165
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-04  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [EsNext] Async iteration - Add feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=166694
+
+        Reviewed by Yusuke Suzuki.
+
+        Add feature flag to JSC to switch on/off Async Iterator
+
+        * runtime/Options.h:
+
+2017-08-03  Brian Burg  <bburg@apple.com>
+
+        Remove ENABLE(WEB_SOCKET) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167044
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove FETCH_API compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175154
+
+        Reviewed by Chris Dumez.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument WebGLProgram created/deleted
+        https://bugs.webkit.org/show_bug.cgi?id=175059
+
+        Reviewed by Devin Rousso.
+
+        Extend the Canvas protocol with types/events for tracking WebGLPrograms.
+
+        * inspector/protocol/Canvas.json:
+
+2017-08-03  Brady Eidson  <beidson@apple.com>
+
+        Add SW IDLs and stub out basic functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=175115
+
+        Reviewed by Chris Dumez.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+        * runtime/CommonIdentifiers.h:
+
+2017-08-03  Mark Lam  <mark.lam@apple.com>
+
+        Rename ScratchBuffer::activeLengthPtr to addressOfActiveLength.
+        https://bugs.webkit.org/show_bug.cgi?id=175142
+        <rdar://problem/33704528>
+
+        Reviewed by Filip Pizlo.
+
+        The convention in the rest of of JSC for such methods which return the address of
+        a field is to name them "addressOf<field name>".  We'll rename
+        ScratchBuffer::activeLengthPtr to be consistent with this convention.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewArrayWithSpread):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSpread):
+        * ftl/FTLThunks.cpp:
+        (JSC::FTL::genericGenerationThunkGenerator):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::debugCall):
+        * jit/ScratchRegisterAllocator.cpp:
+        (JSC::ScratchRegisterAllocator::preserveUsedRegistersToScratchBufferForCall):
+        (JSC::ScratchRegisterAllocator::restoreUsedRegistersFromScratchBufferForCall):
+        * runtime/VM.h:
+        (JSC::ScratchBuffer::addressOfActiveLength):
+        (JSC::ScratchBuffer::activeLengthPtr): Deleted.
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+
 2017-08-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: add stack trace information for each RecordingAction

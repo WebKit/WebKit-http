@@ -35,6 +35,8 @@
     macro(Audio) \
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
+    macro(Cache) \
+    macro(CacheStorage) \
     macro(Collator) \
     macro(Credential) \
     macro(CredentialsContainer) \
@@ -123,6 +125,10 @@
     macro(RTCSessionDescription) \
     macro(RTCStatsReport) \
     macro(RTCTrackEvent) \
+    macro(ServiceWorker)\
+    macro(ServiceWorkerContainer)\
+    macro(ServiceWorkerGlobalScope)\
+    macro(ServiceWorkerRegistration)\
     macro(Set)\
     macro(SetIterator)\
     macro(ShadowRoot) \
@@ -182,6 +188,7 @@
     macro(bytecodeIndex) \
     macro(bytecodes) \
     macro(bytecodesID) \
+    macro(caches) \
     macro(calendar) \
     macro(callee) \
     macro(caller) \

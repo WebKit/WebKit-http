@@ -145,4 +145,14 @@ Vector<String> NavigatorBase::languages()
     return { defaultLanguage() };
 }
 
+#if ENABLE(SERVICE_WORKER)
+ServiceWorkerContainer* NavigatorBase::serviceWorker()
+{
+    if (!m_serviceWorkerContainer)
+        m_serviceWorkerContainer = ServiceWorkerContainer::create(*this);
+
+    return m_serviceWorkerContainer.get();
+}
+#endif
+
 } // namespace WebCore

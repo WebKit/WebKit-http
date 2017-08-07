@@ -124,8 +124,6 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
-    void didChangeAvoidsUnsafeArea(bool) override { }
-
     JSGlobalContextRef javascriptGlobalContext() override;
 
 #if ENABLE(FULLSCREEN_API)
