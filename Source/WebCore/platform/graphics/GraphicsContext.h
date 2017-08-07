@@ -388,7 +388,7 @@ public:
 
     float drawText(const FontCascade&, const TextRun&, const FloatPoint&, int from = 0, int to = -1);
     void drawGlyphs(const FontCascade&, const Font&, const GlyphBuffer&, int from, int numGlyphs, const FloatPoint&);
-    void drawEmphasisMarks(const FontCascade&, const TextRun& , const AtomicString& mark, const FloatPoint&, int from = 0, int to = -1);
+    void drawEmphasisMarks(const FontCascade&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from = 0, int to = -1);
     void drawBidiText(const FontCascade&, const TextRun&, const FloatPoint&, FontCascade::CustomFontNotReadyAction = FontCascade::DoNotPaintIfFontNotReady);
 
     void applyState(const GraphicsContextState&);
@@ -437,7 +437,8 @@ public:
     void drawFocusRing(const Vector<FloatRect>&, float width, float offset, const Color&);
     void drawFocusRing(const Path&, float width, float offset, const Color&);
 #if PLATFORM(MAC)
-    void drawFocusRing(const Vector<FloatRect>&, float offset, double timeOffset, bool& needsRedraw);
+    void drawFocusRing(const Path&, double timeOffset, bool& needsRedraw);
+    void drawFocusRing(const Vector<FloatRect>&, double timeOffset, bool& needsRedraw);
 #endif
 
     void setLineCap(LineCap);

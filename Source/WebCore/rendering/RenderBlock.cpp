@@ -65,7 +65,6 @@
 #include "RenderTheme.h"
 #include "RenderTreePosition.h"
 #include "RenderView.h"
-#include "SVGTextRunRenderingContext.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TextBreakIterator.h"
@@ -1066,8 +1065,8 @@ void RenderBlock::addOverflowFromPositionedObjects()
         // Fixed positioned elements don't contribute to layout overflow, since they don't scroll with the content.
         if (positionedObject->style().position() != FixedPosition) {
             LayoutUnit x = positionedObject->x();
-            if (style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
-                x -= verticalScrollbarWidth();
+            if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+                x += (style().isLeftToRightDirection() ? 1 : -1) * verticalScrollbarWidth();
             addOverflowFromChild(positionedObject, LayoutSize(x, positionedObject->y()));
         }
     }
@@ -2285,6 +2284,8 @@ LayoutUnit RenderBlock::textIndentOffset() const
 LayoutUnit RenderBlock::logicalLeftOffsetForContent(RenderRegion* region) const
 {
     LayoutUnit logicalLeftOffset = style().isHorizontalWritingMode() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
+    if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+        logicalLeftOffset += verticalScrollbarWidth();
     if (!region)
         return logicalLeftOffset;
     LayoutRect boxRect = borderBoxRectInRegion(region);
@@ -2294,6 +2295,8 @@ LayoutUnit RenderBlock::logicalLeftOffsetForContent(RenderRegion* region) const
 LayoutUnit RenderBlock::logicalRightOffsetForContent(RenderRegion* region) const
 {
     LayoutUnit logicalRightOffset = style().isHorizontalWritingMode() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
+    if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+        logicalRightOffset += verticalScrollbarWidth();
     logicalRightOffset += availableLogicalWidth();
     if (!region)
         return logicalRightOffset;
@@ -3699,7 +3702,7 @@ const char* RenderBlock::renderName() const
     return "RenderBlock";
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, StringView stringView, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
+TextRun RenderBlock::constructTextRun(StringView stringView, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
 {
     TextDirection textDirection = LTR;
     bool directionalOverride = style.rtlOrdering() == VisualOrder;
@@ -3709,40 +3712,34 @@ TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& 
         if (flags & RespectDirectionOverride)
             directionalOverride |= isOverride(style.unicodeBidi());
     }
-    TextRun run(stringView, 0, 0, expansion, textDirection, directionalOverride);
-    if (font.primaryFont().isSVGFont()) {
-        ASSERT(context); // FIXME: Thread a RenderObject& to this point so we don't have to dereference anything.
-        run.setRenderingContext(SVGTextRunRenderingContext::create(*context));
-    }
-
-    return run;
+    return TextRun(stringView, 0, 0, expansion, textDirection, directionalOverride);
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, const String& string, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
+TextRun RenderBlock::constructTextRun(const String& string, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
 {
-    return constructTextRun(context, font, StringView(string), style, expansion, flags);
+    return constructTextRun(StringView(string), style, expansion, flags);
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, const RenderText* text, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const RenderText* text, const RenderStyle& style, ExpansionBehavior expansion)
 {
-    return constructTextRun(context, font, text->stringView(), style, expansion);
+    return constructTextRun(text->stringView(), style, expansion);
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, const RenderText* text, unsigned offset, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const RenderText* text, unsigned offset, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
 {
     unsigned stop = offset + length;
     ASSERT(stop <= text->textLength());
-    return constructTextRun(context, font, text->stringView(offset, stop), style, expansion);
+    return constructTextRun(text->stringView(offset, stop), style, expansion);
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, const LChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const LChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
 {
-    return constructTextRun(context, font, StringView(characters, length), style, expansion);
+    return constructTextRun(StringView(characters, length), style, expansion);
 }
 
-TextRun RenderBlock::constructTextRun(RenderObject* context, const FontCascade& font, const UChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const UChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
 {
-    return constructTextRun(context, font, StringView(characters, length), style, expansion);
+    return constructTextRun(StringView(characters, length), style, expansion);
 }
 
 RenderBlock* RenderBlock::createAnonymousWithParentRendererAndDisplay(const RenderObject* parent, EDisplay display)

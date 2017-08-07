@@ -43,7 +43,9 @@
 #import "WKImagePreviewViewController.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
 #import "WKNSURLExtras.h"
-#import "WKPreviewActionIdentifiersPrivate.h"
+#import "WKPreviewActionItemIdentifiers.h"
+#import "WKPreviewActionItemInternal.h"
+#import "WKPreviewElementInfoInternal.h"
 #import "WKUIDelegatePrivate.h"
 #import "WKWebViewConfiguration.h"
 #import "WKWebViewInternal.h"
@@ -57,8 +59,6 @@
 #import "_WKFocusedElementInfo.h"
 #import "_WKFormInputSession.h"
 #import "_WKInputDelegate.h"
-#import "_WKPreviewAction.h"
-#import "_WKPreviewElementInfoInternal.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
@@ -260,6 +260,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<NSObject <NSSecureCoding>> _userObject;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
+    RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
 }
 
 - (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
@@ -316,6 +317,24 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
     _customInputView = customInputView;
     [_contentView reloadInputViews];
+}
+
+- (NSArray<UITextSuggestion *> *)suggestions
+{
+    return _suggestions.get();
+}
+
+- (void)setSuggestions:(NSArray<UITextSuggestion *> *)suggestions
+{
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    id <UITextInputSuggestionDelegate> suggestionDelegate = (id <UITextInputSuggestionDelegate>)_contentView.inputDelegate;
+    _suggestions = adoptNS([suggestions copy]);
+    // FIXME 25102224: Remove this dispatch_after once race condition causing keyboard suggestions to overwrite
+    // the suggestions being set is resolved
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+        [suggestionDelegate setSuggestions:suggestions];
+    });
+#endif
 }
 
 - (void)invalidate
@@ -1591,10 +1610,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     return (_page->editorState().isContentRichlyEditable) ? richTypes : plainTextTypes;
 }
 
-- (void)_lookup:(CGPoint)point
+- (void)_lookup:(id)sender
 {
     RetainPtr<WKContentView> view = self;
-    _page->getLookupContextAtPoint(WebCore::IntPoint(point), [view](const String& string, CallbackBase::Error error) {
+    _page->getSelectionOrContentsAsString([view](const String& string, CallbackBase::Error error) {
         if (error != CallbackBase::Error::None)
             return;
         if (!string)
@@ -2603,6 +2622,15 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     [self.inputDelegate selectionDidChange:self];
 }
+    
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+- (void)insertTextSuggestion:(UITextSuggestion *)textSuggestion
+{
+    id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
+    if ([inputDelegate respondsToSelector:@selector(_webView:insertTextSuggestion:inInputSession:)])
+        [inputDelegate _webView:_webView insertTextSuggestion:textSuggestion inInputSession:_formInputSession.get()];
+}
+#endif
 
 - (NSString *)textInRange:(UITextRange *)range
 {
@@ -3776,9 +3804,9 @@ static bool isAssistableInputType(InputType type)
     if (_positionInformation.isLink) {
         NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
         id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
-        if ([uiDelegate respondsToSelector:@selector(_webView:shouldPreviewElement:)]) {
-            auto previewElementInfo = adoptNS([[_WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
-            return [uiDelegate _webView:_webView shouldPreviewElement:previewElementInfo.get()];
+        if ([uiDelegate respondsToSelector:@selector(webView:shouldPreviewElement:)]) {
+            auto previewElementInfo = adoptNS([[WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
+            return [uiDelegate webView:_webView shouldPreviewElement:previewElementInfo.get()];
         }
         if (absoluteLinkURL.isEmpty())
             return NO;
@@ -3876,15 +3904,15 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 {
     switch (action.type) {
     case _WKElementActionTypeOpen:
-        return _WKPreviewIdentifierOpen;
+        return WKPreviewActionItemIdentifierOpen;
     case _WKElementActionTypeCopy:
-        return _WKPreviewIdentifierCopy;
+        return WKPreviewActionItemIdentifierCopy;
 #if !defined(TARGET_OS_IOS) || TARGET_OS_IOS
     case _WKElementActionTypeAddToReadingList:
-        return _WKPreviewIdentifierAddToReadingList;
+        return WKPreviewActionItemIdentifierAddToReadingList;
 #endif
     case _WKElementActionTypeShare:
-        return _WKPreviewIdentifierShare;
+        return WKPreviewActionItemIdentifierShare;
     default:
         return nil;
     }
@@ -3917,16 +3945,16 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
         RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
 
         auto actions = [_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()];
-        if ([uiDelegate respondsToSelector:@selector(_webView:previewingViewControllerForElement:defaultActions:)]) {
+        if ([uiDelegate respondsToSelector:@selector(webView:previewingViewControllerForElement:defaultActions:)]) {
             auto previewActions = adoptNS([[NSMutableArray alloc] init]);
             for (_WKElementAction *elementAction in actions.get()) {
-                _WKPreviewAction *previewAction = [_WKPreviewAction actionWithIdentifier:previewIdentifierForElementAction(elementAction) title:[elementAction title] style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *, UIViewController *) {
+                WKPreviewAction *previewAction = [WKPreviewAction actionWithIdentifier:previewIdentifierForElementAction(elementAction) title:[elementAction title] style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *, UIViewController *) {
                     [elementAction runActionWithElementInfo:elementInfo.get()];
                 }];
                 [previewActions addObject:previewAction];
             }
-            auto previewElementInfo = adoptNS([[_WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
-            if (UIViewController *controller = [uiDelegate _webView:_webView previewingViewControllerForElement:previewElementInfo.get() defaultActions:previewActions.get()]) {
+            auto previewElementInfo = adoptNS([[WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
+            if (UIViewController *controller = [uiDelegate webView:_webView previewingViewControllerForElement:previewElementInfo.get() defaultActions:previewActions.get()]) {
                 _uiDelegateProvidedPreviewingViewController = YES;
                 return controller;
             }
@@ -3969,8 +3997,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
         return;
     }
 
-    if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewingViewController:)]) {
-        [uiDelegate _webView:_webView commitPreviewingViewController:viewController];
+    if ([uiDelegate respondsToSelector:@selector(webView:commitPreviewingViewController:)]) {
+        [uiDelegate webView:_webView commitPreviewingViewController:viewController];
         return;
     }
 

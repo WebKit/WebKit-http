@@ -24,14 +24,14 @@
  */
 
 #import "config.h"
-#import "_WKPreviewElementInfoInternal.h"
+#import "WKPreviewElementInfoInternal.h"
 
-#import "_WKElementInfoInternal.h"
+#import "WKElementInfoInternal.h"
 #import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED && PLATFORM(IOS)
 
-@implementation _WKPreviewElementInfo
+@implementation WKPreviewElementInfo
 
 - (instancetype)_initWithLinkURL:(NSURL *)url
 {

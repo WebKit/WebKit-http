@@ -1,3 +1,162 @@
+2016-03-12  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r188647): Teamtreehouse website sidebar buttons are not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=155400
+        <rdar://problem/24818602>
+
+        Reviewed by Anders Carlsson.
+
+        Add tests with SVG content that uses CSS filter
+        shorthands. These particular filters are no-ops
+        so should not affect rendering. If they actually
+        tried to do something you wouldn't see them work
+        until we enable shorthand filters on SVG content.
+
+        * css3/filters/filters-on-svg-element-expected.html: Added.
+        * css3/filters/filters-on-svg-element.html: Added.
+        * css3/filters/filters-on-svg-root-expected.html: Added.
+        * css3/filters/filters-on-svg-root.html: Added.
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Scrollbars of overflow:scroll divs should appear on the left on RTL systems
+        https://bugs.webkit.org/show_bug.cgi?id=155385
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk1/TestExpectations: 
+        * platform/mac/TestExpectations: 
+        * platform/efl/TestExpectations: 
+        * platform/gtk/TestExpectations: 
+        * platform/ios-simulator/TestExpectations: 
+        * platform/win/TestExpectations: 
+        * fast/scrolling/rtl-scrollbars-overflow-contents-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-contents.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-dir-rtl-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-padding-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-padding.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-simple-expected-mismatch.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-simple.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow.html: Added.
+
+2016-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        [Forms: focus] focus rings around text fields do not follow contour (border-radius)
+        https://bugs.webkit.org/show_bug.cgi?id=154099
+        rdar://problem/9988429
+
+        Reviewed by Tim Horton.
+
+        Unfortunately there's no proper way to test native focusring drawing.
+        These tests attempt to verify that we don't end up painting sharp corners.
+
+        * fast/inline/hidpi-outline-auto-with-border-radius-horizontal-ltr-expected.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-horizontal-ltr.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-horizontal-rtl-expected.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-horizontal-rtl.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-vertical-ltr-expected.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-vertical-ltr.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-vertical-rtl-expected.html: Added.
+        * fast/inline/hidpi-outline-auto-with-border-radius-vertical-rtl.html: Added.
+
+2016-03-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add Event.deepPath() and Event.scoped
+        https://bugs.webkit.org/show_bug.cgi?id=153538
+        <rdar://problem/24363836>
+
+        Reviewed by Darin Adler.
+
+        Added a W3C style testharness.js tests for Event.prototype.scoped, Event.prototype.scopedRelatedTarget,
+        Event.prototype.deepPath() and a test that uses eventSender to verify the values of the scoped and
+        scopedRelatedTarget flags on trusted events.
+
+        * fast/shadow-dom/Extensions-to-Event-Interface-expected.txt: Added.
+        * fast/shadow-dom/Extensions-to-Event-Interface.html: Added.
+        * fast/shadow-dom/event-with-related-target.html:
+        * fast/shadow-dom/resources: Added.
+        * fast/shadow-dom/resources/event-path-test-helpers.js: Added. Extracted from event-with-related-target.html.
+        * fast/shadow-dom/trusted-event-scoped-flags-expected.txt: Added.
+        * fast/shadow-dom/trusted-event-scoped-flags.html: Added.
+        * fast/xmlhttprequest/xmlhttprequest-get-expected.txt:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * platform/ios-simulator/fast/shadow-dom/trusted-event-scoped-flags-expected.txt: Added.
+
+2016-03-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should not be redirected to an invalid URL
+        https://bugs.webkit.org/show_bug.cgi?id=155263
+        <rdar://problem/22820172>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/navigation/redirect-to-invalid-url-expected.txt: Added.
+        * http/tests/navigation/redirect-to-invalid-url.html: Added.
+        * http/tests/navigation/resources/redirect-to-invalid-url-frame.php: Added.
+
+2016-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/track/track-in-band-style.html as flaky on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=153143
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-03-11  Mark Lam  <mark.lam@apple.com>
+
+        Implement Function.name and Function#toString for ES6 class.
+        https://bugs.webkit.org/show_bug.cgi?id=155336
+
+        Reviewed by Geoffrey Garen.
+
+        * js/class-syntax-name-expected.txt:
+        * js/script-tests/class-syntax-name.js:
+        (shouldBe):
+        (shouldBeTrue):
+        - Rebased expected result.
+
+        * js/function-toString-vs-name.html:
+        * js/script-tests/function-toString-vs-name.js:
+        - Added new tests for class.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        - Rebased expected result.
+
+2016-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/fast/multicol/dynamic/multicol-with-abspos-svg-with-foreignobject-with-multicol-crash.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=155339
+
+        Unreviewed test gardening.
+
+        This test is a flaky crash on ios-simulator debug.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/heap/getPreview.html as flaky on mac-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155312
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking css3/masking/mask-luminance-svg.html and css3/masking/mask-svg-script-none-to-png.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=155372.
+
+        Unreviewed test gardening.
+
+        These two tests are flaky crashes on ios-simulator debug.
+
+        * platform/ios-simulator/TestExpectations:
+
 2016-03-11  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r197984.

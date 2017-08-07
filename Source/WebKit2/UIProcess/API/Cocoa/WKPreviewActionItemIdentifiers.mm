@@ -23,17 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#import <WebKit/WKFoundation.h>
+#include "config.h"
+#include "WKPreviewActionItemIdentifiers.h"
 
 #if WK_API_ENABLED
 
-#import <Foundation/Foundation.h>
-#import <WebKit/WKDeclarationSpecifiers.h>
-
-WK_EXPORT extern NSString * const _WKPreviewIdentifierOpen WK_AVAILABLE(NA, WK_IOS_TBA);
-WK_EXPORT extern NSString * const _WKPreviewIdentifierAddToReadingList WK_AVAILABLE(NA, WK_IOS_TBA);
-WK_EXPORT extern NSString * const _WKPreviewIdentifierCopy WK_AVAILABLE(NA, WK_IOS_TBA);
-WK_EXPORT extern NSString * const _WKPreviewIdentifierShare WK_AVAILABLE(NA, WK_IOS_TBA);
+NSString * const WKPreviewActionItemIdentifierOpen = @"WKPreviewActionItemIdentifierOpen";
+NSString * const WKPreviewActionItemIdentifierAddToReadingList = @"WKPreviewActionItemIdentifierAddToReadingList";
+NSString * const WKPreviewActionItemIdentifierCopy = @"WKPreviewActionItemIdentifierCopy";
+NSString * const WKPreviewActionItemIdentifierShare = @"WKPreviewActionItemIdentifierShare";
 
 #endif

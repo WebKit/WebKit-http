@@ -1,3 +1,205 @@
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete dead SVG Font code
+        https://bugs.webkit.org/show_bug.cgi?id=154718
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-12  Beth Dakin  <bdakin@apple.com>
+
+        Make preview inline navigation work API
+        https://bugs.webkit.org/show_bug.cgi?id=155383
+        -and corresponding-
+        rdar://problem/25117985
+
+        Reviewed by Dan Bernstein.
+
+        With this patch:
+        _WKElementInfo is now WKElementInfo in file and class names. Header is now 
+        public.
+
+        _WKPreviewElementInfo is now WKPreviewElementInfo in file and class names. 
+        Header is now public.
+
+        _WKPreviewAction is now WKPreviewActionItem in filenames (header is now 
+        public), the protocol _WKPreviewActionItem is now WKPreviewActionItem, and 
+        the _WKPreviewAction class is now WKPreviewAction. (The internal header is 
+        still project, of course.)
+        and
+        WKPreviewActionIdentifiersPrivate.h/mm is now
+        WKPreviewActionItemIdentifiers.h/mm and all the the identifiers have been 
+        updated. Header is now public.
+
+        * Shared/API/Cocoa/WebKit.h:
+        * UIProcess/API/Cocoa/WKElementInfo.h: Copied from UIProcess/API/Cocoa/_WKElementInfo.h.
+        * UIProcess/API/Cocoa/WKElementInfo.mm: Copied from UIProcess/API/Cocoa/_WKElementInfo.mm.
+        (-[WKElementInfo copyWithZone:]):
+        (-[_WKElementInfo copyWithZone:]): Deleted.
+        * UIProcess/API/Cocoa/WKElementInfoInternal.h: Copied from UIProcess/API/Cocoa/_WKElementInfoInternal.h.
+        * UIProcess/API/Cocoa/WKPreviewActionIdentifiersPrivate.h: Removed.
+        * UIProcess/API/Cocoa/WKPreviewActionIdentifiersPrivate.mm: Removed.
+        * UIProcess/API/Cocoa/WKPreviewActionItem.h: Copied from UIProcess/API/Cocoa/_WKPreviewAction.h.
+        * UIProcess/API/Cocoa/WKPreviewActionItem.mm: Copied from UIProcess/API/Cocoa/_WKPreviewAction.mm.
+        * UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.h: Copied from UIProcess/API/Cocoa/WKPreviewActionIdentifiersPrivate.h.
+        * UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.mm: Copied from UIProcess/API/Cocoa/WKPreviewActionIdentifiersPrivate.mm.
+        * UIProcess/API/Cocoa/WKPreviewActionItemInternal.h: Copied from UIProcess/API/Cocoa/_WKPreviewActionInternal.h.
+        * UIProcess/API/Cocoa/WKPreviewElementInfo.h: Copied from UIProcess/API/Cocoa/_WKPreviewElementInfo.h.
+        * UIProcess/API/Cocoa/WKPreviewElementInfo.mm: Copied from UIProcess/API/Cocoa/_WKPreviewElementInfo.mm.
+        (-[WKPreviewElementInfo _initWithLinkURL:]):
+        (-[_WKPreviewElementInfo _initWithLinkURL:]): Deleted.
+        * UIProcess/API/Cocoa/WKPreviewElementInfoInternal.h: Copied from UIProcess/API/Cocoa/_WKPreviewElementInfoInternal.h.
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/_WKContextMenuElementInfo.h:
+        * UIProcess/API/Cocoa/_WKElementInfo.h: Removed.
+        * UIProcess/API/Cocoa/_WKElementInfo.mm: Removed.
+        * UIProcess/API/Cocoa/_WKElementInfoInternal.h: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewAction.h: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewAction.mm: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewActionInternal.h: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewElementInfo.h: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewElementInfo.mm: Removed.
+        * UIProcess/API/Cocoa/_WKPreviewElementInfoInternal.h: Removed.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (previewIdentifierForElementAction):
+        (-[WKContentView _presentedViewControllerForPreviewItemController:]):
+        (-[WKContentView _previewItemController:commitPreview:]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-03-12  Jeremy Huddleston Sequoia  <jeremyhu@apple.com>
+
+        [GTK][Mac] Use DYLD_LIBRARY_PATH on OSX rather then LD_LIBRARY_PATH
+        https://bugs.webkit.org/show_bug.cgi?id=152650
+
+        Reviewed by Carlos Garcia Campos.
+
+        * PlatformGTK.cmake:
+
+2016-03-11  John Wilander  <wilander@apple.com>
+
+        Move prevalent resource classifier from WebCore to WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=155242
+        <rdar://problem/24913272>
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::create):
+        (WebKit::WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore):
+        (WebKit::hasPrevalentResourceCharacteristics):
+        (WebKit::classifyPrevalentResources):
+            - Moved these two functions from WebCore.
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+            - Calls processStatistics with a lamda function to classify prevalent resources.
+        * WebKit2.xcodeproj/project.pbxproj:
+            - Fixed the ordering of source files.
+
+2016-03-11  Sam Weinig  <sam@webkit.org>
+
+        WebKit needs a new sandbox profile addition for DataDetectors
+        <rdar://problem/25091102>
+
+        Reviewed by Brent Fulgham.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2016-03-11  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r198040): WebKit2.DocumentStartUserScriptAlertCrashTest API test is crashing in debug
+        https://bugs.webkit.org/show_bug.cgi?id=155382
+
+        Reviewed by Alexey Proskuryakov.
+
+        r198040 introduced an assertion to make sure we never call
+        applicationBundleIsEqualTo() before setApplicationBundleIdentifier()
+        is called. This new assertion found a bug as it turns out we were
+        calling setApplicationBundleIdentifier() too late during the
+        WebProcess initialization and some runtime applications checks were
+        already done by then.
+
+        To address the problem, this patch moves the
+        setApplicationBundleIdentifier() call as early as possible during
+        the WebProcess and the NetworkProcess initialization. It also moves
+        it to the Cocoa specific files for clarity.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2016-03-11  Enrica Casucci  <enrica@apple.com>
+
+        Use only selected text for Look up.
+        https://bugs.webkit.org/show_bug.cgi?id=155380
+
+        Reviewed by Tim Horton.
+
+        The corresponding piece that uses the extended context for Look up
+        is not ready yet. For the moment default to retrieving the selected text.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _lookup:]):
+
+2016-03-11  Chelsea Pugh  <cpugh@apple.com>
+
+        [iOS] Allow clients to specify text suggestions to be used for a form input session
+        https://bugs.webkit.org/show_bug.cgi?id=155343
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/_WKFormInputSession.h:
+        * UIProcess/API/Cocoa/_WKInputDelegate.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKFormInputSession suggestions]): Add a getter for suggestions.
+        (-[WKFormInputSession setSuggestions:]): Add a setter, which calls setSuggestions with our suggestions on the input delegate.
+        (-[WKContentView insertTextSuggestion:]): Call _webView:insertTextSuggestion:inInputSession: on our input delegate so clients know 
+        a text suggestion was tapped.
+
+2016-03-11  Anders Carlsson  <andersca@apple.com>
+
+        Creating and releasing a WKBackForwardListItem crashes
+        https://bugs.webkit.org/show_bug.cgi?id=155376
+        rdar://problem/17377712
+
+        Reviewed by Dan Bernstein.
+
+        Make init unavailable.
+
+        * UIProcess/API/Cocoa/WKBackForwardListItem.h:
+
+2016-03-11  Beth Dakin  <bdakin@apple.com>
+
+        Follow-up to:
+
+        _WKPreviewAction should be in an internal header
+        https://bugs.webkit.org/show_bug.cgi?id=155370
+
+        Rubber-stamped by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/_WKPreviewActionInternal.h:
+
+2016-03-11  Beth Dakin  <bdakin@apple.com>
+
+        _WKPreviewAction should be in an internal header
+        https://bugs.webkit.org/show_bug.cgi?id=155370
+
+        Reviewed by Tim Horton.
+
+        Move _WKPreviewAction to an Internal header since only the protocol needs to 
+        be SPI.
+        * UIProcess/API/Cocoa/_WKPreviewAction.h:
+        * UIProcess/API/Cocoa/_WKPreviewAction.mm:
+        * UIProcess/API/Cocoa/_WKPreviewActionInternal.h: Added.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * WebKit2.xcodeproj/project.pbxproj:
+
 2016-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement Reflect.set without receiver support

@@ -1161,6 +1161,7 @@ public:
     FilterOperations& mutableFilter() { return rareNonInheritedData.access()->m_filter.access()->m_operations; }
     const FilterOperations& filter() const { return rareNonInheritedData->m_filter->m_operations; }
     bool hasFilter() const { return !rareNonInheritedData->m_filter->m_operations.operations().isEmpty(); }
+    bool hasReferenceFilterOnly() const;
 
 #if ENABLE(FILTERS_LEVEL_2)
     FilterOperations& mutableBackdropFilter() { return rareNonInheritedData.access()->m_backdropFilter.access()->m_operations; }
@@ -1185,12 +1186,8 @@ public:
     Isolation isolation() const { return IsolationAuto; }
     bool hasIsolation() const { return false; }
 #endif
- 
-#if USE(RTL_SCROLLBAR)
-    bool shouldPlaceBlockDirectionScrollbarOnLogicalLeft() const { return !isLeftToRightDirection() && isHorizontalWritingMode(); }
-#else
-    bool shouldPlaceBlockDirectionScrollbarOnLogicalLeft() const { return false; }
-#endif
+
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const;
 
 #if ENABLE(CSS_TRAILING_WORD)
     TrailingWord trailingWord() const { return static_cast<TrailingWord>(rareInheritedData->trailingWord); }

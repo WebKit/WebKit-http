@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKPreviewActionIdentifiersPrivate.h"
+#import "WKElementInfo.h"
+
+#import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
-NSString * const _WKPreviewIdentifierOpen = @"WKPreviewIdentifierOpen";
-NSString * const _WKPreviewIdentifierAddToReadingList = @"WKPreviewIdentifierAddToReadingList";
-NSString * const _WKPreviewIdentifierCopy = @"WKPreviewIdentifierCopy";
-NSString * const _WKPreviewIdentifierShare = @"WKPreviewIdentifierShare";
+@interface WKElementInfo () {
+@package
+    RetainPtr<NSURL> _linkURL;
+}
+
+@end
 
 #endif

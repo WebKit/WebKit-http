@@ -1,3 +1,678 @@
+2016-03-13  Jon Lee  <jonlee@apple.com>
+
+        getUserMedia requests from the main frame should be treated the same as requests from an iframe with the same origin
+        https://bugs.webkit.org/show_bug.cgi?id=155405
+        <rdar://problem/25131007>
+
+        Reviewed by Eric Carlson.
+
+        When gUM is called from the main frame, or from a subframe with the same origin, the
+        top level document origin should be the same.
+
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::userMediaDocumentOrigin): Reverse the logic so that it is similar
+        to topLevelDocumentOrigin.
+        (WebCore::UserMediaRequest::topLevelDocumentOrigin): Return the top origin always.
+
+2016-03-13  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r198079): Windows build broke because of "%PRId64" format specifier
+
+        * platform/network/ParsedContentRange.cpp: Add #include
+        <wtf/StdLibExtras.h> and remove local definition of "PRId64".
+
+2016-03-13  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] Fix debug build error since r197690. Unreviewed.
+        https://bugs.webkit.org/show_bug.cgi?id=155408
+
+        Unreviewed. Change %lld to %PRId instead to correct the error below.
+        error: format ‘%lld’ expects argument of type ‘long long int’,
+        but argument 5 has type ‘std::chrono::duration<long int, std::ratio<1l, 1000l> >::rep
+        {aka long int}’ [-Werror=format=]
+
+        * page/DOMTimer.cpp:
+        (WebCore::DOMTimer::updateTimerIntervalIfNecessary):
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Remove typedef from NSScrollerImp to ScrollbarPainter
+        https://bugs.webkit.org/show_bug.cgi?id=155379
+
+        Reviewed by Beth Dakin.
+
+        There's no reason to not call them what they are.
+
+        No new tests because there is no behavior change.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewLayoutUpdated):
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode):
+        (WebCore::ScrollingStateFrameScrollingNode::setScrollerImpsFromScrollbars):
+        (WebCore::ScrollingStateFrameScrollingNode::setScrollbarPaintersFromScrollbars): Deleted.
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+        * page/scrolling/mac/ScrollingStateFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingStateFrameScrollingNode::setScrollerImpsFromScrollbars):
+        (WebCore::ScrollingStateFrameScrollingNode::setScrollbarPaintersFromScrollbars): Deleted.
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::ScrollingTreeFrameScrollingNodeMac):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::~ScrollingTreeFrameScrollingNodeMac):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::releaseReferencesToScrollerImpsOnTheMainThread):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::updateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::handleWheelEvent):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::releaseReferencesToScrollbarPaintersOnTheMainThread): Deleted.
+        * platform/ScrollbarThemeComposite.h:
+        * platform/mac/ScrollAnimatorMac.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (scrollbarPainterForScrollbar):
+        (-[WebScrollerImpDelegate setUpAlphaAnimation:scrollerPainter:part:animateAlphaTo:duration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateKnobAlphaTo:duration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateTrackAlphaTo:duration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateUIStateTransitionWithDuration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateExpansionTransitionWithDuration:]):
+        (WebCore::ScrollAnimatorMac::ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::~ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::mouseEnteredScrollbar):
+        (WebCore::ScrollAnimatorMac::mouseExitedScrollbar):
+        (WebCore::ScrollAnimatorMac::mouseIsDownInScrollbar):
+        (WebCore::ScrollAnimatorMac::didAddVerticalScrollbar):
+        (WebCore::ScrollAnimatorMac::willRemoveVerticalScrollbar):
+        (WebCore::ScrollAnimatorMac::didAddHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMac::willRemoveHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMac::invalidateScrollbarPartLayers):
+        (WebCore::ScrollAnimatorMac::verticalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::horizontalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::shouldScrollbarParticipateInHitTesting):
+        (WebCore::ScrollAnimatorMac::notifyContentAreaScrolled):
+        (WebCore::ScrollAnimatorMac::cancelAnimations):
+        (WebCore::ScrollAnimatorMac::updateScrollerStyle):
+        (WebCore::ScrollAnimatorMac::initialScrollbarPaintTimerFired):
+        (-[WebScrollbarPainterDelegate setUpAlphaAnimation:scrollerPainter:part:animateAlphaTo:duration:]): Deleted.
+        (-[WebScrollbarPainterDelegate scrollerImp:animateKnobAlphaTo:duration:]): Deleted.
+        (-[WebScrollbarPainterDelegate scrollerImp:animateTrackAlphaTo:duration:]): Deleted.
+        (-[WebScrollbarPainterDelegate scrollerImp:animateUIStateTransitionWithDuration:]): Deleted.
+        (-[WebScrollbarPainterDelegate scrollerImp:animateExpansionTransitionWithDuration:]): Deleted.
+        * platform/mac/ScrollbarThemeMac.h:
+        * platform/mac/ScrollbarThemeMac.mm:
+        (WebCore::scrollbarMap):
+        (+[WebScrollbarPrefsObserver appearancePrefsChanged:]):
+        (WebCore::ScrollbarThemeMac::registerScrollbar):
+        (WebCore::ScrollbarThemeMac::setNewPainterForScrollbar):
+        (WebCore::ScrollbarThemeMac::painterForScrollbar):
+        (WebCore::ScrollbarThemeMac::scrollbarThickness):
+        (WebCore::ScrollbarThemeMac::updateScrollbarOverlayStyle):
+        (WebCore::ScrollbarThemeMac::hasThumb):
+        (WebCore::ScrollbarThemeMac::setPaintCharacteristicsForScrollbar):
+        (WebCore::scrollbarPainterPaint):
+
+2016-03-12  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r188647): Teamtreehouse website sidebar buttons are not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=155400
+        <rdar://problem/24818602>
+
+        Reviewed by Anders Carlsson.
+
+        When we unprefixed CSS filters we accidentally
+        stopped SVG elements that use the CSS filter shorthands
+        from rendering. We still don't actually support
+        the shorthands in this case, but we should render
+        the element without the filter.
+
+        Tests: css3/filters/filters-on-svg-element.html
+               css3/filters/filters-on-svg-root.html
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::hasReferenceFilterOnly): Add
+        this new function that tells us if we have the
+        style of filter that we can handle in SVG content.
+        * rendering/style/RenderStyle.h:
+        * rendering/svg/SVGRenderingContext.cpp:
+        (WebCore::SVGRenderingContext::prepareToRenderSVGContent):
+        We can mark an element as ready to render if it
+        has a shorthand filter.
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete dead SVG Font code
+        https://bugs.webkit.org/show_bug.cgi?id=154718
+
+        Reviewed by Antti Koivisto.
+
+        All the ports have adopted the SVG -> OTF Font Converter, so there will never
+        be an instantiation of a font backed by a DOM subtree. We can remove all the
+        infrastructure used to support that.
+
+        No new tests because there is no behavior change.
+
+        * CMakeLists.txt:
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCore.order:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::CSSFontFaceSource): Deleted.
+        (WebCore::CSSFontFaceSource::font): Deleted.
+        * css/CSSFontFaceSource.h:
+        * loader/cache/CachedFont.cpp:
+        * loader/cache/CachedSVGFont.cpp:
+        (WebCore::CachedSVGFont::createFont): Deleted.
+        (WebCore::CachedSVGFont::ensureCustomFontData): Deleted.
+        * loader/cache/CachedSVGFont.h:
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::Font):
+        (WebCore::fillGlyphPage):
+        (WebCore::Font::description): Deleted.
+        (WebCore::Font::createScaledFont): Deleted.
+        (WebCore::Font::applyTransforms): Deleted.
+        * platform/graphics/Font.h:
+        (WebCore::Font::widthForGlyph):
+        (WebCore::Font::SVGData::~SVGData): Deleted.
+        (WebCore::Font::create): Deleted.
+        (WebCore::Font::svgData): Deleted.
+        (WebCore::Font::isSVGFont): Deleted.
+        * platform/graphics/win/FontWin.cpp:
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::drawText):
+        (WebCore::FontCascade::drawEmphasisMarks):
+        (WebCore::FontCascade::glyphDataForCharacter):
+        (WebCore::FontCascade::adjustSelectionRectForText):
+        (WebCore::FontCascade::offsetForPosition):
+        (WebCore::FontCascade::drawEmphasisMarksForSimpleText):
+        (WebCore::FontCascade::drawGlyphBuffer):
+        (WebCore::isDrawnWithSVGFont): Deleted.
+        (WebCore::FontCascade::width): Deleted.
+        (WebCore::FontCascade::codePath): Deleted.
+        * platform/graphics/FontCascade.h:
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/SVGGlyph.cpp: Removed.
+        (WebCore::processArabicFormDetection): Deleted.
+        (WebCore::charactersWithArabicForm): Deleted.
+        (WebCore::isCompatibleArabicForm): Deleted.
+        (WebCore::isCompatibleGlyph): Deleted.
+        * platform/graphics/SVGGlyph.h: Removed.
+        (WebCore::SVGGlyph::SVGGlyph): Deleted.
+        (WebCore::SVGGlyph::inheritedValue): Deleted.
+        (WebCore::SVGGlyph::operator==): Deleted.
+        * platform/graphics/TextRun.cpp:
+        * platform/graphics/TextRun.h:
+        (WebCore::TextRun::RenderingContext::~RenderingContext): Deleted.
+        (WebCore::TextRun::renderingContext): Deleted.
+        (WebCore::TextRun::setRenderingContext): Deleted.
+        * platform/graphics/WidthIterator.cpp:
+        (WebCore::WidthIterator::applyFontTransforms):
+        (WebCore::WidthIterator::advanceInternal):
+        (WebCore::WidthIterator::glyphDataForCharacter): Deleted.
+        * platform/graphics/WidthIterator.h:
+        (WebCore::WidthIterator::lastGlyphName): Deleted.
+        (WebCore::WidthIterator::setLastGlyphName): Deleted.
+        (WebCore::WidthIterator::arabicForms): Deleted.
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::CairoGlyphToPathTranslator::advance):
+        (WebCore::FontCascade::dashesForIntersectionsWithRect):
+        (WebCore::CairoGlyphToPathTranslator::moveToNextValidGlyph): Deleted.
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::MacGlyphToPathTranslator::advance):
+        (WebCore::FontCascade::dashesForIntersectionsWithRect):
+        (WebCore::FontCascade::primaryFontIsSystemFont):
+        (WebCore::FontCascade::drawEmphasisMarksForComplexText):
+        (WebCore::MacGlyphToPathTranslator::moveToNextValidGlyph): Deleted.
+        * platform/graphics/harfbuzz/HarfBuzzShaper.cpp:
+        (WebCore::HarfBuzzShaper::shapeHarfBuzzRuns): Deleted.
+        * platform/graphics/mac/ComplexTextController.cpp:
+        (WebCore::TextLayout::isNeeded):
+        (WebCore::TextLayout::TextLayout):
+        (WebCore::TextLayout::constructTextRun):
+        * rendering/EllipsisBox.cpp:
+        (WebCore::EllipsisBox::paint):
+        (WebCore::EllipsisBox::selectionRect):
+        (WebCore::EllipsisBox::paintSelection):
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::localSelectionRect):
+        (WebCore::InlineTextBox::paint):
+        (WebCore::InlineTextBox::paintSelection):
+        (WebCore::InlineTextBox::paintCompositionBackground):
+        (WebCore::InlineTextBox::paintDocumentMarker):
+        (WebCore::InlineTextBox::paintTextMatchMarker):
+        (WebCore::InlineTextBox::offsetForPosition):
+        (WebCore::InlineTextBox::positionForOffset):
+        (WebCore::InlineTextBox::constructTextRun):
+        * rendering/InlineTextBox.h:
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::constructTextRun):
+        * rendering/RenderBlock.h:
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::stripTrailingSpace):
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::checkLinesForTextOverflow):
+        * rendering/RenderDeprecatedFlexibleBox.cpp:
+        (WebCore::RenderDeprecatedFlexibleBox::applyLineClamp):
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::paintObject):
+        (WebCore::RenderFileUploadControl::computeIntrinsicLogicalWidths):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::setImageSizeForAltText):
+        (WebCore::RenderImage::paintReplaced):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::updateFromElement):
+        * rendering/RenderListMarker.cpp:
+        (WebCore::RenderListMarker::paint):
+        (WebCore::RenderListMarker::computePreferredLogicalWidths):
+        (WebCore::RenderListMarker::getRelativeMarkerRect):
+        * rendering/RenderMenuList.cpp:
+        (RenderMenuList::updateOptionsWidth):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::widthFromCache):
+        (WebCore::RenderText::trimmedPrefWidths):
+        (WebCore::hyphenWidth):
+        (WebCore::maxWordFragmentWidth):
+        (WebCore::RenderText::computePreferredLogicalWidths):
+        (WebCore::RenderText::width):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::getAverageCharWidth):
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeMeasureTextClient::RenderThemeMeasureTextClient):
+        (WebCore::adjustInputElementButtonStyle):
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::canUseForFontAndText): Deleted.
+        * rendering/line/BreakingContext.h:
+        (WebCore::WordTrailingSpace::WordTrailingSpace):
+        (WebCore::WordTrailingSpace::width):
+        (WebCore::measureHyphenWidth):
+        (WebCore::textWidth):
+        (WebCore::tryHyphenating):
+        (WebCore::BreakingContext::handleText):
+        * rendering/svg/RenderSVGAllInOne.cpp:
+        * rendering/svg/RenderSVGText.cpp:
+        * rendering/svg/SVGInlineTextBox.cpp:
+        (WebCore::SVGInlineTextBox::prepareGraphicsContextForTextPainting):
+        (WebCore::SVGInlineTextBox::restoreGraphicsContextAfterTextPainting):
+        (WebCore::SVGInlineTextBox::paintTextWithShadows):
+        (WebCore::SVGInlineTextBox::constructTextRun): Deleted.
+        * rendering/svg/SVGInlineTextBox.h:
+        * rendering/svg/SVGTextLayoutEngine.cpp:
+        (WebCore::SVGTextLayoutEngine::layoutTextOnLineOrPath):
+        * rendering/svg/SVGTextLayoutEngineSpacing.cpp:
+        (WebCore::SVGTextLayoutEngineSpacing::calculateSVGKerning): Deleted.
+        * rendering/svg/SVGTextLayoutEngineSpacing.h:
+        * rendering/svg/SVGTextMetrics.cpp:
+        (WebCore::SVGTextMetrics::SVGTextMetrics):
+        (WebCore::SVGTextMetrics::constructTextRun): Deleted.
+        * rendering/svg/SVGTextMetrics.h:
+        * rendering/svg/SVGTextMetricsBuilder.cpp:
+        (WebCore::SVGTextMetricsBuilder::advanceSimpleText):
+        * rendering/svg/SVGTextRunRenderingContext.cpp: Removed.
+        (WebCore::svgFontAndFontFaceElementForFontData): Deleted.
+        (WebCore::SVGTextRunRenderingContext::floatWidthUsingSVGFont): Deleted.
+        (WebCore::SVGTextRunRenderingContext::applySVGKerning): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::SVGGlyphToPathTranslator): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::transform): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::path): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::extents): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::moveToNextValidGlyph): Deleted.
+        (WebCore::SVGGlyphToPathTranslator::advance): Deleted.
+        (WebCore::SVGTextRunRenderingContext::createGlyphToPathTranslator): Deleted.
+        (WebCore::SVGTextRunRenderingContext::drawSVGGlyphs): Deleted.
+        (WebCore::missingGlyphForFont): Deleted.
+        (WebCore::SVGTextRunRenderingContext::glyphDataForCharacter): Deleted.
+        * rendering/svg/SVGTextRunRenderingContext.h: Removed.
+        * svg/SVGAllInOne.cpp:
+        * svg/SVGFontData.cpp: Removed.
+        (WebCore::SVGFontData::SVGFontData): Deleted.
+        (WebCore::SVGFontData::initializeFont): Deleted.
+        (WebCore::SVGFontData::widthForSVGGlyph): Deleted.
+        (WebCore::SVGFontData::applySVGGlyphSelection): Deleted.
+        (WebCore::SVGFontData::fillSVGGlyphPage): Deleted.
+        (WebCore::SVGFontData::fillBMPGlyphs): Deleted.
+        (WebCore::SVGFontData::fillNonBMPGlyphs): Deleted.
+        (WebCore::computeNormalizedSpaces): Deleted.
+        (WebCore::createStringWithMirroredCharacters): Deleted.
+        * svg/SVGFontData.h: Removed.
+        (WebCore::SVGFontData::~SVGFontData): Deleted.
+        (WebCore::SVGFontData::svgFontFaceElement): Deleted.
+        (WebCore::SVGFontData::horizontalOriginX): Deleted.
+        (WebCore::SVGFontData::horizontalOriginY): Deleted.
+        (WebCore::SVGFontData::horizontalAdvanceX): Deleted.
+        (WebCore::SVGFontData::verticalOriginX): Deleted.
+        (WebCore::SVGFontData::verticalOriginY): Deleted.
+        (WebCore::SVGFontData::verticalAdvanceY): Deleted.
+        * svg/SVGFontElement.cpp:
+        (WebCore::SVGFontElement::SVGFontElement): Deleted.
+        (WebCore::SVGFontElement::invalidateGlyphCache): Deleted.
+        (WebCore::SVGFontElement::firstMissingGlyphElement): Deleted.
+        (WebCore::SVGFontElement::registerLigaturesInGlyphCache): Deleted.
+        (WebCore::SVGFontElement::ensureGlyphCache): Deleted.
+        (WebCore::SVGKerningMap::clear): Deleted.
+        (WebCore::SVGKerningMap::insert): Deleted.
+        (WebCore::stringMatchesUnicodeRange): Deleted.
+        (WebCore::stringMatchesGlyphName): Deleted.
+        (WebCore::stringMatchesUnicodeName): Deleted.
+        (WebCore::matches): Deleted.
+        (WebCore::kerningForPairOfStringsAndGlyphs): Deleted.
+        (WebCore::SVGFontElement::horizontalKerningForPairOfStringsAndGlyphs): Deleted.
+        (WebCore::SVGFontElement::verticalKerningForPairOfStringsAndGlyphs): Deleted.
+        (WebCore::SVGFontElement::collectGlyphsForString): Deleted.
+        (WebCore::SVGFontElement::collectGlyphsForGlyphName): Deleted.
+        (WebCore::SVGFontElement::svgGlyphForGlyph): Deleted.
+        (WebCore::SVGFontElement::missingGlyph): Deleted.
+        * svg/SVGFontElement.h:
+        (WebCore::SVGKerning::SVGKerning): Deleted.
+        (WebCore::SVGKerningMap::isEmpty): Deleted.
+        * svg/SVGGlyphElement.cpp:
+        (WebCore::SVGGlyphElement::invalidateGlyphCache): Deleted.
+        (WebCore::SVGGlyphElement::parseAttribute): Deleted.
+        (WebCore::SVGGlyphElement::insertedInto): Deleted.
+        (WebCore::SVGGlyphElement::removedFrom): Deleted.
+        (WebCore::parseArabicForm): Deleted.
+        (WebCore::parseOrientation): Deleted.
+        (WebCore::SVGGlyphElement::inheritUnspecifiedAttributes): Deleted.
+        (WebCore::parseSVGGlyphAttribute): Deleted.
+        (WebCore::SVGGlyphElement::buildGenericGlyphIdentifier): Deleted.
+        (WebCore::SVGGlyphElement::buildGlyphIdentifier): Deleted.
+        * svg/SVGGlyphElement.h:
+        * svg/SVGGlyphMap.h: Removed.
+        (WebCore::GlyphMapNode::GlyphMapNode): Deleted.
+        (WebCore::GlyphMapNode::create): Deleted.
+        (WebCore::SVGGlyphMap::SVGGlyphMap): Deleted.
+        (WebCore::SVGGlyphMap::addGlyph): Deleted.
+        (WebCore::SVGGlyphMap::appendToGlyphTable): Deleted.
+        (WebCore::SVGGlyphMap::compareGlyphPriority): Deleted.
+        (WebCore::SVGGlyphMap::collectGlyphsForString): Deleted.
+        (WebCore::SVGGlyphMap::clear): Deleted.
+        (WebCore::SVGGlyphMap::svgGlyphForGlyph): Deleted.
+        (WebCore::SVGGlyphMap::glyphIdentifierForGlyphName): Deleted.
+        * svg/SVGHKernElement.cpp:
+        (WebCore::SVGHKernElement::insertedInto): Deleted.
+        (WebCore::SVGHKernElement::removedFrom): Deleted.
+        * svg/SVGHKernElement.h:
+        * svg/SVGToOTFFontConversion.cpp:
+        * svg/SVGToOTFFontConversion.h:
+        * svg/SVGVKernElement.cpp:
+        (WebCore::SVGVKernElement::insertedInto): Deleted.
+        (WebCore::SVGVKernElement::removedFrom): Deleted.
+        * svg/SVGVKernElement.h:
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Scrollbars of overflow:scroll divs should appear on the left on RTL systems
+        https://bugs.webkit.org/show_bug.cgi?id=155385
+
+        Reviewed by Simon Fraser.
+
+        There is already some existing setup for RTL scrollbars. This patch hooks up this
+        existing support to the OS X triggering mechanism introduced in r197956. It also
+        fixes up the existing support to function even when the direction of the
+        RTL-scrollbar div is LTR (this means the contents of the div must be pushed
+        over by the width of the scrollbar).
+
+        Tests: fast/scrolling/rtl-scrollbars-overflow-contents.html
+               fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html
+               fast/scrolling/rtl-scrollbars-overflow-padding.html
+               fast/scrolling/rtl-scrollbars-overflow-simple.html
+               fast/scrolling/rtl-scrollbars-overflow.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::addOverflowFromPositionedObjects):
+        (WebCore::RenderBlock::logicalLeftOffsetForContent):
+        (WebCore::RenderBlock::logicalRightOffsetForContent):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::determineLogicalLeftPositionForChild):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::overflowClipRect):
+        (WebCore::RenderBox::layoutOverflowRectForPropagation):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::computeScrollDimensions):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::shouldPlaceBlockDirectionScrollbarOnLogicalLeft):
+        * rendering/style/RenderStyle.h:
+
+2016-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        [Forms: focus] focus rings around text fields do not follow contour (border-radius)
+        https://bugs.webkit.org/show_bug.cgi?id=154099
+        rdar://problem/9988429
+
+        Reviewed by Tim Horton.
+
+        This patch enables outline-style: auto to follow the curve of border-radius.
+        When both border-radius and outline-style: auto are set, the native focusring painting will take the border-radius values
+        into account. This is only for outline-style: auto, other non-auto outline styles paint as if there
+        was no border-radius set.
+        It supports both single and multiline content with joint rectangles.
+        However in case of disjoint rectangles, we fallback to the non-radius drawing.
+
+        Tests: fast/inline/hidpi-outline-auto-with-border-radius-horizontal-ltr.html
+               fast/inline/hidpi-outline-auto-with-border-radius-horizontal-rtl.html
+               fast/inline/hidpi-outline-auto-with-border-radius-vertical-ltr.html
+               fast/inline/hidpi-outline-auto-with-border-radius-vertical-rtl.html
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/Path.cpp:
+        (WebCore::Path::addBeziersForRoundedRect):
+        * platform/graphics/Path.h:
+        (WebCore::Path::circleControlPoint):
+        * platform/graphics/PathUtilities.cpp:
+        (WebCore::polygonsForRect):
+        (WebCore::PathUtilities::pathsWithShrinkWrappedRects):
+        (WebCore::startAndEndPointsForCorner):
+        (WebCore::cornerType):
+        (WebCore::controlPointsForBezierCurve):
+        (WebCore::adjustedtRadiiForHuggingCurve):
+        (WebCore::PathUtilities::pathWithShrinkWrappedRectsForOutline):
+        * platform/graphics/PathUtilities.h:
+        * platform/graphics/mac/GraphicsContextMac.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::paintFocusRing):
+
+2016-03-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add Event.deepPath() and Event.scoped
+        https://bugs.webkit.org/show_bug.cgi?id=153538
+        <rdar://problem/24363836>
+
+        Reviewed by Darin Adler.
+
+        Added the support for deepPath(), scoped, and relatedTargetScoped on Event.prototype for shadow DOM:
+        http://w3c.github.io/webcomponents/spec/shadow/#extensions-to-event-interface
+        and updated the EventPath class to respect scoped and relatedTargetScoped flags as specified at:
+        http://w3c.github.io/webcomponents/spec/shadow/#get-the-parent
+
+        Tests: fast/shadow-dom/Extensions-to-Event-Interface.html
+               fast/shadow-dom/trusted-event-scoped-flags.html
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateConstructorDefinition): Added the support for Conditional for InitializedByEventConstructor.
+        * bindings/scripts/test/GObject/WebKitDOMTestEventConstructor.cpp:
+        * bindings/scripts/test/GObject/WebKitDOMTestEventConstructor.h:
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        * bindings/scripts/test/ObjC/DOMTestEventConstructor.h:
+        * bindings/scripts/test/ObjC/DOMTestEventConstructor.mm:
+        * bindings/scripts/test/TestEventConstructor.idl: Added a test case for using InitializedByEventConstructor
+        with Conditional.
+        * dom/Event.cpp:
+        (WebCore::Event::Event): Initialize m_scoped and m_relatedTargetScoped from EventInit dictionary.
+        (WebCore::Event::scoped): Added. Implements http://w3c.github.io/webcomponents/spec/shadow/#scoped-flag
+        (WebCore::Event::deepPath): Added.
+        * dom/Event.h:
+        (WebCore::Event::relatedTargetScoped): Added. Overridden by FocusEvent and MouseEvent to implement
+        http://w3c.github.io/webcomponents/spec/shadow/#relatedtargetscoped-flag
+        (WebCore::Event::setEventPath): Added.
+        (WebCore::Event::clearEventPath): Added.
+        * dom/Event.idl: Added scoped, relatedTargetScoped, and deepPath() conditionally enabled for shadow DOM.
+        * dom/EventContext.h:
+        (WebCore::EventContext::currentTarget):
+        * dom/EventDispatcher.cpp:
+        (WebCore::EventDispatcher::dispatchEvent): Set the event path while the event is being dispatched.
+        * dom/EventPath.cpp:
+        (WebCore::shouldEventCrossShadowBoundary): Check event.scoped flag instead of hard-coding a list of events here
+        which has been moved to Event::scoped. See above.
+        (WebCore::EventPath::setRelatedTarget): Check m_event.relatedTargetScoped() instead of hard-coding a list of
+        events here. relatedTargetScoped is overridden by FocusEvent and MouseEvent.
+        (WebCore::EventPath::hasEventListeners): Fixed the misleading variable name.
+        (WebCore::isUnclosedNodeOf): Added. Implements http://w3c.github.io/webcomponents/spec/shadow/#dfn-unclosed-node
+        (WebCore::EventPath::computePathDisclosedToTarget): Added. Implements the algorithm to filter event targets:
+        http://w3c.github.io/webcomponents/spec/shadow/#widl-Event-deepPath-sequence-EventTarget
+        * dom/EventPath.h:
+        * dom/FocusEvent.cpp:
+        (WebCore::FocusEvent::relatedTargetScoped): Returns true when this is a trusted event per:
+        http://w3c.github.io/webcomponents/spec/shadow/#relatedtargetscoped-flag
+        * dom/FocusEvent.h:
+        * dom/MouseEvent.cpp:
+        (WebCore::MouseEvent::relatedTargetScoped): Ditto.
+        * dom/MouseEvent.h:
+
+2016-03-11  John Wilander  <wilander@apple.com>
+
+        Move prevalent resource classifier from WebCore to WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=155242
+        <rdar://problem/24913272>
+
+        Reviewed by Andy Estes.
+
+        No new tests since we have yet to decide how to set up tests for prevalent resources.
+
+        * loader/ResourceLoadObserver.cpp:
+        (WebCore::ResourceLoadObserver::logFrameNavigation):
+        (WebCore::ResourceLoadObserver::logSubresourceLoading):
+            - Removed calls to old classifier in WebCore.
+        * loader/ResourceLoadStatistics.cpp:
+        (WebCore::encodeHashCountedSet):
+        (WebCore::ResourceLoadStatistics::checkAndSetAsPrevalentResourceIfNecessary): Deleted.
+        (WebCore::ResourceLoadStatistics::hasPrevalentResourceCharacteristics): Deleted.
+        * loader/ResourceLoadStatistics.h:
+            - Deleted old classification functions.
+        * loader/ResourceLoadStatisticsStore.cpp:
+        (WebCore::ResourceLoadStatisticsStore::create):
+        (WebCore::ResourceLoadStatisticsStore::fireDataModificationHandler):
+        (WebCore::ResourceLoadStatisticsStore::hasEnoughDataForStatisticsProcessing):
+            - New function to allow for checks before calls to processStatistics.
+        (WebCore::ResourceLoadStatisticsStore::processStatistics):
+            - New function that receives a lamda and executes it on every entry in its statistics map.
+        * loader/ResourceLoadStatisticsStore.h:
+
+2016-03-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should not be redirected to an invalid URL
+        https://bugs.webkit.org/show_bug.cgi?id=155263
+        <rdar://problem/22820172>
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/navigation/redirect-to-invalid-url.html
+
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::willSendRequestInternal):
+
+2016-03-10  Maksim Kisilev <mkisilev@yandex-team.ru>
+
+        Fix typo in StyleTreeResolver.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=139946
+
+        Reviewed by Andy Estes.
+
+        The constructor for CheckForVisibilityChangeOnRecalcStyle was improperly comparing the
+        result of WKContentChange() (which is not a function) to WKContentVisibilityChange. I
+        believe the above cast would implicitly resolve to WKContentNoChange in all cases,
+        whether a visibility change had been observed or not.
+        
+        This patch corrects this problem. I would expect that this might affect some content
+        visibility change behavior, but I'm not sure what the appropriate test case would be
+        since this was apparently found through code inspection.
+
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::CheckForVisibilityChangeOnRecalcStyle::CheckForVisibilityChangeOnRecalcStyle):
+
+2016-03-11  Chris Dumez  <cdumez@apple.com>
+
+        iOS-sim debug: WebCoreNSURLSessionTest.BasicOperation and WebCoreNSURLSessionTest.InvalidateEmpty asserting
+        https://bugs.webkit.org/show_bug.cgi?id=155256
+
+        Reviewed by Alexey Proskuryakov.
+
+        r197628 consolidated the runtime application checking code for iOS and
+        Mac. However, while the new code works fine for WebKit2, it is unsafe
+        on WebKit1 / iOS and hits assertion in debug. The reason is that
+        applicationBundleIdentifier() for getting called from several threads
+        (WebThread, UIThread).
+
+        To address the problem, this patch renames applicationBundleIdentifier()
+        to applicationBundleIdentifierOverride() and only initializes the
+        override upon WebProcess and Network process initialization. We therefore
+        do not initialize the override in WebKit1 or in the WebKit2 UIProcess.
+        When the override is not set, we fall back to using the main bundle
+        identifier (which does the right thing for WebKit1 / WebKit2 UIProcess)
+        but without caching it to avoid thread safety issues.
+
+        No new tests, already covered by API tests currently crashing.
+
+        * platform/RuntimeApplicationChecks.mm:
+        (WebCore::applicationBundleIdentifierOverride):
+        - Renamed applicationBundleIdentifier() to applicationBundleIdentifierOverride()
+          and only initialize upon initialization of the WebProcess or the Network
+          process.
+        - In debug, set a flag to indicate that the override was already queried.
+
+        (WebCore::applicationBundleIdentifier):
+        New utility function that is returns the application bundle override if it is
+        set and fallback to calling [[NSBundle mainBundle] bundleIdentifier] otherwise.
+
+        (WebCore::setApplicationBundleIdentifier):
+        Add assertions to make sure that:
+        1. This is always called from the main thread.
+        2. The application bundle identifier has not been queried *before* getting
+           overriden as this would indicate a bug in our code and we would have wrongly
+           returned the main bundle identifier in such case.
+
+        (WebCore::MacApplication::isAppleMail):
+        (WebCore::MacApplication::isIBooks):
+        (WebCore::MacApplication::isITunes):
+        (WebCore::MacApplication::isMicrosoftMessenger):
+        (WebCore::MacApplication::isAdobeInstaller):
+        (WebCore::MacApplication::isMicrosoftOutlook):
+        (WebCore::MacApplication::isQuickenEssentials):
+        (WebCore::MacApplication::isAperture):
+        (WebCore::MacApplication::isVersions):
+        (WebCore::MacApplication::isHRBlock):
+        (WebCore::MacApplication::isHipChat):
+        (WebCore::IOSApplication::isMobileSafari):
+        (WebCore::IOSApplication::isDumpRenderTree):
+        (WebCore::IOSApplication::isMobileStore):
+        (WebCore::IOSApplication::isFacebook):
+        (WebCore::IOSApplication::isDaijisenDictionary):
+        (WebCore::IOSApplication::isNASAHD):
+        (WebCore::IOSApplication::isTheEconomistOnIphone):
+        (WebCore::IOSApplication::isWebProcess):
+        (WebCore::IOSApplication::isIBooks):
+        Drop assertions making sure the cached flag is correct. We now have
+        an assertion to detect this earlier in setApplicationBundleIdentifier().
+
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Web Audio becomes distorted after sample rate changes
+        https://bugs.webkit.org/show_bug.cgi?id=154538
+        <rdar://problem/24771292>
+
+        Reviewed by Darin Adler.
+
+        When the underlying audio hardware sample rate changes, the AudioUnit render callback will begin asking
+        for fewer or more frames. For example, when the sample rate goes from 44.1kHz to 48kHz, it will ask for
+        118 samples instead of 128. (And vice-versa, 140 samples instead of 128.) But the Web Audio engine can only
+        really handle requests in multiples of 128 samples. In the case where there are requests for < 128 samples,
+        actually render 128, but save off the unrequested samples in a separate bus. Then fill that bus during the
+        next request.
+
+        * platform/audio/AudioBus.cpp:
+        (WebCore::AudioBus::copyFromRange): Added utility method.
+        * platform/audio/AudioBus.h:
+        * platform/audio/ios/AudioDestinationIOS.cpp:
+        (WebCore::AudioDestinationIOS::AudioDestinationIOS): Create a "spare" bus.
+        (WebCore::assignAudioBuffersToBus): Moved from inside render.
+        (WebCore::AudioDestinationIOS::render): Save off extra samples to the "spare" bus.
+        * platform/audio/ios/AudioDestinationIOS.h:
+
 2016-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Unreviewed build fix after r198023.
