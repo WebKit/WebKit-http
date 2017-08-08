@@ -473,7 +473,8 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         case AppendState::Invalid:
             ok = true;
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-            m_playerPrivate->abortEncryptionSetup();
+            if (m_playerPrivate)
+                m_playerPrivate->abortEncryptionSetup();
 #endif
             break;
         default:
