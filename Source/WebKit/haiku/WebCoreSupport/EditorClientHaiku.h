@@ -127,8 +127,8 @@ public:
     void checkGrammarOfString(StringView, Vector<GrammarDetail>&,
                                       int* badGrammarLocation, int* badGrammarLength) override;
 
-    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) override;
-    void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) override;
+    void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection&, Vector<String>& guesses) override;
+    void requestCheckingOfString(PassRefPtr<TextCheckingRequest>, const WebCore::VisibleSelection&) override;
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,

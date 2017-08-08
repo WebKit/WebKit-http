@@ -594,12 +594,12 @@ void EditorClientHaiku::checkGrammarOfString(StringView, Vector<GrammarDetail>&,
     notImplemented();
 }
 
-void EditorClientHaiku::getGuessesForWord(const String&, const String&, Vector<String>&)
+void EditorClientHaiku::getGuessesForWord(const String&, const String&, const WebCore::VisibleSelection&, Vector<String>&)
 {
     notImplemented();
 }
 
-void EditorClientHaiku::requestCheckingOfString(PassRefPtr<TextCheckingRequest>)
+void EditorClientHaiku::requestCheckingOfString(PassRefPtr<TextCheckingRequest>, const WebCore::VisibleSelection&)
 {
     notImplemented();
 }
