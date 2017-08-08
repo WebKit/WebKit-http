@@ -70,7 +70,7 @@ WTF::PassRefPtr<Image> Image::loadPlatformResource(const char* name)
     Vector<char> array = loadResourceIntoArray(name);
     WTF::PassRefPtr<BitmapImage> image = BitmapImage::create();
     RefPtr<SharedBuffer> buffer = SharedBuffer::create(array.data(), array.size());
-    image->setData(buffer, true);
+    image->setData(buffer.release(), true);
 
     return image;
 }

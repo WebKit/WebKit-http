@@ -55,7 +55,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
     }
 }
 
-PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
+RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
 {
     return nullptr;
 }

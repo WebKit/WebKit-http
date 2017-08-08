@@ -234,20 +234,16 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 
     PageConfiguration pageClients;
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
-    pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
-    pageClients.inspectorClient = new InspectorClientHaiku();
-    pageClients.storageNamespaceProvider = &viewGroup->storageNamespaceProvider();
-    pageClients.progressTrackerClient = fProgressTracker;
-    // pageClients.backForwardClient ? (apparently not set in win and mac?)
     pageClients.editorClient = new EditorClientHaiku(this);
-    // pluginClient ?
-    // validationMessageClient?
-    // pageClients.alternativeTextClient = new WebAlternativeTextClient(self); ?
-    pageClients.userContentController = &viewGroup->userContentController();
-    pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
+    pageClients.dragClient = new DragClientHaiku(webView);
+    pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
+    pageClients.storageNamespaceProvider = &viewGroup->storageNamespaceProvider();
+    pageClients.progressTrackerClient = fProgressTracker;
+    pageClients.userContentProvider = &viewGroup->userContentController();
+    pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
 
     pageClients.storageNamespaceProvider = WebStorageNamespaceProvider::create(
         storagePath.Path());

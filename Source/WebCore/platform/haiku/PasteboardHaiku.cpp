@@ -208,7 +208,7 @@ void Pasteboard::read(PasteboardPlainText& text)
         text.text = String::fromUTF8(buffer, bufferLength);
 }
 
-PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
+RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
                                                           bool allowPlainText, bool& chosePlainText)
 {
     chosePlainText = false;
