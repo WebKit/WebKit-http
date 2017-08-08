@@ -8,6 +8,8 @@ endif ()
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
 
+set(ENABLE_WEBCORE ON)
+
 if (NOT DEFINED ENABLE_WEBKIT)
     set(ENABLE_WEBKIT ON)
 endif ()
@@ -19,7 +21,15 @@ endif ()
 # -----------------------------------------------------------------------------
 # Determine which port will be built
 # -----------------------------------------------------------------------------
-set(ALL_PORTS Efl GTK Haiku AppleWin WinCairo Mac)
+set(ALL_PORTS
+    AppleWin
+    Efl
+    GTK
+    Haiku
+    JSCOnly
+    Mac
+    WinCairo
+)
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 
 list(FIND ALL_PORTS ${PORT} RET)

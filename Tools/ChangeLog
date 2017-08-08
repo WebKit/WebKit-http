@@ -1,3 +1,161 @@
+2016-03-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetch:]):
+        * TestWebKitAPI/Tests/Cocoa/URLExtras.mm:
+        (TestWebKitAPI::TEST):
+
+2016-03-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r197981.
+
+        Caused a massive PLT regression on Mac.
+
+        Reverted changeset:
+
+        "Font antialiasing (smoothing) changes when elements are
+        rendered into compositing layers"
+        https://bugs.webkit.org/show_bug.cgi?id=23364
+        http://trac.webkit.org/changeset/197981
+
+2016-03-14  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add twisted-15.5.0 module to webkitpy.thirdparty.autoinstalled.
+        https://bugs.webkit.org/show_bug.cgi?id=154667
+
+        Reviewed by Ryosuke Niwa and Simon Fraser.
+
+        Add twisted-15.5.0 to webkitpy.thirdparty.autoinstalled.
+        Minor fix for twsited_http_server used by run-benchmark that we should only stop http server while recieving 'GET /shutdown'.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+        (ServerControl.render_POST): Deleted.
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook._install_twisted_15_5_0):
+        * Scripts/webkitpy/thirdparty/__init___unittest.py:
+        (ThirdpartyTest.test_imports):
+
+2016-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Need to distinguish between Symbol() and Symbol("").
+        https://bugs.webkit.org/show_bug.cgi?id=155438
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+        - Test that the a symbol with an empty string is not equivalent to a null symbol. 
+
+2016-03-14  David Kilzer  <ddkilzer@apple.com>
+
+        Remove blank lines after #include "config.h"
+
+        Follow-up fix from review comments on Bug 155394.
+
+        * TestWebKitAPI/PlatformUtilities.cpp:
+        * TestWebKitAPI/Tests/WTF/RefLogger.cpp:
+
+2016-03-14  Frederic Wang  <fred.wang@free.fr>
+
+        Unreviewed: Add my professional email address.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-03-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Web platform test server should not try to launch servers on already bound sockets
+        https://bugs.webkit.org/show_bug.cgi?id=141157
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (wpt_config_json): Load WPT config from LayoutTests/imported/w3c/resources/config.json.
+        (base_url): Refactored to use wpt_config_json routine.
+        (WebPlatformTestServer.__init__): Fill port mappings according WPT config.
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-03-13  Dean Jackson  <dino@apple.com>
+
+        DRT should enable WebGL by default on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=155419
+        <rdar://problem/25136981>
+
+        Reviewed by Sam Weinig.
+
+        For some reason, lost in time, WebGL was enabled
+        by default on trunk, but disabled by default
+        in DumpRenderTree when using WebKit 1. This
+        was very annoying, because each test had
+        an explicit command to enable it.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Deleted WebGL line.
+
+2016-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added new port JSCOnly.
+        https://bugs.webkit.org/show_bug.cgi?id=154512
+
+        Reviewed by Michael Catanzaro.
+
+        This port allows to build JavaScriptCore engine with minimal
+        dependencies.
+
+        * Scripts/build-jsc:
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+        (executableProductDir):
+        (determinePortName):
+        (isJSCOnly):
+        (wrapperPrefixIfNeeded):
+        (generateBuildSystemFromCMakeProject):
+        (buildCMakeGeneratedProject):
+
+2016-03-13  David Kilzer  <ddkilzer@apple.com>
+
+        TestWebKitAPI: fix linker warnings
+        <http://webkit.org/b/155394>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        - Add RefLogger.cpp source file.
+        - Add other missing cross-platform source files.
+        - Add FIXMEs about RunLoop.cpp and about missing
+          platform-specific source files.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        - Add RefLogger.cpp source file.
+
+        * TestWebKitAPI/Counters.cpp:
+        (DeleterCounter<ConstructorDestructorCounter>::deleterCount):
+        Move specific declaration here to fix linker warning.
+        * TestWebKitAPI/Counters.h:
+        (DeleterCounter<T>::deleterCount): Remove declaration of global
+        template variable.
+
+        * TestWebKitAPI/Tests/WTF/RefLogger.cpp: Added.
+        (TestWebKitAPI::log): Added.  Move inline definition in
+        RefLogger.h to here to fix linker warning.
+
+        * TestWebKitAPI/Tests/WTF/RefLogger.h:
+        (TestWebKitAPI::log): Replace inline function with declaration.
+
 2016-03-12  David Kilzer  <ddkilzer@apple.com>
 
         REGRESSION (r178615): Fix incorrect case in included header for WeakPtr.cpp

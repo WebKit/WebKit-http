@@ -307,7 +307,7 @@ Vector<Path> PathUtilities::pathsWithShrinkWrappedRects(const Vector<FloatRect>&
 
     for (auto& poly : polys) {
         Path path;
-        for (unsigned i = 0; i < poly.size(); i++) {
+        for (unsigned i = 0; i < poly.size(); ++i) {
             FloatPointGraph::Edge& toEdge = poly[i];
             // Connect the first edge to the last.
             FloatPointGraph::Edge& fromEdge = (i > 0) ? poly[i - 1] : poly[poly.size() - 1];
@@ -373,19 +373,33 @@ static std::pair<FloatPoint, FloatPoint> startAndEndPointsForCorner(const FloatP
 }
 
 enum class CornerType { TopLeft, TopRight, BottomRight, BottomLeft, Other };
-static CornerType cornerType(const FloatPointGraph::Edge& fromEdge, const FloatPointGraph::Edge& toEdge, const Vector<FloatPoint>& corners)
+static CornerType cornerType(const FloatPointGraph::Edge& fromEdge, const FloatPointGraph::Edge& toEdge)
 {
     auto fromEdgeVector = *fromEdge.second - *fromEdge.first;
     auto toEdgeVector = *toEdge.second - *toEdge.first;
 
-    if (fromEdgeVector.height() < 0 && toEdgeVector.width() > 0 && corners.at(0) == *fromEdge.second)
+    if (fromEdgeVector.height() < 0 && toEdgeVector.width() > 0)
         return CornerType::TopLeft;
-    if (fromEdgeVector.width() > 0 && toEdgeVector.height() > 0 && corners.at(1) == *fromEdge.second)
+    if (fromEdgeVector.width() > 0 && toEdgeVector.height() > 0)
         return CornerType::TopRight;
-    if (fromEdgeVector.height() > 0 && toEdgeVector.width() < 0 && corners.at(2) == *fromEdge.second)
+    if (fromEdgeVector.height() > 0 && toEdgeVector.width() < 0)
         return CornerType::BottomRight;
-    if (fromEdgeVector.width() < 0 && toEdgeVector.height() < 0 && corners.at(3) == *fromEdge.second)
+    if (fromEdgeVector.width() < 0 && toEdgeVector.height() < 0)
         return CornerType::BottomLeft;
+    return CornerType::Other;
+}
+
+static CornerType cornerTypeForMultiline(const FloatPointGraph::Edge& fromEdge, const FloatPointGraph::Edge& toEdge, const Vector<FloatPoint>& corners)
+{
+    auto corner = cornerType(fromEdge, toEdge);
+    if (corner == CornerType::TopLeft && corners.at(0) == *fromEdge.second)
+        return corner;
+    if (corner == CornerType::TopRight && corners.at(1) == *fromEdge.second)
+        return corner;
+    if (corner == CornerType::BottomRight && corners.at(2) == *fromEdge.second)
+        return corner;
+    if (corner == CornerType::BottomLeft && corners.at(3) == *fromEdge.second)
+        return corner;
     return CornerType::Other;
 }
 
@@ -430,12 +444,15 @@ static FloatRoundedRect::Radii adjustedtRadiiForHuggingCurve(const FloatSize& to
     // This adjusts the radius so that it follows the border curve even when offset is present.
     auto adjustedRadius = [outlineOffset](const FloatSize& radius)
     {
-        FloatSize adjustedRadius = radius;
+        FloatSize expandSize;
         if (radius.width() > outlineOffset)
-            adjustedRadius.expand(std::min(outlineOffset, radius.width() - outlineOffset), 0);
+            expandSize.setWidth(std::min(outlineOffset, radius.width() - outlineOffset));
         if (radius.height() > outlineOffset)
-            adjustedRadius.expand(0, std::min(outlineOffset, radius.height() - outlineOffset));
-        return adjustedRadius;
+            expandSize.setHeight(std::min(outlineOffset, radius.height() - outlineOffset));
+        FloatSize adjustedRadius = radius;
+        adjustedRadius.expand(expandSize.width(), expandSize.height());
+        // Do not go to negative radius.
+        return adjustedRadius.expandedTo(FloatSize(0, 0));
     };
 
     radii.setTopLeft(adjustedRadius(topLeftRadius));
@@ -445,29 +462,64 @@ static FloatRoundedRect::Radii adjustedtRadiiForHuggingCurve(const FloatSize& to
     return radii;
 }
     
+static Optional<FloatRect> rectFromPolygon(const FloatPointGraph::Polygon& poly)
+{
+    if (poly.size() != 4)
+        return Optional<FloatRect>();
+
+    Optional<FloatPoint> topLeft;
+    Optional<FloatPoint> bottomRight;
+    for (unsigned i = 0; i < poly.size(); ++i) {
+        const auto& toEdge = poly[i];
+        const auto& fromEdge = (i > 0) ? poly[i - 1] : poly[poly.size() - 1];
+        auto corner = cornerType(fromEdge, toEdge);
+        if (corner == CornerType::TopLeft) {
+            ASSERT(!topLeft);
+            topLeft = *fromEdge.second;
+        } else if (corner == CornerType::BottomRight) {
+            ASSERT(!bottomRight);
+            bottomRight = *fromEdge.second;
+        }
+    }
+    if (!topLeft || !bottomRight)
+        return Optional<FloatRect>();
+    return FloatRect(topLeft.value(), bottomRight.value());
+}
+
 Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>& rects, const BorderData& borderData, float outlineOffset, TextDirection direction,
-    WritingMode writingMode)
+    WritingMode writingMode, float deviceScaleFactor)
 {
     ASSERT(borderData.hasBorderRadius());
     FloatSize topLeftRadius = FloatSize(borderData.topLeft().width().value(), borderData.topLeft().height().value());
     FloatSize topRightRadius = FloatSize(borderData.topRight().width().value(), borderData.topRight().height().value());
     FloatSize bottomRightRadius = FloatSize(borderData.bottomRight().width().value(), borderData.bottomRight().height().value());
     FloatSize bottomLeftRadius = FloatSize(borderData.bottomLeft().width().value(), borderData.bottomLeft().height().value());
-    if (rects.size() == 1) {
-        FloatRect rect = rects.at(0);
+
+    auto roundedRect = [topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius, outlineOffset, deviceScaleFactor] (const FloatRect& rect)
+    {
         auto radii = adjustedtRadiiForHuggingCurve(topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius, outlineOffset);
         radii.scale(calcBorderRadiiConstraintScaleFor(rect, radii));
-
+        RoundedRect roundedRect(LayoutRect(rect),
+            RoundedRect::Radii(LayoutSize(radii.topLeft()), LayoutSize(radii.topRight()), LayoutSize(radii.bottomLeft()), LayoutSize(radii.bottomRight())));
         Path path;
-        path.addRoundedRect(FloatRoundedRect(rect, radii));
+        path.addRoundedRect(roundedRect.pixelSnappedRoundedRectForPainting(deviceScaleFactor));
         return path;
-    }
+    };
+
+    if (rects.size() == 1)
+        return roundedRect(rects.at(0));
 
     FloatPointGraph graph;
     const auto polys = polygonsForRect(rects, graph);
     // Fall back to corner painting with no radius for empty and disjoint rectangles.
     if (!polys.size() || polys.size() > 1)
         return Path();
+    const auto& poly = polys.at(0);
+    // Fast path when poly has one rect only.
+    Optional<FloatRect> rect = rectFromPolygon(poly);
+    if (rect)
+        return roundedRect(rect.value());
+
     Path path;
     // Multiline outline needs to match multiline border painting. Only first and last lines are getting rounded borders.
     auto isLeftToRight = isLeftToRightDirection(direction);
@@ -490,8 +542,7 @@ Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>
     corners.append(lastLineRect.maxXMaxYCorner());
     corners.append(isHorizontal ? firstLineRect.minXMaxYCorner() : lastLineRect.minXMaxYCorner());
 
-    const auto& poly = polys.at(0);
-    for (unsigned i = 0; i < poly.size(); i++) {
+    for (unsigned i = 0; i < poly.size(); ++i) {
         auto moveOrAddLineTo = [i, &path] (const FloatPoint& startPoint)
         {
             if (!i)
@@ -502,7 +553,7 @@ Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>
         const auto& toEdge = poly[i];
         const auto& fromEdge = (i > 0) ? poly[i - 1] : poly[poly.size() - 1];
         FloatSize radius;
-        auto corner = cornerType(fromEdge, toEdge, corners);
+        auto corner = cornerTypeForMultiline(fromEdge, toEdge, corners);
         switch (corner) {
         case CornerType::TopLeft: {
             radius = topLeftRadius;

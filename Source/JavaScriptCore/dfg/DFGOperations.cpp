@@ -961,15 +961,14 @@ JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState* exec, 
     
     unsigned length = argumentCount - 1;
     ClonedArguments* result = ClonedArguments::createEmpty(
-        vm, codeBlock->globalObject()->outOfBandArgumentsStructure(), callee);
+        vm, codeBlock->globalObject()->clonedArgumentsStructure(), callee, length);
     
     Register* arguments =
         exec->registers() + (inlineCallFrame ? inlineCallFrame->stackOffset : 0) +
         CallFrame::argumentOffset(0);
     for (unsigned i = length; i--;)
-        result->putDirectIndex(exec, i, arguments[i].jsValue());
-    
-    result->putDirect(vm, vm.propertyNames->length, jsNumber(length));
+        result->initializeIndex(vm, i, arguments[i].jsValue());
+
     
     return result;
 }
@@ -1297,22 +1296,6 @@ int32_t JIT_OPERATION operationSwitchStringAndGetBranchOffset(ExecState* exec, s
     NativeCallFrameTracer tracer(&vm, exec);
 
     return exec->codeBlock()->stringSwitchJumpTable(tableIndex).offsetForValue(string->value(exec).impl(), std::numeric_limits<int32_t>::min());
-}
-
-char* JIT_OPERATION operationGetButterfly(ExecState* exec, JSCell* cell)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-
-    return bitwise_cast<char*>(jsCast<JSObject*>(cell)->butterfly());
-}
-
-char* JIT_OPERATION operationGetArrayBufferVector(ExecState* exec, JSCell* cell)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-
-    return bitwise_cast<char*>(jsCast<JSArrayBufferView*>(cell)->vector());
 }
 
 void JIT_OPERATION operationNotifyWrite(ExecState* exec, WatchpointSet* set)

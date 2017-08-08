@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,30 +24,46 @@
  */
 
 #include "config.h"
-#include "MIMETypeRegistry.h"
+#include "WebUserContentControllerDataTypes.h"
 
-#include "NSURLFileTypeMappingsSPI.h"
+#include "WebCoreArgumentCoders.h"
 
-namespace WebCore 
+namespace WebKit {
+
+void WebUserScriptData::encode(IPC::ArgumentEncoder& encoder) const
 {
-String MIMETypeRegistry::getMIMETypeForExtension(const String& extension)
-{
-    return [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:(NSString *)extension];
+    encoder << identifier;
+    encoder << worldIdentifier;
+    encoder << userScript;
 }
 
-Vector<String> MIMETypeRegistry::getExtensionsForMIMEType(const String& /*type*/)
+bool WebUserScriptData::decode(IPC::ArgumentDecoder& decoder, WebUserScriptData& data)
 {
-    return Vector<String>();
+    if (!decoder.decode(data.identifier))
+        return false;
+    if (!decoder.decode(data.worldIdentifier))
+        return false;
+    if (!decoder.decode(data.userScript))
+        return false;
+    return true;
 }
 
-String MIMETypeRegistry::getPreferredExtensionForMIMEType(const String& /*type*/)
+void WebUserStyleSheetData::encode(IPC::ArgumentEncoder& encoder) const
 {
-    return String();
+    encoder << identifier;
+    encoder << worldIdentifier;
+    encoder << userStyleSheet;
 }
 
-bool MIMETypeRegistry::isApplicationPluginMIMEType(const String&)
+bool WebUserStyleSheetData::decode(IPC::ArgumentDecoder& decoder, WebUserStyleSheetData& data)
 {
-    return false;
+    if (!decoder.decode(data.identifier))
+        return false;
+    if (!decoder.decode(data.worldIdentifier))
+        return false;
+    if (!decoder.decode(data.userStyleSheet))
+        return false;
+    return true;
 }
 
-} // namespace WebCore
+} // namespace WebKit

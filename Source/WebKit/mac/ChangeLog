@@ -1,3 +1,142 @@
+2016-03-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        In this patch, we add new SPIs _webkit_URLWithUserTypedString, _webkit_decodeHostName and
+        _webkit_encodeHostName which will return nil while dealing with illegal IDN.
+
+        Old SPIs _web_URLWithUserTypedString, _web_decodeHostName and _web_encodeHostName are marked
+        deprecated as they ignore URL parsing failure.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Misc/WebKitErrors.m:
+        (+[NSError _webKitErrorWithCode:failingURL:]):
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_setMetadataURL:referrer:atPath:]):
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_bestURL]):
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (+[NSURL _web_URLWithUserTypedString:]):
+        (+[NSURL _webkit_URLWithUserTypedString:relativeToURL:]):
+        (+[NSURL _webkit_URLWithUserTypedString:]):
+        (-[NSString _web_decodeHostName]):
+        (-[NSString _web_encodeHostName]):
+        (-[NSString _webkit_decodeHostName]):
+        (-[NSString _webkit_encodeHostName]):
+        * Panels/WebAuthenticationPanel.m:
+        (-[WebAuthenticationPanel setUpForChallenge:]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canonicalizeURLString):
+
+2016-03-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r197981.
+
+        Caused a massive PLT regression on Mac.
+
+        Reverted changeset:
+
+        "Font antialiasing (smoothing) changes when elements are
+        rendered into compositing layers"
+        https://bugs.webkit.org/show_bug.cgi?id=23364
+        http://trac.webkit.org/changeset/197981
+
+2016-03-14  Sam Weinig  <sam@webkit.org>
+
+        Add a baseURL parameter to _WKUserStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=155219
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView setGroupName:]):
+        Update to account for the name change from UserContentController -> UserContentProvider.
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMNode webArchive]):
+        (-[DOMNode webArchiveByFilteringSubframes:]):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::bufferForType):
+        (WebPlatformStrategies::readBufferFromPasteboard):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithData:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource webArchive]):
+        (-[WebDataSource addSubresource:]):
+        * WebView/WebResource.mm:
+        (-[WebResource encodeWithCoder:]):
+        (-[WebResource data]):
+        (-[WebResource _stringValue]):
+        (-[WebResource _initWithCoreResource:]): Deleted.
+
+2016-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Temporarily disable the separated heap.
+        https://bugs.webkit.org/show_bug.cgi?id=155472
+
+        Reviewed by Geoffrey Garen.
+
+        Temporarily disable this.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-14  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        Ignore nullability warnings, create an empty PDF selection.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView centerSelectionInVisibleArea:]):
+        (-[WebPDFView searchFor:direction:caseSensitive:wrap:startInSelection:]):
+        (+[WebPDFView _PDFSelectionClass]):
+        (-[WebPDFView _nextMatchFor:direction:caseSensitive:wrap:fromSelection:startInSelection:]):
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-13  Dean Jackson  <dino@apple.com>
+
+        <attachment> should be a runtime-enabled feature
+        https://bugs.webkit.org/show_bug.cgi?id=155413
+        <rdar://problem/25120753>
+
+        Reviewed by Sam Weinig and Anders Carlsson.
+
+        Add an internal setting on WebPreferences
+        to enable the <attachment> element support.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences attachmentElementEnabled]):
+        (-[WebPreferences setAttachmentElementEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2016-03-12  Sam Weinig  <sam@webkit.org>
 
         WebKit can easily crash below NetworkSession::dataTaskForIdentifier() with NSURLSession enabled

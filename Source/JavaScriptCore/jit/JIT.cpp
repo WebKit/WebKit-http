@@ -186,7 +186,7 @@ void JIT::privateCompileMainPass()
             updateTopCallFrame();
 
         unsigned bytecodeOffset = m_bytecodeOffset;
-        
+
         switch (opcodeID) {
         DEFINE_SLOW_OP(del_by_val)
         DEFINE_SLOW_OP(in)
@@ -214,7 +214,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_to_this)
         DEFINE_OP(op_create_direct_arguments)
         DEFINE_OP(op_create_scoped_arguments)
-        DEFINE_OP(op_create_out_of_band_arguments)
+        DEFINE_OP(op_create_cloned_arguments)
         DEFINE_OP(op_copy_rest)
         DEFINE_OP(op_get_rest_length)
         DEFINE_OP(op_check_tdz)

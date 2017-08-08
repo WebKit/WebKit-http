@@ -1,3 +1,623 @@
+2016-03-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove the Baker barrier from JSC
+        https://bugs.webkit.org/show_bug.cgi?id=155479
+
+        Reviewed by Saam Barati.
+
+        It's been a while since I added a Baker barrier, but I never followed it up with an actual
+        concurrent GC. While thinking about the GC, I became convinced that the right path forward
+        is to do a non-copying concurrent GC. That is, remove the copied space and just use the
+        marked space. The downside of using marked space cannot be more than the overhead of the
+        Baker barrier, so concurrent non-copying GC is definitely better than copying
+        non-concurrent GC. I also suspect that just plain non-copying non-concurrent GC is going to
+        be fine also, so the path forward will probably be to first just remove CopiedSpace.
+
+        Anyway, for now this patch just removes the Baker barrier. It was a cute implementation but
+        it just cost performance and I don't think we'll ever use it.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGCopyBarrierOptimizationPhase.cpp: Removed.
+        * dfg/DFGCopyBarrierOptimizationPhase.h: Removed.
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetIndexedPropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileGetTypedArrayByteOffset):
+        (JSC::DFG::SpeculativeJIT::compileGetButterfly):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantArrayChecks):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetButterfly):
+        (JSC::FTL::DFG::LowerDFGToB3::compileConstantStoragePointer):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetTypedArrayByteOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiGetByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiPutByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetDirectPname):
+        (JSC::FTL::DFG::LowerDFGToB3::storageForTransition):
+        (JSC::FTL::DFG::LowerDFGToB3::getById):
+        (JSC::FTL::DFG::LowerDFGToB3::isFastTypedArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetButterflyReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadButterflyWithBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadVectorWithBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::copyBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::isInToSpace): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadButterflyReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadVectorReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::removeSpaceBits): Deleted.
+        * heap/CopyBarrier.h:
+        (JSC::CopyBarrierBase::CopyBarrierBase):
+        (JSC::CopyBarrierBase::operator bool):
+        (JSC::CopyBarrierBase::get):
+        (JSC::CopyBarrierBase::clear):
+        (JSC::CopyBarrierBase::setWithoutBarrier):
+        (JSC::CopyBarrier::CopyBarrier):
+        (JSC::CopyBarrier::get):
+        (JSC::CopyBarrier::set):
+        (JSC::CopyBarrier::setWithoutBarrier):
+        (JSC::CopyBarrierBase::operator!): Deleted.
+        (JSC::CopyBarrierBase::getWithoutBarrier): Deleted.
+        (JSC::CopyBarrierBase::getPredicated): Deleted.
+        (JSC::CopyBarrierBase::copyState): Deleted.
+        (JSC::CopyBarrierBase::setCopyState): Deleted.
+        (JSC::CopyBarrierBase::weakCASWithoutBarrier): Deleted.
+        (JSC::CopyBarrier::getWithoutBarrier): Deleted.
+        (JSC::CopyBarrier::getPredicated): Deleted.
+        (JSC::CopyBarrier::weakCASWithoutBarrier): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::collectAndSweep):
+        (JSC::Heap::copyBarrier): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::writeBarrierBuffer):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::branchIfNotFastTypedArray):
+        (JSC::AssemblyHelpers::purifyNaN):
+        (JSC::AssemblyHelpers::loadTypedArrayVector): Deleted.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchStructure):
+        (JSC::AssemblyHelpers::addressForByteOffset):
+        (JSC::AssemblyHelpers::branchIfToSpace): Deleted.
+        (JSC::AssemblyHelpers::branchIfNotToSpace): Deleted.
+        (JSC::AssemblyHelpers::removeSpaceBits): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompile):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emitSlow_op_has_indexed_property):
+        (JSC::JIT::emit_op_get_direct_pname):
+        (JSC::JIT::emitSlow_op_get_direct_pname):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_direct_pname):
+        (JSC::JIT::emitSlow_op_get_direct_pname):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitDoubleLoad):
+        (JSC::JIT::emitContiguousLoad):
+        (JSC::JIT::emitArrayStorageLoad):
+        (JSC::JIT::emitSlow_op_get_by_val):
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emitArrayStoragePutByVal):
+        (JSC::JIT::emitSlow_op_put_by_val):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emitSlow_op_get_from_scope):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        (JSC::JIT::emitIntTypedArrayGetByVal):
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::visitChildren):
+        (JSC::DirectArguments::copyBackingStore):
+        (JSC::DirectArguments::overrideArgument):
+        (JSC::DirectArguments::copyToArguments):
+        * runtime/DirectArguments.h:
+        (JSC::DirectArguments::canAccessIndexQuickly):
+        (JSC::DirectArguments::canAccessArgumentIndexQuicklyInDFG):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::pop):
+        (JSC::JSArray::push):
+        (JSC::JSArray::fastSlice):
+        (JSC::JSArray::fastConcatWith):
+        (JSC::JSArray::shiftCountWithArrayStorage):
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        (JSC::JSArray::fillArgList):
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::finalize):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::isNeutered):
+        (JSC::JSArrayBufferView::vector):
+        (JSC::JSArrayBufferView::length):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren):
+        (JSC::JSGenericTypedArrayView<Adaptor>::copyBackingStore):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitChildren):
+        (JSC::JSObject::copyBackingStore):
+        (JSC::JSObject::heapSnapshot):
+        (JSC::JSObject::getOwnPropertySlotByIndex):
+        (JSC::JSObject::putByIndex):
+        (JSC::JSObject::enterDictionaryIndexingMode):
+        (JSC::JSObject::createInitialIndexedStorage):
+        (JSC::JSObject::createArrayStorage):
+        (JSC::JSObject::convertUndecidedToInt32):
+        (JSC::JSObject::convertUndecidedToDouble):
+        (JSC::JSObject::convertUndecidedToContiguous):
+        (JSC::JSObject::constructConvertedArrayStorageWithoutCopyingElements):
+        (JSC::JSObject::convertUndecidedToArrayStorage):
+        (JSC::JSObject::convertInt32ToDouble):
+        (JSC::JSObject::convertInt32ToContiguous):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToContiguous):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+        (JSC::JSObject::setIndexQuicklyToUndecided):
+        (JSC::JSObject::ensureArrayStorageExistsAndEnterDictionaryIndexingMode):
+        (JSC::JSObject::deletePropertyByIndex):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::putIndexedDescriptor):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::putDirectIndexBeyondVectorLength):
+        (JSC::JSObject::getNewVectorLength):
+        (JSC::JSObject::ensureLengthSlow):
+        (JSC::JSObject::reallocateAndShrinkButterfly):
+        (JSC::JSObject::growOutOfLineStorage):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter):
+        (JSC::JSObject::getEnumerableLength):
+        * runtime/JSObject.h:
+        (JSC::JSObject::getArrayLength):
+        (JSC::JSObject::getVectorLength):
+        (JSC::JSObject::canGetIndexQuickly):
+        (JSC::JSObject::getIndexQuickly):
+        (JSC::JSObject::tryGetIndexQuickly):
+        (JSC::JSObject::canSetIndexQuickly):
+        (JSC::JSObject::canSetIndexQuicklyForPutDirect):
+        (JSC::JSObject::setIndexQuickly):
+        (JSC::JSObject::initializeIndex):
+        (JSC::JSObject::hasSparseMap):
+        (JSC::JSObject::inSparseIndexingMode):
+        (JSC::JSObject::inlineStorage):
+        (JSC::JSObject::butterfly):
+        (JSC::JSObject::outOfLineStorage):
+        (JSC::JSObject::locationForOffset):
+        (JSC::JSObject::ensureInt32):
+        (JSC::JSObject::ensureDouble):
+        (JSC::JSObject::ensureContiguous):
+        (JSC::JSObject::ensureArrayStorage):
+        (JSC::JSObject::arrayStorage):
+        (JSC::JSObject::arrayStorageOrNull):
+        (JSC::JSObject::ensureLength):
+        (JSC::JSObject::putDirectWithoutTransition):
+        * runtime/MapData.h:
+        (JSC::JSIterator>::IteratorData::next):
+        (JSC::JSIterator>::IteratorData::refreshCursor):
+        * runtime/MapDataInlines.h:
+        (JSC::JSIterator>::find):
+        (JSC::JSIterator>::add):
+        (JSC::JSIterator>::remove):
+        (JSC::JSIterator>::replaceAndPackBackingStore):
+        (JSC::JSIterator>::replaceBackingStore):
+        (JSC::JSIterator>::ensureSpaceForAppend):
+        (JSC::JSIterator>::visitChildren):
+        (JSC::JSIterator>::copyBackingStore):
+        * runtime/Options.h:
+
+2016-03-15  Saam barati  <sbarati@apple.com>
+
+        Destructuring parameters are evaluated in the wrong scope
+        https://bugs.webkit.org/show_bug.cgi?id=155454
+
+        Reviewed by Geoffrey Garen.
+
+        This patch makes our engine compatible with how parameter
+        lists are evaluated in ES6. A parameter list that contains
+        a rest parameter, any destructuring patterns, or default parameter values, 
+        is classified as being non-simple. Non-simple parameter lists
+        must get their own scope to live in, and the variables in the
+        scope are under TDZ. This means that functions evaluated in the
+        parameter list don't have access to variables inside the function
+        body. Also, non-simple parameter lists get the strict-mode arguments object.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::~BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeStack):
+        (JSC::BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded):
+        * bytecompiler/BytecodeGenerator.h:
+        * parser/Nodes.h:
+        (JSC::FunctionParameters::size):
+        (JSC::FunctionParameters::at):
+        (JSC::FunctionParameters::append):
+        (JSC::FunctionParameters::hasDefaultParameterValues): Deleted.
+        * tests/es6.yaml:
+        * tests/stress/parameter-scoping.js: Added.
+        (assert):
+        (test):
+        (test.foo):
+        (test.):
+
+2016-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Don't reference the properties of @Reflect directly
+        https://bugs.webkit.org/show_bug.cgi?id=155436
+
+        Reviewed by Geoffrey Garen.
+
+        Reflect.ownKeys and Reflect.getOwnPropertyDescriptor can be altered with the user-crafted values.
+        Instead of referencing them directly, let's reference them through private names.
+
+        * builtins/ObjectConstructor.js:
+        (assign):
+        * runtime/CommonIdentifiers.h:
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation): Deleted.
+        * runtime/ReflectObject.cpp:
+        (JSC::ReflectObject::finishCreation):
+        * tests/stress/object-assign-correctness.js:
+        (runTests.):
+        (runTests.get let):
+        (Reflect.ownKeys):
+        (Reflect.getOwnPropertyDescriptor):
+        (test.let.handler.switch.case.string_appeared_here.return.get enumerable): Deleted.
+        (test.let.handler.getOwnPropertyDescriptor): Deleted.
+        (test.let.handler.ownKeys): Deleted.
+        (test.let.handler.get getProps): Deleted.
+        (test.let.handler): Deleted.
+        (test): Deleted.
+
+2016-03-14  Daniel Bates  <dabates@apple.com>
+
+        Web Inspector: Display Content Security Policy hash in details sidebar for script and style elements
+        https://bugs.webkit.org/show_bug.cgi?id=155466
+        <rdar://problem/25152480>
+
+        Reviewed by Joseph Pecoraro and Timothy Hatcher.
+
+        Add property contentSecurityPolicyHash to store the CSP hash for an HTML style element or an
+        applicable HTML script element.
+
+        * inspector/protocol/DOM.json:
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * runtime/ArrayBuffer.h:
+        (JSC::ArrayBuffer::create):
+        (JSC::ArrayBuffer::createAdopted):
+        (JSC::ArrayBuffer::createFromBytes):
+        (JSC::ArrayBuffer::createUninitialized):
+        (JSC::ArrayBuffer::slice):
+        (JSC::ArrayBuffer::sliceImpl):
+
+2016-03-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        Andy VanWagoner no longer has time to own Intl
+
+        * features.json:
+        Andy is busy with other things.
+
+        Andy, thanks for your amazing work on Intl and your dedication
+        to making things right.
+
+2016-03-14  Julien Brianceau  <jbriance@cisco.com>
+
+        [mips] Fix unaligned access in LLINT.
+        https://bugs.webkit.org/show_bug.cgi?id=153228
+
+        Address loads used with btbxx opcodes were wrongly converted to lw
+        instruction instead of lbu, leading to unaligned access on mips
+        platforms. This is not a bug as it's silently fixed up by kernel,
+        but it's more efficient to avoid unaligned accesses for mips.
+
+        Reviewed by Geoffrey Garen.
+
+        * offlineasm/mips.rb:
+
+2016-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r194394): >2x slow-down on CDjs
+        https://bugs.webkit.org/show_bug.cgi?id=155471
+
+        Unreviewed (rollout).
+
+        This revision changes localeCompare() so that it's *much* slower than before. It's
+        understandable that sometimes things will get a tiny bit slower when implementing new
+        language features, but more than 2x regression on a major benchmark is not OK.
+
+        This rolls out that change. We can reland it once we think about how to do it in a
+        performant way.
+
+        * builtins/StringPrototype.js:
+        (search):
+        (localeCompare): Deleted.
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2016-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Need to distinguish between Symbol() and Symbol("").
+        https://bugs.webkit.org/show_bug.cgi?id=155438
+
+        Reviewed by Saam Barati.
+
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::PrivateName):
+
+2016-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Temporarily disable the separated heap.
+        https://bugs.webkit.org/show_bug.cgi?id=155472
+
+        Reviewed by Geoffrey Garen.
+
+        Temporarily disable this.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Reduce generated JSON HeapSnapshot size
+        https://bugs.webkit.org/show_bug.cgi?id=155460
+
+        Reviewed by Geoffrey Garen.
+
+        Adjust the HeapSnapshot JSON to better reduce its size.
+        Changes include:
+
+          - avoid inner array groups and instead just have a large array for
+            nodes/edges. This removes lots of small array allocations.
+          - eliminate duplicate edges
+          - avoid duplicating edge names by including them in their own table;
+          - now both the nodes and edges lists hold only integers
+
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::json):
+        Add some more documentation for the slightly modified format.
+        While generating, clear data structures as early as possible.
+
+        * heap/HeapSnapshotBuilder.h:
+        (JSC::HeapSnapshotEdge::HeapSnapshotEdge):
+        During JSON building, the edge's cell pointers are converted to the
+        identifier they point to. This avoids having to re-lookup the identifier.
+
+        * tests/heapProfiler/driver/driver.js:
+        (CheapHeapSnapshotEdge):
+        (CheapHeapSnapshot):
+        (CheapHeapSnapshot.prototype.edgeNameFromTableIndex):
+        (HeapSnapshot):
+        Update test driver for slightly different snapshot format.
+
+2016-03-14  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to eliminate cloned arguments objects that use the length property
+        https://bugs.webkit.org/show_bug.cgi?id=155391
+
+        Reviewed by Geoffrey Garen.
+
+        Previously if a programmer tried to use arguments.length in a strict function we would not eliminate the
+        arguments object. We were unable to eliminate the arguments object because the user would get a cloned arguments
+        object, which does not special case the length property. Thus, in order to get arguments elimination for cloned
+        we need to add a special case. There are two things that need to happen for the elimination to succeed.
+
+        First, we need to eliminate the CheckStructure blocking the GetByOffset for the length property. In order to
+        eliminate the check structure we need to prove to the Abstract Interpreter that this structure check is
+        unnesssary. This didn't occur before for two reasons: 1) CreateClonedArguments did not set the structure it
+        produced. 2) Even if CreateClonedArguments provided the global object's cloned arguments structure we would
+        transition the new argements object when we added the length property during construction. To fix the second
+        problem we now pre-assign a slot on clonedArgumentsStructure for the length property. Additionally, in order to
+        prevent future transitions of the structure we need to choose an indexing type for the structure. Since, not
+        eliminating the arguments object is so expensive we choose to have all cloned arguments start with continuous
+        indexing type, this avoids transitioning when otherwise we would not have to. In the future we should be smarter
+        about choosing the indexing type but since its relatively rare to have a arguments object escape we don't worry
+        about this for now.
+
+        Additionally, this patch renames all former references of outOfBandArguments to clonedArguments and adds
+        extra instrumentation to DFGArgumentsEliminationPhase.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/ValueRecovery.h:
+        (JSC::ValueRecovery::clonedArgumentsThatWereNotCreated):
+        (JSC::ValueRecovery::outOfBandArgumentsThatWereNotCreated): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCreateClonedArguments):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * dfg/DFGVariableEventStream.cpp:
+        (JSC::DFG::VariableEventStream::tryToSetConstantRecovery):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateClonedArguments):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_cloned_arguments):
+        (JSC::JIT::emit_op_create_out_of_band_arguments): Deleted.
+        * llint/LowLevelInterpreter.asm:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::ClonedArguments):
+        (JSC::ClonedArguments::createEmpty):
+        (JSC::ClonedArguments::createWithInlineFrame):
+        (JSC::ClonedArguments::createByCopyingFrom):
+        (JSC::ClonedArguments::createStructure):
+        * runtime/ClonedArguments.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::clonedArgumentsStructure):
+        (JSC::JSGlobalObject::outOfBandArgumentsStructure): Deleted.
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make JSON.stringify ES6 compatible
+        https://bugs.webkit.org/show_bug.cgi?id=155448
+
+        Reviewed by Sam Weinig and Mark Lam.
+
+        We weren't following the spec with respect to the "toJSON" property
+        of the thing being stringified. We were perform hasProperty(.)
+        on "toJSON" instead of get(.). This patch changes it our
+        implementation to perform get(value, "toJSON").
+
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isFunction):
+        (JSC::JSValue::isCallable):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::toJSON):
+        (JSC::Stringifier::toJSONImpl):
+        (JSC::Stringifier::appendStringifiedValue):
+        * tests/es6.yaml:
+        * tests/stress/proxy-json.js:
+        (test):
+        (test.let.handler.get assert):
+        (test.let.handler):
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        [ES6] Disallow var assignments in for-in loops
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+
+        Reviewed by Mark Lam.
+
+        We're doing this in its own patch instead of the patch for https://bugs.webkit.org/show_bug.cgi?id=155384
+        because last time we made this change it broke some websites. Lets try making
+        it again because it's what the ES6 mandates. If it still breaks things we will
+        roll it out.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        assignments in for-in/for-of header not allowed
+        https://bugs.webkit.org/show_bug.cgi?id=155384
+
+        Reviewed by Darin Adler.
+
+        This patch prevents assignments to the loop variable
+        in for in/of loops in all but one situation. The following
+        syntax is still allowed even though the spec prevents it:
+        ```
+        for (var i = X in blah) ;
+        ```
+        If the loop contains let/const, destructuring, or is a for-of
+        loop, we always throw a syntax error if there is an assignment.
+        We can do this with full backwards compatibility.
+        We only allow the above type of for-in loops because Oliver told
+        me that when he tried to make such programs illegal he ran
+        into real websites breaking.
+
+        This patch also removed the !::CreatesAST compile-time branch when checking
+        assignments to new.target. This was a dangerous thing for me
+        to introduce into our parser. There are times where ::CreatesAST
+        is true but we also want to check for syntax errors. For example,
+        when parsing the top-level AST of a program. Though this check
+        was technically correct, it's dangerous to have. It was correct
+        because we would always be reparsing the new.target assignment
+        because new.target is only allowed inside a function. That made it
+        so that (!::CreatesAST <=> we care about new.target assignment syntax errors).
+        But, (!::CreatesAST <=> we care about syntax error X) is not true in general.
+        I think it's safer to remove such code.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createNewTargetExpr):
+        (JSC::ASTBuilder::isNewTarget):
+        (JSC::ASTBuilder::createResolve):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isBoolean):
+        (JSC::ExpressionNode::isSpreadExpression):
+        (JSC::ExpressionNode::isSuperNode):
+        (JSC::ExpressionNode::isNewTarget):
+        (JSC::ExpressionNode::isBytecodeIntrinsicNode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parsePrimaryExpression): Deleted.
+        (JSC::Parser<LexerType>::parseMemberExpression): Deleted.
+
+2016-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added new port JSCOnly.
+        https://bugs.webkit.org/show_bug.cgi?id=154512
+
+        Reviewed by Michael Catanzaro.
+
+        This port allows to build JavaScriptCore engine with minimal
+        dependencies.
+
+        * PlatformJSCOnly.cmake: Added.
+
 2016-03-12  Mark Lam  <mark.lam@apple.com>
 
         http://kangax.github.io/compat-table/esnext/ crashes reliably.

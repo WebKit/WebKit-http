@@ -1,3 +1,399 @@
+2016-03-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        EFL build has been broken since r198180
+        https://bugs.webkit.org/show_bug.cgi?id=155488
+
+        Unreviewed build fix.
+
+        * WebProcess/UserContent/WebUserContentController.h: Use ENABLE(USER_MESSAGE_HANDLERS) guard. 
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r197939): ASSERTION FAILED: url.containsOnlyASCII() in URL.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=155449
+        <rdar://problem/25134826>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Bump WK2 Network Disk Cache version after r197939 as the new cache format
+        is not compatible with the old one and leads to assertions being hit when
+        browsing in Debug builds.
+
+        SubresourceInfo used to only contain a boolean and would therefore be
+        serialized as "0" / "1". However, after r197939, a URL field was added
+        and when trying to decode old cache entries with the new format, we
+        would try to construct a URL from the String "0" or "1". This would
+        assert because these are not valid URLs.
+
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2016-03-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r197981.
+
+        Caused a massive PLT regression on Mac.
+
+        Reverted changeset:
+
+        "Font antialiasing (smoothing) changes when elements are
+        rendered into compositing layers"
+        https://bugs.webkit.org/show_bug.cgi?id=23364
+        http://trac.webkit.org/changeset/197981
+
+2016-03-14  Sam Weinig  <sam@webkit.org>
+
+        Add a baseURL parameter to _WKUserStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=155219
+
+        Reviewed by Tim Horton.
+
+        - Moves to a model for user content where instead of using a WebCore::UserContentController
+          object, we implement the new WebCore::UserContentProvider interface (on the existing 
+          WebUserContentController object).
+        - Uses this to maintain maps of UserStylesSheets and UserScripts along with their identifiers,
+          freeing up the URL, which had been acting as the identifier, to be used as the baseURL which
+          was what it was intended for.
+        - Adds a baseURL property to _WKUserStyleSheet.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add new files.
+
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        Add support for sending WebUserContentControllerDataTypes.
+
+        * Shared/WebUserContentControllerDataTypes.cpp: Added.
+        (WebKit::WebUserScriptData::encode):
+        (WebKit::WebUserScriptData::decode):
+        (WebKit::WebUserStyleSheetData::encode):
+        (WebKit::WebUserStyleSheetData::decode):
+        * Shared/WebUserContentControllerDataTypes.h: Added.
+        Add helper types for sending user content over IPC.
+
+        * UIProcess/API/APIUserScript.cpp:
+        (API::UserScript::generateUniqueURL):
+        (API::UserScript::UserScript):
+        * UIProcess/API/APIUserScript.h:
+        * UIProcess/API/APIUserStyleSheet.cpp:
+        (API::UserStyleSheet::generateUniqueURL):
+        (API::UserStyleSheet::UserStyleSheet):
+        * UIProcess/API/APIUserStyleSheet.h:
+        Add identifiers for tracking across processes.
+
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.h:
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.mm:
+        (-[_WKUserStyleSheet initWithSource:forMainFrameOnly:legacyWhitelist:legacyBlacklist:baseURL:userContentWorld:]):
+        (-[_WKUserStyleSheet baseURL]):
+        Add new initializer which takes a baseURL as well as an accessor for the baseURL.
+
+        * UIProcess/UserContent/WebUserContentControllerProxy.cpp:
+        (WebKit::WebUserContentControllerProxy::addProcess):
+        (WebKit::WebUserContentControllerProxy::addUserScript):
+        (WebKit::WebUserContentControllerProxy::removeUserScript):
+        (WebKit::WebUserContentControllerProxy::addUserStyleSheet):
+        (WebKit::WebUserContentControllerProxy::removeUserStyleSheet):
+        Pass identifiers as well as user content.
+
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::addUserScript):
+        (WebKit::InjectedBundle::addUserStyleSheet):
+        Move user content in via move semantics rather than using a unique_ptr.
+
+        (WebKit::InjectedBundle::removeUserScript):
+        (WebKit::InjectedBundle::removeUserStyleSheet):
+        (WebKit::InjectedBundle::removeUserScripts):
+        (WebKit::InjectedBundle::removeUserStyleSheets):
+        (WebKit::InjectedBundle::removeAllUserContent):
+        Update for new function signatures.
+
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserContentController::WebUserContentController):
+        (WebKit::WebUserContentController::~WebUserContentController):
+        (WebKit::WebUserContentController::addUserContentWorlds):
+        (WebKit::WebUserContentController::removeUserContentWorlds):
+        (WebKit::WebUserContentController::addUserScripts):
+        (WebKit::WebUserContentController::removeUserScript):
+        (WebKit::WebUserContentController::removeAllUserScripts):
+        (WebKit::WebUserContentController::addUserStyleSheets):
+        (WebKit::WebUserContentController::removeUserStyleSheet):
+        (WebKit::WebUserContentController::removeAllUserStyleSheets):
+        (WebKit::WebUserContentController::addUserScriptMessageHandlers):
+        (WebKit::WebUserContentController::removeUserScriptMessageHandler):
+        (WebKit::WebUserContentController::addUserContentExtensions):
+        (WebKit::WebUserContentController::removeUserContentExtension):
+        (WebKit::WebUserContentController::removeAllUserContentExtensions):
+        (WebKit::WebUserContentController::addUserScriptInternal):
+        (WebKit::WebUserContentController::addUserScript):
+        (WebKit::WebUserContentController::removeUserScriptWithURL):
+        (WebKit::WebUserContentController::removeUserScriptInternal):
+        (WebKit::WebUserContentController::removeUserScripts):
+        (WebKit::WebUserContentController::addUserStyleSheetInternal):
+        (WebKit::WebUserContentController::addUserStyleSheet):
+        (WebKit::WebUserContentController::removeUserStyleSheetWithURL):
+        (WebKit::WebUserContentController::removeUserStyleSheetInternal):
+        (WebKit::WebUserContentController::removeUserStyleSheets):
+        (WebKit::WebUserContentController::removeAllUserContent):
+        (WebKit::WebUserContentController::forEachUserScript):
+        (WebKit::WebUserContentController::forEachUserStyleSheet):
+        * WebProcess/UserContent/WebUserContentController.h:
+        * WebProcess/UserContent/WebUserContentController.messages.in:
+        Convert to inheriting from UserContentProvider, rather than containing a UserContentController.
+        This means adding the storage for the user content, which has been simplified to avoid using
+        unique_ptrs.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::addUserScript):
+        (WebKit::WebPage::addUserStyleSheet):
+        (WebKit::WebPage::removeAllUserContent):
+        Update to call the WebUserContentController, rather than going to the UserContentController, which
+        no longer exists.
+
+        * WebProcess/WebPage/WebPageGroupProxy.cpp:
+        (WebKit::WebPageGroupProxy::userContentController):
+        * WebProcess/WebPage/WebPageGroupProxy.h:
+        Return the WebUserContentController rather than old UserContentController.
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * Shared/APIWebArchive.mm:
+        (API::WebArchive::WebArchive):
+        * Shared/APIWebArchiveResource.mm:
+        (API::WebArchiveResource::data):
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::addArchiveResource):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::bufferForType):
+        (WebKit::WebPlatformStrategies::readBufferFromPasteboard):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebCoreSupport/ios/WebEditorClientIOS.mm:
+        (WebKit::WebEditorClient::documentFragmentFromAttributedString):
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::WebDragClient::declareAndWriteDragImage):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::webArchiveData):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::resourceDataForFrame):
+
+2016-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Temporarily disable the separated heap.
+        https://bugs.webkit.org/show_bug.cgi?id=155472
+
+        Reviewed by Geoffrey Garen.
+
+        Temporarily disable this.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-14  Beth Dakin  <bdakin@apple.com>
+
+        [iOS] WKPreviewAction conforms to NSCopying but doesn’t override -
+        copyWithZone:
+        https://bugs.webkit.org/show_bug.cgi?id=155395
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKPreviewActionItem.mm:
+        (-[WKPreviewAction copyWithZone:]):
+
+2016-03-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove usage of -[UIGestureRecognizer requireOtherGestureToFail:]
+        https://bugs.webkit.org/show_bug.cgi?id=155461
+        rdar://problem/25143282
+
+        Reviewed by Beth Dakin.
+
+        Use -[UIGestureRecognizer requireGestureRecognizerToFail:] instead, which has been API ever since UIGestureRecognizer was added.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _createAndConfigureDoubleTapGestureRecognizer]):
+
+2016-03-14  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION (r191691): Can't Share Selected Text
+        https://bugs.webkit.org/show_bug.cgi?id=155459
+        rdar://problem/24893625
+
+        Reviewed by Tim Horton.
+
+        Add the selected text as well. Somehow this got lost in the refactoring.
+
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::createShareMenuItem):
+
+2016-03-14  Tim Horton  <timothy_horton@apple.com>
+
+        Revert r194125 and r194186: We're going to fix this a different way.
+
+        * Shared/NativeWebGestureEvent.h:
+        * Shared/mac/NativeWebGestureEventMac.mm:
+        (WebKit::pointForEvent):
+        (WebKit::NativeWebGestureEvent::NativeWebGestureEvent):
+        (WebKit::distanceForTouches): Deleted.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView selectFindMatch:completionHandler:]):
+        (-[WKWebView _web_superInputContext]):
+        (-[WKWebView touchesBeganWithEvent:]): Deleted.
+        (-[WKWebView touchesMovedWithEvent:]): Deleted.
+        (-[WKWebView touchesEndedWithEvent:]): Deleted.
+        (-[WKWebView touchesCancelledWithEvent:]): Deleted.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView namesOfPromisedFilesDroppedAtDestination:]):
+        (-[WKView initWithFrame:processPool:configuration:webView:]):
+        (-[WKView touchesBeganWithEvent:]): Deleted.
+        (-[WKView touchesMovedWithEvent:]): Deleted.
+        (-[WKView touchesEndedWithEvent:]): Deleted.
+        (-[WKView touchesCancelledWithEvent:]): Deleted.
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::magnifyWithEvent):
+        (WebKit::WebViewImpl::smartMagnifyWithEvent):
+        (WebKit::WebViewImpl::rotateWithEvent):
+        (WebKit::WebViewImpl::touchesOrderedByAge): Deleted.
+        (WebKit::WebViewImpl::touchesBeganWithEvent): Deleted.
+        (WebKit::WebViewImpl::touchesMovedWithEvent): Deleted.
+        (WebKit::WebViewImpl::touchesEndedWithEvent): Deleted.
+        (WebKit::WebViewImpl::touchesCancelledWithEvent): Deleted.
+
+2016-03-14  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        Create an empty PDF selection.
+
+        * Shared/mac/PDFKitImports.h:
+        * Shared/mac/PDFKitImports.mm:
+        (WebKit::pdfSelectionClass):
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::nextMatchForString):
+
+2016-03-14  Beth Dakin  <bdakin@apple.com>
+
+        Unable to commit previews in Mobile Safari
+        https://bugs.webkit.org/show_bug.cgi?id=155450
+        -and corresponding-
+        rdar://problem/25135529
+
+        Reviewed by Tim Horton.
+
+        _uiDelegateProvidedPreviewingViewController was being consulted before 
+        invoking the old SPI, which was always wrong. It should have been consulted 
+        before calling the new API! But also, it doesn’t seem to be necessary at all 
+        since [WKContentView _previewItemController:commitPreview:] is only invoked 
+        when a custom view controller has been provided.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _registerPreview]):
+        (-[WKContentView _unregisterPreview]):
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _presentedViewControllerForPreviewItemController:]):
+        (-[WKContentView _previewItemController:commitPreview:]):
+
+2016-03-14  Brent Fulgham  <bfulgham@apple.com>
+
+        PingHandle delete's itself but pointer is still used by handleDataURL
+        https://bugs.webkit.org/show_bug.cgi?id=154752
+        <rdar://problem/24872347>
+
+        Reviewed by Alex Christensen.
+
+        When a PingLoad is destroyed, we should tell its client so that the client can clear the pointer it
+        holds to the element to avoid accidentally attempting to use deallocated memory.
+
+        * NetworkProcess/PingLoad.h:
+        (WebKit::PingLoad::~PingLoad): Notify the client we are being destroyed.
+
+2016-03-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix the GTK+ build after r198124.
+
+        WebsiteDataTypes is now an OptionSet.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkit_web_context_clear_cache):
+
+2016-03-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Reimplement webkit_web_context_clear_cache functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=146041
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkit_web_context_clear_cache):
+
+2016-03-14  Jeremy Huddleston Sequoia  <jeremyhu@apple.com>
+
+        Install WebKit2 WebProcess NetworkProcess on OSX when not building the Mac PORT
+        https://bugs.webkit.org/show_bug.cgi?id=152651
+
+        Reviewed by Philippe Normand.
+
+        * CMakeLists.txt:
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-13  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Injected bundle in relocatable WebContent service can’t use XPC services from other relocatable frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=155414
+        <rdar://problem/24428418>
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/DebugRelease.xcconfig:
+          Set WK_WEBCONTENT_SERVICE_NEEDS_XPC_DOMAIN_EXTENSION_ENTITLEMENT to NO, because
+          engineering builds are ad-hoc signed and therefore can’t have a private entitlement.
+
+        * Configurations/WebContent-OSX.entitlements: Added. Includes the XPC domain extension
+          entitlement.
+
+        * Configurations/WebContentService.xcconfig:
+          Set WK_WEBCONTENT_SERVICE_NEEDS_XPC_DOMAIN_EXTENSION_ENTITLEMENT to YES if not already set
+          and the framework is relocatable. Set CODE_SIGN_ENTITLEMENTS to the new entitlements file
+          if the domain extension entitlement is needed.
+
+        * WebKit2.xcodeproj/project.pbxproj: Added reference to new file.
+
+2016-03-13  Dean Jackson  <dino@apple.com>
+
+        <attachment> should be a runtime-enabled feature
+        https://bugs.webkit.org/show_bug.cgi?id=155413
+        <rdar://problem/25120753>
+
+        Reviewed by Sam Weinig and Anders Carlsson.
+
+        Add an internal setting on WKWebViewConfiguration
+        to enable the <attachment> element support.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _attachmentElementEnabled]):
+        (-[WKWebViewConfiguration _setAttachmentElementEnabled:]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
 2016-03-12  Sam Weinig  <sam@webkit.org>
 
         WebKit can easily crash below NetworkSession::dataTaskForIdentifier() with NSURLSession enabled

@@ -323,6 +323,9 @@ imported/w3c/web-platform-tests/fetch/api/basic/scheme-blob-worker.html [ Failur
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
 
+# Fetch API tests
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/response/response-consume.html [ Pass Crash ]
+
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]
 webkit.org/b/137568 css3/conditional/w3c/at-supports-014.html [ ImageOnlyFailure ]
@@ -797,7 +800,6 @@ fast/table/hittest-tablecell-right-edge.html [ Pass Failure ]
 css3/flexbox/multiline-reverse-wrap-baseline.html [ ImageOnlyFailure ]
 ietestcenter/css3/flexbox/flexbox-layout-001.htm [ ImageOnlyFailure ]
 
-#
 webkit.org/b/150598 fast/repaint/table-hover-on-link.html [ Pass Failure ]
 
 webkit.org/b/151949 streams/reference-implementation/pipe-to.html [ Failure ]
@@ -892,6 +894,8 @@ loader/stateobjects/replacestate-size.html [ Slow ]
 imported/blink/fast/multicol/outlines-at-column-boundaries.html [ ImageOnlyFailure ]
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ ImageOnlyFailure ]
 
+webkit.org/b/94458 http/tests/security/aboutBlank/security-context-write.html [ Skip ]
+
 ########################################
 ### START OF IndexedDB failures
 
@@ -928,7 +932,7 @@ storage/indexeddb/delete-closed-database-object.html [ Skip ]
 storage/indexeddb/request-leak-private.html [ Failure ]
 storage/indexeddb/request-leak.html [ Failure ]
 
-webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Pass Timeout ]
+webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Skip ]
 
 # No workers support in Modern IDB yet
 http/tests/security/cross-origin-worker-indexeddb-allowed.html

@@ -1,3 +1,246 @@
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show path from root to instances in the Heap Snapshot content view
+        https://bugs.webkit.org/show_bug.cgi?id=155478
+        <rdar://problem/25157408>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New strings and resources.
+
+        * UserInterface/Models/HeapSnapshotNode.js:
+        (WebInspector.HeapSnapshotNode.prototype.get shortestGCRootPath):
+        (WebInspector.HeapSnapshotNode.prototype._gcRootPaths.visitNode):
+        (WebInspector.HeapSnapshotNode.prototype._gcRootPaths):
+        Helper to get the shortest path from a GC root to the node.
+
+        * UserInterface/Models/HeapSnapshotRootPath.js: Added.
+        (WebInspector.HeapSnapshotRootPath):
+        (WebInspector.HeapSnapshotRootPath.emptyPath):
+        (WebInspector.HeapSnapshotRootPath.prototype.get node):
+        (WebInspector.HeapSnapshotRootPath.prototype.get parent):
+        (WebInspector.HeapSnapshotRootPath.prototype.get pathComponent):
+        (WebInspector.HeapSnapshotRootPath.prototype.get rootNode):
+        (WebInspector.HeapSnapshotRootPath.prototype.get fullPath):
+        (WebInspector.HeapSnapshotRootPath.prototype.isRoot):
+        (WebInspector.HeapSnapshotRootPath.prototype.isEmpty):
+        (WebInspector.HeapSnapshotRootPath.prototype.isGlobalScope):
+        (WebInspector.HeapSnapshotRootPath.prototype.isPathComponentImpossible):
+        (WebInspector.HeapSnapshotRootPath.prototype.isFullPathImpossible):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendInternal):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendArrayIndex):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendPropertyName):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendVariableName):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendGlobalScopeName):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendEdge):
+        (WebInspector.HeapSnapshotRootPath.prototype._canPropertyNameBeDotAccess):
+        Helper class, like PropertyPath, for building a string path to
+        a HeapSnapshotNode. Typically the path is built up with
+        HeapSnapshotEdges and so you can build a string such as:
+        `window.foo[0]["prop erty"]._foo`.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotList):
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotTimelineRecord):
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotDiff):
+        (WebInspector.HeapAllocationsTimelineView.prototype.shown):
+        (WebInspector.HeapAllocationsTimelineView.prototype.hidden):
+        (WebInspector.HeapAllocationsTimelineView.prototype.closed):
+        Propogate shown/hidden to the contentViewContainer.
+        Cleanup the contentViewContainer when closing.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.logHeapSnapshotNode):
+        Helper for logging a HeapSnapshotNode value to the console. If the
+        path is possible from the root, just output the path in the console
+        otherwise use a synthetic "Heap Snapshot Object (@1234)" like string.
+        For strings, just get the preview as we won't get a real RemoteObject.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.createCellContent):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPath):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPathRow):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.sanitizeClassName):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.stringifyEdge):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler):
+        Give the @1234 id element a mouseover handler to display a popover
+        with the path from a root. Stop the path at "Window" if possible
+        to avoid displaying internals like "JSDOMWindowShell".
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.css:
+        (.heap-snapshot .object-id):
+        (.heap-snapshot .object-id:hover):
+        (.heap-snapshot > .data-grid tr:not(.selected) td .object-id): Deleted.
+        (.heap-snapshot .icon):
+        (.heap-snapshot-instance-popover-content):
+        (.heap-snapshot-instance-popover-content table):
+        (.heap-snapshot-instance-popover-content tr):
+        (.heap-snapshot-instance-popover-content td):
+        (.heap-snapshot-instance-popover-content td.edge-name):
+        (.heap-snapshot-instance-popover-content td.object-data):
+        (.heap-snapshot-instance-popover-content .node):
+        (.heap-snapshot-instance-popover-content .node *):
+        Styles for contents of the popover.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.hidden):
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.get popover):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.get popoverNode):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.set popoverNode):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.hidden):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.willDismissPopover):
+        Have a single popover for the entire tree. Cache and clear
+        contents of the popover when appropriate.
+
+2016-03-14  Daniel Bates  <dabates@apple.com>
+
+        Web Inspector: Display Content Security Policy hash in details sidebar for script and style elements
+        https://bugs.webkit.org/show_bug.cgi?id=155466
+        <rdar://problem/25152480>
+
+        Reviewed by Joseph Pecoraro and Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js: Add English localized string for the CSP hash UI label.
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode): Initialize the instance variable this._contentSecurityPolicyHash
+        with the value passed from the Inspector back end.
+        (WebInspector.DOMNode.prototype.contentSecurityPolicyHash): Returns the CSP hash for this node.
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel): Append a row to the end of section Identity to display
+        the CSP hash (if applicable).
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype.refresh): Query the underlying WebInspector.DOMNode
+        for the CSP hash of the selected node.
+
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION(r197974): HeapAllocationsTimelineView broken, doesn't handle Timeline Sidebar Navigation removal
+        https://bugs.webkit.org/show_bug.cgi?id=155458
+        <rdar://problem/25150803>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView):
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotTimelineRecord):
+        (WebInspector.HeapAllocationsTimelineView.prototype.get selectionPathComponents):
+        (WebInspector.HeapAllocationsTimelineView.prototype.layout):
+        (WebInspector.HeapAllocationsTimelineView.prototype._compareHeapSnapshotsClicked):
+        (WebInspector.HeapAllocationsTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.HeapAllocationsTimelineView.prototype.get navigationSidebarTreeOutlineLabel): Deleted.
+        Update the TimelineView now that there is no sidebar.
+        Remove any TreeOutline logic and replace with DataGrid logic.
+
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION(r198026): Can't click on Snapshot in Timeline Overview
+        https://bugs.webkit.org/show_bug.cgi?id=155457
+        <rdar://problem/25150706>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._handleClick):
+        The conditional was accidentally inverted in r198026.
+
+2016-03-14  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: cssmin.py does not handle calc(var(--toolbar-height) + var(--tab-bar-height))
+
+        https://bugs.webkit.org/show_bug.cgi?id=155464
+        rdar://problem/25152196
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/cssmin.py:
+        (cssminify): Check for var when stripping spaces around + and -.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._viewModeDidChange):
+        Drive-by fix to add a missing semi-colon found by the copy-user-interface-resources-dryrun.rb script.
+
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Reduce generated JSON HeapSnapshot size
+        https://bugs.webkit.org/show_bug.cgi?id=155460
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Models/HeapSnapshot.js:
+        (WebInspector.HeapSnapshot.fromPayload):
+        Update for the slightly modified format.
+
+2016-03-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198095.
+        https://bugs.webkit.org/show_bug.cgi?id=155467
+
+        Made text look poor (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Large repaints when typing any character in
+        console"
+        https://bugs.webkit.org/show_bug.cgi?id=155387
+        http://trac.webkit.org/changeset/198095
+
+2016-03-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Reduce unnecessary dashboard repaints
+        https://bugs.webkit.org/show_bug.cgi?id=155425
+        <rdar://problem/25138247>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView.prototype._appendElementForNamedItem.):
+        newText is a number for console message counters.
+
+2016-03-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Large repaints when typing any character in console
+        https://bugs.webkit.org/show_bug.cgi?id=155387
+        <rdar://problem/25125720>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Main.css:
+        (#content):
+
+2016-03-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Memory timeline pie charts are misaligned when there is no recording
+        https://bugs.webkit.org/show_bug.cgi?id=155421
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .overview):
+        Removed top padding to match bottom padding.
+
+        (.timeline-view.memory .legend > .row):
+        (.timeline-view.memory .legend):
+        Moved specified width to prevent unrecorded timelines from having graphs
+        that are offset horizontally.
+
+2016-03-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: REGRESSION: Styles sidebar inline swatches are oddly shaped
+        https://bugs.webkit.org/show_bug.cgi?id=155410
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/InlineSwatch.css:
+        (.inline-swatch):
+        (.inline-swatch > span):
+        Added more consistent border-radius with UserInterface/Images/CubicBezier.svg.
+
+        * UserInterface/Views/VisualStyleColorPicker.css:
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .inline-swatch.color):
+        Made border-radius consistent with the adjacent input field.
+
 2016-03-12  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Convert toolbar and tab bar to position absolute to reduce repaint areas

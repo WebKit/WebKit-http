@@ -39,11 +39,19 @@ static uint64_t generateIdentifier()
 
 WebCore::URL UserStyleSheet::generateUniqueURL()
 {
+    static uint64_t identifier;
+
     StringBuilder urlStringBuilder;
     urlStringBuilder.appendLiteral("user-style-sheet:");
-    urlStringBuilder.appendNumber(generateIdentifier());
+    urlStringBuilder.appendNumber(++identifier);
     return { { }, urlStringBuilder.toString() };
 }
 
+UserStyleSheet::UserStyleSheet(WebCore::UserStyleSheet userStyleSheet, API::UserContentWorld& world)
+    : m_identifier(generateIdentifier())
+    , m_userStyleSheet(userStyleSheet)
+    , m_world(world)
+{
+}
 
 } // namespace API

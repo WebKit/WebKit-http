@@ -221,8 +221,6 @@ const PutByIdSecondaryTypeObject = 0x38
 const PutByIdSecondaryTypeObjectOrOther = 0x40
 const PutByIdSecondaryTypeTop = 0x48
 
-const CopyBarrierSpaceBits = 3
-
 const CallOpCodeSize = 9
 
 if X86_64 or ARM64 or C_LOOP
@@ -659,10 +657,6 @@ macro preserveReturnAddressAfterCall(destinationRegister)
     else
         error
     end
-end
-
-macro copyBarrier(value, slow)
-    btpnz value, CopyBarrierSpaceBits, slow
 end
 
 macro functionPrologue()
@@ -1212,9 +1206,9 @@ _llint_op_create_scoped_arguments:
     dispatch(3)
 
 
-_llint_op_create_out_of_band_arguments:
+_llint_op_create_cloned_arguments:
     traceExecution()
-    callSlowPath(_slow_path_create_out_of_band_arguments)
+    callSlowPath(_slow_path_create_cloned_arguments)
     dispatch(2)
 
 

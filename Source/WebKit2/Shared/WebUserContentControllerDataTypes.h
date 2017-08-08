@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DFGCopyBarrierOptimizationPhase_h
-#define DFGCopyBarrierOptimizationPhase_h
+#ifndef WebUserContentControllerDataTypes_h
+#define WebUserContentControllerDataTypes_h
 
-#if ENABLE(DFG_JIT)
+#include <WebCore/UserScript.h>
+#include <WebCore/UserStyleSheet.h>
 
-namespace JSC { namespace DFG {
+namespace IPC {
+class ArgumentDecoder;
+class ArgumentEncoder;
+}
 
-class Graph;
+namespace WebKit {
 
-// Converts GetButterfly nodes into GetButterflyReadOnly nodes whenever the butterfly is only used for
-// read-only operations.
-bool performCopyBarrierOptimization(Graph&);
+struct WebUserScriptData {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, WebUserScriptData&);
 
-} } // namespace JSC::DFG
+    uint64_t identifier;
+    uint64_t worldIdentifier;
+    WebCore::UserScript userScript;
+};
 
-#endif // ENABLE(DFG_JIT)
+struct WebUserStyleSheetData {
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, WebUserStyleSheetData&);
 
-#endif // DFGCopyBarrierOptimizationPhase_h
+    uint64_t identifier;
+    uint64_t worldIdentifier;
+    WebCore::UserStyleSheet userStyleSheet;
+};
 
+} // namespace WebKit
+
+#endif // WebUserContentControllerDataTypes_h
