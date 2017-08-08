@@ -156,6 +156,10 @@ using namespace HTMLNames;
 #define NSAccessibilityValueAutofilledAttribute @"AXValueAutofilled"
 #endif
 
+#ifndef NSAccessibilityValueAutofillAvailableAttribute
+#define NSAccessibilityValueAutofillAvailableAttribute @"AXValueAutofillAvailable"
+#endif
+
 #ifndef NSAccessibilityLanguageAttribute
 #define NSAccessibilityLanguageAttribute @"AXLanguage"
 #endif
@@ -1142,7 +1146,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
         
         // checkTextOfParagraph is the only spelling/grammar checker implemented in WK1 and WK2
         Vector<TextCheckingResult> results;
-        checkTextOfParagraph(*checker, text, TextCheckingTypeSpelling, results);
+        checkTextOfParagraph(*checker, text, TextCheckingTypeSpelling, results, node->document().frame()->selection().selection());
         
         size_t size = results.size();
         NSNumber* trueValue = [NSNumber numberWithBool:YES];
@@ -3196,6 +3200,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString:NSAccessibilityPlaceholderValueAttribute])
         return m_object->placeholderValue();
 
+    if ([attributeName isEqualToString:NSAccessibilityValueAutofillAvailableAttribute])
+        return @(m_object->isValueAutofillAvailable());
+    
     if ([attributeName isEqualToString:NSAccessibilityValueAutofilledAttribute])
         return @(m_object->isValueAutofilled());
 

@@ -137,4 +137,13 @@ TEST(WebCore, URLExtras_ParsingError)
     EXPECT_TRUE(encodedHostName == nil);
 }
 
+TEST(WebCore, URLExtras_Nil)
+{
+    NSURL *url1 = WebCore::URLWithUserTypedString(nil, nil);
+    EXPECT_TRUE(url1 == nil);
+
+    NSURL *url2 = WebCore::URLWithUserTypedStringDeprecated(nil, nil);
+    EXPECT_TRUE(url2 == nil);
+}
+
 } // namespace TestWebKitAPI

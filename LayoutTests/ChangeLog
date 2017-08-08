@@ -1,3 +1,484 @@
+2016-03-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement AutoFill Available attribute for a text field
+        https://bugs.webkit.org/show_bug.cgi?id=155567
+
+        Reviewed by Darin Adler.
+
+        * accessibility/auto-fill-types-expected.txt: Added.
+        * accessibility/auto-fill-types.html: Added.
+
+2016-03-17  Mark Lam  <mark.lam@apple.com>
+
+        Method names should not appear in the lexical scope of the method's body.
+        https://bugs.webkit.org/show_bug.cgi?id=155568
+
+        Reviewed by Saam Barati.
+
+        * inspector/model/scope-chain-node-expected.txt:
+        - rebased expected result.
+
+        * js/script-tests/function-toString-vs-name.js:
+        - fixed a bug in the shouldBe() function.
+
+        * js/methods-names-should-not-be-in-lexical-scope-expected.txt: Added.
+        * js/methods-names-should-not-be-in-lexical-scope.html: Added.
+        * js/script-tests/methods-names-should-not-be-in-lexical-scope.js: Added.
+        - test all variations of methods.
+
+2016-03-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, line ending fixes.
+
+        * css2.1/20110323/support/at-import-001.css:
+        * css2.1/20110323/support/at-import-002.css:
+        * css2.1/20110323/support/at-import-004.css:
+        * css2.1/20110323/support/at-import-005.css:
+        * css2.1/20110323/support/at-import-006.css:
+        * css2.1/20110323/support/at-import-007.css:
+        * css2.1/20110323/support/eof-green.css:
+        * storage/indexeddb/set_version_blocked.html:
+        * storage/indexeddb/transaction-read-only.html:
+
+2016-03-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] response-consume.html is crashing on Mac WK1 Debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=155490
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Removed crash debug expectation of response-consume.html
+
+2016-03-17  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCIceCandidate
+        https://bugs.webkit.org/show_bug.cgi?id=155535
+
+        Reviewed by Eric Carlson.
+
+        RTCIceCandidate.html is updated to test the new construction behavior and the nullable
+        attributes. The remaining updated tests simply construct an RTCIceCandidate to be used for
+        test purposes.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        * fast/mediastream/RTCIceCandidate.html:
+        * fast/mediastream/RTCPeerConnection-closed-state.html:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-expected.txt:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params-expected.txt:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params.html:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations.html:
+
+2016-03-17  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Invoking super()/super inside of the eval should not lead to SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=153864
+
+        Reviewed by Saam Barati.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+
+2016-03-16  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Directly composited image layers need pixelsnapping.
+        https://bugs.webkit.org/show_bug.cgi?id=155558
+
+        Reviewed by Simon Fraser.
+
+        In order to match non-composited image size/position, we need to pixelsnap both the contents and the clipping
+        layer bounds for directly composited images.
+
+        * fast/images/hidpi-directly-composited-image-on-subpixel-position-expected.html: Added.
+        * fast/images/hidpi-directly-composited-image-on-subpixel-position.html: Added.
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping mathml/very-large-stretchy-operators.html on ios-simulator debug
+        https://bugs.webkit.org/show_bug.cgi?id=155565
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking compositing/visible-rect/animated-from-none.html as flaky on ios-sim-wk2, failing on ios-sim-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=155495
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-16  Nan Wang  <n_wang@apple.com>
+
+        AX: Expose aria-current status to children
+        https://bugs.webkit.org/show_bug.cgi?id=155469
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-current-global-attribute-expected.txt: Added.
+        * accessibility/aria-current-global-attribute.html: Added.
+
+2016-03-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac] Printing test snapshots are upside-down after r198242
+        https://bugs.webkit.org/show_bug.cgi?id=155543
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        Re-un-skip these tests.
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/controller/runtime-controller.html as flaky on mac
+        https://bugs.webkit.org/show_bug.cgi?id=154688
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=94458
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-16  Daniel Bates  <dabates@apple.com>
+
+        <video> and <audio> elements do not obey Content Security Policy on redirect
+        https://bugs.webkit.org/show_bug.cgi?id=155509
+        <rdar://problem/10234844>
+
+        Reviewed by Alex Christensen.
+
+        Add tests to ensure that the Content Security Policy is enforced on redirects when
+        loading a subresource, including a video or audio file.
+
+        * http/tests/resources/redirect.php: Fix PHP "undefined index" warnings when either query
+        parameter code or refresh (or both) are not specified.
+        * http/tests/security/contentSecurityPolicy/audio-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/audio-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/audio-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/font-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/font-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/font-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/font-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/image-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/image-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/ABCFont.svg: Renamed from LayoutTests/http/tests/security/contentSecurityPolicy/userAgentShadowDOM/resources/ABCFont.svg.
+        * http/tests/security/contentSecurityPolicy/resources/alert-fail.xsl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/alert-pass.xsl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/green-square.svg: Added.
+        * http/tests/security/contentSecurityPolicy/resources/red-square.svg: Added.
+        * http/tests/security/contentSecurityPolicy/resources/xsl-redirect-allowed.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/xsl-redirect-blocked.php: Added.
+        * http/tests/security/contentSecurityPolicy/script-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/script-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/script-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/script-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/stylesheet-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/stylesheet-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/stylesheet-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/stylesheet-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/svg-font-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/svg-font-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/svg-font-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/svg-font-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/svg-image-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/svg-image-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/svg-image-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/svg-image-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/track-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/track-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/track-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/track-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-font.html:
+        * http/tests/security/contentSecurityPolicy/video-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/video-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/video-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/video-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-blocked.html: Added.
+        * platform/efl/TestExpectations: For now skip tests http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-{audio, video}.html
+        until we fix <https://bugs.webkit.org/show_bug.cgi?id=155505>. We will also need to fix
+        <https://bugs.webkit.org/show_bug.cgi?id=153866> before we can unskip test http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html
+        As far as I can tell the functionality exercised by these tests is not being using by the EFL port.
+        * platform/gtk/TestExpectations: For now skip tests http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-{audio, video}.html
+        until we fix <https://bugs.webkit.org/show_bug.cgi?id=155505>. As far as I can tell the functionality
+        exercised by these tests is not being using by the GTK port.
+        * platform/ios-simulator/http/tests/security/contentSecurityPolicy/audio-redirect-blocked-expected.txt: Added expected failure result as
+        AV Foundation is responsible for loading media on iOS. That is, WebCore is not responsible for loading media.
+        * platform/ios-simulator/http/tests/security/contentSecurityPolicy/video-redirect-blocked-expected.txt: Ditto.
+        * platform/mac/TestExpectations: For now skip tests http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-{audio, video}.html
+        until we fix <https://bugs.webkit.org/show_bug.cgi?id=155505>. The functionality exercised by these
+        tests is not used on OS X. Additionally, mark as Failure on Yosemite and ElCapitan the added tests
+        http/tests/security/contentSecurityPolicy/{video, audio}-redirect-blocked.html as we do not support
+        Content Security Policy for media redirects in these versions of OS X.
+
+2016-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/url/host-expected.txt:
+        * fast/url/idna2003-expected.txt:
+        * fast/url/invalid-idn-expected.txt: Added.
+        * fast/url/invalid-idn.html: Added.
+
+2016-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Add support for setting Function.name from computed properties.
+        https://bugs.webkit.org/show_bug.cgi?id=155437
+
+        Reviewed by Filip Pizlo.
+
+        * js/object-literal-computed-methods-expected.txt:
+        - Exercise op_set_function_name at all tiers.
+
+        * js/script-tests/function-toString-vs-name.js:
+        - Added tests for computed properties.
+
+        * js/script-tests/object-literal-computed-methods.js:
+        - rebased results.
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/fast/multicol/dynamic/relayout-abspos-in-relpos-spanner.html as flaky on ios-sim
+        https://bugs.webkit.org/show_bug.cgi?id=155339
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping failing printing tests
+        https://bugs.webkit.org/show_bug.cgi?id=155543
+
+        Unreviewed test gardening.
+
+        Three printing tests that rely on software snapshotting are failing after r198242 exposed
+        an underlying issue. Skipping these tests to get the bots back to green during investigation.
+
+        * TestExpectations:
+
+2016-03-16  Antti Koivisto  <antti@apple.com>
+
+        Don't invalidate style unnecessarily when setting inline style cssText
+        https://bugs.webkit.org/show_bug.cgi?id=155541
+        rdar://problem/23318893
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/style-invalidation-inline-csstext-expected.txt: Added.
+        * fast/css/style-invalidation-inline-csstext.html: Added.
+
+2016-03-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/css/getPropertyValue-webkit-marquee.html after r198255
+        https://bugs.webkit.org/show_bug.cgi?id=155544
+
+        Unreviewed test gardening.
+
+        * fast/css/getPropertyValue-webkit-marquee-expected.txt:
+
+2016-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Reflect.set with receiver
+        https://bugs.webkit.org/show_bug.cgi?id=155294
+
+        Reviewed by Saam Barati.
+
+        Currently, putDelegate (JSLocation is special case) and CustomIndexedSetter work as special setters.
+
+        * js/dom/reflect-set-onto-dom-expected.txt:
+        * js/dom/script-tests/reflect-set-onto-dom.js:
+
+2016-03-15  Zalan Bujtas  <zalan@apple.com>
+
+        Remove overflow: -webkit-marquee
+        https://bugs.webkit.org/show_bug.cgi?id=155517
+        <rdar://problem/25028481>
+
+        Reviewed by Simon Fraser.
+
+        This patch is based on Blink patch from jchaffraix@chromium.org (https://src.chromium.org/viewvc/blink?revision=151756&view=revision)
+
+        * fast/css/getPropertyValue-webkit-marquee.html:
+        * fast/css/webkit-marquee-anonymous-node-crash-expected.txt: Removed.
+        * fast/css/webkit-marquee-anonymous-node-crash.html: Removed.
+
+2016-03-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Expose pointers to SVG elements referenced by aria-labelledby
+        https://bugs.webkit.org/show_bug.cgi?id=155481
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/w3c-svg-name-calculation.html: Modified to also output AXTitleUIElement.
+        * platform/gtk/accessibility/w3c-svg-name-calculation-expected.txt: Updated.
+        * platform/mac/accessibility/w3c-svg-name-calculation-expected.txt: Updated.
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        iOS <attachment> element should allow customization of action text color
+        https://bugs.webkit.org/show_bug.cgi?id=155513
+        <rdar://problem/24805991>
+
+        Reviewed by Simon Fraser.
+
+        * fast/attachment/attachment-action-expected.html: Added.
+        * fast/attachment/attachment-action.html: Added.
+        * platform/ios-simulator/fast/attachment/attachment-label-highlight-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-progress-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-rendering-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-subtitle-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-title-expected.txt:
+        Rebaseline some tests and add one that action text matches the requested color.
+
+2016-03-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198148.
+        https://bugs.webkit.org/show_bug.cgi?id=155518
+
+        "Lets do this patch at a later time" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Disallow var assignments in for-in loops"
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+        http://trac.webkit.org/changeset/198148
+
+2016-03-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Test result gardening for
+        ASSERT_NOT_REACHED on imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html
+        https://bugs.webkit.org/show_bug.cgi?id=155516
+
+        * TestExpectations: Skip the test in debug, as it's not useful to crash every time.
+
+2016-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: ASSERTION FAILED: !m_lastActiveBlock on js/function-apply.html
+        https://bugs.webkit.org/show_bug.cgi?id=155411
+        <rdar://problem/25134537>
+
+        Reviewed by Mark Lam.
+
+        * platform/mac/TestExpectations:
+        Unmark test as flakey.
+
+2016-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fixing expectation for css3/masking/mask-svg-script-none-to-png.html on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        Unskip and rebaseline <attachment> tests on iOS
+        <rdar://problem/24805991>
+
+        * fast/attachment/attachment-default-icon.html:
+        * fast/attachment/attachment-folder-icon.html:
+        * fast/attachment/attachment-type-attribute.html:
+        Make these tests have identical titles between ref and actual, because
+        on iOS the layout differs if you have a title or not (unlike on Mac).
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/fast/attachment/attachment-label-highlight-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-progress-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-rendering-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-subtitle-expected.txt:
+        * platform/ios-simulator/fast/attachment/attachment-title-expected.txt:
+        Unskip and rebaseline all but one of the attachment tests on iOS.
+
+2016-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove flaky expectation for webgl/1.0.2/conformance/rendering/gl-scissor-test.html for mac
+        https://bugs.webkit.org/show_bug.cgi?id=126586
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fixing a typo in the ios-simulator TestExpectations file
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking animations/3d/transform-origin-vs-functions.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155501
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-15  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: certain elements not included in accessibility tree
+        https://bugs.webkit.org/show_bug.cgi?id=155480
+
+        Reviewed by Beth Dakin.
+
+        * accessibility/double-nested-inline-element-missing-from-tree-expected.txt: Added.
+        * accessibility/double-nested-inline-element-missing-from-tree.html: Added.
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198203.
+
+        Favorites view is no longer loading on iOS
+
+        Reverted changeset:
+
+        "URL Parsing should signal failure for illegal IDN"
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        http://trac.webkit.org/changeset/198203
+
+2016-03-15  Antti Koivisto  <antti@apple.com>
+
+        Class change invalidation does not handle :not correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155493
+        <rdar://problem/24846762>
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/style-invalidation-attribute-change-descendants-expected.txt:
+        * fast/css/style-invalidation-attribute-change-descendants.html:
+
+            Also add :not case for attribute changes (which handles this correctly already).
+
+        * fast/css/style-invalidation-class-change-descendants-expected.txt:
+        * fast/css/style-invalidation-class-change-descendants.html:
+
+            Add :not case.
+
 2016-03-14  Jer Noble  <jer.noble@apple.com>
 
         Video elements with autoplay do not begin playing when scrolling into view if InvisibleAutoplayNotPermitted is set.

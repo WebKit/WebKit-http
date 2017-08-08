@@ -861,6 +861,9 @@ NSURL *URLWithUserTypedString(NSString *string, NSURL *URL)
 
 NSURL *URLWithUserTypedStringDeprecated(NSString *string, NSURL *URL)
 {
+    if (!string)
+        return nil;
+
     NSURL *result = URLWithUserTypedString(string, URL);
     if (!result) {
         NSData *resultData = dataWithUserTypedString(string);

@@ -1,3 +1,753 @@
+2016-03-17  Antti Koivisto  <antti@apple.com>
+
+        DataURLDecoder::DecodingResultDispatcher may get deleted outside main thread
+        https://bugs.webkit.org/show_bug.cgi?id=155584
+        rdar://problem/24492104
+
+        Reviewed by Chris Dumez.
+
+        This is unsafe as it owns strings and other types that are only safe to delete in the main thread.
+
+        * platform/network/DataURLDecoder.cpp:
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::dispatch):
+
+            The problem is that this was a refcounted type. This created a race. If the timer fired before dispatch()
+            was exited the implicit deref here would trigger the deletion in the dispatching thread.
+
+            Fix by getting rid of the unnecessary refcounting. Timer firing will now delete the instance explicitly.
+
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::startTimer):
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::timerFired):
+
+2016-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198201.
+        https://bugs.webkit.org/show_bug.cgi?id=155585
+
+        That was not the proper solution (Requested by KaL on
+        #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION (r197724): [GTK] Web Inspector: Images being
+        blocked by CSP 2.0"
+        https://bugs.webkit.org/show_bug.cgi?id=155432
+        http://trac.webkit.org/changeset/198201
+
+2016-03-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement AutoFill Available attribute for a text field
+        https://bugs.webkit.org/show_bug.cgi?id=155567
+
+        Reviewed by Darin Adler.
+
+        Expose the auto fill buttons to the AX hierarchy.
+        Add an attribute for the textfield to inform when the auto fill button is available.
+
+        Test: accessibility/auto-fill-types.html
+
+        * English.lproj/Localizable.strings:
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::element):
+        (WebCore::AccessibilityObject::isValueAutofillAvailable):
+        (WebCore::AccessibilityObject::isValueAutofilled):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::passwordFieldValue):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::addTextFieldChildren):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+        * html/TextFieldInputType.cpp:
+        (WebCore::limitLength):
+        (WebCore::autoFillButtonTypeToAccessibilityLabel):
+        (WebCore::autoFillButtonTypeToAutoFillButtonPseudoClassName):
+        (WebCore::TextFieldInputType::createAutoFillButton):
+        (WebCore::TextFieldInputType::updateAutoFillButton):
+        * platform/LocalizedStrings.cpp:
+        (WebCore::AXListItemActionVerb):
+        (WebCore::AXAutoFillCredentialsLabel):
+        (WebCore::AXAutoFillContactsLabel):
+        (WebCore::AXARIAContentGroupText):
+        * platform/LocalizedStrings.h:
+
+2016-03-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Unreviewed speculative buildfix after r198179. Just for fun.
+
+        * PlatformMac.cmake:
+
+2016-03-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] response-consume.html is crashing on Mac WK1 Debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=155490
+
+        Reviewed by Darin Adler.
+
+        Covered by existing tests.
+
+        Ensured to lock state before calling JSC:JSONParse.
+        Adding fulfillPromiseWithJSON routine to handle it.
+        Applied it to FetchBody.
+
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::json):
+        (WebCore::FetchBody::loadedAsText):
+        (WebCore::FetchBody::resolveAsJSON): Deleted.
+        * Modules/fetch/FetchBody.h:
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::loadedBlobAsText):
+        * bindings/js/JSDOMPromise.cpp:
+        (WebCore::parseAsJSON):
+        (WebCore::fulfillPromiseWithJSON):
+        * bindings/js/JSDOMPromise.h:
+
+2016-03-17  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCIceCandidate
+        https://bugs.webkit.org/show_bug.cgi?id=155535
+
+        Reviewed by Eric Carlson.
+
+        Update the RTCIceCandidate constructor procedure to match the WebRTC 1.0 specification [1].
+        In short: The "candidate" init dictionary member is required. At least one of the dictionary
+        members "sdpMid" and "sdpMLine" needs to be present; the corresponding attribute of the
+        other, is initialized to null.
+
+        [1] https://w3c.github.io/webrtc-pc/archives/20160215/webrtc.html
+
+        Tests: Updated fast/mediastream/RTCIceCandidate.htm
+
+        * Modules/mediastream/RTCIceCandidate.cpp:
+        (WebCore::RTCIceCandidate::create):
+        (WebCore::RTCIceCandidate::RTCIceCandidate):
+        * Modules/mediastream/RTCIceCandidate.h:
+        (WebCore::RTCIceCandidate::sdpMLineIndex):
+        (WebCore::RTCIceCandidate::setSdpMLineIndex):
+        * Modules/mediastream/RTCIceCandidate.idl:
+        * bindings/js/JSRTCIceCandidateCustom.cpp:
+        (WebCore::JSRTCIceCandidate::sdpMid):
+        (WebCore::JSRTCIceCandidate::sdpMLineIndex):
+
+2016-03-16  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        SVG tear offs should return a const reference if possible
+        https://bugs.webkit.org/show_bug.cgi?id=153214
+
+        Reviewed by Alex Christensen.
+
+        A smaller change than expected because the returned reference is being copied into a value in additional locations that baseVal and animVal are used.
+
+        No new tests as there is no change in behaviour.
+
+        * svg/properties/SVGAnimatedEnumerationPropertyTearOff.h:
+        * svg/properties/SVGAnimatedStaticPropertyTearOff.h:
+        (WebCore::SVGAnimatedStaticPropertyTearOff::baseVal):
+        (WebCore::SVGAnimatedStaticPropertyTearOff::animVal):
+
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, partial roll out of r197254.
+        <rdar://problem/25078552>
+
+        It caused a ~1.1% PLT regression on iOS.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::commitProvisionalLoad): Deleted.
+
+2016-03-16  Enrica Casucci  <enrica@apple.com>
+
+        Recognize mailto and tel url as data detector links.
+        https://bugs.webkit.org/show_bug.cgi?id=155569
+        rdar://problem/24836185
+
+        Reviewed by Sam Weinig.
+
+        When we check if the element is a data detector link,
+        we should return true also for URLs with mailto: and tel: scheme.
+
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::isDataDetectorLink):
+
+2016-03-16  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Directly composited image layers need pixelsnapping.
+        https://bugs.webkit.org/show_bug.cgi?id=155558
+
+        Reviewed by Simon Fraser.
+
+        In order to match non-composited image size/position, we need to pixelsnap both the contents and the clipping
+        layer bounds for directly composited images.
+
+        Test: fast/images/hidpi-directly-composited-image-on-subpixel-position.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::resetContentsRect):
+        (WebCore::RenderLayerBacking::updateChildClippingStrategy):
+        (WebCore::RenderLayerBacking::updateImageContents):
+
+2016-03-16  Beth Dakin  <bdakin@apple.com>
+
+        Provide NSSpellChecker spellChecking methods with the current insertion point
+        https://bugs.webkit.org/show_bug.cgi?id=155532
+        -and corresponding-
+        rdar://problem/24066952
+
+        Reviewed by Simon Fraser.
+
+        Pass the Frame’s selection to a handful of spelling checking methods that 
+        call into WebKit/WebKit2 to ultimately call into NSSpellChecker.
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::hasMisspelling):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (AXAttributeStringSetSpelling):
+        * editing/AlternativeTextController.cpp:
+        (WebCore::AlternativeTextController::timerFired):
+        * editing/Editor.cpp:
+        (WebCore::Editor::guessesForMisspelledWord):
+        (WebCore::Editor::markAllMisspellingsAndBadGrammarInRanges):
+        * editing/SpellChecker.cpp:
+        (WebCore::SpellChecker::invokeRequest):
+        (WebCore::SpellChecker::enqueueRequest):
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::TextCheckingHelper::findFirstMisspellingOrBadGrammar):
+        (WebCore::TextCheckingHelper::guessesForMisspelledOrUngrammaticalRange):
+        (WebCore::TextCheckingHelper::unifiedTextCheckerEnabled):
+        (WebCore::checkTextOfParagraph):
+        * editing/TextCheckingHelper.h:
+        * loader/EmptyClients.cpp:
+        (WebCore::EmptyFrameLoaderClient::createNetworkingContext):
+        (WebCore::EmptyTextCheckerClient::requestCheckingOfString):
+        * loader/EmptyClients.h:
+        * platform/text/TextCheckerClient.h:
+        (WebCore::TextCheckerClient::~TextCheckerClient):
+
+        The key needed to include the insertion point.
+        * platform/spi/mac/NSSpellCheckerSPI.h:
+
+2016-03-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix assertion failure on drive.google.com after r196052
+        https://bugs.webkit.org/show_bug.cgi?id=155562
+
+        Reviewed by Jer Noble.
+
+        * rendering/RenderGeometryMap.cpp:
+        (WebCore::RenderGeometryMap::mapToContainer):
+        Change float equality check to areEssentiallyEqual.
+        This assertion was failing because rendererMappedResult was (944.335693, 232.047409)
+        but result was (944.335693, 232.047394).  They differ by (0, 0.000015).
+
+2016-03-16  Nan Wang  <n_wang@apple.com>
+
+        AX: Expose aria-current status to children
+        https://bugs.webkit.org/show_bug.cgi?id=155469
+
+        Reviewed by Chris Fleizach.
+
+        Added aria-current to the global ARIA attributes list.
+
+        Test: accessibility/aria-current-global-attribute.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::supportsARIAAttributes):
+
+2016-03-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac] Printing test snapshots are upside-down after r198242
+        https://bugs.webkit.org/show_bug.cgi?id=155543
+
+        Reviewed by Simon Fraser.
+
+        * page/PrintContext.cpp:
+        (WebCore::PrintContext::spoolAllPagesWithBoundaries):
+        Stop PLATFORM(COCOA)-conditionally flipping here. Just paint.
+        This function is only used by the test runners so this doesn't have a
+        huge impact on anything else.
+
+2016-03-16  Daniel Bates  <dabates@apple.com>
+
+        Update WebKit Feature Status page to include the status of Content Security Policy Level 2 and Level 3
+
+        * features.json:
+
+2016-03-16  Daniel Bates  <dabates@apple.com>
+
+        <video> and <audio> elements do not obey Content Security Policy on redirect
+        https://bugs.webkit.org/show_bug.cgi?id=155509
+        <rdar://problem/10234844>
+
+        Reviewed by Alex Christensen.
+
+        Fixes an issue where the Content Security Policy of the page was not enforced
+        on redirects when loading a media subresource via an HTML video or HTML audio
+        element.
+
+        Tests: http/tests/security/contentSecurityPolicy/audio-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/font-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/font-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/image-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/image-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/script-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/script-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/stylesheet-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/stylesheet-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/svg-font-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/svg-font-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/svg-image-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/svg-image-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/track-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/track-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/video-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/video-redirect-blocked.html
+               http/tests/security/contentSecurityPolicy/xsl-redirect-allowed.html
+               http/tests/security/contentSecurityPolicy/xsl-redirect-blocked.html
+
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::cachedResourceContent): Treat media resources as raw resources just as we do currently.
+        (WebCore::InspectorPageAgent::cachedResourceType): Ditto.
+        * loader/MediaResourceLoader.cpp:
+        (WebCore::MediaResourceLoader::requestResource): Modified to use CachedResourceLoader::requestMedia() instead
+        of CachedResourceLoader::requestRawResource() so that we can differentiate between a media resource and a raw
+        resource in CachedResourceLoader. Added FIXME comment to skip checking the Content Security Policy for loads
+        initiated by an element in a user agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=155505> for
+        more details.
+        * loader/ResourceLoadInfo.cpp:
+        (WebCore::toResourceType): Treat media resources as raw resources just as we do currently. Also, add cases for
+        CachedResource::LinkPrefetch and CachedResource::LinkSubresource (when ENABLE(LINK_PREFETCH) is enabled) and
+        remove the default statement to force a compile-time error when a new CachedResource enumerator is added and
+        the switch block in this function is not updated.
+        * loader/SubresourceLoader.cpp:
+        (WebCore::logResourceLoaded): Ditto.
+        * loader/cache/CachedRawResource.cpp:
+        (WebCore::CachedRawResource::CachedRawResource): Substitute CachedResource::isMainOrMediaOrRawResource() for
+        CachedResource::isMainOrRawResource() as the latter was renamed to the former.
+        * loader/cache/CachedRawResource.h:
+        (isType): Ditto.
+        * loader/cache/CachedResource.cpp:
+        (WebCore::defaultPriorityForResourceType): Use priority ResourceLoadPriority::Medium for media resources just as
+        we do currently.
+        * loader/cache/CachedResource.h:
+        (WebCore::CachedResource::isMainOrMediaOrRawResource): Formerly named isMainOrRawResource. Returns true if the type
+        of this resource is a main resource, media resource, or raw resource.
+        (WebCore::CachedResource::isMainOrRawResource): Deleted.
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::createResource): Treat media resources as raw resources just as we do currently.
+        (WebCore::CachedResourceLoader::requestMedia): Added.
+        (WebCore::contentTypeFromResourceType): Consider media resources as MixedContentChecker::ContentType::Active
+        just as we do currently.
+        (WebCore::CachedResourceLoader::checkInsecureContent): Apply the mixed content policy to media resources
+        just as we do currently.
+        (WebCore::CachedResourceLoader::canRequest): Apply the Same Origin Policy to media resources just as we
+        do currently. Query the Content Security Policy of the page to determine if the media resource can be
+        requested.
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy): Substitute CachedResource::isMainOrMediaOrRawResource()
+        for CachedResource::isMainOrRawResource() as the latter was renamed to the former.
+        * loader/cache/CachedResourceLoader.h:
+        * platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm:
+        (WebCore::WebCoreAVFResourceLoader::startLoading): Modified to use CachedResourceLoader::requestMedia() instead
+        of CachedResourceLoader::requestRawResource() so that we can differentiate between a media resource and a raw
+        resource in CachedResourceLoader. Added FIXME comment to skip checking the Content Security Policy for loads
+        initiated by an element in a user agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=155505> for
+        more details. Additionally, simplified code that determined whether to request the media resource or error out
+        by coalescing two conditional expressions into one conditional on whether we have a loader and substituted
+        nullptr for 0.
+
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198235, r198240, r198241, and
+        r198252.
+
+        Causing crashes on ARM
+
+        Reverted changesets:
+
+        "Remove compile time define for SEPARATED_HEAP"
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+        http://trac.webkit.org/changeset/198235
+
+        "Gardening: build fix after r198235."
+        http://trac.webkit.org/changeset/198240
+
+        "Build fix."
+        http://trac.webkit.org/changeset/198241
+
+        "Rename performJITMemcpy to something more inline with our
+        normal webkit function names"
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+        http://trac.webkit.org/changeset/198252
+
+2016-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        WebCore::URL will now invalidate URLs with illegal IDN. And functions inside WebCoreNSURLExtras.h
+        that deal with IDN mapping will now return nil to signal error.
+
+        Test: fast/url/invalid-idn.html
+
+        * platform/URL.cpp:
+        (WebCore::isSchemeFirstChar):
+        (WebCore::URL::init):
+        (WebCore::appendEncodedHostname):
+        (WebCore::encodeHostnames):
+        (WebCore::encodeRelativeString):
+        * platform/mac/WebCoreNSURLExtras.h:
+        * platform/mac/WebCoreNSURLExtras.mm:
+        (WebCore::mapHostNameWithRange):
+        (WebCore::hostNameNeedsDecodingWithRange):
+        (WebCore::hostNameNeedsEncodingWithRange):
+        (WebCore::decodeHostNameWithRange):
+        (WebCore::encodeHostNameWithRange):
+        (WebCore::decodeHostName):
+        (WebCore::encodeHostName):
+        (WebCore::collectRangesThatNeedMapping):
+        (WebCore::mapHostNames):
+        (WebCore::URLWithData):
+        (WebCore::dataWithUserTypedString):
+        (WebCore::URLWithUserTypedString):
+        (WebCore::URLWithUserTypedStringDeprecated):
+        (WebCore::userVisibleString):
+
+2016-03-16  Antti Koivisto  <antti@apple.com>
+
+        Don't invalidate style unnecessarily when setting inline style cssText
+        https://bugs.webkit.org/show_bug.cgi?id=155541
+        rdar://problem/23318893
+
+        Reviewed by Simon Fraser.
+
+        We currently invalidate style when cssText is set whether the style declaration changed or not.
+
+        Based on a patch by Simon.
+
+        Test: fast/css/style-invalidation-inline-csstext.html
+
+        * css/PropertySetCSSStyleDeclaration.cpp:
+        (WebCore::PropertySetCSSStyleDeclaration::cssText):
+        (WebCore::PropertySetCSSStyleDeclaration::setCssText):
+
+            Invalidate only if the parsed style changed.
+
+        * css/StyleProperties.cpp:
+        (WebCore::MutableStyleProperties::parseDeclaration):
+
+            Compare the original and new style after parsing, return result.
+
+        * css/StyleProperties.h:
+
+2016-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r195661): [GTK] very slow scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=155334
+
+        Reviewed by Sergio Villar Senin.
+
+        Fix smooth scrolling behaviour change after r195661.
+
+        * platform/ScrollAnimationSmooth.cpp:
+        (WebCore::getAnimationParametersForGranularity): Fix a typo,
+        animationTime for pixel granularity should be 11 * tickTime.
+        (WebCore::ScrollAnimationSmooth::animateScroll): Previous code
+        reset all the data except the visibleLenght, so keep it in the
+        PerAxisData after the reset.
+
+2016-03-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196803.
+        https://bugs.webkit.org/show_bug.cgi?id=155534
+
+        Introduced several rendering issues in popular websites
+        (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Limit the number of tiles according to the visible
+        area"
+        https://bugs.webkit.org/show_bug.cgi?id=126122
+        http://trac.webkit.org/changeset/196803
+
+2016-03-15  Zalan Bujtas  <zalan@apple.com>
+
+        Remove overflow: -webkit-marquee
+        https://bugs.webkit.org/show_bug.cgi?id=155517
+        <rdar://problem/25028481>
+
+        Reviewed by Simon Fraser.
+
+        This patch is based on Blink patch from jchaffraix@chromium.org (https://src.chromium.org/viewvc/blink?revision=151756&view=revision)
+
+        * css/CSSParser.cpp:
+        (WebCore::isValidKeywordPropertyAndValue):
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue): Deleted.
+        (WebCore::CSSPrimitiveValue::operator EOverflow): Deleted.
+        * css/CSSValueKeywords.in:
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * css/html.css:
+        (marquee): Deleted.
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::sizesLogicalWidthToFitContent):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollTo):
+        (WebCore::RenderLayer::updateScrollInfoAfterLayout):
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayer.h:
+        * rendering/RenderMarquee.h:
+        * rendering/style/RenderStyleConstants.h:
+
+2016-03-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Expose pointers to SVG elements referenced by aria-labelledby
+        https://bugs.webkit.org/show_bug.cgi?id=155481
+
+        Reviewed by Chris Fleizach.
+
+        Expose elements referenced by aria-labelledby via ATK_RELATION_LABELLED_BY.
+        Stop calling the supportsARIA* methods before getting the elements referred
+        to by the associated ARIA property in the accessible wrapper for ATK and
+        the inspector: Getting the elements will be just as fast when there are no
+        such elements, and faster when there are.
+
+        Modified the w3c-svg-name-calculation.html test to include AXTitleUIElement
+        in its output.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::supportsARIAAttributes):
+        (WebCore::AccessibilityObject::ariaElementsFromAttribute): Added.
+        (WebCore::AccessibilityObject::ariaControlsElements): Added.
+        (WebCore::AccessibilityObject::ariaDescribedByElements): Added.
+        (WebCore::AccessibilityObject::ariaFlowToElements): Added.
+        (WebCore::AccessibilityObject::ariaLabelledByElements): Added.
+        (WebCore::AccessibilityObject::ariaOwnsElements): Added.
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::ariaOwnsElements): No longer virtual.
+        (WebCore::AccessibilityObject::supportsARIAFlowTo): Deleted.
+        (WebCore::AccessibilityObject::ariaFlowToElements): No longer virtual.
+        (WebCore::AccessibilityObject::supportsARIADescribedBy): Deleted.
+        (WebCore::AccessibilityObject::ariaDescribedByElements): No longer virtual.
+        (WebCore::AccessibilityObject::supportsARIAControls): Deleted.
+        (WebCore::AccessibilityObject::ariaControlsElements): No longer virtual.
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::ariaElementsFromAttribute): Moved to AccessibilityObject.
+        (WebCore::AccessibilityRenderObject::supportsARIAFlowTo): Deleted.
+        (WebCore::AccessibilityRenderObject::ariaFlowToElements): Moved to AccessibilityObject.
+        (WebCore::AccessibilityRenderObject::supportsARIADescribedBy): Deleted.
+        (WebCore::AccessibilityRenderObject::ariaDescribedByElements): Moved to AccessibilityObject.
+        (WebCore::AccessibilityRenderObject::supportsARIAControls): Deleted.
+        (WebCore::AccessibilityRenderObject::ariaControlsElements): Moved to AccessibilityObject.
+        (WebCore::AccessibilityRenderObject::ariaOwnsElements): Moved to AccessibilityObject.
+        * accessibility/AccessibilityRenderObject.h:
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (setAtkRelationSetFromCoreObject):
+        * inspector/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::buildObjectForAccessibilityProperties):
+
+2016-03-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Occasional crash under GraphicsContext::platformContext when dragging Google maps
+        https://bugs.webkit.org/show_bug.cgi?id=155521
+        rdar://problem/24357307
+
+        Reviewed by Tim Horton.
+
+        It's possible for createDragImageForSelection() to return a null image, if the bounds
+        of the selection are an empty rect. That would cause a crash under convertImageToBitmap()
+        because a zero-sized ShareableBitmap will return a null GraphicsContext.
+        
+        To avoid this, early return from DragController::startDrag() if the dragImage is null.
+        
+        I wasn't able to come up with a test for this.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::startDrag):
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        iOS <attachment> element should allow customization of action text color
+        https://bugs.webkit.org/show_bug.cgi?id=155513
+        <rdar://problem/24805991>
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/attachment/attachment-action.html
+
+        * css/html.css:
+        (attachment):
+        On iOS (the only place it is used), <attachment> color should default to system blue.
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::attachmentActionColor):
+        (WebCore::AttachmentInfo::AttachmentInfo):
+        Make use of the <attachment>'s CSS color for the action text.
+        This is a little weird because there are multiple bits of text in an
+        <attachment>, but only the action text ever changes color.
+
+2016-03-15  Zalan Bujtas  <zalan@apple.com>
+
+        Delay HTMLFormControlElement::focus() call until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=155503
+        <rdar://problem/24046635>
+
+        Reviewed by Simon Fraser.
+
+        Calling focus on a form element can trigger arbitrary JS code which could interfere with
+        the ongoing layout. 
+        This patch delays HTMLFormControlElement::focus() call until after layout is finished.
+        If we are currently not in the middle of a layout, HTMLFormControlElement::focus() is delayed until
+        after style resolution is done. 
+
+        Covered by LayoutTests/fast/dom/adopt-node-crash-2.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::updateBackingStore):
+        * dom/Document.cpp:
+        (WebCore::Document::updateStyleIfNeeded):
+        (WebCore::Document::updateLayout):
+        (WebCore::Document::updateLayoutIfDimensionsOutOfDate):
+        * html/HTMLEmbedElement.cpp:
+        (WebCore::HTMLEmbedElement::renderWidgetLoadingPlugin):
+        * html/HTMLFormControlElement.cpp:
+        (WebCore::HTMLFormControlElement::didAttachRenderers):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::layout):
+        (WebCore::FrameView::queuePostLayoutCallback):
+        (WebCore::FrameView::flushPostLayoutTasksQueue):
+        (WebCore::FrameView::performPostLayoutTasks):
+        (WebCore::FrameView::sendResizeEventIfNeeded):
+        * page/FrameView.h:
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::imageChanged):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollTo):
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Remove compile time define for SEPARATED_HEAP
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+
+        Reviewed by Mark Lam.
+
+        Remove the feature define.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Restore pre-r197244 behavior on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=155507
+        <rdar://problem/25174132>
+
+        Reviewed by Gavin Barraclough.
+
+        <http://trac.webkit.org/changeset/197244> changed the session restore
+        behavior to disallow stale content on all platforms except iOS.
+        We would also like to maintain the behavior on Mac for performance
+        reasons and consistency between iOS and Mac.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> on iOS isn't quite vertically centered
+        https://bugs.webkit.org/show_bug.cgi?id=155502
+        <rdar://problem/24805991>
+
+        Reviewed by Beth Dakin.
+
+        No new tests; there are existing tests that will be enabled shortly.
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::AttachmentInfo::AttachmentInfo):
+        We were overcounting the total height of the attachment content by one margin, because each item
+        would add in its margin, including the last one. Remove one margin.
+
+2016-03-15  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: certain elements not included in accessibility tree
+        https://bugs.webkit.org/show_bug.cgi?id=155480
+
+        Reviewed by Beth Dakin.
+
+        This test case exposed a hole in the nextSibling logic where you can get into a state where we skip content.
+        The fix is to check if an inline element continuation has no sibling, to fall back on to the parent case to see if that has a sibling.
+
+        Test: accessibility/double-nested-inline-element-missing-from-tree.html
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::nextSibling):
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198203.
+
+        Favorites view is no longer loading on iOS
+
+        Reverted changeset:
+
+        "URL Parsing should signal failure for illegal IDN"
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        http://trac.webkit.org/changeset/198203
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> on iOS should use short and emphasized fonts
+        https://bugs.webkit.org/show_bug.cgi?id=155485
+        <rdar://problem/24805991>
+
+        Reviewed by Simon Fraser.
+
+        No new tests; there are existing tests that will be enabled shortly.
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::attachmentActionFont):
+        (WebCore::attachmentTitleFont):
+        (WebCore::attachmentSubtitleFont):
+        (WebCore::AttachmentInfo::buildTitleLines):
+        (WebCore::AttachmentInfo::buildSingleLine):
+        (WebCore::AttachmentInfo::AttachmentInfo):
+        No need for UIFonts, we can use CoreText, and that allows us to ask for the
+        correct Short and Emphasized variants that we need.
+
+2016-03-15  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (196383): Class change invalidation does not handle :not correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155493
+        <rdar://problem/24846762>
+
+        Reviewed by Andreas Kling.
+
+        We fail to invalidate bar style in
+
+            :not(.foo) bar { }
+
+        when class foo is added or removed.
+
+        There is a logic error in the invalidation code. It assumes that class addition can only make new selectors match
+        and removal make them not match. This is not true when :not is present.
+
+        * style/AttributeChangeInvalidation.h:
+        (WebCore::Style::AttributeChangeInvalidation::AttributeChangeInvalidation):
+        * style/ClassChangeInvalidation.cpp:
+        (WebCore::Style::ClassChangeInvalidation::invalidateStyle):
+
+            Invalidate style and collect full set of rules that may affect descendant style.
+
+        (WebCore::Style::ClassChangeInvalidation::invalidateDescendantStyle):
+
+            Invalidate with this set both before and after committing the changes.
+
+        (WebCore::Style::ClassChangeInvalidation::computeClassChange): Deleted.
+        * style/ClassChangeInvalidation.h:
+        (WebCore::Style::ClassChangeInvalidation::ClassChangeInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::~ClassChangeInvalidation):
+
 2016-03-14  Jer Noble  <jer.noble@apple.com>
 
         Video elements with autoplay do not begin playing when scrolling into view if InvisibleAutoplayNotPermitted is set.

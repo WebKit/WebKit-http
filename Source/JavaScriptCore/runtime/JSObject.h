@@ -175,6 +175,7 @@ public:
     static bool putInline(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     
     JS_EXPORT_PRIVATE static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    // putByIndex assumes that the receiver is this JSCell object.
     JS_EXPORT_PRIVATE static bool putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
         
     ALWAYS_INLINE bool putByIndexInline(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
@@ -641,6 +642,8 @@ public:
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
     bool isGlobalObject() const;
+    bool isJSLexicalEnvironment() const;
+    bool isGlobalLexicalEnvironment() const;
     bool isErrorInstance() const;
     bool isWithScope() const;
 
@@ -1074,6 +1077,16 @@ inline size_t JSObject::offsetOfInlineStorage()
 inline bool JSObject::isGlobalObject() const
 {
     return type() == GlobalObjectType;
+}
+
+inline bool JSObject::isJSLexicalEnvironment() const
+{
+    return type() == LexicalEnvironmentType || type() == ModuleEnvironmentType;
+}
+
+inline bool JSObject::isGlobalLexicalEnvironment() const
+{
+    return type() == GlobalLexicalEnvironmentType;
 }
 
 inline bool JSObject::isErrorInstance() const
@@ -1613,6 +1626,8 @@ void createListFromArrayLike(ExecState* exec, JSValue arrayLikeValue, RuntimeTyp
 
 bool validateAndApplyPropertyDescriptor(ExecState*, JSObject*, PropertyName, bool isExtensible,
     const PropertyDescriptor& descriptor, bool isCurrentDefined, const PropertyDescriptor& current, bool throwException);
+
+JS_EXPORT_PRIVATE NEVER_INLINE bool ordinarySetSlow(ExecState*, JSObject*, PropertyName, JSValue, JSValue receiver, bool shouldThrow);
 
 // Helper for defining native functions, if you're not using a static hash table.
 // Use this macro from within finishCreation() methods in prototypes. This assumes

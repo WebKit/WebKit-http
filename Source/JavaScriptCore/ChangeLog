@@ -1,3 +1,715 @@
+2016-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Method names should not appear in the lexical scope of the method's body.
+        https://bugs.webkit.org/show_bug.cgi?id=155568
+
+        Reviewed by Saam Barati.
+
+        Consider this scenario:
+
+            var f = "foo";
+            var result = ({
+                f() {
+                    return f; // f should be the string "foo", not this method f.
+                }
+            }).f();
+            result === "foo"; // Should be true.
+
+        The reason this is not current working is because the parser does not yet
+        distinguish between FunctionExpressions and MethodDefinitions.  The ES6 spec
+        explicitly distinguishes between the 2, and we should do the same.
+        
+        This patch changes all methods (and getters and setters which are also methods)
+        to have a FunctionMode of MethodDefinition (instead of FunctionExpression).
+        functionNameIsInScope() is responsible for determining whether a function's name
+        should be in its scope or not.  It already returns false for any function
+        whose FunctionMode is not FunctionExpression.  Giving methods the MethodDefinition
+        FunctionMode gets us the correct behavior ES6 expects.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewArrowFunctionExpression):
+        (JSC::BytecodeGenerator::emitNewMethodDefinition):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrowFuncExprNode::emitBytecode):
+        (JSC::MethodDefinitionNode::emitBytecode):
+        (JSC::YieldExprNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createMethodDefinition):
+        (JSC::ASTBuilder::createFunctionMetadata):
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createArguments):
+        * parser/NodeConstructors.h:
+        (JSC::FunctionParameters::FunctionParameters):
+        (JSC::BaseFuncExprNode::BaseFuncExprNode):
+        (JSC::FuncExprNode::FuncExprNode):
+        (JSC::FuncDeclNode::FuncDeclNode):
+        (JSC::ArrowFuncExprNode::ArrowFuncExprNode):
+        (JSC::MethodDefinitionNode::MethodDefinitionNode):
+        (JSC::YieldExprNode::YieldExprNode):
+        * parser/Nodes.h:
+        (JSC::BaseFuncExprNode::metadata):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        * parser/ParserModes.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionExpr):
+        (JSC::SyntaxChecker::createFunctionMetadata):
+        (JSC::SyntaxChecker::createArrowFunctionExpr):
+        (JSC::SyntaxChecker::createMethodDefinition):
+        (JSC::SyntaxChecker::setFunctionNameStart):
+        (JSC::SyntaxChecker::createArguments):
+        * tests/es6.yaml:
+
+2016-03-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r197380): Build fails with new GCC and Clang
+        https://bugs.webkit.org/show_bug.cgi?id=155044
+
+        Reviewed by Michael Catanzaro.
+
+        In C++, std math functions ceil and floor are overloaded for double and float.
+        Without explicit cast or function pointer assignment, compilers cannot
+        determine which function address is used in the given context.
+
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+
+2016-03-17  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Invoking super()/super inside of the eval should not lead to SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=153864
+
+        Reviewed by Saam Barati.
+
+        Added support of the invoking super/super() inside of the eval within class.
+        Also support cases when eval is invoked in constructor, class method directly 
+        or via arrow function. Access to the new.target in eval is not part of this patch
+        and will be implemented in https://bugs.webkit.org/show_bug.cgi?id=155545
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitLoadArrowFunctionLexicalEnvironment):
+        (JSC::BytecodeGenerator::isThisUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isNewTargetUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isSuperUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::isSuperCallUsedInInnerArrowFunction):
+        (JSC::BytecodeGenerator::emitPutThisToArrowFunctionContextScope):
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::isEvalContext):
+        (JSC::Scope::setIsEvalContext):
+        (JSC::parse):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        * tests/stress/arrowfunction-lexical-bind-supercall-4.js:
+        * tests/stress/arrowfunction-lexical-bind-superproperty.js:
+        * tests/stress/class-syntax-super-in-eval.js: Added.
+        * tests/stress/generator-with-super.js:
+
+2016-03-15  Filip Pizlo  <fpizlo@apple.com>
+
+        ASSERTION FAILED: !edge->isPhantomAllocation() in regress/script-tests/sink-huge-activation.js.ftl-eager in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=153805
+
+        Reviewed by Mark Lam.
+
+        The object allocation sinking phase uses InferredValue::isStillValid() in the opposite
+        way from most clients: it will do an *extra* optimization if it returns false. The
+        phase will first compute sink candidates and then it will compute materialization
+        points. If something is a sink candidate then it is not a materialization point. A
+        NewFunction node may appear as not being a sink candidate during the first pass, so it's
+        not added to the set of things that will turn into PhantomNewFunction. But on the second
+        pass where we add materializations, we check isStillValid() again. Now this may become
+        false, so that second pass thinks that NewFunction is a sink candidate (even though it's
+        not in the sink candidates set) and so is not a materialization point.
+
+        This manifests as the NewFunction referring to a PhantomCreateActivation or whatever.
+
+        The solution is to have the phase cache results of calls to isStillValid(). It's OK if
+        we just remember the result of the first call and assume that it's not a sink candidate.
+        That's the worst that can happen.
+
+        No new tests since this is a super hard race and sink-huge-activation seemed to already
+        be catching it.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2016-03-16  Saam Barati  <sbarati@apple.com>
+
+        [ES6] Make Array.prototype.reverse spec compatible.
+        https://bugs.webkit.org/show_bug.cgi?id=155528
+
+        Reviewed by Michael Saboff.
+
+        This patch make Array.prototype.reverse spec compatible.
+        Before, we weren't performing a HasProperty of each index
+        before performing a Get on that index.  We now do that on
+        the slow path.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncReverse):
+        * tests/stress/array-reverse-proxy.js: Added.
+        (assert):
+        (test):
+        (shallowCopy):
+        (shallowEqual):
+        (let.handler.get getSet):
+        (test.let.handler.get getSet):
+
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198235, r198240, r198241, and
+        r198252.
+
+        Causing crashes on ARM
+
+        Reverted changesets:
+
+        "Remove compile time define for SEPARATED_HEAP"
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+        http://trac.webkit.org/changeset/198235
+
+        "Gardening: build fix after r198235."
+        http://trac.webkit.org/changeset/198240
+
+        "Build fix."
+        http://trac.webkit.org/changeset/198241
+
+        "Rename performJITMemcpy to something more inline with our
+        normal webkit function names"
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+        http://trac.webkit.org/changeset/198252
+
+2016-03-16  Brian Burg <bburg@apple.com>
+
+        Unreviewed, rolling out r198257.
+        https://bugs.webkit.org/show_bug.cgi?id=155553
+
+        This change is unnecessary, clients can instead compile the
+        file with ARC enabled (Requested by brrian on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r198077): generated Objective-C protocol object
+        getters leak their wrappers"
+        https://bugs.webkit.org/show_bug.cgi?id=155523
+        http://trac.webkit.org/changeset/198257
+
+2016-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Add support for setting Function.name from computed properties.
+        https://bugs.webkit.org/show_bug.cgi?id=155437
+
+        Reviewed by Filip Pizlo.
+
+        In JS code, we can have initialization of computed properties with function and
+        class objects e.g.
+
+            var o = {
+                [x]: function() {},
+                [y]: class {}
+            }
+
+        The ES6 spec states that the function and class in the example above (being
+        anonymous) should take on the value of x and y respectively as their names:
+
+            o[x].name; // should be the "stringified" value of x.
+            o[y].name; // should be the "stringified" value of y.
+
+        To achieve this, we will now inject an op_set_function_name bytecode at property
+        initialization sites if:
+
+        1. the property assigned value is a function or class, and
+        2. the function and class is anonymous, and
+        3. if property assigned value is a class, it doesn't have a static method
+           that is statically named "name".
+
+        The op_set_function_name will result in JSFunction::setFunctionName() being
+        called on the target function / class before it is assigned to the property.
+        JSFunction::setFunctionName() will take care of:
+
+        1. computing the name to use from the value of the computed property name
+           e.g. x and y in the example above.
+
+           If the computed property name is not a symbol, then the function / class name
+           should be the toString() value of that computed property name.
+
+           If the computed property name is a symbol, then ...
+           a. if the Symbol has a defined description (e.g. Symbol("foo")), then the
+              function / class name should be "[<symbol description>]" e.g. "[foo]".
+           b. if the Symbol has an undefined description (e.g. Symbol()), then the
+              function / class name should be "".
+
+           Note: Symbol("") is not the same as Symbol().  The former has a defined
+           descriptor "", and hence, yields a function / class name of "[]".  The latter
+           yields a function / class name of "".
+
+        2. reifying the lazy name property with this function / class name.
+
+        op_set_function_name is named after the SetFunctionName internal function
+        in the ES6 spec that performs the above operation.
+
+        It is behaviorally correct to use op_set_function_name at every property
+        initialization site with computed property names.  However, we choose to not
+        emit the op_set_function_name bytecode when we already know that it will do
+        nothing i.e. when the target function / class is proven to already have a name or
+        name property.  This is done as an optimization to avoid unnecessary calls to
+        JSFunction::setFunctionName().
+
+        Note: we could further check if the class has a static method with a computed
+        name that is a constant string "name" and elide op_set_function_name there too.
+        However, we don't bother because this should be rare.  JSFunction::setFunctionName()
+        will still do the right thing.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewFunction):
+        (JSC::BytecodeGenerator::emitSetFunctionNameIfNeeded):
+        (JSC::BytecodeGenerator::emitCall):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::PropertyListNode::emitPutConstantProperty):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunction):
+        (JSC::DFG::SpeculativeJIT::compileSetFunctionName):
+        (JSC::DFG::SpeculativeJIT::compileForwardVarargs):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSetFunctionName):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_to_primitive):
+        (JSC::JIT::emit_op_set_function_name):
+        (JSC::JIT::emit_op_strcat):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emitSlow_op_to_primitive):
+        (JSC::JIT::emit_op_set_function_name):
+        (JSC::JIT::emit_op_strcat):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::handleHostCall):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * parser/Nodes.cpp:
+        (JSC::FunctionNode::finishParsing):
+        (JSC::PropertyListNode::hasStaticallyNamedProperty):
+        (JSC::VariableEnvironmentNode::VariableEnvironmentNode):
+        * parser/Nodes.h:
+        * runtime/JSFunction.cpp:
+        (JSC::getCalculatedDisplayName):
+        (JSC::JSFunction::setFunctionName):
+        (JSC::JSFunction::reifyLength):
+        (JSC::JSFunction::reifyName):
+        * runtime/JSFunction.h:
+        * tests/es6.yaml:
+        * tests/stress/computed-function-names.js: Added.
+        (toKeyString):
+        (toFuncName):
+        (shouldBe):
+        (return.propKey):
+
+2016-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Reflect.set with receiver
+        https://bugs.webkit.org/show_bug.cgi?id=155294
+
+        Reviewed by Saam Barati.
+
+        This patch introduces the receiver parameter support for Reflect.set.
+        Reflect.set can alter the receiver with arbitrary values.
+        Each property descriptor uses the receiver in [[Set]].
+
+        1) In the accessor descriptor case, the receiver is used as |this| value for setter calls.
+        2) In the data descriptor case, the actual property will be set onto the receiver objects.
+
+        The current put operation does not support the receiver that is different from the base object.
+        In particular, (2) case is not supported.
+        The naive implementation adds one more [[GetOwnProperty]] for the receiver per [[Set]] (9.1.9.1-4-c [1]), and it is unacceptable.
+        To keep the fast path efficiently, we fall back to the slow but generic implementation (ordinarySetSlow)
+        only when the receiver is altered.
+
+        We need not to change any JIT part, because the JS code cannot alter the receiver without Reflect.set.
+        The property accesses generated by the JIT code always have the receiver that is the same to the base object.
+        ProxyObject can alter the receiver, but this situation has no problem because ProxyObject disables Inline Caching.
+        NOTE: Generating Inline Caching for JSProxy (that is used for the Window proxy) is already disabled before this change.
+
+        [1]: https://tc39.github.io/ecma262/#sec-ordinaryset
+
+        * jsc.cpp:
+        (functionCreateProxy):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::put):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::put):
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::put):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::put):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::isThisValueAltered):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::put):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::put):
+        * runtime/JSObject.cpp:
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putInline):
+        * runtime/JSProxy.h:
+        (JSC::JSProxy::createStructure):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/PropertySlot.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::put):
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::PutPropertySlot):
+        (JSC::PutPropertySlot::isCacheablePut):
+        (JSC::PutPropertySlot::isCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableCustom):
+        (JSC::PutPropertySlot::isCustomAccessor):
+        (JSC::PutPropertySlot::disableCaching):
+        (JSC::PutPropertySlot::isCacheable):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectSet):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::put):
+        (JSC::reject): Deleted.
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        * tests/es6.yaml:
+        * tests/stress/ordinary-set-exceptions.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldThrow.set get var):
+        * tests/stress/proxy-set.js:
+        * tests/stress/reflect-set-proxy-set.js: Copied from Source/JavaScriptCore/tests/stress/proxy-set.js.
+        (shouldBe):
+        (unreachable):
+        (assert):
+        (throw.new.Error.let.handler.set 45):
+        (throw.new.Error):
+        (let.target.set x):
+        (let.target.get x):
+        (set let):
+        * tests/stress/reflect-set-receiver-proxy-set.js: Added.
+        (shouldBe):
+        (unreachable):
+        (assert):
+        (let.handler.set 45):
+        (catch):
+        (let.target.set x):
+        (let.target.get x):
+        (set let):
+        * tests/stress/reflect-set-with-global-proxy.js: Added.
+        (shouldBe):
+        (unreachable):
+        (get shouldBe):
+        (set shouldBe):
+        (set test1):
+        (set test2):
+        (set test3):
+        * tests/stress/reflect-set.js:
+        (shouldThrow):
+        (unreachable):
+        (get shouldBe):
+        (set shouldBe):
+        (receiverTestIndexed):
+        (set get Uint8Array):
+        (receiverCase): Deleted.
+        (proxyCase): Deleted.
+        (stringObjectCase.set get shouldBe): Deleted.
+        (regExpLastIndex): Deleted.
+
+2016-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove hint from SlowCaseEntry
+        https://bugs.webkit.org/show_bug.cgi?id=155530
+
+        Reviewed by Alex Christensen.
+
+        * jit/JIT.h:
+        (JSC::SlowCaseEntry::SlowCaseEntry):
+
+2016-03-15  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r198077): generated Objective-C protocol object getters leak their wrappers
+        https://bugs.webkit.org/show_bug.cgi?id=155523
+        <rdar://problem/25181764>
+
+        Reviewed by Joseph Pecoraro.
+
+        Since the code may not be compiled with ARC, autorelease the returned wrapper.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2016-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Help clang generate better code on arrayProtoFuncToString()
+        https://bugs.webkit.org/show_bug.cgi?id=155512
+
+        Reviewed by Mark Lam.
+
+        3d-raytrace hits Array.toString() hard with small arrays.
+        Half of the time is going into overhead around the StringJoiner.
+        This patch makes the function shorter and the layout better.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        Add "UNLIKELY" on rare cases. Clang pushes that code to the tail.
+
+        Factor the code of jsMakeNontrivialString() so that the operation
+        is not duplicated in the function.
+
+        * runtime/JSStringBuilder.h:
+        (JSC::jsMakeNontrivialString):
+        jsNontrivialString() supports r-value reference.
+        Move the result string into jsNontrivialString(), this removes
+        the deref+destructor from the function.
+
+        * runtime/JSStringJoiner.cpp:
+        (JSC::JSStringJoiner::~JSStringJoiner):
+        The destructor is pretty large. No point in inlining it.
+
+        (JSC::joinStrings):
+        * runtime/JSStringJoiner.h:
+        (JSC::JSStringJoiner::JSStringJoiner):
+        (JSC::JSStringJoiner::append):
+        The calls were duplicated. That's unnecessary.
+
+        * runtime/NumericStrings.h:
+        (JSC::NumericStrings::add):
+        Return a reference in all cases.
+        This removes a deref+destructor.
+
+2016-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove stale ArrayPrototype declarations
+        https://bugs.webkit.org/show_bug.cgi?id=155520
+
+        Reviewed by Mark Lam.
+
+        * runtime/ArrayPrototype.cpp:
+        The implementations went away when the methods were moved to builtins
+        but the declarations were left behind.
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Rename performJITMemcpy to something more inline with our normal webkit function names
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+
+        Reviewed by Saam Barati.
+
+        Simple bulk search/replace with a better name.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::fillNops):
+        (JSC::ARM64Assembler::replaceWithJump):
+        (JSC::ARM64Assembler::replaceWithLoad):
+        (JSC::ARM64Assembler::replaceWithAddressComputation):
+        (JSC::ARM64Assembler::setPointer):
+        (JSC::ARM64Assembler::repatchInt32):
+        (JSC::ARM64Assembler::repatchCompact):
+        (JSC::ARM64Assembler::linkJumpOrCall):
+        (JSC::ARM64Assembler::linkCompareAndBranch):
+        (JSC::ARM64Assembler::linkConditionalBranch):
+        (JSC::ARM64Assembler::linkTestAndBranch):
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        * jit/ExecutableAllocator.h:
+        (JSC::writeToExecutableRegion):
+        (JSC::performJITMemcpy): Deleted.
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Build fix.
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+
+2016-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix after r198235.
+
+        Not Reviewed.
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Remove compile time define for SEPARATED_HEAP
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+
+        Reviewed by Mark Lam.
+
+        This removes the compile time define for the SEPARATED_HEAP
+        feature, and moves to a default-off runtime preference.
+
+        This happily also removes the need for world rebuilds while
+        bringing it up on different platforms.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        * jit/ExecutableAllocator.h:
+        (JSC::performJITMemcpy):
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+        (JSC::FixedVMPoolExecutableAllocator::genericWriteToJITRegion):
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator): Deleted.
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2016-03-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198148.
+        https://bugs.webkit.org/show_bug.cgi?id=155518
+
+        "Lets do this patch at a later time" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Disallow var assignments in for-in loops"
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+        http://trac.webkit.org/changeset/198148
+
+2016-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: ASSERTION FAILED: !m_lastActiveBlock on js/function-apply.html
+        https://bugs.webkit.org/show_bug.cgi?id=155411
+        <rdar://problem/25134537>
+
+        Reviewed by Mark Lam.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectImpl):
+        (JSC::Heap::didFinishCollection):
+        During collection allocators are stop/reset. The HeapProfiler tasks
+        were using HeapIterationScope (to satisfy MarkedSpace forEachCell API
+        contracts) which was doing its own stop/resume of allocators. Doing a
+        stop/resume in between the normal stop/reset of collection is unexpected.
+
+        Move this to didFinishCollection, alongside other heap iterations
+        like zombies and immortal objects. Putting this after those tasks
+        also means the heap snapshots will respect the zombies/immortal options
+        when deciding if the cell is alive or not.
+
+2016-03-15  Saam Barati  <sbarati@apple.com>
+
+        We should have different JSTypes for JSGlobalLexicalEnvironment and JSLexicalEnvironment and JSModuleEnvironment
+        https://bugs.webkit.org/show_bug.cgi?id=152406
+
+        Reviewed by Mark Lam.
+
+        This makes testing for a JSGlobalLexicalEnvironment faster
+        because we can just check the Cell's type instead of using
+        jsDynamicCast. I also changed code that does jsDynamicCast<JSGlobalObject*>
+        instead of isGlobalObject().
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/JSGlobalLexicalEnvironment.h:
+        (JSC::JSGlobalLexicalEnvironment::createStructure):
+        * runtime/JSLexicalEnvironment.h:
+        (JSC::JSLexicalEnvironment::createStructure):
+        (JSC::JSLexicalEnvironment::JSLexicalEnvironment):
+        * runtime/JSModuleEnvironment.h:
+        (JSC::JSModuleEnvironment::createStructure):
+        (JSC::JSModuleEnvironment::offsetOfModuleRecord):
+        * runtime/JSObject.h:
+        (JSC::JSObject::isGlobalObject):
+        (JSC::JSObject::isJSLexicalEnvironment):
+        (JSC::JSObject::isGlobalLexicalEnvironment):
+        (JSC::JSObject::isErrorInstance):
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+        (JSC::isUnscopable):
+        (JSC::JSScope::resolve):
+        (JSC::JSScope::collectVariablesUnderTDZ):
+        (JSC::JSScope::isVarScope):
+        (JSC::JSScope::isLexicalScope):
+        (JSC::JSScope::isModuleScope):
+        (JSC::JSScope::isCatchScope):
+        (JSC::JSScope::isFunctionNameScopeObject):
+        (JSC::JSScope::isNestedLexicalScope):
+        (JSC::JSScope::constantScopeForCodeBlock):
+        (JSC::isScopeType): Deleted.
+        (JSC::JSScope::isGlobalLexicalEnvironment): Deleted.
+        * runtime/JSScope.h:
+        * runtime/JSType.h:
+
 2016-03-15  Filip Pizlo  <fpizlo@apple.com>
 
         Remove the Baker barrier from JSC

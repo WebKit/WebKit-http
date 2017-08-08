@@ -180,8 +180,17 @@ JSValue eval(CallFrame* callFrame)
         
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!callFrame->vm().exception());
+        bool isInArrowFunctionContext = callerCodeBlock->unlinkedCodeBlock()->isArrowFunction() || callerCodeBlock->unlinkedCodeBlock()->isArrowFunctionContext();
 
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), thisTDZMode, callerCodeBlock->unlinkedCodeBlock()->derivedContextType(), callerCodeBlock->unlinkedCodeBlock()->isArrowFunction(), sourceCode, callerScopeChain);
+        DerivedContextType derivedContextType = callerCodeBlock->unlinkedCodeBlock()->derivedContextType();
+        
+        if (!isInArrowFunctionContext && callerCodeBlock->unlinkedCodeBlock()->isClassContext()) {
+            derivedContextType = callerCodeBlock->unlinkedCodeBlock()->isConstructor()
+                ? DerivedContextType::DerivedConstructorContext
+                : DerivedContextType::DerivedMethodContext;
+        }
+
+        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), thisTDZMode, derivedContextType, isInArrowFunctionContext, sourceCode, callerScopeChain);
 
         if (!eval)
             return jsUndefined();
@@ -1202,7 +1211,8 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
                 variableObject = node;
                 break;
             } 
-            if (JSLexicalEnvironment* lexicalEnvironment = jsDynamicCast<JSLexicalEnvironment*>(node)) {
+            if (node->isJSLexicalEnvironment()) {
+                JSLexicalEnvironment* lexicalEnvironment = jsCast<JSLexicalEnvironment*>(node);
                 if (lexicalEnvironment->symbolTable()->scopeType() == SymbolTable::ScopeType::VarScope) {
                     variableObject = node;
                     break;

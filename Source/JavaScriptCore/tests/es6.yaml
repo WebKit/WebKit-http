@@ -805,9 +805,9 @@
 - path: es6/function_name_property_object_methods_function.js
   cmd: runES6 :normal
 - path: es6/function_name_property_shorthand_methods_no_lexical_binding.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/function_name_property_symbol-keyed_methods.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/function_name_property_variables_class.js
   cmd: runES6 :normal
 - path: es6/function_name_property_variables_function.js
@@ -871,7 +871,7 @@
 - path: es6/miscellaneous_function_length_is_configurable.js
   cmd: runES6 :normal
 - path: es6/miscellaneous_no_assignments_allowed_in_for-in_head.js
-  cmd: runES6 :normal
+  cmd: runES6 :fail
 - path: es6/miscellaneous_RegExp_constructor_can_alter_flags.js
   cmd: runES6 :normal
 - path: es6/new.target_assignment_is_an_early_error.js
@@ -933,7 +933,7 @@
 - path: es6/Proxy_has_handler_instances_of_proxies.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_defineProperty_calls_[[Set]].js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_defineProperty_calls_SetIntegrityLevel.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.copyWithin.js
@@ -941,7 +941,7 @@
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.pop.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.reverse.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.shift.js
   cmd: runES6 :fail
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.splice.js
@@ -955,7 +955,7 @@
 - path: es6/Proxy_internal_get_calls_Array.prototype.pop.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.reverse.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.shift.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.splice.js
@@ -1021,7 +1021,7 @@
 - path: es6/Proxy_internal_get_calls_ToPropertyDescriptor.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_getOwnPropertyDescriptor_calls_[[Set]].js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_getOwnPropertyDescriptor_calls_Function.prototype.bind.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_getOwnPropertyDescriptor_calls_Object.assign.js
@@ -1047,7 +1047,7 @@
 - path: es6/Proxy_internal_set_calls_Array.prototype.push.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Array.prototype.reverse.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Array.prototype.shift.js
   cmd: runES6 :fail
 - path: es6/Proxy_internal_set_calls_Array.prototype.splice.js

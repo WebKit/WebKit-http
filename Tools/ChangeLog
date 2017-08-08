@@ -1,3 +1,120 @@
+2016-03-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198187.
+        https://bugs.webkit.org/show_bug.cgi?id=155564
+
+        Potentially break testing on iOS (Requested by Guest23 on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add twisted-15.5.0 module to
+        webkitpy.thirdparty.autoinstalled."
+        https://bugs.webkit.org/show_bug.cgi?id=154667
+        http://trac.webkit.org/changeset/198187
+
+2016-03-16  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style: should warn about blank lines after #include "config.h" in TestWebKitAPI
+        <http://webkit.org/b/155445>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checker.py:
+        (_PATH_RULES_SPECIFIER): Do not ignore "build/include*" checks
+        on TestWebKitAPI since this project uses a config.h header as of
+        r95188.  Also remove references to WebKitAPITest, which ceased
+        to exist in r95944.
+
+        * Scripts/webkitpy/style/checker_unittest.py:
+        (GlobalVariablesTest.test_path_rules_specifier): Add tests.
+        Remove reference to WebKitAPITest project.
+
+2016-03-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac] Printing test snapshots are upside-down after r198242
+        https://bugs.webkit.org/show_bug.cgi?id=155543
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createPagedBitmapContext):
+        Flip printing snapshots in DRT so that everything is right-side-up.
+
+2016-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Update unit test for iOS debug queues.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2016-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetch:]):
+        * TestWebKitAPI/Tests/Cocoa/URLExtras.mm:
+        (TestWebKitAPI::TEST):
+
+2016-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS Simulator] Test result snapshots are upside down
+        https://bugs.webkit.org/show_bug.cgi?id=154761
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/cg/TestInvocationCG.cpp:
+        (WTR::createCGContextFromImage):
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected):
+        In r97104, Simon added code to take WindowServer snapshots, which came
+        in flipped, and added code to flip them back. At this point, WindowServer
+        snapshots got flipped, and software snapshots did not.
+
+        In r140067, Simon noticed that WindowServer ref test images were upside-down
+        on Mac (not sure why this changed), so turned off the flipping code (but
+        didn't delete it!). Now, WindowServer snapshots and software snapshots both
+        are not flipped.
+
+        In r190304, Carlos added an enum for the source of the snapshot ("WebView"
+        for window server snapshots, and "WebContent" for software snapshots),
+        and - critically - changed the flipping logic to flip software snapshots!
+
+        We didn't notice this on Mac because at this point we've made it so that
+        we *always* have WindowServer snapshots, but on iOS we still don't have
+        WindowServer snapshots, so now they're flipped.
+
+        And that's how we got here.
+
+        To restore the behavior from r140067, and correctly unflip snapshots on
+        iOS, just delete this code.
+
+2016-03-15  Alexey Proskuryakov  <ap@apple.com>
+
+        run-api-tests doesn't print test name when the test crashes
+        https://bugs.webkit.org/show_bug.cgi?id=155476
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/run-api-tests: Print "UNEXPECTEDLY EXITED" with a test name when output
+        doesn't contain the test name yet. Changed test name output to always be before raw
+        stdout for clarity.
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198203.
+
+        Favorites view is no longer loading on iOS
+
+        Reverted changeset:
+
+        "URL Parsing should signal failure for illegal IDN"
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        http://trac.webkit.org/changeset/198203
+
 2016-03-15  Jiewen Tan  <jiewen_tan@apple.com>
 
         URL Parsing should signal failure for illegal IDN

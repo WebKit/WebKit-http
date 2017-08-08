@@ -60,8 +60,6 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncUnShift(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncIndexOf(ExecState*);
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncReduce(ExecState*);
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncReduceRight(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState*);
@@ -324,18 +322,23 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState* exec)
 
     // 1. Let array be the result of calling ToObject on the this value.
     JSObject* thisObject = thisValue.toObject(exec);
-    if (exec->hadException())
+    VM& vm = exec->vm();
+    if (UNLIKELY(vm.exception()))
         return JSValue::encode(jsUndefined());
     
     // 2. Let func be the result of calling the [[Get]] internal method of array with argument "join".
     JSValue function = JSValue(thisObject).get(exec, exec->propertyNames().join);
 
     // 3. If IsCallable(func) is false, then let func be the standard built-in method Object.prototype.toString (15.2.4.2).
+    bool customJoinCase = false;
     if (!function.isCell())
-        return JSValue::encode(jsMakeNontrivialString(exec, "[object ", thisObject->methodTable(exec->vm())->className(thisObject), "]"));
+        customJoinCase = true;
     CallData callData;
     CallType callType = getCallData(function, callData);
     if (callType == CallType::None)
+        customJoinCase = true;
+
+    if (UNLIKELY(customJoinCase))
         return JSValue::encode(jsMakeNontrivialString(exec, "[object ", thisObject->methodTable(exec->vm())->className(thisObject), "]"));
 
     // 4. Return the result of calling the [[Call]] internal method of func providing array as the this value and an empty arguments list.
@@ -352,18 +355,18 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState* exec)
         return JSValue::encode(earlyReturnValue);
 
     JSStringJoiner joiner(*exec, ',', length);
-    if (exec->hadException())
+    if (UNLIKELY(vm.exception()))
         return JSValue::encode(jsUndefined());
 
     for (unsigned i = 0; i < length; ++i) {
         JSValue element = thisArray->tryGetIndexQuickly(i);
         if (!element) {
             element = thisArray->get(exec, i);
-            if (exec->hadException())
+            if (UNLIKELY(vm.exception()))
                 return JSValue::encode(jsUndefined());
         }
         joiner.append(*exec, element);
-        if (exec->hadException())
+        if (UNLIKELY(vm.exception()))
             return JSValue::encode(jsUndefined());
     }
 
@@ -734,8 +737,9 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState* exec)
     if (!thisObject)
         return JSValue::encode(JSValue());
 
+    VM& vm = exec->vm();
     unsigned length = getLength(exec, thisObject);
-    if (exec->hadException())
+    if (vm.exception())
         return JSValue::encode(jsUndefined());
 
     switch (thisObject->indexingType()) {
@@ -773,31 +777,40 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState* exec)
     }
 
     unsigned middle = length / 2;
-    for (unsigned k = 0; k < middle; k++) {
-        unsigned lk1 = length - k - 1;
-        JSValue obj2 = getProperty(exec, thisObject, lk1);
-        if (exec->hadException())
+    for (unsigned lower = 0; lower < middle; lower++) {
+        unsigned upper = length - lower - 1;
+        bool lowerExists = thisObject->hasProperty(exec, lower);
+        if (vm.exception())
             return JSValue::encode(jsUndefined());
-        JSValue obj = getProperty(exec, thisObject, k);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        JSValue lowerValue;
+        if (lowerExists)
+            lowerValue = thisObject->get(exec, lower);
 
-        if (obj2) {
-            thisObject->putByIndexInline(exec, k, obj2, true);
-            if (exec->hadException())
-                return JSValue::encode(jsUndefined());
-        } else if (!thisObject->methodTable(exec->vm())->deletePropertyByIndex(thisObject, exec, k)) {
-            throwTypeError(exec, ASCIILiteral("Unable to delete property."));
+        bool upperExists = thisObject->hasProperty(exec, upper);
+        if (vm.exception())
             return JSValue::encode(jsUndefined());
+        JSValue upperValue;
+        if (upperExists)
+            upperValue = thisObject->get(exec, upper);
+
+        if (upperExists) {
+            thisObject->putByIndexInline(exec, lower, upperValue, true);
+            if (vm.exception())
+                return JSValue::encode(JSValue());
+        } else if (!thisObject->methodTable(vm)->deletePropertyByIndex(thisObject, exec, lower)) {
+            if (!vm.exception())
+                throwTypeError(exec, ASCIILiteral("Unable to delete property."));
+            return JSValue::encode(JSValue());
         }
 
-        if (obj) {
-            thisObject->putByIndexInline(exec, lk1, obj, true);
-            if (exec->hadException())
-                return JSValue::encode(jsUndefined());
-        } else if (!thisObject->methodTable(exec->vm())->deletePropertyByIndex(thisObject, exec, lk1)) {
-            throwTypeError(exec, ASCIILiteral("Unable to delete property."));
-            return JSValue::encode(jsUndefined());
+        if (lowerExists) {
+            thisObject->putByIndexInline(exec, upper, lowerValue, true);
+            if (vm.exception())
+                return JSValue::encode(JSValue());
+        } else if (!thisObject->methodTable(vm)->deletePropertyByIndex(thisObject, exec, upper)) {
+            if (!vm.exception())
+                throwTypeError(exec, ASCIILiteral("Unable to delete property."));
+            return JSValue::encode(JSValue());
         }
     }
     return JSValue::encode(thisObject);

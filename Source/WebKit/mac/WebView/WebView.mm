@@ -1120,9 +1120,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
 #endif
 
-#if PLATFORM(IOS)
     _private->page->settings().setContentDispositionAttachmentSandboxEnabled(true);
-#endif
 }
 
 - (id)_initWithFrame:(NSRect)f frameName:(NSString *)frameName groupName:(NSString *)groupName
@@ -2514,7 +2512,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     settings.setMediaDataLoadsAutomatically([preferences mediaDataLoadsAutomatically]);
+
+#if ENABLE(ATTACHMENT_ELEMENT)
     settings.setAttachmentElementEnabled([preferences attachmentElementEnabled]);
+#endif
 }
 
 static inline IMP getMethod(id o, SEL s)

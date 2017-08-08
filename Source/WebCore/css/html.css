@@ -53,7 +53,6 @@ address, article, aside, div, footer, header, hgroup, layer, main, nav, section 
 
 marquee {
     display: inline-block;
-    overflow: -webkit-marquee;
 }
 
 blockquote {
@@ -1217,6 +1216,9 @@ applet, embed, object, img {
 #if defined(ENABLE_ATTACHMENT_ELEMENT) && ENABLE_ATTACHMENT_ELEMENT
 attachment {
     -webkit-appearance: attachment;
+#if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
+    color: -apple-system-blue;
+#endif
 }
 #endif
 

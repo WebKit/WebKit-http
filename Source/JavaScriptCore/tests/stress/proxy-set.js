@@ -90,7 +90,7 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === target);
             called = true;
             theTarget[propName] = value;
@@ -117,7 +117,7 @@ function assert(b) {
     });
 
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === target);
             theTarget[propName] = value;
             return true;
@@ -148,7 +148,7 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === target);
             called = true;
             theTarget[propName] = value;
@@ -176,7 +176,7 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === target);
             called = true;
             theTarget[propName] = value;
@@ -207,7 +207,7 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === target);
             called = true;
             theTarget[propName] = value;
@@ -232,9 +232,9 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === proxy);
+            assert(receiver === proxy);
             called = true;
             theTarget[propName] = value;
         }
@@ -263,9 +263,9 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === proxy);
+            assert(receiver === proxy);
             called = true;
             theTarget[propName] = value;
         }
@@ -306,9 +306,9 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === proxy);
+            assert(receiver === proxy);
             called = true;
             theTarget[propName] = value;
         }
@@ -329,9 +329,9 @@ function assert(b) {
 
     let called = false;
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === proxy);
+            assert(receiver === proxy);
             called = true;
             theTarget[propName] = value;
         }
@@ -362,9 +362,9 @@ function assert(b) {
     };
 
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === proxy);
+            assert(receiver === proxy);
             theTarget[propName] = value;
             return true;
         }
@@ -386,9 +386,9 @@ function assert(b) {
     let called = false;
     let target = {};
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === obj);
+            assert(receiver === obj);
             theTarget[propName] = value;
             called = true;
             return true;
@@ -435,8 +435,10 @@ function assert(b) {
         assert(proxy.own === undefined);
 
         obj.notOwn = i;
-        assert(target.notOwn === i);
-        assert(proxy.notOwn === i);
+        // The receiver is always |obj|.
+        // obj.[[Set]](P, V, obj) -> Proxy.[[Set]](P, V, obj) -> target.[[Set]](P, V, obj)
+        assert(target.notOwn === undefined);
+        assert(proxy.notOwn === undefined);
         assert(obj.notOwn === i);
     }
 }
@@ -445,9 +447,9 @@ function assert(b) {
     let called = false;
     let target = {};
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            assert(reciever === obj);
+            assert(receiver === obj);
             theTarget[propName] = value;
             called = true;
             return true;
@@ -495,8 +497,10 @@ function assert(b) {
         assert(proxy[0] === undefined);
 
         obj[1] = i;
-        assert(target[1] === i);
-        assert(proxy[1] === i);
+        // The receiver is always |obj|.
+        // obj.[[Set]](P, V, obj) -> Proxy.[[Set]](P, V, obj) -> target.[[Set]](P, V, obj)
+        assert(target[1] === undefined);
+        assert(proxy[1] === undefined);
         assert(obj[1] === i);
     }
 }
@@ -505,9 +509,9 @@ function assert(b) {
     let called = false;
     let target = {};
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            //assert(reciever === obj);
+            assert(receiver === obj);
             theTarget[propName] = value;
             called = true;
             return true;
@@ -541,9 +545,9 @@ function assert(b) {
     let called = false;
     let target = [25];
     let handler = {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(target === theTarget);
-            //assert(reciever === obj);
+            assert(receiver === obj);
             theTarget[propName] = value;
             called = true;
             return true;
@@ -577,9 +581,9 @@ function assert(b) {
     let called = false;
     let ogTarget = {};
     let target = new Proxy(ogTarget, {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === ogTarget);
-            assert(reciever === obj);
+            assert(receiver === obj);
             called = true;
             theTarget[propName] = value;
         }
@@ -613,9 +617,9 @@ function assert(b) {
     let called = false;
     let ogTarget = [25];
     let target = new Proxy(ogTarget, {
-        set: function(theTarget, propName, value, reciever) {
+        set: function(theTarget, propName, value, receiver) {
             assert(theTarget === ogTarget);
-            assert(reciever === obj);
+            assert(receiver === obj);
             called = true;
             theTarget[propName] = value;
         }

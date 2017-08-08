@@ -252,11 +252,11 @@ webkit.org/b/152993 http/tests/contentdispositionattachmentsandbox/form-submissi
 fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
 fast/text/all-small-caps-whitespace.html [ Skip ]
 
-# <attachment> support is currently half-baked
-fast/attachment [ Skip ]
-
 # This test relies on EventSender.keydown(), which is not supported on iOS
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
+
+# The file-wrapper part of <attachment> is not yet working on iOS
+fast/attachment/attachment-type-attribute.html [ Skip ]
 
 ###
 # Known failures
@@ -3003,6 +3003,11 @@ fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]
 
 webkit.org/b/155372 [ Debug ] css3/masking/mask-luminance-svg.html [ Pass Crash ]
-webkit.org/b/155372 [ Debug ] css3/masking/mask-svg-script-none-to-png.html [ Pass Crash]
+webkit.org/b/155372 [ Debug ] css3/masking/mask-svg-script-none-to-png.html [ Pass Crash ]
 
-webkit.orb/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/multicol-with-abspos-svg-with-foreignobject-with-multicol-crash.html [ Pass Crash ]
+webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/multicol-with-abspos-svg-with-foreignobject-with-multicol-crash.html [ Pass Crash ]
+webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/relayout-abspos-in-relpos-spanner.html [ Pass Crash ]
+
+webkit.org/b/94458 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Pass Crash ]
+
+webkit.org/b/155565 [ Debug ] mathml/very-large-stretchy-operators.html [ Skip ]
