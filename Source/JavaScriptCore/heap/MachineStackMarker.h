@@ -139,7 +139,7 @@ public:
         void* stackEnd;
 #if OS(WINDOWS)
         HANDLE platformThreadHandle;
-#elif USE(PTHREADS) && !OS(DARWIN)
+#elif USE(PTHREADS) && !OS(DARWIN) && !OS(HAIKU)
         sem_t semaphoreForSuspendResume;
         mcontext_t suspendedMachineContext;
         int suspendCount { 0 };

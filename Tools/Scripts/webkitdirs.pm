@@ -99,6 +99,7 @@ use constant {
     AppleWin => "AppleWin",
     GTK      => "GTK",
     Efl      => "Efl",
+    Haiku    => "Haiku",
     iOS      => "iOS",
     Mac      => "Mac",
     JSCOnly  => "JSCOnly",
@@ -1057,6 +1058,7 @@ sub determinePortName()
     my %argToPortName = (
         efl => Efl,
         gtk => GTK,
+        haiku => Haiku,
         'jsc-only' => JSCOnly,
         wincairo => WinCairo
     );
@@ -1088,6 +1090,7 @@ sub determinePortName()
             my $portsChoice = join "\n\t", qw(
                 --efl
                 --gtk
+                --haiku
                 --jsc-only
             );
             die "Please specify which WebKit port to build using one of the following options:"
@@ -1859,7 +1862,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub wrapperPrefixIfNeeded()
 {
-    if (isAnyWindows() || isJSCOnly()) {
+    if (isAnyWindows() || isJSCOnly() || isHaiku()) {
         return ();
     }
     if (isAppleMacWebKit()) {
