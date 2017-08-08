@@ -251,7 +251,8 @@ fast/overflow/scrollbar-restored-and-then-locked.html [ Skip ]
 
 # TODO IndexedDB is not yet enabled.
 storage/indexeddb/ [ Skip ]
-imported/w3c/indexeddb [ Skip ]
+imported/w3c/IndexedDB-private-browsing [ Skip ]
+imported/w3c/web-platform-tests/IndexedDB [ Skip ]
 js/dom/global-constructors-attributes-idb.html [ Skip ]
 http/tests/security/cross-origin-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-indexeddb.html [ Skip ]
@@ -1254,8 +1255,7 @@ editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
 ###### Text Iterator
 # Plain text controller currently in Mac DumpRenderTree only.
 editing/text-iterator [ Skip ]
-# TODO Missing testRunner.findString()
-webkit.org/b/50234 editing/text-iterator/findString.html [ Skip ]
+editing/text-iterator/findString.html [ Pass ]
 
 ###### TODO Spellchecker is not implemented. Skip these test.
 webkit.org/b/66620 editing/spelling/spelling-insert-html.html [ Skip ]
@@ -3360,12 +3360,3 @@ webkit.org/b/137093 svg/custom/glyph-selection-lang-attribute.svg [ Failure ]
 
 # This test relies on iOS-specific font fallback.
 fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
-
-# RTL Scrollbars are only implemented on OS X
-fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-overflow-padding.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
-fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]

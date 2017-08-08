@@ -128,26 +128,10 @@ void PageClientImpl::setViewNeedsDisplay(const IntRect& rect)
     ASSERT_NOT_REACHED();
 }
 
-void PageClientImpl::displayView()
-{
-    ASSERT_NOT_REACHED();
-}
-
-bool PageClientImpl::canScrollView()
-{
-    notImplemented();
-    return false;
-}
-
-void PageClientImpl::scrollView(const IntRect&, const IntSize&)
-{
-    ASSERT_NOT_REACHED();
-}
-
 void PageClientImpl::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
 {
     UNUSED_PARAM(isProgrammaticScroll);
-    [m_webView _scrollToContentOffset:scrollPosition scrollOrigin:scrollOrigin];
+    [m_webView _scrollToContentScrollPosition:scrollPosition scrollOrigin:scrollOrigin];
 }
 
 IntSize PageClientImpl::viewSize()
@@ -512,6 +496,11 @@ void PageClientImpl::didCommitLayerTree(const RemoteLayerTreeTransaction& layerT
     [m_contentView _didCommitLayerTree:layerTreeTransaction];
 }
 
+void PageClientImpl::layerTreeCommitComplete()
+{
+    [m_contentView _layerTreeCommitComplete];
+}
+
 void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t nextValidLayerTreeTransactionID)
 {
     [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition nextValidLayerTreeTransactionID:nextValidLayerTreeTransactionID];
@@ -522,9 +511,9 @@ void PageClientImpl::couldNotRestorePageState()
     [m_webView _couldNotRestorePageState];
 }
 
-void PageClientImpl::restorePageState(const WebCore::FloatRect& exposedRect, double scale)
+void PageClientImpl::restorePageState(const WebCore::FloatRect& exposedContentRect, const WebCore::IntPoint& scrollOrigin, double scale)
 {
-    [m_webView _restorePageStateToExposedRect:exposedRect scale:scale];
+    [m_webView _restorePageStateToExposedRect:exposedContentRect scrollOrigin:scrollOrigin scale:scale];
 }
 
 void PageClientImpl::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)

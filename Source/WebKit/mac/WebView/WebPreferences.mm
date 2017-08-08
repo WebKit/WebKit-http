@@ -704,7 +704,8 @@ public:
 }
 
 - (void)_setUnsignedIntValue:(unsigned int)value forKey:(NSString *)key
-{    if ([self _unsignedIntValueForKey:key] == value)
+{
+    if ([self _unsignedIntValueForKey:key] == value)
         return;
     NSString *_key = KEY(key);
 #if PLATFORM(IOS)

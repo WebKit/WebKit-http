@@ -50,10 +50,10 @@ DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const 
 }
 
 #if ENABLE(DATACUE_VALUE)
-DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> platformValue, const String& type)
+DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, RefPtr<SerializedPlatformRepresentation>&& platformValue, const String& type)
     : TextTrackCue(context, start, end)
     , m_type(type)
-    , m_platformValue(platformValue)
+    , m_platformValue(WTFMove(platformValue))
 {
 }
 
@@ -62,6 +62,8 @@ DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const 
     , m_type(type)
     , m_value(value)
 {
+    if (m_value)
+        JSC::gcProtect(m_value);
 }
 #endif
 
@@ -73,7 +75,7 @@ DataCue::~DataCue()
 #endif
 }
 
-PassRefPtr<ArrayBuffer> DataCue::data() const
+RefPtr<ArrayBuffer> DataCue::data() const
 {
 #if ENABLE(DATACUE_VALUE)
     if (m_platformValue)
@@ -83,7 +85,7 @@ PassRefPtr<ArrayBuffer> DataCue::data() const
     if (!m_data)
         return nullptr;
 
-    return ArrayBuffer::create(m_data.get());
+    return ArrayBuffer::create(*m_data);
 }
 
 void DataCue::setData(ArrayBuffer* data, ExceptionCode& ec)
@@ -95,10 +97,12 @@ void DataCue::setData(ArrayBuffer* data, ExceptionCode& ec)
 
 #if ENABLE(DATACUE_VALUE)
     m_platformValue = nullptr;
+    if (m_value)
+        JSC::gcUnprotect(m_value);
     m_value = JSC::JSValue();
 #endif
 
-    m_data = ArrayBuffer::create(data);
+    m_data = ArrayBuffer::create(*data);
 }
 
 DataCue* toDataCue(TextTrackCue* cue)
@@ -128,10 +132,10 @@ bool DataCue::cueContentsMatch(const TextTrackCue& cue) const
         return false;
 
 #if ENABLE(DATACUE_VALUE)
-    RefPtr<SerializedPlatformRepresentation> otherPlatformValue = dataCue->platformValue();
+    const SerializedPlatformRepresentation* otherPlatformValue = dataCue->platformValue();
     if ((otherPlatformValue && !m_platformValue) || (!otherPlatformValue && m_platformValue))
         return false;
-    if (m_platformValue && !m_platformValue->isEqual(*otherPlatformValue.get()))
+    if (m_platformValue && !m_platformValue->isEqual(*otherPlatformValue))
         return false;
 
     JSC::JSValue thisValue = value(nullptr);

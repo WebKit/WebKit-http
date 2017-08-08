@@ -867,7 +867,7 @@
 - path: es6/Map_Map[Symbol.species].js
   cmd: runES6 :normal
 - path: es6/miscellaneous_built-in_prototypes_are_not_instances.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/miscellaneous_function_length_is_configurable.js
   cmd: runES6 :normal
 - path: es6/miscellaneous_no_assignments_allowed_in_for-in_head.js
@@ -943,11 +943,11 @@
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.reverse.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.shift.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.splice.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_deleteProperty_calls_Array.prototype.unshift.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.from.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.concat.js
@@ -1049,11 +1049,11 @@
 - path: es6/Proxy_internal_set_calls_Array.prototype.reverse.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Array.prototype.shift.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Array.prototype.splice.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Array.prototype.unshift.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_set_calls_Object.assign.js
   cmd: runES6 :normal
 - path: es6/Proxy_isExtensible_handler.js
@@ -1061,6 +1061,8 @@
 - path: es6/Proxy_JSON.stringify_support.js
   cmd: runES6 :normal
 - path: es6/Proxy_ownKeys_handler.js
+  cmd: runES6 :normal
+- path: es6/Proxy_ownKeys_duplicates.js
   cmd: runES6 :normal
 - path: es6/Proxy_preventExtensions_handler.js
   cmd: runES6 :normal

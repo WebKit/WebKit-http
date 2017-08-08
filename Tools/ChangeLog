@@ -1,3 +1,156 @@
+2016-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] ASMBench cannot be run without JSBENCH_PATH
+        https://bugs.webkit.org/show_bug.cgi?id=155751
+
+        Reviewed by Saam Barati.
+
+        Check ASMBENCH_PATH instead of JSBENCH_PATH for ASMBench files.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-03-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] SharedBuffer::copy() can cause a segmentation fault.
+        https://bugs.webkit.org/show_bug.cgi?id=155739
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/PlatformWin.cmake: Build and run the
+        SharedBuffer tests.
+
+2016-03-22  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Move ARM Linux bots to JSCOnly port
+        https://bugs.webkit.org/show_bug.cgi?id=155655
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (ConfigureBuild.__init__):
+        (appendCustomBuildFlags):
+        (CompileJSCOnly):
+        (Factory.__init__):
+        (BuildAndRemoteJSCTestsFactory):
+        (BuildAndRemoteJSCTestsFactory.__init__):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        * BuildSlaveSupport/clean-build:
+        (main):
+
+2016-03-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve SharedBuffer testing
+        https://bugs.webkit.org/show_bug.cgi?id=93078
+        <rdar://problem/25277829>
+
+        Reviewed by Ryosuke Niwa.
+
+        Based on a Blink patch by Huang Dongsung <luxtella@company100.net>.
+        <https://src.chromium.org/viewvc/blink?revision=153850&view=revision,
+        and a Blink patch by <tyoshino@chromium.org>
+        <https://src.chromium.org/viewvc/blink?view=rev&revision=151617>
+
+        Add three test cases from the Blink project that cover various append,
+        copy, and createArrayBuffer calls.
+
+        * TestWebKitAPI/Tests/WebCore/SharedBuffer.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-03-21  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Connect layoutTestController.findString() to support testing
+        https://bugs.webkit.org/show_bug.cgi?id=50234
+
+        Reviewed by Alex Christensen.
+
+        Implement TestRunner::findString().
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::findString):
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * ContentExtensionTester/Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR
+          based on the last component of MACOSX_DEPLOYMENT_TARGET.
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig: For engineering builds,
+          preserve the behavior of TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+        Similarly for these projects:
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebEditingTester/Configurations/Base.xcconfig:
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Synced up to the ones in ../Source.
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * asan/asan.xcconfig:
+
+2016-03-18  Sam Weinig  <sam@webkit.org>
+
+        Add test for HashMap::ensure that shows that moving into the lambda does not incure extra cost
+        https://bugs.webkit.org/show_bug.cgi?id=155621
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::ObjectWithRefLogger::ObjectWithRefLogger):
+        (TestWebKitAPI::testMovingUsingEnsure):
+        (TestWebKitAPI::testMovingUsingAdd):
+        Add tests ensuring that objects moved into a map using ensure don't
+        have extra ref-churn.
+
+2016-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Fix some deprecation warnings in WebEditingTester
+        https://bugs.webkit.org/show_bug.cgi?id=155601
+
+        Reviewed by Simon Fraser.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate showOperations:]):
+        (-[WebEditingAppDelegate _updateNewWindowKeyEquivalents]):
+
+2016-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Find-in-page indicator in Mail viewer is the wrong scale and cut off
+        https://bugs.webkit.org/show_bug.cgi?id=155605
+        <rdar://problem/23948165>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FindInPage.mm:
+        (TEST):
+        Add a test that ensures that the find result image is correctly @2x.
+        The NSImage size should be in points.
+
 2016-03-16  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r198187.

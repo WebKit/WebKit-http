@@ -1,3 +1,539 @@
+2016-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebInspector broken after r197620
+        https://bugs.webkit.org/show_bug.cgi?id=155497
+        <rdar://problem/25171910>
+
+        Reviewed by Philippe Normand.
+
+        Stop registering resource:// URLs as local, because they are not
+        like a local file at all. Compare also the URL protocols when
+        checking whether requested URL is main or test inspector page
+        instead of checking that the protocol is registered as local.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::isMainOrTestInspectorPage): Compare also the URL protocols.
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::platformCreateInspectorPage): Do not
+        set setAllowFileAccessFromFileURLs setting to true.
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Do not
+        register resource:// URLS as local.
+
+2016-03-22  Alberto Garcia  <berto@igalia.com>
+
+        Unreviewed typo fixes.
+
+        * Shared/linux/WebMemorySamplerLinux.cpp:
+        (WebKit::WebMemorySampler::sampleWebKit): "Commited" => "Committed"
+        * UIProcess/API/gtk/WebKitFileChooserRequest.cpp:
+        (webkit_file_chooser_request_select_files): "choosen" => "chosen"
+        * UIProcess/API/gtk/WebKitUserMediaPermissionRequest.cpp:
+        (webkit_user_media_permission_request_class_init): "Wether" => "Whether"
+
+2016-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove unused display and scroll view methods from PageClient and WebPageProxy
+        https://bugs.webkit.org/show_bug.cgi?id=155744
+
+        Reviewed by Andreas Kling.
+
+        We have displayView(), canScrollView() and scrollView() that are
+        used by DrawingAreaProxyImpl which is only used by GTK+ port that
+        doesn't implement those methods.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::displayView): Deleted.
+        (WebKit::PageClientImpl::scrollView): Deleted.
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::incorporateUpdate): Update the
+        whole view when scrolling, or the damage area otherwise.
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::displayView): Deleted.
+        (WebKit::WebPageProxy::canScrollView): Deleted.
+        (WebKit::WebPageProxy::scrollView): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebView.cpp:
+        (WebKit::WebView::displayView): Deleted.
+        (WebKit::WebView::scrollView): Deleted.
+        * UIProcess/efl/WebView.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::displayView): Deleted.
+        (WebKit::PageClientImpl::canScrollView): Deleted.
+        (WebKit::PageClientImpl::scrollView): Deleted.
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::displayView): Deleted.
+        (WebKit::PageClientImpl::canScrollView): Deleted.
+        (WebKit::PageClientImpl::scrollView): Deleted.
+
+2016-03-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordinatedGraphics] Polish std::function<> usage in ThreadedCompositor, CoordinatedGraphicsScene
+        https://bugs.webkit.org/show_bug.cgi?id=155726
+
+        Reviewed by Darin Adler.
+
+        Adjust the methods in ThreadedCompositor and CoordinatedGraphicsScene
+        classes to accept std::function<> arguments via rvalue references. This
+        should prevent both unnecessary copies and moves.
+
+        Fix lambda expressions that are most commonly used to construct the
+        std::function<> objects so that they don't capture-by-value by default,
+        but instead list the captured values verbosely. This part alone exposed
+        an issue in ThreadedCompositor::didChangeVisibleRect() where we were
+        capturing the `this' value by default, instead of a protector RefPtr.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::dispatchOnMainThread):
+        (WebKit::CoordinatedGraphicsScene::dispatchOnClientRunLoop):
+        (WebKit::CoordinatedGraphicsScene::paintToCurrentGLContext):
+        (WebKit::CoordinatedGraphicsScene::onNewBufferAvailable):
+        (WebKit::CoordinatedGraphicsScene::commitSceneState):
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+        (WebKit::CoordinatedGraphicsScene::commitScrollOffset):
+        (WebKit::CoordinatedGraphicsScene::appendUpdate):
+        (WebKit::CoordinatedGraphicsScene::setActive):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::CompositingRunLoop::CompositingRunLoop):
+        (WebKit::CompositingRunLoop::callOnCompositingRunLoop):
+        (WebKit::ThreadedCompositor::setNeedsDisplay):
+        (WebKit::ThreadedCompositor::setNativeSurfaceHandleForCompositing):
+        (WebKit::ThreadedCompositor::setDeviceScaleFactor):
+        (WebKit::ThreadedCompositor::didChangeViewportSize):
+        (WebKit::ThreadedCompositor::didChangeViewportAttribute):
+        (WebKit::ThreadedCompositor::didChangeContentsSize):
+        (WebKit::ThreadedCompositor::scrollTo):
+        (WebKit::ThreadedCompositor::scrollBy):
+        (WebKit::ThreadedCompositor::didChangeVisibleRect):
+        (WebKit::ThreadedCompositor::callOnCompositingThread):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+
+2016-03-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordinatedGraphics] Prefer RunLoop::main().dispatch() over callOnMainThread()
+        https://bugs.webkit.org/show_bug.cgi?id=155725
+
+        Reviewed by Darin Adler.
+
+        Unify the CoordinatedGraphics code in the WebKit2 layer to use RunLoop
+        for dispatching tasks on either the main thread or the composition thread
+        in case of using the threaded compositor. The latter is already the default,
+        so this patch just replaces calls to callOnMainThread() with calls to
+        RunLoop::main().dispatch().
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::dispatchOnMainThread):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::didChangeVisibleRect):
+
+2016-03-18  Enrica Casucci  <enrica@apple.com>
+
+        Enable preview of images as attachments.
+        https://bugs.webkit.org/show_bug.cgi?id=155674
+        rdar://problem/25242656
+
+        Reviewed by Darin Adler.
+
+        If the client cannot handle image preview, but can handle attachments,
+        let them handle images as attachments.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Darin Adler  <darin@apple.com>
+
+        Disable Caches in Safari's Develop menu does not disable caches.
+        https://bugs.webkit.org/show_bug.cgi?id=64483
+
+        Reviewed by Antti Koivisto.
+
+        Moved functions from WKPreferences to WKPage.
+
+        * Shared/WebPreferencesDefinitions.h: Removed ResourceCachingDisabled.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageGetResourceCachingDisabled): Added.
+        (WKPageSetResourceCachingDisabled): Added.
+        * UIProcess/API/C/WKPagePrivate.h: Added above functions.
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetResourceCachingDisabled): Deleted.
+        (WKPreferencesGetResourceCachingDisabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h: Deleted above functions.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setResourceCachingDisabled): Added.
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::isResourceCachingDisabled): Added.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Removed code to set the setting
+        for resourceCachingDisabled..
+        (WebKit::WebPage::setResourceCachingDisabled): Added.
+        * WebProcess/WebPage/WebPage.h: Declared setResourceCachingDisabled.
+        * WebProcess/WebPage/WebPage.messages.in: Added SetResourceCachingDisabled.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2016-03-19  Chris Dumez  <cdumez@apple.com>
+
+        Add a setting to let the client toggle support for network cache speculative validation
+        https://bugs.webkit.org/show_bug.cgi?id=155622
+        <rdar://problem/25233209>
+
+        Reviewed by Darin Adler.
+
+        Add SPI to toggle support for network cache speculative validation.
+        Enable network cache speculative validation by default for now, until
+        I have a chance to update the clients to use the new SPI.
+
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetDiskCacheSpeculativeValidationEnabled):
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration diskCacheSpeculativeValidationEnabled]):
+        (-[_WKProcessPoolConfiguration setDiskCacheSpeculativeValidationEnabled:]):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess):
+
+2016-03-19  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=155664
+        Consider to cap the size of session history data.
+
+        In iOS, if the total history entries data exceeds a threshold (2MB at the moment), don't
+        accumulate more data into the session state blob.
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/mac/LegacySessionStateCoding.cpp:
+        (WebKit::encodeSessionHistory): Stop encoding further history entries data into session state
+            if the total size exceed 2MB in iOS.
+
+2016-03-18  Alex Christensen  <achristensen@webkit.org>
+
+        Give NSURLSessionConfiguration information about parent process
+        https://bugs.webkit.org/show_bug.cgi?id=155661
+        rdar://problem/25225850
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkSession::sessionID):
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::partitionName):
+        (WebKit::NetworkProcess::sourceApplicationAuditData):
+        (WebKit::NetworkProcess::cfURLCacheOrigins):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::globalCustomProtocolManager):
+        (WebKit::globalSourceApplicationAuditTokenData):
+        (WebKit::NetworkSession::setCustomProtocolManager):
+        (WebKit::NetworkSession::setSourceApplicationAuditTokenData):
+        (WebKit::NetworkSession::defaultSession):
+        (WebKit::NetworkSession::NetworkSession):
+        Tell the NSURLSessionConfiguration what the source application bundle identifier
+        and audit token data are so we can correctly keep track of which application is using data.
+        This also gives CFNetwork enough information to determine if the application is allowed to
+        use cell data in Settings, so it seems like we do not need to explicitly set allowsCellularAccess.
+        * NetworkProcess/mac/RemoteNetworkingContext.mm:
+        (WebKit::RemoteNetworkingContext::sourceApplicationAuditData):
+        (WebKit::RemoteNetworkingContext::sourceApplicationIdentifier):
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::sourceApplicationAuditData):
+        (WebKit::WebFrameNetworkingContext::sourceApplicationIdentifier):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        * WebProcess/WebProcess.h:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformTerminate):
+        (WebKit::WebProcess::sourceApplicationAuditData):
+        (WebKit::WebProcess::initializeSandbox):
+        I moved the calls to getAuditToken from RemoteNetworkingContext.mm and WebFrameNetworkingContext.mm 
+        to NetworkProcessCocoa.mm and WebProcessCocoa.mm, respectively, to share with NetworkSession code, 
+        which does not use NetworkingContexts.
+
+2016-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Build fix after r198455.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::layerTreeCommitComplete):
+
+2016-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Sideways-scrollable RTL document has wrong initial and reload offset in WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=155660
+
+        Reviewed by Tim Horton.
+
+        There were two problems with the scroll position of RTL documents on initial and reload
+        in WKWebView.
+
+        First, in the delegatesScrolling() code path, ScrollView::updateScrollbars() needs to
+        tell someone that the scroll origin changed, to trigger a scroll to the page origin.
+
+        Secondly, WKWebView had scrollPosition/scrollOffset confusion in various places. In
+        the restorePageState() code path, WebCore passes an exposedRect; this patch makes
+        it explicit that it's an exposedContentRect, and passes scrollOrigin so that it can
+        be mapped into scrollOffset-relative coordinates that the UIScrollView wants.
+
+        When reloading an RTL page, there was an additional issue; restorePageState()
+        restored the exposedRect, but then we'd see the origin change as a programmatic scroll
+        to 0,0, clobbering the exposedRect. Fix by using a "_commitDidRestoreExposedRect" flag
+        on the WKWebView that is used to ignore the programmatic scroll in that case.
+
+        Ideally these changes would fix fast/scrolling/scroll-position-on-reload-rtl.html, but the
+        test still fails because of timing differences between OS X and iOS.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _layerTreeCommitComplete]):
+        (-[WKWebView _restorePageStateToExposedRect:scrollOrigin:scale:]):
+        (-[WKWebView _scrollToContentScrollPosition:scrollOrigin:]):
+        (-[WKWebView _restorePageStateToExposedRect:scale:]): Deleted.
+        (-[WKWebView _scrollToContentOffset:scrollOrigin:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::requestScroll):
+        (WebKit::PageClientImpl::layerTreeCommitComplete):
+        (WebKit::PageClientImpl::restorePageState):
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _layerTreeCommitComplete]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::layerTreeCommitComplete):
+        (WebKit::WebPageProxy::restorePageState):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::restorePageState):
+
+2016-03-18  Brady Eidson  <beidson@apple.com>
+
+        NSURLSession: Set download resume data when a download fails due to an error.
+        https://bugs.webkit.org/show_bug.cgi?id=155665
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didCompleteWithError:]): Save the resume data from the
+          NSError userInfo if it exists.
+
+2016-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Speculative revalidation requests do not have their HTTP user-agent set
+        https://bugs.webkit.org/show_bug.cgi?id=155620
+        <rdar://problem/24657567>
+
+        Reviewed by Brady Eidson.
+
+        Speculative revalidation requests do not have their HTTP user-agent set
+        which could lead to different content getting returned by the server.
+
+        To address the problem, we save the original request's 'user-agent' in
+        the disk cache and re-use it later on for speculative validation
+        requests.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::constructRevalidationRequest):
+        (WebKit::NetworkCache::SpeculativeLoadManager::revalidateEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::preloadEntry):
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp:
+        (WebKit::NetworkCache::SubresourceInfo::encode):
+        (WebKit::NetworkCache::SubresourceInfo::decode):
+        (WebKit::NetworkCache::SubresourceInfo::SubresourceInfo):
+        (WebKit::NetworkCache::SubresourceInfo::operator=):
+        (WebKit::NetworkCache::SubresourcesEntry::SubresourcesEntry):
+        (WebKit::NetworkCache::SubresourcesEntry::updateSubresourceLoads):
+        (WebKit::NetworkCache::SubresourcesEntry::decodeStorageRecord): Deleted.
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.h:
+        (WebKit::NetworkCache::SubresourceInfo::SubresourceInfo):
+
+2016-03-18  Enrica Casucci  <enrica@apple.com>
+
+        Add id attribute to _WKActivatedElementInfo.
+        https://bugs.webkit.org/show_bug.cgi?id=155666
+        rdar://problem/25181956
+
+        Reviewed by Beth Dakin.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode):
+        (WebKit::InteractionInformationAtPosition::decode):
+        * UIProcess/API/Cocoa/_WKActivatedElementInfo.h:
+        * UIProcess/API/Cocoa/_WKActivatedElementInfo.mm:
+        (-[_WKActivatedElementInfo _initWithType:URL:location:title:ID:rect:image:]):
+        (-[_WKActivatedElementInfo ID]):
+        (-[_WKActivatedElementInfo _initWithType:URL:location:title:rect:image:]): Deleted.
+        * UIProcess/API/Cocoa/_WKActivatedElementInfoInternal.h:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant showImageSheet]):
+        (-[WKActionSheetAssistant showLinkSheet]):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _showAttachmentSheet]):
+        (-[WKContentView _showLinkSheet]):
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        (-[WKContentView _presentedViewControllerForPreviewItemController:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2016-03-18  Antti Koivisto  <antti@apple.com>
+
+        Protect against excessive cache traversal
+        https://bugs.webkit.org/show_bug.cgi?id=155635
+        rdar://problem/24241008
+
+        Reviewed by Darin Adler.
+
+        We can't handle unlimited number of parallel cache traversal requests from the client.
+        We'll run out of dispatch queues and other system resources. CPU will spin.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::traverse):
+
+            Add limit of maximum 3 traversals. When exceeded return nothing and log an error.
+
+        * NetworkProcess/cache/NetworkCache.h:
+
+2016-03-18  Darin Adler  <darin@apple.com>
+
+        Disable Caches in Safari's Develop menu does not disable caches.
+        https://bugs.webkit.org/show_bug.cgi?id=64483
+
+        Reviewed by Antti Koivisto.
+
+        * Shared/WebPreferencesDefinitions.h: Added ResourceCachingDisabled.
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetResourceCachingDisabled): Added.
+        (WKPreferencesGetResourceCachingDisabled): Added.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h: Ditto.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Push ResourceCachingDisabled setting
+        into WebCore.
+
+2016-03-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Try to fix GTK+ debug build after r198364.
+
+        * WebProcess/gtk/WebProcessMainGtk.cpp: Use WTF::sleep().
+
+2016-03-17  Alex Christensen  <achristensen@webkit.org>
+
+        SpeculativeLoad needs to continue NetworkLoad when it receives a redirect response
+        https://bugs.webkit.org/show_bug.cgi?id=155612
+
+        Reviewed by Andy Estes.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::willSendRedirectedRequest):
+        Call continueWillSendRequest.  Otherwise, we will hang a thread in the NetworkProcess
+        if we are using ResourceHandle or we will not call the willPerformHTTPRedirection 
+        completion handler if we are using NetworkSession.  This will cause us to stop loading
+        from the server after the maximum number of connections is reached.
+
+2016-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Find-in-page indicator in Mail viewer is the wrong scale and cut off
+        https://bugs.webkit.org/show_bug.cgi?id=155605
+        <rdar://problem/23948165>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/mac/WKTextFinderClient.mm:
+        (-[WKTextFinderClient didGetImageForMatchResult:]):
+        Initialize the NSImage with the correct size, instead of inferring the
+        size from the bitmap, so that we don't lose information about device pixel ratio.
+
+2016-03-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove use of dyld_register_image_state_change_handler() in PluginProcessMac.mm
+        https://bugs.webkit.org/show_bug.cgi?id=155596
+
+        Reviewed by Dan Bernstein.
+
+        Use _dyld_register_func_for_add_image instead which is API. Use dladdr to find the image path given its header.
+
+        * Platform/spi/Cocoa/DyldSPI.h: Removed.
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::platformInitializeProcess):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-03-17  Chris Dumez  <cdumez@apple.com>
+
+        Set the WebContent process's main thread QoS to USER-INTERACTIVE
+        https://bugs.webkit.org/show_bug.cgi?id=155595
+        <rdar://problem/22534965>
+
+        Reviewed by Antti Koivisto.
+
+        Increase the WebContent process main thread's QoS to USER-INTERACTIVE
+        instead of USER-INITIATED as it is drawing UI. However, use a relative
+        priority of -1 so that its priority is lower than the one of the
+        scrolling thread.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2016-03-17  Alex Christensen  <achristensen@webkit.org>
+
+        Support manually accepting invalid SSL certificates with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=155442
+        <rdar://problem/24847398>
+
+        Reviewed by Darin Adler.
+
+        When we click continue after getting a warning about an invalid SSL certificate, we call
+        NSURLRequest setAllowsSpecificHTTPSCertificate in NetworkProcess::allowSpecificHTTPSCertificateForHost,
+        which stores information in CFNetwork about the specific invalid SSL certificate we want to accept.
+        If we see such a certificate during a server trust evaluation, we want to tell CFNetwork to accept it.
+        This fixes a loop when going to https://badssl.com, clicking on expired, and clicking continue.
+
+        * NetworkProcess/NetworkDataTask.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::didReceiveChallenge):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::transferSandboxExtensionToDownload):
+        (WebKit::certificatesMatch):
+        (WebKit::NetworkDataTask::allowsSpecificHTTPSCertificateForHost):
+        (WebKit::NetworkDataTask::suggestedFilename):
+
 2016-03-17  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Mac][cmake] Unreviewed buildfix after r198070. Just for fun.

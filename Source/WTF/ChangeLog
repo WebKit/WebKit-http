@@ -1,3 +1,176 @@
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-03-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make CSE's ImpureData faster when dealing with large blocks
+        https://bugs.webkit.org/show_bug.cgi?id=155594
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/HashSet.h:
+        (WTF::V>::removeIf):
+
+2016-03-17  Saam barati  <sbarati@apple.com>
+
+        Implement SmallPtrSet and integrate it into the Parser
+        https://bugs.webkit.org/show_bug.cgi?id=155552
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements the SmallPtrSet data struture.
+        Inspired by the implementation in llvm:
+        http://llvm.org/docs/doxygen/html/SmallPtrSet_8h_source.html
+
+        The data structure uses an inline array for storage up until
+        a fixed limit (8 entries in our implementation). If that storage
+        fills up, we fall back to a simple hash table implementation.
+        Crucially, this implementation doesn't support the remove
+        operation. This is on purpose. The hash table will only ever
+        grow.
+
+        Also, the implementation allows for it to be memcopied around.
+        I.e, we can put SmallPtrSet inside a Vector and allow that
+        Vector to use memcpy as its move operation (of course this
+        is only valid if the SmallPtrSet in the old memory doesn't have 
+        its destructor called unless it is set back to its initial state.)
+
+        For now, SmallPtrSet only supports pointer types that are trivially
+        destructible. It's probably not too difficult to extend this to
+        smart pointers, but it's not part of this original implementation.
+
+        I've also implemented a pure forwarding varargs constructAndAppend
+        method on Vector. This allows you to do:
+        Vector<T> v;
+        v.constructAndAppend(a1, a2, ...)
+        as long as T has a constructor that accepts arguments (a1, a2, ...).
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/SmallPtrSet.h: Added.
+        (WTF::SmallPtrSet::SmallPtrSet):
+        (WTF::SmallPtrSet::operator=):
+        (WTF::SmallPtrSet::~SmallPtrSet):
+        (WTF::SmallPtrSet::add):
+        (WTF::SmallPtrSet::contains):
+        (WTF::SmallPtrSet::iterator::operator++):
+        (WTF::SmallPtrSet::iterator::operator*):
+        (WTF::SmallPtrSet::iterator::operator==):
+        (WTF::SmallPtrSet::iterator::operator!=):
+        (WTF::SmallPtrSet::begin):
+        (WTF::SmallPtrSet::end):
+        (WTF::SmallPtrSet::size):
+        (WTF::SmallPtrSet::emptyValue):
+        (WTF::SmallPtrSet::isValidEntry):
+        (WTF::SmallPtrSet::isSmall):
+        (WTF::SmallPtrSet::initialize):
+        (WTF::SmallPtrSet::grow):
+        (WTF::SmallPtrSet::bucket):
+        * wtf/Vector.h:
+        (WTF::Vector::append):
+        (WTF::Vector::uncheckedAppend):
+        (WTF::minCapacity>::append):
+        (WTF::minCapacity>::constructAndAppend):
+        (WTF::minCapacity>::appendSlowCase):
+        (WTF::minCapacity>::constructAndAppendSlowCase):
+
+2016-03-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all of the various non-working and non-compiling sampling profiler hacks with a single super hack
+        https://bugs.webkit.org/show_bug.cgi?id=155561
+
+        Reviewed by Saam Barati.
+
+        This patch replaces all of our various ad hoc profiling hacks with a single ad hoc profiling hack.
+        That needs to be able to sleep a thread, so I added a portable way to do it.
+
+        This also removes a bunch of ENABLE flags for all of the old non-working hacks.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::currentCPUTime):
+        (WTF::sleep):
+        * wtf/CurrentTime.h:
+        (WTF::sleepMS):
+        * wtf/Platform.h:
+
+2016-03-17  Chris Dumez  <cdumez@apple.com>
+
+        Set the WebContent process's main thread QoS to USER-INTERACTIVE
+        https://bugs.webkit.org/show_bug.cgi?id=155595
+        <rdar://problem/22534965>
+
+        Reviewed by Antti Koivisto.
+
+        Add a relativePriority parameter to setCurrentThreadIsUser*() so that
+        we can do more fine-grained prioritization of threads that have the
+        same QoS.
+
+        * wtf/Threading.cpp:
+        (WTF::setCurrentThreadIsUserInteractive):
+        (WTF::setCurrentThreadIsUserInitiated):
+        (WTF::createThread): Deleted.
+        * wtf/Threading.h:
+
+2016-03-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Silence leaks in ParkingLot
+        https://bugs.webkit.org/show_bug.cgi?id=155510
+
+        Reviewed by Alexey Proskuryakov.
+
+        ParkingLot has a concurrent hashtable that it reallocates on demand. It will not reallocate
+        it in steady state. The hashtable is sized to accommodate the high watermark of the number
+        of active threads - so long as the program doesn't just keep starting an unbounded number
+        of threads that are all active, the hashtable will stop resizing. Each resize operation is
+        designed to stay out of the way of the data-access-parallel normal path, in which two
+        threads operating on different lock addresses don't have to synchronize. To do this, it
+        simply drops the old hashtable without deleting it, so that threads that were still using
+        it don't crash. They will realize that they have the wrong hashtable before doing anything
+        bad, but we don't have a way of proving when all of those threads are no longer going to
+        read from the old hashtables. So, we just leak them.
+
+        This is a bounded leak, since the hashtable resizes exponentially. Thus the total memory
+        utilization of all hashtables, including the leaked ones, converges to a linear function of
+        the current hashtable's size (it's 2 * size of current hashtable).
+
+        But this leak is a problem for leaks tools, which will always report this leak. This is not
+        useful. It's better to silence the leak. That's what this patch does by ensuring that all
+        hashtables, including leaked ones, end up in a global vector. This is perf-neutral.
+
+        This requires making a StaticWordLock variant of WordLock. That's probably the biggest part
+        of this change.
+
+        * wtf/ParkingLot.cpp:
+        * wtf/WordLock.cpp:
+        (WTF::WordLockBase::lockSlow):
+        (WTF::WordLockBase::unlockSlow):
+        (WTF::WordLock::lockSlow): Deleted.
+        (WTF::WordLock::unlockSlow): Deleted.
+        * wtf/WordLock.h:
+        (WTF::WordLockBase::lock):
+        (WTF::WordLockBase::isLocked):
+        (WTF::WordLock::WordLock):
+        (WTF::WordLock::lock): Deleted.
+        (WTF::WordLock::isLocked): Deleted.
+
 2016-03-16  Chris Dumez  <cdumez@apple.com>
 
         Unreviewed, rolling out r198235, r198240, r198241, and

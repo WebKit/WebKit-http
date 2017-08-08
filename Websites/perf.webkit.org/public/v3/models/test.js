@@ -1,3 +1,4 @@
+'use strict';
 
 class Test extends LabeledObject {
     constructor(id, object, isTopLevel)
@@ -9,10 +10,10 @@ class Test extends LabeledObject {
         this._metrics = [];
 
         if (isTopLevel)
-            this.ensureNamedStaticMap('topLevelTests').push(this);
+            this.ensureNamedStaticMap('topLevelTests')[id] = this;
     }
 
-    static topLevelTests() { return this.sortByName(this.namedStaticMap('topLevelTests')); }
+    static topLevelTests() { return this.sortByName(this.listForStaticMap('topLevelTests')); }
 
     parentTest() { return this._parent; }
 
@@ -42,3 +43,6 @@ class Test extends LabeledObject {
     addChildTest(test) { this._childTests.push(test); }
     addMetric(metric) { this._metrics.push(metric); }
 }
+
+if (typeof module != 'undefined')
+    module.exports.Test = Test;

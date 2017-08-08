@@ -332,6 +332,8 @@ bool ProxyObject::performHasProperty(ExecState* exec, PropertyName propertyName,
 bool ProxyObject::getOwnPropertySlotCommon(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     slot.disableCaching();
+    if (slot.internalMethodType() != PropertySlot::InternalMethodType::VMInquiry)
+        slot.setIsTaintedByProxy();
     switch (slot.internalMethodType()) {
     case PropertySlot::InternalMethodType::Get:
         slot.setCustom(this, CustomAccessor, performProxyGet);
@@ -876,7 +878,7 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
         ++uncheckedResultKeys.add(ident.impl(), 0).iterator->value;
         ++totalSize;
 
-        trapResult.add(ident.impl());
+        trapResult.addUnchecked(ident.impl());
 
         return dontExitEarly;
     };

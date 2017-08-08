@@ -805,6 +805,11 @@ webkit.org/b/154687 streams/pipe-to.html [ Slow ]
 
 webkit.org/b/52185 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnlyFailure ]
 
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-1.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-2.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-3.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-4.html [ Pass Failure ]
+
 # Content Security Policy failures
 webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1
 http/tests/security/contentSecurityPolicy/1.1/child-src [ Pass ]
@@ -898,14 +903,14 @@ webkit.org/b/94458 http/tests/security/aboutBlank/security-context-write.html [ 
 ### START OF IndexedDB failures
 
 # Our IDL parser test harness is not what this test expects
-imported/w3c/indexeddb/interfaces.html [ Skip ]
+imported/w3c/web-platform-tests/IndexedDB/interfaces.html [ Skip ]
 
 # W3C IDB tests where the test is wrong (the spec, other browsers, and WebKit all agree)
 # Covered by https://github.com/w3c/web-platform-tests/issues/2456
-imported/w3c/indexeddb/idbindex_get7.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_getKey7.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_openCursor2.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_openKeyCursor3.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_get7.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_getKey7.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_openCursor2.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_openKeyCursor3.htm [ Failure ]
 
 # Times out for unexplored reasons                                                             
 storage/indexeddb/database-quota.html [ Skip ]
@@ -968,8 +973,8 @@ storage/indexeddb/deletedatabase-delayed-by-versionchange.html [ Skip ]
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 
 # Completes with passing results, but too slowly for our test timeouts.
-imported/w3c/indexeddb/idbindex-multientry-big.htm [ Failure ]
-imported/w3c/indexeddb/idbcursor_iterating.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Failure ]
 
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
@@ -988,3 +993,22 @@ webkit.org/b/155028 storage/indexeddb/modern/256-open-databases.html [ Skip ]
 
 ### END OF IndexedDB failures
 ########################################
+
+# RTL Scrollbars are only implemented on certain versions of OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-padding.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-elementFromPoint.html [ Failure ]
+fast/scrolling/rtl-scrollbars-overflow-position-absolute.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-text-selection-scrolled.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-position-absolute.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-position-fixed.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-text-selection-scrolled.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-text-selection.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-iframe-offset.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-elementFromPoint-static.html [ Failure ]
+fast/scrolling/rtl-scrollbars-iframe-scrolled.html [ ImageOnlyFailure ]

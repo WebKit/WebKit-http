@@ -311,10 +311,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
     for (auto& entry : capturedVariables)
         varDeclarations.markVariableAsCaptured(entry);
 
-    IdentifierSet usedVariables;
-    scope->getUsedVariables(usedVariables);
     if (parseMode == SourceParseMode::GeneratorWrapperFunctionMode) {
-        if (usedVariables.contains(m_vm->propertyNames->arguments.impl()))
+        if (scope->usedVariablesContains(m_vm->propertyNames->arguments.impl()))
             context.propagateArgumentsUse();
     }
 
@@ -3846,8 +3844,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
 
     if (baseIsSuper) {
         ScopeRef scopeRef = closestParentOrdinaryFunctionNonLexicalScope();
-        // FIXME: Change error message for more suitable. https://bugs.webkit.org/show_bug.cgi?id=155491 
-        semanticFailIfFalse(currentScope()->isFunction() || (scopeRef->isEvalContext() && scopeRef->expectedSuperBinding() == SuperBinding::Needed), "super is only valid inside functions");
+        semanticFailIfFalse(currentScope()->isFunction() || (scopeRef->isEvalContext() && scopeRef->expectedSuperBinding() == SuperBinding::Needed), "'super' is only valid inside a function or an 'eval' inside a function");
         base = context.createSuperExpr(location);
         next();
         currentFunctionScope()->setNeedsSuperBinding();

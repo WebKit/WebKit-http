@@ -1324,21 +1324,6 @@ void WebPageProxy::setViewNeedsDisplay(const IntRect& rect)
     m_pageClient.setViewNeedsDisplay(rect);
 }
 
-void WebPageProxy::displayView()
-{
-    m_pageClient.displayView();
-}
-
-bool WebPageProxy::canScrollView()
-{
-    return m_pageClient.canScrollView();
-}
-
-void WebPageProxy::scrollView(const IntRect& scrollRect, const IntSize& scrollOffset)
-{
-    m_pageClient.scrollView(scrollRect, scrollOffset);
-}
-
 void WebPageProxy::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
 {
     m_pageClient.requestScroll(scrollPosition, scrollOrigin, isProgrammaticScroll);
@@ -1621,6 +1606,10 @@ void WebPageProxy::setEditable(bool editable)
 
 #if !PLATFORM(IOS)
 void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
+{
+}
+
+void WebPageProxy::layerTreeCommitComplete()
 {
 }
 #endif
@@ -6216,6 +6205,19 @@ void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocu
 void WebPageProxy::didRestoreScrollPosition()
 {
     m_pageClient.didRestoreScrollPosition();
+}
+
+void WebPageProxy::setResourceCachingDisabled(bool disabled)
+{
+    if (m_isResourceCachingDisabled == disabled)
+        return;
+
+    m_isResourceCachingDisabled = disabled;
+
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetResourceCachingDisabled(disabled), m_pageID);
 }
 
 } // namespace WebKit

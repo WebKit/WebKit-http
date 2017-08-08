@@ -29,21 +29,20 @@
 #include <WebCore/TextureMapperGL.h>
 #include <WebCore/TextureMapperLayer.h>
 #include <wtf/Atomics.h>
-#include <wtf/MainThread.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()>&& function)
 {
     if (isMainThread())
         function();
     else
-        callOnMainThread(WTFMove(function));
+        RunLoop::main().dispatch(WTFMove(function));
 }
 
-void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()>&& function)
 {
     if (&m_clientRunLoop == &RunLoop::current())
         function();
@@ -116,7 +115,7 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
 
     if (currentRootLayer->descendantsOrSelfHaveRunningAnimations()) {
         RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnClientRunLoop([=] {
+        dispatchOnClientRunLoop([protector] {
             protector->updateViewport();
         });
     }
@@ -204,7 +203,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnClientRunLoop([=] {
+    dispatchOnClientRunLoop([protector] {
         protector->updateViewport();
     });
 }
@@ -610,7 +609,7 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     // The pending tiles state is on its way for the screen, tell the web process to render the next one.
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
+    dispatchOnMainThread([protector] {
         protector->renderNextFrame();
     });
 }
@@ -678,7 +677,7 @@ void CoordinatedGraphicsScene::purgeGLResources()
     setActive(false);
 
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
+    dispatchOnMainThread([protector] {
         protector->purgeBackingStores();
     });
 }
@@ -691,7 +690,7 @@ void CoordinatedGraphicsScene::dispatchCommitScrollOffset(uint32_t layerID, cons
 void CoordinatedGraphicsScene::commitScrollOffset(uint32_t layerID, const IntSize& offset)
 {
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
+    dispatchOnMainThread([protector, layerID, offset] {
         protector->dispatchCommitScrollOffset(layerID, offset);
     });
 }
@@ -717,7 +716,7 @@ void CoordinatedGraphicsScene::detach()
     m_client = 0;
 }
 
-void CoordinatedGraphicsScene::appendUpdate(std::function<void()> function)
+void CoordinatedGraphicsScene::appendUpdate(std::function<void()>&& function)
 {
     if (!m_isActive)
         return;
@@ -739,7 +738,7 @@ void CoordinatedGraphicsScene::setActive(bool active)
     m_isActive = active;
     if (m_isActive) {
         RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnMainThread([=] {
+        dispatchOnMainThread([protector] {
             protector->renderNextFrame();
         });
     }

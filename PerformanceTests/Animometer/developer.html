@@ -85,7 +85,7 @@
         </section>
         <section id="results">
             <h1>Animometer score</h1>
-            <p class="score"></p>
+            <p class="score" onclick="benchmarkController.showDebugInfo()"></p>
             <div id="results-tables">
                 <div>
                     <table id="results-score"></table>
@@ -93,7 +93,7 @@
                 </div>
                 <table id="results-header"></table>
             </div>
-            <button onclick="benchmarkController.startBenchmark()">Test Again</button>
+            <button onclick="benchmarkController.restartBenchmark()">Test Again</button>
             <p>
                 'j': Show JSON results<br/>
                 's': Select various results for copy/paste (use repeatedly to cycle)

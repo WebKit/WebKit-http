@@ -7,28 +7,36 @@ class CommitLogViewer extends ComponentBase {
         this._repository = null;
         this._fetchingPromise = null;
         this._commits = null;
+        this._from = null;
+        this._to = null;
     }
 
     currentRepository() { return this._repository; }
 
     view(repository, from, to)
     {
+        if (this._repository == repository && this._from == from && this._to == to)
+            return Promise.resolve(null);
+
         this._commits = null;
+        this._repository = repository;
+        this._from = from;
+        this._to = to;
 
         if (!repository) {
             this._fetchingPromise = null;
             this._repository = null;
             return Promise.resolve(null);
         }
-        
+
         if (!to) {
             this._fetchingPromise = null;
+            this.render();
             return Promise.resolve(null);
         }
 
         var promise = CommitLog.fetchBetweenRevisions(repository, from || to, to);
 
-        this._repository = repository;
         this._fetchingPromise = promise;
 
         var self = this;
@@ -42,6 +50,11 @@ class CommitLogViewer extends ComponentBase {
                 return;
             self._fetchingPromise = null;
             self._commits = commits;
+        }, function (error) {
+            if (self._fetchingPromise != promise)
+                return;
+            self._fetchingPromise = null;
+            self._commits = null;
         });
 
         return this._fetchingPromise;
@@ -49,8 +62,10 @@ class CommitLogViewer extends ComponentBase {
 
     render()
     {
-        if (this._repository)
-            this.content().querySelector('caption').textContent = this._repository.name();
+        var caption = '';
+        if (this._repository && (this._commits || this._fetchingPromise))
+            caption = this._repository.name();
+        this.content().querySelector('caption').textContent = caption;
 
         var element = ComponentBase.createElement;
         var link = ComponentBase.createLink;

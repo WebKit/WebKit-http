@@ -1,3 +1,746 @@
+2016-03-22  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] allow duplicate property names returned from Proxy ownKeys() trap
+        https://bugs.webkit.org/show_bug.cgi?id=155560
+
+        Reviewed by Darin Adler.
+
+        Specification allows duplicate property names to be reported by the
+        Proxy ownKeys() trap --- and this is observable in any API which
+        operates on the returned list, such as Object.keys(),
+        Object.getOwnPropertyNames(), Object.getOwnPropertySymbols(), or
+        Object.getOwnPropertyDescriptors().
+
+        * runtime/PropertyNameArray.h:
+        (JSC::PropertyNameArray::addUnchecked):
+        (JSC::PropertyNameArray::add):
+        (JSC::PropertyNameArray::addKnownUnique): Deleted.
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+        * runtime/Structure.cpp:
+        (JSC::Structure::getPropertyNamesFromStructure):
+
+2016-03-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up Math.floor thunk and use SSE round instruction
+        https://bugs.webkit.org/show_bug.cgi?id=155705
+
+        Reviewed by Geoffrey Garen.
+
+        SSE now allow us to use round instruction to implement Math.floor.
+        MacroAssembler's floorDouble is now only used in ARM64, but it can be allowed in x86 SSE.
+
+        * jit/ThunkGenerators.cpp:
+        (JSC::floorThunkGenerator):
+
+2016-03-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixed compilation with GCC 4.8.
+        https://bugs.webkit.org/show_bug.cgi?id=155698
+
+        Reviewed by Alexey Proskuryakov.
+
+        GCC 4.8 does not allow aggregate initialization for type with deleted
+        constructor, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52707.
+
+        * dfg/DFGCSEPhase.cpp: Added ctor for ImpureDataSlot.
+
+2016-03-21  Joonghun Park  <jh718.park@samsung.com>
+
+        [JSC] Add ArrayBuffer::tryCreate and change the callsites where it is needed
+        https://bugs.webkit.org/show_bug.cgi?id=155328
+
+        Reviewed by Darin Adler.
+
+        * API/JSTypedArray.cpp:
+        (JSObjectMakeTypedArray):
+        (JSObjectMakeArrayBufferWithBytesNoCopy):
+        * runtime/ArrayBuffer.h:
+        (JSC::ArrayBuffer::create):
+        (JSC::ArrayBuffer::tryCreate):
+        (JSC::ArrayBuffer::createUninitialized):
+        (JSC::ArrayBuffer::tryCreateUninitialized):
+        (JSC::ArrayBuffer::createInternal):
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::create):
+        (JSC::GenericTypedArrayView<Adaptor>::createUninitialized):
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::constructArrayBuffer):
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Michael Saboff  <msaboff@apple.com>
+
+        Crash in stress/regexp-matches-array-slow-put.js due to stomping on memory when having bad time
+        https://bugs.webkit.org/show_bug.cgi?id=155679
+
+        Reviewed by Saam Barati.
+
+        Allocate out of line storage based on what the structure says it needs
+        in JSArray::tryCreateUninitialized.
+
+        * runtime/JSArray.h:
+        (JSC::JSArray::tryCreateUninitialized):
+
+2016-03-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Crash on DFG::WorkList thread in JSC::Heap::isCollecting for destroyed Web Worker
+        https://bugs.webkit.org/show_bug.cgi?id=155678
+        <rdar://problem/25251439>
+
+        Reviewed by Filip Pizlo.
+
+        This fixes a crash that we saw with GuardMalloc. If the Plan was
+        Cancelled it may not be safe to access the VM. If the Plan was
+        cancelled we are just going to bail anyways, so keep the ASSERT but
+        short-circuit if the plan was Cancelled.
+
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::runThread):
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2016-03-19  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Update syntax error text 'super is only valid inside functions' to more suitable
+        https://bugs.webkit.org/show_bug.cgi?id=155491
+
+        Reviewed by Saam Barati.
+
+        Current message 'super is only valid inside of funcitons' is not correct 
+        after patch for https://bugs.webkit.org/show_bug.cgi?id=153864 because 
+        it is allow to use 'super' in eval. Current patch replace old message by
+        'Super is only valid inside functions or 'eval' inside a function' and 
+        fix tests that rely on this message.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * tests/stress/generator-with-super.js:
+        (shouldThrow):
+        * tests/stress/modules-syntax-error.js:
+        * tests/stress/super-in-lexical-scope.js:
+        * tests/stress/tagged-templates-syntax.js:
+
+2016-03-19  Mark Lam  <mark.lam@apple.com>
+
+        ES6 spec requires that ErrorPrototype not be an Error object.
+        https://bugs.webkit.org/show_bug.cgi?id=155680
+
+        Reviewed by Michael Saboff.
+
+        The ES6 spec states that Error.prototype should not be an instance of Error:
+        https://tc39.github.io/ecma262/#sec-properties-of-the-error-prototype-object
+
+        "The Error prototype object is an ordinary object. It is not an Error instance
+        and does not have an [[ErrorData]] internal slot."
+
+        This patch changes ErrorPrototype to conform to the above specification.
+
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::ErrorPrototype):
+        (JSC::ErrorPrototype::finishCreation):
+        (JSC::ErrorPrototype::getOwnPropertySlot):
+        * runtime/ErrorPrototype.h:
+        (JSC::ErrorPrototype::create):
+
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructor::finishCreation):
+        * runtime/NativeErrorPrototype.cpp:
+        (JSC::NativeErrorPrototype::NativeErrorPrototype):
+        (JSC::NativeErrorPrototype::finishCreation):
+        * runtime/NativeErrorPrototype.h:
+        (JSC::NativeErrorPrototype::create):
+        - updated to no longer need a JSGlobalObject argument.
+
+        * tests/es6/miscellaneous_built-in_prototypes_are_not_instances.js:
+        - updated to match the kangax version of this test.
+
+2016-03-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Limit DFG's Validate symbols to its compilation unit
+        https://bugs.webkit.org/show_bug.cgi?id=155670
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGValidate.cpp:
+
+2016-03-18  Mark Lam  <mark.lam@apple.com>
+
+        ES6 spec requires that RegExpPrototype not be a RegExp object.
+        https://bugs.webkit.org/show_bug.cgi?id=155654
+
+        Reviewed by Filip Pizlo.
+
+        The ES6 spec states that RegExp.prototype should not be an instance of RegExp:
+        https://tc39.github.io/ecma262/#sec-properties-of-the-regexp-prototype-object
+
+        "The RegExp prototype object is an ordinary object. It is not a RegExp instance
+        and does not have a [[RegExpMatcher]] internal slot or any of the other internal
+        slots of RegExp instance objects."
+
+        This patch changes RegExpPrototype to conform to the above specifications.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::RegExpConstructor):
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::RegExpPrototype):
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::RegExpPrototype::getOwnPropertySlot):
+        (JSC::RegExpPrototype::visitChildren):
+        (JSC::regExpProtoFuncTest):
+        * runtime/RegExpPrototype.h:
+        (JSC::RegExpPrototype::create):
+        (JSC::RegExpPrototype::createStructure):
+        (JSC::RegExpPrototype::emptyRegExp):
+
+        * tests/es6.yaml:
+        - This patch makes the es6/miscellaneous_built-in_prototypes_are_not_instances.js
+          test now pass.  However, the kangax version of this test still fails because
+          it also checks Error objects (which will be fixed in a subsequent patch).
+
+        * tests/mozilla/ecma_2/shell.js:
+        (stringify):
+        (test):
+        (getFailedCases):
+        (err):
+        * tests/stress/static-getter-in-names.js:
+        (shouldBe):
+
+2016-03-18  Keith Miller  <keith_miller@apple.com>
+
+        DataView should use an accessor for its length and buffer properties
+        https://bugs.webkit.org/show_bug.cgi?id=155625
+
+        Reviewed by Michael Saboff.
+
+        The DataView object should use an accessor on DataView.prototype for its
+        byteLength, byteOffset, and buffer properties. This patch also, moves the
+        buffer property off the TypedArray object itself and onto the prototype
+        along with the other accessors. Since the .buffer property is no longer on
+        the object, JSArrayBufferView no longer needs to intercept accesses to
+        properties. Finally, this patch also fixes the length property on all the
+        existing DataView.prototype functions.
+
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::getOwnPropertySlot): Deleted.
+        (JSC::JSArrayBufferView::put): Deleted.
+        (JSC::JSArrayBufferView::defineOwnProperty): Deleted.
+        (JSC::JSArrayBufferView::deleteProperty): Deleted.
+        (JSC::JSArrayBufferView::getOwnNonIndexPropertyNames): Deleted.
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::jsBuffer):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::dataViewProtoGetterBuffer):
+        (JSC::dataViewProtoGetterByteLength):
+        (JSC::dataViewProtoGetterByteOffset):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoGetterFuncBuffer):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::typedArrayViewProtoGetterFuncBuffer):
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+
+2016-03-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed speculative cloop buildfix after r198364.
+
+        * bytecode/SuperSampler.cpp:
+
+2016-03-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make CSE's ImpureData faster when dealing with large blocks
+        https://bugs.webkit.org/show_bug.cgi?id=155594
+
+        Reviewed by Filip Pizlo.
+
+        In some tests with large blocks, the time spent in DFG's LocalCSE
+        can be over 10% of the total compile time.
+        In those cases, LocalCSE is completely dominated by handling large
+        blocks.
+
+        This patch addresses the most obvious hot spots ImpureData's handling.
+
+        Initially, most of the time was going into HashTable::rehash().
+        The reason is the buckets are <HeapLocation, LazyNode> gigantic.
+        The hash table would easily get into several kilobytes and the CPU
+        was spending more time dealing with memory than anything.
+
+        To solve that, I moved the pairs lazily to the heap. The table itself
+        just contains the unique_ptr to those values. This makes the table
+        reasonably small and the alloc/dealloc are paid for by the fast rehash().
+
+        Once addImpure() was better, the next big bottleneck was clobber().
+        For each clobber(), we need to go over the entire map and test each value.
+        That loop was where most of the time was going.
+
+        Most calls to clobber() come from two kinds: SideState and Stack.
+
+        SideState is easy: it is never def'ed so we can always skip it.
+
+        Stack is disjoint from Heap too so we can also put it separately.
+
+        Splitting the map into 2 helped reduce the overhead. The maps are:
+        -Stack
+        -Heap
+
+        Having Stack alone was not enough for many blocks. In some cases,
+        you have a ton of SetLocal/GetLocal and having Stack separately
+        makes no difference.
+
+        To solve that, I split Stack in two: a map addressed by AbstractHeap
+        + unique HeapLocation and a fallback map for everything else.
+        Since most Stack are not TOP and are unique per AbstractHeap,
+        I get O(1) clobber in most cases.
+
+        I could achieve the same result with a custom hash structure.
+        I don't think it is worth the effort, in most cases, m_fallbackStackMap
+        has a size of zero or one.
+
+        This patch introduces a lot of coupling between CSE and AbstractHeap.
+        To reduce the risk of bugs, the old map is still maintained in debug
+        and each step checks that the results are the same as the new implementation.
+
+        A new validation step also verify the strong assumptions made by CSE:
+        -SideState and World are never def().
+        -We never write HEAP TOP, we only write specific heap location.
+
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGLazyNode.h:
+        (JSC::DFG::LazyNode::hash):
+
+2016-03-17  Saam barati  <sbarati@apple.com>
+
+        Implement SmallPtrSet and integrate it into the Parser
+        https://bugs.webkit.org/show_bug.cgi?id=155552
+
+        Reviewed by Filip Pizlo.
+
+        Using SmallPtrSet instead of HashSet really helps speed
+        up the parser. What saves us most is not needing to always
+        malloc/free memory in the HashSet.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::startSwitch):
+        (JSC::Scope::endSwitch):
+        (JSC::Scope::startLoop):
+        (JSC::Scope::hasDeclaredParameter):
+        (JSC::Scope::declareWrite):
+        (JSC::Scope::declareParameter):
+        (JSC::Scope::usedVariablesContains):
+        (JSC::Scope::useVariable):
+        (JSC::Scope::collectFreeVariables):
+        (JSC::Scope::getCapturedVars):
+        (JSC::Scope::isValidStrictMode):
+        (JSC::Scope::shadowsArguments):
+        (JSC::Scope::copyCapturedVariablesToVector):
+        (JSC::Scope::setIsModule):
+        (JSC::Parser::pushScope):
+        (JSC::Scope::getUsedVariables): Deleted.
+
+2016-03-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator shouldn't generate enums for parameters with non-anonymous enum types
+        https://bugs.webkit.org/show_bug.cgi?id=155610
+        <rdar://problem/25229878>
+
+        Reviewed by Joseph Pecoraro.
+
+        If a command parameter has an anonymous enum type, the backend dispatcher generator
+        makes a C++ enum for the parameter. However, if the parameter references a named enum
+        type specified in a domain's 'type' section, then there's no need to generate an enum.
+
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator._generate_handler_declaration_for_command):
+        Add a missing check for the is_anonymous flag. Type references to named enums are resolved
+        to the underlying aliased EnumType instead of an AliasedType, so we have to check the flag.
+
+        Rebaseline tests.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+
+2016-03-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all of the various non-working and non-compiling sampling profiler hacks with a single super hack
+        https://bugs.webkit.org/show_bug.cgi?id=155561
+
+        Reviewed by Saam Barati.
+
+        A VM needs some internal profiling hacks in addition to the profiler(s) that the user sees, because
+        you can squeeze out more fidelity if you're willing to make some kind of deal with the devil. Prior
+        to this change JSC had a bunch of these:
+
+        - CodeBlock sampling profiler
+        - Bytecode sampling profiler
+        - Sampling flags
+        - Sampling regions
+        - Some other stuff
+
+        I tried using these recently. They didn't even build. Initially I fixed that, but then I found that
+        these profilers had some serious bugs that made them report bogus results - like underreporting the
+        time spent in regions of code by more than 2x.
+
+        Part of the problem here is that a profiler loses fidelity as it gains power. The more general it
+        tries to be, the more code gets executed on the hot path for the profiler, which increasingly
+        perturbs the results. I believe that's the reason for the underreporting - code ran sufficiently
+        slower, and in a sufficiently different way when profiling, that the results were just wrong.
+
+        This change attacks this problem directly by replacing all of the diverse profiling hacks with just
+        one, which I call the SuperSampler. It consists of exactly one counter. When enabled, the sampler
+        will periodically print (via dataLog()) the percentage of samples that saw a non-zero count. Because
+        it's so simple, it gives better accuracy. This comes about in two ways:
+
+        - It runs at a lower rate. That's fine since it's only checking one flag. You don't need a high rate
+          for just one flag.
+        
+        - The fact that there is only *one* flag means that the user must choose a hypothesis about what is
+          slow. This turns the problem of profiling into a hypothesis testing problem, which is an inherently
+          less flaky kind of experiment to run.
+        
+        The SuperSampler is enabled with a runtime flag rather than a compile-time flag, so it's much less
+        likely to break. That also means that you can enable it without rebuilding the universe. The old
+        samplers all had ENABLE flags in Platform.h, which was rather unfortunate for compile times.
+
+        SuperSampler supports both JIT and C++ users. C++ users should use SuperSamplerScope. The default
+        idiom is to create one and pass "true" to it. You can disable a scope by passing "false" instead.
+        This patch puts a bunch of scopes in places I care about. I think it's probably OK if people check in
+        these deactivated scopes. That makes it convenient to retest things we've tested previously.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/SamplingTool.cpp: Removed.
+        * bytecode/SamplingTool.h: Removed.
+        * bytecode/SuperSampler.cpp: Added.
+        (JSC::initializeSuperSampler):
+        (JSC::printSuperSamplerState):
+        * bytecode/SuperSampler.h: Added.
+        (JSC::SuperSamplerScope::SuperSamplerScope):
+        (JSC::SuperSamplerScope::~SuperSamplerScope):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        * bytecompiler/NodesCodegen.cpp:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::forAllValues):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::clobberStructures):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        (JSC::DFG::performArgumentsElimination):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::performBackwardsPropagation):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::parse):
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::performCFA):
+        * dfg/DFGCFGSimplificationPhase.cpp:
+        (JSC::DFG::performCFGSimplification):
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::freeUnnecessaryNodes):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlocks):
+        (JSC::DFG::CPSRethreadingPhase::propagatePhis):
+        (JSC::DFG::performCPSRethreading):
+        * dfg/DFGCSEPhase.cpp:
+        (JSC::DFG::performLocalCSE):
+        (JSC::DFG::performGlobalCSE):
+        * dfg/DFGCleanUpPhase.cpp:
+        (JSC::DFG::performCleanUp):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::performConstantFolding):
+        * dfg/DFGConstantHoistingPhase.cpp:
+        (JSC::DFG::performConstantHoisting):
+        * dfg/DFGCriticalEdgeBreakingPhase.cpp:
+        (JSC::DFG::performCriticalEdgeBreaking):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::performDCE):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::performFixup):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dethread):
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::performIntegerCheckCombining):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        (JSC::DFG::performIntegerRangeOptimization):
+        * dfg/DFGInvalidationPointInjectionPhase.cpp:
+        (JSC::DFG::performInvalidationPointInjection):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::performLICM):
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::performLiveCatchVariablePreservationPhase):
+        * dfg/DFGLivenessAnalysisPhase.cpp:
+        (JSC::DFG::performLivenessAnalysis):
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::performLoopPreHeaderCreation):
+        * dfg/DFGMaximalFlushInsertionPhase.cpp:
+        (JSC::DFG::performMaximalFlushInsertion):
+        * dfg/DFGMovHintRemovalPhase.cpp:
+        (JSC::DFG::performMovHintRemoval):
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::performOSRAvailabilityAnalysis):
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::performOSREntrypointCreation):
+        * dfg/DFGOSRExitCompiler.cpp:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::performObjectAllocationSinking):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPhantomInsertionPhase.cpp:
+        (JSC::DFG::performPhantomInsertion):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        * dfg/DFGPredictionInjectionPhase.cpp:
+        (JSC::DFG::performPredictionInjection):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::performPredictionPropagation):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        (JSC::DFG::performPutStackSinking):
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::performSSAConversion):
+        * dfg/DFGSSALoweringPhase.cpp:
+        (JSC::DFG::performSSALowering):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::performStackLayout):
+        * dfg/DFGStaticExecutionCountEstimationPhase.cpp:
+        (JSC::DFG::performStaticExecutionCountEstimation):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        (JSC::DFG::performFastStoreBarrierInsertion):
+        (JSC::DFG::performGlobalStoreBarrierInsertion):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::performStrengthReduction):
+        * dfg/DFGStructureAbstractValue.cpp:
+        (JSC::DFG::StructureAbstractValue::assertIsRegistered):
+        (JSC::DFG::StructureAbstractValue::clobber):
+        (JSC::DFG::StructureAbstractValue::observeTransition):
+        (JSC::DFG::StructureAbstractValue::observeTransitions):
+        (JSC::DFG::StructureAbstractValue::add):
+        (JSC::DFG::StructureAbstractValue::merge):
+        (JSC::DFG::StructureAbstractValue::mergeSlow):
+        (JSC::DFG::StructureAbstractValue::mergeNotTop):
+        (JSC::DFG::StructureAbstractValue::filter):
+        (JSC::DFG::StructureAbstractValue::filterSlow):
+        (JSC::DFG::StructureAbstractValue::contains):
+        (JSC::DFG::StructureAbstractValue::isSubsetOf):
+        (JSC::DFG::StructureAbstractValue::isSupersetOf):
+        (JSC::DFG::StructureAbstractValue::overlaps):
+        (JSC::DFG::StructureAbstractValue::equalsSlow):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::performStructureRegistration):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::performTierUpCheckInjection):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::performTypeCheckHoisting):
+        * dfg/DFGUnificationPhase.cpp:
+        (JSC::DFG::performUnification):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        (JSC::DFG::performVarargsForwarding):
+        * dfg/DFGVirtualRegisterAllocationPhase.cpp:
+        (JSC::DFG::performVirtualRegisterAllocation):
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::performWatchpointCollection):
+        * dynbench.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileRegExpExec):
+        (JSC::FTL::DFG::LowerDFGToB3::compileRegExpTest):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetRegExpObjectLastIndex):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileFTLOSRExit):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::store):
+        (JSC::FTL::Output::absolute):
+        (JSC::FTL::Output::incrementSuperSamplerCount):
+        (JSC::FTL::Output::decrementSuperSamplerCount):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::baseIndex):
+        (JSC::FTL::Output::load8SignExt32):
+        (JSC::FTL::Output::load8ZeroExt32):
+        (JSC::FTL::Output::anchor):
+        (JSC::FTL::Output::absolute): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::collectAndSweep):
+        (JSC::Heap::collectImpl):
+        (JSC::Heap::zombifyDeadObjects):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::specializedSweep):
+        * interpreter/Interpreter.cpp:
+        (JSC::setupVarargsFrameAndSetThis):
+        (JSC::Interpreter::Interpreter):
+        (JSC::Interpreter::initialize):
+        (JSC::checkedReturn):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::debug):
+        (JSC::SamplingScope::SamplingScope): Deleted.
+        (JSC::SamplingScope::~SamplingScope): Deleted.
+        (JSC::Interpreter::enableSampler): Deleted.
+        (JSC::Interpreter::dumpSampleData): Deleted.
+        (JSC::Interpreter::startSampling): Deleted.
+        (JSC::Interpreter::stopSampling): Deleted.
+        * interpreter/Interpreter.h:
+        (JSC::Interpreter::isCallBytecode):
+        (JSC::Interpreter::sampler): Deleted.
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::branchIfNotFastTypedArray):
+        (JSC::AssemblyHelpers::incrementSuperSamplerCount):
+        (JSC::AssemblyHelpers::decrementSuperSamplerCount):
+        (JSC::AssemblyHelpers::purifyNaN):
+        * jit/AssemblyHelpers.h:
+        * jit/JIT.cpp:
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        * jit/JITArithmetic32_64.cpp:
+        * jit/JITCall.cpp:
+        * jit/JITCall32_64.cpp:
+        * jit/JITOperations.cpp:
+        * jit/JITPropertyAccess.cpp:
+        * jit/JITPropertyAccess32_64.cpp:
+        * jsc.cpp:
+        (runWithScripts):
+        (jscmain):
+        * parser/Nodes.cpp:
+        * parser/Parser.h:
+        (JSC::parse):
+        * runtime/Executable.h:
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/Options.h:
+        * runtime/RegExpCachedResult.h:
+        * runtime/RegExpMatchesArray.h:
+        (JSC::createRegExpMatchesArray):
+        * runtime/StringPrototype.cpp:
+        (JSC::removeUsingRegExpSearch):
+        (JSC::stringProtoFuncSubstring):
+        * runtime/VM.cpp:
+        (JSC::VM::resetDateCache):
+        (JSC::VM::whenIdle):
+        (JSC::VM::deleteAllCode):
+        (JSC::VM::addSourceProviderCache):
+        (JSC::VM::startSampling): Deleted.
+        (JSC::VM::stopSampling): Deleted.
+        (JSC::VM::dumpSampleData): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::regExpCache):
+        * testRegExp.cpp:
+        (runFromFiles):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::interpret):
+
+2016-03-17  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make GetProperty(.) inside ArrayPrototype.cpp spec compatible.
+        https://bugs.webkit.org/show_bug.cgi?id=155575
+
+        Reviewed by Filip Pizlo and Mark Lam.
+
+        This patch makes various Array.prototype.(shift | unshift | splice)
+        spec compliant. Before, they were performing Get and HasProperty as one 
+        operation. Instead, they need to be performed as two distinct operations
+        when it would be observable.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::isCacheableValue):
+        (JSC::PropertySlot::isCacheableGetter):
+        (JSC::PropertySlot::isCacheableCustom):
+        (JSC::PropertySlot::setIsTaintedByProxy):
+        (JSC::PropertySlot::isTaintedByProxy):
+        (JSC::PropertySlot::internalMethodType):
+        (JSC::PropertySlot::getValue):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+        * tests/es6.yaml:
+        * tests/stress/proxy-array-prototype-methods.js: Added.
+        (assert):
+        (test):
+        (shallowEq):
+
+2016-03-17  Mark Lam  <mark.lam@apple.com>
+
+        Make FunctionMode an enum class.
+        https://bugs.webkit.org/show_bug.cgi?id=155587
+
+        Reviewed by Saam Barati.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * parser/NodeConstructors.h:
+        (JSC::BaseFuncExprNode::BaseFuncExprNode):
+        (JSC::FuncExprNode::FuncExprNode):
+        (JSC::FuncDeclNode::FuncDeclNode):
+        (JSC::ArrowFuncExprNode::ArrowFuncExprNode):
+        (JSC::MethodDefinitionNode::MethodDefinitionNode):
+        * parser/ParserModes.h:
+        (JSC::functionNameIsInScope):
+
+2016-03-17  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Getters and Setters should be prefixed appropriately
+        https://bugs.webkit.org/show_bug.cgi?id=155593
+
+        Reviewed by Mark Lam.
+
+        Changed the putDirectNativeIntrinsicGetter() to prepend "get " to the funtion name.
+
+        Updated places that had their own macro or hand constructed a getter function to use
+        the JSC_NATIVE_GETTER macro which will properly append "get ".
+
+        Prepended "get " and "set " to the __proto__ accessor created on the Object prototype.
+
+        When we create the Symbol.species getter, added an explicit function name of "get [Symbol.species]".
+
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeAttributeEvaluate):
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        (Inspector::JSJavaScriptCallFramePrototype::finishCreation):
+        (Inspector::jsJavaScriptCallFramePrototypeFunctionEvaluate):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectNativeIntrinsicGetter):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        (JSC::MapPrototype::getOwnPropertySlot):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        (JSC::SetPrototype::getOwnPropertySlot):
+        * tests/stress/accessors-get-set-prefix.js: Added.
+        (tryGetOwnPropertyDescriptorGetName):
+
 2016-03-16  Mark Lam  <mark.lam@apple.com>
 
         Method names should not appear in the lexical scope of the method's body.

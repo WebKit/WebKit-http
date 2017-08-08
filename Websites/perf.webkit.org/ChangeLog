@@ -1,3 +1,427 @@
+2016-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Commit log viewer repaints too frequently after r198499
+        https://bugs.webkit.org/show_bug.cgi?id=155732
+
+        Reviewed by Joseph Pecoraro.
+
+        The bug was caused by InteractiveTimeSeriesChart invoking onchange callback whenever mouse moved even
+        if the current point didn't change. Fixed the bug by avoiding the work if the indicator hadn't changed
+        and avoiding work in the commit log viewer when the requested repository and the revision range were
+        the same as those of the last request.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer):
+        (CommitLogViewer.prototype.currentRepository): Exit early when repository and the revision range are
+        identical to the one we already have to avoid repaints and issuing multiple network requests.
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._mouseMove): Don't invoke _notifyIndicatorChanged if the current
+        indicator hadn't changed.
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._indicatorDidChange): Fixed the bug that unlocking the indicator wouldn't update
+        the URL. We need to check whether the lock state had changed. The old condition was also redundant
+        since _mainChartIndicatorWasLocked is always identically equal to isLocked per the prior assignment.
+
+2016-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix A/B testing after r198503.
+
+        * public/include/build-requests-fetcher.php:
+
+2016-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Analysis task page is broken after r198479
+        https://bugs.webkit.org/show_bug.cgi?id=155735
+
+        Rubber-stamped by Chris Dumez.
+
+        * public/api/measurement-set.php:
+        (AnalysisResultsFetcher::fetch_commits): We need to emit the commit ID as done for regular data.
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::fetch_roots_for_set_if_needed): Ditto. Don't use a fake ID after r198479.
+        * public/v3/models/commit-log.js:
+        (CommitLog): Assert that all commit log IDs are integers to catch regressions like this in future.
+        * public/v3/models/root-set.js:
+        (RootSet): Don't resolve Repository here as doing so would modify the shared "root" entry in the JSON
+        we fetched, and subsequent construction of RootSet would fail since this line would blow up trying to
+        find the repository with "[object]" as the ID.
+        * public/v3/models/test-group.js:
+        (TestGroup._createModelsFromFetchedTestGroups): Resolve Repository here.
+
+2016-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI sometimes don't update the list of revisions on the commit log viewer
+        https://bugs.webkit.org/show_bug.cgi?id=155729
+
+        Rubber-stamped by Chris Dumez.
+
+        Fixed multiple bugs that were affecting the list of blame range and commit logs for the range weren't
+        updated in some cases on v3 UI. Also, the commit log viewer state is now a part of the URL state so
+        opening and closing the commit log viewer will persist across page loads.
+
+        Also fixed a regression from r198479 that Test object can't be created for a top level test.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.configure):
+        (ChartPaneBase.prototype._mainSelectionDidChange): Fixed the bug that the list of blame range nor the
+        commit log viewer don't get updated when the selected range changes.
+        (ChartPaneBase.prototype._indicatorDidChange):
+        (ChartPaneBase.prototype._didFetchData):
+        (ChartPaneBase.prototype._updateStatus): Extracted from _indicatorDidChange and _didFetchData.
+        (ChartPaneBase.prototype._requestOpeningCommitViewer): Renamed from _openCommitViewer.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Fixed the bug that the blame range doesn't get set
+        on the initial page load when the selection range is set but the chart data hadn't been fetched yet.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer.prototype.view): Fixed the bug that we don't clear out the old list of commits while
+        loading the next set of commits to show as it looked as if the list was never updated.
+        (CommitLogViewer.prototype.render): Fixed the bug that the view always show the last repository name
+        even if there were nothing being fetched or commits to show.
+
+        * public/v3/components/pane-selector.js:
+        (PaneSelector.prototype.focus): Removed superfluous call to console.log.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.listForStaticMap): Generalized the code for all to fix the bug in Test.
+        (DataModelObject.all):
+
+        * public/v3/models/test.js:
+        (Test): Fixed the bug that this code was relying on the static map to be an array.
+        (Test.topLevelTests): Use newly added listForStaticMap to convert the dictionary to an array.
+
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView): Always initialize _usedRevisionRange as a triple to simplify code elsewhere.
+        (ChartPaneStatusView.prototype.render): Invoke _revisionCallback when user clicks on a repository
+        expansion mark (>>). Also fixed click handler from the row since this made selecting revision range
+        on the view cumbersome. Now user has to explicitly click on the expansion mark (>>).
+        (ChartPaneStatusView.prototype._setRevisionRange): Now takes shouldNotify, from, and to as arguments
+        as this function must not invoke_revisionCallback inside _updateRevisionListForNewCurrentRepository.
+        (ChartPaneStatusView.prototype.moveRepositoryWithNotification): Use newly added setCurrentRepository
+        instead of manually invoking setCurrentRepository and updateRevisionListWithNotification.
+        (ChartPaneStatusView.prototype.setCurrentRepository): Fixed the bug that we weren't updating the
+        blame list here.
+        (ChartPaneStatusView.prototype.updateRevisionList): Renamed from updateRevisionListWithNotification
+        since we no longer call _revisionCallback. In general, callbacks are only meant to communicate user
+        initiated actions, and not program induced updates like this API so this was a bad pattern anyway.
+        ChartPane now explicitly updates the commit log viewer instead of relying on this function calling
+        _requestOpeningCommitViewer implicitly.
+        (ChartPaneStatusView.prototype._updateRevisionListForNewCurrentRepository): Extracted from
+        updateRevisionListWithNotification so that setCurrentRepository can also call this function.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype._requestOpeningCommitViewer): Overrides ChartPaneBase's method. Open the same
+        repository in other panes via ChartsPage.setOpenRepository.
+        (ChartPane.prototype.setOpenRepository): This method is called when the user selected a repository in
+        another pane. Open the same repository in this pane if it wasn't already open.
+
+        * public/v3/pages/charts-page.js:
+        (ChartsPage): Added this._currentRepositoryId.
+        (ChartsPage.prototype.serializeState): Serialize _currentRepositoryId.
+        (ChartsPage.prototype.updateFromSerializedState): Set the commit log viewer's 
+        (ChartsPage.prototype.setOpenRepository): Added.
+
+        * tests/api-measurement-set.js: Fixed a test after r198479.
+
+2016-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        V3 Perf Dashboard should automatically select initial range when creating a new task
+        https://bugs.webkit.org/show_bug.cgi?id=155677
+
+        Reviewed by Joseph Pecoraro.
+
+        Select the entire range of points for which the analysis task is created by default so that creating
+        a test group to confirm the regression / progression is easy.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage): Added a boolean flag which indicates the user had modified main chart's selection.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render): Set the main chart's selection to the entire range of points in
+        the analysis task if the user had never modified selection.
+        (AnalysisTaskPage.prototype._chartSelectionDidChange): This callback is invoked only when the user had
+        modified the selection so set _selectionWasModifiedByUser true here unconditionally.
+
+2016-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Associated commits don't immediately show up on an analysis task page
+        https://bugs.webkit.org/show_bug.cgi?id=155692
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by resolveCommits in AnalysisTask._constructAnalysisTasksFromRawData not being
+        able to find the matching commit log if the commit log had been created by the charts which don't
+        set the remote identifiers on each CommitLog objects.
+
+        Fixed the bug by modifying /api/measurement-set to include the commit ID, and making CommitLog
+        use the real database ID as its ID instead of a fake ID we create from repository and revision.
+
+        Also added a bunch of Mocha unit tests for AnalysisTask.fetchAll.
+
+        * public/api/measurement-set.php:
+        (MeasurementSetFetcher::execute_query): Fetch commit_id.
+        (MeasurementSetFetcher::format_run): Use pass-by-reference to avoid making a copy of the row.
+        (MeasurementSetFetcher::parse_revisions_array): Include commit_id as the first item in the result.
+        * public/v3/instrumentation.js:
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask): Fixed a bug that _buildRequestCount and _finishedBuildRequestCount could be kept
+        as strings and hasPendingRequests() could return a wrong result because it would perform string
+        inequality instead of numerical inequality.
+        (AnalysisTask.prototype.updateSingleton): Ditto.
+        (AnalysisTask.prototype.dissociateCommit):
+        (AnalysisTask._constructAnalysisTasksFromRawData):
+        (AnalysisTask._constructAnalysisTasksFromRawData.resolveCommits): Use findById now that CommitLog
+        objects all use the same id as the database id.
+        * public/v3/models/commit-log.js:
+        (CommitLog):
+        (CommitLog.prototype.remoteId): Deleted since we no longer create a fake id for commit logs for
+        measurement sets.
+        (CommitLog.findByRemoteId): Deleted.
+        (CommitLog.ensureSingleton): Deleted.
+        (CommitLog.fetchBetweenRevisions):
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.clearStaticMap): Added to aid unit testing.
+        (DataModelObject.ensureNamedStaticMap): Fixed a typo. Each map is a dictionary, not an array.
+        * public/v3/models/metric.js:
+        * public/v3/models/platform.js:
+        * public/v3/models/root-set.js:
+        (RootSet): Updated per the interface change in CommitLog.ensureSingleton.
+        (MeasurementRootSet): Updated per /api/measurement-set change. Use the first value as the id.
+        * public/v3/models/test.js:
+        * unit-tests/analysis-task-tests.js: Added.
+        (sampleAnalysisTask):
+        (measurementCluster):
+        * unit-tests/checkconfig.js: Added some assertion message to help aid diagnosing the failure.
+        * unit-tests/measurement-adaptor-tests.js: Updated the sample data per the API change in
+        /api/measurement-set and also added assertions for commit log ids.
+        * unit-tests/measurement-set-tests.js:
+        (beforeEach):
+        * unit-tests/resources: Added.
+        * unit-tests/resources/mock-remote-api.js: Added. Extracted from measurement-set-tests.js to be
+        used in analysis-task-tests.js.
+        (assert.notReached.assert.notReached):
+        (global.RemoteAPI.getJSON):
+        (global.RemoteAPI.getJSONWithStatus):
+        (beforeEach):
+        * unit-tests/resources/v3-models.js: Added. Extracted from measurement-set-tests.js to be used in
+        analysis-task-tests.js and added more imports as needed.
+        (importFromV3):
+        (beforeEach):
+
+2016-03-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r198464.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups):
+
+2016-03-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r198234.
+
+        * public/api/commits.php:
+        (main): Typo: fetch_latest_reported -> fetch_last_reported.
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::format_single_commit): commits should be an array.
+
+2016-03-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf Dashboard v3 confuses better and worse on A/B task page
+        https://bugs.webkit.org/show_bug.cgi?id=155675
+        <rdar://problem/25208723>
+
+        Reviewed by Joseph Pecoraro.
+
+        The analysis results viewer on v3 UI sometimes treats regressions as progressions and vice versa when
+        the first set (i.e. set A) of the revisions used in an A/B testing never appears in the original graph,
+        and its latest commit time matches that of the second set, which appears in the original graph.
+
+        Because the analysis results viewer compares results in the increasing row number, this results in
+        B to be compared to A instead of A to be compared to B. Fixed the bug by preventing the wrong ordering
+        to occur in _buildRowsForPointsAndTestGroups by always inserting a root set A before B when B appears
+        and A doesn't appear in the original graph.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype._collectRootSetsInTestGroups): Remember the succeeding root set B
+        when creating an entry for root set A.
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups): Fixed the bug. Also un-duplicated
+        the code to create a new row.
+        (AnalysisResultsViewer.RootSetInTestGroup): Now takes a succeeding root set. e.g. it's B for A and
+        undefined for B in A/B testing.
+        (AnalysisResultsViewer.RootSetInTestGroup.prototype.succeedingRootSet): Added.
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.computeTimeGrid): Fixed the bug that we would end up showing 0 AM instead of dates
+        when both dates and months change.
+
+2016-03-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add unit tests for measurement-set.js and measurement-adapter.js
+        https://bugs.webkit.org/show_bug.cgi?id=155673
+
+        Reviewed by Daniel Bates.
+
+        Add tests which were supposed to be added in r198462.
+
+        * unit-tests/measurement-adaptor-tests.js: Added.
+        * unit-tests/measurement-set-tests.js: Added.
+        (assert.notReached): Added.
+        (global.RemoteAPI.getJSON): Added.
+        (global.RemoteAPI.getJSONWithStatus): Added. A mock.
+
+2016-03-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add unit tests for measurement-set.js and measurement-adapter.js
+        https://bugs.webkit.org/show_bug.cgi?id=155673
+
+        Reviewed by Darin Adler.
+
+        Added mocha unit tests for MeasurementSet and MeasurementAdapter classes along with the necessary
+        refactoring to run these tests in node.
+
+        getJSON and getJSONStatus are now under RemoteAPI so that unit tests can mock them.
+
+        Removed the dependency on v2 UI's TimeSeries and Measurement class by adding a new implementation
+        of TimeSeries in v3 and removing the dependency on Measurement in chart-pane-status-view.js with
+        new helper methods on Build and CommitLog.
+
+        Many js files now use 'use strict' (node doesn't support class syntax in non-strict mode) and
+        module.exports to export symbols in node's require function.
+
+        * public/v3/index.html:
+        * public/v3/main.js:
+        * public/v3/models/analysis-results.js:
+        (AnalysisResults.fetch):
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.fetchAll):
+        * public/v3/models/builder.js:
+        (Build):
+        (Build.prototype.builder): Added. Used by ChartPaneStatusView.
+        (Build.prototype.buildNumber): Ditto.
+        (Build.prototype.buildTime): Ditto.
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): Ditto.
+        (CommitLog.fetchBetweenRevisions):
+        * public/v3/models/data-model.js:
+        (DataModelObject.cachedFetch):
+        * public/v3/models/measurement-adaptor.js:
+        (MeasurementAdaptor.prototype.applyToAnalysisResults): Renamed from adoptToAnalysisResults.
+        (MeasurementAdaptor.prototype.applyTo): Renamed from adoptToSeries. Now shares a lot more
+        code with applyToAnalysisResults. The code to set 'series' and 'seriesIndex' has been moved
+        to TimeSeries.append. 'measurement' is no longer needed as this patch removes its only use
+        in ChartPaneStatusView.
+        * public/v3/models/measurement-cluster.js:
+        (MeasurementCluster.prototype.addToSeries): Use TimeSeries.append instead of directly mutating
+        series._series.
+        * public/v3/models/measurement-set.js:
+        (Array.prototype.includes): Added a polyfill for node.
+        (MeasurementSet.prototype._fetchSecondaryClusters): Removed a bogus assertion. When fetchBetween
+        is called with a mixture of clusters that have been fetched and not fetched, this assertion fails.
+        (MeasurementSet.prototype._fetch):
+        (TimeSeries.prototype.findById): Moved to time-series.js.
+        (TimeSeries.prototype.dataBetweenPoints): Ditto.
+        (TimeSeries.prototype.firstPoint): Ditto.
+        (TimeSeries.prototype.fetchedTimeSeries): Moved the code to extend the last point to TimeSeries'
+        extendToFuture.
+        * public/v3/models/repository.js:
+        * public/v3/models/root-set.js:
+        (MeasurementRootSet): Ignore repositories that had not been defined (e.g. it could be added after
+        manifest.json had been downloaded but before a given root set is created for an A/B testing).
+        * public/v3/models/time-series.js:
+        (TimeSeries): Added.
+        (TimeSeries.prototype.append): Added.
+        (TimeSeries.prototype.extendToFuture): Added.
+        (TimeSeries.prototype.firstPoint): Moved from measurement-set.js.
+        (TimeSeries.prototype.lastPoint): Added.
+        (TimeSeries.prototype.previousPoint): Added.
+        (TimeSeries.prototype.nextPoint): Added.
+        (TimeSeries.prototype.findPointByIndex): Added.
+        (TimeSeries.prototype.findById): Moved from measurement-set.js.
+        (TimeSeries.prototype.findPointAfterTime): Added.
+        (TimeSeries.prototype.dataBetweenPoints): Moved from measurement-set.js.
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView.prototype.render): Use newly added helper functions on Build.
+        (ChartPaneStatusView.prototype._formatTime): Added.
+        (ChartPaneStatusView.prototype.setCurrentRepository):
+        (ChartPaneStatusView.prototype.computeChartStatusLabels): Rewrote the code using RootSet object on
+        currentPoint and previousPoint instead of Measurement class from v2 UI. Also sort the results using
+        sortByNamePreferringOnesWithURL.
+        * public/v3/remote.js:
+        (RemoteAPI.getJSON): Moved under RemoteAPI.
+        (RemoteAPI.getJSONWithStatus): Ditto.
+        (PrivilegedAPI):
+        (PrivilegedAPI.requestCSRFToken):
+
+2016-03-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add unit tests for config.json and statistics.js
+        https://bugs.webkit.org/show_bug.cgi?id=155626
+
+        Reviewed by Darin Adler.
+
+        Added mocha unit tests for statistics.js and validating config.json. For segmentations, I've extracted
+        real data from our internal perf dashboard.
+
+        Also fixed some bugs covered by these new tests.
+
+        * public/shared/statistics.js:
+        (Statistics.movingAverage): Fixed a bug that forwardWindowSize was never used.
+        (Statistics.exponentialMovingAverage): Fixed the bug that the moving average starts at 0. It should
+        start at the first value instead.
+        (.splitIntoSegmentsUntilGoodEnough): Fixed the bug that we may try to segment a time series into
+        more parts than there are data points. Clearly, that doesn't make any sense.
+        (.findOptimalSegmentation): Renamed local variables so that they're more descriptive, and rewrote
+        the debugging code was the old code was emitting some useless data. Also fixed the bug that the length
+        of "segmentation" was off by one (we need segmentCount + 1 elements in the array sine we always
+        include the start of the first segment = 0 and the end of the last segment = values.length).
+        (.SampleVarianceUpperTriangularMatrix):
+        (Statistics): Modernized the export code.
+        * tools/js: Added.
+        * tools/js/config.js: Added.
+        (Config): Added.
+        (Config.prototype.configFilePath): Added.
+        (Config.prototype.value): Added.
+        (Config.prototype.path): Added.
+        * tools/js/database.js: Added.
+        (Database): Added.
+        (Database.prototype.connect): Added.
+        (Database.prototype.disconnect): Added.
+        * unit-tests: Added.
+        * unit-tests/checkconfig.js: Added. Validates config.json. This is useful while setting up
+        a local instance of the perf dashboard.
+        * unit-tests/statistics-tests.js: Added.
+        (assert.almostEqual): Added. Asserts that two floating values are within a given significant digits.
+        (.stdev):
+        (.delta):
+        (.computeWelchsT):
+
+2016-03-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix a typo which was supposed to be fixed in r198351.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render):
+
+2016-03-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        An analysis task should be closed if a progression cause is identified
+        https://bugs.webkit.org/show_bug.cgi?id=155549
+
+        Reviewed by Chris Dumez.
+
+        Since a progression is desirable, we should close an analysis task once its cause is identified.
+
+        Also fix some typos.
+
+        * init-database.sql: Fixed a typo.
+        * public/api/analysis-tasks.php:
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.prototype.dissociateBug): Renamed from dissociateBug.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render):
+        (AnalysisTaskPage.prototype._dissociateBug): Renamed from _dissociateBug.
+        (AnalysisTaskPage.prototype._dissociateCommit): Fixed the typo in the alert.
+
 2016-03-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         Analysis task page should allow specifying commits that caused or fixed a regression or a progression

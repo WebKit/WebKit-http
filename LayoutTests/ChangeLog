@@ -1,3 +1,555 @@
+2016-03-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking perf/document-contains.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155755
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [OSX] Rebase media/media-document-audio-repaint.html
+        https://bugs.webkit.org/show_bug.cgi?id=155733
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/media/media-document-audio-repaint-expected.png:
+        * platform/mac/media/media-document-audio-repaint-expected.txt: Added.
+
+2016-03-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Skip HeapSnapshot test on WebKit1. Shared VM skews the data.
+
+        Rubber-stamped by Timothy Hatcher.
+
+        In this case, snapshots with snapshots with snapshots in the same VM
+        causes the test to run out of memory. This does not happen in WebKit2.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        WebCore::RenderTableCell::setCol should put a cap on the column value. 
+        https://bugs.webkit.org/show_bug.cgi?id=155642
+        <rdar://problem/15895201>
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that we don't crash when the column number is large enough.
+        see webkit.org/b/71135 for more information.
+
+        * tables/colspan-with-large-value-crash-expected.txt: Added.
+        * tables/colspan-with-large-value-crash.html: Added.
+
+2016-03-21  Brady Eidson  <beidson@apple.com>
+
+        storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange.html flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=154748
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac/TestExpectations:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-expected.txt:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private-expected.txt:
+        * storage/indexeddb/resources/deletedatabase-delayed-by-open-and-versionchange.js:
+
+2016-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Use larger tiles when possible to reduce per-tile painting overhead
+        https://bugs.webkit.org/show_bug.cgi?id=155734
+        rdar://problem/24968144
+
+        Reviewed by Tim Horton.
+
+        New results with larger page tiles in WK2.
+
+        * platform/ios-simulator-wk2/compositing/tiling/rotated-tiled-clamped-expected.txt: Added.
+        * platform/ios-simulator-wk2/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt: Added.
+        * platform/ios-simulator-wk2/compositing/tiling/transform-origin-tiled-expected.txt: Added.
+
+2016-03-21  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Connect layoutTestController.findString() to support testing
+        https://bugs.webkit.org/show_bug.cgi?id=50234
+
+        Reviewed by Alex Christensen.
+
+        * platform/win/TestExpectations: Unskip test.
+        * platform/win/editing/text-iterator/findString-expected.txt: Added.
+
+2016-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        Web Inspector search icon does not fit when zoomed in.
+        https://bugs.webkit.org/show_bug.cgi?id=155708
+
+        Reviewed by Simon Fraser.
+
+        Adjusts the paint rect for the magnifier icon so that it fits even when zoomed in.
+
+        * fast/forms/search/search-padding-cancel-results-buttons-expected.txt:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/mac/fast/css/text-input-with-webkit-border-radius-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/forms/search-styled-expected.txt:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/fast/forms/searchfield-heights-expected.txt:
+        * platform/mac/fast/repaint/search-field-cancel-expected.txt:
+        * platform/mac/fast/replaced/width100percent-searchfield-expected.txt:
+
+2016-03-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Add a WebRTC specific compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=155663
+
+        Reviewed by Jer Noble.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2016-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Moving the -expected.txt file for accessibility/radio-button-group-members.html
+
+        Unreviewed test gardening.
+
+        * accessibility/radio-button-group-members-expected.txt: Renamed from LayoutTests/accessibility/mac/radio-button-group-members-expected.txt.
+
+2016-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two inspector tests as flaky timeouts on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=155607
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-02-03  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Fix percentage tracks' size computation in grids with gutters
+        https://bugs.webkit.org/show_bug.cgi?id=153825
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-gutters-and-flex-content-expected.txt:
+        * fast/css-grid-layout/grid-gutters-and-flex-content.html:
+        * fast/css-grid-layout/grid-gutters-and-tracks-expected.txt:
+        * fast/css-grid-layout/grid-gutters-and-tracks.html:
+
+2016-03-20  Jinwoo Jeong  <jw00.jeong@samsung.com>
+
+        The setter of binaryType attribute in WebSocket should raise the exception.
+        https://bugs.webkit.org/show_bug.cgi?id=135874
+
+        Reviewed by Antonio Gomes.
+
+        According to W3C WebSocket Specification, <https://www.w3.org/TR/2012/CR-websockets-20120920/>,
+        when an invalid value is set on binaryType of WebSocket, a SyntaxError should be raised.
+
+        * http/tests/websocket/tests/hybi/binary-type.html: Catch a syntax exception when binary type is set with invalid values.
+
+2016-03-20  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Radio button members are not identified together in all cases
+        https://bugs.webkit.org/show_bug.cgi?id=155604
+        <rdar://problem/21186992>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/mac/radio-button-group-members-expected.txt: Added.
+        * accessibility/radio-button-group-members.html:
+        * platform/mac/accessibility/radio-button-group-members-expected.txt: Removed.
+
+2016-03-19  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Update syntax error text 'super is only valid inside functions' to more suitable
+        https://bugs.webkit.org/show_bug.cgi?id=155491
+
+        Reviewed by Saam Barati.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.27-expected.txt:
+
+2016-03-19  Mark Lam  <mark.lam@apple.com>
+
+        ES6 spec requires that ErrorPrototype not be an Error object.
+        https://bugs.webkit.org/show_bug.cgi?id=155680
+
+        Reviewed by Michael Saboff.
+
+        Updated the appropriate tests to expect the toString() value of Error.prototype
+        to now be "[object Object]" instead of "[object Error]".  Also rebased the test
+        results accordingly.
+
+        * fast/dom/DOMException/prototype-object-expected.txt:
+        * fast/dom/DOMException/prototype-object.html:
+        * js/dom/native-error-prototype-expected.txt:
+        * js/dom/script-tests/native-error-prototype.js:
+        * sputnik/Conformance/15_Native_Objects/15.11_Error/15.11.4/S15.11.4_A2.html:
+
+2016-03-18  Daniel Bates  <dabates@apple.com>
+
+        Update AutoFill button in input fields
+        https://bugs.webkit.org/show_bug.cgi?id=155619
+
+        Update expected results for Windows and GTK ports. Add expected result for the EFL port.
+
+        * platform/efl/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt: Added.
+        * platform/gtk/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        * platform/win/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+
+2016-03-18  Zhuo Li  <zachli@apple.com>
+
+        Update AutoFill button in input fields.
+        https://bugs.webkit.org/show_bug.cgi?id=155619.
+        rdar://problem/24486939.
+
+        Reviewed by Daniel Bates.
+
+        * fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        Update the test results.
+        * platform/ios-simulator/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt:
+        Ditto.
+
+2016-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Sideways-scrollable RTL document has wrong initial and reload offset in WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=155660
+
+        Reviewed by Tim Horton.
+        
+        Test for initial scroll position in an RTL page.
+
+        * fast/scrolling/rtl-initial-scroll-position-expected.html: Added.
+        * fast/scrolling/rtl-initial-scroll-position.html: Added.
+
+2016-03-18  Darin Adler  <darin@apple.com>
+
+        ASSERTION FAILED: m_isValid == valid() in WebCore::HTMLFormControlElement::isValidFormControlElement
+        https://bugs.webkit.org/show_bug.cgi?id=139481
+
+        Reviewed by Daniel Bates.
+
+        * fast/forms/validity-assertion-inserting-into-datalist-expected.txt: Added.
+        * fast/forms/validity-assertion-inserting-into-datalist.html: Added.
+
+2016-03-18  Chris Dumez  <cdumez@apple.com>
+
+        Speculative revalidation requests do not have their HTTP user-agent set
+        https://bugs.webkit.org/show_bug.cgi?id=155620
+        <rdar://problem/24657567>
+
+        Reviewed by Brady Eidson.
+
+        Add layout test coverage.
+
+        * http/tests/cache/disk-cache/speculative-validation/resources/request-headers-script.php: Added.
+        * http/tests/cache/disk-cache/speculative-validation/resources/validation-request-frame.php: Added.
+        * http/tests/cache/disk-cache/speculative-validation/validation-request-expected.txt: Added.
+        * http/tests/cache/disk-cache/speculative-validation/validation-request.html: Added.
+
+2016-03-18  Mark Lam  <mark.lam@apple.com>
+
+        ES6 spec requires that RegExpPrototype not be a RegExp object.
+        https://bugs.webkit.org/show_bug.cgi?id=155654
+
+        Reviewed by Filip Pizlo.
+
+        Rebase all the test results.
+
+        * fast/regex/script-tests/toString.js:
+        * fast/regex/toString-expected.txt:
+        * ietestcenter/Javascript/15.10.6-expected.txt:
+        * ietestcenter/Javascript/15.10.7.1-1-expected.txt:
+        * ietestcenter/Javascript/15.10.7.2-1-expected.txt:
+        * ietestcenter/Javascript/15.10.7.3-1-expected.txt:
+        * ietestcenter/Javascript/15.10.7.4-1-expected.txt:
+        * ietestcenter/Javascript/15.10.7.5-1-expected.txt:
+        * ietestcenter/Javascript/TestCases/15.10.6.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.1-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.2-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.3-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.4-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.5-1.js:
+        (ES5Harness.registerTest.test):
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/kde/RegExp-expected.txt:
+        * js/kde/script-tests/RegExp.js:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.6/S15.10.6_A2-expected.txt:
+
+2016-03-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Local file restrictions should not block sessionStorage access
+        https://bugs.webkit.org/show_bug.cgi?id=155609
+        <rdar://problem/25229461>
+
+        Reviewed by Andy Estes.
+
+        * storage/domstorage/sessionstorage/blocked-file-access-expected.txt: Added.
+        * storage/domstorage/sessionstorage/blocked-file-access.html: Added.
+        * storage/domstorage/sessionstorage/resources/blocked-example.html: Added.
+
+2016-03-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html for mac after r198435
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-03-18  Nan Wang  <n_wang@apple.com>
+
+        AX: AXARIACurrent exposed but not displayed in Accessibility Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=155600
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/aria-current-attribute-exposed-expected.txt: Added.
+        * accessibility/mac/aria-current-attribute-exposed.html: Added.
+
+2016-03-18  Nan Wang  <n_wang@apple.com>
+
+        AX: Typing broken on form input field while using VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=155613
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-range-for-node-without-children-expected.txt: Added.
+        * accessibility/mac/text-marker-range-for-node-without-children.html: Added.
+
+2016-03-18  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        crossorigin element resource loading should check HTTP redirection
+        https://bugs.webkit.org/show_bug.cgi?id=130578
+
+        Reviewed by Daniel Bates and Brent Fulgham.
+
+        shape-image-cors-redirect.html checks that cross-origin redirections are checked against CORS.
+        It also checks that same-origin redirections are not checked against CORS.
+
+        * http/tests/security/resources/redirect-allow-star.php: Added.
+        * http/tests/security/shape-image-cors-redirect-expected.html: Added.
+        * http/tests/security/shape-image-cors-redirect.html: Added.
+
+2016-03-18  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Move IndexedDB regular test to web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=155581
+
+        Reviewed by Darin Adler.
+
+        Renaming indexeddb test expectation according new path and directory name.
+
+        * TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-03-17  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WEB: VoiceOver does not announce some WAI-ARIA document structures
+        https://bugs.webkit.org/show_bug.cgi?id=155603
+        <rdar://problem/25227385>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/ios-simulator/landmark-type-expected.txt:
+        * accessibility/ios-simulator/landmark-type.html:
+
+2016-03-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [XSS Auditor] Off by one in XSSAuditor::canonicalizedSnippetForJavaScript()
+        https://bugs.webkit.org/show_bug.cgi?id=155624
+        <rdar://problem/25219962>
+
+        Unreviewed merge from Blink (patch by Tom Sepez <tsepez@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?revision=201803&view=revision>
+
+        * http/tests/security/xssAuditor/script-tag-with-trailing-script-and-urlencode-expected.txt: Added.
+        * http/tests/security/xssAuditor/script-tag-with-trailing-script-and-urlencode.html: Added.
+
+2016-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Images in feed on ebay.com jiggle when one is hovered
+        https://bugs.webkit.org/show_bug.cgi?id=155608
+        <rdar://problem/25160681>
+
+        The content offset in compositing layer = subpixel gap between the graphics layer and the layer bounds + layer bounds top left.
+
+        Reviewed by Simon Fraser.
+
+        * compositing/hidpi-viewport-clipping-on-composited-content-expected.html: Added.
+        * compositing/hidpi-viewport-clipping-on-composited-content.html: Added.
+
+2016-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Don't initiate a style recall while drawing text 
+        https://bugs.webkit.org/show_bug.cgi?id=155618
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that we don't initiate a style recalc while in the middle of text drawing.
+
+        * fast/canvas/crash-while-resizing-canvas-expected.txt: Added.
+        * fast/canvas/crash-while-resizing-canvas.html: Added.
+
+2016-03-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Position: absolute divs are covered by vertical scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=155531
+
+        Reviewed by Darin Adler.
+
+        Add a bunch of tests. Also, this patch adds some tests that caught
+        https://bugs.webkit.org/show_bug.cgi?id=155533 (but they are disabled).
+
+        * fast/scrolling/rtl-scrollbars-elementFromPoint-expected.txt: Added.
+        * fast/scrolling/rtl-scrollbars-elementFromPoint-static-expected.txt: Added.
+        * fast/scrolling/rtl-scrollbars-elementFromPoint-static.html: Added.
+        * fast/scrolling/rtl-scrollbars-elementFromPoint.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-expected.txt: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-offset-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-offset.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-position-absolute-expected.txt: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-position-absolute.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-scrolled-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe-scrolled.html: Added.
+        * fast/scrolling/rtl-scrollbars-iframe.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-elementFromPoint-expected.txt: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-elementFromPoint.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-position-absolute-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-position-absolute.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-text-selection-scrolled-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overflow-text-selection-scrolled.html: Added.
+        * fast/scrolling/rtl-scrollbars-position-absolute-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-position-absolute.html: Added.
+        * fast/scrolling/rtl-scrollbars-position-fixed-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-position-fixed.html: Added.
+        * fast/scrolling/rtl-scrollbars-text-selection-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-text-selection-scrolled-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-text-selection-scrolled.html: Added.
+        * fast/scrolling/rtl-scrollbars-text-selection.html: Added.
+        * TestExpectations:
+
+2016-03-17  Brady Eidson  <beidson@apple.com>
+
+        Don't try to restore deleted MemoryIndexes if their owning object store is not restored.
+        https://bugs.webkit.org/show_bug.cgi?id=155068
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/deleteindex-4-private-expected.txt: Added.
+        * storage/indexeddb/modern/deleteindex-4-private.html: Added.
+        * storage/indexeddb/modern/resources/deleteindex-4.js: Added.
+
+2016-03-17  Doug Russell  <d_russell@apple.com>
+
+        AX: attributes to retrieve focusable and editable ancestors
+        https://bugs.webkit.org/show_bug.cgi?id=155554
+
+        Reviewed by Chris Fleizach.
+
+        Add attributes to help give context to focus changes:
+        AXFocusableAncestor - nearest accessibility ancestor that returns true for
+        canSetFocusAttribute().
+        AXEditableAncestor - nearest accessibility ancestor that returns true for
+        isTextControl().
+        AXHighestEditableAncestor - highest element in accessibility that returns true
+        for isTextControl().
+
+        * accessibility/image-link-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/image-link-expected.txt.
+        * accessibility/image-map2-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/image-map2-expected.txt.
+        * accessibility/internal-link-anchors2-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/internal-link-anchors2-expected.txt.
+        * accessibility/lists-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/lists-expected.txt.
+        * accessibility/mac/ancestor-attributes-expected.txt: Added.
+        * accessibility/mac/ancestor-attributes.html: Added.
+        * accessibility/mac/aria-columnrowheaders-expected.txt:
+        * accessibility/mac/bounds-for-range-expected.txt:
+        * accessibility/mac/document-links-expected.txt:
+        * accessibility/mac/internal-link-anchors-expected.txt:
+        * accessibility/math-multiscript-attributes-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/math-multiscript-attributes-expected.txt.
+        * accessibility/plugin-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/plugin-expected.txt.
+        * accessibility/table-attributes-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-attributes-expected.txt.
+        * accessibility/table-cell-spans-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-cell-spans-expected.txt.
+        * accessibility/table-cells-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-cells-expected.txt.
+        * accessibility/table-detection-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-detection-expected.txt.
+        * accessibility/table-one-cell-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-one-cell-expected.txt.
+        * accessibility/table-sections-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-sections-expected.txt.
+        * accessibility/table-with-rules-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/table-with-rules-expected.txt.
+        * accessibility/transformed-element-expected.txt:
+
+2016-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up fix to test after r198353.
+
+        * inspector/unit-tests/heap-snapshot.html:
+        Account for <root> in a few places.
+
+2016-03-17  Sam Weinig  <sam@webkit.org>
+
+        Implement document.queryCommandSupported("copy")
+        https://bugs.webkit.org/show_bug.cgi?id=155548
+        <rdar://problem/25195295>
+
+        Reviewed by Enrica Casucci.
+
+        * editing/execCommand/clipboard-access-with-user-gesture-expected.txt:
+        * editing/execCommand/clipboard-access-with-user-gesture.html:
+        document.queryCommandSupported('copy') should be returning true.
+
+        * editing/pasteboard/can-read-in-copy-and-cut-events.html:
+        * editing/pasteboard/copy-cut-paste-events-fired-when-disabled.html:
+        * editing/pasteboard/pasting-empty-html-falls-back-to-text.html:
+        * editing/pasteboard/set_data_typeof_return.html:
+        Use testRunner.execCommand() to test the behavior of a user.
+
+2016-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HeapSnapshots are slow and use too much memory
+        https://bugs.webkit.org/show_bug.cgi?id=155571
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/heap/getPreview.html:
+        * inspector/heap/getRemoteObject.html:
+        * inspector/heap/snapshot.html:
+        Update tests to use the new HeapSnapshotWorker frontend code.
+
+        * inspector/unit-tests/heap-snapshot-expected.txt: Added.
+        * inspector/unit-tests/heap-snapshot.html: Added.
+        Verify the data processing in and worker communication work HeapSnapshotWorker
+        produces expected values when compared with the simple HeapSnapshot/Node/Edge
+        implentation.
+
+2016-03-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/security/aboutBlank/window-open-self-about-blank.html as flaky on ios-sim-debug
+        https://bugs.webkit.org/show_bug.cgi?id=94458
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
 2016-03-16  Chris Fleizach  <cfleizach@apple.com>
 
         AX: Implement AutoFill Available attribute for a text field

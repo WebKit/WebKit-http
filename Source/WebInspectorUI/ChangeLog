@@ -1,3 +1,373 @@
+2016-03-21  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: New icon for Heap Allocations timeline
+        https://bugs.webkit.org/show_bug.cgi?id=155731
+        <rdar://problem/25275494>
+
+        Reviewed by Joseph Pecoraro and Timothy Hatcher.
+
+        * UserInterface/Images/HeapAllocationsInstrument.svg: Added.
+        New artwork from Jon Davis.
+
+        * UserInterface/Views/TimelineIcons.css:
+        (.heap-allocations-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .memory-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .heap-allocations-icon .icon):
+        New icon styles/fallbacks for GTK.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.iconClassNameForTimeline):
+        Add new icon class to UI helper method.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2016-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Bullet misaligned when expanding console log message
+        https://bugs.webkit.org/show_bug.cgi?id=155669
+        <rdar://problem/25250721>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree):
+        (.object-tree .object-tree): Deleted.
+        Make object tree's inline-block again.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-top-level-message .object-tree):
+        (.console-top-level-message .object-tree .object-tree):
+        Since the Console is the only place that requires a non-inline-block
+        object-tree, and only at the top level, have the console override
+        the styles of object trees as it needs.
+
+2016-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: undefined is not an object (evaluating 'this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode')
+        https://bugs.webkit.org/show_bug.cgi?id=155671
+        <rdar://problem/25249401>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._sort):
+
+2016-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix ObjectTree Map styling, key/value look cramped
+        https://bugs.webkit.org/show_bug.cgi?id=155668
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.tree-outline .item.object-tree-array-index):
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.css:
+        (.tree-outline .item.object-tree-map-entry):
+        When creating generic tree outline styles generic object tree
+        styles were getting overriden by generic tree outline styles
+        with higher specificity.
+
+2016-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline reset issues after Navigation Sidebar removal
+        https://bugs.webkit.org/show_bug.cgi?id=155658
+        <rdar://problem/25245292>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CircleChart.js:
+        (WebInspector.CircleChart.prototype.set values):
+        If the segments have never been set the values list will be empty.
+        Allow clearing to set empty values again.
+
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WebInspector.ScriptClusterTimelineView.prototype._scriptClusterViewCurrentContentViewDidChange):
+        (WebInspector.ScriptClusterTimelineView):
+        Timeline sidebar no longer exists. Replace with the common
+        FIXME added to the other TimelineViews.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.reset):
+        Timeline sidebar and content tree outline no longer exist.
+        Replace with the common comment indicating this method
+        is intended for subclasses.
+
+2016-03-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION (r197724): [GTK] Web Inspector: Images being blocked by CSP 2.0
+        https://bugs.webkit.org/show_bug.cgi?id=155432
+
+        Reviewed by Daniel Bates.
+
+        Allow Web Inspector to load resource: image resources.
+
+        * UserInterface/Main.html:
+
+2016-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Prefer retained size to the shallow size in Heap Snapshot data grids
+        https://bugs.webkit.org/show_bug.cgi?id=155597
+        <rdar://problem/25225087>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New datagrid column and tooltip strings.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.insertColumn):
+        Allow a column definition to provide a tooltip for the header cell.
+
+        * UserInterface/Views/HeapSnapshotClassDataGridNode.js:
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype.createCellContent):
+        Include retained size column data.
+
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype._populate):
+        Fix non-batched populate to sort instances on first population.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.createCellContent):
+        Include retained size column data.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView):
+        Include a retained size column. Update initial sort and column widths.
+
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree.buildSortComparator):
+        Include a numeric sort comparator for the new retained size column.
+
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype._populateTopLevel):
+        Include retained size, and lazily calculate percentage later.
+
+2016-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HeapSnapshots are slow and use too much memory
+        https://bugs.webkit.org/show_bug.cgi?id=155571
+
+        Reviewed by Timothy Hatcher.
+
+        This is the first inclusion of Workers into Web Inspector. In this case
+        the Main side merely needs to make requests of the Worker and get back
+        objects that it can interact with more.
+        
+        New file heirarchies:
+
+            UserInterface/Proxies
+                - new Proxy classes in the Main page.
+                - treat like Model classes, but not quite model.
+
+            UserInterface/Workers/HeapSnapshotWorker
+                - new Worker classes for Workers. No WebInspector namespace.
+                - no minification of these resources, they are simply copied.
+
+        Remote procedure call interface between the Main/Worker page happens
+        through the WorkerProxy and Worker classes. There are simple ways
+        to perform factory style methods and call methods on objects, and
+        get the result in a callback. Similiar to frontend <-> backend agent
+        communication:
+
+            HeapSnapshotWorkerProxy: (Main world)
+                - creates the worker
+                - performAction("actionName", arguments, callback)
+                - callMethod(objectId, "methodName", arguments, callback)
+                - handle message => dispatch event or invoke callback
+
+            HeapSnapshotWorker: (Worker world)
+                - sendEvent("eventName", eventData)
+                - handle message => dispatch action or method on object
+        
+        Proxy object methods are boilerplate calls to performAction/callMethod
+        with deserialization of responses. The rest of the frontend can just
+        treat Proxy objects as Model objects with some data and async methods.
+
+        Because the Node/Edge data is so small, objects are cheaply created
+        when needed and not cached. This means that there may be duplicate
+        HeapSnapshotNode's for the same node. For example if different Views
+        both request instancesWithClassName("Foo"). This is fine, as none
+        of our Views really care about object uniqueness, they are only
+        interested in the data or querying for more data.
+
+        * Scripts/combine-resources.pl:
+        * Scripts/copy-user-interface-resources.pl:
+        Copy the Workers directory to the resources directory.
+        Its code is only meant to be loaded by Workers, so it
+        shouldn't be included in the Main page.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Models/HeapSnapshot.js: Removed.
+        * UserInterface/Models/HeapSnapshotDiff.js: Removed.
+        * UserInterface/Models/HeapSnapshotEdge.js: Removed.
+        * UserInterface/Models/HeapSnapshotNode.js: Removed.
+        Replace the old simple Model classes with Proxy classes that interact
+        with the Worker.
+
+        * UserInterface/Models/HeapAllocationsInstrument.js:
+        (WebInspector.HeapAllocationsInstrument.prototype._takeHeapSnapshot):
+        (WebInspector.HeapAllocationsInstrument):
+        * UserInterface/Models/HeapAllocationsTimelineRecord.js:
+        (WebInspector.HeapAllocationsTimelineRecord):
+        * UserInterface/Models/HeapSnapshotRootPath.js:
+        (WebInspector.HeapSnapshotRootPath):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendEdge):
+        * UserInterface/Protocol/HeapObserver.js:
+        (WebInspector.HeapObserver.prototype.trackingStart):
+        (WebInspector.HeapObserver.prototype.trackingComplete):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotDiff):
+        (WebInspector.HeapAllocationsTimelineView.prototype._takeHeapSnapshotClicked):
+        (WebInspector.HeapAllocationsTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.HeapAllocationsTimelineView):
+        * UserInterface/Views/HeapSnapshotClassDataGridNode.js:
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype._populate):
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.logHeapSnapshotNode.node.shortestGCRootPath.):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.logHeapSnapshotNode):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPath):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.stringifyEdge):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler):
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView):
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree):
+        * UserInterface/Views/HeapSnapshotSummaryContentView.js:
+        (WebInspector.HeapSnapshotSummaryContentView):
+        Update existing code to expect the new Proxy objects or create
+        the new HeapSnapshot using workers.
+
+        * UserInterface/Proxies/HeapSnapshotDiffProxy.js: Added.
+        (WebInspector.HeapSnapshotDiffProxy):
+        (WebInspector.HeapSnapshotDiffProxy.deserialize):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.get snapshot1):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.get snapshot2):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.get totalSize):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.get totalObjectCount):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.get categories):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.allocationBucketCounts):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.instancesWithClassName):
+        (WebInspector.HeapSnapshotDiffProxy.prototype.nodeWithIdentifier):
+        A HeapSnapshotDiffProxy looks like a HeapSnapshotProxy and responds to
+        the same methods, but has the extra snapshot1/2 pointers.
+
+        * UserInterface/Proxies/HeapSnapshotEdgeProxy.js:
+        (WebInspector.HeapSnapshotEdgeProxy):
+        (WebInspector.HeapSnapshotEdgeProxy.deserialize):
+        Edge data. No methods are proxied at this point.
+
+        * UserInterface/Proxies/HeapSnapshotNodeProxy.js: Added.
+        (WebInspector.HeapSnapshotNodeProxy):
+        (WebInspector.HeapSnapshotNodeProxy.deserialize):
+        (WebInspector.HeapSnapshotNodeProxy.prototype.shortestGCRootPath):
+        (WebInspector.HeapSnapshotNodeProxy.prototype.dominatedNodes):
+        (WebInspector.HeapSnapshotNodeProxy.prototype.retainedNodes):
+        (WebInspector.HeapSnapshotNodeProxy.prototype.retainers):
+        Node data and methods to query for node relationships.
+
+        * UserInterface/Proxies/HeapSnapshotProxy.js: Added.
+        (WebInspector.HeapSnapshotProxy):
+        (WebInspector.HeapSnapshotProxy.deserialize):
+        (WebInspector.HeapSnapshotProxy.prototype.get proxyObjectId):
+        (WebInspector.HeapSnapshotProxy.prototype.get identifier):
+        (WebInspector.HeapSnapshotProxy.prototype.get totalSize):
+        (WebInspector.HeapSnapshotProxy.prototype.get totalObjectCount):
+        (WebInspector.HeapSnapshotProxy.prototype.get categories):
+        (WebInspector.HeapSnapshotProxy.prototype.allocationBucketCounts):
+        (WebInspector.HeapSnapshotProxy.prototype.instancesWithClassName):
+        (WebInspector.HeapSnapshotProxy.prototype.nodeWithIdentifier):
+        Snapshot data and methods to query for nodes.
+
+        * UserInterface/Proxies/HeapSnapshotWorkerProxy.js: Added.
+        (WebInspector.HeapSnapshotWorkerProxy):
+        (WebInspector.HeapSnapshotWorkerProxy.singleton):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype.createSnapshot):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype.createSnapshotDiff):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype.performAction):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype.callMethod):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype._postMessage):
+        (WebInspector.HeapSnapshotWorkerProxy.prototype._handleMessage):
+        Singleton factory for the worker and proxied communication with the worker.
+        Provide means for invoking "factory actions" and "object methods".
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshotWorker.js: Added.
+        (HeapSnapshotWorker):
+        (HeapSnapshotWorker.prototype.createSnapshot):
+        (HeapSnapshotWorker.prototype.createSnapshotDiff):
+        (HeapSnapshotWorker.prototype.sendEvent):
+        (HeapSnapshotWorker.prototype._handleMessage):
+        Main worker code. Handle dispatching actions and methods.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js: Added.
+        (HeapSnapshot):
+        (HeapSnapshot.buildCategories):
+        (HeapSnapshot.allocationBucketCounts):
+        (HeapSnapshot.instancesWithClassName):
+        (HeapSnapshot.prototype.allocationBucketCounts):
+        (HeapSnapshot.prototype.instancesWithClassName):
+        (HeapSnapshot.prototype.nodeWithIdentifier):
+        (HeapSnapshot.prototype.shortestGCRootPath):
+        (HeapSnapshot.prototype.dominatedNodes):
+        (HeapSnapshot.prototype.retainedNodes):
+        (HeapSnapshot.prototype.retainers):
+        (HeapSnapshot.prototype.serialize):
+        (HeapSnapshot.prototype.serializeNode):
+        (HeapSnapshot.prototype.serializeEdge):
+        (HeapSnapshot.prototype._buildOutgoingEdges):
+        (HeapSnapshot.prototype._buildIncomingEdges):
+        (HeapSnapshot.prototype._buildPostOrderIndexes):
+        (HeapSnapshot.prototype._buildDominatorIndexes):
+        (HeapSnapshot.prototype._buildRetainedSizes):
+        (HeapSnapshot.prototype._gcRootPathes.visitNode):
+        (HeapSnapshot.prototype._gcRootPathes):
+        (HeapSnapshotDiff):
+        (HeapSnapshotDiff.prototype.allocationBucketCounts):
+        (HeapSnapshotDiff.prototype.instancesWithClassName):
+        (HeapSnapshotDiff.prototype.nodeWithIdentifier):
+        (HeapSnapshotDiff.prototype.shortestGCRootPath):
+        (HeapSnapshotDiff.prototype.dominatedNodes):
+        (HeapSnapshotDiff.prototype.retainedNodes):
+        (HeapSnapshotDiff.prototype.retainers):
+        (HeapSnapshotDiff.prototype.serialize):
+        New HeapSnapshot data processing implementation. Instead of creating
+        a new object per Node or per Edge create data arrays containing data
+        per-Node. Operate on these lists of data instead of creating many objects.
+
+2016-03-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Large repaints when typing any character in console
+        https://bugs.webkit.org/show_bug.cgi?id=155387
+        <rdar://problem/25125720>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Main.css:
+        (#content):
+
 2016-03-16  Matt Baker  <mattbaker@apple.com>
 
         Uncaught Exception: SyntaxError: Invalid regular expression: \ at end of pattern

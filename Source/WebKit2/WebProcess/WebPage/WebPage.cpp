@@ -5261,4 +5261,9 @@ void WebPage::didRestoreScrollPosition()
     send(Messages::WebPageProxy::DidRestoreScrollPosition());
 }
 
+void WebPage::setResourceCachingDisabled(bool disabled)
+{
+    m_page->setResourceCachingDisabled(disabled);
+}
+
 } // namespace WebKit
