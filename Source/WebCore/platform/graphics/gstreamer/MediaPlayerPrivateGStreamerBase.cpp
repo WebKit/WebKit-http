@@ -368,6 +368,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return false;
         }
         GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
+        LockHolder lock(m_protectionMutex);
         std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
         GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
         Vector<uint8_t> concatenatedInitDataChunks;
@@ -413,7 +414,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         });
 
         GST_INFO("waiting for a CDM instance");
-        LockHolder lock(m_protectionMutex);
         m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
             return this->m_cdmInstance;
         });
