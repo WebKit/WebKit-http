@@ -40,7 +40,6 @@
 #include "WebKitWebSourceGStreamer.h"
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GUniquePtr.h>
-#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
 #include <wtf/UUID.h>
@@ -145,7 +144,7 @@ void registerWebKitGStreamerElements()
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-static AtomicString keySystemIdToUuid(const AtomicString&);
+static const char* keySystemIdToUuid(const char*);
 #endif
 
 static int greatestCommonDivisor(int a, int b)
@@ -419,7 +418,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return this->m_cdmInstance;
         });
         if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
-            const char* preferredKeySystemUuid = keySystemIdToUuid(m_cdmInstance->keySystem()).string().utf8().data();
+            const char* preferredKeySystemUuid = keySystemIdToUuid(m_cdmInstance->keySystem().utf8().data());
             GST_INFO("working with %s, continuing with %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
             GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
@@ -1454,18 +1453,18 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
     ASSERT_NOT_REACHED();
 }
 
-static AtomicString keySystemIdToUuid(const AtomicString& id)
+static const char* keySystemIdToUuid(const char* id)
 {
-    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
-        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
+        return CLEAR_KEY_PROTECTION_SYSTEM_UUID;
 
 #if USE(OPENCDM)
-    if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
-        || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || !g_ascii_strcasecmp(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
+        return PLAYREADY_PROTECTION_SYSTEM_UUID;
 
-    if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
-        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, WIDEVINE_PROTECTION_SYSTEM_ID))
+        return WIDEVINE_PROTECTION_SYSTEM_UUID;
 #endif
 
     return { };
