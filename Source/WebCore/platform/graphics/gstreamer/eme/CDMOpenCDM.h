@@ -38,11 +38,15 @@ namespace WebCore {
 
 class CDMFactoryOpenCDM : public CDMFactory {
 public:
-    CDMFactoryOpenCDM();
+    static CDMFactoryOpenCDM& singleton();
+
     virtual ~CDMFactoryOpenCDM();
 
     std::unique_ptr<CDMPrivate> createCDM(const String&) override;
     bool supportsKeySystem(const String&) override;
+
+private:
+    CDMFactoryOpenCDM();
 };
 
 class CDMInstanceOpenCDM : public CDMInstance {

@@ -137,9 +137,6 @@ void registerWebKitGStreamerElements()
     GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
     if (!playReadyDecryptorFactory)
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT);
-
-    if (!CDM::supportsKeySystem(GStreamerEMEUtilities::s_PlayReadyKeySystems[0]) || !CDM::supportsKeySystem(GStreamerEMEUtilities::s_WidevineKeySystem))
-        CDMFactory::registerFactory(*new CDMFactoryOpenCDM);
 #endif
 #endif
 }

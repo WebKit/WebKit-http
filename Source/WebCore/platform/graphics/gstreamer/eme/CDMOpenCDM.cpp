@@ -168,6 +168,12 @@ std::optional<String> CDMPrivateOpenCDM::sanitizeSessionId(const String& session
     return sessionId;
 }
 
+CDMFactoryOpenCDM& CDMFactoryOpenCDM::singleton()
+{
+    static CDMFactoryOpenCDM s_factory;
+    return s_factory;
+}
+
 CDMFactoryOpenCDM::CDMFactoryOpenCDM() = default;
 CDMFactoryOpenCDM::~CDMFactoryOpenCDM() = default;
 
