@@ -43,15 +43,16 @@ WebSettingsPrivate::WebSettingsPrivate(WebCore::Settings* settings)
     : settings(settings)
     , localStoragePath()
     , offlineStorageDefaultQuota(5 * 1024 * 1024)
-    , localStorageEnabled(false)
-    , databasesEnabled(false)
-    , offlineWebApplicationCacheEnabled(false)
     , serifFontFamilySet(false)
     , sansSerifFontFamilySet(false)
     , fixedFontFamilySet(false)
     , standardFontFamilySet(false)
     , defaultFontSizeSet(false)
     , defaultFixedFontSizeSet(false)
+    , javascriptEnabled(true)
+    , localStorageEnabled(false)
+    , databasesEnabled(false)
+    , offlineWebApplicationCacheEnabled(false)
 {
 	apply();
 	if (settings)
@@ -83,7 +84,7 @@ void WebSettingsPrivate::apply()
 	    settings->setMinimumFontSize(5);
 	    settings->setMinimumLogicalFontSize(5);
 	    settings->setShouldPrintBackgrounds(true);
-	    settings->setScriptEnabled(true);
+	    settings->setScriptEnabled(javascriptEnabled);
 //	    settings->setShowsURLsInToolTips(true);
 	    settings->setEditingBehaviorType(WebCore::EditingMacBehavior);
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);

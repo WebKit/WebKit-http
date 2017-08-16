@@ -61,6 +61,7 @@ enum {
 	HANDLE_SET_FONT = 'hsfn',
 	HANDLE_SET_FONT_SIZE = 'hsfs',
 	HANDLE_SET_PROXY_INFO = 'hspi',
+	HANDLE_SET_JAVASCRIPT_ENABLED = 'jsen',
 	HANDLE_APPLY = 'hapl'
 };
 
@@ -190,6 +191,13 @@ void BWebSettings::SetDefaultFixedFontSize(float size)
     _PostFontSize(FIXED_FONT_SIZE, size);
 }
 
+void BWebSettings::SetJavascriptEnabled(bool enabled)
+{
+	BMessage message(HANDLE_SET_JAVASCRIPT_ENABLED);
+	message.AddBool("enable", enabled);
+	_PostMessage(Default(), &message);
+}
+
 void BWebSettings::SetProxyInfo(const BString& host, uint32 port,
 	BProxyType type, const BString& username, const BString& password)
 {
@@ -315,6 +323,10 @@ void BWebSettings::MessageReceived(BMessage* message)
 		break;
 	case HANDLE_SET_FONT_SIZE:
 		_HandleSetFontSize(message);
+		break;
+
+	case HANDLE_SET_JAVASCRIPT_ENABLED:
+		_HandleSetJavascriptEnabled(message->FindBool("enable"));
 		break;
 
 	case HANDLE_SET_PROXY_INFO:
@@ -483,6 +495,13 @@ void BWebSettings::_HandleSetFontSize(BMessage* message)
         break;
 	}
 }
+
+
+void BWebSettings::_HandleSetJavascriptEnabled(bool enable)
+{
+	fData->javascriptEnabled = enable;
+}
+
 
 void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 {

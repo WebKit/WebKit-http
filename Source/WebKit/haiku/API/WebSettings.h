@@ -91,6 +91,8 @@ public:
 			void				SetDefaultStandardFontSize(float size);
 			void				SetDefaultFixedFontSize(float size);
 
+			void				SetJavascriptEnabled(bool enable);
+
 	static	void				SetProxyInfo(const BString& host = "",
 									uint32 port = 0,
 									BProxyType type = B_PROXY_TYPE_HTTP,
@@ -128,6 +130,7 @@ private:
 			void				_HandleSetFont(BMessage* message);
 			void				_HandleSetFontSize(BMessage* message);
 			void				_HandleSetProxyInfo(BMessage* message);
+			void				_HandleSetJavascriptEnabled(bool);
 			void				_HandleApply();
 private:
 			BPrivate::WebSettingsPrivate* fData;
