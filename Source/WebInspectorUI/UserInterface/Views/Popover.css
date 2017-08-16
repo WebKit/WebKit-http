@@ -24,6 +24,8 @@
  */
 
 .popover {
+    background-color: #EEEEEE;
+    border: 1px solid darkgrey;
     position: absolute;
     min-width: 20px;
     min-height: 20px;
