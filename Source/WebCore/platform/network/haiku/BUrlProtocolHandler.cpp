@@ -373,6 +373,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         client->didFinishLoading(m_resourceHandle, 0);
             // TODO put the actual finish time instead of 0
             // (this isn't done on other platforms either...)
+        return;
     } else if(httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(httpRequest->Result());
         int httpStatusCode = result.StatusCode();
@@ -384,10 +385,12 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
             client->didFail(m_resourceHandle, error);
             return;
         }
-    } else {
-        ResourceError error("BUrlRequest", caller->Status(), URL(caller->Url()), strerror(caller->Status()));
-        client->didFail(m_resourceHandle, error);
     }
+
+    // If we get here, it means we are in failure without an HTTP error code
+    // (DNS error, or error from a protocol other than HTTP).
+    ResourceError error("BUrlRequest", caller->Status(), URL(caller->Url()), strerror(caller->Status()));
+    client->didFail(m_resourceHandle, error);
 }
 
 
