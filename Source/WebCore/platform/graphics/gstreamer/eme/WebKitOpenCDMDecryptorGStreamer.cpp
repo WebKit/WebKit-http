@@ -96,9 +96,14 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
     ASSERT(temporarySession);
 
-    priv->m_session = temporarySession.get();
-    priv->m_openCdm = std::make_unique<media::OpenCdm>();
-    priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
+    if (priv->m_session != temporarySession.get() ) {
+        priv->m_session = temporarySession.get();
+        GST_INFO_OBJECT(self, "selecting session %s", priv->m_session.utf8().data());
+        priv->m_openCdm = std::make_unique<media::OpenCdm>();
+        priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
+    } else
+        GST_INFO_OBJECT(self, "session %s already selected", priv->m_session.utf8().data());
+
     return true;
 }
 

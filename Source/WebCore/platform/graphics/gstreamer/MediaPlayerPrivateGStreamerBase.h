@@ -40,6 +40,10 @@
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#include "CDMSessionOpenCDM.h"
+#endif
+
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
@@ -268,6 +272,10 @@ protected:
     RefPtr<GraphicsContext3D> m_context3D;
     Condition m_drawCondition;
     Lock m_drawMutex;
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+    CDMSessionOpenCDM* openCDMSession();
 #endif
 
 private:

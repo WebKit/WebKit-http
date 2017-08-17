@@ -88,6 +88,9 @@ public:
 #if USE(PLAYREADY)
     void emitPlayReadySession(PlayreadySession*) override;
 #endif
+#if USE(OPENCDM)
+    void emitOpenCDMSession() override;
+#endif
 #endif
 
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
