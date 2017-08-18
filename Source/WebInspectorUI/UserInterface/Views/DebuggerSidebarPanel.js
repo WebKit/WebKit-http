@@ -65,7 +65,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         enableBreakpointsLink.addEventListener("click", () => { WebInspector.debuggerToggleBreakpoints(); });
 
         this._navigationBar = new WebInspector.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         var breakpointsImage = {src: "Images/Breakpoints.svg", width: 15, height: 15};
         var pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};

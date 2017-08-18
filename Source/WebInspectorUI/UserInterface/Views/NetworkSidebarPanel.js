@@ -34,12 +34,12 @@ WebInspector.NetworkSidebarPanel = class NetworkSidebarPanel extends WebInspecto
         this.filterBar.placeholder = WebInspector.UIString("Filter Resource List");
 
         this._navigationBar = new WebInspector.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         this._resourcesTitleBarElement = document.createElement("div");
         this._resourcesTitleBarElement.textContent = WebInspector.UIString("Name");
         this._resourcesTitleBarElement.classList.add("title-bar");
-        this.element.appendChild(this._resourcesTitleBarElement);
+        this.element.insertBefore(this._resourcesTitleBarElement, this._contentView.element);
 
         var scopeItemPrefix = "network-sidebar-";
         var scopeBarItems = [];
