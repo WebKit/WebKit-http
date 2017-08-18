@@ -28,14 +28,12 @@
 }
 
 .sidebar > .panel.navigation.network > .navigation-bar {
-    position: absolute;
     top: 0;
     left: 0;
     right: 0;
 }
 
 .sidebar > .panel.navigation.network > .title-bar {
-    position: absolute;
     top: var(--navigation-bar-height);
     left: 0;
     right: 0;
