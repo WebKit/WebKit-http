@@ -52,7 +52,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
     : m_url(url)
     , m_identifier(identifier)
     , m_userAgent(userAgent)
@@ -67,6 +67,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, c
 #endif
     , m_socketProvider(socketProvider)
     , m_performance(Performance::create(*this, timeOrigin))
+    , m_sessionID(sessionID)
 {
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
@@ -190,10 +191,10 @@ void WorkerGlobalScope::close()
     } });
 }
 
-WorkerNavigator& WorkerGlobalScope::navigator() const
+WorkerNavigator& WorkerGlobalScope::navigator()
 {
     if (!m_navigator)
-        m_navigator = WorkerNavigator::create(m_userAgent);
+        m_navigator = WorkerNavigator::create(*this, m_userAgent);
     return *m_navigator;
 }
 
@@ -383,6 +384,13 @@ Crypto& WorkerGlobalScope::crypto()
 Performance& WorkerGlobalScope::performance() const
 {
     return *m_performance;
+}
+
+CacheStorageConnection& WorkerGlobalScope::cacheStorageConnection()
+{
+    if (!m_cacheStorageConnection)
+        m_cacheStorageConnection = WorkerCacheStorageConnection::create(*this);
+    return *m_cacheStorageConnection;
 }
 
 } // namespace WebCore

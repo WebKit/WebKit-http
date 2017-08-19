@@ -38,7 +38,7 @@ class InspectorObject;
 
 namespace WebDriver {
 
-class Capabilities;
+struct Capabilities;
 class CommandResult;
 class Session;
 
@@ -48,7 +48,6 @@ public:
     ~WebDriverService() = default;
 
     int run(int argc, char** argv);
-    void quit();
 
     static bool platformCompareBrowserVersions(const String&, const String&);
 
@@ -101,6 +100,10 @@ private:
     void elementSubmit(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
     void executeScript(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
     void executeAsyncScript(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void dismissAlert(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void acceptAlert(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void getAlertText(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void sendAlertText(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
 
     static Capabilities platformCapabilities();
     RefPtr<Inspector::InspectorObject> processCapabilities(const Inspector::InspectorObject&, Function<void (CommandResult&&)>&) const;

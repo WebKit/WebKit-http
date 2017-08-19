@@ -27,6 +27,7 @@
 
 #include "ArgumentCoders.h"
 #include <WebCore/AutoplayEvent.h>
+#include <WebCore/CacheStorageConnection.h>
 #include <WebCore/CaptureDevice.h>
 #include <WebCore/ColorSpace.h>
 #include <WebCore/DiagnosticLoggingClient.h>
@@ -42,6 +43,10 @@
 namespace WTF {
 class MonotonicTime;
 class Seconds;
+}
+
+namespace PAL {
+class SessionID;
 }
 
 namespace WebCore {
@@ -78,7 +83,6 @@ class Region;
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
-class SessionID;
 class SpringTimingFunction;
 class StepsTimingFunction;
 class StickyPositionViewportConstraints;
@@ -86,11 +90,14 @@ class TextCheckingRequestData;
 class TransformationMatrix;
 class UserStyleSheet;
 class URL;
+
+struct CacheQueryOptions;
 struct CompositionUnderline;
 struct DictationAlternative;
 struct DictionaryPopupInfo;
 struct EventTrackingRegions;
 struct ExceptionDetails;
+struct FetchOptions;
 struct FileChooserSettings;
 struct Length;
 struct GrammarDetail;
@@ -187,6 +194,26 @@ template<> struct ArgumentCoder<WTF::Seconds> {
 template<> struct ArgumentCoder<WebCore::AffineTransform> {
     static void encode(Encoder&, const WebCore::AffineTransform&);
     static bool decode(Decoder&, WebCore::AffineTransform&);
+};
+
+template<> struct ArgumentCoder<WebCore::FetchOptions> {
+    static void encode(Encoder&, const WebCore::FetchOptions&);
+    static bool decode(Decoder&, WebCore::FetchOptions&);
+};
+
+template<> struct ArgumentCoder<WebCore::CacheQueryOptions> {
+    static void encode(Encoder&, const WebCore::CacheQueryOptions&);
+    static bool decode(Decoder&, WebCore::CacheQueryOptions&);
+};
+
+template<> struct ArgumentCoder<WebCore::CacheStorageConnection::CacheInfo> {
+    static void encode(Encoder&, const WebCore::CacheStorageConnection::CacheInfo&);
+    static bool decode(Decoder&, WebCore::CacheStorageConnection::CacheInfo&);
+};
+
+template<> struct ArgumentCoder<WebCore::CacheStorageConnection::Record> {
+    static void encode(Encoder&, const WebCore::CacheStorageConnection::Record&);
+    static bool decode(Decoder&, WebCore::CacheStorageConnection::Record&);
 };
 
 template<> struct ArgumentCoder<WebCore::EventTrackingRegions> {
@@ -592,34 +619,34 @@ template<> struct ArgumentCoder<WebCore::PaymentMethodUpdate> {
     static bool decode(Decoder&, WebCore::PaymentMethodUpdate&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest> {
-    static void encode(Encoder&, const WebCore::PaymentRequest&);
-    static bool decode(Decoder&, WebCore::PaymentRequest&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::ContactFields> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::ContactFields&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::ContactFields&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::ContactFields> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::ContactFields&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::ContactFields&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::LineItem> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::LineItem&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::LineItem&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::LineItem> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::LineItem&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::LineItem&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::MerchantCapabilities> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::MerchantCapabilities&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::MerchantCapabilities&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::ShippingMethod> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::ShippingMethod&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::ShippingMethod&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::ShippingMethod> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::TotalAndLineItems> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::TotalAndLineItems&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::TotalAndLineItems&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems&);
 };
 
 template<> struct ArgumentCoder<WebCore::ShippingContactUpdate> {
@@ -748,10 +775,10 @@ template<> struct EnumTraits<WebCore::CaptureDevice::DeviceType> {
 };
 template<> struct EnumTraits<WebCore::RealtimeMediaSource::Type> {
     using values = EnumValues<
-    WebCore::RealtimeMediaSource::Type,
-    WebCore::RealtimeMediaSource::Type::None,
-    WebCore::RealtimeMediaSource::Type::Audio,
-    WebCore::RealtimeMediaSource::Type::Video
+        WebCore::RealtimeMediaSource::Type,
+        WebCore::RealtimeMediaSource::Type::None,
+        WebCore::RealtimeMediaSource::Type::Audio,
+        WebCore::RealtimeMediaSource::Type::Video
     >;
 };
 #endif
@@ -762,6 +789,95 @@ template<> struct EnumTraits<WebCore::MediaSelectionOption::Type> {
         WebCore::MediaSelectionOption::Type::Regular,
         WebCore::MediaSelectionOption::Type::LegibleOff,
         WebCore::MediaSelectionOption::Type::LegibleAuto
+    >;
+};
+
+template<> struct EnumTraits<WebCore::CacheStorageConnection::Error> {
+    using values = EnumValues<
+        WebCore::CacheStorageConnection::Error,
+        WebCore::CacheStorageConnection::Error::None,
+        WebCore::CacheStorageConnection::Error::NotImplemented
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Type> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Type,
+        WebCore::FetchOptions::Type::EmptyString,
+        WebCore::FetchOptions::Type::Audio,
+        WebCore::FetchOptions::Type::Font,
+        WebCore::FetchOptions::Type::Image,
+        WebCore::FetchOptions::Type::Script,
+        WebCore::FetchOptions::Type::Style,
+        WebCore::FetchOptions::Type::Track,
+        WebCore::FetchOptions::Type::Video
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Destination> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Destination,
+        WebCore::FetchOptions::Destination::EmptyString,
+        WebCore::FetchOptions::Destination::Document,
+        WebCore::FetchOptions::Destination::Sharedworker,
+        WebCore::FetchOptions::Destination::Subresource,
+        WebCore::FetchOptions::Destination::Unknown,
+        WebCore::FetchOptions::Destination::Worker
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Mode> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Mode,
+        WebCore::FetchOptions::Mode::Navigate,
+        WebCore::FetchOptions::Mode::SameOrigin,
+        WebCore::FetchOptions::Mode::NoCors,
+        WebCore::FetchOptions::Mode::Cors
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Credentials> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Credentials,
+        WebCore::FetchOptions::Credentials::Omit,
+        WebCore::FetchOptions::Credentials::SameOrigin,
+        WebCore::FetchOptions::Credentials::Include
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Cache> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Cache,
+        WebCore::FetchOptions::Cache::Default,
+        WebCore::FetchOptions::Cache::NoStore,
+        WebCore::FetchOptions::Cache::Reload,
+        WebCore::FetchOptions::Cache::NoCache,
+        WebCore::FetchOptions::Cache::ForceCache,
+        WebCore::FetchOptions::Cache::OnlyIfCached
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FetchOptions::Redirect> {
+    using values = EnumValues<
+        WebCore::FetchOptions::Redirect,
+        WebCore::FetchOptions::Redirect::Follow,
+        WebCore::FetchOptions::Redirect::Error,
+        WebCore::FetchOptions::Redirect::Manual
+    >;
+};
+
+template<> struct EnumTraits<WebCore::ReferrerPolicy> {
+    using values = EnumValues<
+        WebCore::ReferrerPolicy,
+        WebCore::ReferrerPolicy::EmptyString,
+        WebCore::ReferrerPolicy::NoReferrer,
+        WebCore::ReferrerPolicy::NoReferrerWhenDowngrade,
+        WebCore::ReferrerPolicy::SameOrigin,
+        WebCore::ReferrerPolicy::Origin,
+        WebCore::ReferrerPolicy::StrictOrigin,
+        WebCore::ReferrerPolicy::OriginWhenCrossOrigin,
+        WebCore::ReferrerPolicy::StrictOriginWhenCrossOrigin,
+        WebCore::ReferrerPolicy::UnsafeUrl
     >;
 };
 

@@ -100,7 +100,7 @@ public:
             if (m_memories.size() >= m_maxCount)
                 return MemoryResult(nullptr, MemoryResult::SyncGCAndRetry);
             
-            void* result = Gigacage::tryAllocateVirtualPages(Memory::fastMappedBytes());
+            void* result = Gigacage::tryAllocateVirtualPages(Gigacage::Primitive, Memory::fastMappedBytes());
             if (!result)
                 return MemoryResult(nullptr, MemoryResult::SyncGCAndRetry);
             
@@ -121,7 +121,7 @@ public:
     {
         {
             auto holder = holdLock(m_lock);
-            Gigacage::freeVirtualPages(basePtr, Memory::fastMappedBytes());
+            Gigacage::freeVirtualPages(Gigacage::Primitive, basePtr, Memory::fastMappedBytes());
             m_memories.removeFirst(basePtr);
         }
         
@@ -255,6 +255,21 @@ Memory::Memory(void* memory, PageCount initial, PageCount maximum, size_t mapped
     dataLogLnIf(verbose, "Memory::Memory allocating ", *this);
 }
 
+static void commitZeroPages(void* startAddress, size_t sizeInBytes)
+{
+    bool writable = true;
+    bool executable = false;
+#if OS(LINUX)
+    // In Linux, MADV_DONTNEED clears backing pages with zero. Be Careful that MADV_DONTNEED shows different semantics in different OSes.
+    // For example, FreeBSD does not clear backing pages immediately.
+    while (madvise(startAddress, sizeInBytes, MADV_DONTNEED) == -1 && errno == EAGAIN) { }
+    OSAllocator::commit(startAddress, sizeInBytes, writable, executable);
+#else
+    OSAllocator::commit(startAddress, sizeInBytes, writable, executable);
+    memset(startAddress, 0, sizeInBytes);
+#endif
+}
+
 RefPtr<Memory> Memory::create(VM& vm, PageCount initial, PageCount maximum)
 {
     ASSERT(initial);
@@ -293,16 +308,14 @@ RefPtr<Memory> Memory::create(VM& vm, PageCount initial, PageCount maximum)
     }
     
     if (fastMemory) {
-        bool writable = true;
-        bool executable = false;
-        OSAllocator::commit(fastMemory, initialBytes, writable, executable);
         
         if (mprotect(fastMemory + initialBytes, Memory::fastMappedBytes() - initialBytes, PROT_NONE)) {
             dataLog("mprotect failed: ", strerror(errno), "\n");
             RELEASE_ASSERT_NOT_REACHED();
         }
+
+        commitZeroPages(fastMemory, initialBytes);
         
-        memset(fastMemory, 0, initialBytes);
         return adoptRef(new Memory(fastMemory, initial, maximum, Memory::fastMappedBytes(), MemoryMode::Signaling));
     }
     
@@ -312,7 +325,7 @@ RefPtr<Memory> Memory::create(VM& vm, PageCount initial, PageCount maximum)
     if (!initialBytes)
         return adoptRef(new Memory(initial, maximum));
     
-    void* slowMemory = Gigacage::tryAlignedMalloc(WTF::pageSize(), initialBytes);
+    void* slowMemory = Gigacage::tryAlignedMalloc(Gigacage::Primitive, WTF::pageSize(), initialBytes);
     if (!slowMemory) {
         memoryManager().freePhysicalBytes(initialBytes);
         return nullptr;
@@ -331,7 +344,7 @@ Memory::~Memory()
             memoryManager().freeVirtualPages(m_memory);
             break;
         case MemoryMode::BoundsChecking:
-            Gigacage::alignedFree(m_memory);
+            Gigacage::alignedFree(Gigacage::Primitive, m_memory);
             break;
         }
     }
@@ -378,13 +391,13 @@ bool Memory::grow(VM& vm, PageCount newSize)
     case MemoryMode::BoundsChecking: {
         RELEASE_ASSERT(maximum().bytes() != 0);
         
-        void* newMemory = Gigacage::tryAlignedMalloc(WTF::pageSize(), desiredSize);
+        void* newMemory = Gigacage::tryAlignedMalloc(Gigacage::Primitive, WTF::pageSize(), desiredSize);
         if (!newMemory)
             return false;
         memcpy(newMemory, m_memory, m_size);
         memset(static_cast<char*>(newMemory) + m_size, 0, desiredSize - m_size);
         if (m_memory)
-            Gigacage::alignedFree(m_memory);
+            Gigacage::alignedFree(Gigacage::Primitive, m_memory);
         m_memory = newMemory;
         m_mappedCapacity = desiredSize;
         m_size = desiredSize;
@@ -400,7 +413,7 @@ bool Memory::grow(VM& vm, PageCount newSize)
             dataLogLnIf(verbose, "Memory::grow in-place failed ", *this);
             return false;
         }
-        memset(startAddress, 0, extraBytes);
+        commitZeroPages(startAddress, extraBytes);
         m_size = desiredSize;
         return true;
     } }

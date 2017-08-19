@@ -57,6 +57,10 @@ OBJC_CLASS NSDictionary;
 OBJC_CLASS NSView;
 #endif
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 
 class AuthenticationChallenge;
@@ -90,7 +94,6 @@ class ResourceHandle;
 class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
-class SessionID;
 class SharedBuffer;
 class SubstituteData;
 class URL;
@@ -179,7 +182,7 @@ public:
 
     virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) = 0;
     virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, FramePolicyFunction&&) = 0;
-    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, FormState*, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, bool didReceiveRedirectResponse, FormState*, FramePolicyFunction&&) = 0;
     virtual void cancelPolicyCheck() = 0;
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&) = 0;
@@ -273,7 +276,7 @@ public:
     virtual void dispatchDidBecomeFrameset(bool) = 0; // Can change due to navigation or DOM modification.
 
     virtual bool canCachePage() const = 0;
-    virtual void convertMainResourceLoadToDownload(DocumentLoader*, SessionID, const ResourceRequest&, const ResourceResponse&) = 0;
+    virtual void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) = 0;
 
     virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) = 0;
     virtual RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool loadManually) = 0;
@@ -312,10 +315,6 @@ public:
     virtual bool shouldForceUniversalAccessFromLocalURL(const URL&) { return false; }
 
     virtual Ref<FrameNetworkingContext> createNetworkingContext() = 0;
-
-#if ENABLE(REQUEST_AUTOCOMPLETE)
-    virtual void didRequestAutocomplete(Ref<FormState>&&) = 0;
-#endif
 
     virtual bool shouldPaintBrokenImage(const URL&) const { return true; }
 

@@ -53,7 +53,7 @@ static void printUsageStatement(const char* programName)
 int WebDriverService::run(int argc, char** argv)
 {
     String portString;
-    for (unsigned i = 1 ; i < argc; ++i) {
+    for (int i = 1 ; i < argc; ++i) {
         const char* arg = argv[i];
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
             printUsageStatement(argv[0]);
@@ -95,13 +95,9 @@ int WebDriverService::run(int argc, char** argv)
 
     RunLoop::run();
 
-    return EXIT_SUCCESS;
-}
-
-void WebDriverService::quit()
-{
     m_server.disconnect();
-    RunLoop::main().stop();
+
+    return EXIT_SUCCESS;
 }
 
 const WebDriverService::Command WebDriverService::s_commands[] = {
@@ -150,6 +146,11 @@ const WebDriverService::Command WebDriverService::s_commands[] = {
 
     { HTTPMethod::Post, "/session/$sessionId/execute/sync", &WebDriverService::executeScript },
     { HTTPMethod::Post, "/session/$sessionId/execute/async", &WebDriverService::executeAsyncScript },
+
+    { HTTPMethod::Post, "/session/$sessionId/alert/dismiss", &WebDriverService::dismissAlert },
+    { HTTPMethod::Post, "/session/$sessionId/alert/accept", &WebDriverService::acceptAlert },
+    { HTTPMethod::Get, "/session/$sessionId/alert/text", &WebDriverService::getAlertText },
+    { HTTPMethod::Post, "/session/$sessionId/alert/text", &WebDriverService::sendAlertText },
 
     { HTTPMethod::Get, "/session/$sessionId/element/$elementId/displayed", &WebDriverService::isElementDisplayed },
 };
@@ -243,6 +244,8 @@ void WebDriverService::sendResponse(Function<void (HTTPRequestHandler::Response&
         responseObject->setString(ASCIILiteral("error"), result.errorString());
         responseObject->setString(ASCIILiteral("message"), result.errorMessage().value_or(emptyString()));
         responseObject->setString(ASCIILiteral("stacktrace"), emptyString());
+        if (auto& additionalData = result.additionalErrorData())
+            responseObject->setObject(ASCIILiteral("data"), RefPtr<InspectorObject> { additionalData });
     } else {
         responseObject = InspectorObject::create();
         auto resultValue = result.result();
@@ -288,6 +291,17 @@ static std::optional<PageLoadStrategy> deserializePageLoadStrategy(const String&
     return std::nullopt;
 }
 
+static std::optional<UnhandledPromptBehavior> deserializeUnhandledPromptBehavior(const String& unhandledPromptBehavior)
+{
+    if (unhandledPromptBehavior == "dismiss")
+        return UnhandledPromptBehavior::Dismiss;
+    if (unhandledPromptBehavior == "accept")
+        return UnhandledPromptBehavior::Accept;
+    if (unhandledPromptBehavior == "ignore")
+        return UnhandledPromptBehavior::Ignore;
+    return std::nullopt;
+}
+
 void WebDriverService::parseCapabilities(const InspectorObject& matchedCapabilities, Capabilities& capabilities) const
 {
     // Matched capabilities have already been validated.
@@ -309,6 +323,9 @@ void WebDriverService::parseCapabilities(const InspectorObject& matchedCapabilit
     String pageLoadStrategy;
     if (matchedCapabilities.getString(ASCIILiteral("pageLoadStrategy"), pageLoadStrategy))
         capabilities.pageLoadStrategy = deserializePageLoadStrategy(pageLoadStrategy);
+    String unhandledPromptBehavior;
+    if (matchedCapabilities.getString(ASCIILiteral("unhandledPromptBehavior"), unhandledPromptBehavior))
+        capabilities.unhandledPromptBehavior = deserializeUnhandledPromptBehavior(unhandledPromptBehavior);
     platformParseCapabilities(matchedCapabilities, capabilities);
 }
 
@@ -362,9 +379,8 @@ RefPtr<InspectorObject> WebDriverService::validatedCapabilities(const InspectorO
             result->setValue(it->key, RefPtr<InspectorValue>(it->value));
         } else if (it->key == "unhandledPromptBehavior") {
             String unhandledPromptBehavior;
-            if (!it->value->asString(unhandledPromptBehavior))
+            if (!it->value->asString(unhandledPromptBehavior) || !deserializeUnhandledPromptBehavior(unhandledPromptBehavior))
                 return nullptr;
-            // FIXME: implement prompts support.
             result->setString(it->key, unhandledPromptBehavior);
         } else if (it->key.find(":") != notFound) {
             if (!platformValidateCapability(it->key, it->value))
@@ -586,6 +602,19 @@ void WebDriverService::newSession(RefPtr<InspectorObject>&& parameters, Function
                     break;
                 }
             }
+            if (capabilities.unhandledPromptBehavior) {
+                switch (capabilities.unhandledPromptBehavior.value()) {
+                case UnhandledPromptBehavior::Dismiss:
+                    capabilitiesObject->setString(ASCIILiteral("unhandledPromptBehavior"), "dismiss");
+                    break;
+                case UnhandledPromptBehavior::Accept:
+                    capabilitiesObject->setString(ASCIILiteral("unhandledPromptBehavior"), "accept");
+                    break;
+                case UnhandledPromptBehavior::Ignore:
+                    capabilitiesObject->setString(ASCIILiteral("unhandledPromptBehavior"), "ignore");
+                    break;
+                }
+            }
             resultObject->setObject(ASCIILiteral("value"), WTFMove(capabilitiesObject));
             completionHandler(CommandResult::success(WTFMove(resultObject)));
         });
@@ -604,14 +633,15 @@ void WebDriverService::deleteSession(RefPtr<InspectorObject>&& parameters, Funct
 
     auto session = m_sessions.take(sessionID);
     if (!session) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidSessionID));
+        completionHandler(CommandResult::success());
         return;
     }
 
-    if (m_activeSession == session.get())
-        m_activeSession = nullptr;
-
-    session->close(WTFMove(completionHandler));
+    session->close([this, session, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (m_activeSession == session.get())
+            m_activeSession = nullptr;
+        completionHandler(WTFMove(result));
+    });
 }
 
 void WebDriverService::setTimeouts(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
@@ -805,8 +835,24 @@ void WebDriverService::closeWindow(RefPtr<InspectorObject>&& parameters, Functio
 {
     // §10.2 Close Window.
     // https://www.w3.org/TR/webdriver/#close-window
-    if (auto session = findSessionOrCompleteWithError(*parameters, completionHandler))
-        session->closeWindow(WTFMove(completionHandler));
+    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
+    if (!session)
+        return;
+
+    session->closeWindow([this, session, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+
+        RefPtr<InspectorArray> handles;
+        if (result.result()->asArray(handles) && !handles->length()) {
+            m_sessions.remove(session->id());
+            if (m_activeSession == session.get())
+                m_activeSession = nullptr;
+        }
+        completionHandler(WTFMove(result));
+    });
 }
 
 void WebDriverService::switchToWindow(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
@@ -1225,6 +1271,80 @@ void WebDriverService::executeAsyncScript(RefPtr<InspectorObject>&& parameters, 
             return;
         }
         session->executeScript(script, WTFMove(arguments), Session::ExecuteScriptMode::Async, WTFMove(completionHandler));
+    });
+}
+
+void WebDriverService::dismissAlert(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+{
+    // §18.1 Dismiss Alert.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#dismiss-alert
+    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
+    if (!session)
+        return;
+
+    session->waitForNavigationToComplete([session, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        session->dismissAlert(WTFMove(completionHandler));
+    });
+}
+
+void WebDriverService::acceptAlert(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+{
+    // §18.2 Accept Alert.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#accept-alert
+    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
+    if (!session)
+        return;
+
+    session->waitForNavigationToComplete([session, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        session->acceptAlert(WTFMove(completionHandler));
+    });
+}
+
+void WebDriverService::getAlertText(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+{
+    // §18.3 Get Alert Text.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#get-alert-text
+    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
+    if (!session)
+        return;
+
+    session->waitForNavigationToComplete([session, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        session->getAlertText(WTFMove(completionHandler));
+    });
+}
+
+void WebDriverService::sendAlertText(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+{
+    // §18.4 Send Alert Text.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#send-alert-text
+    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
+    if (!session)
+        return;
+
+    String text;
+    if (!parameters->getString(ASCIILiteral("text"), text)) {
+        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
+        return;
+    }
+
+    session->waitForNavigationToComplete([session, text = WTFMove(text), completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        session->sendAlertText(text, WTFMove(completionHandler));
     });
 }
 

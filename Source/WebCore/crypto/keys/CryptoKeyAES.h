@@ -49,6 +49,8 @@ public:
 
     KeyAlgorithmClass keyAlgorithmClass() const final { return KeyAlgorithmClass::AES; }
 
+    CryptoAesKeyAlgorithm dictionary() const;
+
     size_t length() const { return m_length; }
 
 private:
@@ -86,7 +88,6 @@ private:
     CryptoKeyAES(CryptoAlgorithmIdentifier, Vector<uint8_t>&& key, bool extractable, CryptoKeyUsageBitmap);
 
     std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
-    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     Vector<uint8_t> m_key;
 };

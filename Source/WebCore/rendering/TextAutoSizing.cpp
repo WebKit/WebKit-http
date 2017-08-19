@@ -32,8 +32,12 @@
 #include "Document.h"
 #include "FontCascade.h"
 #include "Logging.h"
+#include "RenderBlock.h"
 #include "RenderListMarker.h"
 #include "RenderText.h"
+#include "RenderTextFragment.h"
+#include "RenderTreeUpdaterFirstLetter.h"
+#include "RenderTreeUpdaterListItem.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
@@ -153,6 +157,20 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         newParentStyle.setFontDescription(fontDescription);
         newParentStyle.fontCascade().update(&node->document().fontSelector());
         parentRenderer->setStyle(WTFMove(newParentStyle));
+
+        if (is<RenderListItem>(*parentRenderer))
+            RenderTreeUpdater::ListItem::updateMarker(downcast<RenderListItem>(*parentRenderer));
+    }
+
+    for (auto& node : m_autoSizedNodes) {
+        auto& textRenderer = *node->renderer();
+        if (!is<RenderTextFragment>(textRenderer))
+            continue;
+        auto* block = downcast<RenderTextFragment>(textRenderer).blockForAccompanyingFirstLetter();
+        if (!block)
+            continue;
+        // FIXME: All render tree mutations should be done by RenderTreeUpdater commit.
+        RenderTreeUpdater::FirstLetter::update(*block);
     }
 
     return stillHasNodes;
@@ -200,6 +218,27 @@ void TextAutoSizingValue::reset()
         newParentStyle.fontCascade().update(&node->document().fontSelector());
         parentRenderer->setStyle(WTFMove(newParentStyle));
     }
+}
+
+void TextAutoSizing::addTextNode(Text& node, float candidateSize)
+{
+    LOG(TextAutosizing, " addAutoSizedNode %p candidateSize=%f", &node, candidateSize);
+    auto addResult = m_textNodes.add<TextAutoSizingHashTranslator>(node.renderer()->style(), nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = std::make_unique<TextAutoSizingValue>();
+    addResult.iterator->value->addTextNode(node, candidateSize);
+}
+
+void TextAutoSizing::updateRenderTree()
+{
+    m_textNodes.removeIf([](auto& keyAndValue) {
+        return keyAndValue.value->adjustTextNodeSizes() == TextAutoSizingValue::StillHasNodes::No;
+    });
+}
+
+void TextAutoSizing::reset()
+{
+    m_textNodes.clear();
 }
 
 } // namespace WebCore

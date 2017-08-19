@@ -29,6 +29,7 @@
 #include "SelectionSubtreeRoot.h"
 #include <memory>
 #include <wtf/HashSet.h>
+#include <wtf/ListHashSet.h>
 
 #if ENABLE(SERVICE_CONTROLS)
 #include "SelectionRectGatherer.h"
@@ -195,16 +196,16 @@ public:
 
     IntSize viewportSizeForCSSViewportUnits() const;
 
-    void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
-    RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }
-    
+    bool hasQuotesNeedingUpdate() const { return m_hasQuotesNeedingUpdate; }
+    void setHasQuotesNeedingUpdate(bool b) { m_hasQuotesNeedingUpdate = b; }
+
     // FIXME: see class RenderTreeInternalMutation below.
     bool renderTreeIsBeingMutatedInternally() const { return !!m_renderTreeInternalMutationCounter; }
 
     // FIXME: This is a work around because the current implementation of counters
     // requires walking the entire tree repeatedly and most pages don't actually use either
     // feature so we shouldn't take the performance hit when not needed. Long term we should
-    // rewrite the counter and quotes code.
+    // rewrite the counter code.
     void addRenderCounter() { m_renderCounterCount++; }
     void removeRenderCounter() { ASSERT(m_renderCounterCount > 0); m_renderCounterCount--; }
     bool hasRenderCounters() { return m_renderCounterCount; }
@@ -371,7 +372,8 @@ private:
     std::unique_ptr<RenderLayerCompositor> m_compositor;
     std::unique_ptr<FlowThreadController> m_flowThreadController;
 
-    RenderQuote* m_renderQuoteHead { nullptr };
+    bool m_hasQuotesNeedingUpdate { false };
+
     unsigned m_renderCounterCount { 0 };
     unsigned m_renderTreeInternalMutationCounter { 0 };
 

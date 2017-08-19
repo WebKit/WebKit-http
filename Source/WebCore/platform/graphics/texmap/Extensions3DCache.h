@@ -35,17 +35,21 @@ class Extensions3DCache {
 public:
     static const Extensions3DCache& singleton();
 
-    bool GL_EXT_unpack_subimage() const { return m_GL_EXT_unpack_subimage; }
+    bool supportsUnpackSubimage() const { return m_supportsUnpackSubimage; }
+#if 0
     bool GL_OES_packed_depth_stencil() const { return m_GL_OES_packed_depth_stencil; }
     bool GL_EXT_multisampled_render_to_texture() const { return m_GL_EXT_multisampled_render_to_texture; }
+#endif
 
 private:
     friend class LazyNeverDestroyed<Extensions3DCache>;
     Extensions3DCache();
 
-    bool m_GL_EXT_unpack_subimage;
+    bool m_supportsUnpackSubimage;
+#if 0
     bool m_GL_OES_packed_depth_stencil;
     bool m_GL_EXT_multisampled_render_to_texture;
+#endif
 };
 
 } // namespace WebCore

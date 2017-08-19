@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,13 +32,73 @@
 #include "config.h"
 #include "DataTransferItem.h"
 
-#if ENABLE(DATA_TRANSFER_ITEMS)
+#include "DataTransferItemList.h"
+#include "File.h"
+#include "ScriptExecutionContext.h"
+#include "StringCallback.h"
 
 namespace WebCore {
 
-const char DataTransferItem::kindString[] = "string";
-const char DataTransferItem::kindFile[] = "file";
+Ref<DataTransferItem> DataTransferItem::create(WeakPtr<DataTransferItemList>&& list, const String& type)
+{
+    return adoptRef(*new DataTransferItem(WTFMove(list), type));
+}
+
+Ref<DataTransferItem> DataTransferItem::create(WeakPtr<DataTransferItemList>&& list, const String& type, Ref<File>&& file)
+{
+    return adoptRef(*new DataTransferItem(WTFMove(list), type, WTFMove(file)));
+}
+
+DataTransferItem::DataTransferItem(WeakPtr<DataTransferItemList>&& list, const String& type)
+    : m_list(WTFMove(list))
+    , m_type(type)
+{
+}
+
+DataTransferItem::DataTransferItem(WeakPtr<DataTransferItemList>&& list, const String& type, Ref<File>&& file)
+    : m_list(WTFMove(list))
+    , m_type(type)
+    , m_file(WTFMove(file))
+{
+}
+
+DataTransferItem::~DataTransferItem()
+{
+}
+
+void DataTransferItem::clearListAndPutIntoDisabledMode()
+{
+    m_list.clear();
+}
+
+String DataTransferItem::kind() const
+{
+    return m_file ? ASCIILiteral("file") : ASCIILiteral("string");
+}
+
+String DataTransferItem::type() const
+{
+    return isInDisabledMode() ? String() : m_type;
+}
+
+void DataTransferItem::getAsString(ScriptExecutionContext& context, RefPtr<StringCallback>&& callback) const
+{
+    if (!callback || !m_list || m_file)
+        return;
+
+    auto& dataTransfer = m_list->dataTransfer();
+    if (!dataTransfer.canReadData())
+        return;
+
+    // FIXME: Make this async.
+    callback->scheduleCallback(context, dataTransfer.getData(m_type));
+}
+
+RefPtr<File> DataTransferItem::getAsFile() const
+{
+    if (!m_list || !m_list->dataTransfer().canReadData())
+        return nullptr;
+    return m_file.copyRef();
+}
 
 } // namespace WebCore
-
-#endif // ENABLE(DATA_TRANSFER_ITEMS)

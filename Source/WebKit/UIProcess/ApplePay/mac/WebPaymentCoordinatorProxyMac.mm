@@ -30,7 +30,7 @@
 
 #import "WebPageProxy.h"
 #import "WebPaymentCoordinatorProxyCocoa.h"
-#import <WebCore/PassKitSPI.h>
+#import <pal/spi/cocoa/PassKitSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/SoftLinking.h>
 
@@ -41,7 +41,7 @@ SOFT_LINK_CONSTANT(PassKit, PKExtensionPaymentAuthorizationUIExtensionPointName,
 
 namespace WebKit {
 
-void WebPaymentCoordinatorProxy::platformShowPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLStrings, const WebCore::PaymentRequest& request, WTF::Function<void (bool)>&& completionHandler)
+void WebPaymentCoordinatorProxy::platformShowPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLStrings, const WebCore::ApplePaySessionPaymentRequest& request, WTF::Function<void (bool)>&& completionHandler)
 {
     auto paymentRequest = toPKPaymentRequest(m_webPageProxy, originatingURL, linkIconURLStrings, request);
 

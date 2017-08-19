@@ -28,16 +28,12 @@
 #define BitmapTexturePool_h
 
 #include "BitmapTexture.h"
+#include "TextureMapperContextAttributes.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 
-#if USE(TEXTURE_MAPPER_GL)
-#include "GraphicsContext3D.h"
-#endif
-
 namespace WebCore {
 
-class GraphicsContext3D;
 class IntSize;
 
 class BitmapTexturePool {
@@ -45,7 +41,7 @@ class BitmapTexturePool {
     WTF_MAKE_FAST_ALLOCATED;
 public:
 #if USE(TEXTURE_MAPPER_GL)
-    explicit BitmapTexturePool(RefPtr<GraphicsContext3D>&&);
+    explicit BitmapTexturePool(const TextureMapperContextAttributes&);
 #endif
 
     RefPtr<BitmapTexture> acquireTexture(const IntSize&, const BitmapTexture::Flags);
@@ -68,7 +64,7 @@ private:
     RefPtr<BitmapTexture> createTexture(const BitmapTexture::Flags);
 
 #if USE(TEXTURE_MAPPER_GL)
-    RefPtr<GraphicsContext3D> m_context3D;
+    TextureMapperContextAttributes m_contextAttributes;
 #endif
 
     Vector<Entry> m_textures;

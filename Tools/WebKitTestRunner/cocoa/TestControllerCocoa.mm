@@ -93,6 +93,21 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
 #endif
 }
 
+void TestController::cocoaPlatformInitialize()
+{
+    const char* dumpRenderTreeTemp = libraryPathForTesting();
+    if (!dumpRenderTreeTemp)
+        return;
+
+    String resourceLoadStatisticsFolder = String(dumpRenderTreeTemp) + '/' + "ResourceLoadStatistics";
+    [[NSFileManager defaultManager] createDirectoryAtPath:resourceLoadStatisticsFolder withIntermediateDirectories:YES attributes:nil error: nil];
+    String fullBrowsingSessionResourceLog = resourceLoadStatisticsFolder + '/' + "full_browsing_session_resourceLog.plist";
+    NSDictionary *resourceLogPlist = [[NSDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:1], @"version", nil];
+    if (![resourceLogPlist writeToFile:fullBrowsingSessionResourceLog atomically:YES])
+        WTFCrash();
+    [resourceLogPlist release];
+}
+
 WKContextRef TestController::platformContext()
 {
 #if WK_API_ENABLED
@@ -369,6 +384,16 @@ void TestController::statisticsClearInMemoryAndPersistentStore()
 void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
 {
     [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:hours];
+}
+
+void TestController::statisticsClearThroughWebsiteDataRemoval()
+{
+#if WK_API_ENABLED
+    auto types = adoptNS([[NSSet alloc] initWithObjects:_WKWebsiteDataTypeResourceLoadStatistics, nil]);
+    [globalWebViewConfiguration.websiteDataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:^() {
+        m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    }];
+#endif
 }
 
 void TestController::statisticsResetToConsistentState()

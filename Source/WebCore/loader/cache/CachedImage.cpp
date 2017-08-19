@@ -55,23 +55,25 @@
 
 namespace WebCore {
 
-CachedImage::CachedImage(CachedResourceRequest&& request, SessionID sessionID)
+CachedImage::CachedImage(CachedResourceRequest&& request, PAL::SessionID sessionID)
     : CachedResource(WTFMove(request), ImageResource, sessionID)
 {
     setStatus(Unknown);
 }
 
-CachedImage::CachedImage(Image* image, SessionID sessionID)
+CachedImage::CachedImage(Image* image, PAL::SessionID sessionID)
     : CachedResource(URL(), ImageResource, sessionID)
     , m_image(image)
 {
 }
 
-CachedImage::CachedImage(const URL& url, Image* image, SessionID sessionID)
+CachedImage::CachedImage(const URL& url, Image* image, PAL::SessionID sessionID, const String& domainForCachePartition)
     : CachedResource(url, ImageResource, sessionID)
     , m_image(image)
     , m_isManuallyCached(true)
 {
+    m_resourceRequest.setDomainForCachePartition(domainForCachePartition);
+
     // Use the incoming URL in the response field. This ensures that code using the response directly,
     // such as origin checks for security, actually see something.
     m_response.setURL(url);

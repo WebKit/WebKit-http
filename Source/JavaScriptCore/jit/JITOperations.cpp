@@ -57,6 +57,7 @@
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
 #include "JSPropertyNameEnumerator.h"
+#include "JSWithScope.h"
 #include "ModuleProgramCodeBlock.h"
 #include "ObjectConstructor.h"
 #include "PolymorphicAccess.h"
@@ -956,7 +957,6 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
         JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, callee, scope, kind, *codeBlockSlot);
         ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(error));
         if (error) {
-            throwException(exec, throwScope, error);
             return encodeResult(
                 vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
                 reinterpret_cast<void*>(KeepTheFrame));
@@ -1014,11 +1014,9 @@ void JIT_OPERATION operationLinkDirectCall(ExecState* exec, CallLinkInfo* callLi
         RELEASE_ASSERT(isCall(kind) || functionExecutable->constructAbility() != ConstructAbility::CannotConstruct);
         
         JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, callee, scope, kind, codeBlock);
-        ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(error));
-        if (error) {
-            throwException(exec, throwScope, error);
+        ASSERT_UNUSED(throwScope, throwScope.exception() == reinterpret_cast<Exception*>(error));
+        if (error)
             return;
-        }
         ArityCheckMode arity;
         unsigned argumentStackSlots = callLinkInfo->maxNumArguments();
         if (argumentStackSlots < static_cast<size_t>(codeBlock->numParameters()))
@@ -1061,8 +1059,8 @@ inline SlowPathReturnType virtualForWithFunction(
 
         CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
         JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, function, scope, kind, *codeBlockSlot);
+        ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(error));
         if (error) {
-            throwException(exec, throwScope, error);
             return encodeResult(
                 vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
                 reinterpret_cast<void*>(KeepTheFrame));
@@ -1996,6 +1994,28 @@ size_t JIT_OPERATION operationDeleteByVal(ExecState* exec, EncodedJSValue encode
     if (!couldDelete && exec->codeBlock()->isStrictMode())
         throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
     return couldDelete;
+}
+
+JSCell* JIT_OPERATION operationPushWithScope(ExecState* exec, JSCell* currentScopeCell, EncodedJSValue objectValue)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* object = JSValue::decode(objectValue).toObject(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+
+    JSScope* currentScope = jsCast<JSScope*>(currentScopeCell);
+
+    return JSWithScope::create(vm, exec->lexicalGlobalObject(), currentScope, object);
+}
+
+JSCell* JIT_OPERATION operationPushWithScopeObject(ExecState* exec, JSCell* currentScopeCell, JSObject* object)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    JSScope* currentScope = jsCast<JSScope*>(currentScopeCell);
+    return JSWithScope::create(vm, exec->lexicalGlobalObject(), currentScope, object);
 }
 
 EncodedJSValue JIT_OPERATION operationInstanceOf(ExecState* exec, EncodedJSValue encodedValue, EncodedJSValue encodedProto)

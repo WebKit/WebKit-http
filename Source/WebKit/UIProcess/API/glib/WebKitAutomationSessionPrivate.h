@@ -21,8 +21,9 @@
 
 #include "WebAutomationSession.h"
 #include "WebKitAutomationSession.h"
+#include "WebKitWebContext.h"
 
-WebKitAutomationSession* webkitAutomationSessionCreate(const char* sessionID);
+WebKitAutomationSession* webkitAutomationSessionCreate(WebKitWebContext*, const char* sessionID);
 WebKit::WebAutomationSession& webkitAutomationSessionGetSession(WebKitAutomationSession*);
 String webkitAutomationSessionGetBrowserName(WebKitAutomationSession*);
 String webkitAutomationSessionGetBrowserVersion(WebKitAutomationSession*);

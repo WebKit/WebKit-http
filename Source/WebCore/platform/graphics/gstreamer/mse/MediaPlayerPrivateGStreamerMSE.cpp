@@ -897,6 +897,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
 {
     GST_TRACE("instance %p\n", &instance);
 
+#if 0
     GRefPtr<GstBuffer> keyBuffer;
 
     if (is<CDMInstanceClearKey>(instance)) {
@@ -920,6 +921,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         for (auto it : m_appendPipelinesMap)
             it.value->dispatchDecryptionKey(keyBuffer.get());
     }
+#endif
 }
 #endif
 

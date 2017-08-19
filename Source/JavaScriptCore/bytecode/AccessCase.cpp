@@ -527,6 +527,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 jit.loadPtr(
                     CCallHelpers::Address(baseForAccessGPR, JSObject::butterflyOffset()),
                     loadedValueGPR);
+                jit.cage(Gigacage::JSValue, loadedValueGPR);
                 storageGPR = loadedValueGPR;
             }
 
@@ -858,7 +859,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             size_t newSize = newStructure()->outOfLineCapacity() * sizeof(JSValue);
 
             if (allocatingInline) {
-                MarkedAllocator* allocator = vm.auxiliarySpace.allocatorFor(newSize);
+                MarkedAllocator* allocator = vm.jsValueGigacageAuxiliarySpace.allocatorFor(newSize);
 
                 if (!allocator) {
                     // Yuck, this case would suck!
@@ -877,6 +878,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                     // already had out-of-line property storage).
 
                     jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
+                    jit.cage(Gigacage::JSValue, scratchGPR3);
 
                     // We have scratchGPR = new storage, scratchGPR3 = old storage,
                     // scratchGPR2 = available
@@ -955,8 +957,10 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                     JSObject::offsetOfInlineStorage() +
                     offsetInInlineStorage(m_offset) * sizeof(JSValue)));
         } else {
-            if (!allocating)
+            if (!allocating) {
                 jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR);
+                jit.cage(Gigacage::JSValue, scratchGPR);
+            }
             jit.storeValue(
                 valueRegs,
                 CCallHelpers::Address(scratchGPR, offsetInButterfly(m_offset) * sizeof(JSValue)));
@@ -992,6 +996,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
         
     case ArrayLength: {
         jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR);
+        jit.cage(Gigacage::JSValue, scratchGPR);
         jit.load32(CCallHelpers::Address(scratchGPR, ArrayStorage::lengthOffset()), scratchGPR);
         state.failAndIgnore.append(
             jit.branch32(CCallHelpers::LessThan, scratchGPR, CCallHelpers::TrustedImm32(0)));

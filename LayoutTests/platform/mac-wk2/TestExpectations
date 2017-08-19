@@ -682,7 +682,7 @@ webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/ev
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
 
-webkit.org/b/170629 [ Sierra Debug ] memory/memory-pressure-simulation.html [ Pass Failure ]
+webkit.org/b/170629 [ Sierra ] memory/memory-pressure-simulation.html [ Pass Failure ]
 
 webkit.org/b/170484 swipe/main-frame-pinning-requirement.html [ Pass Failure ]
 
@@ -722,6 +722,12 @@ webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbi
 
 webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAllKeys.html [ Pass Failure ]
 
+# Beacon is not supported on WK2 for the non NETWORK_SESSION code path.
+[ ElCapitan ] http/tests/blink/sendbeacon/ [ Skip ]
+[ ElCapitan ] http/wpt/beacon/ [ Skip ]
+[ ElCapitan ] imported/blink/fast/beacon/ [ Skip ]
+[ ElCapitan ] imported/w3c/web-platform-tests/beacon/ [ Skip ]
+
 webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass Timeout ]
 
 webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
@@ -731,9 +737,23 @@ webkit.org/b/172397 [ Sierra Debug ] animations/needs-layout.html [ Pass ImageOn
 # Move to general wk2 expectations once webkit.org/b/175170 is resolved.
 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Pass ]
 
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Pass Timeout ]
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Pass Timeout ]
 
 webkit.org/b/172148 tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html [ Pass Failure ]
+
+webkit.org/b/173946 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Pass Failure ]
+
+webkit.org/b/175270 [ Debug ] plugins/crash-restoring-plugin-page-from-page-cache.html [ Skip ]
+
+# CSS Regions are being phased out.
+tiled-drawing/scrolling/non-fast-region/wheel-handler-in-region.html [ Skip ]
+
+webkit.org/b/175341 accessibility/mac/select-element-selection-with-optgroups.html [ Pass Failure ]
+
+webkit.org/b/172044 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/open-request-queue.html [ Pass Timeout ]
+
+webkit.org/b/173779 [ Sierra Debug ] fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
 

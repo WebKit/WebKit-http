@@ -94,14 +94,23 @@ public:
     void elementSendKeys(const String& elementID, Vector<String>&& keys, Function<void (CommandResult&&)>&&);
     void elementSubmit(const String& elementID, Function<void (CommandResult&&)>&&);
     void executeScript(const String& script, RefPtr<Inspector::InspectorArray>&& arguments, ExecuteScriptMode, Function<void (CommandResult&&)>&&);
+    void dismissAlert(Function<void (CommandResult&&)>&&);
+    void acceptAlert(Function<void (CommandResult&&)>&&);
+    void getAlertText(Function<void (CommandResult&&)>&&);
+    void sendAlertText(const String&, Function<void (CommandResult&&)>&&);
 
 private:
     Session(std::unique_ptr<SessionHost>&&);
 
     void switchToTopLevelBrowsingContext(std::optional<String>);
     void switchToBrowsingContext(std::optional<String>);
+    void closeTopLevelBrowsingContext(const String& toplevelBrowsingContext, Function<void (CommandResult&&)>&&);
+    void closeAllToplevelBrowsingContexts(const String& toplevelBrowsingContext, Function<void (CommandResult&&)>&&);
 
     std::optional<String> pageLoadStrategyString() const;
+
+    void handleUserPrompts(Function<void (CommandResult&&)>&&);
+    void reportUnexpectedAlertOpen(Function<void (CommandResult&&)>&&);
 
     RefPtr<Inspector::InspectorObject> createElement(RefPtr<Inspector::InspectorValue>&&);
     RefPtr<Inspector::InspectorObject> createElement(const String& elementID);
@@ -129,6 +138,8 @@ private:
         UseViewportCoordinates = 1 << 1,
     };
     void computeElementLayout(const String& elementID, OptionSet<ElementLayoutOption>, Function<void (std::optional<Rect>&&, std::optional<Point>&&, bool, RefPtr<Inspector::InspectorObject>&&)>&&);
+
+    void selectOptionElement(const String& elementID, Function<void (CommandResult&&)>&&);
 
     enum class MouseButton { None, Left, Middle, Right };
     enum class MouseInteraction { Move, Down, Up, SingleClick, DoubleClick };

@@ -26,6 +26,7 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
+#include "GUniquePtrGStreamer.h"
 #include <wtf/Condition.h>
 #include <wtf/RunLoop.h>
 
@@ -110,13 +111,13 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
     unsigned size = gst_caps_get_size(caps);
     for (unsigned i = 0; i < size; ++i) {
         GstStructure* incomingStructure = gst_caps_get_structure(caps, i);
-        GRefPtr<GstStructure> outgoingStructure = nullptr;
+        GUniquePtr<GstStructure> outgoingStructure = nullptr;
 
         if (direction == GST_PAD_SINK) {
             if (!gst_structure_has_field(incomingStructure, "original-media-type"))
                 continue;
 
-            outgoingStructure = adoptGRef(gst_structure_copy(incomingStructure));
+            outgoingStructure = GUniquePtr<GstStructure>(gst_structure_copy(incomingStructure));
             gst_structure_set_name(outgoingStructure.get(), gst_structure_get_string(outgoingStructure.get(), "original-media-type"));
 
             // Filter out the DRM related fields from the down-stream caps.
@@ -128,7 +129,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
                     gst_structure_remove_field(outgoingStructure.get(), fieldName);
             }
         } else {
-            outgoingStructure = adoptGRef(gst_structure_copy(incomingStructure));
+            outgoingStructure = GUniquePtr<GstStructure>(gst_structure_copy(incomingStructure));
             // Filter out the video related fields from the up-stream caps,
             // because they are not relevant to the input caps of this element and
             // can cause caps negotiation failures with adaptive bitrate streams.
@@ -166,7 +167,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
         }
 
         if (!duplicate)
-            gst_caps_append_structure(transformedCaps, outgoingStructure.leakRef());
+            gst_caps_append_structure(transformedCaps, outgoingStructure.release());
     }
 
     if (filter) {

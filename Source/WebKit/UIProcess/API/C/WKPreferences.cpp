@@ -826,12 +826,18 @@ bool WKPreferencesGetInlineMediaPlaybackRequiresPlaysInlineAttribute(WKPreferenc
 
 void WKPreferencesSetBeaconAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
+#if ENABLE(BEACON_API)
     toImpl(preferencesRef)->setBeaconAPIEnabled(flag);
+#endif
 }
 
 bool WKPreferencesGetBeaconAPIEnabled(WKPreferencesRef preferencesRef)
 {
+#if ENABLE(BEACON_API)
     return toImpl(preferencesRef)->beaconAPIEnabled();
+#else
+    return false;
+#endif
 }
 
 void WKPreferencesSetMediaControlsScaleWithPageZoom(WKPreferencesRef preferencesRef, bool flag)
@@ -1643,6 +1649,16 @@ bool WKPreferencesGetDisplayContentsEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->displayContentsEnabled();
 }
 
+void WKPreferencesSetDataTransferItemsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setDataTransferItemsEnabled(flag);
+}
+
+bool WKPreferencesGetDataTransferItemsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->dataTransferItemsEnabled();
+}
+
 void WKPreferencesSetDownloadAttributeEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setDownloadAttributeEnabled(flag);
@@ -1821,6 +1837,26 @@ bool WKPreferencesGetAllowMediaContentTypesRequiringHardwareSupportAsFallback(WK
 void WKPreferencesSetAllowMediaContentTypesRequiringHardwareSupportAsFallback(WKPreferencesRef preferencesRef, bool allow)
 {
     return toImpl(preferencesRef)->setAllowMediaContentTypesRequiringHardwareSupportAsFallback(allow);
+}
+
+void WKPreferencesSetInspectorAdditionsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setInspectorAdditionsEnabled(flag);
+}
+
+bool WKPreferencesGetInspectorAdditionsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->inspectorAdditionsEnabled();
+}
+
+void WKPreferencesSetPaymentRequestEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setPaymentRequestEnabled(flag);
+}
+
+bool WKPreferencesGetPaymentRequestEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->paymentRequestEnabled();
 }
 
 void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)

@@ -223,14 +223,13 @@ std::unique_ptr<LinkPreloadResourceClient> LinkLoader::preloadIfNeeded(const Lin
     if (!isSupportedType(type.value(), mimeType))
         return nullptr;
 
-    ResourceRequest resourceRequest(document.completeURL(href));
-    resourceRequest.setIgnoreForRequestCount(true);
-    CachedResourceRequest linkRequest(WTFMove(resourceRequest), CachedResourceLoader::defaultCachedResourceOptions(), CachedResource::defaultPriorityForResourceType(type.value()));
+    CachedResourceRequest linkRequest(document.completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), CachedResource::defaultPriorityForResourceType(type.value()));
     linkRequest.setInitiator("link");
+    linkRequest.setIgnoreForRequestCount(true);
     linkRequest.setIsLinkPreload();
 
     linkRequest.setAsPotentiallyCrossOrigin(crossOriginMode, document);
-    CachedResourceHandle<CachedResource> cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest));
+    auto cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest)).valueOr(nullptr);
 
     if (cachedLinkResource && loader)
         return createLinkPreloadResourceClient(*cachedLinkResource, *loader, type.value());
@@ -280,7 +279,7 @@ bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href,
         }
         ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
         options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
-        m_cachedLinkResource = document.cachedResourceLoader().requestLinkResource(type, CachedResourceRequest(ResourceRequest(document.completeURL(href)), options, priority));
+        m_cachedLinkResource = document.cachedResourceLoader().requestLinkResource(type, CachedResourceRequest(ResourceRequest(document.completeURL(href)), options, priority)).valueOr(nullptr);
         if (m_cachedLinkResource)
             m_cachedLinkResource->addClient(*this);
     }

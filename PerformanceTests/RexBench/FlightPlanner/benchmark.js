@@ -24,34 +24,25 @@
  */
 "use strict";
 
-let currentTime;
-if (this.performance && performance.now)
-    currentTime = function() { return performance.now() };
-else if (this.preciseTime)
-    currentTime = function() { return preciseTime() * 1000; };
-else
-    currentTime = function() { return +new Date(); };
-
-class FlightPlannerBenchmark {
+class FlightPlannerBenchmark extends Benchmark {
     constructor(verbose = 0)
     {
-        this._verbose = verbose;
+        super(verbose);
     }
 
-    runIteration()
+    runOnce()
     {
-        for (let iteration = 0; iteration < 10; ++iteration) {
+        for (let i = 0; i < 5; i++) {
             setupUserWaypoints();
-            
+
             for (let flightPlan of expectedFlightPlans) {
                 flightPlan.reset();
                 flightPlan.resolveRoute();
             }
         }
-        this.checkResults();
     }
 
-    checkResults()
+    validate()
     {
         for (let flightPlan of expectedFlightPlans) {
             flightPlan.calculate();
@@ -59,26 +50,3 @@ class FlightPlannerBenchmark {
         }
     }
 }
-
-function runBenchmark()
-{
-    const verbose = 0;
-    const numIterations = 10;
-
-    let benchmark = new FlightPlannerBenchmark(verbose);
-
-    let before = currentTime();
-
-    for (let iteration = 0; iteration < numIterations; ++iteration)
-        benchmark.runIteration();
-    
-    let after = currentTime();
-
-    for (let iteration = 0; iteration < numIterations; ++iteration)
-        benchmark.checkResults();
-    
-    return after - before;
-}
-
-
-//  print("Benchmark ran in " + runBenchmark());

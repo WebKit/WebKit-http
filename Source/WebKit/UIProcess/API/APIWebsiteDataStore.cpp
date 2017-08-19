@@ -35,7 +35,7 @@ Ref<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
 {
     WebKit::InitializeWebKit2();
 
-    static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), WebCore::SessionID::defaultSessionID())).leakRef();
+    static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), PAL::SessionID::defaultSessionID())).leakRef();
 
     return *defaultDataStore;
 }
@@ -47,7 +47,7 @@ Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
 
 Ref<WebsiteDataStore> WebsiteDataStore::createLegacy(WebKit::WebsiteDataStore::Configuration configuration)
 {
-    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), WebCore::SessionID::defaultSessionID()));
+    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), PAL::SessionID::defaultSessionID()));
 }
 
 WebsiteDataStore::WebsiteDataStore()
@@ -55,7 +55,7 @@ WebsiteDataStore::WebsiteDataStore()
 {
 }
 
-WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, PAL::SessionID sessionID)
     : m_websiteDataStore(WebKit::WebsiteDataStore::create(WTFMove(configuration), sessionID))
 {
 }
@@ -87,65 +87,6 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
     m_websiteDataStore->setResourceLoadStatisticsEnabled(enabled);
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
-WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfiguration()
-{
-    // FIXME: Fill everything in.
-    WebKit::WebsiteDataStore::Configuration configuration;
-
-    return configuration;
-}
-
-String WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation(const String&)
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultLocalStorageDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultWebSQLDatabaseDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultNetworkCacheDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultApplicationCacheDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultMediaKeysStorageDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultIndexedDBDatabaseDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-#endif
-    
 #if !PLATFORM(COCOA)
 String WebsiteDataStore::defaultMediaCacheDirectory()
 {

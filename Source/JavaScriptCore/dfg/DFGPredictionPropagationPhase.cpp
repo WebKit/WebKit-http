@@ -895,6 +895,7 @@ private:
             break;
         }
             
+        case PushWithScope:
         case CreateActivation: {
             setPrediction(SpecObjectOther);
             break;
@@ -984,6 +985,11 @@ private:
             // rely on the heap prediction since the parseInt() call profiled
             // its result.
             setPrediction(m_currentNode->getHeapPrediction());
+            break;
+        }
+
+        case IdentityWithProfile: {
+            setPrediction(m_currentNode->getForcedPrediction());
             break;
         }
 

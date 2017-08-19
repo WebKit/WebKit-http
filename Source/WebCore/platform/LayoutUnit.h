@@ -30,17 +30,19 @@
 
 #pragma once
 
-#include "ValueToString.h"
 #include <limits.h>
 #include <limits>
 #include <math.h>
 #include <stdlib.h>
 #include <wtf/MathExtras.h>
 #include <wtf/SaturatedArithmetic.h>
+#include <wtf/text/ValueToString.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
-
-class TextStream;
 
 #ifdef NDEBUG
 
@@ -776,7 +778,7 @@ inline float& operator/=(float& a, const LayoutUnit& b)
     return a;
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const LayoutUnit&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const LayoutUnit&);
 
 inline int roundToInt(LayoutUnit value)
 {
@@ -824,12 +826,15 @@ inline bool isIntegerValue(const LayoutUnit value)
     return value.toInt() == value;
 }
 
+} // namespace WebCore
+
 #ifndef NDEBUG
+namespace WTF {
 // This structure is used by PODIntervalTree for debugging.
 template <>
-struct ValueToString<LayoutUnit> {
-    static String string(const LayoutUnit value) { return String::number(value.toFloat()); }
+struct ValueToString<WebCore::LayoutUnit> {
+    static String string(const WebCore::LayoutUnit value) { return String::number(value.toFloat()); }
 };
-#endif
 
-} // namespace WebCore
+} // namespace WTF
+#endif

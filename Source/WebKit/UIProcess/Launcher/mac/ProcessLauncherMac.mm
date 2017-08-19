@@ -26,11 +26,11 @@
 #import "config.h"
 #import "ProcessLauncher.h"
 
-#import <WebCore/ServersSPI.h>
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <mach/machine.h>
+#import <pal/spi/cocoa/ServersSPI.h>
 #import <spawn.h>
 #import <sys/param.h>
 #import <sys/stat.h>
@@ -56,7 +56,11 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
     case ProcessLauncher::ProcessType::Network:
         return "com.apple.WebKit.Networking";
     case ProcessLauncher::ProcessType::Storage:
+#if PLATFORM(MAC) || PLATFORM(IOS_SIMULATOR)
+        return "com.apple.WebKit.Storage";
+#else
         return "com.apple.WebKit.Databases";
+#endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     case ProcessLauncher::ProcessType::Plugin32:
         return "com.apple.WebKit.Plugin.32";

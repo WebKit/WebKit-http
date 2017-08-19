@@ -339,6 +339,19 @@
 #define WTF_CPU_ARM_VFP 1
 #endif
 
+/* If CPU(ARM_NEON) is not enabled, we'll conservatively assume only VFP2 or VFPv3D16
+   support is available. Hence, only the first 16 64-bit floating point registers
+   are available. See:
+   NEON registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJACABEJ.html
+   VFP2 and VFP3 registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CIHDIBDG.html
+   NEON to VFP register mapping: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJAIJHFC.html
+*/
+#if CPU(ARM_NEON)
+#define WTF_CPU_ARM_VFP_V3_D32 1
+#else
+#define WTF_CPU_ARM_VFP_V2 1
+#endif
+
 #if defined(__ARM_ARCH_7K__)
 #define WTF_CPU_APPLE_ARMV7K 1
 #endif
@@ -773,15 +786,24 @@
 
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
 /* Enable the DFG JIT on X86 and X86_64. */
-#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(WINDOWS) || OS(HURD))
+#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HURD))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(WPE))
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(WPE))
 #define ENABLE_DFG_JIT 1
 #endif
-/* Enable the DFG JIT on ARM and MIPS. */
-#if CPU(ARM_TRADITIONAL) || CPU(MIPS)
+/* Enable the DFG JIT on ARM. */
+#if CPU(ARM_TRADITIONAL)
+#define ENABLE_DFG_JIT 1
+#endif
+/* FIXME: MIPS cannot enable the DFG until it has support for MacroAssembler::probe().
+   https://bugs.webkit.org/show_bug.cgi?id=175447
+*/
+/* FIXME: Win64 cannot enable the DFG until it has support for MacroAssembler::probe().
+   https://bugs.webkit.org/show_bug.cgi?id=175724
+*/
+#if CPU(X86) && OS(WINDOWS)
 #define ENABLE_DFG_JIT 1
 #endif
 #endif
@@ -802,19 +824,48 @@
 #define ENABLE_FAST_TLS_JIT 1
 #endif
 
+#if CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2) || CPU(ARM64) || CPU(ARM_TRADITIONAL)
+#define ENABLE_MASM_PROBE 1
+#else
+#define ENABLE_MASM_PROBE 0
+#endif
+
+#if OS(WINDOW)
+#undef ENABLE_MASM_PROBE
+#define ENABLE_MASM_PROBE 0
+#endif
+#if PLATFORM(GTK) && CPU(ARM_THUMB2)
+/* FIXME: https://bugs.webkit.org/show_bug.cgi?id=175514 */
+#undef ENABLE_MASM_PROBE
+#define ENABLE_MASM_PROBE 0
+#endif
+
+/* If the baseline jit is not available, then disable upper tiers as well.
+   The MacroAssembler::probe() is also required for supporting the upper tiers. */
+#if !ENABLE(JIT) || !ENABLE(MASM_PROBE)
+#undef ENABLE_DFG_JIT
+#undef ENABLE_FTL_JIT
+#define ENABLE_DFG_JIT 0
+#define ENABLE_FTL_JIT 0
+#endif
+
+/* If the DFG jit is not available, then disable upper tiers as well: */
+#if !ENABLE(DFG_JIT)
+#undef ENABLE_FTL_JIT
+#define ENABLE_FTL_JIT 0
+#endif
+
 /* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */
-#if ENABLE(FTL_JIT) || ENABLE(WEBASSEMBLY)
+#if ENABLE(FTL_JIT)
 #define ENABLE_B3_JIT 1
 #endif
 
-/* If the baseline jit is not available, then disable upper tiers as well: */
-#if !ENABLE(JIT)
-#undef ENABLE_DFG_JIT
-#undef ENABLE_FTL_JIT
-#undef ENABLE_B3_JIT
-#define ENABLE_DFG_JIT 0
-#define ENABLE_FTL_JIT 0
-#define ENABLE_B3_JIT 0
+#if !defined(ENABLE_WEBASSEMBLY)
+#if ENABLE(B3_JIT) && PLATFORM(COCOA)
+#define ENABLE_WEBASSEMBLY 1
+#else
+#define ENABLE_WEBASSEMBLY 0
+#endif
 #endif
 
 /* The SamplingProfiler is the probabilistic and low-overhead profiler used by
@@ -951,14 +1002,6 @@
 #endif
 #endif
 
-/* Enable the following if you want to use the MacroAssembler::probe() facility
-   to do JIT debugging. */
-#if (CPU(X86) || CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && OS(DARWIN)
-#define ENABLE_MASM_PROBE 1
-#else
-#define ENABLE_MASM_PROBE 0
-#endif
-
 #ifndef ENABLE_EXCEPTION_SCOPE_VERIFICATION
 #ifdef NDEBUG
 #define ENABLE_EXCEPTION_SCOPE_VERIFICATION 0
@@ -967,7 +1010,7 @@
 #endif
 #endif
 
-#if ENABLE(JIT) && HAVE(MACHINE_CONTEXT) && (CPU(X86) || CPU(X86_64) || CPU(ARM64))
+#if ENABLE(DFG_JIT) && HAVE(MACHINE_CONTEXT) && (CPU(X86) || CPU(X86_64) || CPU(ARM64))
 #define ENABLE_SIGNAL_BASED_VM_TRAPS 1
 #endif
 

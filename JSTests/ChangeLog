@@ -1,3 +1,142 @@
+2017-08-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test microbenchmarks/generator-with-several-types.js.
+        https://bugs.webkit.org/show_bug.cgi?id=172543
+
+        Unreviewed test gardening.
+
+        * microbenchmarks/generator-with-several-types.js:
+
+2017-08-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: const in unreachable code decoded incorrectly, erroneously rejects binary as invalid
+        https://bugs.webkit.org/show_bug.cgi?id=175693
+        <rdar://problem/33952443>
+
+        Reviewed by Saam Barati.
+
+        Add a regression directory for WebAssembly tests.
+
+        * wasm.yaml:
+        * wasm/regress/175693.js: Added.
+        (else.else):
+        (instance.new.WebAssembly.Instance.new.WebAssembly.Module):
+        (catch):
+        * wasm/regress/175693.wasm: Added.
+
+2017-08-15  Robin Morisset  <rmorisset@apple.com>
+
+        Support the 'with' keyword in FTL.
+        https://bugs.webkit.org/show_bug.cgi?id=175585
+
+        Reviewed by Saam Barati.
+
+        Also improve the JSTest/stress/with.js file to test
+        what happens when non-objects are passed to with.
+
+        * stress/with.js:
+        (foo):
+        (i.catch):
+        (i.with): Deleted.
+
+2017-08-14  Keith Miller  <keith_miller@apple.com>
+
+        Add testing tool to lie to the DFG about profiles
+        https://bugs.webkit.org/show_bug.cgi?id=175487
+
+        Reviewed by Saam Barati.
+
+        * stress/compare-eq-incomplete-profile.js: Added.
+        (const.test.createBuiltin):
+
+2017-08-14  Robin Morisset  <rmorisset@apple.com>
+
+        Support the with keyword in DFG
+        https://bugs.webkit.org/show_bug.cgi?id=175470
+
+        Reviewed by Saam Barati.
+
+        Added a new stress-test for the 'with' keyword, that caught a bug in a
+        previous version of this code.
+
+        * stress/with.js: Added.
+        (i.with):
+
+2017-08-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test test/fieldopts/objtypespec-newobj-invalidation.1.js
+        https://bugs.webkit.org/show_bug.cgi?id=175544
+
+        Unreviewed test gardening.
+
+        * ChakraCore.yaml:
+
+2017-08-09  Caitlin Potter  <caitp@igalia.com>
+
+        Early error on ANY operator before new.target
+        https://bugs.webkit.org/show_bug.cgi?id=157970
+
+        Reviewed by Saam Barati.
+
+        Instead of throwing if any unary operator precedes new.target, only
+        throw if the unary operator updates the reference.
+
+        The following become legal in JSC:
+
+        ```
+        !new.target
+        ~new.target
+        typeof new.target
+        delete new.target
+        void new.target
+        ```
+
+        All of which are legal in v8 and SpiderMonkey in strict and sloppy mode
+
+        * stress/new-target-syntax-errors.js:
+        * stress/new-target.js:
+
+2017-08-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip failing JSC tests stress/regress-169783.js and wasm.yaml/wasm/stress/oom.js.
+        https://bugs.webkit.org/show_bug.cgi?id=175255
+
+        Unreviewed test gardening.
+
+        * stress/regress-169783.js:
+        * wasm/stress/oom.js:
+
+2017-08-09  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        REGRESSION: 2 test262/test/language/statements/async-function failures
+        https://bugs.webkit.org/show_bug.cgi?id=175334
+
+        Reviewed by Yusuke Suzuki.
+
+        Add @skip parameters to tests, and remove test for async iterator from 
+        async await syntax test because it is already covered by async-iterator-syntax.js
+
+        * stress/async-await-syntax.js:
+        * stress/async-iteration-syntax.js:
+
+2017-08-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, gardening test262 for Promise resolve / reject function length
+        https://bugs.webkit.org/show_bug.cgi?id=175333
+
+        * test262.yaml:
+
+2017-08-07  Robin Morisset  <rmorisset@apple.com>
+
+        GetOwnProperty of TypedArray indexed fields is wrongly configurable
+        https://bugs.webkit.org/show_bug.cgi?id=175307
+
+        Reviewed by Saam Barati.
+
+        * stress/typedarray-getownproperty-not-configurable.js: Added.
+        (assert):
+        (foo):
+
 2017-08-06  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Promise resolve and reject function should have length = 1

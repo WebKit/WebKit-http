@@ -137,6 +137,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyBoxShadow,
     CSSPropertyBoxSizing,
     CSSPropertyCaptionSide,
+    CSSPropertyCaretColor,
     CSSPropertyClear,
     CSSPropertyClip,
     CSSPropertyColor,
@@ -2891,6 +2892,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return valueForShadow(style->boxShadow(), propertyID, *style);
         case CSSPropertyCaptionSide:
             return cssValuePool.createValue(style->captionSide());
+        case CSSPropertyCaretColor:
+            return m_allowVisitedStyle ? cssValuePool.createColorValue(style->visitedDependentColor(CSSPropertyCaretColor)) : currentColorOrValidColor(style, style->caretColor());
         case CSSPropertyClear:
             return cssValuePool.createValue(style->clear());
         case CSSPropertyColor:
@@ -3341,6 +3344,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(cssValuePool.createValue(style->textEmphasisMark()));
                 return WTFMove(list);
             }
+            RELEASE_ASSERT_NOT_REACHED();
         case CSSPropertyTextIndent: {
             // If CSS3_TEXT is disabled or text-indent has only one value(<length> | <percentage>),
             // getPropertyCSSValue() returns CSSValue.
@@ -4014,6 +4018,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         /* Unimplemented @font-face properties */
         case CSSPropertySrc:
         case CSSPropertyUnicodeRange:
+        case CSSPropertyFontDisplay:
             break;
 
         /* Other unimplemented properties */

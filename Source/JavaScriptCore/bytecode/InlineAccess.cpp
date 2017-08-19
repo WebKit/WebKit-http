@@ -57,6 +57,7 @@ void InlineAccess::dumpCacheSizesAndCrash()
         jit.patchableBranch32(
             CCallHelpers::NotEqual, value, CCallHelpers::TrustedImm32(IsArray | ContiguousShape));
         jit.loadPtr(CCallHelpers::Address(base, JSObject::butterflyOffset()), value);
+        jit.cage(Gigacage::JSValue, value);
         jit.load32(CCallHelpers::Address(value, ArrayStorage::lengthOffset()), value);
         jit.boxInt32(scratchGPR, regs);
 
@@ -73,6 +74,7 @@ void InlineAccess::dumpCacheSizesAndCrash()
         jit.loadPtr(
             CCallHelpers::Address(base, JSObject::butterflyOffset()),
             value);
+        jit.cage(Gigacage::JSValue, value);
         GPRReg storageGPR = value;
         jit.loadValue(
             CCallHelpers::Address(storageGPR, 0x000ab21ca), regs);
@@ -116,6 +118,7 @@ void InlineAccess::dumpCacheSizesAndCrash()
             MacroAssembler::TrustedImm32(0x000ab21ca));
 
         jit.loadPtr(MacroAssembler::Address(base, JSObject::butterflyOffset()), value);
+        jit.cage(Gigacage::JSValue, value);
         jit.storeValue(
             regs,
             MacroAssembler::Address(base, 120342));
@@ -170,6 +173,7 @@ bool InlineAccess::generateSelfPropertyAccess(StructureStubInfo& stubInfo, Struc
         storage = base;
     else {
         jit.loadPtr(CCallHelpers::Address(base, JSObject::butterflyOffset()), value.payloadGPR());
+        jit.cage(Gigacage::JSValue, value.payloadGPR());
         storage = value.payloadGPR();
     }
     
@@ -231,6 +235,7 @@ bool InlineAccess::generateSelfPropertyReplace(StructureStubInfo& stubInfo, Stru
         storage = getScratchRegister(stubInfo);
         ASSERT(storage != InvalidGPRReg);
         jit.loadPtr(CCallHelpers::Address(base, JSObject::butterflyOffset()), storage);
+        jit.cage(Gigacage::JSValue, storage);
     }
 
     jit.storeValue(
@@ -269,6 +274,7 @@ bool InlineAccess::generateArrayLength(StructureStubInfo& stubInfo, JSArray* arr
     auto branchToSlowPath = jit.patchableBranch32(
         CCallHelpers::NotEqual, scratch, CCallHelpers::TrustedImm32(array->indexingType()));
     jit.loadPtr(CCallHelpers::Address(base, JSObject::butterflyOffset()), value.payloadGPR());
+    jit.cage(Gigacage::JSValue, value.payloadGPR());
     jit.load32(CCallHelpers::Address(value.payloadGPR(), ArrayStorage::lengthOffset()), value.payloadGPR());
     jit.boxInt32(value.payloadGPR(), value);
 

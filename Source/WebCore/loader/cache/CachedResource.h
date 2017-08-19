@@ -30,8 +30,8 @@
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "SessionID.h"
 #include "Timer.h"
+#include <pal/SessionID.h>
 #include <time.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
@@ -94,7 +94,7 @@ public:
         DecodeError
     };
 
-    CachedResource(CachedResourceRequest&&, Type, SessionID);
+    CachedResource(CachedResourceRequest&&, Type, PAL::SessionID);
     virtual ~CachedResource();
 
     virtual void load(CachedResourceLoader&);
@@ -113,11 +113,12 @@ public:
     virtual bool shouldIgnoreHTTPStatusCodeErrors() const { return false; }
 
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
-    ResourceRequest& resourceRequest() { return m_resourceRequest; }
     const URL& url() const { return m_resourceRequest.url();}
     const String& cachePartition() const { return m_resourceRequest.cachePartition(); }
-    SessionID sessionID() const { return m_sessionID; }
+    PAL::SessionID sessionID() const { return m_sessionID; }
     Type type() const { return m_type; }
+
+    static bool shouldUsePingLoad(Type type) { return type == Type::Beacon; }
 
     ResourceLoadPriority loadPriority() const { return m_loadPriority; }
     void setLoadPriority(const std::optional<ResourceLoadPriority>&);
@@ -163,10 +164,12 @@ public:
 
     bool isImage() const { return type() == ImageResource; }
     // FIXME: CachedRawResource could be a main resource, an audio/video resource, or a raw XHR/icon resource.
-    bool isMainOrMediaOrIconOrRawResource() const { return type() == MainResource || type() == MediaResource || type() == Icon || type() == RawResource; }
+    bool isMainOrMediaOrIconOrRawResource() const { return type() == MainResource || type() == MediaResource || type() == Icon || type() == RawResource || type() == Beacon; }
+
+    // Whether this request should impact request counting and delay window.onload.
     bool ignoreForRequestCount() const
     {
-        return m_resourceRequest.ignoreForRequestCount()
+        return m_ignoreForRequestCount
             || type() == MainResource
 #if ENABLE(LINK_PREFETCH)
             || type() == LinkPrefetch
@@ -175,6 +178,8 @@ public:
             || type() == Icon
             || type() == RawResource;
     }
+
+    void setIgnoreForRequestCount(bool ignoreForRequestCount) { m_ignoreForRequestCount = ignoreForRequestCount; }
 
     unsigned accessCount() const { return m_accessCount; }
     void increaseAccessCount() { m_accessCount++; }
@@ -276,9 +281,11 @@ public:
     unsigned long identifierForLoadWithoutResourceLoader() const { return m_identifierForLoadWithoutResourceLoader; }
     static ResourceLoadPriority defaultPriorityForResourceType(Type);
 
+    void setOriginalRequestHeaders(std::optional<HTTPHeaderMap>&& originalRequestHeaders) { m_originalRequestHeaders = WTFMove(originalRequestHeaders); }
+
 protected:
     // CachedResource constructor that may be used when the CachedResource can already be filled with response data.
-    CachedResource(const URL&, Type, SessionID);
+    CachedResource(const URL&, Type, PAL::SessionID);
 
     void setEncodedSize(unsigned);
     void setDecodedSize(unsigned);
@@ -291,6 +298,7 @@ protected:
     // FIXME: Make the rest of these data members private and use functions in derived classes instead.
     HashCountedSet<CachedResourceClient*> m_clients;
     ResourceRequest m_resourceRequest;
+    std::optional<HTTPHeaderMap> m_originalRequestHeaders; // Needed by Ping loads.
     RefPtr<SubresourceLoader> m_loader;
     ResourceLoaderOptions m_options;
     ResourceResponse m_response;
@@ -314,7 +322,7 @@ private:
     void failBeforeStarting();
 
     HashMap<CachedResourceClient*, std::unique_ptr<Callback>> m_clientsAwaitingCallback;
-    SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
     ResourceLoadPriority m_loadPriority;
     std::chrono::system_clock::time_point m_responseTimestamp;
 
@@ -370,6 +378,7 @@ private:
     Vector<std::pair<String, String>> m_varyingHeaderValues;
 
     unsigned long m_identifierForLoadWithoutResourceLoader { 0 };
+    bool m_ignoreForRequestCount { false };
 };
 
 class CachedResource::Callback {

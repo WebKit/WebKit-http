@@ -32,13 +32,13 @@
 #include "RTCController.h"
 #include "Region.h"
 #include "ScrollTypes.h"
-#include "SessionID.h"
 #include "Supplementable.h"
 #include "Timer.h"
 #include "UserInterfaceLayoutDirection.h"
 #include "ViewportArguments.h"
 #include "WheelEventTestTrigger.h"
 #include <memory>
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
@@ -77,6 +77,7 @@ class AlternativeTextClient;
 class ApplicationCacheStorage;
 class BackForwardController;
 class BackForwardClient;
+class CacheStorageProvider;
 class Chrome;
 class ChromeClient;
 class Color;
@@ -250,21 +251,6 @@ public:
     BackForwardController& backForward() const { return *m_backForwardController; }
 
     Seconds domTimerAlignmentInterval() const { return m_domTimerAlignmentInterval; }
-
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-    enum ViewMode {
-        ViewModeInvalid,
-        ViewModeWindowed,
-        ViewModeFloating,
-        ViewModeFullscreen,
-        ViewModeMaximized,
-        ViewModeMinimized
-    };
-    static ViewMode stringToViewMode(const String&);
-
-    ViewMode viewMode() const { return m_viewMode; }
-    WEBCORE_EXPORT void setViewMode(ViewMode);
-#endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
     void setTabKeyCyclesThroughElements(bool b) { m_tabKeyCyclesThroughElements = b; }
     bool tabKeyCyclesThroughElements() const { return m_tabKeyCyclesThroughElements; }
@@ -510,6 +496,7 @@ public:
 
     ApplicationCacheStorage& applicationCacheStorage() { return m_applicationCacheStorage; }
     DatabaseProvider& databaseProvider() { return m_databaseProvider; }
+    CacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider; }
     SocketProvider& socketProvider() { return m_socketProvider; }
 
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
@@ -523,8 +510,8 @@ public:
     VisitedLinkStore& visitedLinkStore();
     WEBCORE_EXPORT void setVisitedLinkStore(Ref<VisitedLinkStore>&&);
 
-    WEBCORE_EXPORT SessionID sessionID() const;
-    WEBCORE_EXPORT void setSessionID(SessionID);
+    WEBCORE_EXPORT PAL::SessionID sessionID() const;
+    WEBCORE_EXPORT void setSessionID(PAL::SessionID);
     WEBCORE_EXPORT void enableLegacyPrivateBrowsing(bool privateBrowsingEnabled);
     bool usesEphemeralSession() const { return m_sessionID.isEphemeral(); }
 
@@ -736,10 +723,6 @@ private:
     RefPtr<StorageNamespace> m_sessionStorage;
     RefPtr<StorageNamespace> m_ephemeralLocalStorage;
 
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-    ViewMode m_viewMode { ViewModeWindowed };
-#endif
-
     TimerThrottlingState m_timerThrottlingState { TimerThrottlingState::Disabled };
     MonotonicTime m_timerThrottlingStateLastChangedTime;
     Seconds m_domTimerAlignmentInterval;
@@ -784,6 +767,7 @@ private:
 
     Ref<SocketProvider> m_socketProvider;
     Ref<ApplicationCacheStorage> m_applicationCacheStorage;
+    Ref<CacheStorageProvider> m_cacheStorageProvider;
     Ref<DatabaseProvider> m_databaseProvider;
     Ref<PluginInfoProvider> m_pluginInfoProvider;
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
@@ -797,7 +781,7 @@ private:
     std::unique_ptr<ResourceUsageOverlay> m_resourceUsageOverlay;
 #endif
 
-    SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
 
     bool m_isClosing { false };
 

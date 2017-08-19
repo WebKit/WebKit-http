@@ -79,7 +79,6 @@
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLOptGroupElement.h>
 #import <WebCore/HTMLOptionElement.h>
-#import <WebCore/HTMLOptionElement.h>
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
@@ -103,13 +102,13 @@
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
-#import <WebCore/TextStream.h>
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WKContentObservation.h>
 #import <WebCore/WebEvent.h>
 #import <wtf/MathExtras.h>
 #import <wtf/MemoryPressureHandler.h>
 #import <wtf/SetForScope.h>
+#import <wtf/text/TextStream.h>
 
 using namespace WebCore;
 
@@ -2411,11 +2410,11 @@ void WebPage::getAutocorrectionContext(String& contextBefore, String& markedText
     computeAutocorrectionContext(m_page->focusController().focusedOrMainFrame(), contextBefore, markedText, selectedText, contextAfter, location, length);
 }
 
-static Element* containingLinkElement(Element* element)
+static HTMLAnchorElement* containingLinkElement(Element* element)
 {
     for (auto& currentElement : elementLineage(element)) {
-        if (currentElement.isLink())
-            return &currentElement;
+        if (currentElement.isLink() && is<HTMLAnchorElement>(currentElement))
+            return downcast<HTMLAnchorElement>(&currentElement);
     }
     return nullptr;
 }
@@ -2628,11 +2627,16 @@ void WebPage::performActionOnElement(uint32_t action)
 
     if (static_cast<SheetAction>(action) == SheetAction::Copy) {
         if (is<RenderImage>(*element.renderer())) {
-            Element* linkElement = containingLinkElement(&element);
-            if (!linkElement)
-                m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, URL(), String());
-            else
-                m_interactionNode->document().frame()->editor().copyURL(linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->attributeWithoutSynchronization(HTMLNames::hrefAttr))), linkElement->textContent());
+            URL url;
+            String title;
+            if (auto* linkElement = containingLinkElement(&element)) {
+                url = linkElement->href();
+                title = linkElement->attributeWithoutSynchronization(HTMLNames::titleAttr);
+                if (!title.length())
+                    title = linkElement->textContent();
+                title = stripLeadingAndTrailingHTMLSpaces(title);
+            }
+            m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, url, title);
         } else if (element.isLink()) {
             m_interactionNode->document().frame()->editor().copyURL(element.document().completeURL(stripLeadingAndTrailingHTMLSpaces(element.attributeWithoutSynchronization(HTMLNames::hrefAttr))), element.textContent());
         }

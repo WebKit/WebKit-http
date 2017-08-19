@@ -39,6 +39,7 @@
 #include "MediaKeyMessageEvent.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeyStatusMap.h"
+#include "MediaKeys.h"
 #include "NotImplemented.h"
 #include "SecurityOrigin.h"
 #include "SharedBuffer.h"
@@ -583,16 +584,6 @@ void MediaKeySession::remove(Ref<DeferredPromise>&& promise)
     // 5. Return promise.
 }
 
-void MediaKeySession::registerClosedPromise(ClosedPromise&& promise)
-{
-    ASSERT(!m_closedPromise);
-    if (m_closed) {
-        promise.resolve();
-        return;
-    }
-    m_closedPromise = WTFMove(promise);
-}
-
 void MediaKeySession::enqueueMessage(MediaKeyMessageType messageType, const SharedBuffer& message)
 {
     // 6.4.1 Queue a "message" Event
@@ -653,10 +644,11 @@ void MediaKeySession::updateKeyStatuses(CDMInstance::KeyStatusVector&& inputStat
     m_eventQueue.enqueueEvent(Event::create(eventNames().keystatuseschangeEvent, false, false));
 
     // 6. Queue a task to run the Attempt to Resume Playback If Necessary algorithm on each of the media element(s) whose mediaKeys attribute is the MediaKeys object that created the session.
-    m_taskQueue.enqueueTask([this] () mutable {
-        if (m_keys)
-            m_keys->attemptToResumePlaybackOnClients();
-    });
+    m_taskQueue.enqueueTask(
+        [this] () mutable {
+            if (m_keys)
+                m_keys->attemptToResumePlaybackOnClients();
+        });
 }
 
 void MediaKeySession::updateExpiration(double expiration)
@@ -695,8 +687,7 @@ void MediaKeySession::sessionClosed()
 
     // 5. Let promise be the closed attribute of the session.
     // 6. Resolve promise.
-    if (m_closedPromise)
-        m_closedPromise->resolve();
+    m_closedPromise.resolve();
 }
 
 bool MediaKeySession::hasPendingActivity() const

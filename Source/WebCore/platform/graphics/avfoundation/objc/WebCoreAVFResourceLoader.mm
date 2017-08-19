@@ -74,7 +74,7 @@ void WebCoreAVFResourceLoader::startLoading()
     // is in a user-agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=173498>.
     CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
     if (auto* loader = m_parent->player()->cachedResourceLoader())
-        m_resource = loader->requestMedia(WTFMove(request));
+        m_resource = loader->requestMedia(WTFMove(request)).valueOr(nullptr);
 
     if (m_resource)
         m_resource->addClient(*this);
@@ -119,7 +119,7 @@ void WebCoreAVFResourceLoader::responseReceived(CachedResource& resource, const 
     }
 
     if (AVAssetResourceLoadingContentInformationRequest* contentInfo = [m_avRequest.get() contentInformationRequest]) {
-        String uti = UTIFromMIMEType(response.mimeType().createCFString().get()).get();
+        String uti = UTIFromMIMEType(response.mimeType());
 
         [contentInfo setContentType:uti];
 

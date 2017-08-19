@@ -63,15 +63,15 @@ static uint64_t generateIdentifier()
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistent()
 {
-    return adoptRef(*new WebsiteDataStore(WebCore::SessionID::generateEphemeralSessionID()));
+    return adoptRef(*new WebsiteDataStore(PAL::SessionID::generateEphemeralSessionID()));
 }
 
-Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, WebCore::SessionID sessionID)
+Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, PAL::SessionID sessionID)
 {
     return adoptRef(*new WebsiteDataStore(WTFMove(configuration), sessionID));
 }
 
-WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(Configuration configuration, PAL::SessionID sessionID)
     : m_identifier(generateIdentifier())
     , m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
@@ -81,7 +81,7 @@ WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::Session
     platformInitialize();
 }
 
-WebsiteDataStore::WebsiteDataStore(WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(PAL::SessionID sessionID)
     : m_identifier(generateIdentifier())
     , m_sessionID(sessionID)
     , m_configuration()
@@ -94,7 +94,7 @@ WebsiteDataStore::~WebsiteDataStore()
 {
     platformDestroy();
 
-    if (m_sessionID.isValid() && m_sessionID != WebCore::SessionID::defaultSessionID()) {
+    if (m_sessionID.isValid() && m_sessionID != PAL::SessionID::defaultSessionID()) {
         for (auto& processPool : WebProcessPool::allProcessPools())
             processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroySession(m_sessionID));
     }
@@ -113,10 +113,14 @@ void WebsiteDataStore::resolveDirectoriesIfNecessary()
     m_hasResolvedDirectories = true;
 
     // Resolve directory paths.
-    m_resolvedConfiguration.applicationCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.applicationCacheDirectory);
-    m_resolvedConfiguration.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaCacheDirectory);
-    m_resolvedConfiguration.mediaKeysStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaKeysStorageDirectory);
-    m_resolvedConfiguration.webSQLDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.webSQLDatabaseDirectory);
+    if (!m_configuration.applicationCacheDirectory.isEmpty())
+        m_resolvedConfiguration.applicationCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.applicationCacheDirectory);
+    if (!m_configuration.mediaCacheDirectory.isEmpty())
+        m_resolvedConfiguration.mediaCacheDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaCacheDirectory);
+    if (!m_configuration.mediaKeysStorageDirectory.isEmpty())
+        m_resolvedConfiguration.mediaKeysStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.mediaKeysStorageDirectory);
+    if (!m_configuration.webSQLDatabaseDirectory.isEmpty())
+        m_resolvedConfiguration.webSQLDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.webSQLDatabaseDirectory);
 
     if (!m_configuration.indexedDBDatabaseDirectory.isEmpty())
         m_resolvedConfiguration.indexedDBDatabaseDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(m_configuration.indexedDBDatabaseDirectory);
@@ -538,7 +542,7 @@ void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<Websi
     
 void WebsiteDataStore::topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void(HashSet<String>&&)>&& completionHandler)
 {
-    fetchData(dataTypes, fetchOptions, [completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)](auto&& existingDataRecords) {
+    fetchData(dataTypes, fetchOptions, [completionHandler = WTFMove(completionHandler), protectedThis = makeRef(*this)](auto&& existingDataRecords) {
         HashSet<String> domainsWithDataRecords;
         for (auto&& dataRecord : existingDataRecords) {
             String domain = dataRecord.topPrivatelyControlledDomain();
@@ -821,6 +825,8 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
             m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent(modifiedSince, WebResourceLoadStatisticsStore::ShouldGrandfather::No);
         else
             m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent(modifiedSince, WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
+
+        clearResourceLoadStatisticsInWebProcesses();
     }
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
@@ -1099,6 +1105,8 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
             m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent(WebResourceLoadStatisticsStore::ShouldGrandfather::No);
         else
             m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent(WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
+
+        clearResourceLoadStatisticsInWebProcesses();
     }
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
@@ -1313,6 +1321,15 @@ void WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback(Functio
 
     for (auto& processPool : processPools())
         processPool->setResourceLoadStatisticsEnabled(true);
+}
+
+void WebsiteDataStore::clearResourceLoadStatisticsInWebProcesses()
+{
+    if (!resourceLoadStatisticsEnabled())
+        return;
+
+    for (auto& processPool : processPools())
+        processPool->clearResourceLoadStatistics();
 }
 
 StorageProcessCreationParameters WebsiteDataStore::storageProcessParameters()

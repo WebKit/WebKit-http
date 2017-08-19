@@ -25,12 +25,15 @@
 
 #pragma once
 
-#include "ServiceWorkerContainer.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+class ScriptExecutionContext;
+class ServiceWorkerContainer;
 
 class NavigatorBase : public RefCounted<NavigatorBase> {
 public:
@@ -52,12 +55,15 @@ public:
     static String language();
     static Vector<String> languages();
 
+protected:
+    explicit NavigatorBase(ScriptExecutionContext&);
+
 #if ENABLE(SERVICE_WORKER)
 public:
     ServiceWorkerContainer* serviceWorker();
 
 private:
-    std::unique_ptr<ServiceWorkerContainer> m_serviceWorkerContainer;
+    UniqueRef<ServiceWorkerContainer> m_serviceWorkerContainer;
 #endif
 };
 

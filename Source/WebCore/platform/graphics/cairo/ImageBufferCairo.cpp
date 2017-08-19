@@ -149,6 +149,11 @@ void ImageBufferData::markBufferChanged()
     m_bufferChanged = true;
 }
 
+RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
+{
+    return m_platformLayerProxy.copyRef();
+}
+
 void ImageBufferData::swapBuffersIfNeeded()
 {
     ASSERT(m_renderingMode == RenderingMode::Accelerated);

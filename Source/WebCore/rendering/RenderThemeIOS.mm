@@ -32,7 +32,6 @@
 #import "CSSPrimitiveValue.h"
 #import "CSSToLengthConversionData.h"
 #import "CSSValueKeywords.h"
-#import "CoreTextSPI.h"
 #import "DateComponents.h"
 #import "Document.h"
 #import "File.h"
@@ -63,13 +62,14 @@
 #import "RenderStyle.h"
 #import "RenderView.h"
 #import "RuntimeEnabledFeatures.h"
-#import "UIKitSPI.h"
 #import "UTIUtilities.h"
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreThreadRun.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
+#import <pal/spi/cocoa/CoreTextSPI.h>
+#import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RefPtr.h>
 #import <wtf/SoftLinking.h>
@@ -1616,14 +1616,13 @@ static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, 
 
     String attachmentType = attachment.attachmentElement().attachmentType();
     if (!attachmentType.isEmpty()) {
-        auto attachmentTypeCF = attachmentType.createCFString();
-        RetainPtr<CFStringRef> UTI;
-        if (isDeclaredUTI(attachmentTypeCF.get()))
-            UTI = attachmentTypeCF;
+        String UTI;
+        if (isDeclaredUTI(attachmentType))
+            UTI = attachmentType;
         else
-            UTI = UTIFromMIMEType(attachmentTypeCF.get());
+            UTI = UTIFromMIMEType(attachmentType);
 
-        [documentInteractionController setUTI:static_cast<NSString *>(UTI.get())];
+        [documentInteractionController setUTI:static_cast<NSString *>(UTI)];
     }
 
     NSArray *icons = [documentInteractionController icons];

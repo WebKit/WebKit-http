@@ -2113,7 +2113,7 @@ protected:
         return TrustedImm32(TrustedImmPtr(ptr));
     }
 
-    inline TrustedImm32 trustedImm32FromPtr(ProbeFunction function)
+    inline TrustedImm32 trustedImm32FromPtr(Probe::Function function)
     {
         return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
     }
@@ -2122,7 +2122,7 @@ protected:
     {
         return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
     }
-#endif
+#endif // ENABLE(MASM_PROBE)
 
 private:
     friend class LinkBuffer;

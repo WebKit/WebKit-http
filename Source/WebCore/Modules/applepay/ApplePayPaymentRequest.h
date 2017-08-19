@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,16 +29,16 @@
 
 #include "ApplePayLineItem.h"
 #include "ApplePayPaymentContact.h"
+#include "ApplePaySessionPaymentRequest.h"
 #include "ApplePayShippingMethod.h"
-#include "PaymentRequest.h"
 
 namespace WebCore {
 
 struct ApplePayPaymentRequest {
     enum class MerchantCapability { Supports3DS, SupportsEMV, SupportsCredit, SupportsDebit };
-    enum class ContactField { Email, Name, Phone, PostalAddress };
+    enum class ContactField { Email, Name, PhoneticName, Phone, PostalAddress };
 
-    using ShippingType = PaymentRequest::ShippingType;
+    using ShippingType = ApplePaySessionPaymentRequest::ShippingType;
 
     Vector<MerchantCapability> merchantCapabilities;
     Vector<String> supportedNetworks;

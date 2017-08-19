@@ -29,14 +29,16 @@
 #include "Connection.h"
 #include "MessageSender.h"
 #include "WebIDBConnectionToServer.h"
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/RefCounted.h>
 
-namespace WebCore {
+namespace PAL {
 class SessionID;
 }
 
 namespace WebKit {
+
+class WebSWServerConnection;
 
 class WebToStorageProcessConnection : public RefCounted<WebToStorageProcessConnection>, public IPC::Connection::Client, public IPC::MessageSender {
 public:
@@ -49,7 +51,10 @@ public:
     IPC::Connection& connection() { return m_connection.get(); }
 
 #if ENABLE(INDEXED_DATABASE)
-    WebIDBConnectionToServer& idbConnectionToServerForSession(const WebCore::SessionID&);
+    WebIDBConnectionToServer& idbConnectionToServerForSession(const PAL::SessionID&);
+#endif
+#if ENABLE(SERVICE_WORKER)
+    WebSWServerConnection& serviceWorkerConnectionForSession(const PAL::SessionID&);
 #endif
 
 private:
@@ -67,8 +72,13 @@ private:
     Ref<IPC::Connection> m_connection;
 
 #if ENABLE(INDEXED_DATABASE)
-    HashMap<WebCore::SessionID, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsBySession;
+    HashMap<PAL::SessionID, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsBySession;
     HashMap<uint64_t, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsByIdentifier;
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    HashMap<PAL::SessionID, RefPtr<WebSWServerConnection>> m_serviceWorkerConnectionsBySession;
+    HashMap<uint64_t, RefPtr<WebSWServerConnection>> m_serviceWorkerConnectionsByIdentifier;
 #endif
 };
 

@@ -199,7 +199,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
     }
-        
+
+    case IdentityWithProfile:
     case Identity: {
         forNode(node) = forNode(node->child1());
         if (forNode(node).value())
@@ -2061,6 +2062,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(m_graph, node->structureSet());
         break;
     }
+
+    case PushWithScope:
+        // We don't use the more precise withScopeStructure() here because it is a LazyProperty and may not yet be allocated.
+        forNode(node).setType(m_graph, SpecObjectOther);
+        break;
 
     case CreateActivation:
     case MaterializeCreateActivation:

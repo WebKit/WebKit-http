@@ -3,7 +3,6 @@ include(platform/FreeType.cmake)
 include(platform/GCrypt.cmake)
 include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
-include(platform/Linux.cmake)
 include(platform/TextureMapper.cmake)
 
 # Allow building ANGLE on platforms that don't provide X11 headers.
@@ -67,6 +66,7 @@ list(APPEND WebCore_SOURCES
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
     platform/Theme.cpp
+    platform/UserAgentQuirks.cpp
 
     platform/audio/glib/AudioBusGLib.cpp
 
@@ -77,6 +77,7 @@ list(APPEND WebCore_SOURCES
     platform/glib/MainThreadSharedTimerGLib.cpp
     platform/glib/SSLKeyGeneratorGLib.cpp
     platform/glib/SharedBufferGlib.cpp
+    platform/glib/UserAgentGLib.cpp
 
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
@@ -200,7 +201,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 
 add_library(WebCorePlatformWPE ${WebCore_LIBRARY_TYPE} ${WebCorePlatformWPE_SOURCES})
 add_dependencies(WebCorePlatformWPE WebCore)
-WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformWPE)
 target_include_directories(WebCorePlatformWPE PRIVATE
     ${WebCore_INCLUDE_DIRECTORIES}
 )

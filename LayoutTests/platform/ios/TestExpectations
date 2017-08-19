@@ -40,7 +40,6 @@ inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
-fast/events/constructors/device-proximity-event-constructor.html
 
 # FIXME: <rdar://problem/6512037> LayoutTests: Enable printing tests once printing is supported on iOS
 printing
@@ -88,7 +87,6 @@ fast/mediastream
 fast/speechsynthesis
 gamepad
 mhtml
-proximity
 
 # ENABLE(MEDIA_CAPTURE) is not enabled
 fast/forms/file/file-input-capture.html
@@ -160,9 +158,6 @@ platform/ios/ios/fast/forms/range-input-touches.html [ Skip ]
 platform/ios/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios/ios/fast/text/data-detectors/phone.html [ Skip ]
 platform/ios/ios/touch [ Skip ]
-
-# WebKitDataCue is supported, not DataCue
-media/track/track-datacue.html
 
 # Codecs not supported
 media/media-can-play-ogg.html [ WontFix ]
@@ -237,6 +232,8 @@ fast/dom/DeviceOrientation
 fast/canvas/canvas-toDataURL-webp.html
 
 # Drag-and-drop is not supported:
+editing/pasteboard/datatransfer-items-drop-plaintext-file.html
+editing/pasteboard/datatransfer-items-paste-plaintext.html
 editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html
 fast/events/bogus-dropEffect-effectAllowed.html
 fast/events/clear-drag-state.html
@@ -407,6 +404,13 @@ webkit.org/b/167795 http/tests/security/bypassing-cors-checks-for-extension-urls
 # These tests rely on testRunner.setPageVisibility(), which is not implemented on iOS
 svg/animations/animations-paused-when-inserted-in-hidden-document.html [ Skip ]
 svg/animations/animations-paused-when-inserted-in-hidden-document2.html [ Skip ]
+
+# iOS does not enable ENABLE(TEXT_CARET). UIKit renders the text insertion caret.
+fast/css/caret-color-fallback-to-color.html [ Skip ]
+fast/css/caret-color-inherit.html [ Skip ]
+fast/css/caret-color-span-inside-editable-parent.html [ Skip ]
+fast/css/caret-color.html [ Skip ]
+fast/history/visited-link-caret-color.html [ Skip ]
 
 ###
 # Known failures
@@ -1486,17 +1490,11 @@ fast/layers/wrong-clipping-semi-transparent-layer-on-subpixel-position.html [ Im
 fast/lists/list-marker-before-content-table.html [ Failure ]
 fast/loader/scroll-position-restored-on-back-non-cached.html [ Failure ]
 fast/masking/clip-path-selection.html [ Failure ]
-fast/media/media-query-list-02.html [ Failure ]
-fast/media/media-query-list-03.html [ Failure ]
-fast/media/media-query-list-04.html [ Failure ]
-fast/media/media-query-list-05.html [ Failure ]
-fast/media/media-query-list-06.html [ Failure ]
 fast/media/mq-max-pixel-ratio.html [ ImageOnlyFailure ]
 fast/media/mq-min-pixel-ratio.html [ ImageOnlyFailure ]
 fast/media/mq-pixel-ratio.html [ ImageOnlyFailure ]
 fast/media/mq-resolution-dpi-dpcm-warning.html [ Failure ]
 fast/media/mq-resolution.html [ Failure ]
-fast/media/view-mode-media-feature.html [ ImageOnlyFailure ]
 fast/media/viewport-media-query.html [ ImageOnlyFailure ]
 fast/multicol/mixed-opacity-fixed-test.html [ ImageOnlyFailure ]
 fast/multicol/newmulticol/multicol-clip-rounded-corners.html [ ImageOnlyFailure ]
@@ -2868,3 +2866,15 @@ webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Skip 
 
 webkit.org/b/174120 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]
 
+webkit.org/b/175273 imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html [ Failure ]
+
+webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui-3/outline-004.html [ ImageOnlyFailure ]
+webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui-3/outline-style-014.html [ ImageOnlyFailure ]
+
+webkit.org/b/170698 [ Release ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors.html [ Pass Failure ]
+
+# This test tests a feature that only exists on iOS.
+fast/text/accessibility-bold-system-font-2.html [ Pass ]
+
+# This test is specific to Core Text.
+fast/text/font-lookup-dot-prefix-case-sensitive.html [ Pass ]

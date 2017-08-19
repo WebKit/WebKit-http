@@ -381,6 +381,16 @@
       ],
       "status" : "reviewer"
    },
+   "Alicia Boya Garcia" : {
+      "emails" : [
+         "aboya@igalia.com",
+         "ntrrgc@gmail.com"
+      ],
+      "nicks" : [
+         "ntrrgc",
+         "aboya"
+      ]
+   },
    "Allan Sandfeld Jensen" : {
       "emails" : [
          "allan.jensen@digia.com",
@@ -805,6 +815,14 @@
          "betravis"
       ],
       "status" : "committer"
+   },
+   "Dean Johnson" : {
+      "emails" : [
+         "dean_johnson@apple.com"
+      ],
+      "nicks" : [
+         "deanj"
+      ]
    },
    "Bem Jones-Bey" : {
       "emails" : [
@@ -1567,7 +1585,6 @@
    },
    "Devin Rousso" : {
       "emails" : [
-         "drousso@apple.com",
          "webkit@devinrousso.com"
       ],
       "expertise" : "Web Inspector",
@@ -4187,6 +4204,15 @@
          "qinmin@chromium.org"
       ]
    },
+   "Ms2ger" : {
+      "emails" : [
+         "Ms2ger@igalia.com",
+         "Ms2ger@gmail.com"
+      ],
+      "nicks" : [
+         "Ms2ger"
+      ]
+   },
    "Myles C. Maxfield" : {
       "aliases" : [
          "Myles Maxfield"
@@ -4795,6 +4821,14 @@
          "romainb"
       ],
       "status" : "committer"
+   },
+   "Ross Kirsling": {
+      "emails" : [
+         "ross.kirsling@sony.com"
+      ],
+      "nicks" : [
+         "rkirsling"
+      ]
    },
    "Ruth Fong" : {
       "emails" : [

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BlockingResponseMap.h"
+#include "CacheStorageEngineConnection.h"
 #include "Connection.h"
 #include "DownloadID.h"
 #include "NetworkConnectionToWebProcessMessages.h"
@@ -36,6 +37,8 @@
 
 namespace WebCore {
 class BlobDataFileReference;
+class HTTPHeaderMap;
+class ResourceError;
 class ResourceRequest;
 }
 
@@ -59,6 +62,7 @@ public:
     IPC::Connection& connection() { return m_connection.get(); }
 
     void didCleanupResourceLoader(NetworkResourceLoader&);
+    void didFinishPingLoad(uint64_t pingLoadIdentifier, const WebCore::ResourceError&);
 
     bool captureExtraNetworkLoadMetricsEnabled() const { return m_captureExtraNetworkLoadMetricsEnabled; }
 
@@ -82,21 +86,21 @@ private:
 
     void scheduleResourceLoad(const NetworkResourceLoadParameters&);
     void performSynchronousLoad(const NetworkResourceLoadParameters&, Ref<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&&);
-    void loadPing(const NetworkResourceLoadParameters&);
+    void loadPing(NetworkResourceLoadParameters&&, WebCore::HTTPHeaderMap&& originalRequestHeaders);
     void prefetchDNS(const String&);
 
     void removeLoadIdentifier(ResourceLoadIdentifier);
     void setDefersLoading(ResourceLoadIdentifier, bool);
     void crossOriginRedirectReceived(ResourceLoadIdentifier, const WebCore::URL& redirectURL);
-    void startDownload(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
-    void convertMainResourceLoadToDownload(WebCore::SessionID, uint64_t mainResourceLoadIdentifier, DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+    void startDownload(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
+    void convertMainResourceLoadToDownload(PAL::SessionID, uint64_t mainResourceLoadIdentifier, DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
-    void cookiesForDOM(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, String& result);
-    void setCookiesFromDOM(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, const String&);
-    void cookiesEnabled(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, bool& result);
-    void cookieRequestHeaderFieldValue(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, String& result);
-    void getRawCookies(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&);
-    void deleteCookie(WebCore::SessionID, const WebCore::URL&, const String& cookieName);
+    void cookiesForDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, String& result);
+    void setCookiesFromDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, const String&);
+    void cookiesEnabled(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, bool& result);
+    void cookieRequestHeaderFieldValue(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, String& result);
+    void getRawCookies(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&);
+    void deleteCookie(PAL::SessionID, const WebCore::URL&, const String& cookieName);
 
     void registerFileBlobURL(const WebCore::URL&, const String& path, const SandboxExtension::Handle&, const String& contentType);
     void registerBlobURL(const WebCore::URL&, Vector<WebCore::BlobPart>&&, const String& contentType);
@@ -114,7 +118,7 @@ private:
 
     void setCaptureExtraNetworkLoadMetricsEnabled(bool);
 
-    void createSocketStream(WebCore::URL&&, WebCore::SessionID, String cachePartition, uint64_t);
+    void createSocketStream(WebCore::URL&&, PAL::SessionID, String cachePartition, uint64_t);
     void destroySocketStream(uint64_t);
     
     void ensureLegacyPrivateBrowsingSession();
@@ -122,7 +126,9 @@ private:
 #if USE(LIBWEBRTC)
     NetworkRTCProvider& rtcProvider();
 #endif
-    
+
+    CacheStorageEngineConnection& cacheStorageConnection();
+
     Ref<IPC::Connection> m_connection;
 
     HashMap<uint64_t, RefPtr<NetworkSocketStream>> m_networkSocketStreams;
@@ -134,6 +140,8 @@ private:
 #endif
 
     bool m_captureExtraNetworkLoadMetricsEnabled { false };
+
+    RefPtr<CacheStorageEngineConnection> m_cacheStorageConnection;
 };
 
 } // namespace WebKit

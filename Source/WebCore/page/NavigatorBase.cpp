@@ -29,6 +29,7 @@
 
 #include "Language.h"
 #include "NetworkStateNotifier.h"
+#include "ServiceWorkerContainer.h"
 #include <mutex>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/NumberOfCores.h>
@@ -74,6 +75,16 @@
 #endif // ifndef WEBCORE_NAVIGATOR_VENDOR_SUB
 
 namespace WebCore {
+
+NavigatorBase::NavigatorBase(ScriptExecutionContext& context)
+#if ENABLE(SERVICE_WORKER)
+    : m_serviceWorkerContainer(makeUniqueRef<ServiceWorkerContainer>(context, *this))
+#endif
+{
+#if !ENABLE(SERVICE_WORKER)
+    UNUSED_PARAM(context);
+#endif
+}
 
 NavigatorBase::~NavigatorBase()
 {
@@ -148,10 +159,7 @@ Vector<String> NavigatorBase::languages()
 #if ENABLE(SERVICE_WORKER)
 ServiceWorkerContainer* NavigatorBase::serviceWorker()
 {
-    if (!m_serviceWorkerContainer)
-        m_serviceWorkerContainer = ServiceWorkerContainer::create(*this);
-
-    return m_serviceWorkerContainer.get();
+    return &m_serviceWorkerContainer;
 }
 #endif
 

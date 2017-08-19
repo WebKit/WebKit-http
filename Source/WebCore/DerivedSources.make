@@ -56,6 +56,7 @@ VPATH = \
     $(WebCore)/animation \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
+    $(WebCore)/crypto/keys \
     $(WebCore)/crypto/parameters \
     $(WebCore)/css \
     $(WebCore)/dom \
@@ -73,6 +74,7 @@ VPATH = \
     $(WebCore)/storage \
     $(WebCore)/xml \
     $(WebCore)/workers \
+    $(WebCore)/workers/service \
     $(WebCore)/svg \
     $(WebCore)/testing \
     $(WebCore)/websockets \
@@ -304,7 +306,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/JsonWebKey.idl \
     $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
-    $(WebCore)/crypto/WebKitSubtleCrypto.idl \
+    $(WebCore)/crypto/keys/CryptoAesKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoEcKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoHmacKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoRsaHashedKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoRsaKeyAlgorithm.idl \
     $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
     $(WebCore)/crypto/parameters/AesCtrParams.idl \
     $(WebCore)/crypto/parameters/AesGcmParams.idl \
@@ -358,7 +365,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
-    $(WebCore)/dom/AutocompleteErrorEvent.idl \
     $(WebCore)/dom/BeforeLoadEvent.idl \
     $(WebCore)/dom/BeforeUnloadEvent.idl \
     $(WebCore)/dom/CDATASection.idl \
@@ -834,13 +840,15 @@ JS_BINDING_IDLS = \
     $(WebCore)/testing/TypeConversions.idl \
     $(WebCore)/workers/AbstractWorker.idl \
     $(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
-    $(WebCore)/workers/ServiceWorker.idl \
-    $(WebCore)/workers/ServiceWorkerContainer.idl \
-    $(WebCore)/workers/ServiceWorkerGlobalScope.idl \
-    $(WebCore)/workers/ServiceWorkerRegistration.idl \
     $(WebCore)/workers/Worker.idl \
     $(WebCore)/workers/WorkerGlobalScope.idl \
     $(WebCore)/workers/WorkerLocation.idl \
+    $(WebCore)/workers/WorkerType.idl \
+    $(WebCore)/workers/service/ServiceWorker.idl \
+    $(WebCore)/workers/service/ServiceWorkerContainer.idl \
+    $(WebCore)/workers/service/ServiceWorkerGlobalScope.idl \
+    $(WebCore)/workers/service/ServiceWorkerRegistration.idl \
+    $(WebCore)/workers/service/ServiceWorkerUpdateViaCache.idl \
     $(WebCore)/xml/DOMParser.idl \
     $(WebCore)/xml/XMLHttpRequest.idl \
     $(WebCore)/xml/XMLHttpRequestEventTarget.idl \

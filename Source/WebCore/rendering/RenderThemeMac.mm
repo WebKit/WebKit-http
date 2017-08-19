@@ -26,7 +26,6 @@
 #import "CSSValueKeywords.h"
 #import "CSSValueList.h"
 #import "ColorMac.h"
-#import "CoreGraphicsSPI.h"
 #import "Document.h"
 #import "Element.h"
 #import "FileList.h"
@@ -48,7 +47,6 @@
 #import "LocalCurrentGraphicsContext.h"
 #import "LocalizedStrings.h"
 #import "MediaControlElements.h"
-#import "NSColorSPI.h"
 #import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
@@ -72,14 +70,15 @@
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreSystemInterface.h"
-#import <wtf/MathExtras.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/StdLibExtras.h>
-#import <wtf/text/StringBuilder.h>
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 #import <math.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/NSColorSPI.h>
+#import <wtf/MathExtras.h>
+#import <wtf/RetainPtr.h>
+#import <wtf/StdLibExtras.h>
+#import <wtf/text/StringBuilder.h>
 
 #if ENABLE(METER_ELEMENT)
 #import "RenderMeter.h"
@@ -2421,14 +2420,13 @@ static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
             if (auto icon = Icon::createIconForUTI("public.directory"))
                 return icon;
         } else {
-            auto attachmentTypeCF = attachmentType.createCFString();
-            RetainPtr<CFStringRef> UTI;
-            if (isDeclaredUTI(attachmentTypeCF.get()))
-                UTI = attachmentTypeCF;
+            String UTI;
+            if (isDeclaredUTI(attachmentType))
+                UTI = attachmentType;
             else
-                UTI = UTIFromMIMEType(attachmentTypeCF.get());
+                UTI = UTIFromMIMEType(attachmentType);
 
-            if (auto icon = Icon::createIconForUTI(UTI.get()))
+            if (auto icon = Icon::createIconForUTI(UTI))
                 return icon;
         }
     }

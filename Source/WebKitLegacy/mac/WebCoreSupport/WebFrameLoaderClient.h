@@ -38,6 +38,10 @@
 @class WebHistoryItem;
 @class WebResource;
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 class AuthenticationChallenge;
 class CachedFrame;
@@ -45,7 +49,6 @@ class HistoryItem;
 class ProtectionSpace;
 class ResourceLoader;
 class ResourceRequest;
-class SessionID;
 }
 
 class WebFrameLoaderClient : public WebCore::FrameLoaderClient {
@@ -71,7 +74,7 @@ private:
     void detachedFromParent2() final;
     void detachedFromParent3() final;
 
-    void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, WebCore::SessionID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) final;
+    void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, PAL::SessionID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) final;
 
     void assignIdentifierToInitialRequest(unsigned long identifier, WebCore::DocumentLoader*, const WebCore::ResourceRequest&) final;
 
@@ -120,7 +123,7 @@ private:
 
     void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::FramePolicyFunction&&) final;
     void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const WTF::String& frameName, WebCore::FramePolicyFunction&&) final;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, WebCore::FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, bool didReceiveRedirectResponse, WebCore::FormState*, WebCore::FramePolicyFunction&&) final;
     void cancelPolicyCheck() final;
 
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) final;
@@ -233,10 +236,6 @@ private:
     bool canCachePage() const final;
 
     Ref<WebCore::FrameNetworkingContext> createNetworkingContext() final;
-
-#if ENABLE(REQUEST_AUTOCOMPLETE)
-    void didRequestAutocomplete(Ref<WebCore::FormState>&&) final { }
-#endif
 
     bool shouldPaintBrokenImage(const WebCore::URL&) const final;
 

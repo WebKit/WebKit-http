@@ -37,8 +37,10 @@
 
 namespace WebCore {
 
+class Document;
 class FormData;
 class Frame;
+class HTTPHeaderMap;
 class URL;
 class ResourceRequest;
 
@@ -55,7 +57,7 @@ public:
 
 private:
     enum class ShouldFollowRedirects { No, Yes };
-    static void startPingLoad(Frame&, ResourceRequest&, ShouldFollowRedirects);
+    static void startPingLoad(Frame&, ResourceRequest&, HTTPHeaderMap&& originalRequestHeaders, Document&, ShouldFollowRedirects);
 };
 
 } // namespace WebCore

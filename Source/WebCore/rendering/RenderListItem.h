@@ -54,7 +54,10 @@ public:
     static void updateItemValuesForOrderedList(const HTMLOListElement&);
     static unsigned itemCountForOrderedList(const HTMLOListElement&);
 
-    void didDestroyListMarker() { m_marker = nullptr; }
+    RenderStyle computeMarkerStyle() const;
+
+    RenderListMarker* markerRenderer() { return m_marker; }
+    void setMarkerRenderer(RenderListMarker* marker) { m_marker = marker; }
 
 #if !ASSERT_DISABLED
     bool inLayout() const { return m_inLayout; }
@@ -76,17 +79,13 @@ private:
 
     void positionListMarker();
 
-    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
     void addOverflowFromChildren() override;
     void computePreferredLogicalWidths() override;
 
-    void insertOrMoveMarkerRendererIfNeeded();
     inline int calcValue() const;
     void updateValueNow() const;
     void explicitValueChanged();
 
-    RenderStyle computeMarkerStyle() const;
 
     int m_explicitValue;
     RenderListMarker* m_marker;
@@ -98,6 +97,8 @@ private:
     mutable bool m_isValueUpToDate : 1;
     bool m_notInList : 1;
 };
+
+bool isHTMLListElement(const Node&);
 
 } // namespace WebCore
 

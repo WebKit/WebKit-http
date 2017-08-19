@@ -27,10 +27,8 @@
 #ifndef ThreadGlobalData_h
 #define ThreadGlobalData_h
 
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/StringHash.h>
-
-#include <wtf/ThreadSpecific.h>
-using WTF::ThreadSpecific;
 
 namespace WebCore {
 
@@ -42,8 +40,13 @@ namespace WebCore {
     struct ICUConverterWrapper;
     struct TECConverterWrapper;
 
+#if USE(WEB_THREAD)
+    class ThreadGlobalData : public ThreadSafeRefCounted<ThreadGlobalData> {
+#else
     class ThreadGlobalData {
+#endif
         WTF_MAKE_NONCOPYABLE(ThreadGlobalData);
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         WEBCORE_EXPORT ThreadGlobalData();
         WEBCORE_EXPORT ~ThreadGlobalData();
@@ -80,10 +83,6 @@ namespace WebCore {
         std::unique_ptr<TECConverterWrapper> m_cachedConverterTEC;
 #endif
 
-        WEBCORE_EXPORT static ThreadSpecific<ThreadGlobalData>* staticData;
-#if USE(WEB_THREAD)
-        WEBCORE_EXPORT static ThreadGlobalData* sharedMainThreadStaticData;
-#endif
         WEBCORE_EXPORT friend ThreadGlobalData& threadGlobalData();
     };
 

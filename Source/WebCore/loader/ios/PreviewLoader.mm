@@ -35,8 +35,8 @@
 #import "PreviewConverter.h"
 #import "PreviewLoaderClient.h"
 #import "QuickLook.h"
-#import "QuickLookSPI.h"
 #import "ResourceLoader.h"
+#import <pal/spi/ios/QuickLookSPI.h>
 #import <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
@@ -203,7 +203,17 @@ PreviewLoader::~PreviewLoader()
 
 bool PreviewLoader::shouldCreateForMIMEType(const String& mimeType)
 {
-    return [QLPreviewGetSupportedMIMETypesSet() containsObject:mimeType];
+    static std::once_flag onceFlag;
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> supportedMIMETypes;
+    std::call_once(onceFlag, [] {
+        for (NSString *mimeType in QLPreviewGetSupportedMIMETypesSet())
+            supportedMIMETypes.get().add(mimeType);
+    });
+
+    if (mimeType.isNull())
+        return false;
+
+    return supportedMIMETypes.get().contains(mimeType);
 }
 
 std::unique_ptr<PreviewLoader> PreviewLoader::create(ResourceLoader& loader, const ResourceResponse& response)

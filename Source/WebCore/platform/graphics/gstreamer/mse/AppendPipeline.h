@@ -23,6 +23,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
 #include "GRefPtrGStreamer.h"
+#include "GUniquePtrGStreamer.h"
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #include "MediaSourceClientGStreamerMSE.h"
 #include "SourceBufferPrivateGStreamer.h"
@@ -60,7 +61,7 @@ public:
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
 #if ENABLE(ENCRYPTED_MEDIA)
-    void dispatchDecryptionKey(GstBuffer*);
+    void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
 
     // Takes ownership of caps.
@@ -98,10 +99,9 @@ private:
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
 #if ENABLE(ENCRYPTED_MEDIA)
-    void dispatchPendingDecryptionKey();
+    void dispatchPendingDecryptionStructure();
 #endif
 
-private:
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
     MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
@@ -156,7 +156,7 @@ private:
 
     GRefPtr<GstBuffer> m_pendingBuffer;
 #if ENABLE(ENCRYPTED_MEDIA)
-    GRefPtr<GstBuffer> m_pendingKey;
+    GUniquePtr<GstStructure> m_pendingDecryptionStructure;
 #endif
 };
 

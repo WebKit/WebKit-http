@@ -1,3 +1,256 @@
+2017-08-17  Andreas Kling  <akling@apple.com>
+
+        Disable CSS regions at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=175630
+
+        Reviewed by Antti Koivisto.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove Proximity Events and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175545
+
+        Reviewed by Daniel Bates.
+
+        No platform enables Proximity Events, so remove code inside ENABLE(PROXIMITY_EVENTS)
+        and other related code.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE_VIEW_MODE_CSS_MEDIA and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175557
+
+        Reviewed by Jon Lee.
+
+        No port cares about the ENABLE(VIEW_MODE_CSS_MEDIA) feature, so remove it.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-08-14  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Implement WebCore::standardUserAgent()
+        https://bugs.webkit.org/show_bug.cgi?id=175507
+
+        Reviewed by Michael Catanzaro.
+
+        Remove "_GLIB" from user-agent version macros.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-08-13  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Implement WebCore::standardUserAgent()
+        https://bugs.webkit.org/show_bug.cgi?id=175507
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Implement missing User-Agent handling for the WPE port by sharing the code with the GTK+ port.
+
+        * Source/cmake/OptionsGTK.cmake: Rename "GTK" with "GLIB" in UA version macros.
+        * Source/cmake/OptionsWPE.cmake: Add UA version macros.
+
+2017-08-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace DATA_TRANSFER_ITEMS by a runtime flag and add a stub implementation
+        https://bugs.webkit.org/show_bug.cgi?id=175474
+        <rdar://problem/33844628>
+
+        Reviewed by Wenson Hsieh.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-08-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Fix broken use of REQUIRED with find modules
+        https://bugs.webkit.org/show_bug.cgi?id=175427
+
+        Reviewed by Michael Catanzaro.
+
+        Module name passed to find_package_handle_standard_args() must exactly
+        match file name of CMake find module including letter case, e.g. "WebP"
+        must be used in FindWebP.cmake file. Otherwise find_package() arguments
+        (REQUIRED, QUIET, version) are not processed correctly.
+
+        To continue using old XXX_FOUND variables without case changes porting
+        to new find_package_handle_standard_args syntax which has FOUND_VAR
+        parameter. Unfortunately, variable name GTK_UNIX_PRINT_FOUND is not
+        allowed by find_package_handle_standard_args when package name is
+        GTKUnixPrint, so it's replaced to GTKUnixPrint_FOUND (default).
+
+        * Source/cmake/FindGTKUnixPrint.cmake:
+        * Source/cmake/FindGeoClue2.cmake:
+        * Source/cmake/FindHyphen.cmake:
+        * Source/cmake/FindLibEpoxy.cmake:
+        * Source/cmake/FindLibGBM.cmake:
+        * Source/cmake/FindLibsecret.cmake:
+        * Source/cmake/FindLibtasn1.cmake:
+        * Source/cmake/FindLibxkbcommon.cmake:
+        * Source/cmake/FindOpenGL.cmake:
+        * Source/cmake/FindOpenGLES2.cmake:
+        * Source/cmake/FindOpenWebRTC.cmake:
+        * Source/cmake/FindWPEBackend-mesa.cmake:
+        * Source/cmake/FindWPEBackend.cmake:
+        * Source/cmake/FindWayland.cmake:
+        * Source/cmake/FindWebP.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r220515) [GTK][CMake] Build with ENABLE_GEOLOCATION fails on Debian Jessie
+        https://bugs.webkit.org/show_bug.cgi?id=175426
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/FindGeoClue2.cmake:
+
+2017-08-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove ENABLE_GAMEPAD_DEPRECATED
+        https://bugs.webkit.org/show_bug.cgi?id=175361
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindGUdev.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-08-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r220515) [GTK][CMake] Build with ENABLE_GEOLOCATION fails on Debian Jessie
+        https://bugs.webkit.org/show_bug.cgi?id=175426
+
+        Reviewed by Carlos Garcia Campos.
+
+        Fix the pkg-config file name.
+        We really require geoclue-2.0 and not libgeoclue-2.0.
+
+        * Source/cmake/FindGeoClue2.cmake:
+
+2017-08-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Remove support for geoclue1
+        https://bugs.webkit.org/show_bug.cgi?id=164205
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindGeoClue.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Remove unused find modules
+        https://bugs.webkit.org/show_bug.cgi?id=175363
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/FindCFLite.cmake: Removed.
+        * Source/cmake/FindClang.cmake: Removed.
+        * Source/cmake/FindDBus.cmake: Removed.
+        * Source/cmake/FindDirectX.cmake: Removed.
+        * Source/cmake/FindEspeak.cmake: Removed.
+        * Source/cmake/FindQuickTimeSDK.cmake: Removed.
+
+2017-08-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable SUBTLE_CRYPTO in release builds
+        https://bugs.webkit.org/show_bug.cgi?id=175371
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsWPE.cmake:
+        Use ON as the default port value for ENABLE_SUBTLE_CRYPTO in WPE.
+
+2017-08-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable SUBTLE_CRYPTO in GTK+ releases
+        https://bugs.webkit.org/show_bug.cgi?id=172758
+
+        Reviewed by Žan Doberšek.
+
+        Add ENABLE_WEB_CRYPTO public option and make ENABLE_SUBTLE_CRYPTO depend on it.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Properly test if compiler supports compiler flags
+        https://bugs.webkit.org/show_bug.cgi?id=174490
+
+        Reviewed by Konstantin Tokarev.
+
+        This turned out to be a massive pain. I didn't want to merely check options before using
+        them: I also wanted to organize the code to avoid setting similar flags in different places.
+        Right now we set a bunch of global flags in OptionsCommon.cmake, and a bunch more flags in
+        WEBKIT_SET_EXTRA_COMPILER_FLAGS on a per-target basis.
+
+        Setting flags per-target seems better in general, e.g. because it makes it very easy to
+        disable warnings for particular ThirdParty targets. But it turns out that all the flags set
+        on a per-target basis get passed to both the C compiler and the C++ compiler, so it's
+        impossible to pass C++-only flags there. That's terrible. It's possible to make the flags
+        language-conditional using generator expressions, but that doesn't work for the Visual
+        Studio backend, so we would have to drop support for that (not going to happen). The CMake
+        documentation suggests that C and C++ files ought to be built in separate targets to avoid
+        this. It's a mess, basically.
+
+        So I've wound up removing WEBKIT_SET_EXTRA_COMPILER_FLAGS and adding most of those flags to
+        CMAKE_C_FLAGS and CMAKE_CXX_FLAGS instead. Really the only disadvantage of this is we now
+        have to suppress individual warnings when building ANGLESupport in WebCore. That's not the
+        end of the world. The only remaining useful feature of WEBKIT_SET_EXTRA_COMPILER_FLAGS was
+        to add -fPIC to static library targets, but turns out CMake does that for us if we just set
+        the variable CMAKE_POSITION_INDEPENDENT_CODE, so we can get rid of it completely.
+
+        Of course there are also macros for setting target-specific compiler flags, which we
+        frequently need in order to suppress specific warnings, particularly warnings coming from
+        third-party libraries like ANGLE and gtest. But remember the footgun: these macros will test
+        the flag against only one compiler, but must work with both C and C++ compilers unless the
+        build target exclusively contains targets built with just one of those compilers. Yuck.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/PlatformGTK.cmake:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitCommon.cmake:
+        * Source/cmake/WebKitCompilerFlags.cmake: Added.
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-08-07  Brian Burg  <bburg@apple.com>
+
+        Remove CANVAS_PATH compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175207
+
+        Reviewed by Sam Weinig.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
 2017-08-03  Brian Burg  <bburg@apple.com>
 
         Remove ENABLE(WEB_SOCKET) guards

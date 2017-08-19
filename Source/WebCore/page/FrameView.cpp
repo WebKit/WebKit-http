@@ -92,9 +92,9 @@
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "TextResourceDecoder.h"
-#include "TextStream.h"
 #include "TiledBacking.h"
 #include "WheelEventTestTrigger.h"
+#include <wtf/text/TextStream.h>
 
 #include <wtf/CurrentTime.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -889,7 +889,7 @@ void FrameView::updateCompositingLayersAfterLayout()
 
     // This call will make sure the cached hasAcceleratedCompositing is updated from the pref
     renderView->compositor().cacheAcceleratedCompositingFlags();
-    renderView->compositor().updateCompositingLayers(CompositingUpdateAfterLayout);
+    renderView->compositor().updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
 void FrameView::clearBackingStores()
@@ -1316,8 +1316,10 @@ void FrameView::layout(bool allowSubtree)
     bool inChildFrameLayoutWithFrameFlattening = isInChildFrameWithFrameFlattening();
 
     if (inChildFrameLayoutWithFrameFlattening) {
-        if (!m_frameFlatteningViewSizeForMediaQuery)
+        if (!m_frameFlatteningViewSizeForMediaQuery) {
+            LOG_WITH_STREAM(MediaQueries, stream << "FrameView " << this << " snapshotting size " <<  ScrollView::layoutSize() << " for media queries");
             m_frameFlatteningViewSizeForMediaQuery = ScrollView::layoutSize();
+        }
         startLayoutAtMainFrameViewIfNeeded(allowSubtree);
         RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
         if (!root || !root->needsLayout())
@@ -2309,7 +2311,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         // FIXME: use pixel snapping instead of enclosing when ScrollView has finished transitioning from IntRect to Float/LayoutRect.
         IntRect updateRect = enclosingIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
-        if (!isCompositedContentLayer && clipsRepaints())
+        if (!isCompositedContentLayer)
             updateRect.intersect(rectToScroll);
         if (!updateRect.isEmpty())
             regionToUpdate.unite(updateRect);
@@ -2329,8 +2331,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
             renderView()->layer()->setBackingNeedsRepaintInRect(updateRect);
             continue;
         }
-        if (clipsRepaints())
-            updateRect.intersect(rectToScroll);
+        updateRect.intersect(rectToScroll);
         frame().page()->chrome().invalidateContentsAndRootView(updateRect);
     }
 
@@ -2690,7 +2691,7 @@ void FrameView::updateCompositingLayersAfterScrolling()
 
     if (m_nestedLayoutCount <= 1 && hasViewportConstrainedObjects()) {
         if (RenderView* renderView = this->renderView())
-            renderView->compositor().updateCompositingLayers(CompositingUpdateOnScroll);
+            renderView->compositor().updateCompositingLayers(CompositingUpdateType::OnScroll);
     }
 }
 

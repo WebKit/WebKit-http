@@ -102,7 +102,7 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
     });
 }
 
-void NetworkProcess::setProxies(WebCore::SessionID sessionID, const Vector<WebCore::Proxy>& proxies)
+void NetworkProcess::setProxies(PAL::SessionID sessionID, const Vector<WebCore::Proxy>& proxies)
 {
     if (auto *storageSession = NetworkStorageSession::storageSession(sessionID)){
         storageSession->getOrCreateSoupNetworkSession().setProxies(proxies);

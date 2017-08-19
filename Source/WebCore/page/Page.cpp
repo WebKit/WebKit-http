@@ -26,6 +26,7 @@
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
 #include "CSSAnimationController.h"
+#include "CacheStorageProvider.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ConstantPropertyMap.h"
@@ -222,12 +223,13 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #endif
     , m_socketProvider(WTFMove(pageConfiguration.socketProvider))
     , m_applicationCacheStorage(*WTFMove(pageConfiguration.applicationCacheStorage))
+    , m_cacheStorageProvider(WTFMove(pageConfiguration.cacheStorageProvider))
     , m_databaseProvider(*WTFMove(pageConfiguration.databaseProvider))
     , m_pluginInfoProvider(*WTFMove(pageConfiguration.pluginInfoProvider))
     , m_storageNamespaceProvider(*WTFMove(pageConfiguration.storageNamespaceProvider))
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
-    , m_sessionID(SessionID::defaultSessionID())
+    , m_sessionID(PAL::SessionID::defaultSessionID())
     , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
     , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
     , m_lowPowerModeNotifier(std::make_unique<LowPowerModeNotifier>([this](bool isLowPowerModeEnabled) { handleLowModePowerChange(isLowPowerModeEnabled); }))
@@ -434,45 +436,6 @@ Ref<DOMRectList> Page::passiveTouchEventListenerRects()
 
     return DOMRectList::create(quads);
 }
-
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-struct ViewModeInfo {
-    const char* name;
-    Page::ViewMode type;
-};
-static const int viewModeMapSize = 5;
-static const ViewModeInfo viewModeMap[viewModeMapSize] = {
-    {"windowed", Page::ViewModeWindowed},
-    {"floating", Page::ViewModeFloating},
-    {"fullscreen", Page::ViewModeFullscreen},
-    {"maximized", Page::ViewModeMaximized},
-    {"minimized", Page::ViewModeMinimized}
-};
-
-Page::ViewMode Page::stringToViewMode(const String& text)
-{
-    for (auto& mode : viewModeMap) {
-        if (text == mode.name)
-            return mode.type;
-    }
-    return Page::ViewModeInvalid;
-}
-
-void Page::setViewMode(ViewMode viewMode)
-{
-    if (viewMode == m_viewMode || viewMode == ViewModeInvalid)
-        return;
-
-    m_viewMode = viewMode;
-
-
-    if (m_mainFrame->view())
-        m_mainFrame->view()->forceLayout();
-
-    if (m_mainFrame->document())
-        m_mainFrame->document()->styleScope().didChangeStyleSheetEnvironment();
-}
-#endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
 bool Page::openedByDOM() const
 {
@@ -1465,9 +1428,9 @@ void Page::storageBlockingStateChanged()
 void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
 {
     // Don't allow changing the legacy private browsing state if we have set a session ID.
-    ASSERT(m_sessionID == SessionID::defaultSessionID() || m_sessionID == SessionID::legacyPrivateSessionID());
+    ASSERT(m_sessionID == PAL::SessionID::defaultSessionID() || m_sessionID == PAL::SessionID::legacyPrivateSessionID());
 
-    setSessionID(privateBrowsingEnabled ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
+    setSessionID(privateBrowsingEnabled ? PAL::SessionID::legacyPrivateSessionID() : PAL::SessionID::defaultSessionID());
 }
 
 void Page::updateIsPlayingMedia(uint64_t sourceElementID)
@@ -2142,12 +2105,12 @@ void Page::setVisitedLinkStore(Ref<VisitedLinkStore>&& visitedLinkStore)
     invalidateStylesForAllLinks();
 }
 
-SessionID Page::sessionID() const
+PAL::SessionID Page::sessionID() const
 {
     return m_sessionID;
 }
 
-void Page::setSessionID(SessionID sessionID)
+void Page::setSessionID(PAL::SessionID sessionID)
 {
     ASSERT(sessionID.isValid());
 

@@ -31,28 +31,24 @@ public:
     RenderQuote(Document&, RenderStyle&&, QuoteType);
     virtual ~RenderQuote();
 
-    void attachQuote();
+    void updateRenderer(RenderQuote* previousQuote);
 
 private:
-    void willBeDestroyed() override;
-    void detachQuote();
-
     const char* renderName() const override { return "RenderQuote"; }
     bool isQuote() const override { return true; }
+    bool isOpen() const;
     void styleDidChange(StyleDifference, const RenderStyle*) override;
     void insertedIntoTree() override;
     void willBeRemovedFromTree() override;
 
     String computeText() const;
-    void updateText();
-    void updateDepth();
+    void updateTextRenderer();
 
     const QuoteType m_type;
     int m_depth { -1 };
-    RenderQuote* m_next { nullptr };
-    RenderQuote* m_previous { nullptr };
-    bool m_isAttached { false };
     String m_text;
+
+    bool m_needsTextUpdate { false };
 };
 
 } // namespace WebCore

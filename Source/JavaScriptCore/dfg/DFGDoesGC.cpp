@@ -49,6 +49,7 @@ bool doesGC(Graph& graph, Node* node)
     case Int52Constant:
     case LazyJSConstant:
     case Identity:
+    case IdentityWithProfile:
     case GetCallee:
     case GetArgumentCountIncludingThis:
     case GetRestLength:
@@ -281,6 +282,7 @@ bool doesGC(Graph& graph, Node* node)
     case AtomicsIsLockFree:
         return false;
 
+    case PushWithScope:
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:

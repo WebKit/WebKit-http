@@ -50,7 +50,7 @@ public:
     };
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const URL&);
-    static Ref<SecurityOrigin> createUnique();
+    WEBCORE_EXPORT static Ref<SecurityOrigin> createUnique();
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, std::optional<uint16_t> port);
@@ -97,7 +97,7 @@ public:
     // Returns true if this SecurityOrigin can read content retrieved from
     // the given URL. For example, call this function before issuing
     // XMLHttpRequests.
-    bool canRequest(const URL&) const;
+    WEBCORE_EXPORT bool canRequest(const URL&) const;
 
     // Returns true if this SecurityOrigin can receive drag content from the
     // initiator. For example, call this function before allowing content to be
@@ -201,6 +201,8 @@ public:
     static URL urlWithUniqueSecurityOrigin();
 
     bool isPotentionallyTrustworthy() const { return m_isPotentionallyTrustworthy; }
+
+    static bool isLocalHostOrLoopbackIPAddress(const URL&);
 
 private:
     SecurityOrigin();

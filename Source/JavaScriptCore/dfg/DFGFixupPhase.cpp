@@ -1573,7 +1573,7 @@ private:
             // fixup rules for them.
             DFG_CRASH(m_graph, node, "Unexpected node during fixup");
             break;
-        
+
         case PutGlobalVariable: {
             fixEdge<CellUse>(node->child1());
             speculateForBarrier(node->child2());
@@ -1713,7 +1713,18 @@ private:
         case NewFunction:
         case NewGeneratorFunction:
         case NewAsyncFunction: {
-            fixEdge<CellUse>(node->child1());
+            // Child 1 is always the current scope, which is guaranteed to be an object
+            // FIXME: should be KnownObjectUse once that exists (https://bugs.webkit.org/show_bug.cgi?id=175689)
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
+        case PushWithScope: {
+            // Child 1 is always the current scope, which is guaranteed to be an object
+            // FIXME: should be KnownObjectUse once that exists (https://bugs.webkit.org/show_bug.cgi?id=175689)
+            fixEdge<KnownCellUse>(node->child1());
+            if (node->child2()->shouldSpeculateObject())
+                fixEdge<ObjectUse>(node->child2());
             break;
         }
 
@@ -1920,6 +1931,11 @@ private:
             if (node->child2())
                 fixEdge<Int32Use>(node->child2());
 
+            break;
+        }
+
+        case IdentityWithProfile: {
+            node->clearFlags(NodeMustGenerate);
             break;
         }
 

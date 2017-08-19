@@ -60,11 +60,11 @@
 #include "StyleResolver.h"
 #include "TextMetrics.h"
 #include "TextRun.h"
-#include "TextStream.h"
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 #if USE(CG) && !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
@@ -2667,6 +2667,16 @@ void CanvasRenderingContext2D::setImageSmoothingEnabled(bool enabled)
     auto* c = drawingContext();
     if (c)
         c->setImageInterpolationQuality(enabled ? smoothingToInterpolationQuality(state().imageSmoothingQuality) : InterpolationNone);
+}
+
+void CanvasRenderingContext2D::setPath(DOMPath& path)
+{
+    m_path = path.path();
+}
+
+Ref<DOMPath> CanvasRenderingContext2D::getPath() const
+{
+    return DOMPath::create(m_path);
 }
 
 } // namespace WebCore

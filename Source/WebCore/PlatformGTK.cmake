@@ -3,7 +3,6 @@ include(platform/FreeType.cmake)
 include(platform/GCrypt.cmake)
 include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
-include(platform/Linux.cmake)
 
 if (USE_TEXTURE_MAPPER)
     include(platform/TextureMapper.cmake)
@@ -17,9 +16,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/atk"
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/gtk"
-    "${WEBCORE_DIR}/platform/gamepad"
-    "${WEBCORE_DIR}/platform/gamepad/deprecated"
-    "${WEBCORE_DIR}/platform/gamepad/glib"
     "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/egl"
@@ -69,10 +65,7 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/glib/AudioBusGLib.cpp
 
-    platform/gamepad/glib/GamepadsGlib.cpp
-
-    platform/geoclue/GeolocationProviderGeoclue1.cpp
-    platform/geoclue/GeolocationProviderGeoclue2.cpp
+    platform/geoclue/GeolocationProviderGeoclue.cpp
 
     platform/glib/EventLoopGlib.cpp
     platform/glib/FileSystemGlib.cpp
@@ -81,6 +74,7 @@ list(APPEND WebCore_SOURCES
     platform/glib/MainThreadSharedTimerGLib.cpp
     platform/glib/SSLKeyGeneratorGLib.cpp
     platform/glib/SharedBufferGlib.cpp
+    platform/glib/UserAgentGLib.cpp
 
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
@@ -112,7 +106,6 @@ list(APPEND WebCore_SOURCES
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
     platform/gtk/SelectionData.cpp
-    platform/gtk/UserAgentGtk.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
@@ -181,7 +174,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     rendering/RenderThemeGtk.cpp
 )
 
-if (USE_GEOCLUE2)
+if (ENABLE_GEOLOCATION)
     list(APPEND WebCore_DERIVED_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
     )
@@ -209,12 +202,10 @@ list(APPEND WebCore_LIBRARIES
     ${ATK_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${ENCHANT_LIBRARIES}
-    ${GEOCLUE_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    ${GUDEV_LIBRARIES}
     ${LIBSECRET_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
@@ -237,10 +228,8 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
-    ${GEOCLUE_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${GUDEV_INCLUDE_DIRS}
     ${LIBSECRET_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
@@ -272,7 +261,6 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
     # for the plugin process.
     add_library(WebCorePlatformGTK2 ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
     add_dependencies(WebCorePlatformGTK2 WebCore)
-    WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK2)
     set_property(TARGET WebCorePlatformGTK2
         APPEND
         PROPERTY COMPILE_DEFINITIONS GTK_API_VERSION_2=1
@@ -303,7 +291,6 @@ endif ()
 
 add_library(WebCorePlatformGTK ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
 add_dependencies(WebCorePlatformGTK WebCore)
-WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK)
 target_include_directories(WebCorePlatformGTK PRIVATE
     ${WebCore_INCLUDE_DIRECTORIES}
 )

@@ -52,6 +52,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/ApplePay"
     "${WEBKIT2_DIR}/WebProcess/ApplicationCache"
     "${WEBKIT2_DIR}/WebProcess/Automation"
+    "${WEBKIT2_DIR}/WebProcess/Cache"
     "${WEBKIT2_DIR}/WebProcess/Cookies"
     "${WEBKIT2_DIR}/WebProcess/Databases"
     "${WEBKIT2_DIR}/WebProcess/Databases/IndexedDB"
@@ -90,44 +91,6 @@ set(WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
 )
 
-if (ENABLE_GRAPHICS_CONTEXT_3D)
-    # For platforms that want to use system-provided OpenGL (ES) / EGL headers,
-    # these include directories, libraries or definitions need to be
-    # added before the ANGLE directories.
-    if (USE_OPENGL)
-        list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGL_INCLUDE_DIRS}
-        )
-        list(APPEND WebKit2_LIBRARIES
-            ${OPENGL_LIBRARIES}
-        )
-        add_definitions(${OPENGL_DEFINITIONS})
-    elseif (USE_OPENGL_ES_2)
-        list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGLES2_INCLUDE_DIRS}
-        )
-        list(APPEND WebKit2_LIBRARIES
-            ${OPENGLES2_LIBRARIES}
-        )
-        add_definitions(${OPENGLES2_DEFINITIONS})
-    endif ()
-
-    if (USE_EGL)
-        list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
-            ${EGL_INCLUDE_DIRS}
-        )
-        list(APPEND WebKit2_LIBRARIES
-            ${EGL_LIBRARIES}
-        )
-        add_definitions(${EGL_DEFINITIONS})
-    endif ()
-
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/ANGLE"
-        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-    )
-endif ()
-
 set(WebKit2_SOURCES
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
 
@@ -138,6 +101,7 @@ set(WebKit2_SOURCES
 
     NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
+    NetworkProcess/NetworkCORSPreflightChecker.cpp
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkDataTask.cpp
     NetworkProcess/NetworkDataTaskBlob.cpp
@@ -149,7 +113,10 @@ set(WebKit2_SOURCES
     NetworkProcess/NetworkResourceLoader.cpp
     NetworkProcess/NetworkSession.cpp
     NetworkProcess/NetworkSocketStream.cpp
+    NetworkProcess/PingLoad.cpp
 
+    NetworkProcess/cache/CacheStorageEngine.cpp
+    NetworkProcess/cache/CacheStorageEngineConnection.cpp
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
     NetworkProcess/cache/NetworkCacheCoders.cpp
@@ -480,6 +447,9 @@ set(WebKit2_SOURCES
 
     WebProcess/Automation/WebAutomationSessionProxy.cpp
 
+    WebProcess/Cache/WebCacheStorageConnection.cpp
+    WebProcess/Cache/WebCacheStorageProvider.cpp
+
     WebProcess/Cookies/WebCookieManager.cpp
 
     WebProcess/Databases/WebDatabaseProvider.cpp
@@ -562,6 +532,8 @@ set(WebKit2_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
     WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
+    WebProcess/Storage/WebSWServerConnection.cpp
+    WebProcess/Storage/WebServiceWorkerProvider.cpp
     WebProcess/Storage/WebToStorageProcessConnection.cpp
 
     WebProcess/UserContent/WebUserContentController.cpp
@@ -570,7 +542,6 @@ set(WebKit2_SOURCES
     WebProcess/WebCoreSupport/WebChromeClient.cpp
     WebProcess/WebCoreSupport/WebColorChooser.cpp
     WebProcess/WebCoreSupport/WebContextMenuClient.cpp
-    WebProcess/WebCoreSupport/WebDeviceProximityClient.cpp
     WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp
     WebProcess/WebCoreSupport/WebDragClient.cpp
     WebProcess/WebCoreSupport/WebEditorClient.cpp
@@ -616,6 +587,8 @@ set(WebKit2_SOURCES
 )
 
 set(WebKit2_MESSAGES_IN_FILES
+    NetworkProcess/cache/CacheStorageEngineConnection.messages.in
+
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
 
     NetworkProcess/NetworkConnectionToWebProcess.messages.in
@@ -676,6 +649,8 @@ set(WebKit2_MESSAGES_IN_FILES
 
     WebProcess/Automation/WebAutomationSessionProxy.messages.in
 
+    WebProcess/Cache/WebCacheStorageConnection.messages.in
+
     WebProcess/Cookies/WebCookieManager.messages.in
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in
@@ -697,6 +672,8 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Plugins/PluginProcessConnection.messages.in
     WebProcess/Plugins/PluginProcessConnectionManager.messages.in
     WebProcess/Plugins/PluginProxy.messages.in
+
+    WebProcess/Storage/WebSWServerConnection.messages.in
 
     WebProcess/UserContent/WebUserContentController.messages.in
 
@@ -748,6 +725,53 @@ endif ()
 set(PluginProcess_LIBRARIES
     WebKit2
 )
+
+if (ENABLE_GRAPHICS_CONTEXT_3D)
+    # For platforms that want to use system-provided OpenGL (ES) / EGL headers,
+    # these include directories, libraries or definitions need to be
+    # added before the ANGLE directories.
+    if (USE_LIBEPOXY)
+        list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+            ${LIBEPOXY_INCLUDE_DIRS}
+        )
+        list(APPEND WebKit2_LIBRARIES
+            ${LIBEPOXY_LIBRARIES}
+        )
+    else ()
+        if (USE_OPENGL)
+            list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+                ${OPENGL_INCLUDE_DIRS}
+            )
+            list(APPEND WebKit2_LIBRARIES
+                ${OPENGL_LIBRARIES}
+            )
+            add_definitions(${OPENGL_DEFINITIONS})
+        elseif (USE_OPENGL_ES_2)
+            list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+                ${OPENGLES2_INCLUDE_DIRS}
+            )
+            list(APPEND WebKit2_LIBRARIES
+                ${OPENGLES2_LIBRARIES}
+            )
+            add_definitions(${OPENGLES2_DEFINITIONS})
+        endif ()
+
+        if (USE_EGL)
+            list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+                ${EGL_INCLUDE_DIRS}
+            )
+            list(APPEND WebKit2_LIBRARIES
+                ${EGL_LIBRARIES}
+            )
+            add_definitions(${EGL_DEFINITIONS})
+        endif ()
+    endif ()
+
+    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE"
+        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+    )
+endif ()
 
 if (WIN32 AND INTERNAL_BUILD)
     set(JavaScriptCore_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore/Scripts")
@@ -884,11 +908,6 @@ if (COMPILER_IS_GCC_OR_CLANG AND NOT APPLE)
     target_link_libraries(WebKit2 -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
 endif ()
 
-# Suppress unused parameter warnings for sources in WebKit2.
-if (COMPILER_IS_GCC_OR_CLANG)
-    WEBKIT_ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
-endif ()
-
 if (WebKit2_VERSION_SCRIPT)
     WEBKIT_ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")
 endif ()
@@ -917,9 +936,20 @@ if (NOT "${PORT}" STREQUAL "Mac")
     target_link_libraries(StorageProcess ${StorageProcess_LIBRARIES})
     install(TARGETS StorageProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
 
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(StorageProcess -Wno-unused-parameter)
+    endif ()
+
     if (WebKit2_StorageProcess_OUTPUT_NAME)
         set_target_properties(StorageProcess PROPERTIES OUTPUT_NAME ${WebKit2_StorageProcess_OUTPUT_NAME})
     endif ()
+endif ()
+
+# Suppress unused parameter warnings for sources in WebKit2.
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(WebKit2 -Wno-unused-parameter)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(WebProcess -Wno-unused-parameter)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(NetworkProcess -Wno-unused-parameter)
 endif ()
 
 if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
@@ -928,6 +958,10 @@ if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
     add_webkit2_prefix_header(PluginProcess)
     target_link_libraries(PluginProcess ${PluginProcess_LIBRARIES})
     install(TARGETS PluginProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(PluginProcess -Wno-unused-parameter)
+    endif ()
 
     if (WebKit2_PluginProcess_OUTPUT_NAME)
       set_target_properties(PluginProcess PROPERTIES OUTPUT_NAME ${WebKit2_PluginProcess_OUTPUT_NAME})

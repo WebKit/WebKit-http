@@ -29,9 +29,11 @@
 
 namespace WTF {
 
-template<typename T>
+template<Gigacage::Kind passedKind, typename T>
 class CagedPtr {
 public:
+    static constexpr Gigacage::Kind kind = passedKind;
+    
     CagedPtr(T* ptr = nullptr)
         : m_ptr(ptr)
     {
@@ -40,7 +42,7 @@ public:
     T* get() const
     {
         ASSERT(m_ptr);
-        return Gigacage::caged(m_ptr);
+        return Gigacage::caged(kind, m_ptr);
     }
     
     T* getMayBeNull() const
@@ -67,8 +69,11 @@ public:
     
     T& operator*() const { return *get(); }
     T* operator->() const { return get(); }
+
+    template<typename IndexType>
+    T& operator[](IndexType index) const { return get()[index]; }
     
-private:
+protected:
     T* m_ptr;
 };
 

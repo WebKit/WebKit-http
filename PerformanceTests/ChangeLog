@@ -1,3 +1,332 @@
+2017-08-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r219640): Speedometer no longer runs on Safari 7
+        https://bugs.webkit.org/show_bug.cgi?id=175749
+
+        Reviewed by Joseph Pecoraro.
+
+        Use regular string instead of template literal to make the script compatible with older versions of Safari.
+
+        * Speedometer/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype._runTest):
+
+2017-08-17  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer: Update to modern Vue.js version
+        https://bugs.webkit.org/show_bug.cgi?id=175660
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/README.md: Documented build process.
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/config/index.js: Forced relative URLs to avoid breaking the interactive runner.
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/dist/*: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/package-lock.json: Added to pin dependencies and make builds deterministic.
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/package.json: Update to modern Vue.js version.
+        * Speedometer/resources/todomvc/architecture-examples/vuejs-cli/src/components/Todos.vue: Fix markup error.
+
+2017-08-17  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer: Update to modern React/Redux version
+        https://bugs.webkit.org/show_bug.cgi?id=175669
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/react-redux/README.md: Documented build steps.
+        * Speedometer/resources/todomvc/architecture-examples/react-redux/dist/*: Updated per build instructions.
+        * Speedometer/resources/todomvc/architecture-examples/react-redux/package-lock.json: Pinned dependencies to make builds deterministic.
+        * Speedometer/resources/todomvc/architecture-examples/react-redux/package.json: Fixed build command.
+        * Speedometer/resources/todomvc/architecture-examples/react-redux/public/index.html: Made title consistent.
+
+2017-08-17  Michael Saboff  <msaboff@apple.com>
+
+        Add a Unicode test to RexBench that matches non-BMP characters
+        https://bugs.webkit.org/show_bug.cgi?id=175697
+
+        Reviewed by JF Bastien.
+
+        Added a new sub test that simulates 5 card stud poker.  This test uses the Unicode playing
+        cards code points, U+1F0A1..U+1F0DE, as the card representation.  The scoring of hands is
+        done using three regular expressions, one to check for a flush, one to check for straights
+        and one to check for pairs, three of a kind and four of a kind.
+
+        * RexBench/UniPoker: Added.
+        * RexBench/UniPoker/benchmark.js: Added.
+        (UniPokerBenchmark):
+        (UniPokerBenchmark.prototype.setup.):
+        (UniPokerBenchmark.prototype.setup.Math.random):
+        (UniPokerBenchmark.prototype.setup):
+        (UniPokerBenchmark.prototype.runOnce):
+        (UniPokerBenchmark.prototype.validate):
+        * RexBench/UniPoker/expected.js: Added.
+        (PlayerExpectation):
+        (PlayerExpectation.prototype.validate):
+        * RexBench/UniPoker/poker.js: Added.
+        (CardDeck):
+        (CardDeck.prototype.newDeck):
+        (CardDeck.prototype.shuffle):
+        (CardDeck.prototype.dealOneCard):
+        (CardDeck.cardRank):
+        (CardDeck.cardName):
+        (Hand):
+        (Hand.prototype.clear):
+        (Hand.prototype.takeCard):
+        (Hand.prototype.score):
+        (Hand.prototype.get rank):
+        (Hand.prototype.toString):
+        (Player):
+        (Player.prototype.scoreHand):
+        (Player.prototype.wonHand):
+        (Player.prototype.get name):
+        (Player.prototype.get hand):
+        (Player.prototype.get wins):
+        (Player.prototype.get handTypeCounts):
+        (playHands):
+        * RexBench/about.html:
+        * RexBench/cli.js:
+        * RexBench/glue.js:
+        (driver.reportResult):
+        * RexBench/index.html:
+        * RexBench/unipoker_benchmark.js: Added.
+
+2017-08-16  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer: Update Angular 1 TodoMVC example to v1.6.5
+        https://bugs.webkit.org/show_bug.cgi?id=175623
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/index.html: Made title consistent.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular-resource/angular-resource.min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular-resource/angular-resource.min.js.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular-route/angular-route.min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular-route/angular-route.min.js.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular/angular.min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/angular/angular.min.js.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/todomvc-app-css/package.json: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/node_modules/todomvc-common/package.json: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/package-lock.json: Added to pin dependencies.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/package.json: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/angularjs/readme.md: Document the build process.
+
+2017-08-16  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer: Document Backbone example
+        https://bugs.webkit.org/show_bug.cgi?id=175626
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/backbone/index.html: Made title consistent.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/backbone/backbone-min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/backbone/backbone-min.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/jquery/dist/jquery.js: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/jquery/dist/jquery.min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/jquery/dist/jquery.min.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/todomvc-app-css/index.css: Updated per build steps.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/underscore/underscore-min.js: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/node_modules/underscore/underscore-min.map: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/package-lock.json: Added.
+        * Speedometer/resources/todomvc/architecture-examples/backbone/readme.md: Documented build steps.
+
+2017-08-15  Michael Saboff  <msaboff@apple.com>
+
+        Add Offline Assembler parsing test to RexBench
+        https://bugs.webkit.org/show_bug.cgi?id=175581
+
+        Reviewed by Saam Barati.
+
+        This is a port of the JavaScriptCore offline assmebler's lexer, parser, AST and
+        supporting code from Ruby to JavaScript turned into a benchmark.  The benchmark
+        timing includes parsing through AST.  The validation processing time is not
+        part of the benchmark measurement.
+
+        The input data is the current tip of tree LLInt .asm source files.  Those file
+        were converted to JavaScript using the python script, convert_asm_to_js.py.
+        There is also a new JavaScript file, generate_expected.js, to create the
+        expected output JavaScript file.
+
+        * RexBench/OfflineAssembler: Added.
+        * RexBench/OfflineAssembler/ast.js: Added.
+        * RexBench/OfflineAssembler/instructions.js: Added.
+        * RexBench/OfflineAssembler/parser.js: Added.
+        * RexBench/OfflineAssembler/registers.js: Added.
+        These are JavaScript translation of the Ruby Offline Assembler.  Code not
+        needed for the benchmark was not translated and therefore missing.
+
+        * RexBench/OfflineAssembler/InitBytecodes.asm: Added.
+        * RexBench/OfflineAssembler/InitBytecodes.js: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter.asm: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter.js: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter32_64.asm: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter32_64.js: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter64.asm: Added.
+        * RexBench/OfflineAssembler/LowLevelInterpreter64.js: Added.
+        Copies of the current LLInt source and conversion to JavaScript.
+
+        * RexBench/OfflineAssembler/file.js: Added.
+        (File):
+        (File.open):
+        (File.prototype.read):
+        Mock File class used to simulate filesystem access.
+
+        * RexBench/OfflineAssembler/expected.js: Added.
+        Expected output of the AST dumped and split into individual lines.
+
+        * RexBench/OfflineAssembler/benchmark.js: Added.
+        (OfflineAssemblerBenchmark):
+        (OfflineAssemblerBenchmark.prototype.runOnce):
+        (OfflineAssemblerBenchmark.prototype.validate):
+        Benchmark sub class for this test.
+
+        * RexBench/OfflineAssembler/convert_asm_to_js.py: Added.
+        (convertFile):
+        Converts .asm into .js files compatible to the benchmark.
+
+        * RexBench/OfflineAssembler/generate_expected.js: Added.
+        Converts AST output into the expected file format.
+
+        * RexBench/about.html: Added description of this sub-benchmark test.
+
+        * RexBench/cli.js:
+        * RexBench/glue.js:
+        * RexBench/index.html:
+        * RexBench/offline_assembler_benchmark.js: Added.
+        Updates to add this sub-benchmark.
+
+2017-08-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-fallback-font-family.html is failing on perf bots
+        https://bugs.webkit.org/show_bug.cgi?id=174989
+
+        Unreviewed.
+
+        * Layout/resources/font-fallback-font-family.html:
+
+2017-08-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix.
+
+        Added missing files.
+
+        * RexBench/Octane2/benchmark.js: Added.
+        (Octane2RegExpBenchmark):
+        (Octane2RegExpBenchmark.prototype.setup.):
+        (Octane2RegExpBenchmark.prototype.setup.Math.random):
+        (Octane2RegExpBenchmark.prototype.setup):
+        (Octane2RegExpBenchmark.prototype.runOnce):
+        (Octane2RegExpBenchmark.prototype.tearDown):
+        * RexBench/SunSpider/benchmark.js: Added.
+        (RegexDNABenchmark):
+        (RegexDNABenchmark.prototype.runOnce):
+        (RegexDNABenchmark.prototype.validate):
+
+2017-08-09  Michael Saboff  <msaboff@apple.com>
+
+        Rex Bench doesn't work from the command line
+        https://bugs.webkit.org/show_bug.cgi?id=175349
+
+        Reviewed by Saam Barati.
+
+        Fixed cli.js to have the same set of benchmarks and .js files as the web
+        page driver.
+
+        Refactored the way benchmarks are run using a new Benchmark base class.  That
+        class will run the benchmark as well.  Eliminated the various runBenchmark()
+        functions that were used for individual tests.  This refactoring was threaded
+        into the web page driver as well.  Changed the iteration counts on many of the
+        individual benchmarks.  Also changed the inner loop count for the flight
+        planner test.
+
+        Eliminated Octane2/base.js as it isn't needed to run Octane2/RegExp with the 
+        new test harness.  Eliminated other dead code in Octane2/regexp.js.
+
+        * RexBench/Basic/benchmark.js:
+        (BasicBenchmark):
+        (BasicBenchmark.prototype.runIteration): Deleted.
+        (runBenchmark): Deleted.
+        * RexBench/FlightPlanner/benchmark.js:
+        (FlightPlannerBenchmark):
+        (FlightPlannerBenchmark.prototype.runOnce):
+        (this.performance.performance.now.currentTime): Deleted.
+        (else.this.preciseTime.currentTime): Deleted.
+        (else.currentTime): Deleted.
+        (FlightPlannerBenchmark.prototype.runIteration): Deleted.
+        (FlightPlannerBenchmark.prototype.checkResults): Deleted.
+        (runBenchmark): Deleted.
+        * RexBench/Octane2/base.js: Removed.
+        * RexBench/Octane2/regexp.js:
+        * RexBench/basic_benchmark.js:
+        * RexBench/benchmark.js: Added.
+        (this.performance.performance.now.currentTime):
+        (else.this.preciseTime.currentTime):
+        (else.currentTime):
+        (Benchmark):
+        (Benchmark.prototype.runIterations):
+        (Benchmark.prototype.setup):
+        (Benchmark.prototype.runOnce):
+        (Benchmark.prototype.validate):
+        (Benchmark.prototype.tearDown):
+        * RexBench/cli.js:
+        * RexBench/flightplan_benchmark.js:
+        * RexBench/flightplan_unicode_benchmark.js:
+        * RexBench/octane2_benchmark.js:
+        * RexBench/stats.js:
+        (Stats.prototype.toString.return.span.0.span.span):
+        * RexBench/sunspider_benchmark.js:
+
+2017-08-07  Michael Saboff  <msaboff@apple.com>
+
+        Use more accurate Russian keywords for RexBench/FlightPlanner Unicode mode
+        https://bugs.webkit.org/show_bug.cgi?id=175298
+
+        Reviewed by Saam Barati.
+
+        With the help of Alexey Proskuryakov updated the Russian keywords.
+
+        * RexBench/FlightPlanner/use_unicode.js:
+
+2017-08-07  Mathias Bynens  <mathias@qiwi.be>
+
+        Speedometer: Update to modern production Ember version
+        https://bugs.webkit.org/show_bug.cgi?id=175278
+
+        Reviewed by Ryosuke Niwa.
+
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/README.md: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/index.html: Made title consistent.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/README.md: Documented build process.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/components/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/index.html: Made title consistent.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/instance-initializers/global.js: Removed.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/models/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/router.js: Update to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/routes/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/services/repo.js: Update to latest version
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/styles/app.css: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/app/templates/components/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/bower.json: Update to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/config/environment.js: Update to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/dist/*: Added generated files per build instructions.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/package-lock.json: Pinned dependencies.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/package.json: Update to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/.jshintrc: Removed.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/helpers/module-for-acceptance.js: Updated to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/helpers/start-app.js: Updated to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/index.html: Updated to latest version.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/integration/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/tests/unit/.gitkeep: Added.
+        * Speedometer/resources/todomvc/architecture-examples/emberjs/source/vendor/.gitkeep: Added.
+
+2017-08-07  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r220307): Perf bot failure trying to run RexBench tests
+        https://bugs.webkit.org/show_bug.cgi?id=175289
+
+        Reviewed by Filip Pizlo.
+
+        Add RexBench to the list of benchmarks we skip on the perf bots.
+
+        * Skipped:
+
 2017-08-04  Michael Saboff  <msaboff@apple.com>
 
         Create a new JavaScript RegExp benchmark

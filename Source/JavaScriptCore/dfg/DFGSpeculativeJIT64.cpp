@@ -5425,7 +5425,12 @@ void SpeculativeJIT::compile(Node* node)
         compileCreateActivation(node);
         break;
     }
-        
+    
+    case PushWithScope: {
+        compilePushWithScope(node);
+        break;
+    }
+
     case CreateDirectArguments: {
         compileCreateDirectArguments(node);
         break;
@@ -5786,6 +5791,7 @@ void SpeculativeJIT::compile(Node* node)
         // Otherwise it's out of line
         outOfLineAccess.link(&m_jit);
         m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), scratch2GPR);
+        m_jit.cage(Gigacage::JSValue, scratch2GPR);
         m_jit.move(indexGPR, scratch1GPR);
         m_jit.sub32(MacroAssembler::Address(enumeratorGPR, JSPropertyNameEnumerator::cachedInlineCapacityOffset()), scratch1GPR);
         m_jit.neg32(scratch1GPR);
@@ -6115,6 +6121,7 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomCreateRest:
     case PhantomSpread:
     case PhantomNewArrayWithSpread:
+    case IdentityWithProfile:
         DFG_CRASH(m_jit.graph(), node, "Unexpected node");
         break;
     }

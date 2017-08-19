@@ -31,9 +31,8 @@
 namespace JSC {
 
 #if ENABLE(ASSEMBLER)
-
 #if ENABLE(MASM_PROBE)
-    
+
 // What is MacroAssembler::print()?
 // ===============================
 // The MacroAsssembler::print() makes it easy to add print logging
@@ -224,7 +223,7 @@ struct Printer<MemWord<IntType>> : public Printer<Memory> {
     { }
 };
 
-void printCallback(ProbeContext*);
+void printCallback(Probe::State*);
 
 } // namespace Printer
 
@@ -240,15 +239,7 @@ inline void MacroAssembler::print(Printer::PrintRecordList* printRecordList)
     probe(Printer::printCallback, printRecordList);
 }
 
-#else // ENABLE(MASM_PROBE)
-
-template<typename... Arguments>
-inline void MacroAssembler::print(Arguments&&...) { }
-
-inline void MacroAssembler::print(Printer::PrintRecordList*) { }
-
 #endif // ENABLE(MASM_PROBE)
-
 #endif // ENABLE(ASSEMBLER)
 
 } // namespace JSC

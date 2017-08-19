@@ -43,12 +43,6 @@ using namespace Inspector;
 
 namespace WebCore {
 
-CDMFactoryClearKey& CDMFactoryClearKey::singleton()
-{
-    static CDMFactoryClearKey s_factory;
-    return s_factory;
-}
-
 const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
 
 CDMFactoryClearKey& CDMFactoryClearKey::singleton()

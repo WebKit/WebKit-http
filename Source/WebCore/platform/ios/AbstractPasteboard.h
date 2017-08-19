@@ -29,6 +29,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+@class WebItemProviderRegistrationInfoList;
+#endif
+
 @protocol AbstractPasteboard <NSObject>
 @required
 
@@ -44,7 +48,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSInteger)changeCount;
 
 @optional
-- (void)setItemsUsingRegistrationInfoLists:(NSArray *)itemLists;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+- (void)setRegistrationInfoLists:(NSArray <WebItemProviderRegistrationInfoList *> *)info;
+#endif
 - (void)setItems:(NSArray<NSDictionary *> *)items;
 - (NSArray<NSString *> *)pasteboardTypesByFidelityForItemAtIndex:(NSUInteger)index;
 @property (readonly, nonatomic) NSInteger numberOfFiles;

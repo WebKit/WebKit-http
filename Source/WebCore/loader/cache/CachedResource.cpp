@@ -115,7 +115,7 @@ static Seconds deadDecodedDataDeletionIntervalForResourceType(CachedResource::Ty
 
 DEFINE_DEBUG_ONLY_GLOBAL(RefCountedLeakCounter, cachedResourceLeakCounter, ("CachedResource"));
 
-CachedResource::CachedResource(CachedResourceRequest&& request, Type type, SessionID sessionID)
+CachedResource::CachedResource(CachedResourceRequest&& request, Type type, PAL::SessionID sessionID)
     : m_resourceRequest(request.releaseResourceRequest())
     , m_options(request.options())
     , m_decodedDataDeletionTimer(*this, &CachedResource::destroyDecodedData, deadDecodedDataDeletionIntervalForResourceType(type))
@@ -128,6 +128,7 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_isLinkPreload(request.isLinkPreload())
     , m_hasUnknownEncoding(request.isLinkPreload())
     , m_type(type)
+    , m_ignoreForRequestCount(request.ignoreForRequestCount())
 {
     ASSERT(sessionID.isValid());
 
@@ -144,7 +145,7 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
 }
 
 // FIXME: For this constructor, we should probably mandate that the URL has no fragment identifier.
-CachedResource::CachedResource(const URL& url, Type type, SessionID sessionID)
+CachedResource::CachedResource(const URL& url, Type type, PAL::SessionID sessionID)
     : m_resourceRequest(url)
     , m_decodedDataDeletionTimer(*this, &CachedResource::destroyDecodedData, deadDecodedDataDeletionIntervalForResourceType(type))
     , m_sessionID(sessionID)
@@ -259,10 +260,30 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
         m_fragmentIdentifierForRequest = String();
     }
 
-    // FIXME: We should not special-case Beacon here.
-    if (m_options.keepAlive && type() == CachedResource::Beacon) {
-        platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, m_options.credentials == FetchOptions::Credentials::Include, m_options.redirect == FetchOptions::Redirect::Follow);
-        return;
+    if (m_options.keepAlive) {
+        if (!cachedResourceLoader.keepaliveRequestTracker().tryRegisterRequest(*this)) {
+            setResourceError({ errorDomainWebKitInternal, 0, request.url(), ASCIILiteral("Reached maximum amount of queued data of 64Kb for keepalive requests") });
+            failBeforeStarting();
+            return;
+        }
+        // FIXME: We should not special-case Beacon here.
+        if (shouldUsePingLoad(type())) {
+            ASSERT(m_origin);
+            // Beacon is not exposed to workers so it is safe to rely on the document here.
+            auto* document = cachedResourceLoader.document();
+            auto* contentSecurityPolicy = document && !document->shouldBypassMainWorldContentSecurityPolicy() ? document->contentSecurityPolicy() : nullptr;
+            ASSERT(m_originalRequestHeaders);
+            CachedResourceHandle<CachedResource> protectedThis(this);
+            platformStrategies()->loaderStrategy()->startPingLoad(frame.loader().networkingContext(), request, *m_originalRequestHeaders, *m_origin, contentSecurityPolicy, m_options, [this, protectedThis = WTFMove(protectedThis)] (const ResourceError& error) {
+                if (error.isNull())
+                    finishLoading(nullptr);
+                else {
+                    setResourceError(error);
+                    this->error(LoadError);
+                }
+            });
+            return;
+        }
     }
 
     m_loader = platformStrategies()->loaderStrategy()->loadResource(frame, *this, request, m_options);

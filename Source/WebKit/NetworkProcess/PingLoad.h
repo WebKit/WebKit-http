@@ -23,69 +23,70 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PingLoad_h
-#define PingLoad_h
+#pragma once
 
-#include "AuthenticationManager.h"
+#if USE(NETWORK_SESSION)
+
 #include "NetworkDataTask.h"
-#include "SessionTracker.h"
+#include "NetworkResourceLoadParameters.h"
+#include <WebCore/ResourceError.h>
+
+namespace WebCore {
+class ContentSecurityPolicy;
+class HTTPHeaderMap;
+class URL;
+}
 
 namespace WebKit {
 
+class NetworkCORSPreflightChecker;
+class NetworkConnectionToWebProcess;
+
 class PingLoad final : private NetworkDataTaskClient {
 public:
-    PingLoad(const NetworkResourceLoadParameters& parameters)
-        : m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
-        , m_shouldFollowRedirects(parameters.shouldFollowRedirects)
-    {
-        if (auto* networkSession = SessionTracker::networkSession(parameters.sessionID)) {
-            m_task = NetworkDataTask::create(*networkSession, *this, parameters);
-            m_task->resume();
-        } else
-            ASSERT_NOT_REACHED();
-
-        // If the server never responds, this object will hang around forever.
-        // Set a very generous timeout, just in case.
-        m_timeoutTimer.startOneShot(60000_s);
-    }
+    PingLoad(NetworkResourceLoadParameters&&, WebCore::HTTPHeaderMap&& originalRequestHeaders, Ref<NetworkConnectionToWebProcess>&&);
     
 private:
-    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&& request, RedirectCompletionHandler&& completionHandler) final
-    {
-        completionHandler(m_shouldFollowRedirects ? request : WebCore::ResourceRequest());
-    }
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&& completionHandler) final
-    {
-        completionHandler(AuthenticationChallengeDisposition::Cancel, { });
-        delete this;
-    }
-    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&& completionHandler) final
-    {
-        completionHandler(WebCore::PolicyAction::PolicyIgnore);
-        delete this;
-    }
-    void didReceiveData(Ref<WebCore::SharedBuffer>&&) final { ASSERT_NOT_REACHED(); }
-    void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final { delete this; }
-    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final { }
-    void wasBlocked() final { delete this; }
-    void cannotShowURL() final { delete this; }
+    ~PingLoad();
 
-    void timeoutTimerFired() { delete this; }
+    WebCore::ContentSecurityPolicy* contentSecurityPolicy() const;
+
+    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
+    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&) final;
+    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
+    void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
+    void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final;
+    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final;
+    void wasBlocked() final;
+    void cannotShowURL() final;
+    void timeoutTimerFired();
+
+    void loadRequest(WebCore::ResourceRequest&&);
+    bool isAllowedRedirect(const WebCore::URL&) const;
+    void makeCrossOriginAccessRequest(WebCore::ResourceRequest&&);
+    void makeSimpleCrossOriginAccessRequest(WebCore::ResourceRequest&&);
+    void makeCrossOriginAccessRequestWithPreflight(WebCore::ResourceRequest&&);
+    void preflightSuccess(WebCore::ResourceRequest&&);
+
+    WebCore::SecurityOrigin& securityOrigin() const;
+
+    const WebCore::ResourceRequest& currentRequest() const;
+    void didFinish(const WebCore::ResourceError& = { });
     
-    virtual ~PingLoad()
-    {
-        if (m_task) {
-            ASSERT(m_task->client() == this);
-            m_task->clearClient();
-            m_task->cancel();
-        }
-    }
-    
+    NetworkResourceLoadParameters m_parameters;
+    WebCore::HTTPHeaderMap m_originalRequestHeaders; // Needed for CORS checks.
+    Ref<NetworkConnectionToWebProcess> m_connection;
     RefPtr<NetworkDataTask> m_task;
     WebCore::Timer m_timeoutTimer;
-    bool m_shouldFollowRedirects;
+    std::unique_ptr<NetworkCORSPreflightChecker> m_corsPreflightChecker;
+    RefPtr<WebCore::SecurityOrigin> m_origin;
+    bool m_isSameOriginRequest;
+    bool m_isSimpleRequest { true };
+    RedirectCompletionHandler m_redirectHandler;
+    mutable std::unique_ptr<WebCore::ContentSecurityPolicy> m_contentSecurityPolicy;
+    std::optional<WebCore::ResourceRequest> m_lastRedirectionRequest;
 };
 
 }
 
-#endif
+#endif // USE(NETWORK_SESSION)

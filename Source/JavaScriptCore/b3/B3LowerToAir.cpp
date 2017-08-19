@@ -189,6 +189,7 @@ private:
         switch (value->opcode()) {
         case Trunc:
         case Identity:
+        case Opaque:
             return true;
         default:
             return false;
@@ -1166,9 +1167,6 @@ private:
         Printer::appendAirArgs(inst, std::forward<Arguments>(arguments)...);
         append(WTFMove(inst));
     }
-#else
-    template<typename... Arguments>
-    void print(Arguments&&...) { }
 #endif // ENABLE(MASM_PROBE)
 
     template<typename... Arguments>
@@ -3341,7 +3339,8 @@ private:
             return;
         }
             
-        case Identity: {
+        case Identity:
+        case Opaque: {
             ASSERT(tmp(m_value->child(0)) == tmp(m_value));
             return;
         }

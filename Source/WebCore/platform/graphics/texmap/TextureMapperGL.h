@@ -28,6 +28,7 @@
 #include "GraphicsContext3D.h"
 #include "IntSize.h"
 #include "TextureMapper.h"
+#include "TextureMapperContextAttributes.h"
 #include "TransformationMatrix.h"
 
 namespace WebCore {
@@ -63,6 +64,7 @@ public:
     void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
     virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges = AllEdges);
     void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool) override;
+    void clearColor(const Color&) override;
 
     void bindSurface(BitmapTexture* surface) override;
     BitmapTexture* currentSurface();
@@ -74,7 +76,6 @@ public:
     IntSize maxTextureSize() const override { return IntSize(2000, 2000); }
     Ref<BitmapTexture> createTexture() override { return createTexture(GraphicsContext3D::DONT_CARE); }
     Ref<BitmapTexture> createTexture(GC3Dint internalFormat) override;
-    inline GraphicsContext3D* graphicsContext3D() const { return m_context3D.get(); }
 
     void drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture* contentTexture, const FilterOperation&, int pass);
 
@@ -91,6 +92,8 @@ private:
     void bindDefaultSurface();
     ClipStack& clipStack();
     inline TextureMapperGLData& data() { return *m_data; }
+
+    TextureMapperContextAttributes m_contextAttributes;
     RefPtr<GraphicsContext3D> m_context3D;
     TextureMapperGLData* m_data;
     ClipStack m_clipStack;

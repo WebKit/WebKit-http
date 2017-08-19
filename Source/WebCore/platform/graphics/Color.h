@@ -56,9 +56,11 @@ typedef struct _GdkRGBA GdkRGBA;
 #endif
 #endif
 
-namespace WebCore {
-
+namespace WTF {
 class TextStream;
+}
+
+namespace WebCore {
 
 typedef unsigned RGBA32; // Deprecated: Type for an RGBA quadruplet. Use RGBA class instead.
 
@@ -173,7 +175,11 @@ public:
     WEBCORE_EXPORT Color(const Color&);
     WEBCORE_EXPORT Color(Color&&);
 
-    WEBCORE_EXPORT ~Color();
+    ~Color()
+    {
+        if (isExtended())
+            m_colorData.extendedColor->deref();
+    }
 
     static Color createUnchecked(int r, int g, int b)
     {
@@ -274,7 +280,10 @@ public:
     static const RGBA32 compositionFill = 0xFFE1DD55;
 #endif
 
-    WEBCORE_EXPORT bool isExtended() const;
+    bool isExtended() const
+    {
+        return !(m_colorData.rgbaAndFlags & invalidRGBAColor);
+    }
     WEBCORE_EXPORT ExtendedColor& asExtended() const;
 
     WEBCORE_EXPORT Color& operator=(const Color&);
@@ -429,7 +438,7 @@ inline void Color::setRGB(RGBA32 rgb)
     tagAsValid();
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Color&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const Color&);
 
 inline bool Color::isBlackColor(const Color& color)
 {

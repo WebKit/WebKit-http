@@ -165,12 +165,14 @@ Ref<TextureMapperShaderProgram> TextureMapperGLData::getShaderProgram(TextureMap
 TextureMapperGL::TextureMapperGL()
     : m_enableEdgeDistanceAntialiasing(false)
 {
+    m_contextAttributes.initialize();
+
     m_context3D = GraphicsContext3D::createForCurrentGLContext();
     ASSERT(m_context3D);
 
     m_data = new TextureMapperGLData(*m_context3D);
 #if USE(TEXTURE_MAPPER_GL)
-    m_texturePool = std::make_unique<BitmapTexturePool>(m_context3D.copyRef());
+    m_texturePool = std::make_unique<BitmapTexturePool>(m_contextAttributes);
 #endif
 }
 
@@ -436,16 +438,6 @@ void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect&
     drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : ShouldBlend, textureGL.size(), targetRect, matrix, opacity, exposedEdges);
 }
 
-static bool driverSupportsNPOTTextures(GraphicsContext3D& context)
-{
-    if (context.isGLES2Compliant()) {
-        static bool supportsNPOTTextures = context.getExtensions().supports("GL_OES_texture_npot");
-        return supportsNPOTTextures;
-    }
-
-    return true;
-}
-
 void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges)
 {
     bool useRect = flags & ShouldUseARBTextureRect;
@@ -462,7 +454,7 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
         options |= TextureMapperShaderProgram::Antialiasing;
         flags |= ShouldAntialias;
     }
-    if (wrapMode() == RepeatWrap && !driverSupportsNPOTTextures(*m_context3D))
+    if (wrapMode() == RepeatWrap && !m_contextAttributes.supportsNPOTTextures)
         options |= TextureMapperShaderProgram::ManualRepeat;
 
     RefPtr<FilterOperation> filter = data().filterInfo ? data().filterInfo->filter: 0;
@@ -506,6 +498,12 @@ void TextureMapperGL::drawSolidColor(const FloatRect& rect, const Transformation
         flags |= ShouldBlend;
 
     draw(rect, matrix, program.get(), GraphicsContext3D::TRIANGLE_FAN, flags);
+}
+
+void TextureMapperGL::clearColor(const Color& color)
+{
+    m_context3D->clearColor(color.red() / 255.0f, color.green() / 255.0f, color.blue() / 255.0f, color.alpha() / 255.0f);
+    m_context3D->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
 }
 
 void TextureMapperGL::drawEdgeTriangles(TextureMapperShaderProgram& program)
@@ -585,7 +583,7 @@ void TextureMapperGL::drawTexturedQuadWithProgram(TextureMapperShaderProgram& pr
     GC3Denum target = flags & ShouldUseARBTextureRect ? GC3Denum(Extensions3D::TEXTURE_RECTANGLE_ARB) : GC3Denum(GraphicsContext3D::TEXTURE_2D);
     m_context3D->bindTexture(target, texture);
     m_context3D->uniform1i(program.samplerLocation(), 0);
-    if (wrapMode() == RepeatWrap && driverSupportsNPOTTextures(*m_context3D)) {
+    if (wrapMode() == RepeatWrap && m_contextAttributes.supportsNPOTTextures) {
         m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::REPEAT);
         m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::REPEAT);
     }
@@ -651,11 +649,11 @@ TextureMapperGL::~TextureMapperGL()
 
 void TextureMapperGL::bindDefaultSurface()
 {
-    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, data().targetFrameBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, data().targetFrameBuffer);
     auto& viewport = data().viewport;
     data().projectionMatrix = createProjectionMatrix(IntSize(viewport[2], viewport[3]), data().PaintFlags & PaintingMirrored);
     m_context3D->viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-    m_clipStack.apply(*m_context3D);
+    m_clipStack.apply();
     data().currentSurface = nullptr;
 }
 
@@ -666,7 +664,7 @@ void TextureMapperGL::bindSurface(BitmapTexture *surface)
         return;
     }
 
-    static_cast<BitmapTextureGL*>(surface)->bindAsSurface(m_context3D.get());
+    static_cast<BitmapTextureGL*>(surface)->bindAsSurface();
     data().projectionMatrix = createProjectionMatrix(surface->size(), true /* mirrored */);
     data().currentSurface = surface;
 }
@@ -691,7 +689,7 @@ bool TextureMapperGL::beginScissorClip(const TransformationMatrix& modelViewMatr
         return false;
 
     clipStack().intersect(rect);
-    clipStack().applyIfNeeded(*m_context3D);
+    clipStack().applyIfNeeded();
     return true;
 }
 
@@ -746,13 +744,13 @@ void TextureMapperGL::beginClip(const TransformationMatrix& modelViewMatrix, con
 
     // Increase stencilIndex and apply stencil testing.
     clipStack().setStencilIndex(stencilIndex * 2);
-    clipStack().applyIfNeeded(*m_context3D);
+    clipStack().applyIfNeeded();
 }
 
 void TextureMapperGL::endClip()
 {
     clipStack().pop();
-    clipStack().applyIfNeeded(*m_context3D);
+    clipStack().applyIfNeeded();
 }
 
 IntRect TextureMapperGL::clipBounds()
@@ -762,7 +760,7 @@ IntRect TextureMapperGL::clipBounds()
 
 Ref<BitmapTexture> TextureMapperGL::createTexture(GC3Dint internalFormat)
 {
-    return BitmapTextureGL::create(*m_context3D, internalFormat);
+    return BitmapTextureGL::create(m_contextAttributes, internalFormat);
 }
 
 std::unique_ptr<TextureMapper> TextureMapper::platformCreateAccelerated()

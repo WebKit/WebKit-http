@@ -54,6 +54,7 @@
 #import "WebKitErrorsPrivate.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
+#import "WebKitVersionChecks.h"
 #import "WebNSURLExtras.h"
 #import "WebNavigationData.h"
 #import "WebNetscapePluginPackage.h"
@@ -104,8 +105,6 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MouseEvent.h>
-#import <WebCore/NSURLDownloadSPI.h>
-#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PluginBlacklist.h>
 #import <WebCore/PluginViewBase.h>
@@ -124,6 +123,8 @@
 #import <WebKitLegacy/DOMElement.h>
 #import <WebKitLegacy/DOMHTMLFormElement.h>
 #import <WebKitSystemInterface.h>
+#import <pal/spi/cocoa/NSURLDownloadSPI.h>
+#import <pal/spi/cocoa/NSURLFileTypeMappingsSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/MainThread.h>
@@ -142,20 +143,19 @@
 #import <WebCore/WAKScrollView.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WebCoreThreadMessage.h>
-#import "WebKitVersionChecks.h"
 #import "WebMailDelegate.h"
 #import "WebUIKitDelegate.h"
 #endif
 
 #if USE(QUICK_LOOK)
-#import <WebCore/NSFileManagerSPI.h>
 #import <WebCore/PreviewLoaderClient.h>
 #import <WebCore/QuickLook.h>
+#import <pal/spi/cocoa/NSFileManagerSPI.h>
 #endif
 
 #if HAVE(APP_LINKS)
-#import <WebCore/LaunchServicesSPI.h>
 #import <WebCore/WebCoreThreadRun.h>
+#import <pal/spi/ios/LaunchServicesSPI.h>
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
@@ -286,7 +286,7 @@ void WebFrameLoaderClient::detachedFromParent3()
     m_webFrame->_private->webFrameView = nil;
 }
 
-void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, PAL::SessionID, const ResourceRequest& request, const ResourceResponse& response)
 {
     WebView *webView = getWebView(m_webFrame.get());
     SubresourceLoader* mainResourceLoader = documentLoader->mainResourceLoader();
@@ -892,7 +892,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
                           decisionListener:setUpPolicyListener(WTFMove(function), tryAppLink ? (NSURL *)request.url() : nil).get()];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, FormState* formState, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, bool, FormState* formState, FramePolicyFunction&& function)
 {
     WebView *webView = getWebView(m_webFrame.get());
     BOOL tryAppLink = shouldTryAppLink(webView, action, core(m_webFrame.get()));
@@ -2279,6 +2279,15 @@ void WebFrameLoaderClient::getLoadDecisionForIcons(const Vector<std::pair<WebCor
     auto* frame = core(m_webFrame.get());
     DocumentLoader* documentLoader = frame->loader().documentLoader();
     ASSERT(documentLoader);
+
+#if PLATFORM(MAC)
+    if (!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_DEFAULT_ICON_LOADING)) {
+        for (auto& icon : icons)
+            documentLoader->didGetLoadDecisionForIcon(false, icon.second, 0);
+
+        return;
+    }
+#endif
 
     bool disallowedDueToImageLoadSettings = false;
     if (!frame->settings().loadsImagesAutomatically() && !frame->settings().loadsSiteIconsIgnoringImageLoadingSetting())

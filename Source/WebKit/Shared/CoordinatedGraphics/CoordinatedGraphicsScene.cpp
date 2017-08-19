@@ -81,15 +81,21 @@ CoordinatedGraphicsScene::~CoordinatedGraphicsScene()
 {
 }
 
-void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, float opacity, const FloatRect& clipRect, const Color& backgroundColor, bool drawsBackground, const FloatPoint& contentPosition, TextureMapper::PaintFlags PaintFlags)
+void CoordinatedGraphicsScene::applyStateChanges(const Vector<CoordinatedGraphicsState>& states)
 {
     if (!m_textureMapper) {
         m_textureMapper = TextureMapper::create();
         static_cast<TextureMapperGL*>(m_textureMapper.get())->setEnableEdgeDistanceAntialiasing(true);
     }
 
-    syncRemoteContent();
+    ensureRootLayer();
 
+    for (auto& state : states)
+        commitSceneState(state);
+}
+
+void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, float opacity, const FloatRect& clipRect, const Color& backgroundColor, bool drawsBackground, const FloatPoint& contentPosition, TextureMapper::PaintFlags PaintFlags)
+{
     adjustPositionForFixedLayers(contentPosition);
     TextureMapperLayer* currentRootLayer = rootLayer();
     if (!currentRootLayer)
@@ -110,11 +116,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
             backgroundColor.green(), backgroundColor.blue(),
             backgroundColor.alpha() * opacity);
         m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), Color(rgba));
-    } else {
-        GraphicsContext3D* context = static_cast<TextureMapperGL*>(m_textureMapper.get())->graphicsContext3D();
-        context->clearColor(m_viewBackgroundColor.red() / 255.0f, m_viewBackgroundColor.green() / 255.0f, m_viewBackgroundColor.blue() / 255.0f, m_viewBackgroundColor.alpha() / 255.0f);
-        context->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
-    }
+    } else
+        m_textureMapper->clearColor(m_viewBackgroundColor);
 
     if (currentRootLayer->opacity() != opacity || currentRootLayer->transform() != matrix) {
         currentRootLayer->setOpacity(opacity);
@@ -590,23 +593,6 @@ void CoordinatedGraphicsScene::ensureRootLayer()
     m_rootLayer->setTextureMapper(m_textureMapper.get());
 }
 
-void CoordinatedGraphicsScene::syncRemoteContent()
-{
-    // We enqueue messages and execute them during paint, as they require an active GL context.
-    ensureRootLayer();
-
-    Vector<Function<void()>> renderQueue;
-    bool calledOnMainThread = RunLoop::isMain();
-    if (!calledOnMainThread)
-        m_renderQueueMutex.lock();
-    renderQueue = WTFMove(m_renderQueue);
-    if (!calledOnMainThread)
-        m_renderQueueMutex.unlock();
-
-    for (auto& function : renderQueue)
-        function();
-}
-
 void CoordinatedGraphicsScene::purgeGLResources()
 {
     ASSERT(!m_client);
@@ -652,32 +638,13 @@ void CoordinatedGraphicsScene::detach()
     ASSERT(RunLoop::isMain());
     m_isActive = false;
     m_client = nullptr;
-    LockHolder locker(m_renderQueueMutex);
-    m_renderQueue.clear();
-}
-
-void CoordinatedGraphicsScene::appendUpdate(Function<void()>&& function)
-{
-    if (!m_isActive)
-        return;
-
-    ASSERT(RunLoop::isMain());
-    LockHolder locker(m_renderQueueMutex);
-    m_renderQueue.append(WTFMove(function));
 }
 
 void CoordinatedGraphicsScene::setActive(bool active)
 {
-    if (!m_client)
+    if (!m_client || m_isActive == active)
         return;
 
-    if (m_isActive == active)
-        return;
-
-    // Have to clear render queue in both cases.
-    // If there are some updates in queue during activation then those updates are from previous instance of paint node
-    // and cannot be applied to the newly created instance.
-    m_renderQueue.clear();
     m_isActive = active;
     if (m_isActive)
         renderNextFrame();

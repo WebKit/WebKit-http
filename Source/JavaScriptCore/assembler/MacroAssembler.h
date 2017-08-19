@@ -1832,35 +1832,64 @@ public:
     // continuing with other JIT generated code.
     //
     // The user supplied probe function will be called with a single pointer to
-    // a ProbeContext struct (defined below) which contains, among other things,
+    // a Probe::State struct (defined below) which contains, among other things,
     // the preserved CPUState. This allows the user probe function to inspect
     // the CPUState at that point in the JIT generated code.
     //
-    // If the user probe function alters the register values in the ProbeContext,
+    // If the user probe function alters the register values in the Probe::State,
     // the altered values will be loaded into the CPU registers when the probe
     // returns.
     //
-    // The ProbeContext is stack allocated and is only valid for the duration
+    // The Probe::State is stack allocated and is only valid for the duration
     // of the call to the user probe function.
+    //
+    // The probe function may choose to move the stack pointer (in any direction).
+    // To do this, the probe function needs to set the new sp value in the CPUState.
+    //
+    // The probe function may also choose to fill stack space with some values.
+    // To do this, the probe function must first:
+    // 1. Set the new sp value in the Probe::State's CPUState.
+    // 2. Set the Probe::State's initializeStackFunction to a Probe::Function callback
+    //    which will do the work of filling in the stack values after the probe
+    //    trampoline has adjusted the machine stack pointer.
+    // 3. Set the Probe::State's initializeStackArgs to any value that the client wants
+    //    to pass to the initializeStackFunction callback.
+    // 4. Return from the probe function.
+    //
+    // Upon returning from the probe function, the probe trampoline will adjust the
+    // the stack pointer based on the sp value in CPUState. If initializeStackFunction
+    // is not set, the probe trampoline will restore registers and return to its caller.
+    //
+    // If initializeStackFunction is set, the trampoline will move the Probe::State
+    // beyond the range of the stack pointer i.e. it will place the new Probe::State at
+    // an address lower than where CPUState.sp() points. This ensures that the
+    // Probe::State will not be trashed by the initializeStackFunction when it writes to
+    // the stack. Then, the trampoline will call back to the initializeStackFunction
+    // Probe::Function to let it fill in the stack values as desired. The
+    // initializeStackFunction Probe::Function will be passed the moved Probe::State at
+    // the new location.
+    //
+    // initializeStackFunction may now write to the stack at addresses greater or
+    // equal to CPUState.sp(), but not below that. initializeStackFunction is also
+    // not allowed to change CPUState.sp(). If the initializeStackFunction does not
+    // abide by these rules, then behavior is undefined, and bad things may happen.
     //
     // Note: this version of probe() should be implemented by the target specific
     // MacroAssembler.
-    void probe(ProbeFunction, void* arg);
+    void probe(Probe::Function, void* arg);
 
-    JS_EXPORT_PRIVATE void probe(std::function<void(ProbeContext*)>);
-#endif // ENABLE(MASM_PROBE)
+    JS_EXPORT_PRIVATE void probe(std::function<void(Probe::State*)>);
 
     // Let's you print from your JIT generated code.
-    // This only works if ENABLE(MASM_PROBE). Otherwise, print() is a no-op.
     // See comments in MacroAssemblerPrinter.h for examples of how to use this.
     template<typename... Arguments>
     void print(Arguments&&... args);
 
     void print(Printer::PrintRecordList*);
+#endif // ENABLE(MASM_PROBE)
 };
 
 #if ENABLE(MASM_PROBE)
-
 struct MacroAssembler::CPUState {
     static inline const char* gprName(RegisterID id) { return MacroAssembler::gprName(id); }
     static inline const char* sprName(SPRegisterID id) { return MacroAssembler::sprName(id); }
@@ -1868,11 +1897,20 @@ struct MacroAssembler::CPUState {
     inline uintptr_t& gpr(RegisterID);
     inline uintptr_t& spr(SPRegisterID);
     inline double& fpr(FPRegisterID);
-    
-    inline void*& pc();
-    inline void*& fp();
-    inline void*& sp();
-    
+
+    template<typename T, typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+    T gpr(RegisterID) const;
+    template<typename T, typename std::enable_if<std::is_pointer<T>::value>::type* = nullptr>
+    T gpr(RegisterID) const;
+    template<typename T> T fpr(FPRegisterID) const;
+
+    void*& pc();
+    void*& fp();
+    void*& sp();
+    template<typename T> T pc() const;
+    template<typename T> T fp() const;
+    template<typename T> T sp() const;
+
     uintptr_t gprs[MacroAssembler::numberOfRegisters()];
     uintptr_t sprs[MacroAssembler::numberOfSPRegisters()];
     double fprs[MacroAssembler::numberOfFPRegisters()];
@@ -1894,6 +1932,27 @@ inline double& MacroAssembler::CPUState::fpr(FPRegisterID id)
 {
     ASSERT(id >= MacroAssembler::firstFPRegister() && id <= MacroAssembler::lastFPRegister());
     return fprs[id];
+}
+
+template<typename T, typename std::enable_if<std::is_integral<T>::value>::type*>
+T MacroAssembler::CPUState::gpr(RegisterID id) const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return static_cast<T>(cpu->gpr(id));
+}
+
+template<typename T, typename std::enable_if<std::is_pointer<T>::value>::type*>
+T MacroAssembler::CPUState::gpr(RegisterID id) const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return reinterpret_cast<T>(cpu->gpr(id));
+}
+
+template<typename T>
+T MacroAssembler::CPUState::fpr(FPRegisterID id) const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return bitwise_cast<T>(cpu->fpr(id));
 }
 
 inline void*& MacroAssembler::CPUState::pc()
@@ -1941,14 +2000,39 @@ inline void*& MacroAssembler::CPUState::sp()
 #endif
 }
 
-struct ProbeContext {
+template<typename T>
+T MacroAssembler::CPUState::pc() const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return reinterpret_cast<T>(cpu->pc());
+}
+
+template<typename T>
+T MacroAssembler::CPUState::fp() const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return reinterpret_cast<T>(cpu->fp());
+}
+
+template<typename T>
+T MacroAssembler::CPUState::sp() const
+{
+    CPUState* cpu = const_cast<CPUState*>(this);
+    return reinterpret_cast<T>(cpu->sp());
+}
+
+namespace Probe {
+
+struct State {
     using CPUState = MacroAssembler::CPUState;
     using RegisterID = MacroAssembler::RegisterID;
     using SPRegisterID = MacroAssembler::SPRegisterID;
     using FPRegisterID = MacroAssembler::FPRegisterID;
 
-    ProbeFunction probeFunction;
+    Function probeFunction;
     void* arg;
+    Function initializeStackFunction;
+    void* initializeStackArg;
     CPUState cpu;
 
     // Convenience methods:
@@ -1962,9 +2046,16 @@ struct ProbeContext {
     void*& pc() { return cpu.pc(); }
     void*& fp() { return cpu.fp(); }
     void*& sp() { return cpu.sp(); }
+
+    template<typename T> T pc() { return cpu.pc<T>(); }
+    template<typename T> T fp() { return cpu.fp<T>(); }
+    template<typename T> T sp() { return cpu.sp<T>(); }
 };
+
+} // namespace Probe
+
 #endif // ENABLE(MASM_PROBE)
-    
+
 } // namespace JSC
 
 namespace WTF {

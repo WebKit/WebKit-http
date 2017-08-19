@@ -65,7 +65,8 @@ void DeferredPromise::callFunction(ExecState& exec, JSValue function, JSValue re
     // In practice, the only exception we should ever see here is the TerminatedExecutionException.
     ASSERT_UNUSED(scope, !scope.exception() || isTerminatedExecutionException(vm, scope.exception()));
 
-    clear();
+    if (m_mode == Mode::ClearPromiseOnResolve)
+        clear();
 }
 
 void DeferredPromise::reject()
@@ -92,7 +93,7 @@ void DeferredPromise::reject(std::nullptr_t)
     reject(state, JSC::jsNull());
 }
 
-void DeferredPromise::reject(Exception&& exception)
+void DeferredPromise::reject(Exception exception)
 {
     if (isSuspended())
         return;
@@ -101,6 +102,18 @@ void DeferredPromise::reject(Exception&& exception)
     ASSERT(m_globalObject);
     auto& state = *m_globalObject->globalExec();
     JSC::JSLockHolder locker(&state);
+
+    if (exception.code() == ExistingExceptionError) {
+        auto scope = DECLARE_CATCH_SCOPE(state.vm());
+
+        ASSERT(scope.exception());
+
+        auto error = scope.exception()->value();
+        scope.clearException();
+
+        reject<IDLAny>(error);
+        return;
+    }
 
     auto scope = DECLARE_THROW_SCOPE(state.vm());
     auto error = createDOMException(state, WTFMove(exception));
@@ -121,6 +134,18 @@ void DeferredPromise::reject(ExceptionCode ec, const String& message)
     ASSERT(m_globalObject);
     auto& state = *m_globalObject->globalExec();
     JSC::JSLockHolder locker(&state);
+
+    if (ec == ExistingExceptionError) {
+        auto scope = DECLARE_CATCH_SCOPE(state.vm());
+
+        ASSERT(scope.exception());
+
+        auto error = scope.exception()->value();
+        scope.clearException();
+
+        reject<IDLAny>(error);
+        return;
+    }
 
     auto scope = DECLARE_THROW_SCOPE(state.vm());
     auto error = createDOMException(&state, ec, message);

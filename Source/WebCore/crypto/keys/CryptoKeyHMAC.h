@@ -52,6 +52,8 @@ public:
     const String& hash() const { return m_hash; }
     size_t length() const { return m_length; }
 
+    CryptoHmacKeyAlgorithm dictionary() const;
+
 private:
     String m_hash;
     size_t m_length;
@@ -84,7 +86,6 @@ private:
     CryptoKeyHMAC(Vector<uint8_t>&& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap);
 
     std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
-    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     CryptoAlgorithmIdentifier m_hash;
     Vector<uint8_t> m_key;

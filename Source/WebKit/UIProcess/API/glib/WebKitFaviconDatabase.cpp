@@ -29,6 +29,7 @@
 #include <WebCore/RefPtrCairo.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/RunLoop.h>
+#include <wtf/SetForScope.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/WTFGType.h>
@@ -75,6 +76,7 @@ struct _WebKitFaviconDatabasePrivate {
     PendingIconRequestMap pendingIconRequests;
     HashMap<String, String> pageURLToIconURLMap;
     bool isURLImportCompleted;
+    bool isSettingIcon;
 };
 
 WEBKIT_DEFINE_TYPE(WebKitFaviconDatabase, webkit_favicon_database, G_TYPE_OBJECT)
@@ -139,19 +141,18 @@ static RefPtr<cairo_surface_t> getIconSurfaceSynchronously(WebKitFaviconDatabase
 
     // The exact size we pass is irrelevant to the iconDatabase code.
     // We must pass something greater than 0x0 to get an icon.
-    WebCore::Image* iconImage = database->priv->iconDatabase->synchronousIconForPageURL(pageURL, WebCore::IntSize(1, 1));
-    if (!iconImage) {
+    auto iconData = database->priv->iconDatabase->synchronousIconForPageURL(pageURL, WebCore::IntSize(1, 1));
+    if (iconData.second == IconDatabase::IsKnownIcon::No) {
         g_set_error(error, WEBKIT_FAVICON_DATABASE_ERROR, WEBKIT_FAVICON_DATABASE_ERROR_FAVICON_UNKNOWN, _("Unknown favicon for page %s"), pageURL.utf8().data());
         return nullptr;
     }
 
-    RefPtr<cairo_surface_t> surface = iconImage->nativeImageForCurrentFrame();
-    if (!surface) {
+    if (!iconData.first) {
         g_set_error(error, WEBKIT_FAVICON_DATABASE_ERROR, WEBKIT_FAVICON_DATABASE_ERROR_FAVICON_NOT_FOUND, _("Page %s does not have a favicon"), pageURL.utf8().data());
         return nullptr;
     }
 
-    return surface;
+    return iconData.first;
 }
 
 static void deletePendingIconRequests(WebKitFaviconDatabase* database, PendingIconRequestVector* requests, const String& pageURL)
@@ -194,6 +195,9 @@ static void webkitFaviconDatabaseSetIconURLForPageURL(WebKitFaviconDatabase* dat
         return;
 
     priv->pageURLToIconURLMap.set(pageURL, iconURL);
+    if (priv->isSettingIcon)
+        return;
+
     g_signal_emit(database, signals[FAVICON_CHANGED], 0, pageURL.utf8().data(), iconURL.utf8().data());
 }
 
@@ -213,6 +217,8 @@ private:
 
     void didChangeIconForPageURL(const String& pageURL) override
     {
+        if (m_database->priv->isSettingIcon)
+            return;
         String iconURL = m_database->priv->iconDatabase->synchronousIconURLForPageURL(pageURL);
         webkitFaviconDatabaseSetIconURLForPageURL(m_database, iconURL, pageURL);
     }
@@ -306,6 +312,7 @@ void webkitFaviconDatabaseSetIconForPageURL(WebKitFaviconDatabase* database, con
         return;
 
     WebKitFaviconDatabasePrivate* priv = database->priv;
+    SetForScope<bool> change(priv->isSettingIcon, true);
     priv->iconDatabase->setIconURLForPageURL(icon.url.string(), pageURL);
     priv->iconDatabase->setIconDataForIconURL(SharedBuffer::create(iconData.bytes(), iconData.size()), icon.url.string());
     webkitFaviconDatabaseSetIconURLForPageURL(database, icon.url.string(), pageURL);

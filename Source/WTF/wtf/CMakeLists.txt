@@ -14,6 +14,7 @@ set(WTF_HEADERS
     ByteOrder.h
     CPUTime.h
     CagedPtr.h
+    CagedUniquePtr.h
     ClockType.h
     CompilationThread.h
     Compiler.h
@@ -186,7 +187,9 @@ set(WTF_HEADERS
     text/SymbolRegistry.h
     text/TextBreakIterator.h
     text/TextBreakIteratorInternalICU.h
+    text/TextStream.h
     text/UniquedStringImpl.h
+    text/ValueToString.h
     text/WTFString.h
 
     text/icu/UTextProvider.h
@@ -271,9 +274,9 @@ set(WTF_SOURCES
     dtoa/fixed-dtoa.cc
     dtoa/strtod.cc
 
-    persistence/Coders.cpp
-    persistence/Decoder.cpp
-    persistence/Encoder.cpp
+    persistence/PersistentCoders.cpp
+    persistence/PersistentDecoder.cpp
+    persistence/PersistentEncoder.cpp
 
     text/AtomicString.cpp
     text/AtomicStringImpl.cpp
@@ -286,6 +289,7 @@ set(WTF_SOURCES
     text/SymbolImpl.cpp
     text/SymbolRegistry.cpp
     text/TextBreakIterator.cpp
+    text/TextStream.cpp
     text/WTFString.cpp
 
     text/icu/UTextProvider.cpp

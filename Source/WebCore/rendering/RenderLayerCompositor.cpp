@@ -28,8 +28,8 @@
 #include "RenderLayerCompositor.h"
 
 #include "CSSAnimationController.h"
-#include "CanvasRenderingContext.h"
 #include "CSSPropertyNames.h"
+#include "CanvasRenderingContext.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "FlowThreadController.h"
@@ -59,13 +59,13 @@
 #include "ScrollingConstraints.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
-#include "TextStream.h"
 #include "TiledBacking.h"
 #include "TransformState.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 #if PLATFORM(IOS)
 #include "LegacyTileCache.h"
@@ -373,7 +373,7 @@ bool RenderLayerCompositor::didRecalcStyleWithNoPendingLayout()
         return false;
     
     cacheAcceleratedCompositingFlags();
-    return updateCompositingLayers(CompositingUpdateAfterStyleChange);
+    return updateCompositingLayers(CompositingUpdateType::AfterStyleChange);
 }
 
 void RenderLayerCompositor::customPositionForVisibleRectComputation(const GraphicsLayer* graphicsLayer, FloatPoint& position) const
@@ -440,7 +440,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
         FloatRect exposedRect = frameView.exposedContentRect();
-        LOG_WITH_STREAM(Compositing, stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges (root " << isFlushRoot << ") exposedRect " << exposedRect);
+        LOG_WITH_STREAM(Compositing, stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges (is root " << isFlushRoot << ") exposedRect " << exposedRect);
 
         // FIXME: Use optimized flushes.
         rootLayer->flushCompositingState(exposedRect);
@@ -451,7 +451,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         if (frameView.viewExposedRect())
             visibleRect.intersect(frameView.viewExposedRect().value());
 
-        LOG_WITH_STREAM(Compositing,  stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges(" << isFlushRoot << ") " << visibleRect);
+        LOG_WITH_STREAM(Compositing,  stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges (is root " << isFlushRoot << ") visible rect " << visibleRect);
         rootLayer->flushCompositingState(visibleRect);
         LOG_WITH_STREAM(Compositing,  stream << "RenderLayerCompositor " << this << " flush complete\n");
 #endif
@@ -618,7 +618,7 @@ void RenderLayerCompositor::scheduleCompositingLayerUpdate()
 
 void RenderLayerCompositor::updateCompositingLayersTimerFired()
 {
-    updateCompositingLayers(CompositingUpdateAfterLayout);
+    updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
 bool RenderLayerCompositor::hasAnyAdditionalCompositedLayers(const RenderLayer& rootLayer) const
@@ -634,7 +634,7 @@ void RenderLayerCompositor::cancelCompositingLayerUpdate()
 
 bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
-    LOG(Compositing, "RenderLayerCompositor %p updateCompositingLayers %d %p", this, updateType, updateRoot);
+    LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " updateCompositingLayers " << updateType << " root " << updateRoot);
 
     m_updateCompositingLayersTimer.stop();
 
@@ -664,17 +664,17 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     bool needGeometryUpdate = false;
 
     switch (updateType) {
-    case CompositingUpdateAfterStyleChange:
-    case CompositingUpdateAfterLayout:
-    case CompositingUpdateOnHitTest:
+    case CompositingUpdateType::AfterStyleChange:
+    case CompositingUpdateType::AfterLayout:
+    case CompositingUpdateType::OnHitTest:
         checkForHierarchyUpdate = true;
         break;
-    case CompositingUpdateOnScroll:
+    case CompositingUpdateType::OnScroll:
         checkForHierarchyUpdate = true; // Overlap can change with scrolling, so need to check for hierarchy updates.
 
         needGeometryUpdate = true;
         break;
-    case CompositingUpdateOnCompositedScroll:
+    case CompositingUpdateType::OnCompositedScroll:
         needGeometryUpdate = true;
         break;
     }
@@ -689,16 +689,16 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     m_compositingLayersNeedRebuild = false;
     updateRoot = &rootRenderLayer();
 
-    if (isFullUpdate && updateType == CompositingUpdateAfterLayout)
+    if (isFullUpdate && updateType == CompositingUpdateType::AfterLayout)
         m_reevaluateCompositingAfterLayout = false;
 
     LOG(Compositing, " checkForHierarchyUpdate %d, needGeometryUpdate %d", checkForHierarchyUpdate, needHierarchyUpdate);
 
 #if !LOG_DISABLED
-    double startTime = 0;
+    MonotonicTime startTime;
     if (compositingLogEnabled()) {
         ++m_rootLayerUpdateCount;
-        startTime = monotonicallyIncreasingTime();
+        startTime = MonotonicTime::now();
     }
 #endif
 
@@ -754,12 +754,12 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     
 #if !LOG_DISABLED
     if (compositingLogEnabled() && isFullUpdate && (needHierarchyUpdate || needGeometryUpdate)) {
-        double endTime = monotonicallyIncreasingTime();
+        MonotonicTime endTime = MonotonicTime::now();
         LOG(Compositing, "Total layers   primary   secondary   obligatory backing (KB)   secondary backing(KB)   total backing (KB)  update time (ms)\n");
 
         LOG(Compositing, "%8d %11d %9d %20.2f %22.2f %22.2f %18.2f\n",
             m_obligateCompositedLayerCount + m_secondaryCompositedLayerCount, m_obligateCompositedLayerCount,
-            m_secondaryCompositedLayerCount, m_obligatoryBackingStoreBytes / 1024, m_secondaryBackingStoreBytes / 1024, (m_obligatoryBackingStoreBytes + m_secondaryBackingStoreBytes) / 1024, 1000.0 * (endTime - startTime));
+            m_secondaryCompositedLayerCount, m_obligatoryBackingStoreBytes / 1024, m_secondaryBackingStoreBytes / 1024, (m_obligatoryBackingStoreBytes + m_secondaryBackingStoreBytes) / 1024, (endTime - startTime).milliseconds());
     }
 #endif
     ASSERT(updateRoot || !m_compositingLayersNeedRebuild);
@@ -1825,7 +1825,7 @@ void RenderLayerCompositor::fixedRootBackgroundLayerChanged()
 
 String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
 {
-    updateCompositingLayers(CompositingUpdateAfterLayout);
+    updateCompositingLayers(CompositingUpdateType::AfterLayout);
 
     if (!m_rootContentLayer)
         return String();
@@ -2173,16 +2173,16 @@ bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer& layer, R
 
     // The root layer always has a compositing layer, but it may not have backing.
     return requiresCompositingForTransform(renderer)
-        || requiresCompositingForVideo(renderer)
-        || requiresCompositingForCanvas(renderer)
-        || requiresCompositingForPlugin(renderer)
-        || requiresCompositingForFrame(renderer)
-        || requiresCompositingForBackfaceVisibility(renderer)
-        || clipsCompositingDescendants(*renderer.layer())
         || requiresCompositingForAnimation(renderer)
+        || clipsCompositingDescendants(*renderer.layer())
+        || requiresCompositingForPosition(renderer, *renderer.layer(), viewportConstrainedNotCompositedReason)
+        || requiresCompositingForCanvas(renderer)
         || requiresCompositingForFilters(renderer)
         || requiresCompositingForWillChange(renderer)
-        || requiresCompositingForPosition(renderer, *renderer.layer(), viewportConstrainedNotCompositedReason)
+        || requiresCompositingForBackfaceVisibility(renderer)
+        || requiresCompositingForVideo(renderer)
+        || requiresCompositingForFrame(renderer)
+        || requiresCompositingForPlugin(renderer)
 #if PLATFORM(IOS)
         || requiresCompositingForScrolling(*renderer.layer())
 #endif
@@ -2217,15 +2217,15 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
 
     if (layer.isRootLayer()
         || layer.transform() // note: excludes perspective and transformStyle3D.
-        || requiresCompositingForVideo(renderer)
-        || requiresCompositingForCanvas(renderer)
-        || requiresCompositingForPlugin(renderer)
-        || requiresCompositingForFrame(renderer)
-        || requiresCompositingForBackfaceVisibility(renderer)
         || requiresCompositingForAnimation(renderer)
+        || requiresCompositingForPosition(renderer, layer)
+        || requiresCompositingForCanvas(renderer)
         || requiresCompositingForFilters(renderer)
         || requiresCompositingForWillChange(renderer)
-        || requiresCompositingForPosition(renderer, layer)
+        || requiresCompositingForBackfaceVisibility(renderer)
+        || requiresCompositingForVideo(renderer)
+        || requiresCompositingForFrame(renderer)
+        || requiresCompositingForPlugin(renderer)
         || requiresCompositingForOverflowScrolling(layer)
         || renderer.isTransparent()
         || renderer.hasMask()
@@ -4218,6 +4218,18 @@ void RenderLayerCompositor::updateScrollSnapPropertiesWithFrameView(const FrameV
 Page& RenderLayerCompositor::page() const
 {
     return m_renderView.page();
+}
+
+TextStream& operator<<(TextStream& ts, CompositingUpdateType updateType)
+{
+    switch (updateType) {
+    case CompositingUpdateType::AfterStyleChange: ts << "after style change"; break;
+    case CompositingUpdateType::AfterLayout: ts << "after layout"; break;
+    case CompositingUpdateType::OnHitTest: ts << "on hit test"; break;
+    case CompositingUpdateType::OnScroll: ts << "on scroll"; break;
+    case CompositingUpdateType::OnCompositedScroll: ts << "on composited scroll"; break;
+    }
+    return ts;
 }
 
 } // namespace WebCore

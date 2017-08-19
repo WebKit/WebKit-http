@@ -1,3 +1,216 @@
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Relocate SessionID to root
+        https://bugs.webkit.org/show_bug.cgi?id=175684
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/SessionID.cpp: Renamed from Source/WebCore/PAL/pal/identifier/SessionID.cpp.
+        * pal/SessionID.h: Renamed from Source/WebCore/PAL/pal/identifier/SessionID.h.
+
+2017-08-17  Andreas Kling  <akling@apple.com>
+
+        Disable CSS regions at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=175630
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Respect type fidelities when copying image elements to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=175638
+        <rdar://problem/26556043>
+
+        Reviewed by Ryosuke Niwa.
+
+        Replace -estimatedDisplayedSize with its non-deprecated counterpart, -preferredPresentationSize.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Move SessionID into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=174192
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/identifier/SessionID.cpp: Renamed from Source/WebCore/page/SessionID.cpp.
+        * pal/identifier/SessionID.h: Renamed from Source/WebCore/page/SessionID.h.
+        (WTF::SessionIDHash::hash):
+        (WTF::SessionIDHash::equal):
+        (WTF::HashTraits<PAL::SessionID>::emptyValue):
+        (WTF::HashTraits<PAL::SessionID>::constructDeletedValue):
+        (WTF::HashTraits<PAL::SessionID>::isDeletedValue):
+
+2017-08-16  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/ios and spi/win directories into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175171
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/ios/CoreUISPI.h: Renamed from Source/WebCore/platform/spi/ios/CoreUISPI.h.
+        * pal/spi/ios/DataDetectorsUISPI.h: Renamed from Source/WebCore/platform/spi/ios/DataDetectorsUISPI.h.
+        * pal/spi/ios/GraphicsServicesSPI.h: Renamed from Source/WebCore/platform/spi/ios/GraphicsServicesSPI.h.
+        * pal/spi/ios/LaunchServicesSPI.h: Renamed from Source/WebCore/platform/spi/ios/LaunchServicesSPI.h.
+        * pal/spi/ios/MediaPlayerSPI.h: Renamed from Source/WebCore/platform/spi/ios/MediaPlayerSPI.h.
+        * pal/spi/ios/MobileGestaltSPI.h: Renamed from Source/WebCore/platform/spi/ios/MobileGestaltSPI.h.
+        * pal/spi/ios/OpenGLESSPI.h: Renamed from Source/WebCore/platform/spi/ios/OpenGLESSPI.h.
+        * pal/spi/ios/QuickLookSPI.h: Renamed from Source/WebCore/platform/spi/ios/QuickLookSPI.h.
+        * pal/spi/ios/SQLite3SPI.h: Renamed from Source/WebCore/platform/spi/ios/SQLite3SPI.h.
+        * pal/spi/ios/UIKitSPI.h: Renamed from Source/WebCore/platform/spi/ios/UIKitSPI.h.
+        * pal/spi/win/CoreTextSPIWin.h: Renamed from Source/WebCore/platform/spi/win/CoreTextSPIWin.h.
+
+2017-08-16  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Add an ENABLE flag and an experimental feature preference
+        https://bugs.webkit.org/show_bug.cgi?id=175622
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-15  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Move Sleep classes into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175456
+
+        Reviewed by Ryosuke Niwa.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/PlatformMac.cmake:
+        * pal/system/SleepDisabler.cpp: Renamed from Source/WebCore/platform/SleepDisabler.cpp.
+        * pal/system/SleepDisabler.h: Renamed from Source/WebCore/platform/SleepDisabler.h.
+        * pal/system/SystemSleepListener.cpp: Renamed from Source/WebCore/platform/SystemSleepListener.cpp.
+        * pal/system/SystemSleepListener.h: Renamed from Source/WebCore/platform/SystemSleepListener.h.
+        * pal/system/cocoa/SleepDisablerCocoa.cpp: Renamed from Source/WebCore/platform/cocoa/SleepDisablerCocoa.cpp.
+        * pal/system/cocoa/SleepDisablerCocoa.h: Renamed from Source/WebCore/platform/cocoa/SleepDisablerCocoa.h.
+        * pal/system/mac/SystemSleepListenerMac.h: Renamed from Source/WebCore/platform/mac/SystemSleepListenerMac.h.
+        * pal/system/mac/SystemSleepListenerMac.mm: Renamed from Source/WebCore/platform/mac/SystemSleepListenerMac.mm.
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove Proximity Events and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175545
+
+        Reviewed by Daniel Bates.
+
+        No platform enables Proximity Events, so remove code inside ENABLE(PROXIMITY_EVENTS)
+        and other related code.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE(REQUEST_AUTOCOMPLETE) code, which was disabled everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=175504
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE_VIEW_MODE_CSS_MEDIA and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175557
+
+        Reviewed by Jon Lee.
+
+        No port cares about the ENABLE(VIEW_MODE_CSS_MEDIA) feature, so remove it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace DATA_TRANSFER_ITEMS by a runtime flag and add a stub implementation
+        https://bugs.webkit.org/show_bug.cgi?id=175474
+        <rdar://problem/33844628>
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove ENABLE_GAMEPAD_DEPRECATED
+        https://bugs.webkit.org/show_bug.cgi?id=175361
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-09  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/cocoa and spi/cg directories into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175175
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformAppleWin.cmake:
+        * pal/spi/cg/CoreGraphicsSPI.h: Renamed from Source/WebCore/platform/spi/cg/CoreGraphicsSPI.h.
+        (CGFloatMin):
+        * pal/spi/cg/ImageIOSPI.h: Renamed from Source/WebCore/platform/spi/cg/ImageIOSPI.h.
+        * pal/spi/cocoa/AVKitSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/AVKitSPI.h.
+        (-[AVTouchBarPlaybackControlsControlling NS_ENUM]):
+        * pal/spi/cocoa/CFNSURLConnectionSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/CFNSURLConnectionSPI.h.
+        * pal/spi/cocoa/CoreTextSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/CoreTextSPI.h.
+        * pal/spi/cocoa/DataDetectorsCoreSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/DataDetectorsCoreSPI.h.
+        * pal/spi/cocoa/IOPMLibSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/IOPMLibSPI.h.
+        * pal/spi/cocoa/IOPSLibSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/IOPSLibSPI.h.
+        * pal/spi/cocoa/IOReturnSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/IOReturnSPI.h.
+        * pal/spi/cocoa/IOSurfaceSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/IOSurfaceSPI.h.
+        * pal/spi/cocoa/IOTypesSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/IOTypesSPI.h.
+        * pal/spi/cocoa/LinkPresentationSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/LinkPresentationSPI.h.
+        * pal/spi/cocoa/MachVMSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/MachVMSPI.h.
+        * pal/spi/cocoa/NEFilterSourceSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NEFilterSourceSPI.h.
+        * pal/spi/cocoa/NSAttributedStringSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSAttributedStringSPI.h.
+        * pal/spi/cocoa/NSButtonCellSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSButtonCellSPI.h.
+        * pal/spi/cocoa/NSCalendarDateSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSCalendarDateSPI.h.
+        * pal/spi/cocoa/NSColorSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSColorSPI.h.
+        * pal/spi/cocoa/NSExtensionSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSExtensionSPI.h.
+        * pal/spi/cocoa/NSFileManagerSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSFileManagerSPI.h.
+        * pal/spi/cocoa/NSStringSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSStringSPI.h.
+        * pal/spi/cocoa/NSTouchBarSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSTouchBarSPI.h.
+        * pal/spi/cocoa/NSURLConnectionSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSURLConnectionSPI.h.
+        * pal/spi/cocoa/NSURLDownloadSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSURLDownloadSPI.h.
+        * pal/spi/cocoa/NSURLFileTypeMappingsSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/NSURLFileTypeMappingsSPI.h.
+        * pal/spi/cocoa/PassKitSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/PassKitSPI.h.
+        (NS_ERROR_ENUM):
+        * pal/spi/cocoa/QuartzCoreSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/QuartzCoreSPI.h.
+        * pal/spi/cocoa/ServersSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/ServersSPI.h.
+        * pal/spi/cocoa/WebFilterEvaluatorSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/WebFilterEvaluatorSPI.h.
+        * pal/spi/cocoa/pthreadSPI.h: Renamed from Source/WebCore/platform/spi/cocoa/pthreadSPI.h.
+
+2017-08-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] ENABLE_DRAG_SUPPORT should be turned off for iOS 10 and enabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=175392
+        <rdar://problem/33783207>
+
+        Reviewed by Tim Horton and Megan Gardner.
+
+        Tweak FeatureDefines to enable drag and drop by default, and disable only on unsupported platforms (i.e. iOS 10).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-07  Brian Burg  <bburg@apple.com>
+
+        Remove CANVAS_PATH compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175207
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-08-04  Matt Lewis  <jlewis3@apple.com>
 
         Unreviewed, rolling out r220271.

@@ -28,6 +28,7 @@
 
 #include "CachedImage.h"
 #include "CachedImageClient.h"
+#include "DataTransferItemList.h"
 #include "DragData.h"
 #include "Editor.h"
 #include "FileList.h"
@@ -56,26 +57,25 @@ private:
 
 #endif
 
-DataTransfer::DataTransfer(DataTransferAccessPolicy policy, std::unique_ptr<Pasteboard> pasteboard, Type type, bool forFileDrag)
-    : m_policy(policy)
+DataTransfer::DataTransfer(StoreMode mode, std::unique_ptr<Pasteboard> pasteboard, Type type)
+    : m_storeMode(mode)
     , m_pasteboard(WTFMove(pasteboard))
 #if ENABLE(DRAG_SUPPORT)
-    , m_forDrag(type == DragAndDrop)
-    , m_forFileDrag(forFileDrag)
+    , m_forDrag(type == Type::DragAndDropData || type == Type::DragAndDropFiles)
+    , m_forFileDrag(type == Type::DragAndDropFiles)
     , m_dropEffect(ASCIILiteral("uninitialized"))
     , m_effectAllowed(ASCIILiteral("uninitialized"))
     , m_shouldUpdateDragImage(false)
 #endif
 {
 #if !ENABLE(DRAG_SUPPORT)
-    ASSERT_UNUSED(type, type != DragAndDrop);
-    ASSERT_UNUSED(forFileDrag, !forFileDrag);
+    ASSERT_UNUSED(type, type != Type::DragAndDropData && type != Type::DragAndDropFiles);
 #endif
 }
 
-Ref<DataTransfer> DataTransfer::createForCopyAndPaste(DataTransferAccessPolicy policy)
+Ref<DataTransfer> DataTransfer::createForCopyAndPaste(StoreMode mode)
 {
-    return adoptRef(*new DataTransfer(policy, policy == DataTransferAccessPolicy::Writable ? Pasteboard::createPrivate() : Pasteboard::createForCopyAndPaste()));
+    return adoptRef(*new DataTransfer(mode, mode == StoreMode::ReadWrite ? Pasteboard::createPrivate() : Pasteboard::createForCopyAndPaste()));
 }
 
 DataTransfer::~DataTransfer()
@@ -85,27 +85,20 @@ DataTransfer::~DataTransfer()
         m_dragImageLoader->stopLoading(m_dragImage);
 #endif
 }
-    
-void DataTransfer::setAccessPolicy(DataTransferAccessPolicy policy)
-{
-    // Once the dataTransfer goes numb, it can never go back.
-    ASSERT(m_policy != DataTransferAccessPolicy::Numb || policy == DataTransferAccessPolicy::Numb);
-    m_policy = policy;
-}
 
 bool DataTransfer::canReadTypes() const
 {
-    return m_policy == DataTransferAccessPolicy::Readable || m_policy == DataTransferAccessPolicy::TypesReadable || m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::Readonly || m_storeMode == StoreMode::Protected || m_storeMode == StoreMode::ReadWrite;
 }
 
 bool DataTransfer::canReadData() const
 {
-    return m_policy == DataTransferAccessPolicy::Readable || m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::Readonly || m_storeMode == StoreMode::ReadWrite;
 }
 
 bool DataTransfer::canWriteData() const
 {
-    return m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::ReadWrite;
 }
 
 void DataTransfer::clearData(const String& type)
@@ -117,6 +110,8 @@ void DataTransfer::clearData(const String& type)
         m_pasteboard->clear();
     else
         m_pasteboard->clear(type);
+    if (m_itemList)
+        m_itemList->didClearStringData(type);
 }
 
 String DataTransfer::getData(const String& type) const
@@ -143,6 +138,15 @@ void DataTransfer::setData(const String& type, const String& data)
 #endif
 
     m_pasteboard->writeString(type, data);
+    if (m_itemList)
+        m_itemList->didSetStringData(type);
+}
+
+DataTransferItemList& DataTransfer::items()
+{
+    if (!m_itemList)
+        m_itemList = std::make_unique<DataTransferItemList>(*this);
+    return *m_itemList;
 }
 
 Vector<String> DataTransfer::types() const
@@ -202,7 +206,7 @@ Ref<DataTransfer> DataTransfer::createForInputEvent(const String& plainText, con
     TypeToStringMap typeToStringMap;
     typeToStringMap.set(ASCIILiteral("text/plain"), plainText);
     typeToStringMap.set(ASCIILiteral("text/html"), htmlText);
-    return adoptRef(*new DataTransfer(DataTransferAccessPolicy::Readable, StaticPasteboard::create(WTFMove(typeToStringMap)), InputEvent));
+    return adoptRef(*new DataTransfer(StoreMode::Readonly, StaticPasteboard::create(WTFMove(typeToStringMap)), Type::InputEvent));
 }
 
 #if !ENABLE(DRAG_SUPPORT)
@@ -233,26 +237,18 @@ void DataTransfer::setDragImage(Element*, int, int)
 
 Ref<DataTransfer> DataTransfer::createForDrag()
 {
-    return adoptRef(*new DataTransfer(DataTransferAccessPolicy::Writable, Pasteboard::createForDragAndDrop(), DragAndDrop));
+    return adoptRef(*new DataTransfer(StoreMode::ReadWrite, Pasteboard::createForDragAndDrop(), Type::DragAndDropData));
 }
 
-Ref<DataTransfer> DataTransfer::createForDrop(DataTransferAccessPolicy policy, const DragData& dragData)
+Ref<DataTransfer> DataTransfer::createForDrop(StoreMode accessMode, const DragData& dragData)
 {
-    return adoptRef(*new DataTransfer(policy, Pasteboard::createForDragAndDrop(dragData), DragAndDrop, dragData.containsFiles()));
-}
-
-bool DataTransfer::canSetDragImage() const
-{
-    // Note that the spec doesn't actually allow drag image modification outside the dragstart
-    // event. This capability is maintained for backwards compatiblity for ports that have
-    // supported this in the past. On many ports, attempting to set a drag image outside the
-    // dragstart operation is a no-op anyway.
-    return m_forDrag && (m_policy == DataTransferAccessPolicy::ImageWritable || m_policy == DataTransferAccessPolicy::Writable);
+    auto type = dragData.containsFiles() ? Type::DragAndDropFiles : Type::DragAndDropData;
+    return adoptRef(*new DataTransfer(accessMode, Pasteboard::createForDragAndDrop(dragData), type));
 }
 
 void DataTransfer::setDragImage(Element* element, int x, int y)
 {
-    if (!canSetDragImage())
+    if (!m_forDrag || !canWriteData())
         return;
 
     CachedImage* image = nullptr;

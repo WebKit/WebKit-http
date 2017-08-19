@@ -135,10 +135,6 @@
 #include "PointerLockController.h"
 #endif
 
-#if ENABLE(PROXIMITY_EVENTS)
-#include "DeviceProximityController.h"
-#endif
-
 #if PLATFORM(IOS)
 #include "WKContentObservation.h"
 #include "WKContentObservationInternal.h"
@@ -786,8 +782,12 @@ Navigator* DOMWindow::navigator() const
 {
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
-    if (!m_navigator)
-        m_navigator = Navigator::create(*m_frame);
+
+    if (!m_navigator) {
+        ASSERT(scriptExecutionContext());
+        m_navigator = Navigator::create(*scriptExecutionContext(), *m_frame);
+    }
+
     return m_navigator.get();
 }
 
@@ -1836,12 +1836,6 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
     else if (eventNames().isGamepadEventType(eventType))
         incrementGamepadEventListenerCount();
 #endif
-#if ENABLE(PROXIMITY_EVENTS)
-    else if (eventType == eventNames().webkitdeviceproximityEvent) {
-        if (DeviceProximityController* controller = DeviceProximityController::from(page()))
-            controller->addDeviceEventListener(this);
-    }
-#endif
 
     return true;
 }
@@ -1930,12 +1924,6 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
 #if ENABLE(GAMEPAD)
     else if (eventNames().isGamepadEventType(eventType))
         decrementGamepadEventListenerCount();
-#endif
-#if ENABLE(PROXIMITY_EVENTS)
-    else if (eventType == eventNames().webkitdeviceproximityEvent) {
-        if (DeviceProximityController* controller = DeviceProximityController::from(page()))
-            controller->removeDeviceEventListener(this);
-    }
 #endif
 
     return true;
@@ -2036,11 +2024,6 @@ void DOMWindow::removeAllEventListeners()
 #if ENABLE(TOUCH_EVENTS)
     if (Document* document = this->document())
         document->didRemoveEventTargetNode(*document);
-#endif
-
-#if ENABLE(PROXIMITY_EVENTS)
-    if (DeviceProximityController* controller = DeviceProximityController::from(page()))
-        controller->removeAllDeviceEventListeners(this);
 #endif
 
     if (m_performance)

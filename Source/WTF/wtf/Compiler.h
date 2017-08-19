@@ -42,7 +42,7 @@
 #define COMPILER_HAS_CLANG_BUILTIN(x) 0
 #endif
 
-/* COMPILER_HAS_CLANG_HEATURE() - whether the compiler supports a particular language or library feature. */
+/* COMPILER_HAS_CLANG_FEATURE() - whether the compiler supports a particular language or library feature. */
 /* http://clang.llvm.org/docs/LanguageExtensions.html#has-feature-and-has-extension */
 #ifdef __has_feature
 #define COMPILER_HAS_CLANG_FEATURE(x) __has_feature(x)
@@ -101,8 +101,6 @@
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define WTF_COMPILER_SUPPORTS_C_STATIC_ASSERT 1
 #endif
-
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
 #endif /* COMPILER(GCC) */
 

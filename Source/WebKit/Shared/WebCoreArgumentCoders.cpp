@@ -30,6 +30,7 @@
 #include "ShareableBitmap.h"
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
+#include <WebCore/CacheQueryOptions.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/CompositionUnderline.h>
 #include <WebCore/Credential.h>
@@ -39,6 +40,7 @@
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
 #include <WebCore/EventTrackingRegions.h>
+#include <WebCore/FetchOptions.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FilterOperation.h>
 #include <WebCore/FilterOperations.h>
@@ -61,7 +63,6 @@
 #include <WebCore/ScrollingConstraints.h>
 #include <WebCore/ScrollingCoordinator.h>
 #include <WebCore/SearchPopupMenu.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/TextIndicator.h>
 #include <WebCore/TimingFunction.h>
@@ -70,6 +71,7 @@
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/ViewportArguments.h>
 #include <WebCore/WindowFeatures.h>
+#include <pal/SessionID.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/Seconds.h>
 #include <wtf/text/CString.h>
@@ -109,6 +111,39 @@ using namespace WebKit;
 
 namespace IPC {
 
+static void encodeSharedBuffer(Encoder& encoder, const SharedBuffer* buffer)
+{
+    SharedMemory::Handle handle;
+    uint64_t bufferSize = buffer ? buffer->size() : 0;
+    encoder << bufferSize;
+    if (!bufferSize)
+        return;
+
+    auto sharedMemoryBuffer = SharedMemory::allocate(buffer->size());
+    memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
+    sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
+    encoder << handle;
+}
+
+static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
+{
+    uint64_t bufferSize = 0;
+    if (!decoder.decode(bufferSize))
+        return false;
+
+    if (!bufferSize)
+        return true;
+
+    SharedMemory::Handle handle;
+    if (!decoder.decode(handle))
+        return false;
+
+    auto sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
+    buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
+
+    return true;
+}
+
 void ArgumentCoder<MonotonicTime>::encode(Encoder& encoder, const MonotonicTime& time)
 {
     encoder << time.secondsSinceEpoch().value();
@@ -147,6 +182,213 @@ void ArgumentCoder<AffineTransform>::encode(Encoder& encoder, const AffineTransf
 bool ArgumentCoder<AffineTransform>::decode(Decoder& decoder, AffineTransform& affineTransform)
 {
     return SimpleArgumentCoder<AffineTransform>::decode(decoder, affineTransform);
+}
+
+void ArgumentCoder<CacheQueryOptions>::encode(Encoder& encoder, const CacheQueryOptions& options)
+{
+    encoder << options.ignoreSearch;
+    encoder << options.ignoreMethod;
+    encoder << options.ignoreVary;
+    encoder << options.cacheName;
+}
+
+bool ArgumentCoder<CacheQueryOptions>::decode(Decoder& decoder, CacheQueryOptions& options)
+{
+    bool ignoreSearch;
+    if (!decoder.decode(ignoreSearch))
+        return false;
+    bool ignoreMethod;
+    if (!decoder.decode(ignoreMethod))
+        return false;
+    bool ignoreVary;
+    if (!decoder.decode(ignoreVary))
+        return false;
+    String cacheName;
+    if (!decoder.decode(cacheName))
+        return false;
+
+    options.ignoreSearch = ignoreSearch;
+    options.ignoreMethod = ignoreMethod;
+    options.ignoreVary = ignoreVary;
+    options.cacheName = WTFMove(cacheName);
+    return true;
+}
+
+void ArgumentCoder<FetchOptions>::encode(Encoder& encoder, const FetchOptions& options)
+{
+    encoder << options.type;
+    encoder << options.destination;
+    encoder << options.mode;
+    encoder << options.credentials;
+    encoder << options.cache;
+    encoder << options.redirect;
+    encoder << options.referrerPolicy;
+    encoder << options.integrity;
+    encoder << options.keepAlive;
+}
+
+bool ArgumentCoder<FetchOptions>::decode(Decoder& decoder, FetchOptions& options)
+{
+    FetchOptions::Type type;
+    if (!decoder.decode(type))
+        return false;
+
+    FetchOptions::Destination destination;
+    if (!decoder.decode(destination))
+        return false;
+
+    FetchOptions::Mode mode;
+    if (!decoder.decode(mode))
+        return false;
+
+    FetchOptions::Credentials credentials;
+    if (!decoder.decode(credentials))
+        return false;
+
+    FetchOptions::Cache cache;
+    if (!decoder.decode(cache))
+        return false;
+
+    FetchOptions::Redirect redirect;
+    if (!decoder.decode(redirect))
+        return false;
+
+    ReferrerPolicy referrerPolicy;
+    if (!decoder.decode(referrerPolicy))
+        return false;
+
+    String integrity;
+    if (!decoder.decode(integrity))
+        return false;
+
+    bool keepAlive;
+    if (!decoder.decode(keepAlive))
+        return false;
+
+    options.type = type;
+    options.destination = destination;
+    options.mode = mode;
+    options.credentials = credentials;
+    options.cache = cache;
+    options.redirect = redirect;
+    options.referrerPolicy = referrerPolicy;
+    options.integrity = WTFMove(integrity);
+    options.keepAlive = keepAlive;
+
+    return true;
+}
+
+void ArgumentCoder<CacheStorageConnection::CacheInfo>::encode(Encoder& encoder, const CacheStorageConnection::CacheInfo& info)
+{
+    encoder << info.identifier;
+    encoder << info.name;
+}
+
+bool ArgumentCoder<CacheStorageConnection::CacheInfo>::decode(Decoder& decoder, CacheStorageConnection::CacheInfo& record)
+{
+    uint64_t identifier;
+    if (!decoder.decode(identifier))
+        return false;
+
+    String name;
+    if (!decoder.decode(name))
+        return false;
+
+    record.identifier = identifier;
+    record.name = WTFMove(name);
+
+    return true;
+}
+
+void ArgumentCoder<CacheStorageConnection::Record>::encode(Encoder& encoder, const CacheStorageConnection::Record& record)
+{
+    encoder << record.identifier;
+
+    encoder << record.requestHeadersGuard;
+    encoder << record.request;
+    encoder << record.options;
+    encoder << record.referrer;
+
+    encoder << record.responseHeadersGuard;
+    encoder << record.response;
+
+    WTF::switchOn(record.responseBody, [&](const Ref<SharedBuffer>& buffer) {
+        encoder << true;
+        encodeSharedBuffer(encoder, buffer.ptr());
+    }, [&](const Ref<FormData>& formData) {
+        encoder << false;
+        encoder << true;
+        formData->encode(encoder);
+    }, [&](const std::nullptr_t&) {
+        encoder << false;
+        encoder << false;
+    });
+}
+
+bool ArgumentCoder<CacheStorageConnection::Record>::decode(Decoder& decoder, CacheStorageConnection::Record& record)
+{
+    uint64_t identifier;
+    if (!decoder.decode(identifier))
+        return false;
+
+    FetchHeaders::Guard requestHeadersGuard;
+    if (!decoder.decode(requestHeadersGuard))
+        return false;
+
+    WebCore::ResourceRequest request;
+    if (!decoder.decode(request))
+        return false;
+
+    WebCore::FetchOptions options;
+    if (!decoder.decode(options))
+        return false;
+
+    String referrer;
+    if (!decoder.decode(referrer))
+        return false;
+
+    FetchHeaders::Guard responseHeadersGuard;
+    if (!decoder.decode(responseHeadersGuard))
+        return false;
+
+    WebCore::ResourceResponse response;
+    if (!decoder.decode(response))
+        return false;
+
+    WebCore::CacheStorageConnection::ResponseBody responseBody;
+    bool hasSharedBufferBody;
+    if (!decoder.decode(hasSharedBufferBody))
+        return false;
+
+    if (hasSharedBufferBody) {
+        RefPtr<SharedBuffer> buffer;
+        if (!decodeSharedBuffer(decoder, buffer))
+            return false;
+        if (buffer)
+            responseBody = buffer.releaseNonNull();
+    } else {
+        bool hasFormDataBody;
+        if (!decoder.decode(hasFormDataBody))
+            return false;
+        if (hasFormDataBody) {
+            auto formData = FormData::decode(decoder);
+            if (!formData)
+                return false;
+            responseBody = formData.releaseNonNull();
+        }
+    }
+
+    record.identifier = identifier;
+    record.requestHeadersGuard = requestHeadersGuard;
+    record.request = WTFMove(request);
+    record.options = WTFMove(options);
+    record.referrer = WTFMove(referrer);
+
+    record.responseHeadersGuard = responseHeadersGuard;
+    record.response = WTFMove(response);
+    record.responseBody = WTFMove(responseBody);
+
+    return true;
 }
 
 void ArgumentCoder<EventTrackingRegions>::encode(Encoder& encoder, const EventTrackingRegions& eventTrackingRegions)
@@ -1375,36 +1617,6 @@ bool ArgumentCoder<Highlight>::decode(Decoder& decoder, Highlight& highlight)
         return false;
     if (!decoder.decode(highlight.quads))
         return false;
-    return true;
-}
-
-static void encodeSharedBuffer(Encoder& encoder, SharedBuffer* buffer)
-{
-    SharedMemory::Handle handle;
-    encoder << (buffer ? static_cast<uint64_t>(buffer->size()): 0);
-    if (buffer) {
-        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(buffer->size());
-        memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
-        sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
-        encoder << handle;
-    }
-}
-
-static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
-{
-    uint64_t bufferSize = 0;
-    if (!decoder.decode(bufferSize))
-        return false;
-
-    if (bufferSize) {
-        SharedMemory::Handle handle;
-        if (!decoder.decode(handle))
-            return false;
-
-        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
-        buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
-    }
-
     return true;
 }
 

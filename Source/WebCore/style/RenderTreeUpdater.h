@@ -37,6 +37,7 @@ class ContainerNode;
 class Document;
 class Element;
 class Node;
+class RenderQuote;
 class RenderStyle;
 class Text;
 
@@ -50,12 +51,17 @@ public:
     static void tearDownRenderers(Element&, TeardownType = TeardownType::Normal);
     static void tearDownRenderer(Text&);
 
+    class FirstLetter;
+    class ListItem;
+
 private:
     void updateRenderTree(ContainerNode& root);
-    void updateTextRenderer(Text&);
+    void updateTextRenderer(Text&, const Style::TextUpdate*);
     void updateElementRenderer(Element&, const Style::ElementUpdate&);
     void createRenderer(Element&, RenderStyle&&);
     void invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(Node&);
+    void updateBeforeDescendants(Element&);
+    void updateAfterDescendants(Element&, Style::Change);
     void updateBeforeOrAfterPseudoElement(Element&, PseudoId);
 
     struct Parent {
@@ -73,12 +79,15 @@ private:
     void popParent();
     void popParentsToDepth(unsigned depth);
 
+    void updateQuotesUpTo(RenderQuote*);
+
     Document& m_document;
     std::unique_ptr<const Style::Update> m_styleUpdate;
 
     Vector<Parent> m_parentStack;
 
     HashSet<Text*> m_invalidatedWhitespaceOnlyTextSiblings;
+    RenderQuote* m_previousUpdatedQuote { nullptr };
 };
 
 } // namespace WebCore

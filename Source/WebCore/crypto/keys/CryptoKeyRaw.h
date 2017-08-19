@@ -39,6 +39,8 @@ public:
     }
 
     KeyAlgorithmClass keyAlgorithmClass() const override { return KeyAlgorithmClass::Raw; }
+    
+    CryptoKeyAlgorithm dictionary() const;
 };
 
 class CryptoKeyRaw final : public CryptoKey {
@@ -56,7 +58,6 @@ private:
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::Raw; }
 
     std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
-    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     Vector<uint8_t> m_key;
 };

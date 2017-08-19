@@ -449,15 +449,12 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
             resource->removeClient(*this);
         }
 
-        // We create an URL here as the request will be moved in requestRawResource
-        URL requestUrl = newRequest.resourceRequest().url();
-        m_resource = m_document.cachedResourceLoader().requestRawResource(WTFMove(newRequest));
+        auto cachedResource = m_document.cachedResourceLoader().requestRawResource(WTFMove(newRequest));
+        m_resource = cachedResource.valueOr(nullptr);
         if (m_resource)
             m_resource->addClient(*this);
-        else {
-            // FIXME: Since we receive a synchronous error, this is probably due to some AccessControl checks. We should try to retrieve the actual error.
-            logErrorAndFail(ResourceError(String(), 0, requestUrl, String(), ResourceError::Type::AccessControl));
-        }
+        else
+            logErrorAndFail(cachedResource.error());
         return;
     }
 

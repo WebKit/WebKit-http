@@ -739,6 +739,9 @@ private:
         case CreateActivation:
             compileCreateActivation();
             break;
+        case PushWithScope:
+            compilePushWithScope();
+            break;
         case NewFunction:
         case NewGeneratorFunction:
         case NewAsyncFunction:
@@ -3235,7 +3238,7 @@ private:
     {
         LValue butterfly = m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSObject_butterfly);
         if (m_node->op() != GetButterflyWithoutCaging)
-            butterfly = caged(butterfly);
+            butterfly = caged(Gigacage::JSValue, butterfly);
         setStorage(butterfly);
     }
 
@@ -3272,7 +3275,7 @@ private:
         }
 
         DFG_ASSERT(m_graph, m_node, isTypedView(m_node->arrayMode().typedArrayType()));
-        setStorage(caged(m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector)));
+        setStorage(caged(Gigacage::Primitive, m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector)));
     }
     
     void compileCheckArray()
@@ -3309,9 +3312,13 @@ private:
 
         m_out.appendTo(wastefulCase, continuation);
 
-        LValue vectorPtr = m_out.loadPtr(basePtr, m_heaps.JSArrayBufferView_vector);
-        LValue butterflyPtr = m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly);
+        LValue vectorPtr = cagedMayBeNull(
+            Gigacage::Primitive,
+            m_out.loadPtr(basePtr, m_heaps.JSArrayBufferView_vector));
+        LValue butterflyPtr = caged(Gigacage::JSValue, m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly));
         LValue arrayBufferPtr = m_out.loadPtr(butterflyPtr, m_heaps.Butterfly_arrayBuffer);
+        // FIXME: This needs caging.
+        // https://bugs.webkit.org/show_bug.cgi?id=175515
         LValue dataPtr = m_out.loadPtr(arrayBufferPtr, m_heaps.ArrayBuffer_data);
 
         ValueFromBlock wastefulOut = m_out.anchor(m_out.sub(vectorPtr, dataPtr));
@@ -3514,10 +3521,8 @@ private:
                     index,
                     m_out.load32NonNegative(base, m_heaps.DirectArguments_length)));
 
-            // FIXME: I guess we need to cage DirectArguments?
-            // https://bugs.webkit.org/show_bug.cgi?id=174920
             TypedPointer address = m_out.baseIndex(
-                m_heaps.DirectArguments_storage, base, m_out.zeroExtPtr(index));
+                m_heaps.DirectArguments_storage, caged(Gigacage::JSValue, base), m_out.zeroExtPtr(index));
             setJSValue(m_out.load64(address));
             return;
         }
@@ -3545,10 +3550,10 @@ private:
             LBasicBlock lastNext = m_out.appendTo(namedCase, overflowCase);
             
             LValue scope = m_out.loadPtr(base, m_heaps.ScopedArguments_scope);
-            LValue arguments = m_out.loadPtr(table, m_heaps.ScopedArgumentsTable_arguments);
+            LValue arguments = caged(
+                ScopedArgumentsTable::ArgumentsPtr::kind,
+                m_out.loadPtr(table, m_heaps.ScopedArgumentsTable_arguments));
             
-            // FIXME: I guess we need to cage ScopedArguments?
-            // https://bugs.webkit.org/show_bug.cgi?id=174921
             TypedPointer address = m_out.baseIndex(
                 m_heaps.scopedArgumentsTableArguments, arguments, m_out.zeroExtPtr(index));
             LValue scopeOffset = m_out.load32(address);
@@ -3557,19 +3562,16 @@ private:
                 ExoticObjectMode, noValue(), nullptr,
                 m_out.equal(scopeOffset, m_out.constInt32(ScopeOffset::invalidOffset)));
             
-            // FIXME: I guess we need to cage JSEnvironmentRecord?
-            // https://bugs.webkit.org/show_bug.cgi?id=174922
             address = m_out.baseIndex(
-                m_heaps.JSEnvironmentRecord_variables, scope, m_out.zeroExtPtr(scopeOffset));
+                m_heaps.JSEnvironmentRecord_variables, caged(Gigacage::JSValue, scope),
+                m_out.zeroExtPtr(scopeOffset));
             ValueFromBlock namedResult = m_out.anchor(m_out.load64(address));
             m_out.jump(continuation);
             
             m_out.appendTo(overflowCase, continuation);
             
-            // FIXME: I guess we need to cage overflow storage?
-            // https://bugs.webkit.org/show_bug.cgi?id=174923
             address = m_out.baseIndex(
-                m_heaps.ScopedArguments_overflowStorage, base,
+                m_heaps.ScopedArguments_overflowStorage, caged(Gigacage::JSValue, base),
                 m_out.zeroExtPtr(m_out.sub(index, namedLength)));
             LValue overflowValue = m_out.load64(address);
             speculate(ExoticObjectMode, noValue(), nullptr, m_out.isZero64(overflowValue));
@@ -4263,7 +4265,23 @@ private:
             return;
         }
     }
-    
+
+    void compilePushWithScope()
+    {
+        LValue parentScope = lowCell(m_node->child1());
+        auto objectEdge = m_node->child2();
+        if (objectEdge.useKind() == ObjectUse) {
+            LValue object = lowNonNullObject(objectEdge);
+            LValue result = vmCall(Int64, m_out.operation(operationPushWithScopeObject), m_callFrame, parentScope, object);
+            setJSValue(result);
+        } else {
+            ASSERT(objectEdge.useKind() == UntypedUse);
+            LValue object = lowJSValue(m_node->child2());
+            LValue result = vmCall(Int64, m_out.operation(operationPushWithScope), m_callFrame, parentScope, object);
+            setJSValue(result);
+        }
+    }
+
     void compileCreateActivation()
     {
         LValue scope = lowCell(m_node->child1());
@@ -5040,7 +5058,7 @@ private:
                     m_out.constIntPtr(~static_cast<intptr_t>(7)));
             }
         
-            LValue allocator = allocatorForSize(vm().auxiliarySpace, byteSize, slowCase);
+            LValue allocator = allocatorForSize(vm().primitiveGigacageAuxiliarySpace, byteSize, slowCase);
             LValue storage = allocateHeapCell(allocator, slowCase);
             
             splatWords(
@@ -8869,7 +8887,7 @@ private:
             m_out.neg(m_out.sub(index, m_out.load32(enumerator, m_heaps.JSPropertyNameEnumerator_cachedInlineCapacity))));
         int32_t offsetOfFirstProperty = static_cast<int32_t>(offsetInButterfly(firstOutOfLineOffset)) * sizeof(EncodedJSValue);
         ValueFromBlock outOfLineResult = m_out.anchor(
-            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), caged(storage), realIndex, ScaleEight, offsetOfFirstProperty)));
+            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), caged(Gigacage::JSValue, storage), realIndex, ScaleEight, offsetOfFirstProperty)));
         m_out.jump(continuation);
 
         m_out.appendTo(slowCase, continuation);
@@ -9049,7 +9067,7 @@ private:
                 ValueFromBlock noButterfly = m_out.anchor(m_out.intPtrZero);
                 
                 LValue startOfStorage = allocateHeapCell(
-                    allocatorForSize(vm().auxiliarySpace, butterflySize, slowPath),
+                    allocatorForSize(vm().jsValueGigacageAuxiliarySpace, butterflySize, slowPath),
                     slowPath);
 
                 LValue fastButterflyValue = m_out.add(
@@ -10005,7 +10023,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
 
         size_t sizeInBytes = sizeInValues * sizeof(JSValue);
-        MarkedAllocator* allocator = vm().auxiliarySpace.allocatorFor(sizeInBytes);
+        MarkedAllocator* allocator = vm().jsValueGigacageAuxiliarySpace.allocatorFor(sizeInBytes);
         LValue startOfStorage = allocateHeapCell(m_out.constIntPtr(allocator), slowPath);
         ValueFromBlock fastButterfly = m_out.anchor(
             m_out.add(m_out.constIntPtr(sizeInBytes + sizeof(IndexingHeader)), startOfStorage));
@@ -11233,7 +11251,7 @@ private:
         LValue butterflySize = m_out.add(
             payloadSize, m_out.constIntPtr(sizeof(IndexingHeader)));
             
-        LValue allocator = allocatorForSize(vm().auxiliarySpace, butterflySize, failCase);
+        LValue allocator = allocatorForSize(vm().jsValueGigacageAuxiliarySpace, butterflySize, failCase);
         LValue startOfStorage = allocateHeapCell(allocator, failCase);
             
         LValue butterfly = m_out.add(startOfStorage, m_out.constIntPtr(sizeof(IndexingHeader)));
@@ -11614,34 +11632,54 @@ private:
         }
     }
     
-    LValue caged(LValue ptr)
+    LValue caged(Gigacage::Kind kind, LValue ptr)
     {
-        if (vm().gigacageEnabled().isStillValid()) {
-            m_graph.watchpoints().addLazily(vm().gigacageEnabled());
-            
-            LValue basePtr = m_out.constIntPtr(g_gigacageBasePtr);
-            LValue mask = m_out.constIntPtr(GIGACAGE_MASK);
-            
-            // We don't have to worry about B3 messing up the bitAnd. Also, we want to get B3's excellent
-            // codegen for 2-operand andq on x86-64.
-            LValue masked = m_out.bitAnd(ptr, mask);
-            
-            // But B3 will currently mess up the code generation of this add. Basically, any offset from what we
-            // compute here will get reassociated and folded with g_gigacageBasePtr. There's a world in which
-            // moveConstants() observes that it needs to reassociate in order to hoist the big constants. But
-            // it's much easier to just block B3's badness here. That's what we do for now.
-            PatchpointValue* patchpoint = m_out.patchpoint(pointerType());
-            patchpoint->appendSomeRegister(basePtr);
-            patchpoint->appendSomeRegister(masked);
-            patchpoint->setGenerator(
-                [] (CCallHelpers& jit, const StackmapGenerationParams& params) {
-                    jit.addPtr(params[1].gpr(), params[2].gpr(), params[0].gpr());
-                });
-            patchpoint->effects = Effects::none();
-            return patchpoint;
+        if (!Gigacage::shouldBeEnabled())
+            return ptr;
+        
+        if (kind == Gigacage::Primitive && Gigacage::canPrimitiveGigacageBeDisabled()) {
+            if (vm().primitiveGigacageEnabled().isStillValid())
+                m_graph.watchpoints().addLazily(vm().primitiveGigacageEnabled());
+            else
+                return ptr;
         }
         
-        return ptr;
+        LValue basePtr = m_out.constIntPtr(Gigacage::basePtr(kind));
+        LValue mask = m_out.constIntPtr(GIGACAGE_MASK);
+        
+        LValue masked = m_out.bitAnd(ptr, mask);
+        LValue result = m_out.add(masked, basePtr);
+
+        // Make sure that B3 doesn't try to do smart reassociation of these pointer bits.
+        // FIXME: In an ideal world, B3 would not do harmful reassociations, and if it did, it would be able
+        // to undo them during constant hoisting and regalloc. As it stands, if you remove this then Octane
+        // gets 1.6% slower and Kraken gets 5% slower. It's all because the basePtr, which is a constant,
+        // gets reassociated out of the add above and into the address arithmetic. This disables hoisting of
+        // the basePtr constant. Hoisting that constant is worth a lot more perf than the reassociation. One
+        // way to make this all work happily is to combine offset legalization with constant hoisting, and
+        // then teach it reassociation. So, Add(Add(a, b), const) where a is loop-invariant while b isn't
+        // will turn into Add(Add(a, const), b) by the constant hoister. We would have to teach B3 to do this
+        // and possibly other smart things if we want to be able to remove this opaque.
+        // https://bugs.webkit.org/show_bug.cgi?id=175493
+        return m_out.opaque(result);
+    }
+    
+    LValue cagedMayBeNull(Gigacage::Kind kind, LValue ptr)
+    {
+        LBasicBlock notNull = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+        
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(notNull);
+        
+        ValueFromBlock nullResult = m_out.anchor(ptr);
+        m_out.branch(ptr, unsure(notNull), unsure(continuation));
+        
+        m_out.appendTo(notNull, continuation);
+        ValueFromBlock notNullResult = m_out.anchor(caged(kind, ptr));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+        return m_out.phi(pointerType(), nullResult, notNullResult);
     }
     
     void buildSwitch(SwitchData* data, LType type, LValue switchValue)

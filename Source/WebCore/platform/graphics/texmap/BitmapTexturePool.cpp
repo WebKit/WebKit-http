@@ -37,8 +37,8 @@ static const double releaseUnusedSecondsTolerance = 3;
 static const Seconds releaseUnusedTexturesTimerInterval { 500_ms };
 
 #if USE(TEXTURE_MAPPER_GL)
-BitmapTexturePool::BitmapTexturePool(RefPtr<GraphicsContext3D>&& context3D)
-    : m_context3D(WTFMove(context3D))
+BitmapTexturePool::BitmapTexturePool(const TextureMapperContextAttributes& contextAttributes)
+    : m_contextAttributes(contextAttributes)
     , m_releaseUnusedTexturesTimer(RunLoop::current(), this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
 {
 }
@@ -93,7 +93,7 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
 {
 #if USE(TEXTURE_MAPPER_GL)
-    return BitmapTextureGL::create(*m_context3D, GraphicsContext3D::DONT_CARE, flags);
+    return BitmapTextureGL::create(m_contextAttributes, flags);
 #else
     UNUSED_PARAM(flags);
     return nullptr;

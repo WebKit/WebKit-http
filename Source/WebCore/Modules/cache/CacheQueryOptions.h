@@ -30,10 +30,22 @@
 namespace WebCore {
 
 struct CacheQueryOptions {
+    CacheQueryOptions() = default;
+    CacheQueryOptions(bool ignoreSearch, bool ignoreMethod, bool ignoreVary, String cacheName);
+    CacheQueryOptions isolatedCopy() const { return { ignoreSearch, ignoreMethod, ignoreVary, cacheName.isolatedCopy() }; }
+
     bool ignoreSearch { false };
     bool ignoreMethod { false };
     bool ignoreVary { false };
     String cacheName;
 };
+
+inline CacheQueryOptions::CacheQueryOptions(bool ignoreSearch, bool ignoreMethod, bool ignoreVary, String cacheName)
+    : ignoreSearch(ignoreSearch)
+    , ignoreMethod(ignoreMethod)
+    , ignoreVary(ignoreVary)
+    , cacheName(cacheName.isolatedCopy())
+{
+}
 
 } // namespace WebCore

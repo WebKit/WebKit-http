@@ -26,16 +26,80 @@
 #include "config.h"
 #include "NavigatorBeacon.h"
 
+#include "CachedRawResource.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
-#include "FetchRequest.h"
+#include "FetchBody.h"
+#include "Frame.h"
+#include "HTTPParsers.h"
 #include "Navigator.h"
 #include "URL.h"
-#include <runtime/JSCJSValue.h>
 
 namespace WebCore {
 
-ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, const String& url, std::optional<FetchBody::Init>&& body)
+NavigatorBeacon::NavigatorBeacon(Navigator& navigator)
+    : m_navigator(navigator)
+{
+}
+
+NavigatorBeacon::~NavigatorBeacon()
+{
+    for (auto& beacon : m_inflightBeacons)
+        beacon->removeClient(*this);
+}
+
+NavigatorBeacon* NavigatorBeacon::from(Navigator& navigator)
+{
+    auto* supplement = static_cast<NavigatorBeacon*>(Supplement<Navigator>::from(&navigator, supplementName()));
+    if (!supplement) {
+        auto newSupplement = std::make_unique<NavigatorBeacon>(navigator);
+        supplement = newSupplement.get();
+        provideTo(&navigator, supplementName(), WTFMove(newSupplement));
+    }
+    return supplement;
+}
+
+const char* NavigatorBeacon::supplementName()
+{
+    return "NavigatorBeacon";
+}
+
+void NavigatorBeacon::notifyFinished(CachedResource& resource)
+{
+    if (!resource.resourceError().isNull())
+        logError(resource.resourceError());
+
+    resource.removeClient(*this);
+    bool wasRemoved = m_inflightBeacons.removeFirst(&resource);
+    ASSERT_UNUSED(wasRemoved, wasRemoved);
+    ASSERT(!m_inflightBeacons.contains(&resource));
+}
+
+void NavigatorBeacon::logError(const ResourceError& error)
+{
+    ASSERT(!error.isNull());
+
+    auto* frame = m_navigator.frame();
+    if (!frame)
+        return;
+
+    auto* document = frame->document();
+    if (!document)
+        return;
+
+    const char* messageMiddle = ". ";
+    String description = error.localizedDescription();
+    if (description.isEmpty()) {
+        if (error.isAccessControl())
+            messageMiddle = " due to access control checks.";
+        else
+            messageMiddle = ".";
+    }
+
+    document->addConsoleMessage(MessageSource::Network, MessageLevel::Error, makeString(ASCIILiteral("Beacon API cannot load "), error.failingURL().string(), ASCIILiteral(messageMiddle), description));
+}
+
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& url, std::optional<FetchBody::Init>&& body)
 {
     URL parsedUrl = document.completeURL(url);
 
@@ -55,22 +119,40 @@ ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, co
         return true;
     }
 
-    FetchRequestInit init;
-    init.method = ASCIILiteral("POST");
-    init.body = WTFMove(body);
-    init.credentials = FetchOptions::Credentials::Include;
-    init.cache = FetchOptions::Cache::NoCache;
-    init.redirect = FetchOptions::Redirect::Follow;
-    init.keepalive = true;
-    init.window = JSC::jsNull();
+    ResourceRequest request(parsedUrl);
+    request.setHTTPMethod(ASCIILiteral("POST"));
 
-    auto fetchRequestResult = FetchRequest::create(document, parsedUrl.string(), WTFMove(init));
-    if (fetchRequestResult.hasException())
-        return fetchRequestResult.releaseException();
+    FetchOptions options;
+    options.credentials = FetchOptions::Credentials::Include;
+    options.cache = FetchOptions::Cache::NoCache;
+    options.keepAlive = true;
+    if (body) {
+        options.mode = FetchOptions::Mode::Cors;
+        String mimeType;
+        auto fetchBody = FetchBody::extract(document, WTFMove(body.value()), mimeType);
+        request.setHTTPBody(fetchBody.bodyAsFormData(document));
+        if (!mimeType.isEmpty()) {
+            request.setHTTPContentType(mimeType);
+            if (isCrossOriginSafeRequestHeader(HTTPHeaderName::ContentType, mimeType))
+                options.mode = FetchOptions::Mode::NoCors;
+        }
+    }
 
-    auto fetchRequest = fetchRequestResult.releaseReturnValue();
-    document.cachedResourceLoader().requestBeaconResource({ fetchRequest->internalRequest(), fetchRequest->fetchOptions() });
+    auto cachedResource = document.cachedResourceLoader().requestBeaconResource({ WTFMove(request), options });
+    if (!cachedResource) {
+        logError(cachedResource.error());
+        return false;
+    }
+
+    ASSERT(!m_inflightBeacons.contains(cachedResource.value().get()));
+    m_inflightBeacons.append(cachedResource.value().get());
+    cachedResource.value()->addClient(*this);
     return true;
+}
+
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator& navigator, Document& document, const String& url, std::optional<FetchBody::Init>&& body)
+{
+    return NavigatorBeacon::from(navigator)->sendBeacon(document, url, WTFMove(body));
 }
 
 }

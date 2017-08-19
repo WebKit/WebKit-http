@@ -140,6 +140,7 @@
 #include "PointerLockController.h"
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
+#include "PublicSuffix.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "RenderChildIterator.h"
 #include "RenderLayerCompositor.h"
@@ -425,20 +426,6 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
     // FIXME: should we print to the console of the document performing the navigation instead?
     frame->document()->domWindow()->printErrorMessage(message);
 }
-
-#if ENABLE(TEXT_AUTOSIZING)
-
-void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
-{
-    new (NotNull, &slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
-}
-
-bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
-{
-    return value.isDeleted();
-}
-
-#endif
 
 uint64_t Document::s_globalTreeVersion = 0;
 
@@ -1867,6 +1854,18 @@ void Document::resolveStyle(ResolveStyleType type)
     // FIXME: Ideally we would ASSERT(!needsStyleRecalc()) here but we have some cases where it is not true.
 }
 
+void Document::updateTextRenderer(Text& text, unsigned offsetOfReplacedText, unsigned lengthOfReplacedText)
+{
+    ASSERT(!m_inRenderTreeUpdate);
+    SetForScope<bool> inRenderTreeUpdate(m_inRenderTreeUpdate, true);
+
+    auto textUpdate = std::make_unique<Style::Update>(*this);
+    textUpdate->addText(text, { offsetOfReplacedText, lengthOfReplacedText });
+
+    RenderTreeUpdater renderTreeUpdater(*this);
+    renderTreeUpdater.commit(WTFMove(textUpdate));
+}
+
 bool Document::needsStyleRecalc() const
 {
     if (pageCacheState() != NotInPageCache)
@@ -2251,8 +2250,7 @@ void Document::destroyRenderTree()
     Node::setRenderer(nullptr);
 
 #if ENABLE(TEXT_AUTOSIZING)
-    // Do this before the arena is cleared, which is needed to deref the RenderStyle on TextAutoSizingKey.
-    m_textAutoSizedNodes.clear();
+    m_textAutoSizing = nullptr;
 #endif
 
     if (view())
@@ -4438,44 +4436,68 @@ String Document::domain() const
     return securityOrigin().domain();
 }
 
-ExceptionOr<void> Document::setDomain(const String& newDomain)
+bool Document::domainIsRegisterable(const String& newDomain) const
 {
-    if (SchemeRegistry::isDomainRelaxationForbiddenForURLScheme(securityOrigin().protocol()))
-        return Exception { SecurityError };
+    if (newDomain.isEmpty())
+        return false;
 
-    // Both NS and IE specify that changing the domain is only allowed when
-    // the new domain is a suffix of the old domain.
+    const String& effectiveDomain = domain();
 
-    // FIXME: We should add logging indicating why a domain was not allowed.
-
-    String oldDomain = domain();
-
-    // If the new domain is the same as the old domain, still call
-    // securityOrigin().setDomainForDOM. This will change the
+    // If the new domain is the same as the old domain, return true so that
+    // we still call securityOrigin().setDomainForDOM. This will change the
     // security check behavior. For example, if a page loaded on port 8000
     // assigns its current domain using document.domain, the page will
     // allow other pages loaded on different ports in the same domain that
     // have also assigned to access this page.
-    if (equalIgnoringASCIICase(oldDomain, newDomain)) {
-        securityOrigin().setDomainFromDOM(newDomain);
-        return { };
-    }
+    if (equalIgnoringASCIICase(effectiveDomain, newDomain))
+        return true;
 
     // e.g. newDomain = webkit.org (10) and domain() = www.webkit.org (14)
-    unsigned oldLength = oldDomain.length();
+    unsigned oldLength = effectiveDomain.length();
     unsigned newLength = newDomain.length();
     if (newLength >= oldLength)
-        return Exception { SecurityError };
+        return false;
 
     auto ipAddressSetting = settings().treatIPAddressAsDomain() ? OriginAccessEntry::TreatIPAddressAsDomain : OriginAccessEntry::TreatIPAddressAsIPAddress;
     OriginAccessEntry accessEntry { securityOrigin().protocol(), newDomain, OriginAccessEntry::AllowSubdomains, ipAddressSetting };
     if (!accessEntry.matchesOrigin(securityOrigin()))
+        return false;
+
+    if (effectiveDomain[oldLength - newLength - 1] != '.')
+        return false;
+    if (StringView { effectiveDomain }.substring(oldLength - newLength) != newDomain)
+        return false;
+
+    auto potentialPublicSuffix = newDomain;
+    if (potentialPublicSuffix.startsWith('.'))
+        potentialPublicSuffix.remove(0, 1);
+
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    return !isPublicSuffix(potentialPublicSuffix);
+#else
+    return true;
+#endif
+}
+
+ExceptionOr<void> Document::setDomain(const String& newDomain)
+{
+    if (!frame())
+        return Exception { SecurityError, "A browsing context is required to set a domain." };
+
+    if (isSandboxed(SandboxDocumentDomain))
+        return Exception { SecurityError, "Assignment is forbidden for sandboxed iframes." };
+
+    if (SchemeRegistry::isDomainRelaxationForbiddenForURLScheme(securityOrigin().protocol()))
         return Exception { SecurityError };
 
-    if (oldDomain[oldLength - newLength - 1] != '.')
-        return Exception { SecurityError };
-    if (StringView { oldDomain }.substring(oldLength - newLength) != newDomain)
-        return Exception { SecurityError };
+    // FIXME: We should add logging indicating why a domain was not allowed.
+
+    const String& effectiveDomain = domain();
+    if (effectiveDomain.isEmpty())
+        return Exception { SecurityError, "The document has a null effectiveDomain." };
+
+    if (!domainIsRegisterable(newDomain))
+        return Exception { SecurityError, "Attempted to use a non-registrable domain." };
 
     securityOrigin().setDomainFromDOM(newDomain);
     return { };
@@ -4647,6 +4669,17 @@ URL Document::completeURL(const String& url, const URL& baseURLOverride) const
 URL Document::completeURL(const String& url) const
 {
     return completeURL(url, m_baseURL);
+}
+
+PAL::SessionID Document::sessionID() const
+{
+    if (m_sessionID.isValid())
+        return m_sessionID;
+
+    if (auto* page = this->page())
+        m_sessionID = page->sessionID();
+
+    return m_sessionID;
 }
 
 void Document::setPageCacheState(PageCacheState state)
@@ -5510,28 +5543,12 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 }
 
 #if ENABLE(TEXT_AUTOSIZING)
-
-void Document::addAutoSizedNode(Text& node, float candidateSize)
+TextAutoSizing& Document::textAutoSizing()
 {
-    LOG(TextAutosizing, " addAutoSizedNode %p candidateSize=%f", &node, candidateSize);
-    auto addResult = m_textAutoSizedNodes.add<TextAutoSizingHashTranslator>(node.renderer()->style(), nullptr);
-    if (addResult.isNewEntry)
-        addResult.iterator->value = std::make_unique<TextAutoSizingValue>();
-    addResult.iterator->value->addTextNode(node, candidateSize);
+    if (!m_textAutoSizing)
+        m_textAutoSizing = std::make_unique<TextAutoSizing>();
+    return *m_textAutoSizing;
 }
-
-void Document::updateAutoSizedNodes()
-{
-    m_textAutoSizedNodes.removeIf([](auto& keyAndValue) {
-        return keyAndValue.value->adjustTextNodeSizes() == TextAutoSizingValue::StillHasNodes::No;
-    });
-}
-    
-void Document::clearAutoSizedNodes()
-{
-    m_textAutoSizedNodes.clear();
-}
-
 #endif // ENABLE(TEXT_AUTOSIZING)
 
 void Document::initDNSPrefetch()

@@ -107,12 +107,12 @@
 #import "UIKitSPI.h"
 #import "UIKitTestSPI.h"
 #import <QuartzCore/QuartzCore.h>
-#import <WebCore/CoreGraphicsSPI.h>
 #import <WebKit/WAKWindow.h>
 #import <WebKit/WebCoreThread.h>
 #import <WebKit/WebCoreThreadRun.h>
 #import <WebKit/WebDOMOperations.h>
 #import <fcntl.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 #endif
 
 extern "C" {
@@ -847,7 +847,6 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setMediaPreloadingEnabled:YES];
     // FIXME: InputEvents
     [preferences setWebAnimationsEnabled:YES];
-    [preferences setBeaconAPIEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
@@ -952,6 +951,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setShadowDOMEnabled:YES];
     [preferences setCustomElementsEnabled:YES];
 
+    [preferences setDataTransferItemsEnabled:YES];
+
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
 
@@ -982,6 +983,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;
     preferences.credentialManagementEnabled = options.enableCredentialManagement;
     preferences.isSecureContextAttributeEnabled = options.enableIsSecureContextAttribute;
+    preferences.inspectorAdditionsEnabled = options.enableInspectorAdditions;
 }
 
 // Called once on DumpRenderTree startup.

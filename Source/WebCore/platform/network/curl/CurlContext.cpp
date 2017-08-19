@@ -106,6 +106,7 @@ const char* const CurlContext::errorDomain = "CurlErrorDomain";
 CurlContext::CurlContext()
 : m_cookieJarFileName { cookieJarPath() }
 , m_certificatePath { certificatePath() }
+, m_cookieJar { std::make_unique<CookieJarCurlFileSystem>() }
 {
     initCookieSession();
 
@@ -236,8 +237,6 @@ Lock* CurlShareHandle::mutexFor(curl_lock_data data)
 
 CurlMultiHandle::CurlMultiHandle()
 {
-    CurlContext::singleton();
-
     m_multiHandle = curl_multi_init();
 }
 
@@ -283,11 +282,7 @@ CURLMsg* CurlMultiHandle::readInfo(int& messagesInQueue)
 
 CurlHandle::CurlHandle()
 {
-    CurlContext::singleton();
-
     m_handle = curl_easy_init();
-    curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, m_errorBuffer);
-    curl_easy_setopt(m_handle, CURLOPT_PRIVATE, this);
 }
 
 CurlHandle::~CurlHandle()
@@ -300,6 +295,12 @@ CurlHandle::~CurlHandle()
 const String CurlHandle::errorDescription() const
 {
     return String(curl_easy_strerror(m_errorCode));
+}
+
+void CurlHandle::initialize()
+{
+    curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, m_errorBuffer);
+    curl_easy_setopt(m_handle, CURLOPT_PRIVATE, this);
 }
 
 CURLcode CurlHandle::perform()
@@ -497,6 +498,16 @@ void CurlHandle::setSslCertType(const char* type)
 void CurlHandle::setSslKeyPassword(const char* password)
 {
     curl_easy_setopt(m_handle, CURLOPT_KEYPASSWD, password);
+}
+
+void CurlHandle::setSslErrors(unsigned sslErrors)
+{
+    m_sslErrors = sslErrors;
+}
+
+unsigned CurlHandle::getSslErrors()
+{
+    return m_sslErrors;
 }
 
 void CurlHandle::enableCookieJarIfExists()

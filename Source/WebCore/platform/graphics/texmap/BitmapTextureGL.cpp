@@ -26,7 +26,6 @@
 
 #include "Extensions3D.h"
 #include "FilterOperations.h"
-#include "GraphicsContext.h"
 #include "Image.h"
 #include "LengthFunctions.h"
 #include "NotImplemented.h"
@@ -57,27 +56,26 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, const Flags flags, GC3Dint internalFormat)
-    : m_context3D(WTFMove(context3D))
-    , m_internalFormat(internalFormat)
+BitmapTextureGL::BitmapTextureGL(const TextureMapperContextAttributes& contextAttributes, const Flags flags, GLint internalFormat)
+    : m_contextAttributes(contextAttributes)
 {
-    if (internalFormat != GraphicsContext3D::DONT_CARE) {
+    if (internalFormat != GL_DONT_CARE) {
         m_internalFormat = m_format = internalFormat;
         return;
     }
 
     if (flags & FBOAttachment)
-        m_internalFormat = m_format = GraphicsContext3D::RGBA;
+        m_internalFormat = m_format = GL_RGBA;
     else {
         // If GL_EXT_texture_format_BGRA8888 is supported in the OpenGLES
         // internal and external formats need to be BGRA
-        m_internalFormat = GraphicsContext3D::RGBA;
-        m_format = GraphicsContext3D::BGRA;
-        if (m_context3D->isGLES2Compliant()) {
-            if (m_context3D->getExtensions().supports("GL_EXT_texture_format_BGRA8888"))
-                m_internalFormat = GraphicsContext3D::BGRA;
+        m_internalFormat = GL_RGBA;
+        m_format = GL_BGRA;
+        if (m_contextAttributes.isGLES2Compliant) {
+            if (m_contextAttributes.supportsBGRA8888)
+                m_internalFormat = GL_BGRA;
             else
-                m_format = GraphicsContext3D::RGBA;
+                m_format = GL_RGBA;
         }
     }
 }
@@ -92,59 +90,51 @@ static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 
     }
 }
 
-static bool driverSupportsSubImage(GraphicsContext3D* context)
-{
-    if (context->isGLES2Compliant()) {
-        static bool supportsSubImage = context->getExtensions().supports("GL_EXT_unpack_subimage");
-        return supportsSubImage;
-    }
-
-    return true;
-}
-
 void BitmapTextureGL::didReset()
 {
     if (!m_id)
-        m_id = m_context3D->createTexture();
+        glGenTextures(1, &m_id);
 
     m_shouldClear = true;
     if (m_textureSize == contentSize())
         return;
 
     m_textureSize = contentSize();
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
-    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MIN_FILTER, GraphicsContext3D::LINEAR);
-    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MAG_FILTER, GraphicsContext3D::LINEAR);
-    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::CLAMP_TO_EDGE);
-    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, m_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    m_context3D->texImage2DDirect(GraphicsContext3D::TEXTURE_2D, 0, m_internalFormat, m_textureSize.width(), m_textureSize.height(), 0, m_format, m_type, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, m_internalFormat, m_textureSize.width(), m_textureSize.height(), 0, m_format, m_type, 0);
 }
 
-void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, Platform3DObject glFormat)
+void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, GLuint glFormat)
 {
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
     // For ES drivers that don't support sub-images.
-    if (driverSupportsSubImage(m_context3D.get())) {
+    bool contextSupportsUnpackSubimage = m_contextAttributes.supportsUnpackSubimage;
+
+    glBindTexture(GL_TEXTURE_2D, m_id);
+
+    if (contextSupportsUnpackSubimage) {
         // Use the OpenGL sub-image extension, now that we know it's available.
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_SKIP_ROWS, sourceOffset.y());
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_SKIP_PIXELS, sourceOffset.x());
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
+        glPixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y());
+        glPixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
     }
 
-    m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, m_type, srcData);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, m_type, srcData);
 
-    // For ES drivers that don't support sub-images.
-    if (driverSupportsSubImage(m_context3D.get())) {
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_ROW_LENGTH, 0);
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_SKIP_ROWS, 0);
-        m_context3D->pixelStorei(GraphicsContext3D::UNPACK_SKIP_PIXELS, 0);
+    if (contextSupportsUnpackSubimage) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     }
 }
 
 void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag updateContentsFlag)
 {
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
+    glBindTexture(GL_TEXTURE_2D, m_id);
 
     const unsigned bytesPerPixel = 4;
     char* data = reinterpret_cast<char*>(const_cast<void*>(srcData));
@@ -152,11 +142,11 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
     IntPoint adjustedSourceOffset = sourceOffset;
 
     // Texture upload requires subimage buffer if driver doesn't support subimage and we don't have full image upload.
-    bool requireSubImageBuffer = !driverSupportsSubImage(m_context3D.get())
+    bool requireSubImageBuffer = !m_contextAttributes.supportsUnpackSubimage
         && !(bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && adjustedSourceOffset == IntPoint::zero());
 
     // prepare temporaryData if necessary
-    if ((m_format == GraphicsContext3D::RGBA && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
+    if ((m_format == GL_RGBA && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
         temporaryData.resize(targetRect.width() * targetRect.height() * bytesPerPixel);
         data = temporaryData.data();
         const char* bits = static_cast<const char*>(srcData);
@@ -173,7 +163,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
         adjustedSourceOffset = IntPoint(0, 0);
     }
 
-    if (m_format == GraphicsContext3D::RGBA)
+    if (m_format == GL_RGBA)
         swizzleBGRAToRGBA(reinterpret_cast_ptr<uint32_t*>(data), IntRect(adjustedSourceOffset, targetRect.size()), bytesPerLine / bytesPerPixel);
 
     updateContentsNoSwizzle(data, targetRect, adjustedSourceOffset, bytesPerLine, bytesPerPixel, m_format);
@@ -269,13 +259,13 @@ void BitmapTextureGL::initializeStencil()
     if (m_rbo)
         return;
 
-    m_rbo = m_context3D->createRenderbuffer();
-    m_context3D->bindRenderbuffer(GraphicsContext3D::RENDERBUFFER, m_rbo);
-    m_context3D->renderbufferStorage(GraphicsContext3D::RENDERBUFFER, GraphicsContext3D::STENCIL_INDEX8, m_textureSize.width(), m_textureSize.height());
-    m_context3D->bindRenderbuffer(GraphicsContext3D::RENDERBUFFER, 0);
-    m_context3D->framebufferRenderbuffer(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::STENCIL_ATTACHMENT, GraphicsContext3D::RENDERBUFFER, m_rbo);
-    m_context3D->clearStencil(0);
-    m_context3D->clear(GraphicsContext3D::STENCIL_BUFFER_BIT);
+    glGenRenderbuffers(1, &m_rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, m_textureSize.width(), m_textureSize.height());
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_rbo);
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
 }
 
 void BitmapTextureGL::initializeDepthBuffer()
@@ -283,11 +273,11 @@ void BitmapTextureGL::initializeDepthBuffer()
     if (m_depthBufferObject)
         return;
 
-    m_depthBufferObject = m_context3D->createRenderbuffer();
-    m_context3D->bindRenderbuffer(GraphicsContext3D::RENDERBUFFER, m_depthBufferObject);
-    m_context3D->renderbufferStorage(GraphicsContext3D::RENDERBUFFER, GraphicsContext3D::DEPTH_COMPONENT16, m_textureSize.width(), m_textureSize.height());
-    m_context3D->bindRenderbuffer(GraphicsContext3D::RENDERBUFFER, 0);
-    m_context3D->framebufferRenderbuffer(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::DEPTH_ATTACHMENT, GraphicsContext3D::RENDERBUFFER, m_depthBufferObject);
+    glGenRenderbuffers(1, &m_depthBufferObject);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_depthBufferObject);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, m_textureSize.width(), m_textureSize.height());
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBufferObject);
 }
 
 void BitmapTextureGL::clearIfNeeded()
@@ -296,9 +286,9 @@ void BitmapTextureGL::clearIfNeeded()
         return;
 
     m_clipStack.reset(IntRect(IntPoint::zero(), m_textureSize), ClipStack::YAxisMode::Default);
-    m_clipStack.applyIfNeeded(*m_context3D);
-    m_context3D->clearColor(0, 0, 0, 0);
-    m_context3D->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
+    m_clipStack.applyIfNeeded();
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
     m_shouldClear = false;
 }
 
@@ -307,35 +297,35 @@ void BitmapTextureGL::createFboIfNeeded()
     if (m_fbo)
         return;
 
-    m_fbo = m_context3D->createFramebuffer();
-    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
-    m_context3D->framebufferTexture2D(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::COLOR_ATTACHMENT0, GraphicsContext3D::TEXTURE_2D, id(), 0);
+    glGenFramebuffers(1, &m_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id(), 0);
     m_shouldClear = true;
 }
 
-void BitmapTextureGL::bindAsSurface(GraphicsContext3D* context3D)
+void BitmapTextureGL::bindAsSurface()
 {
-    context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     createFboIfNeeded();
-    context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
-    context3D->viewport(0, 0, m_textureSize.width(), m_textureSize.height());
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glViewport(0, 0, m_textureSize.width(), m_textureSize.height());
     clearIfNeeded();
-    m_clipStack.apply(*m_context3D);
+    m_clipStack.apply();
 }
 
 BitmapTextureGL::~BitmapTextureGL()
 {
     if (m_id)
-        m_context3D->deleteTexture(m_id);
+        glDeleteTextures(1, &m_id);
 
     if (m_fbo)
-        m_context3D->deleteFramebuffer(m_fbo);
+        glDeleteFramebuffers(1, &m_fbo);
 
     if (m_rbo)
-        m_context3D->deleteRenderbuffer(m_rbo);
+        glDeleteRenderbuffers(1, &m_rbo);
 
     if (m_depthBufferObject)
-        m_context3D->deleteRenderbuffer(m_depthBufferObject);
+        glDeleteRenderbuffers(1, &m_depthBufferObject);
 }
 
 bool BitmapTextureGL::isValid() const
@@ -348,31 +338,32 @@ IntSize BitmapTextureGL::size() const
     return m_textureSize;
 }
 
-void BitmapTextureGL::copyFromExternalTexture(Platform3DObject sourceTextureID)
+void BitmapTextureGL::copyFromExternalTexture(GLuint sourceTextureID)
 {
-    GC3Dint boundTexture = 0;
-    GC3Dint boundFramebuffer = 0;
-    GC3Dint boundActiveTexture = 0;
+    GLint boundTexture = 0;
+    GLint boundFramebuffer = 0;
+    GLint boundActiveTexture = 0;
 
-    m_context3D->getIntegerv(GraphicsContext3D::TEXTURE_BINDING_2D, &boundTexture);
-    m_context3D->getIntegerv(GraphicsContext3D::FRAMEBUFFER_BINDING, &boundFramebuffer);
-    m_context3D->getIntegerv(GraphicsContext3D::ACTIVE_TEXTURE, &boundActiveTexture);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTexture);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFramebuffer);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &boundActiveTexture);
 
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, sourceTextureID);
+    glBindTexture(GL_TEXTURE_2D, sourceTextureID);
 
-    Platform3DObject copyFbo = m_context3D->createFramebuffer();
-    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, copyFbo);
-    m_context3D->framebufferTexture2D(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::COLOR_ATTACHMENT0, GraphicsContext3D::TEXTURE_2D, sourceTextureID, 0);
+    GLuint copyFbo = 0;
+    glGenFramebuffers(1, &copyFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, copyFbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sourceTextureID, 0);
 
-    m_context3D->activeTexture(GraphicsContext3D::TEXTURE0);
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, id());
-    m_context3D->copyTexSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, 0, 0, 0, 0, m_textureSize.width(), m_textureSize.height());
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, id());
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, m_textureSize.width(), m_textureSize.height());
 
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, boundTexture);
-    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, boundFramebuffer);
-    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, boundTexture);
-    m_context3D->activeTexture(boundActiveTexture);
-    m_context3D->deleteFramebuffer(copyFbo);
+    glBindTexture(GL_TEXTURE_2D, boundTexture);
+    glBindFramebuffer(GL_FRAMEBUFFER, boundFramebuffer);
+    glBindTexture(GL_TEXTURE_2D, boundTexture);
+    glActiveTexture(boundActiveTexture);
+    glDeleteFramebuffers(1, &copyFbo);
 }
 
 }; // namespace WebCore

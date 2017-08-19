@@ -121,6 +121,7 @@ svg/custom/svg-allowed-in-dashboard-object.html [ Skip ]
 fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 
 # TODO Drag & Drop doesn't work correctly in DRT <rdar://5621244>
+editing/pasteboard/datatransfer-items-drop-plaintext-file.html
 fast/events/drop-handler-should-not-stop-navigate.html [ Skip ]
 fast/events/drag-in-frames.html [ Skip ]
 fast/events/drag-to-navigate.html [ Skip ]
@@ -256,10 +257,6 @@ http/tests/security/cross-origin-indexeddb.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-non-exportable.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-private.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 
@@ -531,10 +528,6 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Skip ]
 pointer-lock/ [ Skip ]
 http/tests/pointer-lock/ [ Skip ]
 
-# Proximity Events is not supported.
-proximity/ [ Skip ]
-fast/events/constructors/device-proximity-event-constructor.html
-
 # TODO Fail until SUBPIXEL_LAYOUT is enabled
 webkit.org/b/85532 fast/sub-pixel [ Skip ]
 
@@ -585,7 +578,6 @@ webkit.org/b/98696 plugins/snapshotting [ Skip ]
 webkit.org/b/116559 storage/websql/ [ Skip ]
 
 # TODO crypto.subtle is not yet enabled
-crypto/webkitSubtle/ [ Skip ]
 crypto/subtle/ [ Skip ]
 crypto/workers/subtle/ [ Skip ]
 
@@ -804,14 +796,6 @@ webkit.org/b/29047 media/audio-delete-while-step-button-clicked.html [ Skip ]
 webkit.org/b/33954 http/tests/media/video-cookie.html [ Skip ]
 #webkit.org/b/34447 [ Release ] http/tests/media/video-referer.html [ Failure ]
 webkit.org/b/34447 [ Debug ] http/tests/media/video-referer.html [ Skip ] # Crashing
-
-# DumpRenderTree requires testRunner.setViewModeMediaFeature()
-#fast/media/view-mode-media-feature.html [ ImageOnlyFailure ]
-#fast/media/media-query-list-02.html [ Failure ]
-#fast/media/media-query-list-03.html [ Failure ]
-#fast/media/media-query-list-04.html [ Failure ]
-#fast/media/media-query-list-05.html [ Failure ]
-#fast/media/media-query-list-06.html [ Failure ]
 
 webkit.org/b/38376 media/media-document-audio-size.html [ Skip ]
 
@@ -1060,7 +1044,6 @@ media/track/track-cues-missed.html [ Skip ] # Timeout
 media/track/track-cues-pause-on-exit.html [ Skip ] # Timeout
 media/track/track-cues-seeking.html [ Skip ] # Timeout
 media/track/track-cues-sorted-before-dispatch.html [ Skip ] # Timeout
-media/track/track-datacue.html [ Skip ] # Timeout
 media/track/track-forced-subtitles-in-band.html [ Skip ] # Timeout
 media/track/track-in-band-style.html [ Skip ] # Timeout
 media/track/track-language-preference.html [ Skip ] # Timeout
@@ -1916,6 +1899,7 @@ inspector/canvas/resolveCanvasContext-webgl.html [ Skip ]
 inspector/canvas/resolveCanvasContext-webgl2.html [ Skip ]
 inspector/canvas/shaderProgram-add-remove-webgl.html [ Skip ]
 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Skip ]
+inspector/canvas/updateShader.html [ Skip ]
 ################################################################################
 #################          End WebGL Issues              #######################
 ################################################################################
@@ -4046,6 +4030,12 @@ svg/animations/animated-svg-image-outside-viewport-paused.html [ Skip ]
 # This test requires Skia, which isn't available on Windows.
 webkit.org/b/174079 fast/text/variations/skia-postscript-name.html [ ImageOnlyFailure ]
 
+# Beacon is not supported on WK1.
+http/tests/blink/sendbeacon/ [ Skip ]
+http/wpt/beacon/ [ Skip ]
+imported/blink/fast/beacon/ [ Skip ]
+imported/w3c/web-platform-tests/beacon/ [ Skip ]
+
 # Async image tests are currently failing on Windows.
 webkit.org/b/174653 fast/images/async-image-background-image-repeated.html [ Timeout ]
 webkit.org/b/174653 fast/images/async-image-background-image.html [ Timeout ]
@@ -4065,3 +4055,4 @@ imported/w3c/web-platform-tests/cors/simple-requests.htm [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/basic/accept-header.any.html [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Slow ]
 
+http/tests/workers/service [ Skip ]

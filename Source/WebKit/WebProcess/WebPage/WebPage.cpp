@@ -68,6 +68,7 @@
 #include "WebAlternativeTextClient.h"
 #include "WebBackForwardListItem.h"
 #include "WebBackForwardListProxy.h"
+#include "WebCacheStorageProvider.h"
 #include "WebChromeClient.h"
 #include "WebColorChooser.h"
 #include "WebContextMenu.h"
@@ -176,7 +177,6 @@
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SerializedScriptValue.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/Settings.h>
 #include <WebCore/ShadowRoot.h>
 #include <WebCore/SharedBuffer.h>
@@ -192,6 +192,7 @@
 #include <WebCore/WebGLStateTracker.h>
 #include <WebCore/markup.h>
 #include <bindings/ScriptValue.h>
+#include <pal/SessionID.h>
 #include <profiler/ProfilerDatabase.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
@@ -212,10 +213,6 @@
 #include <WebCore/PointerLockController.h>
 #endif
 
-#if ENABLE(PROXIMITY_EVENTS)
-#include "WebDeviceProximityClient.h"
-#endif
-
 #if PLATFORM(COCOA)
 #include "PDFPlugin.h"
 #include "PlaybackSessionManager.h"
@@ -234,8 +231,8 @@
 #if PLATFORM(IOS)
 #include "RemoteLayerTreeDrawingArea.h"
 #include <CoreGraphics/CoreGraphics.h>
-#include <WebCore/CoreTextSPI.h>
 #include <WebCore/Icon.h>
+#include <pal/spi/cocoa/CoreTextSPI.h>
 #endif
 
 #ifndef NDEBUG
@@ -371,7 +368,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     PageConfiguration pageConfiguration(
         makeUniqueRef<WebEditorClient>(this),
         WebSocketProvider::create(),
-        makeUniqueRef<WebKit::LibWebRTCProvider>()
+        makeUniqueRef<WebKit::LibWebRTCProvider>(),
+        WebProcess::singleton().cacheStorageProvider()
     );
     pageConfiguration.chromeClient = new WebChromeClient(*this);
 #if ENABLE(CONTEXT_MENUS)
@@ -433,9 +431,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 #if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(m_page.get(), new WebNotificationClient(this));
-#endif
-#if ENABLE(PROXIMITY_EVENTS)
-    WebCore::provideDeviceProximityTo(m_page.get(), new WebDeviceProximityClient(this));
 #endif
 #if ENABLE(MEDIA_STREAM)
     WebCore::provideUserMediaTo(m_page.get(), new WebUserMediaClient(*this));
@@ -673,6 +668,9 @@ WebPage::~WebPage()
 #endif
     
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    if (m_playbackSessionManager)
+        m_playbackSessionManager->invalidate();
+
     if (m_videoFullscreenManager)
         m_videoFullscreenManager->invalidate();
 #endif
@@ -2726,7 +2724,7 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
         pluginView->setLayerHostingMode(m_layerHostingMode);
 }
 
-void WebPage::setSessionID(SessionID sessionID)
+void WebPage::setSessionID(PAL::SessionID sessionID)
 {
     if (sessionID.isEphemeral())
         WebProcess::singleton().ensurePrivateBrowsingSession(sessionID);
@@ -3061,9 +3059,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setFrameFlattening(static_cast<WebCore::FrameFlattening>(store.getUInt32ValueForKey(WebPreferencesKey::frameFlatteningKey())));
     settings.setAsyncFrameScrollingEnabled(store.getBoolValueForKey(WebPreferencesKey::asyncFrameScrollingEnabledKey()));
     if (store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && !usesEphemeralSession())
-        setSessionID(SessionID::legacyPrivateSessionID());
-    else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
-        setSessionID(SessionID::defaultSessionID());
+        setSessionID(PAL::SessionID::legacyPrivateSessionID());
+    else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == PAL::SessionID::legacyPrivateSessionID())
+        setSessionID(PAL::SessionID::defaultSessionID());
     settings.setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
     settings.setJavaScriptRuntimeFlags(RuntimeFlags(store.getUInt32ValueForKey(WebPreferencesKey::javaScriptRuntimeFlagsKey())));
     settings.setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
@@ -3326,8 +3324,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     // Experimental Features.
 
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::cssGridLayoutEnabledKey()));
-
+    
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(store.getBoolValueForKey(WebPreferencesKey::customElementsEnabledKey()));
+
+    RuntimeEnabledFeatures::sharedFeatures().setDataTransferItemsEnabled(store.getBoolValueForKey(WebPreferencesKey::dataTransferItemsEnabledKey()));
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
@@ -3373,7 +3373,14 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     }
 
     settings.setSubresourceIntegrityEnabled(store.getBoolValueForKey(WebPreferencesKey::subresourceIntegrityEnabledKey()));
+
+#if ENABLE(BEACON_API)
     settings.setBeaconAPIEnabled(store.getBoolValueForKey(WebPreferencesKey::beaconAPIEnabledKey()));
+#endif
+
+#if ENABLE(PAYMENT_REQUEST)
+    settings.setPaymentRequestEnabled(store.getBoolValueForKey(WebPreferencesKey::paymentRequestEnabledKey()));
+#endif
 
     settings.setAllowScriptsToCloseWindows(store.getBoolValueForKey(WebPreferencesKey::allowScriptsToCloseWindowsKey()));
 
@@ -3396,6 +3403,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(store.getBoolValueForKey(WebPreferencesKey::legacyEncryptedMediaAPIEnabledKey()));
 #endif
+
+    RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(store.getBoolValueForKey(WebPreferencesKey::inspectorAdditionsEnabledKey()));
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -4679,7 +4688,7 @@ void WebPage::setCompositionForTesting(const String& compositionString, uint64_t
         return;
 
     Vector<CompositionUnderline> underlines;
-    underlines.append(CompositionUnderline(0, compositionString.length(), Color(Color::black), false));
+    underlines.append(CompositionUnderline(0, compositionString.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
     frame.editor().setComposition(compositionString, underlines, from, from + length);
 }
 
@@ -5713,7 +5722,7 @@ void WebPage::updateCachedDocumentLoader(WebDocumentLoader& documentLoader, Fram
 
 void WebPage::getBytecodeProfile(CallbackID callbackID)
 {
-    if (!commonVM().m_perBytecodeProfiler) {
+    if (LIKELY(!commonVM().m_perBytecodeProfiler)) {
         send(Messages::WebPageProxy::StringCallback(String(), callbackID));
         return;
     }

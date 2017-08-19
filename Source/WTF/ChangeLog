@@ -1,3 +1,545 @@
+2017-08-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220938.
+
+        The API tests added with this change are failing.
+
+        Reverted changeset:
+
+        "Add WTFLogChannel level to allow runtime log filtering"
+        https://bugs.webkit.org/show_bug.cgi?id=175731
+        http://trac.webkit.org/changeset/220938
+
+2017-08-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Add WTFLogChannel level to allow runtime log filtering
+        https://bugs.webkit.org/show_bug.cgi?id=175731
+        <rdar://problem/33967234>
+
+        Reviewed by Jer Noble.
+        
+        Add WTFLog*, LOG, and RELEASE_LOG variants that take a "log level" parameter so code
+        can include logging statements that are only conditionally emitted.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2017-08-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Implement 32-bit MacroAssembler::probe support for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=175449
+
+        Reviewed by Mark Lam.
+
+        Enable the DFG on Win32. 
+
+        * wtf/Platform.h:
+
+2017-08-17  Mark Lam  <mark.lam@apple.com>
+
+        Only use 16 VFP registers if !CPU(ARM_NEON).
+        https://bugs.webkit.org/show_bug.cgi?id=175514
+
+        Reviewed by JF Bastien.
+
+        If CPU(ARM_NEON) is not enabled, we'll conservatively assume only VFP2 support is
+        available. Hence, we'll only the first 16 FPDoubleRegisterIDs are available.
+
+        For reference, see:
+        NEON registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJACABEJ.html
+        VFP2 and VFP3 registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CIHDIBDG.html
+        NEON to VFP register mapping: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJAIJHFC.html
+
+        This is mostly for GTK toolchains which may target older ARM CPUs which only have
+        VFP2 support.
+
+        * wtf/Platform.h:
+
+2017-08-16  Mark Lam  <mark.lam@apple.com>
+
+        Add back the ability to disable MASM_PROBE from the build.
+        https://bugs.webkit.org/show_bug.cgi?id=175656
+        <rdar://problem/33933720>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Platform.h:
+
+2017-08-16  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix GTK ARM_THUMB2 build.
+        https://bugs.webkit.org/show_bug.cgi?id=175446
+
+        Not reviewed.
+
+        Disable the use of the DFG for GTK ARM_THUMB2 builds until
+        https://bugs.webkit.org/show_bug.cgi?id=175514 is fixed.
+
+        * wtf/Platform.h:
+
+2017-08-16  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Add an ENABLE flag and an experimental feature preference
+        https://bugs.webkit.org/show_bug.cgi?id=175622
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove Proximity Events and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175545
+
+        Reviewed by Daniel Bates.
+
+        No platform enables Proximity Events, so remove code inside ENABLE(PROXIMITY_EVENTS)
+        and other related code.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE(REQUEST_AUTOCOMPLETE) code, which was disabled everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=175504
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ENABLE_VIEW_MODE_CSS_MEDIA and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175557
+
+        Reviewed by Jon Lee.
+
+        No port cares about the ENABLE(VIEW_MODE_CSS_MEDIA) feature, so remove it.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Put the ScopedArgumentsTable's ScopeOffset array in some gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174921
+
+        Reviewed by Mark Lam.
+        
+        If you want to std::unique_ptr a class that knows that it should be in the Gigacage, then we
+        would create the Gigacage equivalent of WTF_MAKE_FAST_ALLOCATED and it would just work.
+        
+        But this does not work if we want to std::unique_ptr a primitive type. So, this patch adds a
+        solution for this problem: CagedUniquePtr<>. This will handle allocation
+        (CagedUniquePtr<>::create()) and deallocation (in the style of std::unique_ptr). It has three
+        variants:
+        
+        - Non-array types.
+        - Arrays that don't have destructors.
+        - Arrays that have destructors.
+        
+        Just like std::unique_ptr, the array case is triggered by saying "[]" at the end of the type.
+        
+        Unlike std::unique_ptr and most other smart pointers, the whole point of this smart pointer is
+        to dictate where the thing you're pointing at is allocated. For this reason, it has to know how
+        to do things like the array destructor protocol. So it creates its own: the CagedUniquePtr for
+        arrays with destructors is a fat pointer that remembers the length of the array.
+        
+        CagedUniquePtr<> makes it impossible to leak/release the pointer. This is stricter than what
+        std::unique_ptr does, and is probably appropriate for all of the places where we would use this
+        type.
+        
+        So far, we only use it for ScopedArgumentsTable::m_arguments, but I suspect that it will be
+        useful in other places.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CagedUniquePtr.h: Added.
+        (WTF::CagedUniquePtr::CagedUniquePtr):
+        (WTF::CagedUniquePtr::create):
+        (WTF::CagedUniquePtr::operator=):
+        (WTF::CagedUniquePtr::~CagedUniquePtr):
+        (WTF::CagedUniquePtr::get const):
+        (WTF::CagedUniquePtr::getMayBeNull const):
+        (WTF::CagedUniquePtr::operator== const):
+        (WTF::CagedUniquePtr::operator!= const):
+        (WTF::CagedUniquePtr::operator bool const):
+        (WTF::CagedUniquePtr::operator* const):
+        (WTF::CagedUniquePtr::operator-> const):
+        (WTF::CagedUniquePtr::operator[] const):
+        (WTF::CagedUniquePtr::destroy):
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryMallocArray):
+        (Gigacage::malloc):
+        (Gigacage::mallocArray):
+        * wtf/Gigacage.h:
+
+2017-08-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace DATA_TRANSFER_ITEMS by a runtime flag and add a stub implementation
+        https://bugs.webkit.org/show_bug.cgi?id=175474
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-11  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move ValueToString into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=175469
+
+        Reviewed by Sam Weinig.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/ValueToString.h: Renamed from Source/WebCore/platform/ValueToString.h.
+
+2017-08-11  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build with modern Clang's -Wexpansion-to-defined
+        https://bugs.webkit.org/show_bug.cgi?id=175467
+        <rdar://problem/33667497>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+        Avoid object-like macros that expand to include defined(), because this
+        behaves inconsistently between different compilers (though in ways
+        that don't matter for these particular defines, which aren't used on MSVC),
+        and Clang has added a warning for it.
+
+        Move ENABLE_WEBASSEMBLY to Platform.h since it depends on things that
+        are defined there and can't be evaluated at time-of-use because of the
+        aforementioned new rules. Previously, there was a cycle between
+        ENABLE_WEBASSEMBLY and ENABLE_B3_JIT -- break that so that it just
+        goes FTL_JIT->B3_JIT->WASM instead.
+
+2017-08-10  Sam Weinig  <sam@webkit.org>
+
+        WTF::Function does not allow for reference / non-default constructible return types
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+
+        Reviewed by Chris Dumez.
+
+        When Function, then NoncopyableFunction, was templatized to allow non-void return values
+        in r201493, it maintained the behavior of being callable even if the Function was null.
+        To accomplish this, when null, the default construction of the return parameter was used.
+        This means Function can't be used with return types that are not default constructible,
+        such as reference types and Ref.
+
+        This behavior of returning something when null is surprising, as this is not how normal
+        functions behave, and not very useful. Instead, we now assert that the function is not
+        null when being called.
+
+        * wtf/Function.h:
+        (WTF::Function operator(...)):
+        Instead of allowing a null callable wrapper by returning the default construction of
+        the return type, assert that the wrapper is there when calling a Function.
+
+2017-08-10  Mark Lam  <mark.lam@apple.com>
+
+        Make the MASM_PROBE mechanism mandatory for DFG and FTL builds.
+        https://bugs.webkit.org/show_bug.cgi?id=175446
+        <rdar://problem/33836545>
+
+        Reviewed by Saam Barati.
+
+        This is needed in order to support https://bugs.webkit.org/show_bug.cgi?id=174645.
+        One consequence of this is that the DFG will now be disabled for the MIPS and
+        Windows ports. See:
+            https://bugs.webkit.org/show_bug.cgi?id=175447
+            https://bugs.webkit.org/show_bug.cgi?id=175449
+
+        Also, we should only ENABLE_SIGNAL_BASED_VM_TRAPS if the DFG is enabled.  It was
+        never meaningful to use SIGNAL_BASED_VM_TRAPS with the baseline JIT anyway.  This
+        is a mis-configuration error that is now fixed.
+
+        * wtf/Platform.h:
+
+2017-08-10  Brady Eidson  <beidson@apple.com>
+
+        Rename the source files for the WTF persistent coders.
+        https://bugs.webkit.org/show_bug.cgi?id=175441
+
+        Reviewed by Tim Horton.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+
+        * wtf/persistence/PersistentCoder.h: Renamed from Source/WTF/wtf/persistence/Coder.h.
+        * wtf/persistence/PersistentCoders.cpp: Renamed from Source/WTF/wtf/persistence/Coders.cpp.
+        * wtf/persistence/PersistentCoders.h: Renamed from Source/WTF/wtf/persistence/Coders.h.
+        * wtf/persistence/PersistentDecoder.cpp: Renamed from Source/WTF/wtf/persistence/Decoder.cpp.
+        * wtf/persistence/PersistentDecoder.h: Renamed from Source/WTF/wtf/persistence/Decoder.h.
+        * wtf/persistence/PersistentEncoder.cpp: Renamed from Source/WTF/wtf/persistence/Encoder.cpp.
+        * wtf/persistence/PersistentEncoder.h: Renamed from Source/WTF/wtf/persistence/Encoder.h.
+
+2017-08-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix build failure with VC2017
+
+        * wtf/PriorityQueue.h:
+
+2017-08-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Run more WTF tests
+        https://bugs.webkit.org/show_bug.cgi?id=174970
+
+        Reviewed by Michael Catanzaro.
+
+        CHAR_BIT is not defined.
+
+        * wtf/LEBDecoder.h:
+
+2017-08-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] ThreadSpecific should not introduce additional indirection
+        https://bugs.webkit.org/show_bug.cgi?id=175187
+
+        Reviewed by Mark Lam.
+
+        ThreadSpecific sets Data* to the TLS. And Data holds T*, which
+        is fast allocated actual data. But ideally, we should store T
+        instance directly in Data instead of introducing an additional
+        indirection.
+
+        This patch adds storage in Data in order to embed the instance of T. The constructor
+        for Data will invoke the constructor for T on the embedded storage. We also drop
+        ThreadSpecific::replace which is only used by the web thread to set its thread specific
+        ThreadGlobalData to the one shared from the main thread. The existing implementation
+        relies on the main thread and the web thread never exiting in order for the shared
+        ThreadGlobalData to stay alive. We can achieve the same semantics by using a
+        ThreadSpecific<std::unique_ptr<T>> to hold the ThreadGlobalData instance instead.
+
+        * wtf/ThreadSpecific.h:
+        (WTF::ThreadSpecific::Data::construct):
+        (WTF::ThreadSpecific::Data::Data):
+        We make it fast allocated since we previously allocated ThreadSpecific T data by fastMalloc.
+
+        (WTF::ThreadSpecific::Data::~Data):
+        (WTF::ThreadSpecific::Data::storagePointer const):
+        (WTF::canBeGCThread>::get):
+        We also drop RELEASE_ASSERT from ::get(). We already inserted this assert to setAndConstruct(),
+        so when creating the member to this TLS, we execute this release assert. So it is
+        not necessary to execute this assertion every time we get data from this TLS.
+
+        (WTF::canBeGCThread>::set):
+        (WTF::canBeGCThread>::destroy):
+        (WTF::canBeGCThread>::setAndConstruct):
+        (WTF::T):
+        (WTF::canBeGCThread>::replace): Deleted.
+
+2017-08-10  Tim Horton  <timothy_horton@apple.com>
+
+        Fix a silly typo in Compiler.h
+
+        * wtf/Compiler.h:
+        Heature, indeed.
+
+2017-08-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove ENABLE_GAMEPAD_DEPRECATED
+        https://bugs.webkit.org/show_bug.cgi?id=175361
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h:
+
+2017-08-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move TextStream into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=175211
+
+        Reviewed by Myles C. Maxfield.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/TextStream.cpp: Renamed from Source/WebCore/platform/text/TextStream.cpp.
+        (WTF::TextStream::writeIndent):
+        * wtf/text/TextStream.h: Renamed from Source/WebCore/platform/text/TextStream.h.
+        (WTF::TextStream::FormatNumberRespectingIntegers::FormatNumberRespectingIntegers):
+
+2017-08-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r220466, r220477, and r220487.
+        https://bugs.webkit.org/show_bug.cgi?id=175411
+
+        This change broke existing API tests and follow up fixes did
+        not resolve all the issues. (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changesets:
+
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+        http://trac.webkit.org/changeset/220466
+
+        "WTF::Function does not allow for reference / non-default
+        constructible return types"
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+        http://trac.webkit.org/changeset/220477
+
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+        http://trac.webkit.org/changeset/220487
+
+2017-08-09  Sam Weinig  <sam@webkit.org>
+
+        WTF::Function does not allow for reference / non-default constructible return types
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+
+        Reviewed by Chris Dumez.
+
+        When Function, then NoncopyableFunction, was templatized to allow non-void return values
+        in r201493, it maintained the behavior of being callable even if the Function was null.
+        To accomplish this, when null, the default construction of the return parameter was used.
+        This means Function can't be used with return types that are not default constructible,
+        such as reference types and Ref.
+
+        This behavior of returning something when null is surprising, as this is not how normal
+        functions behave, and not very useful. Instead, we now assert that the function is not
+        null when being called.
+
+        * wtf/Function.h:
+        (WTF::Function operator(...)):
+        Instead of allowing a null callable wrapper by returning the default construction of
+        the return type, assert that the wrapper is there when calling a Function.
+
+2017-08-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220457.
+
+        This change introduced API test failures.
+
+        Reverted changeset:
+
+        "WTF::Function does not allow for reference / non-default
+        constructible return types"
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+        http://trac.webkit.org/changeset/220457
+
+2017-08-09  Sam Weinig  <sam@webkit.org>
+
+        WTF::Function does not allow for reference / non-default constructible return types
+        https://bugs.webkit.org/show_bug.cgi?id=175244
+
+        Reviewed by Chris Dumez.
+
+        When Function, then NoncopyableFunction, was templatized to allow non-void return values
+        in r201493, it maintained the behavior of being callable even if the Function was null.
+        To accomplish this, when null, the default construction of the return parameter was used.
+        This means Function can't be used with return types that are not default constructible,
+        such as reference types and Ref.
+
+        This behavior of returning something when null is surprising, as this is not how normal
+        functions behave, and not very useful. Instead, we now assert that the function is not
+        null when being called.
+
+        * wtf/Function.h:
+        (WTF::Function operator(...)):
+        Instead of allowing a null callable wrapper by returning the default construction of
+        the return type, assert that the wrapper is there when calling a Function.
+
+2017-08-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should do caging
+        https://bugs.webkit.org/show_bug.cgi?id=175037
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.h:
+        (Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled):
+        (Gigacage::isDisablingPrimitiveGigacageDisabled):
+        (Gigacage::isPrimitiveGigacagePermanentlyEnabled):
+        (Gigacage::canPrimitiveGigacageBeDisabled):
+        (Gigacage::basePtr):
+
+2017-08-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220368.
+
+        This change caused WK1 tests to exit early with crashes.
+
+        Reverted changeset:
+
+        "Baseline JIT should do caging"
+        https://bugs.webkit.org/show_bug.cgi?id=175037
+        http://trac.webkit.org/changeset/220368
+
+2017-08-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Properly test if compiler supports compiler flags
+        https://bugs.webkit.org/show_bug.cgi?id=174490
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/Compiler.h:
+
+2017-08-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should do caging
+        https://bugs.webkit.org/show_bug.cgi?id=175037
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.h:
+        (Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled):
+        (Gigacage::isDisablingPrimitiveGigacageDisabled):
+        (Gigacage::isPrimitiveGigacagePermanentlyEnabled):
+        (Gigacage::canPrimitiveGigacageBeDisabled):
+
+2017-08-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, try to fix Windows build.
+
+        * wtf/Gigacage.cpp:
+        * wtf/Gigacage.h:
+
+2017-08-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Primitive auxiliaries and JSValue auxiliaries should have separate gigacages
+        https://bugs.webkit.org/show_bug.cgi?id=174919
+
+        Reviewed by Keith Miller.
+        
+        This mirrors the changes from bmalloc/Gigacage.h.
+        
+        Also it teaches CagedPtr how to reason about multiple gigacages.
+
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::operator[] const):
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryMalloc):
+        (Gigacage::tryAllocateVirtualPages):
+        (Gigacage::freeVirtualPages):
+        (Gigacage::tryAlignedMalloc):
+        (Gigacage::alignedFree):
+        (Gigacage::free):
+        * wtf/Gigacage.h:
+        (Gigacage::disablePrimitiveGigacage):
+        (Gigacage::addPrimitiveDisableCallback):
+        (Gigacage::removePrimitiveDisableCallback):
+        (Gigacage::name):
+        (Gigacage::basePtr):
+        (Gigacage::caged):
+        (Gigacage::isCaged):
+        (Gigacage::tryAlignedMalloc):
+        (Gigacage::alignedFree):
+        (Gigacage::free):
+        (Gigacage::disableGigacage): Deleted.
+        (Gigacage::addDisableCallback): Deleted.
+        (Gigacage::removeDisableCallback): Deleted.
+
+2017-08-07  Brian Burg  <bburg@apple.com>
+
+        Remove CANVAS_PATH compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=175207
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
 2017-08-05  Filip Pizlo  <fpizlo@apple.com>
 
         REGRESSION (r219895-219897): Number of leaks on Open Source went from 9240 to 235983 and is now at 302372

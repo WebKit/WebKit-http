@@ -139,7 +139,8 @@ bool CompositingCoordinator::flushPendingLayerChanges()
         m_client.commitSceneState(m_state);
 
         if (!m_atlasesToRemove.isEmpty())
-            m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
+            m_client.releaseUpdateAtlases(m_atlasesToRemove);
+        m_atlasesToRemove.clear();
 
         clearPendingStateChanges();
         m_shouldSyncFrame = false;
@@ -387,7 +388,7 @@ void CompositingCoordinator::purgeBackingStores()
 
 bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client& client)
 {
-    if (Extensions3DCache::singleton().GL_EXT_unpack_subimage()) {
+    if (Extensions3DCache::singleton().supportsUnpackSubimage()) {
         for (auto& updateAtlas : m_updateAtlases) {
             UpdateAtlas* atlas = updateAtlas.get();
             if (atlas->supportsAlpha() == (flags & CoordinatedSurface::SupportsAlpha)) {
@@ -445,7 +446,8 @@ void CompositingCoordinator::releaseAtlases(ReleaseAtlasPolicy policy)
         m_releaseInactiveAtlasesTimer.stop();
 
     if (!m_atlasesToRemove.isEmpty())
-        m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
+        m_client.releaseUpdateAtlases(m_atlasesToRemove);
+    m_atlasesToRemove.clear();
 }
 
 void CompositingCoordinator::clearUpdateAtlases()
@@ -457,7 +459,8 @@ void CompositingCoordinator::clearUpdateAtlases()
     m_updateAtlases.clear();
 
     if (!m_atlasesToRemove.isEmpty())
-        m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
+        m_client.releaseUpdateAtlases(m_atlasesToRemove);
+    m_atlasesToRemove.clear();
 }
 
 } // namespace WebKit

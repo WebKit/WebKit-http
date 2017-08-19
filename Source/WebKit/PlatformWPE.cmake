@@ -141,6 +141,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/wpe/WKView.cpp
     UIProcess/API/C/wpe/WKWebAutomation.cpp
 
+    UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp
     UIProcess/API/glib/IconDatabase.cpp
     UIProcess/API/glib/WebKitApplicationInfo.cpp
     UIProcess/API/glib/WebKitAuthenticationRequest.cpp
@@ -200,6 +201,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/ScrollGestureController.cpp
+    UIProcess/API/wpe/WebKitScriptDialogWPE.cpp
     UIProcess/API/wpe/WebKitWebViewWPE.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEWebAutomation.cpp

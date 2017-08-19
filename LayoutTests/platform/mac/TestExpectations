@@ -77,15 +77,6 @@ http/tests/plugins/plugin-document-has-focus.html
 # Requires testRunner.setMediaType() and implementation
 fast/media/print-restores-previous-mediatype.html
 
-# VIEW_MODE_CSS_MEDIA is not enabled on Mac.
-# DumpRenderTree requires testRunner.setViewModeMediaFeature()
-fast/media/view-mode-media-feature.html [ ImageOnlyFailure ]
-fast/media/media-query-list-02.html [ Failure ]
-fast/media/media-query-list-03.html [ Failure ]
-fast/media/media-query-list-04.html [ Failure Timeout ]
-fast/media/media-query-list-05.html [ Failure ]
-fast/media/media-query-list-06.html [ Failure ]
-
 # Needs testRunner.enableAutoResizeMode()
 fast/autoresize
 
@@ -278,10 +269,6 @@ webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure
 
 # <rdar://problem/11059777>
 webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
-
-# Proximity Events are not supported.
-proximity
-fast/events/constructors/device-proximity-event-constructor.html
 
 webkit.org/b/81410 scrollbars/scrollbar-middleclick-nopaste.html
 
@@ -813,9 +800,6 @@ http/tests/media/video-buffered.html [ WontFix ]
 ## --- Start unimplemented media tests ---
 webkit.org/b/91611 media/media-higher-prio-audio-stream.html [ Skip ]
 
-# WebKitDataCue is supported, not DataCue
-media/track/track-datacue.html [ Skip ]
-
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 ## --- End unimplemeted media tests ---
 
@@ -937,17 +921,17 @@ webkit.org/b/84357 media/audio-repaint.html [ Failure ]
 
 webkit.org/b/121992 media/media-volume-slider-rendered-below.html [ Failure ]
 webkit.org/b/121992 media/media-volume-slider-rendered-normal.html [ Timeout Failure ]
-webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Timeout Failure ]
-webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click.html [ Timeout Failure ]
-webkit.org/b/121995 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Timeout Failure ]
+webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Skip ]
+webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click.html [ Skip ]
+webkit.org/b/121995 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Skip ]
 
 # REGRESSION(r156546): 6 media tests broken (122021)
 webkit.org/b/122021 media/track/track-cue-mutable-text.html [ Pass Failure ]
 webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html [ Timeout ]
 webkit.org/b/122021 media/track/track-in-band-mode.html [ Failure ]
-webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Timeout ]
-webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
-webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
+webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Skip ]
+webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Skip ]
+webkit.org/b/116266 media/video-controls-toggling.html [ Skip ]
 
 webkit.org/b/163231 [ ElCapitan+ ] media/controls/airplay-picker.html [ Pass Failure ]
 
@@ -1129,12 +1113,10 @@ webkit.org/b/147763 [ Yosemite ] accessibility/mac/loaded-notification.html [ Sk
 [ Yosemite ElCapitan ] fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ Pass ImageOnlyFailure ]
 [ Yosemite ElCapitan ] fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
 
-# Started to fail after r188390
-webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
-
 # This test tests a particular system font, which is only on iOS and El Capitan.
 webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
 
+webkit.org/b/173931 inspector/canvas/context-attributes.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgpu.html [ Pass Timeout ]
 webkit.org/b/174272 inspector/canvas/css-canvas-clients.html [ Pass Timeout ]
@@ -1322,7 +1304,7 @@ webkit.org/b/158649 [ ElCapitan+ ] fast/text/chinese-font-name-aliases-2.html [ 
 webkit.org/b/159003 [ Sierra+ ] fast/text/font-cursive-italic-cjk.html [ Skip ]
 webkit.org/b/159003 [ Yosemite ElCapitan ] fast/text/font-cursive-italic-cjk-2.html [ ImageOnlyFailure ]
 
-webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure ]
+webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure Timeout ]
 
 [ Sierra+ ] fast/css/appearance-apple-pay-button.html [ Pass ]
 
@@ -1532,9 +1514,6 @@ webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-stream
 
 webkit.org/b/172469 [ ElCapitan ] imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Timeout ]
 
-# This test tests a feature that only exists on iOS.
-webkit.org/b/172737 fast/text/accessibility-bold-system-font-2.html [ ImageOnlyFailure ]
-
 # The modern-media-controls tests are disabled due to past flakiness and some major code changes.
 # As a result, a host of tests need to be updated and being turned on selectively here.
 media/modern-media-controls/airplay-button [ Pass ]
@@ -1624,4 +1603,20 @@ webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-
 webkit.org/b/173068 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
 
 webkit.org/b/174682 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
+
+webkit.org/b/175102 workers/wasm-hashset-many.html [ Skip ]
+webkit.org/b/175102 workers/wasm-hashset-many-2.html [ Skip ]
+
+webkit.org/b/175193 fast/images/async-image-body-background-image.html [ Pass Timeout ]
+
+webkit.org/b/170698 [ Release ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors.html [ Pass Failure ]
+
+# This test is specific to Core Text.
+fast/text/font-lookup-dot-prefix-case-sensitive.html [ Pass ]
+
+webkit.org/b/175592 fast/mediacapturefromelement/CanvasCaptureMediaStream-webgl-events.html [ Pass Timeout ]
+
+webkit.org/b/175700 media/video-controls-rendering.html [ Pass Failure ]
+
+webkit.org/b/173010 [ Debug ] js/slow-stress/Int32Array-alloc-huge.html [ Pass Timout ]
 

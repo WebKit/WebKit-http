@@ -84,6 +84,7 @@
 #include <WebCore/BString.h>
 #include <WebCore/BackForwardController.h>
 #include <WebCore/BitmapInfo.h>
+#include <WebCore/CacheStorageProvider.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuController.h>
@@ -3102,7 +3103,8 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     PageConfiguration configuration(
         makeUniqueRef<WebEditorClient>(this),
         SocketProvider::create(),
-        makeUniqueRef<LibWebRTCProvider>()
+        makeUniqueRef<LibWebRTCProvider>(),
+        WebCore::CacheStorageProvider::create()
     );
     configuration.backForwardClient = BackForwardList::create();
     configuration.chromeClient = new WebChromeClient(this);
@@ -7564,7 +7566,7 @@ HRESULT WebView::setCompositionForTesting(_In_ BSTR composition, UINT from, UINT
     String compositionStr = toString(composition);
 
     Vector<CompositionUnderline> underlines;
-    underlines.append(CompositionUnderline(0, compositionStr.length(), Color(Color::black), false));
+    underlines.append(CompositionUnderline(0, compositionStr.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
     frame.editor().setComposition(compositionStr, underlines, from, from + length);
 
     return S_OK;

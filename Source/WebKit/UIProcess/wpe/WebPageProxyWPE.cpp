@@ -29,6 +29,7 @@
 #include "PageClientImpl.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/NotImplemented.h>
+#include <WebCore/UserAgent.h>
 
 namespace WebKit {
 
@@ -42,9 +43,12 @@ JSGlobalContextRef WebPageProxy::javascriptGlobalContext()
     return m_pageClient.javascriptGlobalContext();
 }
 
-String WebPageProxy::standardUserAgent(const String&)
+String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
     return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1 WPE";
+
+    // FIXME: determine whether the WPE-branded UA string can be pushed into WebCore::standardUserAgent().
+    // return WebCore::standardUserAgent(applicationNameForUserAgent);
 }
 
 void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)

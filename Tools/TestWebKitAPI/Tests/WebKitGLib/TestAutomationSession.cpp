@@ -96,6 +96,8 @@ public:
         nullptr,
         // set_property
         nullptr,
+        // padding
+        { 0 }
     };
 
     void registerDBusObject()

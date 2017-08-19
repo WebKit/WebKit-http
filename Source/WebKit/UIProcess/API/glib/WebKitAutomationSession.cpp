@@ -23,6 +23,7 @@
 #include "APIAutomationSessionClient.h"
 #include "WebKitApplicationInfo.h"
 #include "WebKitAutomationSessionPrivate.h"
+#include "WebKitWebContextPrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include <glib/gi18n-lib.h>
 #include <wtf/glib/WTFGType.h>
@@ -60,6 +61,7 @@ enum {
 struct _WebKitAutomationSessionPrivate {
     RefPtr<WebAutomationSession> session;
     WebKitApplicationInfo* applicationInfo;
+    WebKitWebContext* webContext;
     CString id;
 };
 
@@ -88,6 +90,69 @@ private:
             return nullptr;
 
         return &webkitWebViewGetPage(webView);
+    }
+
+    bool isShowingJavaScriptDialogOnPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return false;
+        return webkitWebViewIsShowingScriptDialog(webView);
+    }
+
+    void dismissCurrentJavaScriptDialogOnPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return;
+        webkitWebViewDismissCurrentScriptDialog(webView);
+    }
+
+    void acceptCurrentJavaScriptDialogOnPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return;
+        webkitWebViewAcceptCurrentScriptDialog(webView);
+    }
+
+    String messageOfCurrentJavaScriptDialogOnPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return { };
+        return webkitWebViewGetCurrentScriptDialogMessage(webView);
+    }
+
+    void setUserInputForCurrentJavaScriptPromptOnPage(WebAutomationSession&, WebPageProxy& page, const String& userInput) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return;
+        webkitWebViewSetCurrentScriptDialogUserInput(webView, userInput);
+    }
+
+    std::optional<API::AutomationSessionClient::JavaScriptDialogType> typeOfCurrentJavaScriptDialogOnPage(WebAutomationSession&, WebPageProxy& page) override
+    {
+        auto* webView = webkitWebContextGetWebViewForPage(m_session->priv->webContext, &page);
+        if (!webView)
+            return std::nullopt;
+        auto dialogType = webkitWebViewGetCurrentScriptDialogType(webView);
+        if (!dialogType)
+            return std::nullopt;
+        switch (dialogType.value()) {
+        case WEBKIT_SCRIPT_DIALOG_ALERT:
+            return API::AutomationSessionClient::JavaScriptDialogType::Alert;
+        case WEBKIT_SCRIPT_DIALOG_CONFIRM:
+            return API::AutomationSessionClient::JavaScriptDialogType::Confirm;
+        case WEBKIT_SCRIPT_DIALOG_PROMPT:
+            return API::AutomationSessionClient::JavaScriptDialogType::Prompt;
+        case WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM:
+            return API::AutomationSessionClient::JavaScriptDialogType::BeforeUnloadConfirm;
+        }
+
+        ASSERT_NOT_REACHED();
+        return std::nullopt;
     }
 
     WebKitAutomationSession* m_session;
@@ -133,6 +198,8 @@ static void webkitAutomationSessionConstructed(GObject* object)
 static void webkitAutomationSessionDispose(GObject* object)
 {
     WebKitAutomationSession* session = WEBKIT_AUTOMATION_SESSION(object);
+
+    session->priv->session->setClient(nullptr);
 
     if (session->priv->applicationInfo) {
         webkit_application_info_unref(session->priv->applicationInfo);
@@ -192,9 +259,11 @@ static void webkit_automation_session_class_init(WebKitAutomationSessionClass* s
         G_TYPE_NONE);
 }
 
-WebKitAutomationSession* webkitAutomationSessionCreate(const char* sessionID)
+WebKitAutomationSession* webkitAutomationSessionCreate(WebKitWebContext* webContext, const char* sessionID)
 {
-    return WEBKIT_AUTOMATION_SESSION(g_object_new(WEBKIT_TYPE_AUTOMATION_SESSION, "id", sessionID, nullptr));
+    auto* session = WEBKIT_AUTOMATION_SESSION(g_object_new(WEBKIT_TYPE_AUTOMATION_SESSION, "id", sessionID, nullptr));
+    session->priv->webContext = webContext;
+    return session;
 }
 
 WebAutomationSession& webkitAutomationSessionGetSession(WebKitAutomationSession* session)

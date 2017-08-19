@@ -57,6 +57,8 @@ public:
 
     bool isActive() const { return !!m_blobLoader; }
 
+    bool isReadableStreamBody() const { return m_body && m_body->isReadableStream(); }
+
 protected:
     const FetchBody& body() const { return *m_body; }
     FetchBody& body() { return *m_body; }
@@ -88,7 +90,7 @@ private:
         // FetchLoaderClient API
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char* data, size_t size) final { owner.blobChunk(data, size); }
-        void didFail() final;
+        void didFail(const ResourceError&) final;
         void didSucceed() final { owner.blobLoadingSucceeded(); }
 
         FetchBodyOwner& owner;

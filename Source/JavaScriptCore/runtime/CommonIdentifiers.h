@@ -43,6 +43,8 @@
     macro(CustomElementRegistry) \
     macro(Date) \
     macro(DateTimeFormat) \
+    macro(DataTransferItem) \
+    macro(DataTransferItemList) \
     macro(DocumentTimeline) \
     macro(Error) \
     macro(EvalError) \

@@ -5017,6 +5017,11 @@ void SpeculativeJIT::compile(Node* node)
         compileCreateActivation(node);
         break;
     }
+
+    case PushWithScope: {
+        compilePushWithScope(node);
+        break;
+    }
         
     case CreateDirectArguments: {
         compileCreateDirectArguments(node);
@@ -5700,6 +5705,7 @@ void SpeculativeJIT::compile(Node* node)
     case AtomicsStore:
     case AtomicsSub:
     case AtomicsXor:
+    case IdentityWithProfile:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

@@ -64,13 +64,17 @@ public:
     using Init = Variant<RefPtr<Blob>, RefPtr<ArrayBufferView>, RefPtr<ArrayBuffer>, RefPtr<DOMFormData>, RefPtr<URLSearchParams>, String>;
     static FetchBody extract(ScriptExecutionContext&, Init&&, String&);
     static FetchBody loadingBody() { return { }; }
-    static FetchBody readableStreamBody();
 
+    void setAsReadableStream() { m_isReadableStream = true; }
     void loadingFailed();
     void loadingSucceeded();
 
-    RefPtr<FormData> bodyForInternalRequest(ScriptExecutionContext&) const;
+    RefPtr<FormData> bodyAsFormData(ScriptExecutionContext&) const;
 
+    using TakenData = Variant<std::nullptr_t, Ref<FormData>, Ref<SharedBuffer>>;
+    TakenData take();
+
+    void setAsFormData(Ref<FormData>&& data) { m_data = WTFMove(data); }
     FetchBodyConsumer& consumer() { return m_consumer; }
 
     void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&, const String&);
