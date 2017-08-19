@@ -50,11 +50,23 @@ CDMFactoryClearKey& CDMFactoryClearKey::singleton()
 }
 
 const String CDMInstanceClearKey::s_keySystem("org.w3.clearkey");
+
+CDMFactoryClearKey& CDMFactoryClearKey::singleton()
+{
+    static CDMFactoryClearKey s_factory;
+    return s_factory;
+}
+
 CDMFactoryClearKey::CDMFactoryClearKey() = default;
 CDMFactoryClearKey::~CDMFactoryClearKey() = default;
 
-std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(const String&)
+std::unique_ptr<CDMPrivate> CDMFactoryClearKey::createCDM(const String& keySystem)
 {
+#ifdef NDEBUG
+    UNUSED_PARAM(keySystem);
+#else
+    ASSERT(supportsKeySystem(keySystem));
+#endif
     return std::unique_ptr<CDMPrivate>(new CDMPrivateClearKey);
 }
 

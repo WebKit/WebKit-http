@@ -172,7 +172,7 @@ std::optional<String> CDMPrivateOpenCDM::sanitizeSessionId(const String& session
 CDMFactoryOpenCDM::CDMFactoryOpenCDM() = default;
 CDMFactoryOpenCDM::~CDMFactoryOpenCDM() = default;
 
-std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(CDM&, const String& keySystem)
+std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(const String& keySystem)
 {
     return std::unique_ptr<CDMPrivate>(new CDMPrivateOpenCDM(keySystem));
 }

@@ -41,7 +41,6 @@
 #include "WebKitWebSourceGStreamer.h"
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GUniquePtr.h>
-#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
 #include <wtf/UUID.h>
@@ -153,7 +152,7 @@ void registerWebKitGStreamerElements()
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT);
 
     if (!CDM::supportsKeySystem(PLAYREADY_PROTECTION_SYSTEM_ID) || !CDM::supportsKeySystem(WIDEVINE_PROTECTION_SYSTEM_ID))
-        CDM::registerCDMFactory(*new CDMFactoryOpenCDM);
+        CDMFactory::registerFactory(*new CDMFactoryOpenCDM);
 #endif
 #endif
 }
@@ -181,7 +180,7 @@ bool MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElemen
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-static AtomicString keySystemIdToUuid(const AtomicString&);
+static const char* keySystemIdToUuid(const char*);
 #endif
 
 static int greatestCommonDivisor(int a, int b)
@@ -412,6 +411,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return false;
         }
         GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
+        LockHolder lock(m_protectionMutex);
         std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
         GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
         Vector<uint8_t> concatenatedInitDataChunks;
@@ -457,12 +457,11 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         });
 
         GST_INFO("waiting for a CDM instance");
-        LockHolder lock(m_protectionMutex);
         m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
             return this->m_cdmInstance;
         });
         if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
-            const char* preferredKeySystemUuid = keySystemIdToUuid(m_cdmInstance->keySystem()).string().utf8().data();
+            const char* preferredKeySystemUuid = keySystemIdToUuid(m_cdmInstance->keySystem().utf8().data());
             GST_INFO("working with %s, continuing with %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
             GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
@@ -1378,18 +1377,18 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
     ASSERT_NOT_REACHED();
 }
 
-static AtomicString keySystemIdToUuid(const AtomicString& id)
+static const char* keySystemIdToUuid(const char* id)
 {
-    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
-        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
+        return CLEAR_KEY_PROTECTION_SYSTEM_UUID;
 
 #if USE(OPENCDM)
-    if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
-        || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || !g_ascii_strcasecmp(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
+        return PLAYREADY_PROTECTION_SYSTEM_UUID;
 
-    if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
-        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, WIDEVINE_PROTECTION_SYSTEM_ID))
+        return WIDEVINE_PROTECTION_SYSTEM_UUID;
 #endif
 
     return { };
