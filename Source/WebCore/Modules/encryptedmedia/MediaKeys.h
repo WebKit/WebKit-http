@@ -64,6 +64,8 @@ public:
     void attemptToResumePlaybackOnClients();
     void attemptToDecrypt(CDMClient&);
 
+    const CDMInstance& cdmInstance() const { return m_instance; }
+
 protected:
     MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);
 

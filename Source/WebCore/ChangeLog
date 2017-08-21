@@ -1,3 +1,286 @@
+2017-08-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] Add basic implementation of HTMLMediaElement::setMediaKeys()
+        https://bugs.webkit.org/show_bug.cgi?id=175717
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add an initial and incomplete implementation of HTMLMediaElement::setMediaKeys(),
+        interleaved with the specification wording of how this operation should behave.
+        The implementation still doesn't cover cases of CDM instances being already
+        associated with a different HTMLMediaElement, of CDM instances that can't be
+        disassociated from the current HTMLMediaElement, and of failures during both
+        association and disassociation of MediaKeys with the HTMLMediaElement.
+
+        The HTMLMediaElement (as a CDMClient inheritor) has to be attached or detached
+        from the MediaKeys object as appropriate. This attachment allows MediaKeys to
+        initiate an attempt to resume playback whenever the key statuses of the
+        associated MediaKeys object are updated.
+
+        Upon association and disassociation with MediaKeys, the CDMInstance object of
+        that specific MediaKeys instance is attached to or detached from the MediaPlayer
+        instance. This allows the platform layer to gather information about the
+        CDMInstance that will be used for decryption of media content for this specific
+        media element.
+
+        Additionally, the detachment from both MediaKeys and MediaPlayer is done upon
+        HTMLMediaElement destruction.
+
+        Upon setting the MediaKeys object, a task is queued that launches the 'Attempt to
+        Resume Playback If Necessary' algorithm. A placeholder method is added that will
+        implement the algorithm in the future.
+
+        The HTMLMediaElement::mediaKeys() getter is also implemented, returning pointer
+        held in m_mediaKeys.
+
+        Covered to a degree by existing imported W3C tests, with a setMediaKeys()-oriented
+        test having WPE-specific baseline update.
+
+        * Modules/encryptedmedia/MediaKeys.h:
+        (WebCore::MediaKeys::cdmInstance const):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::~HTMLMediaElement):
+        (WebCore::HTMLMediaElement::mediaKeys const):
+        (WebCore::HTMLMediaElement::setMediaKeys):
+        (WebCore::HTMLMediaElement::attemptToResumePlaybackIfNecessary):
+        (WebCore::HTMLMediaElement::contextDestroyed):
+        * html/HTMLMediaElement.h:
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::cdmInstanceAttached):
+        (WebCore::MediaPlayer::cdmInstanceDetached):
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::cdmInstanceAttached):
+        (WebCore::MediaPlayerPrivateInterface::cdmInstanceDetached):
+
+2017-08-20  Chris Dumez  <cdumez@apple.com>
+
+        Simplify calls to LoaderStrategy::startPingLoad()
+        https://bugs.webkit.org/show_bug.cgi?id=175756
+
+        Reviewed by Sam Weinig.
+
+        Simplify calls to LoaderStrategy::startPingLoad() by passing the Frame to it
+        and let its implementation gets what it needs from the frame. This reduces
+        the number of parameters to startPingLoad() and is more easily extensible.
+
+        * dom/Document.h:
+        * loader/LoaderStrategy.h:
+        * loader/PingLoader.cpp:
+        (WebCore::PingLoader::loadImage):
+        (WebCore::PingLoader::sendPing):
+        (WebCore::PingLoader::sendViolationReport):
+        (WebCore::PingLoader::startPingLoad):
+        * loader/PingLoader.h:
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::load):
+
+2017-08-20  Antti Koivisto  <antti@apple.com>
+
+        Factor :before/:after render tree mutations into a RenderTreeUpdater helper class
+        https://bugs.webkit.org/show_bug.cgi?id=175752
+
+        Reviewed by Andreas Kling.
+
+        Move code that constructs generated content renderers out from PseudoElement.
+        Also refactor the related code from RenderTreeUpdater main class into
+        RenderTreeUpdater::GeneratedContent helper class.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/PseudoElement.cpp:
+        (WebCore::PseudoElement::resolveCustomStyle): Deleted.
+
+            Not needed anymore.
+
+        (WebCore::PseudoElement::didAttachRenderers): Deleted.
+
+            Moves to createContentRenderers in GeneratedContent.
+
+        (WebCore::PseudoElement::didRecalcStyle): Deleted.
+
+            Moves to updateStyleForContentRenderers in GeneratedContent.
+
+        * dom/PseudoElement.h:
+        * style/RenderTreeUpdater.cpp:
+        (WebCore::RenderTreeUpdater::RenderTreeUpdater):
+        (WebCore::RenderTreeUpdater::~RenderTreeUpdater):
+        (WebCore::RenderTreeUpdater::commit):
+        (WebCore::RenderTreeUpdater::updateBeforeDescendants):
+        (WebCore::RenderTreeUpdater::updateAfterDescendants):
+        (WebCore::needsPseudoElement): Deleted.
+        (WebCore::RenderTreeUpdater::updateBeforeOrAfterPseudoElement): Deleted.
+        (WebCore::RenderTreeUpdater::updateQuotesUpTo): Deleted.
+
+            Quotes and other :before/:after support moves to GeneratedContent helpwe.
+
+        * style/RenderTreeUpdater.h:
+        (WebCore::RenderTreeUpdater::generatedContent):
+        * style/RenderTreeUpdaterGeneratedContent.cpp: Added.
+        (WebCore::RenderTreeUpdater::GeneratedContent::GeneratedContent):
+        (WebCore::RenderTreeUpdater::GeneratedContent::updateBeforePseudoElement):
+        (WebCore::RenderTreeUpdater::GeneratedContent::updateAfterPseudoElement):
+        (WebCore::RenderTreeUpdater::GeneratedContent::updateRemainingQuotes):
+        (WebCore::RenderTreeUpdater::GeneratedContent::updateQuotesUpTo):
+        (WebCore::createContentRenderers):
+        (WebCore::updateStyleForContentRenderers):
+        (WebCore::RenderTreeUpdater::GeneratedContent::updatePseudoElement):
+        (WebCore::RenderTreeUpdater::GeneratedContent::needsPseudoElement):
+        * style/RenderTreeUpdaterGeneratedContent.h: Added.
+
+2017-08-19  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Add interface stubs
+        https://bugs.webkit.org/show_bug.cgi?id=175730
+
+        Reviewed by Youenn Fablet.
+
+        * DerivedSources.make:
+        * Modules/paymentrequest/PaymentAddress.h: Added.
+        * Modules/paymentrequest/PaymentAddress.idl: Added.
+        * Modules/paymentrequest/PaymentComplete.h: Added.
+        * Modules/paymentrequest/PaymentComplete.idl: Added.
+        * Modules/paymentrequest/PaymentCurrencyAmount.h: Added.
+        * Modules/paymentrequest/PaymentCurrencyAmount.idl: Added.
+        * Modules/paymentrequest/PaymentDetailsBase.h: Added.
+        * Modules/paymentrequest/PaymentDetailsBase.idl: Added.
+        * Modules/paymentrequest/PaymentDetailsInit.h: Added.
+        * Modules/paymentrequest/PaymentDetailsInit.idl: Added.
+        * Modules/paymentrequest/PaymentDetailsModifier.h: Added.
+        * Modules/paymentrequest/PaymentDetailsModifier.idl: Added.
+        * Modules/paymentrequest/PaymentDetailsUpdate.h: Added.
+        * Modules/paymentrequest/PaymentDetailsUpdate.idl: Added.
+        * Modules/paymentrequest/PaymentItem.h: Added.
+        * Modules/paymentrequest/PaymentItem.idl: Added.
+        * Modules/paymentrequest/PaymentMethodData.h: Added.
+        * Modules/paymentrequest/PaymentMethodData.idl: Added.
+        * Modules/paymentrequest/PaymentOptions.h: Added.
+        * Modules/paymentrequest/PaymentOptions.idl: Added.
+        * Modules/paymentrequest/PaymentRequest.cpp: Added.
+        (WebCore::PaymentRequest::create):
+        (WebCore::PaymentRequest::PaymentRequest):
+        (WebCore::PaymentRequest::~PaymentRequest):
+        (WebCore::PaymentRequest::show):
+        (WebCore::PaymentRequest::abort):
+        (WebCore::PaymentRequest::canMakePayment):
+        * Modules/paymentrequest/PaymentRequest.h: Added.
+        * Modules/paymentrequest/PaymentRequest.idl: Added.
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.cpp: Added.
+        (WebCore::PaymentRequestUpdateEvent::~PaymentRequestUpdateEvent):
+        (WebCore::PaymentRequestUpdateEvent::updateWith):
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.h: Added.
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.idl: Added.
+        * Modules/paymentrequest/PaymentRequestUpdateEventInit.h: Added.
+        * Modules/paymentrequest/PaymentRequestUpdateEventInit.idl: Added.
+        * Modules/paymentrequest/PaymentResponse.cpp: Added.
+        (WebCore::PaymentResponse::complete):
+        * Modules/paymentrequest/PaymentResponse.h: Added.
+        * Modules/paymentrequest/PaymentResponse.idl: Added.
+        * Modules/paymentrequest/PaymentShippingOption.h: Added.
+        * Modules/paymentrequest/PaymentShippingOption.idl: Added.
+        * Modules/paymentrequest/PaymentShippingType.h: Added.
+        * Modules/paymentrequest/PaymentShippingType.idl: Added.
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/EventNames.h:
+        * dom/EventNames.in:
+        * dom/EventTargetFactory.in:
+
+2017-08-19  Sam Weinig  <sam@webkit.org>
+
+        [WebCrypto] Remove the KeyAlgorithm type hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=175750
+
+        Reviewed by Chris Dumez.
+
+        Removes the unnecessary indirection that existed to generate a
+        KeyAlgorithm dictionary (or rather, one of its derived dictionaries)
+        for a CryptoKey. We were calling the virtual buildAlgorithm(), which
+        return a std::unique_ptr<KeyAlgorithm>, which we then casted to the 
+        correct derived class and called dictionary() on. This can now be
+        simplified by making each CryptoKey derived class override a function
+        that returns the KeyAlgorithm variant.
+
+        * crypto/CryptoKey.cpp:
+        (WebCore::CryptoKey::algorithm const): Deleted.
+        * crypto/CryptoKey.h:
+        (WebCore::CryptoKey::extractable const):
+        (WebCore::KeyAlgorithm::~KeyAlgorithm): Deleted.
+        (WebCore::KeyAlgorithm::name const): Deleted.
+        (WebCore::KeyAlgorithm::KeyAlgorithm): Deleted.
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::CryptoKeyRSA::algorithm const):
+        (WebCore::CryptoKeyRSA::buildAlgorithm const): Deleted.
+        * crypto/keys/CryptoKeyAES.cpp:
+        (WebCore::CryptoKeyAES::algorithm const):
+        (WebCore::AesKeyAlgorithm::dictionary const): Deleted.
+        (WebCore::CryptoKeyAES::buildAlgorithm const): Deleted.
+        * crypto/keys/CryptoKeyAES.h:
+        * crypto/keys/CryptoKeyEC.cpp:
+        (WebCore::CryptoKeyEC::algorithm const):
+        (WebCore::EcKeyAlgorithm::dictionary const): Deleted.
+        (WebCore::CryptoKeyEC::buildAlgorithm const): Deleted.
+        * crypto/keys/CryptoKeyEC.h:
+        (WebCore::EcKeyAlgorithm::EcKeyAlgorithm): Deleted.
+        (WebCore::EcKeyAlgorithm::namedCurve const): Deleted.
+        * crypto/keys/CryptoKeyHMAC.cpp:
+        (WebCore::CryptoKeyHMAC::algorithm const):
+        (WebCore::HmacKeyAlgorithm::dictionary const): Deleted.
+        (WebCore::CryptoKeyHMAC::buildAlgorithm const): Deleted.
+        * crypto/keys/CryptoKeyHMAC.h:
+        * crypto/keys/CryptoKeyRSA.cpp:
+        (WebCore::RsaKeyAlgorithm::dictionary const): Deleted.
+        (WebCore::RsaHashedKeyAlgorithm::dictionary const): Deleted.
+        * crypto/keys/CryptoKeyRSA.h:
+        (WebCore::RsaKeyAlgorithm::RsaKeyAlgorithm): Deleted.
+        (WebCore::RsaKeyAlgorithm::modulusLength const): Deleted.
+        (WebCore::RsaKeyAlgorithm::publicExponent const): Deleted.
+        * crypto/keys/CryptoKeyRaw.cpp:
+        (WebCore::CryptoKeyRaw::algorithm const):
+        (WebCore::RawKeyAlgorithm::dictionary const): Deleted.
+        (WebCore::CryptoKeyRaw::buildAlgorithm const): Deleted.
+        * crypto/keys/CryptoKeyRaw.h:
+        (WebCore::RawKeyAlgorithm::RawKeyAlgorithm): Deleted.
+        * crypto/mac/CryptoKeyRSAMac.cpp:
+        (WebCore::CryptoKeyRSA::algorithm const):
+        (WebCore::CryptoKeyRSA::buildAlgorithm const): Deleted.
+
+2017-08-19  Sam Weinig  <sam@webkit.org>
+
+        [Mac] Change uint8_t* to Vector<uint8_t> type in all crypto algorithm implementation
+        https://bugs.webkit.org/show_bug.cgi?id=164939
+
+        Reviewed by Chris Dumez.
+
+        Address FIXMEs, replacing uint8_t*/size_t parameters with Vector<uint8_t>&.
+
+        * crypto/mac/CryptoAlgorithmAES_CBCMac.cpp:
+        (WebCore::transformAES_CBC):
+        (WebCore::CryptoAlgorithmAES_CBC::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::platformDecrypt):
+        * crypto/mac/CryptoAlgorithmAES_KWMac.cpp:
+        (WebCore::wrapKeyAES_KW):
+        (WebCore::unwrapKeyAES_KW):
+        (WebCore::CryptoAlgorithmAES_KW::platformWrapKey):
+        (WebCore::CryptoAlgorithmAES_KW::platformUnwrapKey):
+        * crypto/mac/CryptoAlgorithmHMACMac.cpp:
+        (WebCore::calculateSignature):
+        (WebCore::CryptoAlgorithmHMAC::platformSign):
+        (WebCore::CryptoAlgorithmHMAC::platformVerify):
+        * crypto/mac/CryptoAlgorithmRSAES_PKCS1_v1_5Mac.cpp:
+        (WebCore::encryptRSAES_PKCS1_v1_5):
+        (WebCore::decryptRSAES_PKCS1_v1_5):
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::platformEncrypt):
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::platformDecrypt):
+        * crypto/mac/CryptoAlgorithmRSASSA_PKCS1_v1_5Mac.cpp:
+        (WebCore::signRSASSA_PKCS1_v1_5):
+        (WebCore::verifyRSASSA_PKCS1_v1_5):
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign):
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify):
+        * crypto/mac/CryptoAlgorithmRSA_OAEPMac.cpp:
+        (WebCore::encryptRSA_OAEP):
+        (WebCore::decryptRSA_OAEP):
+        (WebCore::CryptoAlgorithmRSA_OAEP::platformEncrypt):
+        (WebCore::CryptoAlgorithmRSA_OAEP::platformDecrypt):
+
 2017-08-18  Ryosuke Niwa  <rniwa@webkit.org>
 
         Forbid setDragImage after dragstart

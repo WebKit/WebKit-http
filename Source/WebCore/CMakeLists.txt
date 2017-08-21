@@ -2795,6 +2795,7 @@ set(WebCore_SOURCES
     style/RenderTreePosition.cpp
     style/RenderTreeUpdater.cpp
     style/RenderTreeUpdaterFirstLetter.cpp
+    style/RenderTreeUpdaterGeneratedContent.cpp
     style/RenderTreeUpdaterListItem.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp

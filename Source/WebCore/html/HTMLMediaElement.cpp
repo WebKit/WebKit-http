@@ -568,6 +568,14 @@ HTMLMediaElement::~HTMLMediaElement()
     webkitSetMediaKeys(nullptr);
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (m_mediaKeys) {
+        m_mediaKeys->detachCDMClient(*this);
+        if (m_player)
+            m_player->cdmInstanceDetached(m_mediaKeys->cdmInstance());
+    }
+#endif
+
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_isolatedWorld)
         m_isolatedWorld->clearWrappers();
