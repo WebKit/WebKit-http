@@ -26,12 +26,11 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDMPrivate.h"
-#include "inspector/InspectorValues.h"
+#include "GStreamerEMEUtilities.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeysRequirement.h"
-#include "WebKitClearKeyDecryptorGStreamer.h"
-#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
-#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
+#include "inspector/InspectorValues.h"
+#include <gst/gst.h>
 #include <open_cdm.h>
 #include <wtf/text/Base64.h>
 
@@ -169,6 +168,12 @@ std::optional<String> CDMPrivateOpenCDM::sanitizeSessionId(const String& session
     return sessionId;
 }
 
+CDMFactoryOpenCDM& CDMFactoryOpenCDM::singleton()
+{
+    static CDMFactoryOpenCDM s_factory;
+    return s_factory;
+}
+
 CDMFactoryOpenCDM::CDMFactoryOpenCDM() = default;
 CDMFactoryOpenCDM::~CDMFactoryOpenCDM() = default;
 
@@ -179,9 +184,7 @@ std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(const String& keySystem
 
 bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
 {
-    return equalLettersIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
-    || equalLettersIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)
-    || equalLettersIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID);
+    return GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem) || GStreamerEMEUtilities::isWidevineKeySystem(keySystem);
 }
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm* session, const String& keySystem)
@@ -219,10 +222,9 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType, const AtomicString&, Ref<Sh
     std::string sessionId;
     String sessionIdValue;
     String mimeType = "video/x-h264";
-    if (equalLettersIgnoringASCIICase(m_keySystem, "com.microsoft.playready")
-        || equalLettersIgnoringASCIICase(m_keySystem, "com.youtube.playready"))
+    if (GStreamerEMEUtilities::isPlayReadyKeySystem(m_keySystem))
         mimeType = "video/x-h264";
-    else if (equalLettersIgnoringASCIICase(m_keySystem, "com.widevine.alpha"))
+    else if (GStreamerEMEUtilities::isWidevineKeySystem(m_keySystem))
         mimeType = "video/mp4";
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
         initData->size(), sessionId);

@@ -26,10 +26,6 @@
 
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
-#define PLAYREADY_PROTECTION_SYSTEM_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
-#define PLAYREADY_PROTECTION_SYSTEM_ID "com.microsoft.playready"
-#define PLAYREADY_YT_PROTECTION_SYSTEM_ID "com.youtube.playready"
-
 G_BEGIN_DECLS
 
 #define WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT          (webkit_media_opencdm_playready_decrypt_get_type())
@@ -48,8 +44,6 @@ struct _WebKitOpenCDMPlayReadyDecrypt {
 struct _WebKitOpenCDMPlayReadyDecryptClass {
     WebKitOpenCDMDecryptClass parentClass;
 };
-
-bool canWebKitMediaOpenCDMPlayReadyDecryptorAcceptUuid(const char* uuid);
 
 G_END_DECLS
 

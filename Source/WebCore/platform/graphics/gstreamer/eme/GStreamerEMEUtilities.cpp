@@ -29,6 +29,14 @@ namespace WebCore {
 const char* GStreamerEMEUtilities::s_ClearKeyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID;
 const char* GStreamerEMEUtilities::s_ClearKeyKeySystem = "org.w3.clearkey";
 
+#if USE(OPENCDM)
+const char* GStreamerEMEUtilities::s_PlayReadyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
+std::array<const char*,2> GStreamerEMEUtilities::s_PlayReadyKeySystems = { "com.microsoft.playready", "com.youtube.playready" };
+
+const char* GStreamerEMEUtilities::s_WidevineUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
+const char* GStreamerEMEUtilities::s_WidevineKeySystem = "com.widevine.alpha";
+#endif
+
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)

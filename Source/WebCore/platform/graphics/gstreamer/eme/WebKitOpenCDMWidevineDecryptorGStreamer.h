@@ -26,9 +26,6 @@
 
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
-#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-#define WIDEVINE_PROTECTION_SYSTEM_ID "com.widevine.alpha"
-
 G_BEGIN_DECLS
 
 #define WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
