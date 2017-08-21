@@ -54,6 +54,8 @@ void calculateMemoryCacheSizes(CacheModel cacheModel, unsigned& cacheTotalCapaci
             cacheTotalCapacity = 32 * MB;
         else if (memorySize >= 512)
             cacheTotalCapacity = 16 * MB;
+        else
+            cacheTotalCapacity = 8 * MB;
 
         cacheMinDeadCapacity = 0;
         cacheMaxDeadCapacity = 0;
@@ -78,6 +80,8 @@ void calculateMemoryCacheSizes(CacheModel cacheModel, unsigned& cacheTotalCapaci
             cacheTotalCapacity = 32 * MB;
         else if (memorySize >= 512)
             cacheTotalCapacity = 16 * MB;
+        else
+            cacheTotalCapacity = 8 * MB;
 
         cacheMinDeadCapacity = cacheTotalCapacity / 8;
         cacheMaxDeadCapacity = cacheTotalCapacity / 4;
@@ -105,6 +109,8 @@ void calculateMemoryCacheSizes(CacheModel cacheModel, unsigned& cacheTotalCapaci
             cacheTotalCapacity = 64 * MB;
         else if (memorySize >= 512)
             cacheTotalCapacity = 32 * MB;
+        else
+            cacheTotalCapacity = 16 * MB;
 
         cacheMinDeadCapacity = cacheTotalCapacity / 4;
         cacheMaxDeadCapacity = cacheTotalCapacity / 2;
