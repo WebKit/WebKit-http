@@ -62,8 +62,8 @@ public:
     void attachCDMClient(CDMClient&);
     void detachCDMClient(CDMClient&);
     void attemptToResumePlaybackOnClients();
-    void attemptToDecrypt(CDMClient&);
 
+    bool hasOpenSessions() const;
     const CDMInstance& cdmInstance() const { return m_instance; }
 
 protected:

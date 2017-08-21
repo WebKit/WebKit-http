@@ -138,20 +138,12 @@ void MediaKeys::attemptToResumePlaybackOnClients()
         cdmClient->cdmClientAttemptToResumePlaybackIfNecessary();
 }
 
-void MediaKeys::attemptToDecrypt(CDMClient& client)
+bool MediaKeys::hasOpenSessions() const
 {
-    // https://w3c.github.io/encrypted-media/#attempt-to-decrypt
-    // W3C Editor's Draft 09 November 2016
-
-    // Continuing from HTMLMediaElement::attemptToDecrypt().
-
-    // 3.4. If there is at least one MediaKeySession created by the media keys that is not closed, run the following steps:
-    if (std::any_of(m_sessions.begin(), m_sessions.end(), [] (auto& session) { return !session->isClosed(); })) {
-        // 3.4.1. Let block be the first entry in the media element's encrypted block queue.
-        // 3.4.2. Let the block key ID be the key ID of block.
-        // 3.4.3. Use the cdm to execute the following steps:
-        client.cdmClientAttemptToDecryptWithInstance(m_instance);
-    }
+    return std::any_of(m_sessions.begin(), m_sessions.end(),
+        [](auto& session) {
+            return !session->isClosed();
+        });
 }
 
 } // namespace WebCore

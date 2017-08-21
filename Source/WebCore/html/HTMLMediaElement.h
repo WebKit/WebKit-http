@@ -638,11 +638,12 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) override;
     void attemptToDecrypt();
+    void attemptToResumePlaybackIfNecessary();
 
     // CDMClient
     void cdmClientInstanceAttached(const CDMInstance&) override;
     void cdmClientInstanceDetached(const CDMInstance&) override;
-    void cdmClientAttemptToResumePlaybackIfNecessary() override;
+    void cdmClientAttemptToResumePlaybackIfNecessary() final;
     void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
 #endif
     
