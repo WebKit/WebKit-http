@@ -1264,9 +1264,9 @@ String MediaPlayer::mediaKeysStorageDirectory() const
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-bool MediaPlayer::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+void MediaPlayer::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
 {
-    return client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
+    client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
 #endif
 

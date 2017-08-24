@@ -222,7 +222,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    virtual bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { return false; }
+    virtual void mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { }
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -550,7 +550,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    bool initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
+    void initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
 #endif
 
     String referrer() const;
