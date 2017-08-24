@@ -41,7 +41,6 @@
 #include "WebKitWebSourceGStreamer.h"
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GUniquePtr.h>
-#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
 
@@ -185,11 +184,11 @@ void registerWebKitGStreamerElements()
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-static AtomicString keySystemUuidToId(const AtomicString&);
+static const char* keySystemUuidToId(const char*);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-static AtomicString keySystemIdToUuid(const AtomicString&);
+static const char* keySystemIdToUuid(const char*);
 #endif
 
 static int greatestCommonDivisor(int a, int b)
@@ -409,18 +408,18 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 return false;
             }
             GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
+            LockHolder lock(m_protectionMutex);
             std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
             GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
             Vector<uint8_t> concatenatedInitDataChunks;
             unsigned concatenatedInitDataChunksNumber = 0;
-            String eventKeySystemIdString;
+            const char* eventKeySystemId = nullptr;
 #if USE(PLAYREADY)
             PlayreadySession* prSession = nullptr;
 #endif
 
             for (auto& event : streamEncryptionInformation.first) {
                 GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
-                const char* eventKeySystemId = nullptr;
                 GstBuffer* data = nullptr;
                 gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
@@ -504,13 +503,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
                 concatenatedInitDataChunks.append(mapInfo.data, mapInfo.size);
                 ++concatenatedInitDataChunksNumber;
-                eventKeySystemIdString = eventKeySystemId;
                 if (streamEncryptionInformation.second.contains(eventKeySystemId)) {
                     GST_TRACE("considering init data handled for %s", eventKeySystemId);
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
                     Vector<uint8_t> initDataVector;
                     initDataVector.append(reinterpret_cast<uint8_t*>(mapInfo.data), mapInfo.size);
-                    m_initDatas.add(eventKeySystemIdString, WTFMove(initDataVector));
+                    m_initDatas.add(String(eventKeySystemId), WTFMove(initDataVector));
 #endif
                     m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
                 }
@@ -521,7 +519,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 return false;
 
             if (concatenatedInitDataChunksNumber > 1)
-                eventKeySystemIdString = emptyString();
+                eventKeySystemId = "";
 
             String sessionId(createCanonicalUUIDString());
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
@@ -531,18 +529,18 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
             WeakPtr<MediaPlayerPrivateGStreamerBase> weakThis = createWeakPtr();
 
-            RunLoop::main().dispatch([weakThis, eventKeySystemIdString, sessionId, initData = WTFMove(concatenatedInitDataChunks)] {
+            RunLoop::main().dispatch([weakThis, eventKeySystemId, sessionId, initData = WTFMove(concatenatedInitDataChunks)] {
                 if (!weakThis) {
                     GST_DEBUG("the player private has been destroyed, returning");
                     return;
                 }
 
-                GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
+                GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemId, initData.size());
                 GST_MEMDUMP("init datas", initData.data(), initData.size());
 
                 // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-                weakThis->needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", initData.data(), initData.size());
+                weakThis->needKey(keySystemUuidToId(eventKeySystemId), "sessionId", initData.data(), initData.size());
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
                 RefPtr<Uint8Array> initDataArray = Uint8Array::create(initData.data(), initData.size());
                 weakThis->needKey(initDataArray);
@@ -552,7 +550,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             });
 
             GST_INFO("waiting for a key request to arrive");
-            LockHolder lock(m_protectionMutex);
             m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
                 return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty();
             });
@@ -1728,7 +1725,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         // For now we do not know if all protection systems should drop the pssh box, but during
         // testing of PR, we found that it is mandatory (found using the EME certification tests)
         // so for PR we remove the pssh and size, only ship the actual initdata.
-        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        trimInitData(keySystemIdToUuid(keySystem.utf8().data()), initDataPtr, initDataLength);
 
         // At this point, the initData is comparable to the one reaching handleProtectionEvent(),
         // so it can be used to find prSession.
@@ -1793,7 +1790,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             return MediaPlayer::NoError;
         }
 
-        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        trimInitData(keySystemIdToUuid(keySystem), initDataPtr, initDataLength);
         String mimeType;
         if (equalIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID))
             mimeType = "video/mp4";
@@ -1825,7 +1822,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
     }
 #endif
     if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey")) {
-        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        trimInitData(keySystemIdToUuid(keySystem.utf8().data()), initDataPtr, initDataLength);
         GST_TRACE("current init data size %u", initDataLength);
         GST_MEMDUMP("init data", initDataPtr, initDataLength);
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
@@ -1981,7 +1978,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event, Gst
 #else
     String sessionId = createCanonicalUUIDString();
 #endif
-    needKey(keySystemUuidToId(eventKeySystemId).string(), sessionId, mapInfo.data, mapInfo.size);
+    needKey(keySystemUuidToId(eventKeySystemId), sessionId, mapInfo.data, mapInfo.size);
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<Uint8Array> initDataArray = Uint8Array::create(mapInfo.data, mapInfo.size);
     needKey(initDataArray);
@@ -1994,7 +1991,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event, Gst
 void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& keySystem)
 {
     GST_DEBUG("received generate key request for %s", keySystem.utf8().data());
-    m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem);
+    m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem.utf8().data());
     m_protectionCondition.notifyOne();
 }
 
@@ -2005,22 +2002,22 @@ void MediaPlayerPrivateGStreamerBase::abortEncryptionSetup()
     m_protectionCondition.notifyOne();
 }
 
-static AtomicString keySystemIdToUuid(const AtomicString& id)
+static const char* keySystemIdToUuid(const char* id)
 {
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
-        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
+        return CLEAR_KEY_PROTECTION_SYSTEM_UUID;
 #endif
 
 #if USE(PLAYREADY) || USE(OPENCDM)
-    if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
-        || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
-        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || !g_ascii_strcasecmp(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
+        return PLAYREADY_PROTECTION_SYSTEM_UUID;
 #endif
 
 #if USE(OPENCDM)
-    if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
-        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    if (!g_ascii_strcasecmp(id, WIDEVINE_PROTECTION_SYSTEM_ID))
+        return WIDEVINE_PROTECTION_SYSTEM_UUID;
 #endif
 
     return { };
@@ -2028,19 +2025,19 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-static AtomicString keySystemUuidToId(const AtomicString& uuid)
+static const char* keySystemUuidToId(const char* uuid)
 {
-    if (equalIgnoringASCIICase(uuid, CLEAR_KEY_PROTECTION_SYSTEM_UUID))
-        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_ID);
+    if (!g_ascii_strcasecmp(uuid, CLEAR_KEY_PROTECTION_SYSTEM_UUID))
+        return CLEAR_KEY_PROTECTION_SYSTEM_ID;
 
 #if USE(PLAYREADY) || USE(OPENCDM)
-    if (equalIgnoringASCIICase(uuid, PLAYREADY_PROTECTION_SYSTEM_UUID))
-        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
+    if (!g_ascii_strcasecmp(uuid, PLAYREADY_PROTECTION_SYSTEM_UUID))
+        return PLAYREADY_PROTECTION_SYSTEM_ID;
 #endif
 
 #if USE(OPENCDM)
-    if (equalIgnoringASCIICase(uuid, WIDEVINE_PROTECTION_SYSTEM_UUID))
-        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_ID);
+    if (!g_ascii_strcasecmp(uuid, WIDEVINE_PROTECTION_SYSTEM_UUID))
+        return WIDEVINE_PROTECTION_SYSTEM_ID;
 #endif
 
     return { };

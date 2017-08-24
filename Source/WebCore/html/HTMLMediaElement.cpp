@@ -264,19 +264,19 @@ static void removeElementFromDocumentMap(HTMLMediaElement& element, Document& do
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-static ExceptionCode exceptionCodeForMediaKeyException(MediaPlayer::MediaKeyException exception)
+static ExceptionOr<void> exceptionOrForMediaKeyException(MediaPlayer::MediaKeyException exception)
 {
     switch (exception) {
     case MediaPlayer::NoError:
-        return 0;
+        return { };
     case MediaPlayer::InvalidPlayerState:
-        return INVALID_STATE_ERR;
+        return Exception { INVALID_STATE_ERR };
     case MediaPlayer::KeySystemNotSupported:
-        return NOT_SUPPORTED_ERR;
+        return Exception { NOT_SUPPORTED_ERR };
     }
 
     ASSERT_NOT_REACHED();
-    return INVALID_STATE_ERR;
+    return Exception { INVALID_STATE_ERR };
 }
 #endif
 
@@ -3307,10 +3307,7 @@ ExceptionOr<void> HTMLMediaElement::webkitGenerateKeyRequest(const String& keySy
 
     MediaPlayer::MediaKeyException result = m_player->generateKeyRequest(keySystem, initDataPointer, initDataLength, customData);
     fprintf(stderr, "HTMLMediaElement::webkitGenerateKeyRequest() result %d\n", result);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return exceptionOrForMediaKeyException(result);
 }
 
 ExceptionOr<void> HTMLMediaElement::webkitAddKey(const String& keySystem, Uint8Array& key, const RefPtr<Uint8Array>& initData, const String& sessionId)
@@ -3340,10 +3337,7 @@ ExceptionOr<void> HTMLMediaElement::webkitAddKey(const String& keySystem, Uint8A
     }
 
     MediaPlayer::MediaKeyException result = m_player->addKey(keySystem, key.data(), key.length(), initDataPointer, initDataLength, sessionId);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return exceptionOrForMediaKeyException(result);
 }
 
 ExceptionOr<void> HTMLMediaElement::webkitCancelKeyRequest(const String& keySystem, const String& sessionId)
@@ -3355,10 +3349,7 @@ ExceptionOr<void> HTMLMediaElement::webkitCancelKeyRequest(const String& keySyst
         return Exception { INVALID_STATE_ERR };
 
     MediaPlayer::MediaKeyException result = m_player->cancelKeyRequest(keySystem, sessionId);
-    auto ec = exceptionCodeForMediaKeyException(result);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return exceptionOrForMediaKeyException(result);
 }
 
 #endif
