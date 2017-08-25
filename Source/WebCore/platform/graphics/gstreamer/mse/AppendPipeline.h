@@ -87,6 +87,8 @@ public:
     void connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad*);
     void connectDemuxerSrcPadToAppsink(GstPad*);
 
+    void transitionTo(AppendState);
+
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
 
@@ -127,6 +129,8 @@ private:
     Condition m_newSampleCondition;
     Lock m_padAddRemoveLock;
     Condition m_padAddRemoveCondition;
+    Lock m_appendStateTransitionLock;
+    Condition m_appendStateTransitionCondition;
 
     GRefPtr<GstCaps> m_appsinkCaps;
     GRefPtr<GstCaps> m_demuxerSrcPadCaps;

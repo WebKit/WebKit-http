@@ -172,6 +172,7 @@ AppendPipeline::~AppendPipeline()
 {
     ASSERT(WTF::isMainThread());
 
+    GST_TRACE("Destroying AppendPipeline (%p)", this);
     {
         LockHolder locker(m_newSampleLock);
         setAppendState(AppendState::Invalid);
@@ -183,8 +184,6 @@ AppendPipeline::~AppendPipeline()
         m_playerPrivate = nullptr;
         m_padAddRemoveCondition.notifyOne();
     }
-
-    GST_TRACE("Destroying AppendPipeline (%p)", this);
 
     // FIXME: Maybe notify appendComplete here?
 
@@ -239,7 +238,22 @@ void AppendPipeline::dispatchPendingDecryptionKey()
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, m_pendingKey.get(), nullptr)));
     m_pendingKey.clear();
-    setAppendState(AppendState::Ongoing);
+
+    LockHolder locker(m_appendStateTransitionLock);
+    if (WTF::isMainThread())
+        transitionTo(AppendState::Ongoing);
+    else {
+        GstStructure* structure = gst_structure_new("transition-main-thread",
+                                                    "transition",
+                                                    G_TYPE_INT,
+                                                    AppendState::Ongoing,
+                                                    nullptr);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
+        if (gst_bus_post(m_bus.get(), message)) {
+            GST_TRACE("transition-main-thread ongoing sent to the bus");
+            m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
+        }
+    }
 }
 
 void AppendPipeline::dispatchDecryptionKey(GstBuffer* buffer)
@@ -288,9 +302,27 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
     const gchar* contextType = nullptr;
     gst_message_parse_context_type(message, &contextType);
     GST_TRACE("context type: %s", contextType);
-    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")
-        && m_appendState != AppendPipeline::AppendState::KeyNegotiation)
-        setAppendState(AppendPipeline::AppendState::KeyNegotiation);
+
+    LockHolder locker(m_appendStateTransitionLock);
+    if (m_appendState == AppendState::Invalid)
+        return;
+
+    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
+        if (WTF::isMainThread()) {
+            transitionTo(AppendState::KeyNegotiation);
+        } else {
+            GstStructure* structure = gst_structure_new("transition-main-thread",
+                                                        "transition",
+                                                        G_TYPE_INT,
+                                                        AppendState::KeyNegotiation,
+                                                        nullptr);
+            GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
+            if (gst_bus_post(m_bus.get(), message)) {
+                GST_TRACE("transition-main-thread KeyNegotiation sent to the bus");
+                m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
+            }
+        }
+    }
 
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
@@ -318,6 +350,14 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         gst_structure_get(structure, "demuxer-src-pad", G_TYPE_OBJECT, &demuxerSrcPad.outPtr(), nullptr);
         ASSERT(demuxerSrcPad);
         connectDemuxerSrcPadToAppsink(demuxerSrcPad.get());
+        return;
+    }
+
+    if (gst_structure_has_name(structure, "transition-main-thread")) {
+        GST_TRACE("Received transition-main-thread in main thread");
+        AppendState nextState;
+        gst_structure_get(structure, "transition", G_TYPE_INT, &nextState, nullptr);
+        transitionTo(nextState);
         return;
     }
 
@@ -1028,6 +1068,22 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 #endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
     }
+}
+
+void AppendPipeline::transitionTo(AppendState nextState)
+{
+    ASSERT(WTF::isMainThread());
+
+    LockHolder locker(m_appendStateTransitionLock);
+
+    if (m_appendState == AppendState::Invalid || m_appendState == nextState || !m_playerPrivate) {
+        m_appendStateTransitionCondition.notifyOne();
+        return;
+    }
+
+    setAppendState(nextState);
+
+    m_appendStateTransitionCondition.notifyOne();
 }
 
 void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
