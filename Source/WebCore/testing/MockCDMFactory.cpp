@@ -383,7 +383,9 @@ void MockCDMInstance::gatherAvailableKeys(AvailableKeysCallback)
 
 const String& MockCDMInstance::keySystem() const
 {
-    return emptyString();
+    static const String s_keySystem("org.webkit.mock");
+
+    return s_keySystem;
 }
 
 }

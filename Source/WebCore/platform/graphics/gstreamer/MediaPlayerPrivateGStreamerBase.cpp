@@ -48,6 +48,18 @@
 #include <gst/audio/streamvolume.h>
 #include <gst/video/gstvideometa.h>
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMInstance.h"
+#include "GStreamerEMEUtilities.h"
+#include "SharedBuffer.h"
+#include "WebKitClearKeyDecryptorGStreamer.h"
+#if USE(OPENCDM)
+#include "CDMOpenCDM.h"
+#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
+#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
+#endif
+#endif
+
 #if USE(GSTREAMER_GL)
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
 #define GST_GL_CAPS_FORMAT "{ BGRx, BGRA }"
@@ -115,18 +127,6 @@
 #include <cairo-gl.h>
 #endif
 #endif // USE(TEXTURE_MAPPER_GL)
-
-#if ENABLE(ENCRYPTED_MEDIA)
-#include "CDMInstance.h"
-#include "GStreamerEMEUtilities.h"
-#include "SharedBuffer.h"
-#include "WebKitClearKeyDecryptorGStreamer.h"
-#if USE(OPENCDM)
-#include "CDMOpenCDM.h"
-#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
-#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
-#endif
-#endif
 
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
@@ -445,7 +445,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         String sessionId(createCanonicalUUIDString());
 
         RunLoop::main().dispatch([this, eventKeySystemIdString, sessionId, initData = WTFMove(concatenatedInitDataChunks)] {
-            GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
+            GST_DEBUG("scheduling initializationDataEncountered event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
             GST_MEMDUMP("init datas", initData.data(), initData.size());
 
             m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(initData.data(), initData.size()));

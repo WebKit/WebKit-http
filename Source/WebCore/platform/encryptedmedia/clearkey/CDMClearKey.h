@@ -93,7 +93,8 @@ public:
     void storeRecordOfKeyUsage(const String&) override;
 
     void gatherAvailableKeys(AvailableKeysCallback) override;
-    const String& keySystem() const override;
+
+    const String& keySystem() const final;
 
     struct Key {
         Key() = default;
