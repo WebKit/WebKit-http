@@ -64,6 +64,16 @@
 
 namespace WebCore {
 
+static inline bool mediaSourceLogEnabled()
+{
+#if !LOG_DISABLED
+    return LOG_CHANNEL(MediaSource).state == WTFLogChannelOn;
+#else
+    return false;
+#endif
+}
+
+
 static const double ExponentialMovingAverageCoefficient = 0.1;
 
 struct SourceBuffer::TrackBuffer {
@@ -675,15 +685,17 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
     MediaTime microsecond = MediaTime::createWithDouble(0.000001);
 #endif
     PlatformTimeRanges erasedRanges;
-    for (auto sampleIt : samples) {
+    for (auto& sampleIt : samples) {
         const DecodeOrderSampleMap::KeyType& decodeKey = sampleIt.first;
 #if !LOG_DISABLED
         size_t startBufferSize = trackBuffer.samples.sizeInBytes();
 #endif
 
-        RefPtr<MediaSample>& sample = sampleIt.second;
-        LOG(MediaSource, "SourceBuffer::%s(%p) - removing sample(%s)", logPrefix, buffer, toString(*sampleIt.second).utf8().data());
-
+        const RefPtr<MediaSample>& sample = sampleIt.second;
+#if !LOG_DISABLED
+        if (UNLIKELY(mediaSourceLogEnabled()))
+            LOG(MediaSource, "SourceBuffer::%s(%p) - removing sample(%s)", logPrefix, buffer, toString(*sampleIt.second).utf8().data());
+#endif
         // Remove the erased samples from the TrackBuffer sample map.
         trackBuffer.samples.removeSample(sample.get());
 
@@ -761,6 +773,8 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         // 3.2 If this track buffer has a random access point timestamp that is greater than or equal to end, then update
         // remove end timestamp to that random access point timestamp.
 
+        // GStreamer backend doesn't support samples division
+#if !USE(GSTREAMER)
         // NOTE: To handle MediaSamples which may be an amalgamation of multiple shorter samples, find samples whose presentation
         // interval straddles the start and end times, and divide them if possible:
         auto divideSampleIfPossibleAtPresentationTime = [&] (const MediaTime& time) {
@@ -783,6 +797,7 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         };
         divideSampleIfPossibleAtPresentationTime(start);
         divideSampleIfPossibleAtPresentationTime(end);
+#endif
 
         // NOTE: findSyncSampleAfterPresentationTime will return the next sync sample on or after the presentation time
         // or decodeOrder().end() if no sync sample exists after that presentation time.
@@ -893,6 +908,8 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
         return;
     }
 
+    auto buffered = m_buffered->ranges();
+
     // 3. Let removal ranges equal a list of presentation time ranges that can be evicted from
     // the presentation to make room for the new data.
 
@@ -916,17 +933,25 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     size_t initialBufferedSize = extraMemoryCost();
 #endif
 
-    MediaTime rangeStart = MediaTime::zeroTime();
+    MediaTime rangeStart = buffered.start(0);
     MediaTime rangeEnd = rangeStart + thirtySeconds;
     while (rangeStart < maximumRangeEnd) {
+        auto removalRange = PlatformTimeRanges(rangeStart, std::min(rangeEnd, maximumRangeEnd));
+        removalRange.intersectWith(buffered);
+
         // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
         // end equal to the removal range start and end timestamp respectively.
-        removeCodedFrames(rangeStart, std::min(rangeEnd, maximumRangeEnd));
-        if (extraMemoryCost() + newDataSize < maximumBufferSize) {
-            LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - the buffer is not full anymore.", this);
-            m_bufferFull = false;
-            break;
+        for (unsigned i = 0; i < removalRange.length(); ++i) {
+            removeCodedFrames(removalRange.start(i), removalRange.end(i));
+            if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+                LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - the buffer is not full anymore.", this);
+                m_bufferFull = false;
+                break;
+            }
         }
+
+        if (m_bufferFull == false)
+            break;
 
         rangeStart += thirtySeconds;
         rangeEnd += thirtySeconds;
@@ -940,7 +965,6 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     // If there still isn't enough free space and there buffers in time ranges after the current range (ie. there is a gap after
     // the current buffered range), delete 30 seconds at a time from duration back to the current time range or 30 seconds after
     // currenTime whichever we hit first.
-    auto buffered = m_buffered->ranges();
     size_t currentTimeRange = buffered.find(currentTime);
 
 #if defined(METROLOGICAL)
