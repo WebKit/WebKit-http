@@ -339,7 +339,7 @@ const MediaTime& MediaSource::currentTimeFudgeFactor()
     const MediaTime* fudgeFactor = &MediaTime::zeroTime();
     for (auto& sourceBuffer : *m_sourceBuffers) {
         const MediaTime* sourceBufferFudgeFactor = &sourceBuffer->currentTimeFudgeFactor();
-        if (sourceBufferFudgeFactor > fudgeFactor)
+        if (*sourceBufferFudgeFactor > *fudgeFactor)
             fudgeFactor = sourceBufferFudgeFactor;
     }
     return *fudgeFactor;
