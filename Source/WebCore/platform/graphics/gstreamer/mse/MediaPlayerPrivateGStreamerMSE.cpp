@@ -325,18 +325,29 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     // This condition on m_readyState must match the conditions which trigger completeSeek() in
     // MediaSource::monitorSourceBuffers().
     if (!isTimeBuffered(seekTime) || m_readyState < MediaPlayer::HaveCurrentData) {
-        GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
-        GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
-        if (setStateResult == GST_STATE_CHANGE_FAILURE) {
-            GST_DEBUG("[Seek] Cannot seek, failed to pause playback pipeline.");
-            webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
-            m_seeking = false;
-            return false;
+        // Media source may trigger seek completion even when the target time is not yet buffered,
+        // in this case it is better continue the seek and wait for the app to provide media data.
+        m_mseSeekCompleted=true;
+        m_mediaSource->seekToTime(seekTime);
+        if (m_mseSeekCompleted == false)
+        {
+            GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
+            m_readyState = MediaPlayer::HaveMetadata;
+            GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
+            if (setStateResult == GST_STATE_CHANGE_FAILURE) {
+                GST_WARNING("[Seek] Cannot seek, failed to pause playback pipeline.");
+                webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
+                m_seeking = false;
+                return false;
+            }
+            return true;
         }
-        m_readyState = MediaPlayer::HaveMetadata;
-        notifySeekNeedsDataForTime(seekTime);
-        ASSERT(!m_mseSeekCompleted);
-        return true;
+        else
+        {
+            GST_DEBUG("[Seek] The target seek time is not buffered yet,"
+                      " but media source says OK to continue the seek,"
+                      " seekTime=%f", seekTime.toDouble());
+        }
     }
 
     // Complete previous MSE seek if needed.
@@ -410,6 +421,7 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
     // Right now we can use m_seekTime as a fallback.
     m_canFallBackToLastFinishedSeekPosition = true;
     timeChanged();
+    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivateGStreamerMSE::updatePlaybackRate()

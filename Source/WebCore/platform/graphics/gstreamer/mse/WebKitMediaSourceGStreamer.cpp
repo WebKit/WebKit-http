@@ -677,7 +677,7 @@ static void notifyReadyForMoreSamplesMainThread(WebKitMediaSrc* source, Stream* 
     }
 
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate = source->priv->mediaPlayerPrivate;
-    if (mediaPlayerPrivate)
+    if (mediaPlayerPrivate && !mediaPlayerPrivate->seeking())
         appsrcStream->sourceBuffer->notifyReadyForMoreSamples();
 
     GST_OBJECT_UNLOCK(source);
