@@ -159,7 +159,7 @@ public:
         m_values->clear();
 
         m_values->append(newItem->propertyReference());
-        m_wrappers->append(newItem);
+        m_wrappers->append(newItem.get());
 
         commitChange();
         return newItem;
@@ -200,7 +200,7 @@ public:
             // It is also associated with our animated property, so it can notify the SVG Element which holds the SVGAnimated*List
             // that it has been modified (and thus can call svgAttributeChanged(associatedAttributeName)).
             wrapper = ListItemTearOff::create(animatedList, UndefinedRole, m_values->at(index));
-            m_wrappers->at(index) = wrapper;
+            m_wrappers->at(index) = wrapper.get();
         }
 
         return wrapper.release();
@@ -257,7 +257,7 @@ public:
         m_values->insert(index, newItem->propertyReference());
 
         // Store new wrapper at position 'index', change its underlying value, so mutations of newItem, directly affect the item in the list.
-        m_wrappers->insert(index, newItem);
+        m_wrappers->insert(index, newItem.get());
 
         commitChange();
         return newItem;
@@ -335,7 +335,7 @@ public:
 
         // Update the value and the wrapper at the desired position 'index'. 
         m_values->at(index) = newItem->propertyReference();
-        m_wrappers->at(index) = newItem;
+        m_wrappers->at(index) = newItem.get();
 
         commitChange();
         return newItem;
@@ -423,7 +423,7 @@ public:
 
         // Append the value and wrapper at the end of the list.
         m_values->append(newItem->propertyReference());
-        m_wrappers->append(newItem);
+        m_wrappers->append(newItem.get());
 
         commitChange(ListModificationAppend);
         return newItem;

@@ -35,7 +35,7 @@ class SVGAnimatedListPropertyTearOff : public SVGAnimatedProperty {
 public:
     typedef typename SVGPropertyTraits<PropertyType>::ListItemType ListItemType;
     typedef SVGPropertyTearOff<ListItemType> ListItemTearOff;
-    typedef Vector<RefPtr<ListItemTearOff>> ListWrapperCache;
+    typedef Vector<ListItemTearOff*> ListWrapperCache;
     typedef SVGListProperty<PropertyType> ListProperty;
     typedef SVGListPropertyTearOff<PropertyType> ListPropertyTearOff;
     typedef PropertyType ContentType;
@@ -68,6 +68,11 @@ public:
             m_baseVal = nullptr;
         else if (&property == m_animVal)
             m_animVal = nullptr;
+        else {
+            size_t i = m_wrappers.find(&property);
+            if (i != notFound)
+                m_wrappers[i] = nullptr;
+        }
     }
 
     int findItem(SVGProperty* property)

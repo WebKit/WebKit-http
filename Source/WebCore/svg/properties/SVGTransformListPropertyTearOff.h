@@ -62,7 +62,7 @@ public:
 
         detachListWrappers(0);
         RefPtr<SVGPropertyTearOff<SVGTransform>> wrapper = SVGPropertyTearOff<SVGTransform>::create(m_values->consolidate());
-        m_wrappers->append(wrapper);
+        m_wrappers->append(wrapper.get());
 
         ASSERT(m_values->size() == m_wrappers->size());
         return wrapper;
