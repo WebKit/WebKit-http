@@ -260,10 +260,11 @@ void ScrollbarThemeHaiku::paintThumb(GraphicsContext& context, Scrollbar& scroll
         drawRect.InsetBy(1, 0);
     }
 
+
     uint32 flags = 0;
     if (!scrollbar.enabled())
         flags |= BControlLook::B_DISABLED;
-    be_control_look->DrawButtonBackground(view, drawRect, drawRect, base, flags, BControlLook::B_ALL_BORDERS, orientation);
+    be_control_look->DrawButtonBackground(view, drawRect, view->Bounds(), base, flags, BControlLook::B_ALL_BORDERS, orientation);
 
     view->PopState();
 }
