@@ -2251,7 +2251,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_object_set(G_OBJECT(m_videoSink.get()), "zorder",0.0f, nullptr);
 #endif
 
-#if PLATFORM(DB410C)
+#if PLATFORM(QCOM_DB)
     m_videoSink = gst_element_factory_make( "db410csink", "optimized vsink");
     g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
 #endif    
