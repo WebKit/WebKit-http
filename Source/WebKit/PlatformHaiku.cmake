@@ -98,6 +98,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
     haiku/WebCoreSupport/FrameNetworkingContextHaiku.cpp
     haiku/WebCoreSupport/InspectorClientHaiku.cpp
+    haiku/WebCoreSupport/NotificationClientHaiku.cpp
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
     haiku/WebCoreSupport/ProgressTrackerHaiku.cpp
     haiku/WebCoreSupport/WebVisitedLinkStore.cpp

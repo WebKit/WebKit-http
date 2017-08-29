@@ -32,6 +32,13 @@
 #include "Notification.h"
 #include <Notification.h>
 
+#include <Bitmap.h>
+#include <TranslationUtils.h>
+#include <UrlProtocolRoster.h>
+#include <UrlSynchronousRequest.h>
+
+class BWebPage;
+
 namespace WebCore {
 
 class NotificationClientHaiku: public NotificationClient {
@@ -61,25 +68,13 @@ public:
     bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override { return false; }
 
     Permission checkPermission(ScriptExecutionContext*) override {
-        notImplemented();
         return PermissionAllowed;
     }
 
 private:
-    BNotification fromDescriptor(Notification* descriptor) {
-        BNotification notification(B_INFORMATION_NOTIFICATION);
-        if (descriptor->body().length() > 0) {
-            notification.SetTitle(descriptor->title());
-            notification.SetContent(descriptor->body());
-        } else {
-            notification.SetContent(descriptor->title());
-        }
-        // FIXME SetIcon(...) < iconURL()
-        notification.SetMessageID(descriptor->tag());
+    class SynchronousListener;
 
-        return notification;
-    }
-
+    BNotification fromDescriptor(Notification* descriptor);
 };
 
 }
