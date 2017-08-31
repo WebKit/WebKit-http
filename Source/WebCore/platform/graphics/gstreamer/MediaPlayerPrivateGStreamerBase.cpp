@@ -326,7 +326,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #endif
 
 
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#if USE(TEXTURE_MAPPER_GL)
     if (client())
         client()->platformLayerWillBeDestroyed();
 #endif

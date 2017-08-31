@@ -30,6 +30,7 @@
 
 #include "GraphicsContext3D.h"
 #include "TextureMapper.h"
+#include "TextureMapperPlatformLayer.h"
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>
 #include <wtf/Function.h>
@@ -53,6 +54,13 @@ class TextureMapperPlatformLayerProxyProvider {
 public:
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const = 0;
     virtual void swapBuffersIfNeeded() = 0;
+    virtual ~TextureMapperPlatformLayerProxyProvider() { m_client = nullptr; }
+
+    void setClient(TextureMapperPlatformLayer::Client* client) { m_client = client; };
+    TextureMapperPlatformLayer::Client* client() { return m_client; }
+
+private:
+    TextureMapperPlatformLayer::Client* m_client = nullptr;
 };
 
 class TextureMapperPlatformLayerProxy : public ThreadSafeRefCounted<TextureMapperPlatformLayerProxy> {

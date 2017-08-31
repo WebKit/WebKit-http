@@ -417,10 +417,17 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
 
     notifyFlushRequired();
 #elif USE(COORDINATED_GRAPHICS_THREADED)
-    if (m_platformLayer != platformLayer)
+    if (m_platformLayer != platformLayer) {
+        if (m_platformLayer)
+            m_platformLayer->setClient(nullptr);
         m_shouldSyncPlatformLayer = true;
+    }
 
     m_platformLayer = platformLayer;
+
+    if (m_platformLayer)
+        m_platformLayer->setClient(this);
+
     notifyFlushRequired();
 #else
     UNUSED_PARAM(platformLayer);
@@ -1250,6 +1257,7 @@ void CoordinatedGraphicsLayer::animationStartedTimerFired()
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsLayer::platformLayerWillBeDestroyed()
 {
+    setContentsToPlatformLayer(nullptr, NoContentsLayer);
 }
 
 void CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay()
