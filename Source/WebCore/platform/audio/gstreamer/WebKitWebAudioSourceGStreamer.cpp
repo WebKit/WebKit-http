@@ -31,6 +31,7 @@
 #include <gst/audio/audio-info.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/CurrentTime.h>
 
 using namespace WebCore;
 
@@ -50,6 +51,7 @@ struct _WebKitWebAudioSrcClass {
 #define WEBKIT_WEB_AUDIO_SRC_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_WEBAUDIO_SRC, WebKitWebAudioSourcePrivate))
 struct _WebKitWebAudioSourcePrivate {
     gfloat sampleRate;
+    gdouble silentStartTime;
     AudioBus* bus;
     AudioIOCallback* provider;
     guint framesToPull;
@@ -191,6 +193,7 @@ static void webkit_web_audio_src_init(WebKitWebAudioSrc* src)
 
     priv->provider = 0;
     priv->bus = 0;
+    priv->silentStartTime = 0;
 
     g_rec_mutex_init(&priv->mutex);
     priv->task = adoptGRef(gst_task_new(reinterpret_cast<GstTaskFunction>(webKitWebAudioSrcLoop), src, 0));
@@ -361,6 +364,18 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
 
     GSList* sourcesIt = priv->sources;
     GSList* buffersIt = channelBufferList;
+
+    if (priv->bus->isSilent()) {
+        priv->numberOfSamples -= priv->framesToPull;
+        if (!priv->silentStartTime)
+            priv->silentStartTime = WTF::currentTime();
+    }
+    else {
+        if (priv->silentStartTime) {
+            priv->numberOfSamples += (WTF::currentTime() - priv->silentStartTime) * priv->sampleRate;
+            priv->silentStartTime = 0;
+        }
+    }
 
     GstFlowReturn ret = GST_FLOW_OK;
     for (int i = 0; sourcesIt && buffersIt; sourcesIt = g_slist_next(sourcesIt), buffersIt = g_slist_next(buffersIt), ++i) {
