@@ -40,6 +40,8 @@ WK_EXPORT WKViewRef WKViewCreateWithViewBackend(struct wpe_view_backend*, WKPage
 
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 
+WK_EXPORT struct wpe_view_backend* WKViewGetViewBackend(WKViewRef);
+
 enum {
     kWKViewStateIsInWindow = 1 << 0,
     kWKViewStateIsVisible = 1 << 1,
