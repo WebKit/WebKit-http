@@ -2620,14 +2620,16 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
         // 5.3. If mediaKeys is not null, run the following steps:
         if (mediaKeys) {
             // 5.3.1. Associate the CDM instance represented by mediaKeys with the media element for decrypting media data.
+            mediaKeys->attachCDMClient(*this);
+            if (m_player)
+                m_player->cdmInstanceAttached(mediaKeys->cdmInstance());
+
             // 5.3.2. If the preceding step failed, run the following steps:
             //   5.3.2.1. Set the mediaKeys attribute to null.
             //   5.3.2.2. Let this object's attaching media keys value be false.
             //   5.3.2.3. Reject promise with a new DOMException whose name is the appropriate error name.
             // 5.3.3. Queue a task to run the Attempt to Resume Playback If Necessary algorithm on the media element.
             // FIXME: ^
-
-            mediaKeys->attachCDMClient(*this);
         }
 
         // 5.4. Set the mediaKeys attribute to mediaKeys.
