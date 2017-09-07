@@ -33,8 +33,7 @@
 #include "CDMFactory.h"
 #include "CDMInstance.h"
 #include "CDMPrivate.h"
-#include <wtf/HashMap.h>
-#include <wtf/text/WTFString.h>
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
@@ -106,10 +105,10 @@ public:
         RefPtr<SharedBuffer> keyValueData;
     };
 
-    const HashMap<String, Vector<Key>>& keys() const { return m_keys; }
+    const Vector<Key>& keys() const { return m_keys; }
 
 private:
-    HashMap<String, Vector<Key>> m_keys;
+    Vector<Key> m_keys;
 };
 
 } // namespace WebCore

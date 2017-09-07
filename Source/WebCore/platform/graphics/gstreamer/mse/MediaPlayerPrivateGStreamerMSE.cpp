@@ -892,39 +892,6 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
     return extendedSupportsType(parameters, result);
 }
 
-#if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
-{
-    GST_TRACE("instance %p\n", &instance);
-
-#if 0
-    GRefPtr<GstBuffer> keyBuffer;
-
-    if (is<CDMInstanceClearKey>(instance)) {
-        auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
-        for (auto& entry : ckInstance.keys()) {
-            for (auto& key : entry.value) {
-                if (key.keyValueData) {
-                    keyBuffer = GRefPtr<GstBuffer>(gst_buffer_new_wrapped(
-                        g_memdup(key.keyValueData->data(), key.keyValueData->size()),
-                        key.keyValueData->size()));
-                    break;
-                }
-            }
-
-            if (keyBuffer)
-                break;
-        }
-    }
-
-    if (keyBuffer) {
-        for (auto it : m_appendPipelinesMap)
-            it.value->dispatchDecryptionKey(keyBuffer.get());
-    }
-#endif
-}
-#endif
-
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     if (status != MediaSourcePrivate::EosNoError)
@@ -970,6 +937,43 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
 
     return result;
 }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    if (is<CDMInstanceClearKey>(instance)) {
+        auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
+        if (ckInstance.keys().isEmpty())
+            return;
+
+        GValue keyIDList = G_VALUE_INIT, keyValueList = G_VALUE_INIT;
+        g_value_init(&keyIDList, GST_TYPE_LIST);
+        g_value_init(&keyValueList, GST_TYPE_LIST);
+
+        auto appendBuffer =
+            [](GValue* valueList, const SharedBuffer& buffer)
+            {
+                GValue* bufferValue = g_new0(GValue, 1);
+                g_value_init(bufferValue, GST_TYPE_BUFFER);
+                gst_value_take_buffer(bufferValue,
+                    gst_buffer_new_wrapped(g_memdup(buffer.data(), buffer.size()), buffer.size()));
+                gst_value_list_append_and_take_value(valueList, bufferValue);
+            };
+
+        for (auto& key : ckInstance.keys()) {
+            appendBuffer(&keyIDList, *key.keyIDData);
+            appendBuffer(&keyValueList, *key.keyValueData);
+        }
+
+        GUniquePtr<GstStructure> structure(gst_structure_new_empty("drm-cipher-clearkey"));
+        gst_structure_set_value(structure.get(), "key-ids", &keyIDList);
+        gst_structure_set_value(structure.get(), "key-values", &keyValueList);
+
+        for (auto it : m_appendPipelinesMap)
+            it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+    }
+}
+#endif
 
 } // namespace WebCore.
 

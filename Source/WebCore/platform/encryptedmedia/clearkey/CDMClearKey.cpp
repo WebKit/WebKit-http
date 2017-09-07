@@ -43,6 +43,11 @@ using namespace Inspector;
 
 namespace WebCore {
 
+static struct {
+    HashMap<String, Vector<CDMInstanceClearKey::Key>> keys;
+    HashSet<String> persistentSessions;
+} s_clearKey;
+
 CDMFactoryClearKey& CDMFactoryClearKey::singleton()
 {
     static CDMFactoryClearKey s_factory;
@@ -285,7 +290,7 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
     // FIXME: Check that session type is valid.
 #endif
 
-    auto& keyVector = m_keys.ensure(sessionId, [] { return Vector<Key>{ }; }).iterator->value;
+    auto& keyVector = s_clearKey.keys.ensure(sessionId, [] { return Vector<Key>{ }; }).iterator->value;
 
     bool keysChanged = false;
     for (auto& key : updatedKeys) {
@@ -353,7 +358,7 @@ void CDMInstanceClearKey::storeRecordOfKeyUsage(const String&)
 void CDMInstanceClearKey::gatherAvailableKeys(AvailableKeysCallback callback)
 {
     KeyVector vector;
-    for (auto& it : m_keys) {
+    for (auto& it : s_clearKey.keys) {
         for (auto& key : it.value) {
             if (key.status == KeyStatus::Usable)
                 vector.append({ key.keyIDData->copy(), key.keyValueData->copy() });

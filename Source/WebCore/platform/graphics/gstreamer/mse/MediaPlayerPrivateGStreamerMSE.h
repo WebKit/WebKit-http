@@ -80,14 +80,14 @@ public:
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    void attemptToDecryptWithInstance(const CDMInstance&) override;
-#endif
-
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
     void notifySeekNeedsDataForTime(const MediaTime&);
 
     static bool supportsCodecs(const String& codecs);
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void attemptToDecryptWithInstance(const CDMInstance&) final;
+#endif
 
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
