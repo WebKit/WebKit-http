@@ -35,7 +35,7 @@
 #include "CDMRestrictions.h"
 #include "CDMSessionType.h"
 #include "SharedBuffer.h"
-#include "inspector/InspectorValues.h"
+#include <inspector/InspectorValues.h>
 #include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
 
@@ -47,6 +47,23 @@ static struct {
     HashMap<String, Vector<CDMInstanceClearKey::Key>> keys;
     HashSet<String> persistentSessions;
 } s_clearKey;
+
+RefPtr<InspectorObject> parseJSONObject(const SharedBuffer& buffer)
+{
+    // Fail on large buffers whose size doesn't fit into a 32-bit unsigned integer.
+    size_t size = buffer.size();
+    if (size > std::numeric_limits<unsigned>::max())
+        return nullptr;
+
+    // Parse the buffer contents as JSON, returning the root object (if any).
+    String json { buffer.data(), static_cast<unsigned>(size) };
+    RefPtr<InspectorValue> value;
+    RefPtr<InspectorObject> object;
+    if (!InspectorValue::parseJSON(json, value) || !value->asObject(object))
+        return nullptr;
+
+    return object;
+}
 
 CDMFactoryClearKey& CDMFactoryClearKey::singleton()
 {
@@ -149,30 +166,51 @@ RefPtr<CDMInstance> CDMPrivateClearKey::createInstance()
 
 void CDMPrivateClearKey::loadAndInitialize()
 {
+    // No-op.
 }
 
 bool CDMPrivateClearKey::supportsServerCertificates() const
 {
+    // Server certificates are not supported.
     return false;
 }
 
 bool CDMPrivateClearKey::supportsSessions() const
 {
+    // Sessions are supported.
     return true;
 }
 
-bool CDMPrivateClearKey::supportsInitData(const AtomicString& initDataType, const SharedBuffer&) const
+bool CDMPrivateClearKey::supportsInitData(const AtomicString& initDataType, const SharedBuffer& initData) const
 {
-    return equalLettersIgnoringASCIICase(initDataType, "keyids");
+    // Fail for init data types other than 'keyids'.
+    if (!equalLettersIgnoringASCIICase(initDataType, "keyids"))
+        return false;
+
+    // Validate the initData buffer as an JSON object.
+    if (!parseJSONObject(initData))
+        return false;
+
+    return true;
 }
 
 RefPtr<SharedBuffer> CDMPrivateClearKey::sanitizeResponse(const SharedBuffer& response) const
 {
+    // Validate the response buffer as an JSON object.
+    if (!parseJSONObject(response))
+        return nullptr;
+
     return response.copy();
 }
 
 std::optional<String> CDMPrivateClearKey::sanitizeSessionId(const String& sessionId) const
 {
+    // Validate the session ID string as an 32-bit integer.
+    bool ok;
+    sessionId.toUIntStrict(&ok);
+    if (!ok)
+        return std::nullopt;
+
     return sessionId;
 }
 
