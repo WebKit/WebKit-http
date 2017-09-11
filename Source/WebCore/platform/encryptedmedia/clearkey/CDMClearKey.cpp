@@ -37,6 +37,7 @@
 #include "SharedBuffer.h"
 #include <inspector/InspectorValues.h>
 #include <wtf/UUID.h>
+#include <wtf/MainThread.h>
 #include <wtf/text/Base64.h>
 
 using namespace Inspector;
@@ -214,32 +215,46 @@ std::optional<String> CDMPrivateClearKey::sanitizeSessionId(const String& sessio
     return sessionId;
 }
 
-CDMInstanceClearKey::CDMInstanceClearKey() = default;
+CDMInstanceClearKey::CDMInstanceClearKey()
+    : m_weakPtrFactory(this)
+{
+}
+
 CDMInstanceClearKey::~CDMInstanceClearKey() = default;
 
 CDMInstance::SuccessValue CDMInstanceClearKey::initializeWithConfiguration(const CDMKeySystemConfiguration&)
 {
+    // No-op.
     return Succeeded;
 }
 
-CDMInstance::SuccessValue CDMInstanceClearKey::setDistinctiveIdentifiersAllowed(bool)
+CDMInstance::SuccessValue CDMInstanceClearKey::setDistinctiveIdentifiersAllowed(bool allowed)
 {
-    return Succeeded;
+    // Reject setting distinctive identifiers as allowed.
+    return !allowed ? Succeeded : Failed;
 }
 
-CDMInstance::SuccessValue CDMInstanceClearKey::setPersistentStateAllowed(bool)
+CDMInstance::SuccessValue CDMInstanceClearKey::setPersistentStateAllowed(bool allowed)
 {
-    return Succeeded;
+    // Reject setting persistent state as allowed.
+    return !allowed ? Succeeded : Failed;
 }
 
 CDMInstance::SuccessValue CDMInstanceClearKey::setServerCertificate(Ref<SharedBuffer>&&)
 {
+    // Reject setting any server certificate.
     return Failed;
 }
 
 void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {
-    callback(WTFMove(initData), createCanonicalUUIDString(), false, Succeeded);
+    callOnMainThread(
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback), initData = WTFMove(initData)]() mutable {
+            if (!weakThis)
+                return;
+
+            callback(WTFMove(initData), createCanonicalUUIDString(), false, Succeeded);
+        });
 }
 
 void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
@@ -283,7 +298,13 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
             return array;
         }();
     if (!keysArray) {
-        callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
+        callOnMainThread(
+            [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback)] {
+                if (!weakThis)
+                    return;
+
+                callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
+            });
         return;
     }
 
@@ -317,7 +338,13 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
             return true;
         }();
     if (!validFormat) {
-        callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
+        callOnMainThread(
+            [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback)] {
+                if (!weakThis)
+                    return;
+
+                callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
+            });
         return;
     }
 
@@ -373,20 +400,46 @@ void CDMInstanceClearKey::updateLicense(const String& sessionId, LicenseType, co
         changedKeys = WTFMove(keyStatusVector);
     }
 
-    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
+    callOnMainThread(
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback), changedKeys = WTFMove(changedKeys)]() mutable {
+            if (!weakThis)
+                return;
+
+            callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
+        });
 }
 
-void CDMInstanceClearKey::loadSession(LicenseType, const String&, const String&, LoadSessionCallback)
+void CDMInstanceClearKey::loadSession(LicenseType, const String&, const String&, LoadSessionCallback callback)
 {
+    callOnMainThread(
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback)] {
+            if (!weakThis)
+                return;
+
+            callback(std::nullopt, std::nullopt, std::nullopt, Failed, SessionLoadFailure::Other);
+        });
 }
 
 void CDMInstanceClearKey::closeSession(const String&, CloseSessionCallback callback)
 {
-    callback();
+    callOnMainThread(
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback)] {
+            if (!weakThis)
+                return;
+
+            callback();
+        });
 }
 
-void CDMInstanceClearKey::removeSessionData(const String&, LicenseType, RemoveSessionDataCallback)
+void CDMInstanceClearKey::removeSessionData(const String&, LicenseType, RemoveSessionDataCallback callback)
 {
+    callOnMainThread(
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback)] {
+            if (!weakThis)
+                return;
+
+            callback({ }, std::nullopt, Failed);
+        });
 }
 
 void CDMInstanceClearKey::storeRecordOfKeyUsage(const String&)
