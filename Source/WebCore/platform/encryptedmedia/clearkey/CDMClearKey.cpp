@@ -248,12 +248,15 @@ CDMInstance::SuccessValue CDMInstanceClearKey::setServerCertificate(Ref<SharedBu
 
 void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {
+    static uint32_t s_sessionIdValue = 0;
+    ++s_sessionIdValue;
+
     callOnMainThread(
-        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback), initData = WTFMove(initData)]() mutable {
+        [weakThis = m_weakPtrFactory.createWeakPtr(), callback = WTFMove(callback), initData = WTFMove(initData), sessionIdValue = s_sessionIdValue]() mutable {
             if (!weakThis)
                 return;
 
-            callback(WTFMove(initData), createCanonicalUUIDString(), false, Succeeded);
+            callback(WTFMove(initData), String::number(sessionIdValue), false, Succeeded);
         });
 }
 
