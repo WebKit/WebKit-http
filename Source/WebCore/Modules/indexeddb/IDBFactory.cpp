@@ -37,6 +37,7 @@
 #include "IDBOpenDBRequest.h"
 #include "Logging.h"
 #include "Page.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
@@ -55,6 +56,9 @@ static bool shouldThrowSecurityException(ScriptExecutionContext& context)
         if (!document.page())
             return true;
     }
+
+    if (!RuntimeEnabledFeatures::sharedFeatures().indexedDBEnabled())
+        return true;
 
     if (!context.securityOrigin()->canAccessDatabase(context.topOrigin()))
         return true;
