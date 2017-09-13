@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,6 +46,9 @@
 #import <mach/mach_vm.h>
 #import <mach/vm_statistics.h>
 #import <objc/runtime.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/mac/HIToolboxSPI.h>
+#import <pal/spi/mac/NSWindowSPI.h>
 #import <sysexits.h>
 #import <wtf/HashSet.h>
 #import <wtf/NeverDestroyed.h>
@@ -96,7 +99,7 @@ static bool windowCoversAnyScreen(WindowRef window)
 
 static CGWindowID cgWindowID(WindowRef window)
 {
-    return reinterpret_cast<CGWindowID>(WKGetNativeWindowFromWindowRef(window));
+    return reinterpret_cast<CGWindowID>(GetNativeWindowFromWindowRef(window));
 }
 
 #endif
@@ -440,12 +443,12 @@ static void initializeCocoaOverrides()
     NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
 
     // Track when any Cocoa window is about to be be shown.
-    id orderOnScreenObserver = [defaultCenter addObserverForName:WKWindowWillOrderOnScreenNotification()
+    id orderOnScreenObserver = [defaultCenter addObserverForName:NSWindowWillOrderOnScreenNotification
                                                           object:nil
                                                            queue:nil
                                                            usingBlock:^(NSNotification *notification) { fullscreenWindowTracker().windowShown([notification object]); }];
     // Track when any Cocoa window is about to be hidden.
-    id orderOffScreenObserver = [defaultCenter addObserverForName:WKWindowWillOrderOffScreenNotification()
+    id orderOffScreenObserver = [defaultCenter addObserverForName:NSWindowWillOrderOffScreenNotification
                                                            object:nil
                                                             queue:nil
                                                        usingBlock:^(NSNotification *notification) { fullscreenWindowTracker().windowHidden([notification object]); }];
@@ -529,7 +532,10 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
 
     // FIXME: It would be better to proxy SetCursor calls over to the UI process instead of
     // allowing plug-ins to change the mouse cursor at any time.
-    WKEnableSettingCursorWhenInBackground();
+    // FIXME: SetsCursorInBackground connection property is deprecated in favor of kCGSSetsCursorInBackgroundTagBit window tag bit.
+    // <rdar://problem/7752422> asks for an API to set cursor from background processes.
+    CGSConnectionID cid = CGSMainConnectionID();
+    CGSSetConnectionProperty(cid, cid, CFSTR("SetsCursorInBackground"), (CFTypeRef)kCFBooleanTrue);
 
     RetainPtr<CFURLRef> pluginURL = adoptCF(CFURLCreateWithFileSystemPath(0, m_pluginPath.createCFString().get(), kCFURLPOSIXPathStyle, false));
     if (!pluginURL)

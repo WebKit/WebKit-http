@@ -48,6 +48,7 @@ SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeAdd, CMTime, (CMTime tim
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeGetSeconds, Float64, (CMTime time), (time))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeMake, CMTime, (int64_t value, int32_t timescale), (value, timescale))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeMakeWithSeconds, CMTime, (Float64 seconds, int32_t preferredTimeScale), (seconds, preferredTimeScale))
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend), (minuend, subtrahend))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeRangeGetEnd, CMTime, (CMTimeRange range), (range))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeRangeMake, CMTimeRange, (CMTime start, CMTime duration), (start, duration))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeRangeEqual, Boolean, (CMTimeRange range1, CMTimeRange range2), (range1, range2))
@@ -101,6 +102,7 @@ SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMSampleBufferGetTotalSampleSi
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMSetAttachment, void, (CMAttachmentBearerRef target, CFStringRef key, CFTypeRef value, CMAttachmentMode attachmentMode), (target, key, value, attachmentMode))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseCreateWithMasterClock, OSStatus, (CFAllocatorRef allocator, CMClockRef masterClock, CMTimebaseRef *timebaseOut), (allocator, masterClock, timebaseOut))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseGetTime, CMTime, (CMTimebaseRef timebase), (timebase))
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseGetRate, Float64, (CMTimebaseRef timebase), (timebase))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseSetRate, OSStatus, (CMTimebaseRef timebase, Float64 rate), (timebase, rate))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseSetTime, OSStatus, (CMTimebaseRef timebase, CMTime time), (timebase, time))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimebaseGetEffectiveRate, Float64, (CMTimebaseRef timebase), (timebase))
@@ -131,6 +133,7 @@ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleBufferAttachmentKey_E
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleBufferAttachmentKey_PostNotificationWhenConsumed, CFStringRef)
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding, CFStringRef)
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleAttachmentKey_DisplayImmediately, CFStringRef)
+SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleAttachmentKey_IsDependedOnByOthers, CFStringRef)
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMSampleBufferConsumerNotification_BufferConsumed, CFStringRef)
 
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMTimebaseNotification_EffectiveRateChanged, CFStringRef)
@@ -155,7 +158,6 @@ SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMAudioClockCreate, OSStatus, 
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeMaximum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeMinimum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeRangeContainsTime, Boolean, (CMTimeRange range, CMTime time), (range, time))
-SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend), (minuend, subtrahend))
 
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, CoreMedia, kCMTimeIndefinite, CMTime)
 #endif // PLATFORM(IOS)

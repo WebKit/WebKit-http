@@ -476,17 +476,6 @@ void WebPageProxy::applyAutocorrection(const String& correction, const String& o
     m_process->send(Messages::WebPage::ApplyAutocorrection(correction, originalText, callbackID), m_pageID);
 }
 
-void WebPageProxy::executeEditCommand(const String& commandName, WTF::Function<void (CallbackBase::Error)>&& callbackFunction)
-{
-    if (!isValid()) {
-        callbackFunction(CallbackBase::Error::Unknown);
-        return;
-    }
-    
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::ExecuteEditCommandWithCallback(commandName, callbackID), m_pageID);
-}
-
 bool WebPageProxy::applyAutocorrection(const String& correction, const String& originalText)
 {
     bool autocorrectionApplied = false;
@@ -1105,10 +1094,21 @@ void WebPageProxy::didHandleStartDataInteractionRequest(bool started)
     m_pageClient.didHandleStartDataInteractionRequest(started);
 }
 
+void WebPageProxy::didHandleAdditionalDragItemsRequest(bool added)
+{
+    m_pageClient.didHandleAdditionalDragItemsRequest(added);
+}
+
 void WebPageProxy::requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)
 {
     if (isValid())
         m_process->send(Messages::WebPage::RequestStartDataInteraction(clientPosition, globalPosition), m_pageID);
+}
+
+void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition)
+{
+    if (isValid())
+        m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition), m_pageID);
 }
 
 void WebPageProxy::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)

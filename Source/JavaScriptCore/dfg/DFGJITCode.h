@@ -69,7 +69,9 @@ public:
             osrEntry, osrEntry.size(), bytecodeIndex,
             getOSREntryDataBytecodeIndex);
     }
-    
+
+    void finalizeOSREntrypoints();
+
     unsigned appendOSRExit(const OSRExit& exit)
     {
         unsigned result = osrExit.size();
@@ -124,8 +126,6 @@ public:
 
     static ptrdiff_t commonDataOffset() { return OBJECT_OFFSETOF(JITCode, common); }
 
-    std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
-    
 private:
     friend class JITCompiler; // Allow JITCompiler to call setCodeRef().
 
@@ -136,6 +136,7 @@ public:
     Vector<DFG::SpeculationRecovery> speculationRecovery;
     DFG::VariableEventStream variableEventStream;
     DFG::MinifiedGraph minifiedDFG;
+
 #if ENABLE(FTL_JIT)
     uint8_t neverExecutedEntry { 1 };
 

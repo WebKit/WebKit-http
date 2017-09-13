@@ -39,12 +39,13 @@
 #include "CSSMediaRule.h"
 #include "CSSStyleRule.h"
 #include "CSSSupportsRule.h"
+#include "CacheStorageConnection.h"
+#include "CacheStorageProvider.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ComposedTreeIterator.h"
 #include "Cursor.h"
-#include "DOMPath.h"
 #include "DOMRect.h"
 #include "DOMRectList.h"
 #include "DOMStringList.h"
@@ -87,7 +88,6 @@
 #include "IntRect.h"
 #include "InternalSettings.h"
 #include "JSImageData.h"
-#include "Language.h"
 #include "LibWebRTCProvider.h"
 #include "MainFrame.h"
 #include "MallocStatistics.h"
@@ -108,6 +108,7 @@
 #include "PrintContext.h"
 #include "PseudoElement.h"
 #include "Range.h"
+#include "ReadableStream.h"
 #include "RenderEmbeddedObject.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
@@ -152,6 +153,7 @@
 #include <inspector/InspectorValues.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
+#include <wtf/Language.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/text/StringBuffer.h>
@@ -417,7 +419,7 @@ void Internals::resetToConsistentState(Page& page)
     }
 
     WebCore::clearDefaultPortForProtocolMapForTesting();
-    WebCore::overrideUserPreferredLanguages(Vector<String>());
+    overrideUserPreferredLanguages(Vector<String>());
     WebCore::Settings::setUsesOverlayScrollbars(false);
     WebCore::Settings::setUsesMockScrollAnimator(false);
 #if ENABLE(VIDEO_TRACK)
@@ -1735,12 +1737,12 @@ ExceptionOr<int> Internals::lastSpellCheckProcessedSequence()
 
 Vector<String> Internals::userPreferredLanguages() const
 {
-    return WebCore::userPreferredLanguages();
+    return WTF::userPreferredLanguages();
 }
 
 void Internals::setUserPreferredLanguages(const Vector<String>& languages)
 {
-    WebCore::overrideUserPreferredLanguages(languages);
+    overrideUserPreferredLanguages(languages);
 }
 
 Vector<String> Internals::userPreferredAudioCharacteristics() const
@@ -2241,6 +2243,7 @@ ExceptionOr<String> Internals::layerTreeAsText(Document& document, unsigned shor
     if (!document.frame())
         return Exception { InvalidAccessError };
 
+    document.updateLayoutIgnorePendingStylesheets();
     return document.frame()->layerTreeAsText(toLayerTreeFlags(flags));
 }
 
@@ -2249,6 +2252,8 @@ ExceptionOr<uint64_t> Internals::layerIDForElement(Element& element)
     Document* document = contextDocument();
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
+
+    element.document().updateLayoutIgnorePendingStylesheets();
 
     if (!element.renderer() || !element.renderer()->hasLayer())
         return Exception { NotFoundError };
@@ -2315,6 +2320,8 @@ ExceptionOr<void> Internals::setElementUsesDisplayListDrawing(Element& element, 
     if (!document || !document->renderView())
         return Exception { InvalidAccessError };
 
+    element.document().updateLayoutIgnorePendingStylesheets();
+
     if (!element.renderer())
         return Exception { InvalidAccessError };
 
@@ -2339,6 +2346,8 @@ ExceptionOr<void> Internals::setElementTracksDisplayListReplay(Element& element,
     Document* document = contextDocument();
     if (!document || !document->renderView())
         return Exception { InvalidAccessError };
+
+    element.document().updateLayoutIgnorePendingStylesheets();
 
     if (!element.renderer())
         return Exception { InvalidAccessError };
@@ -2365,6 +2374,8 @@ ExceptionOr<String> Internals::displayListForElement(Element& element, unsigned 
     if (!document || !document->renderView())
         return Exception { InvalidAccessError };
 
+    element.document().updateLayoutIgnorePendingStylesheets();
+
     if (!element.renderer())
         return Exception { InvalidAccessError };
 
@@ -2390,6 +2401,8 @@ ExceptionOr<String> Internals::replayDisplayListForElement(Element& element, uns
     Document* document = contextDocument();
     if (!document || !document->renderView())
         return Exception { InvalidAccessError };
+
+    element.document().updateLayoutIgnorePendingStylesheets();
 
     if (!element.renderer())
         return Exception { InvalidAccessError };
@@ -3032,9 +3045,10 @@ ExceptionOr<bool> Internals::mediaElementHasCharacteristic(HTMLMediaElement& ele
 
 bool Internals::isSelectPopupVisible(HTMLSelectElement& element)
 {
+    element.document().updateLayoutIgnorePendingStylesheets();
+
     auto* renderer = element.renderer();
-    ASSERT(renderer);
-    if (!is<RenderMenuList>(*renderer))
+    if (!is<RenderMenuList>(renderer))
         return false;
 
 #if !PLATFORM(IOS)
@@ -3141,8 +3155,7 @@ ExceptionOr<Ref<DOMRect>> Internals::selectionBounds()
 
 ExceptionOr<bool> Internals::isPluginUnavailabilityIndicatorObscured(Element& element)
 {
-    auto* renderer = element.renderer();
-    if (!is<HTMLPlugInElement>(element) || !is<RenderEmbeddedObject>(renderer))
+    if (!is<HTMLPlugInElement>(element))
         return Exception { InvalidAccessError };
 
     return downcast<HTMLPlugInElement>(element).isReplacementObscured();
@@ -3518,7 +3531,7 @@ ExceptionOr<String> Internals::pageOverlayLayerTreeAsText(unsigned short flags) 
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    document->updateLayout();
+    document->updateLayoutIgnorePendingStylesheets();
 
     return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame(), toLayerTreeFlags(flags));
 }
@@ -3581,6 +3594,8 @@ String Internals::pageMediaState()
         string.append("HasMutedAudioCaptureDevice,");
     if (state & MediaProducer::HasMutedVideoCaptureDevice)
         string.append("HasMutedVideoCaptureDevice,");
+    if (state & MediaProducer::HasUserInteractedWithMediaElement)
+        string.append("HasUserInteractedWithMediaElement,");
 
     if (string.isEmpty())
         string.append("IsNotPlaying");
@@ -3659,10 +3674,10 @@ void Internals::setPlatformMomentumScrollingPredictionEnabled(bool enabled)
 
 ExceptionOr<String> Internals::scrollSnapOffsets(Element& element)
 {
+    element.document().updateLayoutIgnorePendingStylesheets();
+
     if (!element.renderBox())
         return String();
-
-    element.document().updateLayout();
 
     RenderBox& box = *element.renderBox();
     ScrollableArea* scrollableArea;
@@ -3782,35 +3797,18 @@ void Internals::setShowAllPlugins(bool show)
 
 bool Internals::isReadableStreamDisturbed(JSC::ExecState& state, JSValue stream)
 {
-    JSGlobalObject* globalObject = state.vmEntryGlobalObject();
-    JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
-    const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().isReadableStreamDisturbedPrivateName();
-    JSValue value;
-    PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
-    globalObject->methodTable()->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
-    value = propertySlot.getValue(&state, privateName);
-    ASSERT(value.isFunction());
-
-    JSObject* function = value.getObject();
-    CallData callData;
-    CallType callType = JSC::getCallData(function, callData);
-    ASSERT(callType != JSC::CallType::None);
-    MarkedArgumentBuffer arguments;
-    arguments.append(stream);
-    JSValue returnedValue = JSC::call(&state, function, callType, callData, JSC::jsUndefined(), arguments);
-    ASSERT(returnedValue.isBoolean());
-
-    return returnedValue.asBoolean();
+    return ReadableStream::isDisturbed(state, stream);
 }
 
 JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSValue srcByteOffset, JSValue srcLength)
 {
+    JSC::VM& vm = state.vm();
     JSGlobalObject* globalObject = state.vmEntryGlobalObject();
-    JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
+    JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData);
     const Identifier& privateName = clientData->builtinNames().cloneArrayBufferPrivateName();
     JSValue value;
     PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
-    globalObject->methodTable()->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
+    globalObject->methodTable(vm)->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
     value = propertySlot.getValue(&state, privateName);
     ASSERT(value.isFunction());
 
@@ -4132,6 +4130,38 @@ String Internals::audioSessionCategory() const
     }
 #endif
     return emptyString();
+}
+
+void Internals::clearCacheStorageMemoryRepresentation()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    if (!m_cacheStorageConnection) {
+        if (auto* page = contextDocument()->page())
+            m_cacheStorageConnection = page->cacheStorageProvider().createCacheStorageConnection(page->sessionID());
+        if (!m_cacheStorageConnection)
+            return;
+    }
+    m_cacheStorageConnection->clearMemoryRepresentation(document->securityOrigin().toString(), [](std::optional<DOMCacheEngine::Error>&&) { });
+}
+
+void Internals::cacheStorageEngineRepresentation(DOMPromiseDeferred<IDLDOMString>&& promise)
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    if (!m_cacheStorageConnection) {
+        if (auto* page = contextDocument()->page())
+            m_cacheStorageConnection = page->cacheStorageProvider().createCacheStorageConnection(page->sessionID());
+        if (!m_cacheStorageConnection)
+            return;
+    }
+    m_cacheStorageConnection->engineRepresentation([promise = WTFMove(promise)](const String& result) mutable {
+        promise.resolve(result);
+    });
 }
 
 } // namespace WebCore

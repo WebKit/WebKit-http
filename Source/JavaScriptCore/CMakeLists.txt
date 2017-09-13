@@ -46,7 +46,7 @@ set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
     "${ICU_INCLUDE_DIRS}"
 )
 
-set(JavaScriptCore_SOURCES
+set(JavaScriptCore_UNIFIABLE_SOURCES
     API/JSBase.cpp
     API/JSCTestRunnerUtils.cpp
     API/JSCallbackConstructor.cpp
@@ -391,7 +391,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGPhase.cpp
     dfg/DFGPhiChildren.cpp
     dfg/DFGPlan.cpp
-    dfg/DFGPrePostNumbering.cpp
     dfg/DFGPredictionInjectionPhase.cpp
     dfg/DFGPredictionPropagationPhase.cpp
     dfg/DFGPromotedHeapLocation.cpp
@@ -690,6 +689,11 @@ set(JavaScriptCore_SOURCES
     runtime/ArrayConventions.cpp
     runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
+    runtime/AsyncFromSyncIteratorPrototype.cpp
+    runtime/AsyncGeneratorFunctionConstructor.cpp
+    runtime/AsyncGeneratorFunctionPrototype.cpp
+    runtime/AsyncGeneratorPrototype.cpp
+    runtime/AsyncIteratorPrototype.cpp
     runtime/AtomicsObject.cpp
     runtime/AsyncFunctionConstructor.cpp
     runtime/AsyncFunctionPrototype.cpp
@@ -779,6 +783,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
     runtime/JSAsyncFunction.cpp
+    runtime/JSAsyncGeneratorFunction.cpp
     runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
@@ -874,7 +879,6 @@ set(JavaScriptCore_SOURCES
     runtime/PropertyTable.cpp
     runtime/PrototypeMap.cpp
     runtime/ProxyConstructor.cpp
-    runtime/ProxyObject.cpp
     runtime/ProxyRevoke.cpp
     runtime/ReflectObject.cpp
     runtime/RegExp.cpp
@@ -930,8 +934,8 @@ set(JavaScriptCore_SOURCES
     runtime/VMTraps.cpp
     runtime/VarOffset.cpp
     runtime/Watchdog.cpp
+    runtime/WeakMapBase.cpp
     runtime/WeakMapConstructor.cpp
-    runtime/WeakMapData.cpp
     runtime/WeakMapPrototype.cpp
     runtime/WeakSetConstructor.cpp
     runtime/WeakSetPrototype.cpp
@@ -1012,6 +1016,30 @@ set(JavaScriptCore_SOURCES
     yarr/YarrSyntaxChecker.cpp
 )
 
+foreach (_sourceFile IN LISTS JavaScriptCore_UNIFIABLE_SOURCES)
+    if (NOT (${_sourceFile} MATCHES "[.]c$"))
+        set_source_files_properties(${_sourceFile} PROPERTIES HEADER_FILE_ONLY ON)
+        list(APPEND JavaScriptCore_HEADERS ${_sourceFile})
+    endif ()
+endforeach ()
+
+execute_process(COMMAND ${RUBY_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../WTF/generate-unified-source-bundles.rb
+  "--derived-sources-path" ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} ${JavaScriptCore_UNIFIABLE_SOURCES}
+  RESULT_VARIABLE generateUnifiedSourcesResult
+  OUTPUT_VARIABLE generateUnifiedSourcesOutput
+)
+
+if (${generateUnifiedSourcesResult})
+    message(FATAL_ERROR "unified-source-bundler.rb exited with non-zero status, exiting")
+endif ()
+
+list(APPEND JavaScriptCore_SOURCES ${generateUnifiedSourcesOutput})
+
+# These are special files that we can't or don't want to unified source compile
+list(APPEND JavaScriptCore_SOURCES
+    runtime/ProxyObject.cpp
+)
+
 # Extra flags for compile sources can go here.
 if (NOT MSVC)
     set_source_files_properties(runtime/ProxyObject.cpp PROPERTIES COMPILE_FLAGS -fno-optimize-sibling-calls)
@@ -1022,6 +1050,7 @@ endif ()
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp
     runtime/ArrayIteratorPrototype.cpp
+    runtime/AsyncGeneratorPrototype.cpp
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
@@ -1162,7 +1191,9 @@ list(APPEND JavaScriptCore_HEADERS
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
 )
 
-if ((${CMAKE_SYSTEM_NAME} STREQUAL "Linux"))
+if (WIN32)
+  set(OFFLINE_ASM_BACKEND "X86_WIN, X86_64_WIN, C_LOOP")
+else ()
     if (WTF_CPU_X86)
         set(OFFLINE_ASM_BACKEND "X86")
     elseif (WTF_CPU_X86_64)
@@ -1328,6 +1359,7 @@ add_custom_command(
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/create_regex_tables
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/create_regex_tables > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h
     VERBATIM)
+list(APPEND JavaScriptCore_HEADERS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h)
 WEBKIT_ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/yarr/YarrPattern.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h)
 
 add_custom_command(
@@ -1348,6 +1380,7 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/KeywordLookupGenerator.py ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h
     VERBATIM)
+list(APPEND JavaScriptCore_HEADERS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h)
 WEBKIT_ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h)
 
 
@@ -1451,10 +1484,13 @@ set(BUILTINS_GENERATOR_SCRIPTS
 )
 
 set(JavaScriptCore_BUILTINS_SOURCES
+    ${JAVASCRIPTCORE_DIR}/builtins/AsyncFromSyncIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ArrayPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/AsyncFunctionPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/AsyncIteratorPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/AsyncGeneratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/DatePrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/FunctionPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/GeneratorPrototype.js
@@ -1464,6 +1500,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/IteratorHelpers.js
     ${JAVASCRIPTCORE_DIR}/builtins/IteratorPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/MapIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/MapPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/NumberConstructor.js
@@ -1474,6 +1511,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/PromisePrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/RegExpPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/SetIteratorPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/SetPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringIteratorPrototype.js
@@ -1490,7 +1528,7 @@ add_custom_command(
     WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
 )
 
-list(APPEND JavaScriptCore_SOURCES
+list(APPEND JavaScriptCore_HEADERS
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcode.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcodeGenerated.h
 )

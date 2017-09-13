@@ -1029,6 +1029,10 @@ Some other editing-related methods still unimplemented:
     [self _dismissContentRelativeChildWindowsWithAnimation:withAnimation];
 }
 
+- (void)_web_editorStateDidChange
+{
+}
+
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event
 {
     [self _gestureEventWasNotHandledByWebCore:event];
@@ -1590,6 +1594,15 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 // This method is for subclasses to override.
 - (void)_removeMediaPlaybackControlsView
 {
+}
+
+- (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock
+{
+    auto updateBlockCopy = makeBlockPtr(updateBlock);
+    _data->_impl->page().callAfterNextPresentationUpdate([updateBlockCopy](WebKit::CallbackBase::Error error) {
+        if (updateBlockCopy)
+            updateBlockCopy();
+    });
 }
 
 @end

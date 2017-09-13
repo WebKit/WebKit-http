@@ -153,9 +153,6 @@ fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
 
-# Directory upload is not enabled.
-fast/forms/file/input-file-directory-upload.html
-
 # Perf tests are very flaky, because they run in parallel with other tests.
 perf
 
@@ -879,20 +876,11 @@ webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
@@ -1121,7 +1109,6 @@ webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgpu.html [ Pass Timeout ]
 webkit.org/b/174272 inspector/canvas/css-canvas-clients.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Pass Timeout ]
-webkit.org/b/170615 inspector/codemirror/prettyprinting-css.html [ Pass Timeout ]
 webkit.org/b/153460 inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
@@ -1435,8 +1422,6 @@ media/encrypted-media/mock-MediaKeySession-load.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-remove.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
-webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
-
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/167642 imported/w3c/web-platform-tests/shadow-dom/slotchange.html [ Pass Failure ]
@@ -1594,7 +1579,7 @@ webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsi
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback-emoji.html [ Failure ]
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback.html [ ImageOnlyFailure ]
 
-webkit.org/b/173487 imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html [ Pass Failure ]
+webkit.org/b/173487 imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html [ Pass Timeout Failure ]
 
 webkit.org/b/313156 [ ElCapitan ] fast/text/system-font-japanese-synthetic-italic.html [ ImageOnlyFailure ]
 
@@ -1618,5 +1603,35 @@ webkit.org/b/175592 fast/mediacapturefromelement/CanvasCaptureMediaStream-webgl-
 
 webkit.org/b/175700 media/video-controls-rendering.html [ Pass Failure ]
 
-webkit.org/b/173010 [ Debug ] js/slow-stress/Int32Array-alloc-huge.html [ Pass Timout ]
+webkit.org/b/173010 [ Debug ] js/slow-stress/Int32Array-alloc-huge.html [ Pass Timeout ]
+
+webkit.org/b/173560 inspector/css/add-rule.html [ Pass Timeout ]
+
+webkit.org/b/173780 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-settimeout.html [ Pass Failure ]
+
+# Missing support for 521-bit elliptic curves.
+crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p521.html
+crypto/subtle/ec-import-spki-key-export-spki-key-p521.html
+crypto/subtle/ecdh-generate-export-jwk-key-p521.html
+crypto/subtle/ecdh-generate-export-key-pkcs8-p521.html
+crypto/subtle/ecdh-generate-export-key-raw-p521.html
+crypto/subtle/ecdh-generate-export-key-spki-p521.html
+crypto/subtle/ecdh-generate-key-p521.html
+crypto/subtle/ecdh-import-jwk-private-key-p521.html
+crypto/subtle/ecdh-import-jwk-public-key-p521.html
+crypto/subtle/ecdh-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html
+crypto/subtle/ecdh-import-pkcs8-key-p521.html
+crypto/subtle/ecdh-import-raw-key-p521.html
+crypto/subtle/ecdh-import-spki-key-p521.html
+crypto/subtle/ecdsa-generate-key-sign-verify-p521.html
+crypto/subtle/ecdsa-import-jwk-public-key-alg-521.html
+crypto/subtle/ecdsa-import-key-sign-p521.html
+crypto/subtle/ecdsa-import-key-verify-p521.html
+crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html
+
+webkit.org/b/176444 fast/canvas/webgl/webgl2-getActiveUniforms.html [ Failure ]
+
+webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failure ]
+
+webkit.org/172052 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
 

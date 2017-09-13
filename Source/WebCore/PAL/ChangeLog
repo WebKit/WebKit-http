@@ -1,3 +1,427 @@
+2017-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unskip fast/text/system-font-synthetic-italic.html
+        https://bugs.webkit.org/show_bug.cgi?id=175944
+
+        Reviewed by Jon Lee.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2017-09-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch MediaPlayerPrivateAVFoundation to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176621
+        <rdar://problem/34335311>
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString):
+        * pal/LoggerHelper.h:
+
+2017-09-11  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream QTKit-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/QTKitSPI.h:
+
+2017-09-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221773.
+        https://bugs.webkit.org/show_bug.cgi?id=176614
+
+        This caused build failures. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Upstream QTKit-related WebKitSystemInterface functions"
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+        http://trac.webkit.org/changeset/221773
+
+2017-09-07  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream QTKit-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/QTKitSPI.h:
+
+2017-09-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Mac] Stop importing NSFunctionBar_Private.h in NSTouchBarSPI.h on the macOS 10.13+ SDK
+        https://bugs.webkit.org/show_bug.cgi?id=176521
+        <rdar://problem/34296289>
+
+        Reviewed by Andy Estes.
+
+        We don't need to import NSFunctionBar_Private.h when building against the macOS 10.13 SDK, or later. Guard this
+        header import with an SDK version check.
+
+        * pal/spi/cocoa/NSTouchBarSPI.h:
+
+2017-09-06  Eric Carlson  <eric.carlson@apple.com>
+
+        Require LoggingHelper overrides to provide identifier
+        https://bugs.webkit.org/show_bug.cgi?id=176477
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::Logger::LogSiteIdentifier::LogSiteIdentifier):
+        (PAL::LogArgument<Logger::LogSiteIdentifier>::toString):
+        (PAL::Logger::notice const): Deleted.
+        (PAL::Logger::MethodAndPointer::MethodAndPointer): Deleted.
+        (PAL::LogArgument<Logger::MethodAndPointer>::toString): Deleted.
+        * pal/LoggerHelper.h:
+
+2017-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221494 and r221500.
+        https://bugs.webkit.org/show_bug.cgi?id=176258
+
+        This caused the windows build to fail. (Requested by mlewis13
+        on #webkit).
+
+        Reverted changesets:
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221494
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221500
+
+2017-09-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Libgcrypt warning: missing initialization - please fix the application
+        https://bugs.webkit.org/show_bug.cgi?id=171230
+
+        Reviewed by Michael Catanzaro.
+
+        Add the Initialization.h header, containing the single initialize() static
+        function that initializes the libgcrypt library. This header only includes
+        the default libgcrypt header, and nothing else.
+
+        It's not added to the existing Utilities.h header because that one pulls in
+        other unnecessary headers that for instance use the new() operator, but that
+        collides with the implementation files that define WebKit process entrypoints
+        and intentionally don't include the config.h that brings in FastMalloc to
+        properly define the new() and delete() operators, resulting in compilation
+        errors due to the new and delete operators being defined to warning strings
+        in always-included WebKit2Prefix.h.
+
+        * pal/crypto/gcrypt/Initialization.h: Copied from Source/WebKit/WebProcess/EntryPoint/unix/WebProcessMain.cpp.
+        (PAL::GCrypt::initialize):
+
+2017-09-03  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Tidy up PassKitSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=176323
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cocoa/PassKitSPI.h: Moved the declarations of requiredShippingContactFields and
+          requiredBillingContactFields to where other PKPaymentRequest properties are declared, and
+          changed the guard to relate to the SDK version. Replaced use of __has_include with checking for
+          the version of the Apple internal SDK in which the typedefs first appeared.
+
+2017-09-03  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Remove use of __has_include in CoreAudioSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=176320
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CoreAudioSPI.h: AudioHardwarePriv.h is available in all Apple internal SDKs and
+          only in Apple internal SDKs. AudioHardwareBase.h is available only in the macOS SDK, where
+          it is included by AudioHardware.h.
+
+2017-09-03  Tim Horton  <timothy_horton@apple.com>
+
+        Fix some style issues in the Remote Layer Tree code
+        https://bugs.webkit.org/show_bug.cgi?id=176298
+
+        Reviewed by Dan Bernstein.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+
+2017-09-03  Sam Weinig  <sam@webkit.org>
+
+        Remove CanvasProxy
+        https://bugs.webkit.org/show_bug.cgi?id=176288
+
+        Reviewed by Yusuke Suzuki.
+
+        CanvasProxy does not appear to be in any current HTML spec
+        and was disabled and unimplemented in our tree. Time to 
+        get rid of it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-09-02  Andy Estes  <aestes@apple.com>
+
+        [CA] Upstream QuartzCore-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176270
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+
+2017-09-01  Andy Estes  <aestes@apple.com>
+
+        Try again to fix the Internal iOS Simulator build after r221485.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2017-09-01  Andy Estes  <aestes@apple.com>
+
+        Try to fix the Internal iOS Simulator build after r221485.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2017-09-01  Andy Estes  <aestes@apple.com>
+
+        [CG] Upstream CoreGraphics-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176200
+
+        Reviewed by Tim Horton.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cg/CoreGraphicsSPI.h:
+        * pal/spi/mac/HIServicesSPI.h:
+        * pal/spi/mac/NSGraphicsSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/HIServicesSPI.h.
+
+2017-08-31  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream AppKit-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176175
+
+        Reviewed by Brady Eidson.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/HIToolboxSPI.h:
+        * pal/spi/mac/NSResponderSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/NSWindowSPI.h:
+        * pal/system/mac/WebPanel.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/system/mac/WebPanel.mm: Copied from Source/WebCore/PAL/pal/spi/mac/HIToolboxSPI.h.
+        (-[WebPanel init]):
+
+2017-08-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221445.
+
+        This change broke Sierra Release builds.
+
+        Reverted changeset:
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221445
+
+2017-08-30  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Fix "None" suffix in PAL
+        https://bugs.webkit.org/show_bug.cgi?id=176014
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/PAL.xcconfig:
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/PlatformWin.cmake:
+        * pal/system/Sound.cpp: Renamed from Source/WebCore/PAL/pal/system/SoundNone.cpp.
+        * pal/text/KillRing.cpp: Renamed from Source/WebCore/PAL/pal/text/KillRingNone.cpp.
+
+2017-08-30  Eric Carlson  <eric.carlson@apple.com>
+
+        Add Logger observer and helper class
+        https://bugs.webkit.org/show_bug.cgi?id=176106
+
+        Reviewed by Andy Estes.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString): Add new variants.
+        (PAL::Logger::Observer::~Observer):
+        (PAL::Logger::logAlways const): Constify.
+        (PAL::Logger::error const): Ditto.
+        (PAL::Logger::warning const): Ditto.
+        (PAL::Logger::notice const): Ditto.
+        (PAL::Logger::info const): Ditto.
+        (PAL::Logger::debug const): Ditto.
+        (PAL::Logger::willLog const): Ditto.
+        (PAL::Logger::MethodAndPointer::MethodAndPointer): Add class name, make object pointer const.
+        (PAL::Logger::addObserver): New.
+        (PAL::Logger::removeObserver): New.
+        (PAL::Logger::Logger):
+        (PAL::Logger::log):
+        (PAL::Logger::observers):
+        (PAL::LogHelper::willLog const):
+        (PAL::LogArgument<Logger::MethodAndPointer>::toString):
+
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Accessibility-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176093
+
+        Reviewed by Eric Carlson.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/HIServicesSPI.h: Added.
+        * pal/spi/mac/NSAccessibilitySPI.h:
+
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Carbon-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176087
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/FoundationSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/HIToolboxSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/NSEventSPI.h:
+        * pal/spi/mac/NSWindowSPI.h:
+        * pal/spi/mac/QuickDrawSPI.h: Added.
+
+2017-08-29  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Fix up file and group paths in PAL.xcodeproj
+        https://bugs.webkit.org/show_bug.cgi?id=176073
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2017-08-29  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream WKSetMetadataURL() from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=176046
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/MetadataSPI.h: Added.
+
+2017-08-28  Eric Carlson  <eric.carlson@apple.com>
+
+        Logger should use makeString instead of String::format
+        https://bugs.webkit.org/show_bug.cgi?id=176035
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString):
+        (PAL::Logger::logAlways):
+        (PAL::Logger::error):
+        (PAL::Logger::warning):
+        (PAL::Logger::notice):
+        (PAL::Logger::info):
+        (PAL::Logger::debug):
+        (PAL::Logger::MethodAndPointer::MethodAndPointer):
+        (PAL::Logger::log):
+        (PAL::LogArgument<Logger::MethodAndPointer>::toString):
+
+2017-08-28  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream CFNetwork-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176032
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2017-08-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Add Logger::logAlways
+        https://bugs.webkit.org/show_bug.cgi?id=175996
+
+        Reviewed by Jer Noble.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/Logger.h:
+        (PAL::Logger::willLog const):
+        (PAL::Logger::willLog const):
+        (PAL::Logger::logAlways): Added.
+        (PAL::Logger::error const): Add missing WTF_ATTRIBUTE_PRINTF.
+        (PAL::Logger::warning const): Ditto.
+        (PAL::Logger::notice const): Ditto.
+        (PAL::Logger::info const): Ditto.
+        (PAL::Logger::debug const): Use String::formatWithArguments.
+
+2017-08-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix build breakage with Public iOS 11 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=175960
+        <rdar://problem/34069264>
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/ios/UIKitSPI.h: Use NSItemProvider definition of preferredPresentationSize
+        instead of re-declaring it.
+
+2017-08-23  Eric Carlson  <eric.carlson@apple.com>
+
+        Platform code should be able to safely log in release builds
+        https://bugs.webkit.org/show_bug.cgi?id=175854
+        <rdar://problem/34022930>
+
+        Reviewed by Jer Noble.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/Logger.h: Added.
+        (PAL::Logger::create):
+        (PAL::Logger::error const):
+        (PAL::Logger::warning const):
+        (PAL::Logger::notice const):
+        (PAL::Logger::info const):
+        (PAL::Logger::debug const):
+        (PAL::Logger::willLog const):
+        (PAL::Logger::enabled const):
+        (PAL::Logger::setEnabled):
+        (PAL::Logger::Logger):
+        (PAL::Logger::log):
+
+2017-08-21  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/mac directory into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175649
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/AVFoundationSPI.h: Renamed from Source/WebCore/platform/spi/mac/AVFoundationSPI.h.
+        * pal/spi/mac/DataDetectorsSPI.h: Renamed from Source/WebCore/platform/spi/mac/DataDetectorsSPI.h.
+        * pal/spi/mac/LookupSPI.h: Renamed from Source/WebCore/platform/spi/mac/LookupSPI.h.
+        * pal/spi/mac/MediaRemoteSPI.h: Renamed from Source/WebCore/platform/spi/mac/MediaRemoteSPI.h.
+        * pal/spi/mac/NSAccessibilitySPI.h: Renamed from Source/WebCore/platform/spi/mac/NSAccessibilitySPI.h.
+        * pal/spi/mac/NSApplicationSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSApplicationSPI.h.
+        * pal/spi/mac/NSEventSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSEventSPI.h.
+        * pal/spi/mac/NSFontSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSFontSPI.h.
+        * pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSImmediateActionGestureRecognizerSPI.h.
+        * pal/spi/mac/NSMenuSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSMenuSPI.h.
+        * pal/spi/mac/NSPasteboardSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSPasteboardSPI.h.
+        * pal/spi/mac/NSPopoverSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSPopoverSPI.h.
+        * pal/spi/mac/NSScrollerImpSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollerImpSPI.h.
+        * pal/spi/mac/NSScrollingInputFilterSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollingInputFilterSPI.h.
+        * pal/spi/mac/NSScrollingMomentumCalculatorSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollingMomentumCalculatorSPI.h.
+        * pal/spi/mac/NSSharingServicePickerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSharingServicePickerSPI.h.
+        * pal/spi/mac/NSSharingServiceSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSharingServiceSPI.h.
+        * pal/spi/mac/NSSpellCheckerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSpellCheckerSPI.h.
+        * pal/spi/mac/NSTextFinderSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSTextFinderSPI.h.
+        * pal/spi/mac/NSViewSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSViewSPI.h.
+        * pal/spi/mac/NSWindowSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/PIPSPI.h: Renamed from Source/WebCore/platform/spi/mac/PIPSPI.h.
+        * pal/spi/mac/QTKitSPI.h: Renamed from Source/WebCore/platform/spi/mac/QTKitSPI.h.
+        * pal/spi/mac/QuickLookMacSPI.h: Renamed from Source/WebCore/platform/spi/mac/QuickLookMacSPI.h.
+        * pal/spi/mac/TUCallSPI.h: Renamed from Source/WebCore/platform/spi/mac/TUCallSPI.h.
+
 2017-08-17  Don Olmstead  <don.olmstead@sony.com>
 
         [PAL] Relocate SessionID to root

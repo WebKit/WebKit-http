@@ -29,48 +29,73 @@
 #include <WebCore/BitmapImage.h>
 #include <WebCore/GraphicsContextCG.h>
 #include <WebCore/PlatformScreen.h>
+#include <pal/spi/cg/CoreGraphicsSPI.h>
+#include <pal/spi/cocoa/IOSurfaceSPI.h>
 #include <wtf/RetainPtr.h>
 #include "CGUtilities.h"
 
 using namespace WebCore;
 
 namespace WebKit {
+    
+static CGColorSpaceRef colorSpace(const ShareableBitmap::Configuration& configuration)
+{
+    return configuration.colorSpace.cgColorSpace.get() ?: sRGBColorSpaceRef();
+}
 
-static CGBitmapInfo bitmapInfo(ShareableBitmap::Flags flags)
+static bool wantsExtendedRange(const ShareableBitmap::Configuration& configuration)
+{
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
+    return CGColorSpaceUsesExtendedRange(colorSpace(configuration));
+#else
+    UNUSED_PARAM(configuration);
+    return false;
+#endif
+}
+
+static CGBitmapInfo bitmapInfo(const ShareableBitmap::Configuration& configuration)
 {
     CGBitmapInfo info = 0;
-    if (flags & ShareableBitmap::SupportsExtendedColor) {
+    if (wantsExtendedRange(configuration)) {
         info |= kCGBitmapFloatComponents | kCGBitmapByteOrder16Host;
-        
-        if (flags & ShareableBitmap::SupportsAlpha)
-            info |= kCGImageAlphaPremultipliedLast;
-        else
+
+        if (configuration.isOpaque)
             info |= kCGImageAlphaNoneSkipLast;
-        
+        else
+            info |= kCGImageAlphaPremultipliedLast;
     } else {
         info |= kCGBitmapByteOrder32Host;
-        
-        if (flags & ShareableBitmap::SupportsAlpha)
-            info |= kCGImageAlphaPremultipliedFirst;
-        else
+
+        if (configuration.isOpaque)
             info |= kCGImageAlphaNoneSkipFirst;
+        else
+            info |= kCGImageAlphaPremultipliedFirst;
     }
-    
+
     return info;
 }
-    
-static CGColorSpaceRef colorSpace(ShareableBitmap::Flags flags)
+
+Checked<unsigned, RecordOverflow> ShareableBitmap::calculateBytesPerRow(WebCore::IntSize size, const Configuration& configuration)
 {
-    if (flags & ShareableBitmap::SupportsExtendedColor)
-        return extendedSRGBColorSpaceRef();
-    return sRGBColorSpaceRef();
+    unsigned bytesPerRow = calculateBytesPerPixel(configuration) * size.width();
+#if USE(IOSURFACE)
+    return IOSurfaceAlignProperty(kIOSurfaceBytesPerRow, bytesPerRow);
+#else
+    return bytesPerRow;
+#endif
+}
+
+unsigned ShareableBitmap::calculateBytesPerPixel(const Configuration& configuration)
+{
+    return wantsExtendedRange(configuration) ? 8 : 4;
 }
 
 std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
     ref(); // Balanced by deref in releaseBitmapContextData.
-    
-    RetainPtr<CGContextRef> bitmapContext = adoptCF(CGBitmapContextCreateWithData(data(), m_size.width(), m_size.height(), m_bytesPerPixel * 8 / 4, m_size.width() * m_bytesPerPixel, colorSpace(m_flags), bitmapInfo(m_flags), releaseBitmapContextData, this));
+
+    unsigned bytesPerPixel = calculateBytesPerPixel(m_configuration);
+    RetainPtr<CGContextRef> bitmapContext = adoptCF(CGBitmapContextCreateWithData(data(), m_size.width(), m_size.height(), bytesPerPixel * 8 / 4, calculateBytesPerRow(m_size, m_configuration).unsafeGet(), colorSpace(m_configuration), bitmapInfo(m_configuration), releaseBitmapContextData, this));
     
     ASSERT(bitmapContext.get());
 
@@ -108,7 +133,8 @@ RetainPtr<CGImageRef> ShareableBitmap::makeCGImage()
 RetainPtr<CGImageRef> ShareableBitmap::createCGImage(CGDataProviderRef dataProvider) const
 {
     ASSERT_ARG(dataProvider, dataProvider);
-    RetainPtr<CGImageRef> image = adoptCF(CGImageCreate(m_size.width(), m_size.height(), m_bytesPerPixel * 8 / 4, m_bytesPerPixel * 8, m_size.width() * m_bytesPerPixel, colorSpace(m_flags), bitmapInfo(m_flags), dataProvider, 0, false, kCGRenderingIntentDefault));
+    unsigned bytesPerPixel = calculateBytesPerPixel(m_configuration);
+    RetainPtr<CGImageRef> image = adoptCF(CGImageCreate(m_size.width(), m_size.height(), bytesPerPixel * 8 / 4, bytesPerPixel * 8, calculateBytesPerRow(m_size, m_configuration).unsafeGet(), colorSpace(m_configuration), bitmapInfo(m_configuration), dataProvider, 0, false, kCGRenderingIntentDefault));
     return image;
 }
 

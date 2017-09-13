@@ -24,14 +24,18 @@
  */
 
 #include "config.h"
+#include "NetscapePluginUnix.h"
+
+#if PLUGIN_ARCHITECTURE(UNIX) && ENABLE(NETSCAPE_PLUGIN_API)
+
 #include "NetscapePlugin.h"
-
-#if PLUGIN_ARCHITECTURE(X11) && ENABLE(NETSCAPE_PLUGIN_API)
-
-#include "NetscapePluginX11.h"
 #include "WebEvent.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/PlatformDisplay.h>
+
+#if PLATFORM(X11)
+#include "NetscapePluginX11.h"
+#endif
 
 using namespace WebCore;
 
@@ -106,10 +110,12 @@ bool NetscapePlugin::platformHandleMouseEvent(const WebMouseEvent& event)
     if (m_isWindowed || !m_impl)
         return false;
 
+#if PLATFORM(X11)
     if ((event.type() == WebEvent::MouseDown || event.type() == WebEvent::MouseUp)
         && event.button() == WebMouseEvent::RightButton
         && quirks().contains(PluginQuirks::IgnoreRightClickInWindowlessMode))
         return false;
+#endif
 
     return m_impl->handleMouseEvent(event);
 }
@@ -164,4 +170,4 @@ bool NetscapePlugin::platformHandleKeyboardEvent(const WebKeyboardEvent& event)
 
 } // namespace WebKit
 
-#endif // PLUGIN_ARCHITECTURE(X11) && ENABLE(NETSCAPE_PLUGIN_API)
+#endif // PLUGIN_ARCHITECTURE(UNIX) && ENABLE(NETSCAPE_PLUGIN_API)

@@ -1942,7 +1942,6 @@ fast/files/workers/worker-read-blob-sync.html
 fast/files/workers/worker-read-file-async.html
 fast/files/workers/worker-read-file-sync.html
 fast/forms/file/get-file-upload.html
-fast/forms/file/input-file-directory-upload.html
 fast/forms/file/input-file-re-render.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 fast/forms/file/selected-files-from-history-state.html
@@ -2558,6 +2557,7 @@ media/media-fullscreen-inline.html
 
 webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 
+media/document-level-media-user-gesture-quirk.html
 media/media-controls-accessibility.html [ Timeout ]
 media/media-fullscreen-return-to-inline.html
 media/no-autoplay-with-user-gesture-requirement.html
@@ -2570,6 +2570,7 @@ media/video-create-with-user-gesture.html
 media/video-fullscreen-restriction-removed.html
 media/video-playsinline.html
 media/video-remote-control-playpause.html
+media/video-user-gesture-tracking.html
 media/video-volume-slider-drag.html
 media/video-webkit-playsinline.html
 media/volume-bar-empty-when-muted.html
@@ -2864,6 +2865,9 @@ webgl/1.0.2/conformance/reading/read-pixels-test.html [ Skip ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Skip ]
 webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Skip ]
 
+fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
+fast/canvas/webgl/texImage2D-video-flipY-true.html [ Skip ]
+
 webkit.org/b/174120 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]
 
 webkit.org/b/175273 imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html [ Failure ]
@@ -2878,3 +2882,28 @@ fast/text/accessibility-bold-system-font-2.html [ Pass ]
 
 # This test is specific to Core Text.
 fast/text/font-lookup-dot-prefix-case-sensitive.html [ Pass ]
+
+# Missing support for 521-bit elliptic curves.
+crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p521.html
+crypto/subtle/ec-import-spki-key-export-spki-key-p521.html
+crypto/subtle/ecdh-generate-export-jwk-key-p521.html
+crypto/subtle/ecdh-generate-export-key-pkcs8-p521.html
+crypto/subtle/ecdh-generate-export-key-raw-p521.html
+crypto/subtle/ecdh-generate-export-key-spki-p521.html
+crypto/subtle/ecdh-generate-key-p521.html
+crypto/subtle/ecdh-import-jwk-private-key-p521.html
+crypto/subtle/ecdh-import-jwk-public-key-p521.html
+crypto/subtle/ecdh-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html
+crypto/subtle/ecdh-import-pkcs8-key-p521.html
+crypto/subtle/ecdh-import-raw-key-p521.html
+crypto/subtle/ecdh-import-spki-key-p521.html
+crypto/subtle/ecdsa-generate-key-sign-verify-p521.html
+crypto/subtle/ecdsa-import-jwk-public-key-alg-521.html
+crypto/subtle/ecdsa-import-key-sign-p521.html
+crypto/subtle/ecdsa-import-key-verify-p521.html
+crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publickey.html
+
+webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
+
+webkit.org/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
+

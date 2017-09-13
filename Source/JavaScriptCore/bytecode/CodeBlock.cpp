@@ -359,7 +359,7 @@ void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
 CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
     JSScope* scope, RefPtr<SourceProvider>&& sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
     : JSCell(*vm, structure)
-    , m_globalObject(scope->globalObject()->vm(), this, scope->globalObject())
+    , m_globalObject(*vm, this, scope->globalObject())
     , m_numCalleeLocals(unlinkedCodeBlock->m_numCalleeLocals)
     , m_numVars(unlinkedCodeBlock->m_numVars)
     , m_shouldAlwaysBeInlined(true)
@@ -372,12 +372,12 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_isConstructor(unlinkedCodeBlock->isConstructor())
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
     , m_codeType(unlinkedCodeBlock->codeType())
-    , m_unlinkedCode(m_globalObject->vm(), this, unlinkedCodeBlock)
+    , m_unlinkedCode(*vm, this, unlinkedCodeBlock)
     , m_hasDebuggerStatement(false)
     , m_steppingMode(SteppingModeDisabled)
     , m_numBreakpoints(0)
-    , m_ownerExecutable(m_globalObject->vm(), this, ownerExecutable)
-    , m_vm(unlinkedCodeBlock->vm())
+    , m_ownerExecutable(*vm, this, ownerExecutable)
+    , m_vm(vm)
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
     , m_scopeRegister(unlinkedCodeBlock->scopeRegister())
     , m_source(WTFMove(sourceProvider))
@@ -623,6 +623,8 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             int localScopeDepth = pc[5].u.operand;
 
             ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, type, InitializationMode::NotInitialization);
+            RETURN_IF_EXCEPTION(throwScope, false);
+
             instructions[i + 4].u.operand = op.type;
             instructions[i + 5].u.operand = op.depth;
             if (op.lexicalEnvironment) {
@@ -657,6 +659,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
             const Identifier& ident = identifier(pc[3].u.operand);
             ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, getPutInfo.resolveType(), InitializationMode::NotInitialization);
+            RETURN_IF_EXCEPTION(throwScope, false);
 
             instructions[i + 4].u.operand = GetPutInfo(getPutInfo.resolveMode(), op.type, getPutInfo.initializationMode()).operand();
             if (op.type == ModuleVar)
@@ -692,6 +695,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             int localScopeDepth = pc[5].u.operand;
             instructions[i + 5].u.pointer = nullptr;
             ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Put, getPutInfo.resolveType(), getPutInfo.initializationMode());
+            RETURN_IF_EXCEPTION(throwScope, false);
 
             instructions[i + 4].u.operand = GetPutInfo(getPutInfo.resolveMode(), op.type, getPutInfo.initializationMode()).operand();
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks || op.type == GlobalLexicalVar || op.type == GlobalLexicalVarWithVarInjectionChecks)
@@ -726,6 +730,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 // Even though type profiling may be profiling either a Get or a Put, we can always claim a Get because
                 // we're abstractly "read"ing from a JSScope.
                 ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, type, InitializationMode::NotInitialization);
+                RETURN_IF_EXCEPTION(throwScope, false);
 
                 if (op.type == ClosureVar || op.type == ModuleVar)
                     symbolTable = op.lexicalEnvironment->symbolTable();
@@ -805,10 +810,11 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             m_numberOfArgumentsToSkip = numberOfArgumentsToSkip;
             break;
         }
-
+        
         default:
             break;
         }
+
         i += opLength;
     }
 
@@ -830,10 +836,10 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
     if (Options::dumpGeneratedBytecodes())
         dumpBytecode();
-    
+
     heap()->m_codeBlocks->add(this);
     heap()->reportExtraMemoryAllocated(m_instructions.size() * sizeof(Instruction));
-    
+
     return true;
 }
 
@@ -1703,6 +1709,37 @@ CallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteIndex origina
 #endif
 }
 
+void CodeBlock::ensureCatchLivenessIsComputedForBytecodeOffsetSlow(unsigned bytecodeOffset)
+{
+    ASSERT(Interpreter::getOpcodeID(m_instructions[bytecodeOffset]) == op_catch);
+    BytecodeLivenessAnalysis& bytecodeLiveness = livenessAnalysis();
+
+    // We get the live-out set of variables at op_catch, not the live-in. This
+    // is because the variables that the op_catch defines might be dead, and
+    // we can avoid profiling them and extracting them when doing OSR entry
+    // into the DFG.
+    FastBitVector liveLocals = bytecodeLiveness.getLivenessInfoAtBytecodeOffset(bytecodeOffset + OPCODE_LENGTH(op_catch));
+    Vector<VirtualRegister> liveOperands;
+    liveOperands.reserveInitialCapacity(liveLocals.bitCount());
+    liveLocals.forEachSetBit([&] (unsigned liveLocal) {
+        liveOperands.append(virtualRegisterForLocal(liveLocal));
+    });
+
+    for (int i = 0; i < numParameters(); ++i)
+        liveOperands.append(virtualRegisterForArgument(i));
+
+    auto profiles = std::make_unique<ValueProfileAndOperandBuffer>(liveOperands.size());
+    RELEASE_ASSERT(profiles->m_size == liveOperands.size());
+    for (unsigned i = 0; i < profiles->m_size; ++i)
+        profiles->m_buffer.get()[i].m_operand = liveOperands[i].offset();
+    m_instructions[bytecodeOffset + 3].u.pointer = profiles.get();
+
+    {
+        ConcurrentJSLocker locker(m_lock);
+        m_catchProfiles.append(WTFMove(profiles));
+    }
+}
+
 void CodeBlock::removeExceptionHandlerForCallSite(CallSiteIndex callSiteIndex)
 {
     RELEASE_ASSERT(m_rareData);
@@ -1961,7 +1998,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
 
     // This accomplishes (2).
     ownerScriptExecutable()->installCode(
-        m_globalObject->vm(), alternative(), codeType(), specializationKind());
+        *m_vm, alternative(), codeType(), specializationKind());
 
 #if ENABLE(DFG_JIT)
     if (DFG::shouldDumpDisassembly())
@@ -2283,6 +2320,53 @@ bool CodeBlock::checkIfOptimizationThresholdReached()
     return m_jitExecuteCounter.checkIfThresholdCrossedAndSet(this);
 }
 
+auto CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize(DFG::OSRExitState& exitState) -> OptimizeAction
+{
+    DFG::OSRExitBase& exit = exitState.exit;
+    if (!exitKindMayJettison(exit.m_kind)) {
+        // FIXME: We may want to notice that we're frequently exiting
+        // at an op_catch that we didn't compile an entrypoint for, and
+        // then trigger a reoptimization of this CodeBlock:
+        // https://bugs.webkit.org/show_bug.cgi?id=175842
+        return OptimizeAction::None;
+    }
+
+    exit.m_count++;
+    m_osrExitCounter++;
+
+    CodeBlock* baselineCodeBlock = exitState.baselineCodeBlock;
+    ASSERT(baselineCodeBlock == baselineAlternative());
+    if (UNLIKELY(baselineCodeBlock->jitExecuteCounter().hasCrossedThreshold()))
+        return OptimizeAction::ReoptimizeNow;
+
+    // We want to figure out if there's a possibility that we're in a loop. For the outermost
+    // code block in the inline stack, we handle this appropriately by having the loop OSR trigger
+    // check the exit count of the replacement of the CodeBlock from which we are OSRing. The
+    // problem is the inlined functions, which might also have loops, but whose baseline versions
+    // don't know where to look for the exit count. Figure out if those loops are severe enough
+    // that we had tried to OSR enter. If so, then we should use the loop reoptimization trigger.
+    // Otherwise, we should use the normal reoptimization trigger.
+
+    bool didTryToEnterInLoop = false;
+    for (InlineCallFrame* inlineCallFrame = exit.m_codeOrigin.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame) {
+        if (inlineCallFrame->baselineCodeBlock->ownerScriptExecutable()->didTryToEnterInLoop()) {
+            didTryToEnterInLoop = true;
+            break;
+        }
+    }
+
+    uint32_t exitCountThreshold = didTryToEnterInLoop
+        ? exitCountThresholdForReoptimizationFromLoop()
+        : exitCountThresholdForReoptimization();
+
+    if (m_osrExitCounter > exitCountThreshold)
+        return OptimizeAction::ReoptimizeNow;
+
+    // Too few fails. Adjust the execution counter such that the target is to only optimize after a while.
+    baselineCodeBlock->m_jitExecuteCounter.setNewThresholdForOSRExit(exitState.activeThreshold, exitState.memoryUsageAdjustedThreshold);
+    return OptimizeAction::None;
+}
+
 void CodeBlock::optimizeNextInvocation()
 {
     if (Options::verboseOSR())
@@ -2486,22 +2570,29 @@ const Identifier& CodeBlock::identifier(int index) const
 void CodeBlock::updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles)
 {
     ConcurrentJSLocker locker(m_lock);
-    
+
     numberOfLiveNonArgumentValueProfiles = 0;
     numberOfSamplesInProfiles = 0; // If this divided by ValueProfile::numberOfBuckets equals numberOfValueProfiles() then value profiles are full.
+
     for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile* profile = getFromAllValueProfiles(i);
-        unsigned numSamples = profile->totalNumberOfSamples();
+        ValueProfile& profile = getFromAllValueProfiles(i);
+        unsigned numSamples = profile.totalNumberOfSamples();
         if (numSamples > ValueProfile::numberOfBuckets)
             numSamples = ValueProfile::numberOfBuckets; // We don't want profiles that are extremely hot to be given more weight.
         numberOfSamplesInProfiles += numSamples;
-        if (profile->m_bytecodeOffset < 0) {
-            profile->computeUpdatedPrediction(locker);
+        if (profile.m_bytecodeOffset < 0) {
+            profile.computeUpdatedPrediction(locker);
             continue;
         }
-        if (profile->numberOfSamples() || profile->m_prediction != SpecNone)
+        if (profile.numberOfSamples() || profile.m_prediction != SpecNone)
             numberOfLiveNonArgumentValueProfiles++;
-        profile->computeUpdatedPrediction(locker);
+        profile.computeUpdatedPrediction(locker);
+    }
+
+    for (auto& profileBucket : m_catchProfiles) {
+        profileBucket->forEach([&] (ValueProfileAndOperand& profile) {
+            profile.m_profile.computeUpdatedPrediction(locker);
+        });
     }
     
 #if ENABLE(DFG_JIT)
@@ -2609,17 +2700,17 @@ void CodeBlock::dumpValueProfiles()
 {
     dataLog("ValueProfile for ", *this, ":\n");
     for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile* profile = getFromAllValueProfiles(i);
-        if (profile->m_bytecodeOffset < 0) {
-            ASSERT(profile->m_bytecodeOffset == -1);
+        ValueProfile& profile = getFromAllValueProfiles(i);
+        if (profile.m_bytecodeOffset < 0) {
+            ASSERT(profile.m_bytecodeOffset == -1);
             dataLogF("   arg = %u: ", i);
         } else
-            dataLogF("   bc = %d: ", profile->m_bytecodeOffset);
-        if (!profile->numberOfSamples() && profile->m_prediction == SpecNone) {
+            dataLogF("   bc = %d: ", profile.m_bytecodeOffset);
+        if (!profile.numberOfSamples() && profile.m_prediction == SpecNone) {
             dataLogF("<empty>\n");
             continue;
         }
-        profile->dump(WTF::dataFile());
+        profile.dump(WTF::dataFile());
         dataLogF("\n");
     }
     dataLog("RareCaseProfile for ", *this, ":\n");
@@ -2739,11 +2830,19 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
     return "";
 }
 
-ValueProfile* CodeBlock::valueProfileForBytecodeOffset(int bytecodeOffset)
+ValueProfile* CodeBlock::tryGetValueProfileForBytecodeOffset(int bytecodeOffset)
+{
+    return tryBinarySearch<ValueProfile, int>(
+        m_valueProfiles, m_valueProfiles.size(), bytecodeOffset,
+        getValueProfileBytecodeOffset<ValueProfile>);
+}
+
+ValueProfile& CodeBlock::valueProfileForBytecodeOffset(int bytecodeOffset)
 {
     OpcodeID opcodeID = Interpreter::getOpcodeID(instructions()[bytecodeOffset]);
     unsigned length = opcodeLength(opcodeID);
-    return instructions()[bytecodeOffset + length - 1].u.profile;
+    ASSERT(!!tryGetValueProfileForBytecodeOffset(bytecodeOffset));
+    return *instructions()[bytecodeOffset + length - 1].u.profile;
 }
 
 void CodeBlock::validate()
@@ -2769,6 +2868,31 @@ void CodeBlock::validate()
             dataLog("    Result: ", liveAtHead, "\n");
             endValidationDidFail();
         }
+    }
+
+    for (unsigned i = 0; i + 1 < numberOfValueProfiles(); ++i) {
+        if (valueProfile(i).m_bytecodeOffset > valueProfile(i + 1).m_bytecodeOffset) {
+            beginValidationDidFail();
+            dataLog("    Value profiles are not sorted.\n");
+            endValidationDidFail();
+        }
+    }
+     
+    for (unsigned bytecodeOffset = 0; bytecodeOffset < m_instructions.size(); ) {
+        OpcodeID opcode = Interpreter::getOpcodeID(m_instructions[bytecodeOffset]);
+        if (!!baselineAlternative()->handlerForBytecodeOffset(bytecodeOffset)) {
+            if (opcode == op_catch || opcode == op_enter) {
+                // op_catch/op_enter logically represent an entrypoint. Entrypoints are not allowed to be
+                // inside of a try block because they are responsible for bootstrapping state. And they
+                // are never allowed throw an exception because of this. We rely on this when compiling
+                // in the DFG. Because an entrypoint never throws, the bytecode generator will never
+                // allow once inside a try block.
+                beginValidationDidFail();
+                dataLog("    entrypoint not allowed inside a try block.");
+                endValidationDidFail();
+            }
+        }
+        bytecodeOffset += opcodeLength(opcode);
     }
 }
 

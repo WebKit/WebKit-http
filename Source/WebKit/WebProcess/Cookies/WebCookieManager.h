@@ -54,7 +54,7 @@ class ChildProcess;
 class WebCookieManager : public WebProcessSupplement, public NetworkProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebCookieManager);
 public:
-    WebCookieManager(ChildProcess*);
+    WebCookieManager(ChildProcess&);
 
     static const char* supplementName();
 
@@ -95,7 +95,7 @@ private:
     static void cookiesDidChange();
     void dispatchCookiesDidChange();
 
-    ChildProcess* m_process;
+    ChildProcess& m_process;
 };
 
 } // namespace WebKit

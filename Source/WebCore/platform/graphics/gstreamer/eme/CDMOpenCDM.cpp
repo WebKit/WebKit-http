@@ -389,10 +389,6 @@ void CDMInstanceOpenCDM::storeRecordOfKeyUsage(const String&)
 {
 }
 
-void CDMInstanceOpenCDM::gatherAvailableKeys(AvailableKeysCallback)
-{
-}
-
 String CDMInstanceOpenCDM::getCurrentSessionId() const
 {
     ASSERT(sessionIdMap.size() == 1);

@@ -589,6 +589,14 @@ void GraphicsContext3D::texStorage3D(GC3Denum target, GC3Dsizei levels, GC3Denum
     makeContextCurrent();
     ::glTexStorage3D(target, levels, internalformat, width, height, depth);
 }
+
+void GraphicsContext3D::getActiveUniforms(Platform3DObject program, const Vector<GC3Duint>& uniformIndices, GC3Denum pname, Vector<GC3Dint>& params)
+{
+    ASSERT(program);
+    makeContextCurrent();
+
+    ::glGetActiveUniformsiv(program, uniformIndices.size(), uniformIndices.data(), pname, params.data());
+}
 #endif
 
 GC3Denum GraphicsContext3D::checkFramebufferStatus(GC3Denum target)
@@ -658,9 +666,9 @@ void GraphicsContext3D::compileShader(Platform3DObject shader)
     
     ::glCompileShader(shader);
     
-    int GLCompileSuccess;
+    int compileStatus;
     
-    ::glGetShaderiv(shader, COMPILE_STATUS, &GLCompileSuccess);
+    ::glGetShaderiv(shader, COMPILE_STATUS, &compileStatus);
 
     ShaderSourceMap::iterator result = m_shaderSourceMap.find(shader);
     GraphicsContext3D::ShaderSourceEntry& entry = result->value;
@@ -678,9 +686,44 @@ void GraphicsContext3D::compileShader(Platform3DObject shader)
         entry.log = getUnmangledInfoLog(shaders, 1, String(info.get()));
     }
 
-    if (GLCompileSuccess != GL_TRUE) {
+    if (compileStatus != GL_TRUE) {
         entry.isValid = false;
         LOG(WebGL, "Error: shader translator produced a shader that OpenGL would not compile.");
+    }
+}
+
+void GraphicsContext3D::compileShaderDirect(Platform3DObject shader)
+{
+    ASSERT(shader);
+    makeContextCurrent();
+
+    HashMap<Platform3DObject, ShaderSourceEntry>::iterator result = m_shaderSourceMap.find(shader);
+
+    if (result == m_shaderSourceMap.end())
+        return;
+
+    ShaderSourceEntry& entry = result->value;
+
+    const CString& shaderSourceCString = entry.source.utf8();
+    const char* shaderSourcePtr = shaderSourceCString.data();
+    int shaderSourceLength = shaderSourceCString.length();
+
+    LOG(WebGL, "--- begin direct shader source ---\n%s\n--- end direct shader source ---\n", shaderSourcePtr);
+
+    ::glShaderSource(shader, 1, &shaderSourcePtr, &shaderSourceLength);
+
+    ::glCompileShader(shader);
+
+    int compileStatus;
+
+    ::glGetShaderiv(shader, COMPILE_STATUS, &compileStatus);
+
+    if (compileStatus == GL_TRUE) {
+        entry.isValid = true;
+        LOG(WebGL, "Direct compilation of shader succeeded.");
+    } else {
+        entry.isValid = false;
+        LOG(WebGL, "Error: direct compilation of shader failed.");
     }
 }
 
@@ -922,6 +965,21 @@ static String generateHashedName(const String& name)
     return builder.toString();
 }
 
+std::optional<String> GraphicsContext3D::mappedSymbolInShaderSourceMap(Platform3DObject shader, ANGLEShaderSymbolType symbolType, const String& name)
+{
+    auto result = m_shaderSourceMap.find(shader);
+    if (result == m_shaderSourceMap.end())
+        return std::nullopt;
+
+    const auto& symbolMap = result->value.symbolMap(symbolType);
+    auto symbolEntry = symbolMap.find(name);
+    if (symbolEntry == symbolMap.end())
+        return std::nullopt;
+
+    auto& mappedName = symbolEntry->value.mappedName;
+    return String(mappedName.c_str(), mappedName.length());
+}
+
 String GraphicsContext3D::mappedSymbolName(Platform3DObject program, ANGLEShaderSymbolType symbolType, const String& name)
 {
     GC3Dsizei count = 0;
@@ -929,16 +987,21 @@ String GraphicsContext3D::mappedSymbolName(Platform3DObject program, ANGLEShader
     getAttachedShaders(program, 2, &count, shaders);
 
     for (GC3Dsizei i = 0; i < count; ++i) {
-        ShaderSourceMap::iterator result = m_shaderSourceMap.find(shaders[i]);
-        if (result == m_shaderSourceMap.end())
-            continue;
+        auto mappedName = mappedSymbolInShaderSourceMap(shaders[i], symbolType, name);
+        if (mappedName)
+            return mappedName.value();
+    }
 
-        const ShaderSymbolMap& symbolMap = result->value.symbolMap(symbolType);
-        ShaderSymbolMap::const_iterator symbolEntry = symbolMap.find(name);
-        if (symbolEntry != symbolMap.end()) {
-            const std::string& mappedName = symbolEntry->value.mappedName;
-            return String(mappedName.c_str(), mappedName.length());
-        }
+    // We might have detached or deleted the shaders after linking.
+    auto result = m_linkedShaderMap.find(program);
+    if (result != m_linkedShaderMap.end()) {
+        auto linkedShaders = result->value;
+        auto mappedName = mappedSymbolInShaderSourceMap(linkedShaders.first, symbolType, name);
+        if (mappedName)
+            return mappedName.value();
+        mappedName = mappedSymbolInShaderSourceMap(linkedShaders.second, symbolType, name);
+        if (mappedName)
+            return mappedName.value();
     }
 
     if (symbolType == SHADER_SYMBOL_TYPE_ATTRIBUTE && !name.isEmpty()) {
@@ -948,7 +1011,7 @@ String GraphicsContext3D::mappedSymbolName(Platform3DObject program, ANGLEShader
             nameHashMapForShaders = std::make_unique<ShaderNameHash>();
         setCurrentNameHashMapForShader(nameHashMapForShaders.get());
 
-        String generatedName = generateHashedName(name);
+        auto generatedName = generateHashedName(name);
 
         setCurrentNameHashMapForShader(nullptr);
 
@@ -959,7 +1022,21 @@ String GraphicsContext3D::mappedSymbolName(Platform3DObject program, ANGLEShader
 
     return name;
 }
-    
+
+std::optional<String> GraphicsContext3D::originalSymbolInShaderSourceMap(Platform3DObject shader, ANGLEShaderSymbolType symbolType, const String& name)
+{
+    auto result = m_shaderSourceMap.find(shader);
+    if (result == m_shaderSourceMap.end())
+        return std::nullopt;
+
+    const auto& symbolMap = result->value.symbolMap(symbolType);
+    for (const auto& symbolEntry : symbolMap) {
+        if (name == symbolEntry.value.mappedName.c_str())
+            return symbolEntry.key;
+    }
+    return std::nullopt;
+}
+
 String GraphicsContext3D::originalSymbolName(Platform3DObject program, ANGLEShaderSymbolType symbolType, const String& name)
 {
     GC3Dsizei count;
@@ -967,15 +1044,21 @@ String GraphicsContext3D::originalSymbolName(Platform3DObject program, ANGLEShad
     getAttachedShaders(program, 2, &count, shaders);
     
     for (GC3Dsizei i = 0; i < count; ++i) {
-        ShaderSourceMap::iterator result = m_shaderSourceMap.find(shaders[i]);
-        if (result == m_shaderSourceMap.end())
-            continue;
-        
-        const ShaderSymbolMap& symbolMap = result->value.symbolMap(symbolType);
-        for (const auto& symbolEntry : symbolMap) {
-            if (name == symbolEntry.value.mappedName.c_str())
-                return symbolEntry.key;
-        }
+        auto originalName = originalSymbolInShaderSourceMap(shaders[i], symbolType, name);
+        if (originalName)
+            return originalName.value();
+    }
+
+    // We might have detached or deleted the shaders after linking.
+    auto result = m_linkedShaderMap.find(program);
+    if (result != m_linkedShaderMap.end()) {
+        auto linkedShaders = result->value;
+        auto originalName = originalSymbolInShaderSourceMap(linkedShaders.first, symbolType, name);
+        if (originalName)
+            return originalName.value();
+        originalName = originalSymbolInShaderSourceMap(linkedShaders.second, symbolType, name);
+        if (originalName)
+            return originalName.value();
     }
 
     if (symbolType == SHADER_SYMBOL_TYPE_ATTRIBUTE && !name.isEmpty()) {
@@ -1018,6 +1101,16 @@ int GraphicsContext3D::getAttribLocation(Platform3DObject program, const String&
     String mappedName = mappedSymbolName(program, SHADER_SYMBOL_TYPE_ATTRIBUTE, name);
     LOG(WebGL, "::glGetAttribLocation is mapping %s to %s", name.utf8().data(), mappedName.utf8().data());
     return ::glGetAttribLocation(program, mappedName.utf8().data());
+}
+
+int GraphicsContext3D::getAttribLocationDirect(Platform3DObject program, const String& name)
+{
+    if (!program)
+        return -1;
+
+    makeContextCurrent();
+
+    return ::glGetAttribLocation(program, name.utf8().data());
 }
 
 GraphicsContext3DAttributes GraphicsContext3D::getContextAttributes()
@@ -1140,6 +1233,14 @@ void GraphicsContext3D::linkProgram(Platform3DObject program)
 {
     ASSERT(program);
     makeContextCurrent();
+
+    GC3Dsizei count = 0;
+    Platform3DObject shaders[2] = { };
+    getAttachedShaders(program, 2, &count, shaders);
+
+    if (count == 2)
+        m_linkedShaderMap.set(program, std::make_pair(shaders[0], shaders[1]));
+
     ::glLinkProgram(program);
 }
 
@@ -1563,14 +1664,20 @@ void GraphicsContext3D::getNonBuiltInActiveSymbolCount(Platform3DObject program,
 
 String GraphicsContext3D::getUnmangledInfoLog(Platform3DObject shaders[2], GC3Dsizei count, const String& log)
 {
-    LOG(WebGL, "Was: %s", log.utf8().data());
+    LOG(WebGL, "Original ShaderInfoLog:\n%s", log.utf8().data());
 
     JSC::Yarr::RegularExpression regExp("webgl_[0123456789abcdefABCDEF]+", TextCaseSensitive);
 
     StringBuilder processedLog;
     
-    int startFrom = 0;
+    // ANGLE inserts a "#extension" line into the shader source that
+    // causes a warning in some compilers. There is no point showing
+    // this warning to the user since they didn't write the code that
+    // is causing it.
+    static const NeverDestroyed<String> angleWarning = ASCIILiteral { "WARNING: 0:1: extension 'GL_ARB_gpu_shader5' is not supported\n" };
+    int startFrom = log.startsWith(angleWarning) ? angleWarning.get().length() : 0;
     int matchedLength = 0;
+
     do {
         int start = regExp.match(log, startFrom, &matchedLength);
         if (start == -1)
@@ -1587,7 +1694,7 @@ String GraphicsContext3D::getUnmangledInfoLog(Platform3DObject shaders[2], GC3Ds
 
     processedLog.append(log.substring(startFrom, log.length() - startFrom));
 
-    LOG(WebGL, "-->: %s", processedLog.toString().utf8().data());
+    LOG(WebGL, "Unmangled ShaderInfoLog:\n%s", processedLog.toString().utf8().data());
     return processedLog.toString();
 }
 
@@ -1845,6 +1952,7 @@ void GraphicsContext3D::deleteFramebuffer(Platform3DObject framebuffer)
 void GraphicsContext3D::deleteProgram(Platform3DObject program)
 {
     makeContextCurrent();
+    m_shaderProgramSymbolCountMap.remove(program);
     glDeleteProgram(program);
 }
 

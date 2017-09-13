@@ -100,13 +100,13 @@ inline JSObject* constructGenericTypedArrayViewFromIterator(ExecState* exec, Str
     }
 
     ViewClass* result = ViewClass::createUninitialized(exec, structure, storage.size());
-    ASSERT(!!scope.exception() == !result);
+    EXCEPTION_ASSERT(!!scope.exception() == !result);
     if (UNLIKELY(!result))
         return nullptr;
 
     for (unsigned i = 0; i < storage.size(); ++i) {
         bool success = result->setIndex(exec, i, storage.at(i));
-        ASSERT(scope.exception() || success);
+        EXCEPTION_ASSERT(scope.exception() || success);
         if (!success)
             return nullptr;
     }
@@ -185,13 +185,19 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
                     return constructGenericTypedArrayViewFromIterator<ViewClass>(exec, structure, iterator);
             }
 
-            length = lengthSlot.isUnset() ? 0 : lengthSlot.getValue(exec, vm.propertyNames->length).toUInt32(exec);
-            RETURN_IF_EXCEPTION(scope, nullptr);
+            if (lengthSlot.isUnset())
+                length = 0;
+            else {
+                JSValue value = lengthSlot.getValue(exec, vm.propertyNames->length);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                length = value.toUInt32(exec);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+            }
         }
 
         
         ViewClass* result = ViewClass::createUninitialized(exec, structure, length);
-        ASSERT(!!scope.exception() == !result);
+        EXCEPTION_ASSERT(!!scope.exception() == !result);
         if (UNLIKELY(!result))
             return nullptr;
         

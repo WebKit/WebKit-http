@@ -422,11 +422,6 @@
 #define WTF_OS_OPENBSD 1
 #endif
 
-/* OS(SOLARIS) - Solaris */
-#if defined(sun) || defined(__sun)
-#define WTF_OS_SOLARIS 1
-#endif
-
 /* OS(WINDOWS) - Any version of Windows */
 #if defined(WIN32) || defined(_WIN32)
 #define WTF_OS_WINDOWS 1
@@ -443,7 +438,6 @@
     || OS(LINUX)            \
     || OS(NETBSD)           \
     || OS(OPENBSD)          \
-    || OS(SOLARIS)          \
     || defined(unix)        \
     || defined(__unix)      \
     || defined(__unix__)
@@ -625,10 +619,6 @@
 
 #endif /* PLATFORM(IOS) */
 
-#if PLATFORM(WIN) && !USE(WINGDI)
-#define USE_CF 1
-#endif
-
 #if PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO)
 #define USE_CFURLCONNECTION 1
 #endif
@@ -786,11 +776,11 @@
 
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
 /* Enable the DFG JIT on X86 and X86_64. */
-#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HURD))
+#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HURD) || OS(WINDOWS))
 #define ENABLE_DFG_JIT 1
 #endif
-/* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(WPE))
+/* Enable the DFG JIT on ARMv7.  Only tested on iOS and GTK+/WPE Linux. */
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(WPE))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARM. */
@@ -800,12 +790,6 @@
 /* FIXME: MIPS cannot enable the DFG until it has support for MacroAssembler::probe().
    https://bugs.webkit.org/show_bug.cgi?id=175447
 */
-/* FIXME: Win64 cannot enable the DFG until it has support for MacroAssembler::probe().
-   https://bugs.webkit.org/show_bug.cgi?id=175724
-*/
-#if CPU(X86) && OS(WINDOWS)
-#define ENABLE_DFG_JIT 1
-#endif
 #endif
 
 /* Concurrent JS only works on 64-bit platforms because it requires that
@@ -830,12 +814,7 @@
 #define ENABLE_MASM_PROBE 0
 #endif
 
-#if !ENABLE(JIT) || OS(WINDOW)
-#undef ENABLE_MASM_PROBE
-#define ENABLE_MASM_PROBE 0
-#endif
-#if PLATFORM(GTK) && CPU(ARM_THUMB2)
-/* FIXME: https://bugs.webkit.org/show_bug.cgi?id=175514 */
+#if !ENABLE(JIT)
 #undef ENABLE_MASM_PROBE
 #define ENABLE_MASM_PROBE 0
 #endif
@@ -1107,21 +1086,6 @@
 #define USE_AVFOUNDATION 1
 #endif
 
-#if PLATFORM(WIN) && !USE(WINGDI)
-#include <wtf/AVFoundationHeaderDetection.h>
-#endif
-
-#if PLATFORM(WIN) && USE(CG) && HAVE(AVCF)
-#define USE_AVFOUNDATION 1
-
-#if HAVE(AVCF_LEGIBLE_OUTPUT)
-#define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
-#define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
-#define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
-#endif
-
-#endif
-
 #if !defined(ENABLE_TREE_DEBUGGING)
 #if !defined(NDEBUG)
 #define ENABLE_TREE_DEBUGGING 1
@@ -1328,7 +1292,7 @@
 #define HAVE_RSA_PSS 1
 #endif
 
-#if !OS(WINDOWS) && !OS(SOLARIS)
+#if !OS(WINDOWS)
 #define HAVE_STACK_BOUNDS_FOR_NEW_THREAD 1
 #endif
 

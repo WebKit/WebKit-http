@@ -63,5 +63,4 @@ bool initializeGStreamer();
 unsigned getGstPlayFlag(const char* nick);
 GstClockTime toGstClockTime(float time);
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
-GstElement* getPipeline(GstElement*);
 }

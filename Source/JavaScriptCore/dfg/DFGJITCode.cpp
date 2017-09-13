@@ -225,16 +225,20 @@ void JITCode::validateReferences(const TrackedReferences& trackedReferences)
     minifiedDFG.validateReferences(trackedReferences);
 }
 
-std::optional<CodeOrigin> JITCode::findPC(CodeBlock*, void* pc)
+void JITCode::finalizeOSREntrypoints()
 {
-    for (OSRExit& exit : osrExit) {
-        if (ExecutableMemoryHandle* handle = exit.m_code.executableMemory()) {
-            if (handle->start() <= pc && pc < handle->end())
-                return std::optional<CodeOrigin>(exit.m_codeOriginForExitProfile);
-        }
-    }
+    auto comparator = [] (const auto& a, const auto& b) {
+        return a.m_bytecodeIndex < b.m_bytecodeIndex;
+    };
+    std::sort(osrEntry.begin(), osrEntry.end(), comparator);
 
-    return std::nullopt;
+#if !ASSERT_DISABLED
+    auto verifyIsSorted = [&] (auto& osrVector) {
+        for (unsigned i = 0; i + 1 < osrVector.size(); ++i)
+            ASSERT(osrVector[i].m_bytecodeIndex <= osrVector[i + 1].m_bytecodeIndex);
+    };
+    verifyIsSorted(osrEntry);
+#endif
 }
 
 } } // namespace JSC::DFG

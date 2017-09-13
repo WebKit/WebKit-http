@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001, 2004 Harri Porten (porten@kde.org)
- *  Copyright (c) 2007, 2008, 2016 Apple Inc. All rights reserved.
+ *  Copyright (c) 2007, 2008, 2016-2017 Apple Inc. All rights reserved.
  *  Copyright (C) 2009 Torch Mobile, Inc.
  *  Copyright (C) 2010 Peter Varga (pvarga@inf.u-szeged.hu), University of Szeged
  *
@@ -59,6 +59,12 @@ RegExpFlags regExpFlags(const String& string)
             flags = static_cast<RegExpFlags>(flags | FlagMultiline);
             break;
 
+        case 's':
+            if (flags & FlagDotAll)
+                return InvalidFlags;
+            flags = static_cast<RegExpFlags>(flags | FlagDotAll);
+            break;
+            
         case 'u':
             if (flags & FlagUnicode)
                 return InvalidFlags;
@@ -104,10 +110,12 @@ void RegExpFunctionalTestCollector::outputOneTest(RegExp* regExp, const String& 
             fputc('i', m_file);
         if (regExp->multiline())
             fputc('m', m_file);
-        if (regExp->sticky())
-            fputc('y', m_file);
+        if (regExp->dotAll())
+            fputc('s', m_file);
         if (regExp->unicode())
             fputc('u', m_file);
+        if (regExp->sticky())
+            fputc('y', m_file);
         fprintf(m_file, "\n");
     }
 
@@ -225,8 +233,11 @@ void RegExp::finishCreation(VM& vm)
     Yarr::YarrPattern pattern(m_patternString, m_flags, &m_constructionError, vm.stackLimit());
     if (!isValid())
         m_state = ParseError;
-    else
+    else {
         m_numSubpatterns = pattern.m_numSubpatterns;
+        m_captureGroupNames.swap(pattern.m_captureGroupNames);
+        m_namedGroupToParenIndex.swap(pattern.m_namedGroupToParenIndex);
+    }
 }
 
 void RegExp::destroy(JSCell* cell)
@@ -281,7 +292,7 @@ void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
     }
 
 #if ENABLE(YARR_JIT)
-    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && !unicode() && vm->canUseRegExpJIT()) {
+    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && vm->canUseRegExpJIT()) {
         Yarr::jitCompile(pattern, charSize, vm, m_regExpJITCode);
         if (!m_regExpJITCode.isFallBack()) {
             m_state = JITCode;

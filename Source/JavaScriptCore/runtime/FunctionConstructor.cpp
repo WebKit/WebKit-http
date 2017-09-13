@@ -25,6 +25,7 @@
 #include "ExceptionHelpers.h"
 #include "FunctionPrototype.h"
 #include "JSAsyncFunction.h"
+#include "JSAsyncGeneratorFunction.h"
 #include "JSFunction.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObject.h"
@@ -108,6 +109,10 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
     case FunctionConstructionMode::Async:
         structure = globalObject->asyncFunctionStructure();
         prefix = "async function ";
+        break;
+    case FunctionConstructionMode::AsyncGenerator:
+        structure = globalObject->asyncGeneratorFunctionStructure();
+        prefix = "{async function*";
         break;
     }
 
@@ -194,6 +199,8 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
         return JSGeneratorFunction::create(vm, function, globalObject->globalScope(), subclassStructure);
     case FunctionConstructionMode::Async:
         return JSAsyncFunction::create(vm, function, globalObject->globalScope(), subclassStructure);
+    case FunctionConstructionMode::AsyncGenerator:
+        return JSAsyncGeneratorFunction::create(vm, function, globalObject->globalScope(), subclassStructure);
     }
 
     ASSERT_NOT_REACHED();
@@ -203,7 +210,8 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
 // ECMA 15.3.2 The Function Constructor
 JSObject* constructFunction(ExecState* exec, JSGlobalObject* globalObject, const ArgList& args, FunctionConstructionMode functionConstructionMode, JSValue newTarget)
 {
-    return constructFunction(exec, globalObject, args, exec->propertyNames().anonymous, exec->callerSourceOrigin(), String(), TextPosition(), functionConstructionMode, newTarget);
+    VM& vm = exec->vm();
+    return constructFunction(exec, globalObject, args, vm.propertyNames->anonymous, exec->callerSourceOrigin(), String(), TextPosition(), functionConstructionMode, newTarget);
 }
 
 } // namespace JSC

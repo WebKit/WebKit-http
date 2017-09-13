@@ -33,6 +33,7 @@
 #include "CodeBlock.h"
 #include "Instruction.h"
 #include "Interpreter.h"
+#include "JSAsyncGeneratorFunction.h"
 #include "JSGeneratorFunction.h"
 #include "Label.h"
 #include "LabelScope.h"
@@ -59,6 +60,8 @@ namespace JSC {
         ExpectObjectConstructor,
         ExpectArrayConstructor
     };
+
+    enum class EmitAwait { Yes, No };
 
     enum class DebuggableCall { Yes, No };
     enum class ThisResolutionType { Local, Scoped };
@@ -604,6 +607,7 @@ namespace JSC {
 
     private:
         void emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot);
+        RegisterID* emitCreateAsyncGeneratorQueue(const JSTextPosition&);
     public:
 
         // This doesn't emit expression info. If using this, make sure you shouldn't be emitting text offset.
@@ -699,6 +703,8 @@ namespace JSC {
 
         // Initialize object with generator fields (@generatorThis, @generatorNext, @generatorState, @generatorFrame)
         void emitPutGeneratorFields(RegisterID* nextFunction);
+        
+        void emitPutAsyncGeneratorFields(RegisterID* nextFunction, const JSTextPosition&);
 
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
@@ -774,9 +780,9 @@ namespace JSC {
         RegisterID* emitIsDerivedArray(RegisterID* dst, RegisterID* src) { return emitIsCellWithType(dst, src, DerivedArrayType); }
         void emitRequireObjectCoercible(RegisterID* value, const String& error);
 
-        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node);
+        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node, JSC::EmitAwait = JSC::EmitAwait::No);
         RegisterID* emitIteratorNextWithValue(RegisterID* dst, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node);
-        void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node);
+        void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait = EmitAwait::No);
 
         RegisterID* emitRestParameter(RegisterID* result, unsigned numParametersToSkip);
 
@@ -786,7 +792,7 @@ namespace JSC {
         TryData* pushTry(Label& start, Label& handlerLabel, HandlerType);
         // End a try block. 'end' must have been emitted.
         void popTry(TryData*, Label& end);
-        void emitCatch(RegisterID* exceptionRegister, RegisterID* thrownValueRegister);
+        void emitCatch(RegisterID* exceptionRegister, RegisterID* thrownValueRegister, TryData*);
 
     private:
         static const int CurrentLexicalScopeIndex = -2;
@@ -825,6 +831,10 @@ namespace JSC {
         void emitPushCatchScope(VariableEnvironment&);
         void emitPopCatchScope(VariableEnvironment&);
 
+        RegisterID* emitGetIterator(RegisterID*, ThrowableExpressionData*);
+        RegisterID* emitGetAsyncIterator(RegisterID*, ThrowableExpressionData*);
+
+        void emitAwait(RegisterID*);
         void emitGetScope();
         RegisterID* emitPushWithScope(RegisterID* objectScope);
         void emitPopWithScope();
@@ -904,11 +914,11 @@ namespace JSC {
         void beginSwitch(RegisterID*, SwitchInfo::SwitchType);
         void endSwitch(uint32_t clauseCount, const Vector<Ref<Label>, 8>&, ExpressionNode**, Label& defaultLabel, int32_t min, int32_t range);
 
-        void emitYieldPoint(RegisterID*);
+        void emitYieldPoint(RegisterID*, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason);
 
         void emitGeneratorStateLabel();
         void emitGeneratorStateChange(int32_t state);
-        RegisterID* emitYield(RegisterID* argument);
+        RegisterID* emitYield(RegisterID* argument, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason = JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::Yield);
         RegisterID* emitDelegateYield(RegisterID* argument, ThrowableExpressionData*);
         RegisterID* generatorStateRegister() { return &m_parameters[static_cast<int32_t>(JSGeneratorFunction::GeneratorArgument::State)]; }
         RegisterID* generatorValueRegister() { return &m_parameters[static_cast<int32_t>(JSGeneratorFunction::GeneratorArgument::Value)]; }
@@ -917,7 +927,9 @@ namespace JSC {
 
         CodeType codeType() const { return m_codeType; }
 
-        bool shouldEmitDebugHooks() { return m_shouldEmitDebugHooks; }
+        bool shouldBeConcernedWithCompletionValue() const { return m_codeType != FunctionCode; }
+
+        bool shouldEmitDebugHooks() const { return m_shouldEmitDebugHooks; }
         
         bool isStrictMode() const { return m_codeBlock->isStrictMode(); }
 
@@ -996,6 +1008,7 @@ namespace JSC {
         
         RegisterID* emitCall(OpcodeID, RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
 
+        RegisterID* emitCallIterator(RegisterID* iterator, RegisterID* argument, ThrowableExpressionData*);
         RegisterID* newRegister();
 
         // Adds an anonymous local var slot. To give this slot a name, add it to symbolTable().
@@ -1189,6 +1202,9 @@ namespace JSC {
         bool m_inTailPosition { false };
         bool m_needsToUpdateArrowFunctionContext;
         DerivedContextType m_derivedContextType { DerivedContextType::None };
+
+        using CatchEntry = std::tuple<TryData*, int, int>;
+        Vector<CatchEntry> m_catchesToEmit;
     };
 
 } // namespace JSC

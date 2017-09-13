@@ -77,6 +77,9 @@ public:
     NSHTTPCookieStorage *nsCookieStorage() const;
 #endif
 
+    const String& cacheStorageDirectory() const { return m_cacheStorageDirectory; }
+    void setCacheStorageDirectory(String&& path) { m_cacheStorageDirectory = WTFMove(path); }
+
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     WEBCORE_EXPORT static void ensureSession(PAL::SessionID, const String& identifierBase, RetainPtr<CFHTTPCookieStorageRef>&&);
     NetworkStorageSession(PAL::SessionID, RetainPtr<CFURLStorageSessionRef>&&, RetainPtr<CFHTTPCookieStorageRef>&&);
@@ -87,8 +90,10 @@ public:
     WEBCORE_EXPORT static void setCookieStoragePartitioningEnabled(bool);
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     WEBCORE_EXPORT String cookieStoragePartition(const ResourceRequest&) const;
+    WEBCORE_EXPORT bool shouldBlockCookies(const ResourceRequest&) const;
     String cookieStoragePartition(const URL& firstPartyForCookies, const URL& resource) const;
-    WEBCORE_EXPORT void setShouldPartitionCookiesForHosts(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
+    WEBCORE_EXPORT void setPrevalentDomainsWithAndWithoutInteraction(const Vector<String>& domainsWithInteraction, const Vector<String>& domainsWithoutInteraction, bool clearFirst);
+    WEBCORE_EXPORT void removePrevalentDomains(const Vector<String>& domains);
 #endif
 #elif USE(SOUP)
     NetworkStorageSession(PAL::SessionID, std::unique_ptr<SoupNetworkSession>&&);
@@ -139,9 +144,13 @@ private:
 
     CredentialStorage m_credentialStorage;
 
+    String m_cacheStorageDirectory;
+
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     bool shouldPartitionCookies(const String& topPrivatelyControlledDomain) const;
-    HashSet<String> m_topPrivatelyControlledDomainsForCookiePartitioning;
+    bool shouldAllowThirdPartyCookies(const String& topPrivatelyControlledDomain) const;
+    HashSet<String> m_prevalentTopPrivatelyControlledDomainsWithoutInteraction;
+    HashSet<String> m_prevalentTopPrivatelyControlledDomainsWithInteraction;
 #endif
 
 #if PLATFORM(COCOA)
@@ -152,5 +161,9 @@ private:
     mutable RefPtr<CookieStorageObserver> m_cookieStorageObserver;
 #endif
 };
+
+#if PLATFORM(COCOA)
+WEBCORE_EXPORT CFURLStorageSessionRef createPrivateStorageSession(CFStringRef identifier);
+#endif
 
 }

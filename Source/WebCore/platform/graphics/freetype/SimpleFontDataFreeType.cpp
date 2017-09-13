@@ -33,6 +33,7 @@
 #include "config.h"
 #include "Font.h"
 
+#include "CairoUniquePtr.h"
 #include "CairoUtilities.h"
 #include "FloatConversion.h"
 #include "FloatRect.h"
@@ -40,6 +41,7 @@
 #include "FontDescription.h"
 #include "GlyphBuffer.h"
 #include "OpenTypeTypes.h"
+#include "RefPtrCairo.h"
 #include "UTF16UChar32Iterator.h"
 #include <cairo-ft.h>
 #include <cairo.h>
@@ -52,14 +54,30 @@
 
 namespace WebCore {
 
+static RefPtr<cairo_scaled_font_t> scaledFontWithoutMetricsHinting(cairo_scaled_font_t* scaledFont)
+{
+    CairoUniquePtr<cairo_font_options_t> fontOptions(cairo_font_options_create());
+    cairo_scaled_font_get_font_options(scaledFont, fontOptions.get());
+    cairo_font_options_set_hint_metrics(fontOptions.get(), CAIRO_HINT_METRICS_OFF);
+    cairo_matrix_t fontMatrix;
+    cairo_scaled_font_get_font_matrix(scaledFont, &fontMatrix);
+    cairo_matrix_t fontCTM;
+    cairo_scaled_font_get_ctm(scaledFont, &fontCTM);
+    return adoptRef(cairo_scaled_font_create(cairo_scaled_font_get_font_face(scaledFont), &fontMatrix, &fontCTM, fontOptions.get()));
+}
+
 void Font::platformInit()
 {
     if (!m_platformData.size())
         return;
 
     ASSERT(m_platformData.scaledFont());
+    // Temporarily create a clone that doesn't have metrics hinting in order to avoid incorrect
+    // rounding resulting in incorrect baseline positioning since the sum of ascent and descent
+    // becomes larger than the line height.
+    auto fontWithoutMetricsHinting = scaledFontWithoutMetricsHinting(m_platformData.scaledFont());
     cairo_font_extents_t fontExtents;
-    cairo_scaled_font_extents(m_platformData.scaledFont(), &fontExtents);
+    cairo_scaled_font_extents(fontWithoutMetricsHinting.get(), &fontExtents);
 
     float ascent = narrowPrecisionToFloat(fontExtents.ascent);
     float descent = narrowPrecisionToFloat(fontExtents.descent);
@@ -71,16 +89,17 @@ void Font::platformInit()
 
         // If the USE_TYPO_METRICS flag is set in the OS/2 table then we use typo metrics instead.
         FT_Face freeTypeFace = cairoFtFaceLocker.ftFace();
-        TT_OS2* OS2Table = freeTypeFace ? static_cast<TT_OS2*>(FT_Get_Sfnt_Table(freeTypeFace, ft_sfnt_os2)) : nullptr;
-        if (OS2Table) {
-            const FT_Short kUseTypoMetricsMask = 1 << 7;
-            if (OS2Table->fsSelection & kUseTypoMetricsMask) {
-                // FT_Size_Metrics::y_scale is in 16.16 fixed point format.
-                // Its (fractional) value is a factor that converts vertical metrics from design units to units of 1/64 pixels.
-                double yscale = (freeTypeFace->size->metrics.y_scale / 65536.0) / 64.0;
-                ascent = narrowPrecisionToFloat(yscale * OS2Table->sTypoAscender);
-                descent = -narrowPrecisionToFloat(yscale * OS2Table->sTypoDescender);
-                lineGap = narrowPrecisionToFloat(yscale * OS2Table->sTypoLineGap);
+        if (freeTypeFace && freeTypeFace->face_flags & FT_FACE_FLAG_SCALABLE) {
+            if (auto* OS2Table = static_cast<TT_OS2*>(FT_Get_Sfnt_Table(freeTypeFace, ft_sfnt_os2))) {
+                const FT_Short kUseTypoMetricsMask = 1 << 7;
+                if (OS2Table->fsSelection & kUseTypoMetricsMask) {
+                    // FT_Size_Metrics::y_scale is in 16.16 fixed point format.
+                    // Its (fractional) value is a factor that converts vertical metrics from design units to units of 1/64 pixels.
+                    double yscale = (freeTypeFace->size->metrics.y_scale / 65536.0) / 64.0;
+                    ascent = narrowPrecisionToFloat(yscale * OS2Table->sTypoAscender);
+                    descent = -narrowPrecisionToFloat(yscale * OS2Table->sTypoDescender);
+                    lineGap = narrowPrecisionToFloat(yscale * OS2Table->sTypoLineGap);
+                }
             }
         }
     }
@@ -88,8 +107,6 @@ void Font::platformInit()
     m_fontMetrics.setAscent(ascent);
     m_fontMetrics.setDescent(descent);
     m_fontMetrics.setCapHeight(capHeight);
-
-    // Match CoreGraphics metrics.
     m_fontMetrics.setLineSpacing(lroundf(ascent) + lroundf(descent) + lroundf(lineGap));
     m_fontMetrics.setLineGap(lineGap);
 

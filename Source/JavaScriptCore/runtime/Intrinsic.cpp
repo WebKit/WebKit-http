@@ -137,8 +137,24 @@ const char* intrinsicName(Intrinsic intrinsic)
         return "JSMapGetIntrinsic";
     case JSMapHasIntrinsic:
         return "JSMapHasIntrinsic";
+    case JSMapBucketHeadIntrinsic:
+        return "JSMapBucketHeadIntrinsic";
+    case JSMapBucketNextIntrinsic:
+        return "JSMapBucketNextIntrinsic";
+    case JSMapBucketKeyIntrinsic:
+        return "JSMapBucketKeyIntrinsic";
+    case JSMapBucketValueIntrinsic:
+        return "JSMapBucketValueIntrinsic";
     case JSSetHasIntrinsic:
         return "JSSetHasIntrinsic";
+    case JSSetBucketHeadIntrinsic:
+        return "JSSetBucketHeadIntrinsic";
+    case JSSetBucketNextIntrinsic:
+        return "JSSetBucketNextIntrinsic";
+    case JSSetBucketKeyIntrinsic:
+        return "JSSetBucketKeyIntrinsic";
+    case JSWeakMapGetIntrinsic:
+        return "JSWeakMapGetIntrinsic";
     case HasOwnPropertyIntrinsic:
         return "HasOwnPropertyIntrinsic";
     case AtomicsAddIntrinsic:

@@ -60,6 +60,7 @@ set(WTF_HEADERS
     IndexedContainerIterator.h
     IteratorAdaptors.h
     IteratorRange.h
+    Language.h
     ListHashSet.h
     Liveness.h
     Lock.h
@@ -182,6 +183,8 @@ set(WTF_HEADERS
     text/StringCommon.h
     text/StringHash.h
     text/StringImpl.h
+    text/StringMalloc.h
+    text/StringVector.h
     text/StringView.h
     text/SymbolImpl.h
     text/SymbolRegistry.h
@@ -227,6 +230,7 @@ set(WTF_SOURCES
     GlobalVersion.cpp
     GregorianDateTime.cpp
     HashTable.cpp
+    Language.cpp
     Lock.cpp
     LockedPrintStream.cpp
     MD5.cpp
@@ -284,7 +288,9 @@ set(WTF_SOURCES
     text/Base64.cpp
     text/CString.cpp
     text/StringBuilder.cpp
+    text/StringBuilderJSON.cpp
     text/StringImpl.cpp
+    text/StringMalloc.cpp
     text/StringView.cpp
     text/SymbolImpl.cpp
     text/SymbolRegistry.cpp

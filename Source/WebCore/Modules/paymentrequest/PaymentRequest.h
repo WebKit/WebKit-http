@@ -29,7 +29,10 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
+#include "ExceptionOr.h"
 #include "JSDOMPromiseDeferred.h"
+#include "PaymentDetailsInit.h"
+#include "PaymentOptions.h"
 
 namespace WebCore {
 
@@ -37,29 +40,44 @@ class Document;
 class PaymentAddress;
 class PaymentResponse;
 enum class PaymentShippingType;
-struct PaymentDetailsInit;
 struct PaymentMethodData;
-struct PaymentOptions;
 
 class PaymentRequest final : public RefCounted<PaymentRequest>, public ActiveDOMObject, public EventTargetWithInlineData {
 public:
-    static Ref<PaymentRequest> create(Document&, Vector<PaymentMethodData>&&, PaymentDetailsInit&&, std::optional<PaymentOptions>&&);
+    using ShowPromise = DOMPromiseDeferred<IDLInterface<PaymentResponse>>;
+    using AbortPromise = DOMPromiseDeferred<void>;
+    using CanMakePaymentPromise = DOMPromiseDeferred<IDLBoolean>;
+
+    static ExceptionOr<Ref<PaymentRequest>> create(Document&, Vector<PaymentMethodData>&&, PaymentDetailsInit&&, PaymentOptions&&);
     ~PaymentRequest();
 
-    void show(DOMPromiseDeferred<IDLInterface<PaymentResponse>>&&);
-    void abort(DOMPromiseDeferred<void>&&);
-    void canMakePayment(DOMPromiseDeferred<IDLBoolean>&&);
+    void show(ShowPromise&&);
+    ExceptionOr<void> abort(AbortPromise&&);
+    void canMakePayment(CanMakePaymentPromise&&);
 
-    const String& id() const { return m_id; }
+    const String& id() const;
     PaymentAddress* shippingAddress() const { return m_shippingAddress.get(); }
     const String& shippingOption() const { return m_shippingOption; }
-    std::optional<PaymentShippingType> shippingType() const { return m_shippingType; }
+    std::optional<PaymentShippingType> shippingType() const;
 
     using RefCounted<PaymentRequest>::ref;
     using RefCounted<PaymentRequest>::deref;
 
 private:
-    PaymentRequest(Document&, Vector<PaymentMethodData>&&, PaymentDetailsInit&&, std::optional<PaymentOptions>&&);
+    enum class State {
+        Created,
+        Interactive,
+        Closed,
+    };
+
+    struct Method {
+        String supportedMethods;
+        String serializedData;
+    };
+
+    PaymentRequest(Document&, PaymentOptions&&, PaymentDetailsInit&&, Vector<String>&& serializedModifierData, Vector<Method>&& serializedMethodData, String&& selectedShippingOption);
+
+    void finishShowing();
 
     // ActiveDOMObject
     const char* activeDOMObjectName() const final { return "PaymentRequest"; }
@@ -72,10 +90,16 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    String m_id;
-    RefPtr<PaymentAddress> m_shippingAddress;
+    PaymentOptions m_options;
+    PaymentDetailsInit m_details;
+    Vector<String> m_serializedModifierData;
+    Vector<Method> m_serializedMethodData;
     String m_shippingOption;
-    std::optional<PaymentShippingType> m_shippingType;
+    RefPtr<PaymentAddress> m_shippingAddress;
+    State m_state { State::Created };
+    std::optional<ShowPromise> m_showPromise;
+    std::optional<AbortPromise> m_abortPromise;
+    std::optional<CanMakePaymentPromise> m_canMakePaymentPromise;
 };
 
 } // namespace WebCore

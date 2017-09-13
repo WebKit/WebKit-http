@@ -50,6 +50,7 @@
 #include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
 #include "JSAsyncFunction.h"
+#include "JSAsyncGeneratorFunction.h"
 #include "JSCInlines.h"
 #include "JSEnvironmentRecord.h"
 #include "JSFixedArray.h"
@@ -171,7 +172,7 @@ void SpeculativeJIT::emitAllocateRawObject(GPRReg resultGPR, RegisteredStructure
 void SpeculativeJIT::emitGetLength(InlineCallFrame* inlineCallFrame, GPRReg lengthGPR, bool includeThis)
 {
     if (inlineCallFrame && !inlineCallFrame->isVarargs())
-        m_jit.move(TrustedImm32(inlineCallFrame->arguments.size() - !includeThis), lengthGPR);
+        m_jit.move(TrustedImm32(inlineCallFrame->argumentCountIncludingThis - !includeThis), lengthGPR);
     else {
         VirtualRegister argumentCountRegister = m_jit.argumentCount(inlineCallFrame);
         m_jit.load32(JITCompiler::payloadFor(argumentCountRegister), lengthGPR);
@@ -1706,6 +1707,13 @@ void SpeculativeJIT::compileCurrentBlock()
         return;
     }
 
+    if (m_block->isCatchEntrypoint) {
+        m_jit.addPtr(CCallHelpers::TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister,  CCallHelpers::stackPointerRegister);
+        m_jit.emitSaveCalleeSaves();
+        m_jit.emitMaterializeTagCheckRegisters();
+        m_jit.emitPutToCallFrameHeader(m_jit.codeBlock(), CallFrameSlot::codeBlock);
+    }
+
     m_stream->appendAndLog(VariableEvent::reset());
     
     m_jit.jitAssertHasValidCallFrame();
@@ -1800,8 +1808,9 @@ void SpeculativeJIT::checkArgumentTypes()
     ASSERT(!m_currentNode);
     m_origin = NodeOrigin(CodeOrigin(0), CodeOrigin(0), true);
 
+    auto& arguments = m_jit.graph().m_rootToArguments.find(m_jit.graph().block(0))->value;
     for (int i = 0; i < m_jit.codeBlock()->numParameters(); ++i) {
-        Node* node = m_jit.graph().m_arguments[i];
+        Node* node = arguments[i];
         if (!node) {
             // The argument is dead. We don't do any checks for such arguments.
             continue;
@@ -1885,12 +1894,11 @@ void SpeculativeJIT::createOSREntries()
         BasicBlock* block = m_jit.graph().block(blockIndex);
         if (!block)
             continue;
-        if (!block->isOSRTarget)
-            continue;
-        
-        // Currently we don't have OSR entry trampolines. We could add them
-        // here if need be.
-        m_osrEntryHeads.append(m_jit.blockHeads()[blockIndex]);
+        if (block->isOSRTarget || block->isCatchEntrypoint) {
+            // Currently we don't have OSR entry trampolines. We could add them
+            // here if need be.
+            m_osrEntryHeads.append(m_jit.blockHeads()[blockIndex]);
+        }
     }
 }
 
@@ -1901,10 +1909,30 @@ void SpeculativeJIT::linkOSREntries(LinkBuffer& linkBuffer)
         BasicBlock* block = m_jit.graph().block(blockIndex);
         if (!block)
             continue;
-        if (!block->isOSRTarget)
+        if (!block->isOSRTarget && !block->isCatchEntrypoint)
             continue;
-        m_jit.noticeOSREntry(*block, m_osrEntryHeads[osrEntryIndex++], linkBuffer);
+        if (block->isCatchEntrypoint) {
+            auto& argumentsVector = m_jit.graph().m_rootToArguments.find(block)->value;
+            Vector<FlushFormat> argumentFormats;
+            argumentFormats.reserveInitialCapacity(argumentsVector.size());
+            for (Node* setArgument : argumentsVector) {
+                if (setArgument) {
+                    FlushFormat flushFormat = setArgument->variableAccessData()->flushFormat();
+                    ASSERT(flushFormat == FlushedInt32 || flushFormat == FlushedCell || flushFormat == FlushedBoolean || flushFormat == FlushedJSValue);
+                    argumentFormats.uncheckedAppend(flushFormat);
+                } else
+                    argumentFormats.uncheckedAppend(DeadFlush);
+            }
+            m_jit.noticeCatchEntrypoint(*block, m_osrEntryHeads[osrEntryIndex++], linkBuffer, WTFMove(argumentFormats));
+        } else {
+            ASSERT(block->isOSRTarget);
+            m_jit.noticeOSREntry(*block, m_osrEntryHeads[osrEntryIndex++], linkBuffer);
+        }
     }
+
+    m_jit.jitCode()->finalizeOSREntrypoints();
+    m_jit.jitCode()->common.finalizeCatchEntrypoints();
+
     ASSERT(osrEntryIndex == m_osrEntryHeads.size());
     
     if (verboseCompilationEnabled()) {
@@ -3113,6 +3141,100 @@ void SpeculativeJIT::compilePutByValForFloatTypedArray(GPRReg base, GPRReg prope
     JITCompiler::Jump done = jumpForTypedArrayIsNeuteredIfOutOfBounds(node, base, outOfBounds);
     if (done.isSet())
         done.link(&m_jit);
+    noResult(node);
+}
+
+void SpeculativeJIT::compileGetByValForObjectWithString(Node* node)
+{
+    SpeculateCellOperand arg1(this, node->child1());
+    SpeculateCellOperand arg2(this, node->child2());
+
+    GPRReg arg1GPR = arg1.gpr();
+    GPRReg arg2GPR = arg2.gpr();
+
+    speculateObject(node->child1(), arg1GPR);
+    speculateString(node->child2(), arg2GPR);
+
+    GPRFlushedCallResult resultPayload(this);
+    GPRReg resultPayloadGPR = resultPayload.gpr();
+#if USE(JSVALUE64)
+    JSValueRegs resultRegs(resultPayloadGPR);
+#else
+    GPRFlushedCallResult2 resultTag(this);
+    GPRReg resultTagGPR = resultTag.gpr();
+    JSValueRegs resultRegs(resultTagGPR, resultPayloadGPR);
+#endif
+
+    flushRegisters();
+    callOperation(operationGetByValObjectString, extractResult(resultRegs), arg1GPR, arg2GPR);
+    m_jit.exceptionCheck();
+
+    jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compileGetByValForObjectWithSymbol(Node* node)
+{
+    SpeculateCellOperand arg1(this, node->child1());
+    SpeculateCellOperand arg2(this, node->child2());
+
+    GPRReg arg1GPR = arg1.gpr();
+    GPRReg arg2GPR = arg2.gpr();
+
+    speculateObject(node->child1(), arg1GPR);
+    speculateSymbol(node->child2(), arg2GPR);
+
+    GPRFlushedCallResult resultPayload(this);
+    GPRReg resultPayloadGPR = resultPayload.gpr();
+#if USE(JSVALUE64)
+    JSValueRegs resultRegs(resultPayloadGPR);
+#else
+    GPRFlushedCallResult2 resultTag(this);
+    GPRReg resultTagGPR = resultTag.gpr();
+    JSValueRegs resultRegs(resultTagGPR, resultPayloadGPR);
+#endif
+
+    flushRegisters();
+    callOperation(operationGetByValObjectSymbol, extractResult(resultRegs), arg1GPR, arg2GPR);
+    m_jit.exceptionCheck();
+
+    jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compilePutByValForCellWithString(Node* node, Edge& child1, Edge& child2, Edge& child3)
+{
+    SpeculateCellOperand arg1(this, child1);
+    SpeculateCellOperand arg2(this, child2);
+    JSValueOperand arg3(this, child3);
+
+    GPRReg arg1GPR = arg1.gpr();
+    GPRReg arg2GPR = arg2.gpr();
+    JSValueRegs arg3Regs = arg3.jsValueRegs();
+
+    speculateString(child2, arg2GPR);
+
+    flushRegisters();
+    callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValCellStringStrict : operationPutByValCellStringNonStrict, arg1GPR, arg2GPR, arg3Regs);
+    m_jit.exceptionCheck();
+
+    noResult(node);
+}
+
+void SpeculativeJIT::compilePutByValForCellWithSymbol(Node* node, Edge& child1, Edge& child2, Edge& child3)
+{
+    SpeculateCellOperand arg1(this, child1);
+    SpeculateCellOperand arg2(this, child2);
+    JSValueOperand arg3(this, child3);
+
+    GPRReg arg1GPR = arg1.gpr();
+    GPRReg arg2GPR = arg2.gpr();
+    JSValueRegs arg3Regs = arg3.jsValueRegs();
+
+    speculateSymbol(child2, arg2GPR);
+
+    flushRegisters();
+    callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValCellSymbolStrict : operationPutByValCellSymbolNonStrict, arg1GPR, arg2GPR, arg3Regs);
+    m_jit.exceptionCheck();
+
     noResult(node);
 }
 
@@ -6528,7 +6650,7 @@ template <typename ClassType> void SpeculativeJIT::compileNewFunctionCommon(GPRR
 void SpeculativeJIT::compileNewFunction(Node* node)
 {
     NodeType nodeType = node->op();
-    ASSERT(nodeType == NewFunction || nodeType == NewGeneratorFunction || nodeType == NewAsyncFunction);
+    ASSERT(nodeType == NewFunction || nodeType == NewGeneratorFunction || nodeType == NewAsyncFunction || nodeType == NewAsyncGeneratorFunction);
     
     SpeculateCellOperand scope(this, node->child1());
     GPRReg scopeGPR = scope.gpr();
@@ -6545,6 +6667,8 @@ void SpeculativeJIT::compileNewFunction(Node* node)
             callOperation(operationNewGeneratorFunction, resultGPR, scopeGPR, executable);
         else if (nodeType == NewAsyncFunction)
             callOperation(operationNewAsyncFunction, resultGPR, scopeGPR, executable);
+        else if (nodeType == NewAsyncGeneratorFunction)
+            callOperation(operationNewAsyncGeneratorFunction, resultGPR, scopeGPR, executable);
         else
             callOperation(operationNewFunction, resultGPR, scopeGPR, executable);
         m_jit.exceptionCheck();
@@ -6555,6 +6679,7 @@ void SpeculativeJIT::compileNewFunction(Node* node)
     RegisteredStructure structure = m_jit.graph().registerStructure(
         nodeType == NewGeneratorFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->generatorFunctionStructure() :
         nodeType == NewAsyncFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->asyncFunctionStructure() :
+        nodeType == NewAsyncGeneratorFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->asyncGeneratorFunctionStructure() :
         m_jit.graph().globalObjectFor(node->origin.semantic)->functionStructure());
     
     GPRTemporary result(this);
@@ -6585,6 +6710,12 @@ void SpeculativeJIT::compileNewFunction(Node* node)
         addSlowPathGenerator(slowPathCall(slowPath, this, operationNewAsyncFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
     }
 
+    if (nodeType == NewAsyncGeneratorFunction) {
+        compileNewFunctionCommon<JSAsyncGeneratorFunction>(resultGPR, structure, scratch1GPR, scratch2GPR, scopeGPR, slowPath, JSAsyncGeneratorFunction::allocationSize(0), executable, JSAsyncGeneratorFunction::offsetOfScopeChain(), JSAsyncGeneratorFunction::offsetOfExecutable(), JSAsyncGeneratorFunction::offsetOfRareData());
+        
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewAsyncGeneratorFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
+    }
+    
     cellResult(resultGPR, node);
 }
 
@@ -6761,7 +6892,7 @@ void SpeculativeJIT::compileCreateDirectArguments(Node* node)
     bool lengthIsKnown; // if false, lengthGPR will have the length.
     if (node->origin.semantic.inlineCallFrame
         && !node->origin.semantic.inlineCallFrame->isVarargs()) {
-        knownLength = node->origin.semantic.inlineCallFrame->arguments.size() - 1;
+        knownLength = node->origin.semantic.inlineCallFrame->argumentCountIncludingThis - 1;
         lengthIsKnown = true;
     } else {
         knownLength = UINT_MAX;
@@ -7854,7 +7985,7 @@ void SpeculativeJIT::compileTypeOf(Node* node)
     cellResult(resultGPR, node);
 }
 
-void SpeculativeJIT::compileCheckStructure(Node* node, GPRReg cellGPR, GPRReg tempGPR)
+void SpeculativeJIT::emitStructureCheck(Node* node, GPRReg cellGPR, GPRReg tempGPR)
 {
     ASSERT(node->structureSet().size());
     
@@ -7899,7 +8030,7 @@ void SpeculativeJIT::compileCheckStructure(Node* node)
     case CellUse:
     case KnownCellUse: {
         SpeculateCellOperand cell(this, node->child1());
-        compileCheckStructure(node, cell.gpr(), InvalidGPRReg);
+        emitStructureCheck(node, cell.gpr(), InvalidGPRReg);
         noResult(node);
         return;
     }
@@ -7917,7 +8048,7 @@ void SpeculativeJIT::compileCheckStructure(Node* node)
             m_jit.branchIfNotOther(valueRegs, tempGPR));
         JITCompiler::Jump done = m_jit.jump();
         cell.link(&m_jit);
-        compileCheckStructure(node, valueRegs.payloadGPR(), tempGPR);
+        emitStructureCheck(node, valueRegs.payloadGPR(), tempGPR);
         done.link(&m_jit);
         noResult(node);
         return;
@@ -8317,7 +8448,7 @@ void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
     case Int32Use:
     case Int52RepUse:
     case DoubleRepUse:
-        compileToStringOrCallStringConstructorOnNumber(node);
+        compileNumberToStringWithValidRadixConstant(node, 10);
         return;
 
     default:
@@ -8398,11 +8529,16 @@ void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
     }
 }
 
-void SpeculativeJIT::compileToStringOrCallStringConstructorOnNumber(Node* node)
+void SpeculativeJIT::compileNumberToStringWithValidRadixConstant(Node* node)
+{
+    compileNumberToStringWithValidRadixConstant(node, node->validRadixConstant());
+}
+
+void SpeculativeJIT::compileNumberToStringWithValidRadixConstant(Node* node, int32_t radix)
 {
     auto callToString = [&] (auto operation, GPRReg resultGPR, auto valueReg) {
         flushRegisters();
-        callOperation(operation, resultGPR, valueReg, CCallHelpers::TrustedImm32(10));
+        callOperation(operation, resultGPR, valueReg, TrustedImm32(radix));
         m_jit.exceptionCheck();
         cellResult(resultGPR, node);
     };
@@ -8848,6 +8984,34 @@ void SpeculativeJIT::speculateSetObject(Edge edge)
     speculateSetObject(edge, operand.gpr());
 }
 
+void SpeculativeJIT::speculateWeakMapObject(Edge edge, GPRReg cell)
+{
+    speculateCellType(edge, cell, SpecWeakMapObject, JSWeakMapType);
+}
+
+void SpeculativeJIT::speculateWeakMapObject(Edge edge)
+{
+    if (!needsTypeCheck(edge, SpecWeakMapObject))
+        return;
+
+    SpeculateCellOperand operand(this, edge);
+    speculateWeakMapObject(edge, operand.gpr());
+}
+
+void SpeculativeJIT::speculateWeakSetObject(Edge edge, GPRReg cell)
+{
+    speculateCellType(edge, cell, SpecWeakSetObject, JSWeakSetType);
+}
+
+void SpeculativeJIT::speculateWeakSetObject(Edge edge)
+{
+    if (!needsTypeCheck(edge, SpecWeakSetObject))
+        return;
+
+    SpeculateCellOperand operand(this, edge);
+    speculateWeakSetObject(edge, operand.gpr());
+}
+
 void SpeculativeJIT::speculateObjectOrOther(Edge edge)
 {
     if (!needsTypeCheck(edge, SpecObject | SpecOther))
@@ -9165,6 +9329,12 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         break;
     case SetObjectUse:
         speculateSetObject(edge);
+        break;
+    case WeakMapObjectUse:
+        speculateWeakMapObject(edge);
+        break;
+    case WeakSetObjectUse:
+        speculateWeakSetObject(edge);
         break;
     case ObjectOrOtherUse:
         speculateObjectOrOther(edge);
@@ -9998,19 +10168,6 @@ void SpeculativeJIT::compileRecordRegExpCachedResult(Node* node)
     noResult(node);
 }
 
-void SpeculativeJIT::compileCompareEqPtr(Node* node)
-{
-    JSValueOperand operand(this, node->child1());
-    GPRTemporary result(this);
-    JSValueRegs regs = operand.jsValueRegs();
-    GPRReg resultGPR = result.gpr();
-    m_jit.boxBooleanPayload(false, resultGPR);
-    JITCompiler::JumpList notEqual = m_jit.branchIfNotEqual(regs, node->cellOperand()->value());
-    m_jit.boxBooleanPayload(true, resultGPR);
-    notEqual.link(&m_jit);
-    blessedBooleanResult(resultGPR, node);
-}
-
 void SpeculativeJIT::compileDefineDataProperty(Node* node)
 {
 #if USE(JSVALUE64)
@@ -10183,6 +10340,127 @@ void SpeculativeJIT::emitAllocateButterfly(GPRReg storageResultGPR, GPRReg sizeG
 
     m_jit.store32(sizeGPR, MacroAssembler::Address(storageResultGPR, Butterfly::offsetOfPublicLength()));
     m_jit.store32(sizeGPR, MacroAssembler::Address(storageResultGPR, Butterfly::offsetOfVectorLength()));
+}
+
+void SpeculativeJIT::compileGetMapBucketHead(Node* node)
+{
+    SpeculateCellOperand map(this, node->child1());
+    GPRTemporary bucket(this);
+
+    GPRReg mapGPR = map.gpr();
+    GPRReg bucketGPR = bucket.gpr();
+
+    if (node->child1().useKind() == MapObjectUse)
+        speculateMapObject(node->child1(), mapGPR);
+    else if (node->child1().useKind() == SetObjectUse)
+        speculateSetObject(node->child1(), mapGPR);
+    else
+        RELEASE_ASSERT_NOT_REACHED();
+
+    ASSERT(HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfHead() == HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>::offsetOfHead());
+    m_jit.loadPtr(MacroAssembler::Address(mapGPR, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfHead()), bucketGPR);
+    cellResult(bucketGPR, node);
+}
+
+void SpeculativeJIT::compileGetMapBucketNext(Node* node)
+{
+    SpeculateCellOperand bucket(this, node->child1());
+    GPRTemporary result(this);
+
+    GPRReg bucketGPR = bucket.gpr();
+    GPRReg resultGPR = result.gpr();
+
+    ASSERT(HashMapBucket<HashMapBucketDataKey>::offsetOfNext() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext());
+    ASSERT(HashMapBucket<HashMapBucketDataKey>::offsetOfDeleted() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfDeleted());
+    m_jit.loadPtr(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext()), resultGPR);
+
+    MacroAssembler::Label loop = m_jit.label();
+    auto notBucket = m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR);
+    auto done = m_jit.branchTest32(MacroAssembler::Zero, MacroAssembler::Address(resultGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfDeleted()));
+    m_jit.loadPtr(MacroAssembler::Address(resultGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext()), resultGPR);
+    m_jit.jump().linkTo(loop, &m_jit);
+
+    notBucket.link(&m_jit);
+    JSCell* sentinel = nullptr;
+    if (node->bucketOwnerType() == BucketOwnerType::Map)
+        sentinel = m_jit.vm()->sentinelMapBucket.get();
+    else {
+        ASSERT(node->bucketOwnerType() == BucketOwnerType::Set);
+        sentinel = m_jit.vm()->sentinelSetBucket.get();
+    }
+    m_jit.move(TrustedImmPtr::weakPointer(m_jit.graph(), sentinel), resultGPR);
+    done.link(&m_jit);
+
+    cellResult(resultGPR, node);
+}
+
+void SpeculativeJIT::compileLoadKeyFromMapBucket(Node* node)
+{
+    SpeculateCellOperand bucket(this, node->child1());
+    JSValueRegsTemporary result(this);
+
+    GPRReg bucketGPR = bucket.gpr();
+    JSValueRegs resultRegs = result.regs();
+
+    m_jit.loadValue(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()), resultRegs);
+    jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compileLoadValueFromMapBucket(Node* node)
+{
+    SpeculateCellOperand bucket(this, node->child1());
+    JSValueRegsTemporary result(this);
+
+    GPRReg bucketGPR = bucket.gpr();
+    JSValueRegs resultRegs = result.regs();
+
+    m_jit.loadValue(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()), resultRegs);
+    jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compileThrow(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+    JSValueRegs valueRegs = value.jsValueRegs();
+    flushRegisters();
+    callOperation(operationThrowDFG, valueRegs);
+    m_jit.exceptionCheck();
+    m_jit.breakpoint();
+    noResult(node);
+}
+
+void SpeculativeJIT::compileThrowStaticError(Node* node)
+{
+    SpeculateCellOperand message(this, node->child1());
+    GPRReg messageGPR = message.gpr();
+    speculateString(node->child1(), messageGPR);
+    flushRegisters();
+    callOperation(operationThrowStaticError, messageGPR, node->errorType());
+    m_jit.exceptionCheck();
+    m_jit.breakpoint();
+    noResult(node);
+}
+
+void SpeculativeJIT::compileWeakMapGet(Node* node)
+{
+    SpeculateCellOperand weakMap(this, node->child1());
+    SpeculateCellOperand object(this, node->child2());
+    SpeculateInt32Operand hash(this, node->child3());
+    JSValueRegsTemporary result(this);
+
+    GPRReg weakMapGPR = weakMap.gpr();
+    GPRReg objectGPR = object.gpr();
+    GPRReg hashGPR = hash.gpr();
+    JSValueRegs resultRegs = result.regs();
+
+    speculateWeakMapObject(node->child1(), weakMapGPR);
+    speculateObject(node->child2(), objectGPR);
+
+    flushRegisters();
+    callOperation(operationWeakMapGet, resultRegs, weakMapGPR, objectGPR, hashGPR);
+    // No exception check here since operationWeakMapGet never throws an exception.
+
+    jsValueResult(resultRegs, node);
 }
 
 } } // namespace JSC::DFG

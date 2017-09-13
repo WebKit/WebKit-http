@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebCoreSystemInterface_h
-#define WebCoreSystemInterface_h
+#pragma once
 
 #include <objc/objc.h>
 
@@ -118,65 +117,23 @@ extern "C" {
 
 // In alphabetical order.
 
-extern void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef, void (^block)(CGRect rect));
-
 typedef enum {
     wkPatternTilingNoDistortion,
     wkPatternTilingConstantSpacingMinimalDistortion,
     wkPatternTilingConstantSpacing
 } wkPatternTiling;
 #if !PLATFORM(IOS)
-extern bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
-#endif
-extern CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
-extern CFStringEncoding (*wkGetWebDefaultCFStringEncoding)(void);
-#if !PLATFORM(IOS)
 extern void (*wkDrawBezeledTextArea)(NSRect, BOOL enabled);
-extern void (*wkDrawFocusRing)(CGContextRef, CGColorRef, int);
-extern bool (*wkDrawFocusRingAtTime)(CGContextRef, NSTimeInterval time);
-extern bool (*wkDrawCellFocusRingWithFrameAtTime)(NSCell *cell, NSRect cellFrame, NSView *controlView, NSTimeInterval time);
 extern void (*wkDrawMediaSliderTrack)(CGContextRef context, CGRect rect, float timeLoaded, float currentTime,
     float duration, unsigned state);
 extern void (*wkDrawMediaUIPart)(int part, CGContextRef context, CGRect rect, unsigned state);
 extern double (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 extern BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
-extern void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, BOOL* continuous);
-extern UInt8 (*wkGetNSEventKeyChar)(NSEvent *);
 extern BOOL (*wkHitTestMediaUIPart)(int part, CGRect bounds, CGPoint point);
 extern void (*wkMeasureMediaUIPart)(int part, CGRect *bounds, CGSize *naturalSize);
-extern NSView *(*wkCreateMediaUIBackgroundView)(void);
 
-typedef enum {
-    wkMediaUIControlTimeline,
-    wkMediaUIControlSlider,
-    wkMediaUIControlPlayPauseButton,
-    wkMediaUIControlExitFullscreenButton,
-    wkMediaUIControlRewindButton,
-    wkMediaUIControlFastForwardButton,
-    wkMediaUIControlVolumeUpButton,
-    wkMediaUIControlVolumeDownButton
-} wkMediaUIControlType;
-extern NSControl *(*wkCreateMediaUIControl)(int);
-
-extern void (*wkWindowSetAlpha)(NSWindow *, float);
-extern void (*wkWindowSetScaledFrame)(NSWindow *, NSRect, NSRect);
-
-extern unsigned (*wkQTIncludeOnlyModernMediaFileTypes)(void);
-extern void (*wkQTMovieDisableComponent)(uint32_t[5]);
-extern float (*wkQTMovieMaxTimeLoaded)(QTMovie*);
-extern NSString *(*wkQTMovieMaxTimeLoadedChangeNotification)(void);
-extern int (*wkQTMovieGetType)(QTMovie*);
-extern BOOL (*wkQTMovieHasClosedCaptions)(QTMovie*);
-extern NSURL *(*wkQTMovieResolvedURL)(QTMovie*);
-extern void (*wkQTMovieSetShowClosedCaptions)(QTMovie*, BOOL);
-extern void (*wkQTMovieSelectPreferredAlternates)(QTMovie*);
-extern NSArray *(*wkQTGetSitesInMediaDownloadCache)();
-extern void (*wkQTClearMediaDownloadCacheForSite)(NSString *site);
-extern void (*wkQTClearMediaDownloadCache)();
 extern void (*wkSetCookieStoragePrivateBrowsingEnabled)(BOOL);
-extern void (*wkSetDragImage)(NSImage*, NSPoint offset);
 #endif
-extern bool (*wkCGContextIsPDFContext)(CGContextRef);
 extern void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
 extern void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
 extern CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
@@ -196,17 +153,6 @@ extern NSCursor *(*wkCursor)(const char*);
 #if !PLATFORM(IOS)
 extern NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
 extern NSString *(*wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale)(NSLocale *);
-
-extern void (*wkUnregisterUniqueIdForElement)(id element);
-extern void (*wkAccessibilityHandleFocusChanged)(void);    
-extern CFTypeID (*wkGetAXTextMarkerTypeID)(void);
-extern CFTypeID (*wkGetAXTextMarkerRangeTypeID)(void);
-extern CFTypeRef (*wkCreateAXTextMarkerRange)(CFTypeRef start, CFTypeRef end);
-extern CFTypeRef (*wkCopyAXTextMarkerRangeStart)(CFTypeRef range);
-extern CFTypeRef (*wkCopyAXTextMarkerRangeEnd)(CFTypeRef range);
-extern CFTypeRef (*wkCreateAXTextMarker)(const void *bytes, size_t len);
-extern BOOL (*wkGetBytesFromAXTextMarker)(CFTypeRef textMarker, void *bytes, size_t length);
-extern AXUIElementRef (*wkCreateAXUIElementRef)(id element);
 #endif // !PLATFORM(IOS)
 
 #if PLATFORM(IOS)
@@ -214,18 +160,8 @@ extern void (*wkSetLayerContentsScale)(CALayer *);
 #endif
 
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
-extern CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
-extern NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);
-
-typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
-extern unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
-extern NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-extern void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
-extern void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
-extern void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
 
 #if !PLATFORM(IOS)
-extern void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSString *path);
 extern CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);
 extern CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
@@ -248,5 +184,3 @@ extern NSString *(*wkExernalDeviceDisplayNameForPlayer)(AVPlayer *);
 extern bool (*wkQueryDecoderAvailability)(void);
 
 }
-
-#endif

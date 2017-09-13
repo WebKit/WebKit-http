@@ -60,7 +60,8 @@
                 "InvalidParameter",
                 "InvalidSelector",
                 "ElementNotInteractable",
-                "ElementNotSelectable"
+                "ElementNotSelectable",
+                "ScreenshotError"
             ]
         },
         {
@@ -224,7 +225,8 @@
             "description": "Fetches information about all open browsing contexts (windows and tabs) in the automation session.",
             "returns": [
                 { "name": "contexts", "type": "array", "items": { "$ref": "BrowsingContext" }, "description": "All known browsing contexts available to the session." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "getBrowsingContext",
@@ -234,7 +236,8 @@
             ],
             "returns": [
                 { "name": "context", "$ref": "BrowsingContext", "description": "The browsing context available to the session." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "createBrowsingContext",
@@ -264,7 +267,8 @@
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be resized." },
                 { "name": "size", "$ref": "Size", "description": "The new size for the browsing context's window." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "moveWindowOfBrowsingContext",
@@ -272,7 +276,8 @@
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be moved." },
                 { "name": "origin", "$ref": "Point", "description": "The new origin for the browsing context's window. The position is interpreted in screen coordinate space, relative to the upper left corner of the screen." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "navigateBrowsingContext",
@@ -364,7 +369,8 @@
             ],
             "returns": [
                 { "name": "position", "$ref": "Point", "description": "The updated position of the mouse cursor, specified in viewport coordinates." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "performKeyboardInteractions",
@@ -377,9 +383,12 @@
         },
         {
             "name": "takeScreenshot",
-            "description": "Take a screenshot of the current page in a browsing context.",
+            "description": "Take a screenshot of the current page or given element in a browsing context.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to take a screenshot of." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to take a screenshot of." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame that contains the element. The main frame is used if this parameter is empty string or excluded." },
+                { "name": "nodeHandle", "$ref": "NodeHandle", "optional": true, "description": "The handle of the element to take a screenshot of. The browsing context document element is used if this parameter is excluded." },
+                { "name": "scrollIntoViewIfNeeded", "type": "boolean", "optional": true, "description": "If the element should be scrolled into view before taking the screenshot." }
             ],
             "returns": [
                 { "name": "data", "type": "string", "description": "Base64-encoded image data (PNG)." }

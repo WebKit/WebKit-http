@@ -1491,7 +1491,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                     lengthStack.removeLast();
 
                     propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
-                    array->methodTable()->getOwnNonIndexPropertyNames(array, m_exec, propertyStack.last(), EnumerationMode());
+                    array->methodTable(vm)->getOwnNonIndexPropertyNames(array, m_exec, propertyStack.last(), EnumerationMode());
                     if (propertyStack.last().size()) {
                         write(NonIndexPropertiesTag);
                         indexStack.append(0);
@@ -1541,7 +1541,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 inputObjectStack.append(inObject);
                 indexStack.append(0);
                 propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
-                inObject->methodTable()->getOwnPropertyNames(inObject, m_exec, propertyStack.last(), EnumerationMode());
+                inObject->methodTable(vm)->getOwnPropertyNames(inObject, m_exec, propertyStack.last(), EnumerationMode());
             }
             objectStartVisitMember:
             FALLTHROUGH;
@@ -1593,7 +1593,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSMap* inMap = jsCast<JSMap*>(inValue);
                 if (!startMap(inMap))
                     break;
-                JSMapIterator* iterator = JSMapIterator::create(vm, m_exec->lexicalGlobalObject()->mapIteratorStructure(), inMap, IterateKeyValue);
+                JSMapIterator* iterator = JSMapIterator::create(vm, vm.mapIteratorStructure.get(), inMap, IterateKeyValue);
                 m_gcBuffer.append(inMap);
                 m_gcBuffer.append(iterator);
                 mapIteratorStack.append(iterator);
@@ -1609,7 +1609,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                     JSObject* object = inputObjectStack.last();
                     ASSERT(jsDynamicDowncast<JSMap*>(vm, object));
                     propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
-                    object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
+                    object->methodTable(vm)->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
                     write(NonMapPropertiesTag);
                     indexStack.append(0);
                     goto objectStartVisitMember;
@@ -1637,7 +1637,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSSet* inSet = jsCast<JSSet*>(inValue);
                 if (!startSet(inSet))
                     break;
-                JSSetIterator* iterator = JSSetIterator::create(vm, m_exec->lexicalGlobalObject()->setIteratorStructure(), inSet, IterateKey);
+                JSSetIterator* iterator = JSSetIterator::create(vm, vm.setIteratorStructure.get(), inSet, IterateKey);
                 m_gcBuffer.append(inSet);
                 m_gcBuffer.append(iterator);
                 setIteratorStack.append(iterator);
@@ -1653,7 +1653,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                     JSObject* object = inputObjectStack.last();
                     ASSERT(jsDynamicDowncast<JSSet*>(vm, object));
                     propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
-                    object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
+                    object->methodTable(vm)->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
                     write(NonSetPropertiesTag);
                     indexStack.append(0);
                     goto objectStartVisitMember;
@@ -1950,7 +1950,7 @@ private:
         str = String(reinterpret_cast<const UChar*>(ptr), length);
         ptr += length * sizeof(UChar);
 #else
-        Vector<UChar> buffer;
+        StringVector<UChar> buffer;
         buffer.reserveCapacity(length);
         for (unsigned i = 0; i < length; i++) {
             uint16_t ch;

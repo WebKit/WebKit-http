@@ -64,13 +64,17 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     JSValue iterable = exec->argument(0);
-    if (iterable.isUndefinedOrNull())
+    if (iterable.isUndefinedOrNull()) {
+        scope.release();
         return JSValue::encode(JSSet::create(exec, vm, setStructure));
+    }
 
     if (isJSSet(iterable)) {
         JSSet* iterableSet = jsCast<JSSet*>(iterable);
-        if (iterableSet->canCloneFastAndNonObservable(setStructure))
+        if (iterableSet->canCloneFastAndNonObservable(setStructure)) {
+            scope.release();
             return JSValue::encode(iterableSet->clone(exec, vm, setStructure));
+        }
     }
 
     JSSet* set = JSSet::create(exec, vm, setStructure);
@@ -104,6 +108,37 @@ CallType SetConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callSet;
     return CallType::Host;
+}
+
+EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketHead(ExecState* exec)
+{
+    ASSERT(isJSSet(exec->argument(0)));
+    JSSet* set = jsCast<JSSet*>(exec->uncheckedArgument(0));
+    auto* head = set->head();
+    ASSERT(head);
+    return JSValue::encode(head);
+}
+
+EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketNext(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<JSSet::BucketType*>(exec->vm(), exec->argument(0)));
+    auto* bucket = jsCast<JSSet::BucketType*>(exec->uncheckedArgument(0));
+    ASSERT(bucket);
+    bucket = bucket->next();
+    while (bucket) {
+        if (!bucket->deleted())
+            return JSValue::encode(bucket);
+        bucket = bucket->next();
+    }
+    return JSValue::encode(exec->vm().sentinelSetBucket.get());
+}
+
+EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketKey(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<JSSet::BucketType*>(exec->vm(), exec->argument(0)));
+    auto* bucket = jsCast<JSSet::BucketType*>(exec->uncheckedArgument(0));
+    ASSERT(bucket);
+    return JSValue::encode(bucket->key());
 }
 
 }

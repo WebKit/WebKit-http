@@ -35,6 +35,7 @@
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -122,6 +123,15 @@ static bool getFileStat(const String& path, GStatBuf* statBuffer)
     return g_stat(filename.get(), statBuffer) != -1;
 }
 
+static bool getFileLStat(const String& path, GStatBuf* statBuffer)
+{
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return false;
+
+    return g_lstat(filename.get(), statBuffer) != -1;
+}
+
 bool getFileSize(const String& path, long long& resultSize)
 {
     GStatBuf statResult;
@@ -154,16 +164,40 @@ bool getFileModificationTime(const String& path, time_t& modifiedTime)
     return true;
 }
 
-bool getFileMetadata(const String& path, FileMetadata& metadata)
+static FileMetadata::Type toFileMetataType(GStatBuf statResult)
+{
+    if (S_ISDIR(statResult.st_mode))
+        return FileMetadata::Type::Directory;
+    if (S_ISLNK(statResult.st_mode))
+        return FileMetadata::Type::SymbolicLink;
+    return FileMetadata::Type::File;
+}
+
+static std::optional<FileMetadata> fileMetadataUsingFunction(const String& path, bool (*statFunc)(const String&, GStatBuf*))
 {
     GStatBuf statResult;
-    if (!getFileStat(path, &statResult))
-        return false;
+    if (!statFunc(path, &statResult))
+        return std::nullopt;
 
-    metadata.modificationTime = statResult.st_mtime;
-    metadata.length = statResult.st_size;
-    metadata.type = S_ISDIR(statResult.st_mode) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
-    return true;
+    String filename = pathGetFileName(path);
+    bool isHidden = !filename.isEmpty() && filename[0] == '.';
+
+    return FileMetadata {
+        static_cast<double>(statResult.st_mtime),
+        statResult.st_size,
+        isHidden,
+        toFileMetataType(statResult)
+    };
+}
+
+std::optional<FileMetadata> fileMetadata(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileLStat);
+}
+
+std::optional<FileMetadata> fileMetadataFollowingSymlinks(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileStat);
 }
 
 String pathByAppendingComponent(const String& path, const String& component)
@@ -171,6 +205,17 @@ String pathByAppendingComponent(const String& path, const String& component)
     if (path.endsWith(G_DIR_SEPARATOR_S))
         return path + component;
     return path + G_DIR_SEPARATOR_S + component;
+}
+
+String pathByAppendingComponents(StringView path, const Vector<StringView>& components)
+{
+    StringBuilder builder;
+    builder.append(path);
+    for (auto& component : components) {
+        builder.append(G_DIR_SEPARATOR_S);
+        builder.append(component);
+    }
+    return builder.toString();
 }
 
 bool makeAllDirectories(const String& path)
@@ -182,6 +227,19 @@ bool makeAllDirectories(const String& path)
 String homeDirectoryPath()
 {
     return stringFromFileSystemRepresentation(g_get_home_dir());
+}
+
+bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath)
+{
+    CString targetPathFSRep = fileSystemRepresentation(targetPath);
+    if (!targetPathFSRep.data() || targetPathFSRep.data()[0] == '\0')
+        return false;
+
+    CString symbolicLinkPathFSRep = fileSystemRepresentation(symbolicLinkPath);
+    if (!symbolicLinkPathFSRep.data() || symbolicLinkPathFSRep.data()[0] == '\0')
+        return false;
+
+    return !symlink(targetPathFSRep.data(), symbolicLinkPathFSRep.data());
 }
 
 String pathGetFileName(const String& pathName)

@@ -139,6 +139,7 @@ protected:
 public:
     static JSString* create(VM& vm, Ref<StringImpl>&& value)
     {
+        value->assertCaged();
         unsigned length = value->length();
         size_t cost = value->cost();
         JSString* newString = new (NotNull, allocateCell<JSString>(vm.heap)) JSString(vm, WTFMove(value));
@@ -147,6 +148,7 @@ public:
     }
     static JSString* createHasOtherOwner(VM& vm, Ref<StringImpl>&& value)
     {
+        value->assertCaged();
         size_t length = value->length();
         JSString* newString = new (NotNull, allocateCell<JSString>(vm.heap)) JSString(vm, WTFMove(value));
         newString->finishCreation(vm, length);
@@ -164,14 +166,6 @@ public:
     const String& tryGetValue() const;
     const StringImpl* tryGetValueImpl() const;
     ALWAYS_INLINE unsigned length() const { return m_length; }
-    ALWAYS_INLINE static bool isValidLength(size_t length)
-    {
-        // While length is of type unsigned, the runtime and compilers are all
-        // expecting that m_length is a positive value <= INT_MAX.
-        // FIXME: Look into making the max length UINT_MAX to match StringImpl's max length.
-        // https://bugs.webkit.org/show_bug.cgi?id=163955
-        return length <= std::numeric_limits<int32_t>::max();
-    }
 
     JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
     bool toBoolean() const { return !!length(); }
@@ -219,7 +213,6 @@ protected:
 
     ALWAYS_INLINE void setLength(unsigned length)
     {
-        RELEASE_ASSERT(isValidLength(length));
         m_length = length;
     }
 
@@ -676,7 +669,8 @@ ALWAYS_INLINE JSString* jsStringWithCache(ExecState* exec, const String& s)
 
 ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    if (propertyName == exec->propertyNames().length) {
+    VM& vm = exec->vm();
+    if (propertyName == vm.propertyNames->length) {
         slot.setValue(this, DontEnum | DontDelete | ReadOnly, jsNumber(length()));
         return true;
     }

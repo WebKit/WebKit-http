@@ -38,7 +38,6 @@
 
 typedef CFTypeRef CMBufferRef;
 typedef struct opaqueCMBufferQueue *CMBufferQueueRef;
-typedef struct opaqueCMBufferQueueTriggerToken *CMBufferQueueTriggerToken;
 typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 typedef struct OpaqueCMTimebase* CMTimebaseRef;
 typedef signed long CMItemCount;
@@ -70,6 +69,11 @@ public:
     RetainPtr<CVPixelBufferRef> imageForTime(const MediaTime&, ImageForTimeFlags = ExactTime);
     void flush();
 
+    unsigned long totalVideoFrames() { return m_totalVideoFrames; }
+    unsigned long droppedVideoFrames() { return m_droppedVideoFrames; }
+    unsigned long corruptedVideoFrames() { return m_corruptedVideoFrames; }
+    MediaTime totalFrameDelay() { return m_totalFrameDelay; }
+
 private:
     WebCoreDecompressionSession();
 
@@ -79,13 +83,13 @@ private:
     RetainPtr<CVPixelBufferRef> getFirstVideoFrame();
     void resetAutomaticDequeueTimer();
     void automaticDequeue();
+    bool shouldDecodeSample(CMSampleBufferRef, bool displaying);
 
     static void decompressionOutputCallback(void* decompressionOutputRefCon, void* sourceFrameRefCon, OSStatus, VTDecodeInfoFlags, CVImageBufferRef, CMTime presentationTimeStamp, CMTime presentationDuration);
     static CMTime getDecodeTime(CMBufferRef, void* refcon);
     static CMTime getPresentationTime(CMBufferRef, void* refcon);
     static CMTime getDuration(CMBufferRef, void* refcon);
     static CFComparisonResult compareBuffers(CMBufferRef buf1, CMBufferRef buf2, void* refcon);
-    static void maybeBecomeReadyForMoreMediaDataCallback(void* refcon, CMBufferQueueTriggerToken);
     void maybeBecomeReadyForMoreMediaData();
 
     static const CMItemCount kMaximumCapacity = 120;
@@ -102,10 +106,13 @@ private:
     OSObjectPtr<dispatch_source_t> m_timerSource;
     std::function<void()> m_notificationCallback;
     std::function<void()> m_hasAvailableFrameCallback;
-    CMBufferQueueTriggerToken m_didBecomeReadyTrigger { nullptr };
 
     bool m_invalidated { false };
     int m_framesBeingDecoded { 0 };
+    unsigned long m_totalVideoFrames { 0 };
+    unsigned long m_droppedVideoFrames { 0 };
+    unsigned long m_corruptedVideoFrames { 0 };
+    MediaTime m_totalFrameDelay;
 };
 
 }

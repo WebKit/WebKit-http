@@ -36,6 +36,8 @@ namespace API {
 class WebsiteDataStore final : public ObjectImpl<Object::Type::WebsiteDataStore> {
 public:
     static Ref<WebsiteDataStore> defaultDataStore();
+    static bool defaultDataStoreExists();
+
     static Ref<WebsiteDataStore> createNonPersistentDataStore();
     static Ref<WebsiteDataStore> createLegacy(WebKit::WebsiteDataStore::Configuration);
 
@@ -51,6 +53,7 @@ public:
     HTTPCookieStore& httpCookieStore();
 
     static String defaultApplicationCacheDirectory();
+    static String defaultCacheStorageDirectory();
     static String defaultNetworkCacheDirectory();
     static String defaultMediaCacheDirectory();
 

@@ -49,12 +49,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @optional
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-- (void)setRegistrationInfoLists:(NSArray <WebItemProviderRegistrationInfoList *> *)info;
+- (void)stageRegistrationList:(nullable WebItemProviderRegistrationInfoList *)info;
+- (nullable WebItemProviderRegistrationInfoList *)takeRegistrationList;
 #endif
 - (void)setItems:(NSArray<NSDictionary *> *)items;
 - (NSArray<NSString *> *)pasteboardTypesByFidelityForItemAtIndex:(NSUInteger)index;
 @property (readonly, nonatomic) NSInteger numberOfFiles;
-@property (readonly, nonatomic) NSArray<NSURL *> *fileURLsForDataInteraction;
+@property (readonly, nonatomic) NSArray<NSURL *> *droppedFileURLs;
 - (void)updateSupportedTypeIdentifiers:(NSArray<NSString *> *)types;
 
 @end

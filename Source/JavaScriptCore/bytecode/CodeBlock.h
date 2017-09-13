@@ -77,6 +77,10 @@
 
 namespace JSC {
 
+namespace DFG {
+struct OSRExitState;
+} // namespace DFG
+
 class BytecodeLivenessAnalysis;
 class CodeBlockSet;
 class ExecState;
@@ -401,19 +405,20 @@ public:
         ASSERT(m_argumentValueProfiles.size() == static_cast<unsigned>(m_numParameters));
         return m_argumentValueProfiles.size();
     }
-    ValueProfile* valueProfileForArgument(unsigned argumentIndex)
+    ValueProfile& valueProfileForArgument(unsigned argumentIndex)
     {
-        ValueProfile* result = &m_argumentValueProfiles[argumentIndex];
-        ASSERT(result->m_bytecodeOffset == -1);
+        ValueProfile& result = m_argumentValueProfiles[argumentIndex];
+        ASSERT(result.m_bytecodeOffset == -1);
         return result;
     }
 
     unsigned numberOfValueProfiles() { return m_valueProfiles.size(); }
-    ValueProfile* valueProfile(int index) { return &m_valueProfiles[index]; }
-    ValueProfile* valueProfileForBytecodeOffset(int bytecodeOffset);
+    ValueProfile& valueProfile(int index) { return m_valueProfiles[index]; }
+    ValueProfile& valueProfileForBytecodeOffset(int bytecodeOffset);
+    ValueProfile* tryGetValueProfileForBytecodeOffset(int bytecodeOffset);
     SpeculatedType valueProfilePredictionForBytecodeOffset(const ConcurrentJSLocker& locker, int bytecodeOffset)
     {
-        if (ValueProfile* valueProfile = valueProfileForBytecodeOffset(bytecodeOffset))
+        if (ValueProfile* valueProfile = tryGetValueProfileForBytecodeOffset(bytecodeOffset))
             return valueProfile->computeUpdatedPrediction(locker);
         return SpecNone;
     }
@@ -422,7 +427,7 @@ public:
     {
         return numberOfArgumentValueProfiles() + numberOfValueProfiles();
     }
-    ValueProfile* getFromAllValueProfiles(unsigned index)
+    ValueProfile& getFromAllValueProfiles(unsigned index)
     {
         if (index < numberOfArgumentValueProfiles())
             return valueProfileForArgument(index);
@@ -533,7 +538,7 @@ public:
     {
         unsigned result = m_constantRegisters.size();
         m_constantRegisters.append(WriteBarrier<Unknown>());
-        m_constantRegisters.last().set(m_globalObject->vm(), this, v);
+        m_constantRegisters.last().set(*m_vm, this, v);
         m_constantsSourceCodeRepresentation.append(SourceCodeRepresentation::Other);
         return result;
     }
@@ -761,8 +766,10 @@ public:
 
     void countOSRExit() { m_osrExitCounter++; }
 
-    uint32_t* addressOfOSRExitCounter() { return &m_osrExitCounter; }
+    enum class OptimizeAction { None, ReoptimizeNow };
+    OptimizeAction updateOSRExitCounterAndCheckIfNeedToReoptimize(DFG::OSRExitState&);
 
+    // FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
     static ptrdiff_t offsetOfOSRExitCounter() { return OBJECT_OFFSETOF(CodeBlock, m_osrExitCounter); }
 
     uint32_t adjustedExitCountThreshold(uint32_t desiredThreshold);
@@ -890,6 +897,26 @@ public:
 
     CallSiteIndex newExceptionHandlingCallSiteIndex(CallSiteIndex originalCallSite);
 
+    void ensureCatchLivenessIsComputedForBytecodeOffset(unsigned bytecodeOffset)
+    {
+        if (!!m_instructions[bytecodeOffset + 3].u.pointer) {
+#if !ASSERT_DISABLED
+            ConcurrentJSLocker locker(m_lock);
+            bool found = false;
+            for (auto& profile : m_catchProfiles) {
+                if (profile.get() == m_instructions[bytecodeOffset + 3].u.pointer) {
+                    found = true;
+                    break;
+                }
+            }
+            ASSERT(found);
+#endif
+            return;
+        }
+
+        ensureCatchLivenessIsComputedForBytecodeOffsetSlow(bytecodeOffset);
+    }
+
 #if ENABLE(JIT)
     void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
     std::optional<CodeOrigin> findPC(void* pc);
@@ -925,7 +952,7 @@ private:
     void replaceConstant(int index, JSValue value)
     {
         ASSERT(isConstantRegisterIndex(index) && static_cast<size_t>(index - FirstConstantRegisterIndex) < m_constantRegisters.size());
-        m_constantRegisters[index - FirstConstantRegisterIndex].set(m_globalObject->vm(), this, value);
+        m_constantRegisters[index - FirstConstantRegisterIndex].set(*m_vm, this, value);
     }
 
     bool shouldVisitStrongly(const ConcurrentJSLocker&);
@@ -952,6 +979,7 @@ private:
     }
 
     void insertBasicBlockBoundariesForControlFlowProfiler(RefCountedArray<Instruction>&);
+    void ensureCatchLivenessIsComputedForBytecodeOffsetSlow(unsigned);
 
     WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
     int m_numParameters;
@@ -1002,6 +1030,7 @@ private:
 #endif
     RefCountedArray<ValueProfile> m_argumentValueProfiles;
     RefCountedArray<ValueProfile> m_valueProfiles;
+    Vector<std::unique_ptr<ValueProfileAndOperandBuffer>> m_catchProfiles;
     SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
     RefCountedArray<ArrayAllocationProfile> m_arrayAllocationProfiles;
     ArrayProfileVector m_arrayProfiles;

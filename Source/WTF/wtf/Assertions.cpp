@@ -42,6 +42,7 @@
 #include <wtf/Locker.h>
 #include <wtf/LoggingAccumulator.h>
 #include <wtf/PrintStream.h>
+#include <wtf/RetainPtr.h>
 #include <wtf/StackTrace.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
@@ -87,31 +88,29 @@ static void logToStderr(const char* buffer)
     fputs(buffer, stderr);
 }
 
+static const constexpr unsigned InitialBufferSize { 256 };
+
 WTF_ATTRIBUTE_PRINTF(1, 0)
 static void vprintf_stderr_common(const char* format, va_list args)
 {
 #if USE(CF) && !OS(WINDOWS)
     if (strstr(format, "%@")) {
-        CFStringRef cfFormat = CFStringCreateWithCString(NULL, format, kCFStringEncodingUTF8);
+        auto cfFormat = adoptCF(CFStringCreateWithCString(nullptr, format, kCFStringEncodingUTF8));
 
 #if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
-        CFStringRef str = CFStringCreateWithFormatAndArguments(NULL, NULL, cfFormat, args);
+        auto str = adoptCF(CFStringCreateWithFormatAndArguments(nullptr, nullptr, cfFormat.get(), args));
 #if COMPILER(CLANG)
 #pragma clang diagnostic pop
 #endif
-        CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str), kCFStringEncodingUTF8);
-        char* buffer = (char*)malloc(length + 1);
+        CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str.get()), kCFStringEncodingUTF8);
+        Vector<char, InitialBufferSize> buffer(length + 1);
 
-        CFStringGetCString(str, buffer, length, kCFStringEncodingUTF8);
+        CFStringGetCString(str.get(), buffer.data(), length, kCFStringEncodingUTF8);
 
-        logToStderr(buffer);
-
-        free(buffer);
-        CFRelease(str);
-        CFRelease(cfFormat);
+        logToStderr(buffer.data());
         return;
     }
 
@@ -130,20 +129,13 @@ static void vprintf_stderr_common(const char* format, va_list args)
 #elif HAVE(ISDEBUGGERPRESENT)
     if (IsDebuggerPresent()) {
         size_t size = 1024;
-
+        Vector<char> buffer(size);
         do {
-            char* buffer = (char*)malloc(size);
-
-            if (buffer == NULL)
-                break;
-
-            if (vsnprintf(buffer, size, format, args) != -1) {
-                OutputDebugStringA(buffer);
-                free(buffer);
+            buffer.grow(size);
+            if (vsnprintf(buffer.data(), size, format, args) != -1) {
+                OutputDebugStringA(buffer.data());
                 break;
             }
-
-            free(buffer);
             size *= 2;
         } while (size > 1024);
     }
@@ -410,6 +402,39 @@ static WTFLoggingAccumulator& loggingAccumulator()
     return *accumulator;
 }
 
+void WTFSetLogChannelLevel(WTFLogChannel* channel, WTFLogLevel level)
+{
+    channel->level = level;
+}
+
+bool WTFWillLogWithLevel(WTFLogChannel* channel, WTFLogLevel level)
+{
+    return channel->level >= level && channel->state != WTFLogChannelOff;
+}
+
+void WTFLogWithLevel(WTFLogChannel* channel, WTFLogLevel level, const char* format, ...)
+{
+    if (level != WTFLogLevelAlways && level > channel->level)
+        return;
+
+    if (channel->level != WTFLogLevelAlways && channel->state == WTFLogChannelOff)
+        return;
+
+    va_list args;
+    va_start(args, format);
+
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+    WTFLog(channel, format, args);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+
+    va_end(args);
+}
+
 void WTFLog(WTFLogChannel* channel, const char* format, ...)
 {
     if (channel->state == WTFLogChannelOff)
@@ -522,7 +547,9 @@ void WTFInitializeLogChannelStatesFromString(WTFLogChannel* channels[], size_t c
     logLevelString.split(',', components);
 
     for (size_t i = 0; i < components.size(); ++i) {
-        String component = components[i];
+        Vector<String> componentInfo;
+        components[i].split('=', componentInfo);
+        String component = componentInfo[0].stripWhiteSpace();
 
         WTFLogChannelState logChannelState = WTFLogChannelOn;
         if (component.startsWith('-')) {
@@ -535,9 +562,25 @@ void WTFInitializeLogChannelStatesFromString(WTFLogChannel* channels[], size_t c
             continue;
         }
 
-        if (WTFLogChannel* channel = WTFLogChannelByName(channels, count, component.utf8().data()))
+        WTFLogLevel logChannelLevel = WTFLogLevelError;
+        if (componentInfo.size() > 1) {
+            String level = componentInfo[1].stripWhiteSpace();
+            if (equalLettersIgnoringASCIICase(level, "error"))
+                logChannelLevel = WTFLogLevelError;
+            else if (equalLettersIgnoringASCIICase(level, "warning"))
+                logChannelLevel = WTFLogLevelWarning;
+            else if (equalLettersIgnoringASCIICase(level, "info"))
+                logChannelLevel = WTFLogLevelInfo;
+            else if (equalLettersIgnoringASCIICase(level, "debug"))
+                logChannelLevel = WTFLogLevelDebug;
+            else
+                WTFLogAlways("Unknown logging level: %s", level.utf8().data());
+        }
+
+        if (WTFLogChannel* channel = WTFLogChannelByName(channels, count, component.utf8().data())) {
             channel->state = logChannelState;
-        else
+            channel->level = logChannelLevel;
+        } else
             WTFLogAlways("Unknown logging channel: %s", component.utf8().data());
     }
 }

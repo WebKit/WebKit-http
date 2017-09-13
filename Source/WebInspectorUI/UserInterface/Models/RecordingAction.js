@@ -25,15 +25,18 @@
 
 WI.RecordingAction = class RecordingAction
 {
-    constructor(name, parameters, trace)
+    constructor(name, parameters, swizzleTypes, trace, snapshot)
     {
         this._payloadName = name;
         this._payloadParameters = parameters;
+        this._payloadSwizzleTypes = swizzleTypes;
         this._payloadTrace = trace;
+        this._payloadSnapshot = snapshot || -1;
 
         this._name = "";
         this._parameters = [];
         this._trace = [];
+        this._snapshot = "";
 
         this._valid = true;
 
@@ -45,7 +48,7 @@ WI.RecordingAction = class RecordingAction
 
     // Static
 
-    // Payload format: [name, parameters, trace]
+    // Payload format: [name, parameters, swizzleTypes, trace, [snapshot]]
     static fromPayload(payload)
     {
         if (!Array.isArray(payload))
@@ -59,6 +62,12 @@ WI.RecordingAction = class RecordingAction
 
         if (!Array.isArray(payload[2]))
             payload[2] = [];
+
+        if (!Array.isArray(payload[3]))
+            payload[3] = [];
+
+        if (payload.length >= 5 && isNaN(payload[4]))
+            payload[4] = -1;
 
         return new WI.RecordingAction(...payload);
     }
@@ -76,7 +85,9 @@ WI.RecordingAction = class RecordingAction
 
     get name() { return this._name; }
     get parameters() { return this._parameters; }
+    get swizzleTypes() { return this._payloadSwizzleTypes; }
     get trace() { return this._trace; }
+    get snapshot() { return this._snapshot; }
 
     get valid() { return this._valid; }
     set valid(valid) { this._valid = !!valid; }
@@ -91,20 +102,16 @@ WI.RecordingAction = class RecordingAction
         this._name = recording.swizzle(this._payloadName, WI.Recording.Swizzle.String);
 
         this._parameters = this._payloadParameters.map((item, i) => {
-            let type = this.parameterSwizzleTypeForTypeAtIndex(recording.type, i);
-            if (!type)
-                return item;
-
-            let swizzled = recording.swizzle(item, type);
-            if (swizzled === WI.Recording.Swizzle.Invalid)
+            let swizzledItem = recording.swizzle(item, this._payloadSwizzleTypes[i]);
+            if (this._payloadSwizzleTypes[i] === WI.Recording.Swizzle.None || swizzledItem === undefined)
                 this._valid = false;
 
-            return swizzled;
+            return swizzledItem;
         });
 
         for (let item of this._payloadTrace) {
             try {
-                let array = recording.swizzle(item, WI.Recording.Swizzle.Array);
+                let array = recording.swizzle(item, WI.Recording.Swizzle.None);
                 let callFrame = WI.CallFrame.fromPayload(WI.mainTarget, {
                     functionName: recording.swizzle(array[0], WI.Recording.Swizzle.String),
                     url: recording.swizzle(array[1], WI.Recording.Swizzle.String),
@@ -114,6 +121,9 @@ WI.RecordingAction = class RecordingAction
                 this._trace.push(callFrame);
             } catch { }
         }
+
+        if (this._payloadSnapshot >= 0)
+            this._snapshot = recording.swizzle(this._payloadSnapshot, WI.Recording.Swizzle.String);
 
         this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
         this._isGetter = !this._isFunction && !this._parameters.length;
@@ -130,170 +140,14 @@ WI.RecordingAction = class RecordingAction
         }
     }
 
-    parameterSwizzleTypeForTypeAtIndex(type, index)
-    {
-        let functionNames = WI.RecordingAction._parameterSwizzleTypeForTypeAtIndex[type];
-        if (!functionNames)
-            return null;
-
-        let parameterLengths = functionNames[this._name];
-        if (!parameterLengths)
-            return null;
-
-        let argumentSwizzleTypes = parameterLengths[this._payloadParameters.length];
-        if (!argumentSwizzleTypes)
-            return null;
-
-        return argumentSwizzleTypes[index] || null;
-    }
-
     toJSON()
     {
-        return [this._payloadName, this._payloadParameters, this._payloadTrace];
+        let json = [this._payloadName, this._payloadParameters, this._payloadSwizzleTypes, this._payloadTrace];
+        if (this._payloadSnapshot >= 0)
+            json.push(this._payloadSnapshot);
+        return json;
     }
 };
-
-// This object instructs the frontend as to how to reconstruct deduplicated objects found in the
-// "data" section of a recording payload. It will only swizzle values if they are of the expected
-// type in the right index of the version of the action (determined by the number of parameters) for
-// the recording type. Since a recording can be created by importing a JSON file, this is used to
-// make sure that inputs are only considered valid if they conform to the structure defined below.
-// 
-// For Example:
-//
-// IDL:
-//
-//     void foo(optional DOMString s = "bar");
-//     void foo(DOMPath path, optional DOMString s = "bar");
-//     void foo(float a, float b, float c, float d);
-//
-// Swizzle Entries:
-//
-//     - For the 1 parameter version, the parameter at index 0 needs to be swizzled as a string
-//     - For the 2 parameter version, the parameters need to be swizzled as a Path and String
-//     - For the 4 parameter version, numbers don't need to be swizzled, so it is not included
-//
-//     "foo": {
-//         1: {0: String}
-//         2: {0: Path2D, 1: String}
-//     }
-
-{
-    let {CanvasStyle, Element, Image, ImageData, Path2D, String} = WI.Recording.Swizzle;
-
-    WI.RecordingAction._parameterSwizzleTypeForTypeAtIndex = {
-        [WI.Recording.Type.Canvas2D]: {
-            "clip": {
-                1: {0: String},
-                2: {0: Path2D, 1: String},
-            },
-            "createImageData": {
-                1: {0: ImageData},
-            },
-            "createPattern": {
-                2: {0: Image, 1: String},
-            },
-            "direction": {
-                1: {0: String},
-            },
-            "drawImage": {
-                3: {0: Image},
-                5: {0: Image},
-                9: {0: Image},
-            },
-            "drawImageFromRect": {
-                10: {0: Image, 9: String},
-            },
-            "drawFocusIfNeeded": {
-                1: {0: Element},
-                2: {0: Path2D, 1: Element},
-            },
-            "fill": {
-                1: {0: String},
-                2: {0: Path2D, 1: String},
-            },
-            "fillStyle": {
-                1: {0: CanvasStyle},
-            },
-            "fillText": {
-                3: {0: String},
-                4: {0: String},
-            },
-            "font": {
-                1: {0: String},
-            },
-            "globalCompositeOperation": {
-                1: {0: String},
-            },
-            "imageSmoothingQuality": {
-                1: {0: String},
-            },
-            "isPointInPath": {
-                4: {0: Path2D, 3: String},
-            },
-            "isPointInStroke": {
-                3: {0: Path2D, 3: String},
-            },
-            "lineCap": {
-                1: {0: String},
-            },
-            "lineJoin": {
-                1: {0: String},
-            },
-            "measureText": {
-                1: {0: String},
-            },
-            "putImageData": {
-                3: {0: ImageData},
-                7: {0: ImageData},
-            },
-            "setCompositeOperation": {
-                1: {0: String},
-            },
-            "setFillColor": {
-                1: {0: String},
-                2: {0: String},
-            },
-            "setLineCap": {
-                1: {0: String},
-            },
-            "setLineJoin": {
-                1: {0: String},
-            },
-            "setShadow": {
-                4: {3: String},
-                5: {3: String},
-            },
-            "setStrokeColor": {
-                1: {0: String},
-                2: {0: String},
-            },
-            "shadowColor": {
-                1: {0: String},
-            },
-            "stroke": {
-                1: {0: Path2D},
-            },
-            "strokeStyle": {
-                1: {0: CanvasStyle},
-            },
-            "strokeText": {
-                3: {0: String},
-                4: {0: String},
-            },
-            "textAlign": {
-                1: {0: String},
-            },
-            "textBaseline": {
-                1: {0: String},
-            },
-            "webkitPutImageData": {
-                3: {0: ImageData},
-                7: {0: ImageData},
-            },
-        },
-    };
-}
 
 WI.RecordingAction._functionNames = {
     [WI.Recording.Type.Canvas2D]: new Set([
@@ -356,6 +210,146 @@ WI.RecordingAction._functionNames = {
         "webkitGetImageDataHD",
         "webkitPutImageDataHD",
     ]),
+    [WI.Recording.Type.CanvasWebGL]: new Set([
+        "activeTexture",
+        "attachShader",
+        "bindAttribLocation",
+        "bindBuffer",
+        "bindFramebuffer",
+        "bindRenderbuffer",
+        "bindTexture",
+        "blendColor",
+        "blendEquation",
+        "blendEquationSeparate",
+        "blendFunc",
+        "blendFuncSeparate",
+        "bufferData",
+        "bufferData",
+        "bufferSubData",
+        "checkFramebufferStatus",
+        "clear",
+        "clearColor",
+        "clearDepth",
+        "clearStencil",
+        "colorMask",
+        "compileShader",
+        "compressedTexImage2D",
+        "compressedTexSubImage2D",
+        "copyTexImage2D",
+        "copyTexSubImage2D",
+        "createBuffer",
+        "createFramebuffer",
+        "createProgram",
+        "createRenderbuffer",
+        "createShader",
+        "createTexture",
+        "cullFace",
+        "deleteBuffer",
+        "deleteFramebuffer",
+        "deleteProgram",
+        "deleteRenderbuffer",
+        "deleteShader",
+        "deleteTexture",
+        "depthFunc",
+        "depthMask",
+        "depthRange",
+        "detachShader",
+        "disable",
+        "disableVertexAttribArray",
+        "drawArrays",
+        "drawElements",
+        "enable",
+        "enableVertexAttribArray",
+        "finish",
+        "flush",
+        "framebufferRenderbuffer",
+        "framebufferTexture2D",
+        "frontFace",
+        "generateMipmap",
+        "getActiveAttrib",
+        "getActiveUniform",
+        "getAttachedShaders",
+        "getAttribLocation",
+        "getBufferParameter",
+        "getContextAttributes",
+        "getError",
+        "getExtension",
+        "getFramebufferAttachmentParameter",
+        "getParameter",
+        "getProgramInfoLog",
+        "getProgramParameter",
+        "getRenderbufferParameter",
+        "getShaderInfoLog",
+        "getShaderParameter",
+        "getShaderPrecisionFormat",
+        "getShaderSource",
+        "getSupportedExtensions",
+        "getTexParameter",
+        "getUniform",
+        "getUniformLocation",
+        "getVertexAttrib",
+        "getVertexAttribOffset",
+        "hint",
+        "isBuffer",
+        "isContextLost",
+        "isEnabled",
+        "isFramebuffer",
+        "isProgram",
+        "isRenderbuffer",
+        "isShader",
+        "isTexture",
+        "lineWidth",
+        "linkProgram",
+        "pixelStorei",
+        "polygonOffset",
+        "readPixels",
+        "releaseShaderCompiler",
+        "renderbufferStorage",
+        "sampleCoverage",
+        "scissor",
+        "shaderSource",
+        "stencilFunc",
+        "stencilFuncSeparate",
+        "stencilMask",
+        "stencilMaskSeparate",
+        "stencilOp",
+        "stencilOpSeparate",
+        "texImage2D",
+        "texParameterf",
+        "texParameteri",
+        "texSubImage2D",
+        "uniform1f",
+        "uniform1fv",
+        "uniform1i",
+        "uniform1iv",
+        "uniform2f",
+        "uniform2fv",
+        "uniform2i",
+        "uniform2iv",
+        "uniform3f",
+        "uniform3fv",
+        "uniform3i",
+        "uniform3iv",
+        "uniform4f",
+        "uniform4fv",
+        "uniform4i",
+        "uniform4iv",
+        "uniformMatrix2fv",
+        "uniformMatrix3fv",
+        "uniformMatrix4fv",
+        "useProgram",
+        "validateProgram",
+        "vertexAttrib1f",
+        "vertexAttrib1fv",
+        "vertexAttrib2f",
+        "vertexAttrib2fv",
+        "vertexAttrib3f",
+        "vertexAttrib3fv",
+        "vertexAttrib4f",
+        "vertexAttrib4fv",
+        "vertexAttribPointer",
+        "viewport",
+    ]),
 };
 
 WI.RecordingAction._visualNames = {
@@ -373,11 +367,26 @@ WI.RecordingAction._visualNames = {
         "strokeText",
         "webkitPutImageDataHD",
     ]),
+    [WI.Recording.Type.CanvasWebGL]: new Set([
+        "clear",
+        "drawArrays",
+        "drawElements",
+    ]),
 };
 
 WI.RecordingAction._stateModifiers = {
     [WI.Recording.Type.Canvas2D]: {
+        arc: ["currentX", "currentY"],
+        arcTo: ["currentX", "currentY"],
+        beginPath: ["currentX", "currentY"],
+        bezierCurveTo: ["currentX", "currentY"],
         clearShadow: ["shadowOffsetX", "shadowOffsetY", "shadowBlur", "shadowColor"],
+        closePath: ["currentX", "currentY"],
+        ellipse: ["currentX", "currentY"],
+        lineTo: ["currentX", "currentY"],
+        moveTo: ["currentX", "currentY"],
+        quadraticCurveTo: ["currentX", "currentY"],
+        rect: ["currentX", "currentY"],
         resetTransform: ["transform"],
         rotate: ["transform"],
         scale: ["transform"],

@@ -75,6 +75,10 @@ class ExecState;
 class InputCursor;
 }
 
+namespace PAL {
+class Logger;
+}
+
 namespace WebCore {
 
 class AXObjectCache;
@@ -544,7 +548,7 @@ public:
 
     enum class ResolveStyleType { Normal, Rebuild };
     void resolveStyle(ResolveStyleType = ResolveStyleType::Normal);
-    WEBCORE_EXPORT void updateStyleIfNeeded();
+    WEBCORE_EXPORT bool updateStyleIfNeeded();
     bool needsStyleRecalc() const;
     unsigned lastStyleUpdateSizeForTesting() const { return m_lastStyleUpdateSizeForTesting; }
 
@@ -558,7 +562,7 @@ public:
     };
     WEBCORE_EXPORT void updateLayoutIgnorePendingStylesheets(RunPostLayoutTasks = RunPostLayoutTasks::Asynchronously);
 
-    std::unique_ptr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element&, const RenderStyle* parentStyle);
+    std::unique_ptr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element&, const RenderStyle* parentStyle, PseudoId = NOPSEUDO);
 
     // Returns true if page box (margin boxes and page borders) is visible.
     WEBCORE_EXPORT bool isPageBoxVisible(int pageIndex);
@@ -966,9 +970,6 @@ public:
     bool hasNodesWithMissingStyle() const { return m_hasNodesWithMissingStyle; }
     void setHasNodesWithMissingStyle() { m_hasNodesWithMissingStyle = true; }
 
-    void updateFocusAppearanceSoon(SelectionRestorationMode);
-    void cancelFocusAppearanceUpdate();
-
     // Extension for manipulating canvas drawing contexts for use in CSS
     std::optional<RenderingContext> getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
@@ -1273,7 +1274,7 @@ public:
     WEBCORE_EXPORT void addAudioProducer(MediaProducer*);
     WEBCORE_EXPORT void removeAudioProducer(MediaProducer*);
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
-    void noteUserInteractionWithMediaElement() { m_userHasInteractedWithMediaElement = true; }
+    void noteUserInteractionWithMediaElement();
     bool isCapturing() const { return MediaProducer::isCapturing(m_mediaState); }
     WEBCORE_EXPORT void updateIsPlayingMedia(uint64_t = HTMLMediaElementInvalidID);
     void pageMutedStateDidChange();
@@ -1358,6 +1359,8 @@ public:
     TextAutoSizing& textAutoSizing();
 #endif
 
+    PAL::Logger& logger() const;
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1375,7 +1378,7 @@ private:
 
     void detachFromFrame() { observeFrame(nullptr); }
 
-    void updateTitleElement(Element* newTitleElement);
+    void updateTitleElement(Element& changingTitleElement);
     void frameDestroyed() final;
 
     void commonTeardown();
@@ -1412,7 +1415,6 @@ private:
 
     void updateTitleFromTitleElement();
     void updateTitle(const StringWithDirection&);
-    void updateFocusAppearanceTimerFired();
     void updateBaseURL();
 
     void buildAccessKeyMap(TreeScope* root);
@@ -1537,7 +1539,6 @@ private:
     const std::unique_ptr<DocumentMarkerController> m_markers;
     
     Timer m_styleRecalcTimer;
-    Timer m_updateFocusAppearanceTimer;
 
     Element* m_cssTarget { nullptr };
 
@@ -1732,7 +1733,6 @@ private:
     PageCacheState m_pageCacheState { NotInPageCache };
     ReferrerPolicy m_referrerPolicy { ReferrerPolicy::NoReferrerWhenDowngrade };
     ReadyState m_readyState { Complete };
-    SelectionRestorationMode m_updateFocusAppearanceRestoresSelection { SelectionRestorationMode::SetDefault };
 
     MutationObserverOptions m_mutationObserverTypes { 0 };
 
@@ -1811,6 +1811,7 @@ private:
 
     OrientationNotifier m_orientationNotifier;
     mutable PAL::SessionID m_sessionID;
+    mutable RefPtr<PAL::Logger> m_logger;
 
     static bool hasEverCreatedAnAXObjectCache;
 };

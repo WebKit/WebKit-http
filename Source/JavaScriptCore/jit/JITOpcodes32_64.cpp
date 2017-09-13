@@ -856,6 +856,29 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
 
     unsigned thrownValue = currentInstruction[2].u.operand;
     emitStore(thrownValue, regT1, regT0);
+
+#if ENABLE(DFG_JIT)
+    // FIXME: consider inline caching the process of doing OSR entry, including
+    // argument type proofs, storing locals to the buffer, etc
+    // https://bugs.webkit.org/show_bug.cgi?id=175598
+
+    ValueProfileAndOperandBuffer* buffer = static_cast<ValueProfileAndOperandBuffer*>(currentInstruction[3].u.pointer);
+    if (buffer || !shouldEmitProfiling())
+        callOperation(operationTryOSREnterAtCatch, m_bytecodeOffset);
+    else
+        callOperation(operationTryOSREnterAtCatchAndValueProfile, m_bytecodeOffset);
+    auto skipOSREntry = branchTestPtr(Zero, returnValueGPR);
+    emitRestoreCalleeSaves();
+    jump(returnValueGPR);
+    skipOSREntry.link(this);
+    if (buffer && shouldEmitProfiling()) {
+        buffer->forEach([&] (ValueProfileAndOperand& profile) {
+            JSValueRegs regs(regT1, regT0);
+            emitGetVirtualRegister(profile.m_operand, regs);
+            emitValueProfilingSite(profile.m_profile);
+        });
+    }
+#endif // ENABLE(DFG_JIT)
 }
 
 void JIT::emit_op_assert(Instruction* currentInstruction)

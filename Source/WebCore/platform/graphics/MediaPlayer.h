@@ -44,6 +44,7 @@
 #include "SecurityOriginHash.h"
 #include "Timer.h"
 #include "VideoTrackPrivate.h"
+#include <pal/Logger.h>
 #include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
@@ -123,6 +124,21 @@ struct MediaEngineSupportParameters {
     bool isMediaSource { false };
     bool isMediaStream { false };
     Vector<ContentType> contentTypesRequiringHardwareSupport;
+};
+
+struct PlatformVideoPlaybackQualityMetrics {
+    PlatformVideoPlaybackQualityMetrics(unsigned long totalVideoFrames, unsigned long droppedVideoFrames, unsigned long corruptedVideoFrames, double totalFrameDelay)
+        : totalVideoFrames(totalVideoFrames)
+        , droppedVideoFrames(droppedVideoFrames)
+        , corruptedVideoFrames(corruptedVideoFrames)
+        , totalFrameDelay(totalFrameDelay)
+    {
+    }
+
+    unsigned long totalVideoFrames;
+    unsigned long droppedVideoFrames;
+    unsigned long corruptedVideoFrames;
+    double totalFrameDelay;
 };
 
 extern const PlatformMedia NoPlatformMedia;
@@ -288,6 +304,11 @@ public:
     virtual bool mediaPlayerShouldDisableSleep() const { return false; }
     virtual const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
     virtual bool mediaPlayerShouldCheckHardwareSupport() const { return false; }
+
+#if !RELEASE_LOG_DISABLED
+    virtual const void* mediaPlayerLogIdentifier() { return nullptr; }
+    virtual const PAL::Logger& mediaPlayerLogger() = 0;
+#endif
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -598,10 +619,7 @@ public:
     unsigned long long fileSize() const;
 
 #if ENABLE(MEDIA_SOURCE)
-    unsigned long totalVideoFrames();
-    unsigned long droppedVideoFrames();
-    unsigned long corruptedVideoFrames();
-    MediaTime totalFrameDelay();
+    std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
 #endif
 
     bool shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&);
@@ -620,6 +638,11 @@ public:
 
     const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
     bool shouldCheckHardwareSupport() const;
+
+#if !RELEASE_LOG_DISABLED
+    const PAL::Logger& mediaPlayerLogger();
+    const void* mediaPlayerLogIdentifier() { return client().mediaPlayerLogIdentifier(); }
+#endif
 
 private:
     MediaPlayer(MediaPlayerClient&);
@@ -671,6 +694,20 @@ public:
     WEBCORE_EXPORT static void callRegisterMediaEngine(MediaEngineRegister);
 };
 
+} // namespace WebCore
+
+namespace PAL {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WTF::MediaTime> {
+    static String toString(const WTF::MediaTime& time)
+    {
+        return time.toString();
+    }
+};
 }
 
 #endif // ENABLE(VIDEO)

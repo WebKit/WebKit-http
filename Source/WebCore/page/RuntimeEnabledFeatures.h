@@ -73,8 +73,16 @@ public:
     void setCustomElementsEnabled(bool areEnabled) { m_areCustomElementsEnabled = areEnabled; }
     bool customElementsEnabled() const { return m_areCustomElementsEnabled; }
 
+    void setDirectoryUploadEnabled(bool isEnabled) { m_isDirectoryUploadEnabled = isEnabled; }
+    bool directoryUploadEnabled() const { return m_isDirectoryUploadEnabled; }
+
     void setDataTransferItemsEnabled(bool areEnabled) { m_areDataTransferItemsEnabled = areEnabled; }
     bool dataTransferItemsEnabled() const { return m_areDataTransferItemsEnabled; }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
+    bool attachmentElementEnabled() const { return m_isAttachmentElementEnabled; }
+#endif
 
     void setModernMediaControlsEnabled(bool areEnabled) { m_areModernMediaControlsEnabled = areEnabled; }
     bool modernMediaControlsEnabled() const { return m_areModernMediaControlsEnabled; }
@@ -231,8 +239,13 @@ private:
     bool m_isDisplayContentsEnabled { false };
     bool m_isShadowDOMEnabled { true };
     bool m_areCustomElementsEnabled { true };
+    bool m_isDirectoryUploadEnabled { false };
     bool m_areDataTransferItemsEnabled { false };
     bool m_inputEventsEnabled { true };
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    bool m_isAttachmentElementEnabled { false };
+#endif
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     bool m_isIndexedDBWorkersEnabled { true };

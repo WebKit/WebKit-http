@@ -38,6 +38,7 @@
 #include "MediaElementSession.h"
 #include "MediaProducer.h"
 #include "VisibilityChangeClient.h"
+#include <pal/LoggerHelper.h>
 #include <wtf/Function.h>
 #include <wtf/WeakPtr.h>
 
@@ -64,6 +65,7 @@
 #endif
 
 namespace PAL {
+class Logger;
 class SleepDisabler;
 }
 
@@ -137,6 +139,9 @@ class HTMLMediaElement
 #endif
 #if ENABLE(ENCRYPTED_MEDIA)
     , private CDMClient
+#endif
+#if !RELEASE_LOG_DISABLED
+    , private PAL::LoggerHelper
 #endif
 {
 public:
@@ -642,10 +647,8 @@ private:
     void attemptToResumePlaybackIfNecessary();
 
     // CDMClient
-    void cdmClientInstanceAttached(const CDMInstance&) override;
-    void cdmClientInstanceDetached(const CDMInstance&) override;
     void cdmClientAttemptToResumePlaybackIfNecessary() final;
-    void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) override;
+    void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) final;
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -892,6 +895,18 @@ private:
     void handleSeekToPlaybackPosition(double);
     void seekToPlaybackPositionEndedTimerFired();
 
+#if !RELEASE_LOG_DISABLED
+    const PAL::Logger& logger() const final { return *m_logger.get(); }
+    const char* logClassName() const final { return "HTMLMediaElement"; }
+    const void* logIdentifier() const final { return reinterpret_cast<const void*>(m_logIdentifier); }
+    WTFLogChannel& logChannel() const final;
+
+    const void* mediaPlayerLogIdentifier() final { return logIdentifier(); }
+    const PAL::Logger& mediaPlayerLogger() final { return logger(); }
+#endif
+
+    bool willLog(WTFLogLevel) const;
+
     WeakPtrFactory<HTMLMediaElement> m_weakFactory;
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
@@ -906,6 +921,7 @@ private:
     GenericTaskQueue<Timer> m_updatePlaybackControlsManagerQueue;
     GenericTaskQueue<Timer> m_playbackControlsManagerBehaviorRestrictionsQueue;
     GenericTaskQueue<Timer> m_resourceSelectionTaskQueue;
+    GenericTaskQueue<Timer> m_visibilityChangeTaskQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -1111,6 +1127,11 @@ private:
 
     std::unique_ptr<MediaElementSession> m_mediaSession;
     size_t m_reportedExtraMemoryCost { 0 };
+
+#if !RELEASE_LOG_DISABLED
+    RefPtr<PAL::Logger> m_logger;
+    uint64_t m_logIdentifier;
+#endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     friend class MediaControlsHost;

@@ -166,7 +166,6 @@
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryRelease.h>
-#import <WebCore/NSSpellCheckerSPI.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/Notification.h>
@@ -212,6 +211,9 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cocoa/NSTouchBarSPI.h>
 #import <pal/spi/cocoa/NSURLFileTypeMappingsSPI.h>
+#import <pal/spi/mac/NSResponderSPI.h>
+#import <pal/spi/mac/NSSpellCheckerSPI.h>
+#import <pal/spi/mac/NSWindowSPI.h>
 #import <runtime/ArrayPrototype.h>
 #import <runtime/CatchScope.h>
 #import <runtime/DateInstance.h>
@@ -241,12 +243,12 @@
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
-#import <WebCore/LookupSPI.h>
-#import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/WebVideoFullscreenController.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
+#import <pal/spi/mac/LookupSPI.h>
+#import <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
 #else
 #import "MemoryMeasure.h"
 #import "WebCaretChangeListener.h"
@@ -1452,7 +1454,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->setGroupName(groupName);
 
 #if ENABLE(GEOLOCATION)
-    WebCore::provideGeolocationTo(_private->page, new WebGeolocationClient(self));
+    WebCore::provideGeolocationTo(_private->page, *new WebGeolocationClient(self));
 #endif
 #if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(_private->page, new WebNotificationClient(self));
@@ -1810,7 +1812,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         _private->textIndicatorData = adoptNS([[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()]);
     _private->draggedLinkURL = dragItem.url.isEmpty() ? nil : (NSURL *)dragItem.url;
     _private->draggedLinkTitle = dragItem.title.isEmpty() ? nil : (NSString *)dragItem.title;
-    _private->draggedElementBounds = dragItem.elementBounds;
+    _private->dragPreviewFrameInRootViewCoordinates = dragItem.dragPreviewFrameInRootViewCoordinates;
     _private->dragSourceAction = static_cast<WebDragSourceAction>(dragItem.sourceAction);
 }
 
@@ -1845,7 +1847,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 - (CGRect)_draggedElementBounds
 {
-    return _private->draggedElementBounds;
+    return _private->dragPreviewFrameInRootViewCoordinates;
 }
 
 - (WebUITextIndicatorData *)_getDataInteractionData
@@ -1901,7 +1903,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     WebThreadLock();
     _private->page->dragController().dragEnded();
     _private->dataOperationTextIndicator = nullptr;
-    _private->draggedElementBounds = CGRectNull;
+    _private->dragPreviewFrameInRootViewCoordinates = CGRectNull;
     _private->dragSourceAction = WebDragSourceActionNone;
     _private->draggedLinkTitle = nil;
     _private->draggedLinkURL = nil;
@@ -2993,6 +2995,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setDataTransferItemsEnabled([preferences dataTransferItemsEnabled]);
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+    RuntimeEnabledFeatures::sharedFeatures().setAttachmentElementEnabled([preferences attachmentElementEnabled]);
+#endif
+
     RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled([preferences modernMediaControlsEnabled]);
 
@@ -3033,6 +3039,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(preferences.mediaPreloadingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(preferences.isSecureContextAttributeEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setDirectoryUploadEnabled([preferences directoryUploadEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);
@@ -3065,10 +3072,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     settings.setMediaDataLoadsAutomatically([preferences mediaDataLoadsAutomatically]);
-
-#if ENABLE(ATTACHMENT_ELEMENT)
-    settings.setAttachmentElementEnabled([preferences attachmentElementEnabled]);
-#endif
 
     settings.setAllowContentSecurityPolicySourceStarToMatchAnyProtocol(shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol());
 
@@ -3554,7 +3557,7 @@ static inline IMP getMethod(id o, SEL s)
         return nil;
 
     if (CFURLStorageSessionRef storageSession = _private->page->mainFrame().loader().networkingContext()->storageSession().platformSession())
-        cachedResponse = WKCachedResponseForRequest(storageSession, request.get());
+        cachedResponse = cachedResponseForRequest(storageSession, request.get());
     else
         cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request.get()];
 
@@ -5865,9 +5868,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(windowKeyStateChanged:)
             name:NSWindowDidResignKeyNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillOrderOnScreen:)
-            name:WKWindowWillOrderOnScreenNotification() object:window];
+            name:NSWindowWillOrderOnScreenNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillOrderOffScreen:)
-            name:WKWindowWillOrderOffScreenNotification() object:window];
+            name:NSWindowWillOrderOffScreenNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeBackingProperties:)
             name:windowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
@@ -5889,9 +5892,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         [[NSNotificationCenter defaultCenter] removeObserver:self
             name:NSWindowDidResignKeyNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
-            name:WKWindowWillOrderOnScreenNotification() object:window];
+            name:NSWindowWillOrderOnScreenNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
-            name:WKWindowWillOrderOffScreenNotification() object:window];
+            name:NSWindowWillOrderOffScreenNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
             name:windowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
@@ -5922,7 +5925,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         // The following are expensive enough that we don't want to call them over
         // and over, so do them when we move into a window.
         [window setAcceptsMouseMovedEvents:YES];
-        WKSetNSWindowShouldPostEventNotifications(window, YES);
+        [window _setShouldPostEventNotifications:YES];
     } else if (!_private->closed) {
         _private->page->setCanStartMedia(false);
         _private->page->setIsInWindow(false);
@@ -9981,7 +9984,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 {
 #if ENABLE(GEOLOCATION)
     if (_private && _private->page) {
-        RefPtr<GeolocationError> geolocatioError = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
+        auto geolocatioError = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
         WebCore::GeolocationController::from(_private->page)->errorOccurred(geolocatioError.get());
     }
 #endif // ENABLE(GEOLOCATION)

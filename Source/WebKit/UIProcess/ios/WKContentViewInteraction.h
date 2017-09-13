@@ -28,6 +28,7 @@
 #import "WKContentView.h"
 
 #import "AssistedNodeInformation.h"
+#import "DragDropInteractionState.h"
 #import "EditorState.h"
 #import "GestureTypes.h"
 #import "InteractionInformationAtPosition.h"
@@ -39,7 +40,6 @@
 #import "WKSyntheticClickTapGestureRecognizer.h"
 #import <UIKit/UIView.h>
 #import <WebCore/Color.h>
-#import <WebCore/DragActions.h>
 #import <WebCore/FloatQuad.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/Forward.h>
@@ -58,6 +58,7 @@ namespace WebCore {
 class Color;
 class FloatQuad;
 class IntSize;
+class SelectionRect;
 }
 
 #if ENABLE(DRAG_SUPPORT)
@@ -116,33 +117,6 @@ typedef std::pair<WebKit::InteractionInformationRequest, InteractionInformationC
     M(toggleUnderline)
 
 namespace WebKit {
-
-#if ENABLE(DRAG_SUPPORT)
-
-struct WKDataInteractionState {
-    RetainPtr<UIImage> image;
-    std::optional<WebCore::TextIndicatorData> indicatorData;
-    CGPoint adjustedOrigin { CGPointZero };
-    CGPoint lastGlobalPosition { CGPointZero };
-    CGRect elementBounds { CGRectZero };
-    BOOL didBeginDragging { NO };
-    BOOL isPerformingOperation { NO };
-    BOOL isAnimatingConcludeEditDrag { NO };
-    BOOL shouldRestoreCalloutBar { NO };
-    RetainPtr<id <UIDragSession>> dragSession;
-    RetainPtr<id <UIDropSession>> dropSession;
-    BlockPtr<void()> dragStartCompletionBlock;
-    BlockPtr<void()> dragCancelSetDownBlock;
-    WebCore::DragSourceAction sourceAction { WebCore::DragSourceActionNone };
-
-    String linkTitle;
-    WebCore::URL linkURL;
-
-    RetainPtr<UIView> visibleContentViewSnapshot;
-    RetainPtr<_UITextDragCaretView> caretView;
-};
-
-#endif // ENABLE(DRAG_SUPPORT)
 
 struct WKSelectionDrawingInfo {
     enum class SelectionType { None, Plugin, Range };
@@ -255,9 +229,13 @@ struct WKAutoCorrectionData {
     BOOL _needsDeferredEndScrollingSelectionUpdate;
 
 #if ENABLE(DATA_INTERACTION)
-    WebKit::WKDataInteractionState _dataInteractionState;
-    RetainPtr<UIDragInteraction> _dataInteraction;
-    RetainPtr<UIDropInteraction> _dataOperation;
+    WebKit::DragDropInteractionState _dragDropInteractionState;
+    RetainPtr<UIDragInteraction> _dragInteraction;
+    RetainPtr<UIDropInteraction> _dropInteraction;
+    BOOL _shouldRestoreCalloutBarAfterDrop;
+    BOOL _isAnimatingConcludeEditDrag;
+    RetainPtr<UIView> _visibleContentViewSnapshot;
+    RetainPtr<_UITextDragCaretView> _editDropCaretView;
 #endif
 }
 
@@ -287,6 +265,7 @@ struct WKAutoCorrectionData {
 - (BOOL)becomeFirstResponderForWebView;
 - (BOOL)resignFirstResponderForWebView;
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender;
+- (id)targetForActionForWebView:(SEL)action withSender:(id)sender;
 
 #define DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_action) \
     - (void)_action ## ForWebView:(id)sender;
@@ -331,6 +310,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (NSArray<NSValue *> *)_uiTextSelectionRects;
 - (void)accessibilityRetrieveSpeakSelectionContent;
 - (void)_accessibilityRetrieveRectsEnclosingSelectionOffset:(NSInteger)offset withGranularity:(UITextGranularity)granularity;
+- (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text completionHandler:(void (^)(const Vector<WebCore::SelectionRect>& rects))completionHandler;
 - (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text;
 
 @property (nonatomic, readonly) WebKit::InteractionInformationAtPosition currentPositionInformation;
@@ -341,26 +321,17 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_didChangeDragInteractionPolicy;
 - (void)_didPerformDataInteractionControllerOperation:(BOOL)handled;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
+- (void)_didHandleAdditionalDragItemsRequest:(BOOL)added;
 - (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const WebCore::DragItem&)item;
 - (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;
 - (void)_didChangeDataInteractionCaretRect:(CGRect)previousRect currentRect:(CGRect)rect;
-
-- (void)_simulateDataInteractionEntered:(id)info;
-- (NSUInteger)_simulateDataInteractionUpdated:(id)info;
-- (void)_simulateDataInteractionPerformOperation:(id)info;
-- (void)_simulateDataInteractionEnded:(id)info;
-- (void)_simulateDataInteractionSessionDidEnd:(id)session;
-- (void)_simulateWillBeginDataInteractionWithSession:(id)session;
-- (NSArray *)_simulatedItemsForSession:(id)session;
-- (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion;
 #endif
-
-- (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 
 @end
 
 @interface WKContentView (WKTesting)
 
+- (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 - (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex;
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem;
 

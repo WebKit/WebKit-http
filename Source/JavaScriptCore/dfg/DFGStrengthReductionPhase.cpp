@@ -268,18 +268,27 @@ private:
             
         case Flush: {
             ASSERT(m_graph.m_form != SSA);
+
+            if (m_graph.willCatchExceptionInMachineFrame(m_node->origin.semantic)) {
+                // FIXME: We should be able to relax this:
+                // https://bugs.webkit.org/show_bug.cgi?id=150824
+                break;
+            }
             
             Node* setLocal = nullptr;
             VirtualRegister local = m_node->local();
             
             for (unsigned i = m_nodeIndex; i--;) {
                 Node* node = m_block->at(i);
+
                 if (node->op() == SetLocal && node->local() == local) {
                     setLocal = node;
                     break;
                 }
+
                 if (accessesOverlap(m_graph, node, AbstractHeap(Stack, local)))
                     break;
+
             }
             
             if (!setLocal)
@@ -417,6 +426,19 @@ private:
             break;
         }
 
+        case NumberToStringWithValidRadixConstant: {
+            Edge& child1 = m_node->child1();
+            if (child1->hasConstant()) {
+                JSValue value = child1->constant()->value();
+                if (value && value.isNumber()) {
+                    String result = toStringWithRadix(value.asNumber(), m_node->validRadixConstant());
+                    m_node->convertToLazyJSConstant(m_graph, LazyJSValue::newString(m_graph, result));
+                    m_changed = true;
+                }
+            }
+            break;
+        }
+
         case GetArrayLength: {
             if (m_node->arrayMode().type() == Array::Generic
                 || m_node->arrayMode().type() == Array::String) {
@@ -488,7 +510,15 @@ private:
                     dataLog("Giving up because of pattern limit.\n");
                 break;
             }
-            
+
+            if (m_node->op() == RegExpExec && regExp->hasNamedCaptures()) {
+                // FIXME: https://bugs.webkit.org/show_bug.cgi?id=176464
+                // Implement strength reduction optimization for named capture groups.
+                if (verbose)
+                    dataLog("Giving up because of named capture groups.\n");
+                break;
+            }
+
             unsigned lastIndex;
             if (regExp->globalOrSticky()) {
                 // This will only work if we can prove what the value of lastIndex is. To do this
@@ -523,7 +553,12 @@ private:
 
             m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
             
-            Structure* structure = globalObject->regExpMatchesArrayStructure();
+            Structure* structure;
+            if (m_node->op() == RegExpExec && regExp->hasNamedCaptures())
+                structure = globalObject->regExpMatchesArrayWithGroupsStructure();
+            else
+                structure = globalObject->regExpMatchesArrayStructure();
+
             if (structure->indexingType() != ArrayWithContiguous) {
                 // This is further protection against a race with haveABadTime.
                 if (verbose)

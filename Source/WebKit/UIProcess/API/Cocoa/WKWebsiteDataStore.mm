@@ -174,6 +174,11 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     return allWebsiteDataTypes;
 }
 
++ (BOOL)_defaultDataStoreExists
+{
+    return API::WebsiteDataStore::defaultDataStoreExists();
+}
+
 - (instancetype)_initWithConfiguration:(_WKWebsiteDataStoreConfiguration *)configuration
 {
     if (!(self = [super init]))
@@ -189,6 +194,8 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
         config.indexedDBDatabaseDirectory = configuration._indexedDBDatabaseDirectory.path;
     if (configuration._cookieStorageFile)
         config.cookieStorageFile = configuration._cookieStorageFile.path;
+    if (configuration._resourceLoadStatisticsDirectory)
+        config.resourceLoadStatisticsDirectory = configuration._resourceLoadStatisticsDirectory.path;
 
     API::Object::constructInWrapper<API::WebsiteDataStore>(self, config, PAL::SessionID::generatePersistentSessionID());
 
@@ -416,7 +423,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     if (value)
         store->scheduleCookiePartitioningUpdateForDomains({ }, { host }, WebKit::ShouldClearFirst::No);
     else
-        store->scheduleCookiePartitioningUpdateForDomains({ host }, { }, WebKit::ShouldClearFirst::No);
+        store->scheduleClearPartitioningStateForDomains({ host });
 }
 
 - (void)_resourceLoadStatisticsSubmitTelemetry

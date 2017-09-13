@@ -90,6 +90,7 @@
 #if ENABLE(DRAG_SUPPORT)
 #import <UIKit/UIDragInteraction.h>
 #import <UIKit/UIDragInteraction_Private.h>
+#import <UIKit/UIDragItem_Private.h>
 #import <UIKit/UIDragPreviewParameters.h>
 #import <UIKit/UIDragPreview_Private.h>
 #import <UIKit/UIDragSession.h>
@@ -101,6 +102,10 @@
 #endif
 
 #else
+
+#if ENABLE(DRAG_SUPPORT)
+#import <UIKit/NSItemProvider+UIKitAdditions.h>
+#endif
 
 #if HAVE(LINK_PREVIEW)
 typedef NS_ENUM(NSInteger, UIPreviewItemType) {
@@ -397,6 +402,7 @@ typedef enum {
 
 @interface UIViewController (ViewService)
 - (pid_t)_hostProcessIdentifier;
+@property (readonly) NSString *_hostApplicationBundleIdentifier;
 @end
 
 @protocol UIViewControllerContextTransitioningEx <UIViewControllerContextTransitioning>
@@ -502,7 +508,6 @@ typedef NS_ENUM(NSInteger, UIWKSelectionTouch) {
 typedef NS_ENUM(NSInteger, UIWKSelectionFlags) {
     UIWKNone = 0,
     UIWKWordIsNearTap = 1,
-    UIWKIsBlockSelection = 2,
     UIWKPhraseBoundaryChanged = 4,
 };
 
@@ -877,7 +882,6 @@ typedef enum {
 #if ENABLE(DRAG_SUPPORT)
 
 @interface UIItemProvider : NSItemProvider
-@property (nonatomic) CGSize preferredPresentationSize;
 @end
 
 WTF_EXTERN_C_BEGIN
@@ -894,6 +898,10 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UIDragInteraction ()
 @property (nonatomic, assign, getter=_liftDelay, setter=_setLiftDelay:) NSTimeInterval liftDelay;
+@end
+
+@interface UIDragItem ()
+@property (nonatomic, strong, nullable, setter=_setPrivateLocalContext:, getter=_privateLocalContext) id privateLocalContext;
 @end
 
 @protocol UITextInput;
@@ -915,6 +923,10 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UITextEffectsWindow : UIAutoRotatingWindow
 + (UITextEffectsWindow *)sharedTextEffectsWindow;
+@end
+
+@interface UIURLDragPreviewView : UIView
++ (instancetype)viewWithTitle:(NSString *)title URL:(NSURL *)url;
 @end
 
 #endif

@@ -40,7 +40,7 @@ private:
     friend NeverDestroyed<WebServiceWorkerProvider>;
     WebServiceWorkerProvider();
 
-    WebCore::SWServer::Connection& serviceWorkerConnectionForSession(const PAL::SessionID&) final;
+    WebCore::SWClientConnection& serviceWorkerConnectionForSession(const PAL::SessionID&) final;
 
 }; // class WebServiceWorkerProvider
 

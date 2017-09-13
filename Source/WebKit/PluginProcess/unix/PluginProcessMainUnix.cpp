@@ -41,16 +41,16 @@
 #include <gtk/gtk.h>
 #endif
 
-#if defined(XP_UNIX)
+#if PLATFORM(X11)
 #include <WebCore/PlatformDisplayX11.h>
 #include <WebCore/XErrorTrapper.h>
 #endif
 
 namespace WebKit {
 
-#if defined(XP_UNIX)
+#if PLATFORM(X11)
 static std::unique_ptr<WebCore::XErrorTrapper> xErrorTrapper;
-#endif // XP_UNIX
+#endif
 
 class PluginProcessMain final: public ChildProcessMainBase {
 public:
@@ -70,13 +70,13 @@ public:
             return false;
 
         if (!strcmp(argv[1], "-scanPlugin"))
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
             exit(NetscapePluginModule::scanPlugin(argv[2]) ? EXIT_SUCCESS : EXIT_FAILURE);
 #else
             exit(EXIT_FAILURE);
 #endif
 
-#if defined(XP_UNIX)
+#if PLATFORM(X11)
         if (WebCore::PlatformDisplay::sharedDisplay().type() == WebCore::PlatformDisplay::Type::X11) {
             auto* display = downcast<WebCore::PlatformDisplayX11>(WebCore::PlatformDisplay::sharedDisplay()).native();
             xErrorTrapper = std::make_unique<WebCore::XErrorTrapper>(display, WebCore::XErrorTrapper::Policy::Warn);

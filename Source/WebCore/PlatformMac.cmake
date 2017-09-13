@@ -23,8 +23,8 @@ find_library(QUARTZ_LIBRARY Quartz)
 find_library(QUARTZCORE_LIBRARY QuartzCore)
 find_library(SECURITY_LIBRARY Security)
 find_library(SYSTEMCONFIGURATION_LIBRARY SystemConfiguration)
-find_library(SQLITE3_LIBRARY sqlite3)
 find_library(XML2_LIBRARY XML2)
+find_package(Sqlite REQUIRED)
 find_package(ZLIB REQUIRED)
 
 list(APPEND WebCore_LIBRARIES
@@ -47,7 +47,6 @@ list(APPEND WebCore_LIBRARIES
     ${SYSTEMCONFIGURATION_LIBRARY}
     ${WEBKITSYSTEMINTERFACE_LIBRARY}
     ${XML2_LIBRARY}
-    ${ZLIB_LIBRARIES}
 )
 
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
@@ -204,6 +203,7 @@ list(APPEND WebCore_SOURCES
     editing/cocoa/DataDetection.mm
     editing/cocoa/EditorCocoa.mm
     editing/cocoa/HTMLConverter.mm
+    editing/cocoa/WebContentReaderCocoa.mm
 
     editing/mac/AlternativeTextUIController.mm
     editing/mac/DictionaryLookup.mm
@@ -211,6 +211,7 @@ list(APPEND WebCore_SOURCES
     editing/mac/FrameSelectionMac.mm
     editing/mac/TextAlternativeWithRange.mm
     editing/mac/TextUndoInsertionMarkupMac.mm
+    editing/mac/WebContentReaderMac.mm
 
     fileapi/FileCocoa.mm
 
@@ -572,6 +573,7 @@ list(APPEND WebCore_SOURCES
     platform/text/mac/LocaleMac.mm
     platform/text/mac/TextBoundaries.mm
     platform/text/mac/TextCodecMac.cpp
+    platform/text/mac/TextEncodingRegistryMac.mm
 
     rendering/RenderThemeCocoa.mm
     rendering/RenderThemeMac.mm

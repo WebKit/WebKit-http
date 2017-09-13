@@ -79,7 +79,8 @@
   <repository type="tarball" name="gnupg.org"
       href="https://www.gnupg.org/ftp/gcrypt/"/>
 
-  <autotools id="cairo">
+  <autotools id="cairo"
+             autogen-sh="configure">
     <if condition-set="linux">
       <autogenargs value="--enable-gl=yes --enable-egl=yes --enable-glx=yes"/>
     </if>
@@ -109,7 +110,7 @@
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
-    <branch repo="github.com" module="mrobinson/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.5"/>
+    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.6"/>
   </autotools>
 
   <autotools id="dicts" supports-non-srcdir-builds="no"
@@ -118,12 +119,9 @@
   </autotools>
 
   <autotools id="freetype6" autogen-sh="configure">
-    <branch module="freetype/freetype-2.4.11.tar.bz2" version="2.4.11"
+    <branch module="freetype/freetype-2.8.tar.bz2" version="2.8"
             repo="savannah.gnu.org"
-            hash="sha256:ef9d0bcb64647d9e5125dc7534d7ca371c98310fec87677c410f397f71ffbe3f"
-            md5sum="b93435488942486c8d0ca22e8f768034">
-      <patch file="freetype6-2.4.11-truetype-font-height-fix.patch" strip="1"/>
-    </branch>
+            hash="sha256:a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b"/>
   </autotools>
 
   <autotools id="harfbuzz" autogen-sh="configure">
@@ -146,6 +144,15 @@
             repo="ftp.gnome.org"
             hash="sha256:455eb90c09ed1b71f95f3ebfe1c904c206727e0eeb34fc94e5aaf944663a820c"/>
   </autotools>
+
+  <meson id="graphene">
+    <branch repo="github.com"
+            module="ebassi/graphene.git"
+            tag="1.6.0"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </meson>
 
   <autotools id="librsvg" autogen-sh="configure"
              autogenargs="--disable-introspection --enable-pixbuf-loader --disable-gtk-theme">
@@ -197,7 +204,8 @@
     </branch>
   </autotools>
 
-  <autotools id="glib-networking">
+  <autotools id="glib-networking"
+             autogen-sh="configure">
     <if condition-set="macos">
       <autogenargs value="--with-ca-certificates='/usr/local/etc/openssl/cert.pem' --without-pkcs11"/>
     </if>
@@ -211,6 +219,7 @@
   </autotools>
 
   <autotools id="libsoup"
+             autogen-sh="configure"
              autogenargs="--disable-introspection">
     <if condition-set="macos">
       <autogenargs value="--disable-tls-check"/>
@@ -228,7 +237,7 @@
   </autotools>
 
   <autotools id="fontconfig"
-             autogenargs="--enable-libxml2"
+             autogenargs="--enable-libxml2 --disable-docs"
              supports-non-srcdir-builds="no">
     <if condition-set="macos">
       <autogenargs value="--with-add-fonts=/System/Library/Fonts,/Library/Fonts,~/Library/Fonts"/>
@@ -273,7 +282,8 @@
             hash="sha256:75ac1f63e845f895dec8d72d4645ef5f362e32c921cc78987f2f19c2ce212a24"/>
   </autotools>
 
-  <autotools id="at-spi2-core" 
+  <autotools id="at-spi2-core"
+             autogen-sh="configure"
              autogenargs="--disable-introspection">
     <branch module="pub/GNOME/sources/at-spi2-core/2.25/at-spi2-core-2.25.4.tar.xz" version="2.25.4"
             repo="ftp.gnome.org"
@@ -284,7 +294,8 @@
     </dependencies>
   </autotools>
 
-  <autotools id="at-spi2-atk">
+  <autotools id="at-spi2-atk"
+             autogen-sh="configure">
     <branch module="pub/GNOME/sources/at-spi2-atk/2.25/at-spi2-atk-2.25.3.tar.xz" version="2.25.3"
             repo="ftp.gnome.org"
             hash="sha256:b7aab1a4ee7182083fcfafb595b7b3fe4df34aa2230c775050fe6015b01f84e1">
@@ -298,10 +309,9 @@
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
              autogen-sh="./autogen.sh; ./configure --with-python=no">
-    <branch module="/sources/libxml2-2.9.1.tar.gz" version="2.9.1"
+    <branch module="/sources/libxml2-2.9.5.tar.gz" version="2.9.5"
             repo="xmlsoft.org"
-            hash="sha256:fd3c64cb66f2c4ea27e934d275904d92cec494a8e8405613780cbc8a71680fdb"
-            md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
+            hash="sha256:4031c1ecee9ce7ba4f313e91ef6284164885cdb69937a123f6a83bb6a72dcd38"/>
   </autotools>
 
   <autotools id="xserver" autogenargs="--disable-xinerama --enable-glx --enable-composite --disable-xorg --disable-dmx --disable-xnest --disable-xquartz --disable-xwin --disable-xephyr --disable-xfake --disable-xfbdev --disable-install-setuid --disable-unit-tests --disable-present --enable-unix-transport --enable-tcp-transport --disable-local-transport --with-xkb-path=/usr/share/X11/xkb --with-xkb-output=/var/lib/xkb --with-xkb-bin-directory=/usr/bin --without-dtrace">
@@ -317,7 +327,9 @@
     </branch>
   </autotools>
 
-  <autotools id="wayland" autogenargs="--disable-documentation">
+  <autotools id="wayland"
+             autogen-sh="configure"
+             autogenargs="--disable-documentation">
     <pkg-config>wayland-server.pc</pkg-config>
     <branch module="releases/wayland-1.12.0.tar.xz"
             version="1.12.0"
@@ -325,14 +337,17 @@
             hash="sha256:d6b4135cba0188abcb7275513c72dede751d6194f6edc5b82183a3ba8b821ab1"/>
   </autotools>
 
-  <autotools id="wayland-protocols">
+  <autotools id="wayland-protocols"
+             autogen-sh="configure">
     <branch module="releases/wayland-protocols-1.7.tar.xz"
             version="1.7"
 	    repo="wayland.freedesktop.org"
 	    hash="sha256:635f2a937d318f1fecb97b54074ca211486e38af943868dd0fa82ea38d091c1f"/>
   </autotools>
 
-  <autotools id="weston" autogenargs="--enable-x11-compositor --disable-rpi-compositor --disable-fbdev-compositor --disable-setuid-install --disable-ivi-shell --disable-weston-launch --with-cairo=gl">
+  <autotools id="weston"
+             autogen-sh="configure"
+             autogenargs="--enable-x11-compositor --disable-rpi-compositor --disable-fbdev-compositor --disable-setuid-install --disable-ivi-shell --disable-weston-launch --with-cairo=gl">
     <pkg-config>weston.pc</pkg-config>
     <dependencies>
       <dep package="wayland"/>
@@ -370,8 +385,9 @@
   </autotools>
 
   <autotools id="mesa"
-    autogen-template="%(srcdir)s/%(autogen-sh)s --prefix %(prefix)s/softGL %(autogenargs)s"
-    autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
+             autogen-sh="configure"
+             autogen-template="%(srcdir)s/%(autogen-sh)s --prefix %(prefix)s/softGL %(autogenargs)s"
+             autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
     <branch checkoutdir="Mesa"
@@ -399,7 +415,8 @@
     <branch repo="github.com" module="Igalia/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="9b2199ea970369dbf1d9ca2f8e61c95f21db2b6e"/>
    </autotools>
 
-  <autotools id="libnice" supports-non-srcdir-builds="no">
+   <autotools id="libnice"
+              supports-non-srcdir-builds="no">
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
@@ -420,13 +437,15 @@
   </autotools>
 
   <autotools id="llvm"
+             autogen-sh="configure"
              autogenargs="--enable-optimized --disable-terminfo --disable-zlib --enable-targets=host --disable-backtraces --disable-crash-overrides --disable-expensive-checks --disable-debug-runtime --disable-assertions --enable-shared --enable-bindings=none">
     <branch repo="llvm.org"
             module="/releases/3.7.0/llvm-3.7.0.src.tar.xz" version="3.7.0" checkoutdir="llvm-3.7.0"
             hash="sha256:ab45895f9dcdad1e140a3a79fd709f64b05ad7364e308c0e582c5b02e9cc3153"/>
   </autotools>
 
-  <autotools id="gsettings-desktop-schemas" autogen-sh="configure">
+  <autotools id="gsettings-desktop-schemas"
+             autogen-sh="configure">
     <dependencies>
       <dep package="glib"/>
     </dependencies>
@@ -437,6 +456,7 @@
   </autotools>
 
   <autotools id="shared-mime-info"
+             autogen-sh="configure"
              autogenargs="--disable-default-make-check">
     <dependencies>
       <dep package="libxml2"/>
@@ -460,7 +480,8 @@
     </branch>
   </autotools>
 
-  <autotools id="libgpg-error" autogen-sh="configure">
+  <autotools id="libgpg-error"
+             autogen-sh="configure">
     <branch module="libgpg-error/libgpg-error-1.27.tar.bz2"
             version="1.27"
             repo="gnupg.org"
@@ -468,7 +489,8 @@
     </branch>
   </autotools>
 
-  <autotools id="libgcrypt" autogen-sh="configure">
+  <autotools id="libgcrypt"
+             autogen-sh="configure">
     <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
             version="1.7.6"
             repo="gnupg.org"
@@ -501,12 +523,25 @@
 
   <!-- libinput is only included because the version of libinput shipped with Debian Jessie
     os too old for building Weston. This may be removed after Debian Strech is released -->
-  <autotools id="libinput" autogen-sh="configure"  autogenargs="--disable-libwacom --disable-tests --disable-documentation">
+  <autotools id="libinput"
+             autogen-sh="configure"
+             autogenargs="--disable-libwacom --disable-tests --disable-documentation">
     <pkg-config>libinput.pc</pkg-config>
     <branch module="software/libinput/libinput-1.6.3.tar.xz"
             version="1.6.3"
             repo="freedesktop.org"
             hash="sha256:74da2798728e79c3aedfffa268d8fe811c3766ca3708309c0dc45502be137da1"/>
   </autotools>
+
+  <distutils id="meson" python3="1">
+    <branch repo="github-tarball"
+            version="0.42.0"
+            module="mesonbuild/meson/releases/download/${version}/meson-${version}.tar.gz"
+            checkoutdir="meson-${version}"
+            hash="sha256:a74c7387a3dd8171e931bcd948355f7f9529368eae72c3c22a9beef6c2e73498"/>
+    <dependencies>
+      <dep package="ninja"/>
+    </dependencies>
+  </distutils>
 
 </moduleset>

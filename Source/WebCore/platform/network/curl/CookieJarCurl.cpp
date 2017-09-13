@@ -287,14 +287,16 @@ static String cookiesForSession(const NetworkStorageSession&, const URL&, const 
     return cookies;
 }
 
-String CookieJarCurlFileSystem::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> CookieJarCurlFileSystem::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies)
 {
-    return cookiesForSession(session, firstParty, url, false);
+    // FIXME: This should filter secure cookies out if the caller requests it.
+    return { cookiesForSession(session, firstParty, url, false), false };
 }
 
-String CookieJarCurlFileSystem::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> CookieJarCurlFileSystem::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies)
 {
-    return cookiesForSession(session, firstParty, url, true);
+    // FIXME: This should filter secure cookies out if the caller requests it.
+    return { cookiesForSession(session, firstParty, url, true), false };
 }
 
 bool CookieJarCurlFileSystem::cookiesEnabled(const NetworkStorageSession&, const URL& firstParty, const URL&)
@@ -336,9 +338,9 @@ void CookieJarCurlFileSystem::deleteAllCookiesModifiedSince(const NetworkStorage
 
 // dispatcher functions
 
-String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return CurlContext::singleton().cookieJar().cookiesForDOM(session, firstParty, url);
+    return CurlContext::singleton().cookieJar().cookiesForDOM(session, firstParty, url, includeSecureCookies);
 }
 
 void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& value)
@@ -346,9 +348,9 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     CurlContext::singleton().cookieJar().setCookiesFromDOM(session, firstParty, url, value);
 }
 
-String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return CurlContext::singleton().cookieJar().cookieRequestHeaderFieldValue(session, firstParty, url);
+    return CurlContext::singleton().cookieJar().cookieRequestHeaderFieldValue(session, firstParty, url, includeSecureCookies);
 }
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)

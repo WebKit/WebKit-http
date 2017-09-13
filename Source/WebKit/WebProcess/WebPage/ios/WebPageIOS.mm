@@ -57,6 +57,7 @@
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
+#import <WebCore/DragController.h>
 #import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/Element.h>
@@ -163,7 +164,8 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     // entries, we need the layout to be done and we don't want to trigger a synchronous
     // layout as this would be bad for performance. If we have a composition, we send everything
     // right away as the UIProcess needs the caretRects ASAP for marked text.
-    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No && !frame.editor().hasComposition()) {
+    bool frameViewHasFinishedLayout = frame.view() && !frame.view()->needsLayout();
+    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No && !frameViewHasFinishedLayout && !frame.editor().hasComposition()) {
         result.isMissingPostLayoutData = true;
         return;
     }
@@ -630,6 +632,19 @@ void WebPage::requestStartDataInteraction(const IntPoint& clientPosition, const 
     send(Messages::WebPageProxy::DidHandleStartDataInteractionRequest(didStart));
 }
 
+void WebPage::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition)
+{
+    // To augment the platform drag session with additional items, end the current drag session and begin a new drag session with the new drag item.
+    // This process is opaque to the UI process, which still maintains the old drag item in its drag session. Similarly, this persistent drag session
+    // is opaque to the web process, which only sees that the current drag has ended, and that a new one is beginning.
+    PlatformMouseEvent event(clientPosition, globalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), 0, NoTap);
+    m_page->dragController().dragEnded();
+    m_page->mainFrame().eventHandler().dragSourceEndedAt(event, DragOperationNone, MayExtendDragSession::Yes);
+
+    bool didHandleDrag = m_page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(clientPosition, globalPosition);
+    send(Messages::WebPageProxy::DidHandleAdditionalDragItemsRequest(didHandleDrag));
+}
+
 void WebPage::didConcludeEditDataInteraction()
 {
     std::optional<TextIndicatorData> textIndicatorData;
@@ -1015,7 +1030,6 @@ RefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point, con
     if (boundingRectInScrollViewCoordinates.height() > m_page->mainFrame().view()->exposedContentRect().height() * adjustmentFactor)
         return nullptr;
 
-    flags = IsBlockSelection;
     range = Range::create(bestChoice->document());
     range->selectNodeContents(*bestChoice);
     return range->collapsed() ? nullptr : range;
@@ -1171,8 +1185,6 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
             m_currentBlockSelection = nullptr;
         }
         range = rangeForWebSelectionAtPosition(point, position, flags);
-        if (wkGestureState == GestureRecognizerState::Ended && flags & IsBlockSelection)
-            m_currentBlockSelection = range;
         break;
 
     default:
@@ -1245,10 +1257,10 @@ static RefPtr<Range> rangeAtWordBoundaryForPosition(Frame* frame, const VisibleP
 
     // If this is where the extent was initially, then iterate in the other direction in the document until we hit the next word.
     while (extent.isNotNull()
-           && !atBoundaryOfGranularity(extent, WordGranularity, sameDirection)
-           && extent != base
-           && !atBoundaryOfGranularity(extent, LineBoundary, sameDirection)
-           && !atBoundaryOfGranularity(extent, LineBoundary, oppositeDirection)) {
+        && !atBoundaryOfGranularity(extent, WordGranularity, sameDirection)
+        && extent != base
+        && !atBoundaryOfGranularity(extent, LineGranularity, sameDirection)
+        && !atBoundaryOfGranularity(extent, LineGranularity, oppositeDirection)) {
         extent = baseIsStart ? extent.next() : extent.previous();
     }
 
@@ -1428,7 +1440,6 @@ Ref<Range> WebPage::contractedRangeFromHandle(Range& currentRange, SelectionHand
 
     IntRect currentBox = selectionBoxForRange(&currentRange);
     IntPoint edgeCenter = computeEdgeCenter(currentBox, handlePosition);
-    flags = IsBlockSelection;
 
     float maxDistance;
 
@@ -1612,8 +1623,6 @@ void WebPage::computeExpandAndShrinkThresholdsForHandle(const IntPoint& point, S
     if (areRangesEqual(expandedRange.ptr(), currentRange.get()))
         growThreshold = maxThreshold;
 
-    if (flags & IsBlockSelection && areRangesEqual(contractedRange.get(), currentRange.get()))
-        shrinkThreshold = minThreshold;
 }
 
 static inline bool shouldExpand(SelectionHandlePosition handlePosition, const IntRect& rect, const IntPoint& point)
@@ -1654,7 +1663,7 @@ void WebPage::updateBlockSelectionWithTouch(const IntPoint& point, uint32_t touc
 
     float growThreshold = 0;
     float shrinkThreshold = 0;
-    SelectionFlags flags = IsBlockSelection;
+    SelectionFlags flags = None;
 
     switch (static_cast<SelectionTouch>(touch)) {
     case SelectionTouch::Started:
@@ -1761,25 +1770,14 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
     case SelectionTouch::Moved:
         if (shouldSwitchToBlockModeForHandle(pointInDocument, handlePosition)) {
             range = switchToBlockSelectionAtPoint(pointInDocument, handlePosition);
-            flags = IsBlockSelection;
         } else
             range = rangeForPosition(&frame, position, baseIsStart);
         break;
     }
-    if (range && flags != IsBlockSelection)
+    if (range)
         frame.selection().setSelectedRange(range.get(), position.affinity(), true, UserTriggered);
 
     send(Messages::WebPageProxy::TouchesCallback(point, touches, flags, callbackID));
-    if (range && flags == IsBlockSelection) {
-        // We just switched to block selection therefore we need to compute the thresholds.
-        m_currentBlockSelection = range;
-        frame.selection().setSelectedRange(range.get(), position.affinity(), true, UserTriggered);
-        
-        float growThreshold = 0;
-        float shrinkThreshold = 0;
-        computeExpandAndShrinkThresholdsForHandle(point, handlePosition, growThreshold, shrinkThreshold);
-        send(Messages::WebPageProxy::DidUpdateBlockSelectionWithTouch(static_cast<uint32_t>(SelectionTouch::Started), static_cast<uint32_t>(IsBlockSelection), growThreshold, shrinkThreshold));
-    }
 }
 
 void WebPage::selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, CallbackID callbackID)
@@ -1840,13 +1838,6 @@ void WebPage::moveSelectionByOffset(int32_t offset, CallbackID callbackID)
     if (position.isNotNull() && startPosition != position)
         frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).ptr(), position.affinity(), true, UserTriggered);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
-}
-
-static VisiblePosition visiblePositionForPositionWithOffset(const VisiblePosition& position, int32_t offset)
-{
-    RefPtr<ContainerNode> root;
-    unsigned startIndex = indexForVisiblePosition(position, root);
-    return visiblePositionForIndex(startIndex + offset, root.get());
 }
 
 void WebPage::getRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, CallbackID callbackID)
@@ -2244,14 +2235,6 @@ void WebPage::applyAutocorrection(const String& correction, const String& origin
     send(Messages::WebPageProxy::StringCallback(correctionApplied ? correction : String(), callbackID));
 }
 
-void WebPage::executeEditCommandWithCallback(const String& commandName, CallbackID callbackID)
-{
-    executeEditCommand(commandName, String());
-    if (commandName == "toggleBold" || commandName == "toggleItalic" || commandName == "toggleUnderline")
-        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
-    send(Messages::WebPageProxy::VoidCallback(callbackID));
-}
-
 Seconds WebPage::eventThrottlingDelay() const
 {
     auto behaviorOverride = m_page->eventThrottlingBehaviorOverride();
@@ -2533,9 +2516,9 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
                                     FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
                                     FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
                                     // FIXME: Only select ExtendedColor on images known to need wide gamut
-                                    ShareableBitmap::Flags flags = ShareableBitmap::SupportsAlpha;
-                                    flags |= screenSupportsExtendedColor() ? ShareableBitmap::SupportsExtendedColor : 0;
-                                    if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), flags)) {
+                                    ShareableBitmap::Configuration bitmapConfiguration;
+                                    bitmapConfiguration.colorSpace.cgColorSpace = screenColorSpace(m_page->mainFrame().view());
+                                    if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), bitmapConfiguration)) {
                                         auto graphicsContext = sharedBitmap->createGraphicsContext();
                                         graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
                                         info.image = sharedBitmap;
@@ -3190,6 +3173,26 @@ std::optional<float> WebPage::scaleFromUIProcess(const VisibleContentRectUpdateI
     return scaleFromUIProcess;
 }
 
+static bool selectionIsInsideFixedPositionContainer(Frame& frame)
+{
+    auto& selection = frame.selection().selection();
+    if (selection.isNone())
+        return false;
+
+    bool isInsideFixedPosition = false;
+    if (selection.isCaret()) {
+        frame.selection().absoluteCaretBounds(&isInsideFixedPosition);
+        return isInsideFixedPosition;
+    }
+
+    selection.visibleStart().absoluteCaretBounds(&isInsideFixedPosition);
+    if (isInsideFixedPosition)
+        return true;
+
+    selection.visibleEnd().absoluteCaretBounds(&isInsideFixedPosition);
+    return isInsideFixedPosition;
+}
+
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo, MonotonicTime oldestTimestamp)
 {
     LOG_WITH_STREAM(VisibleRects, stream << "\nWebPage::updateVisibleContentRects " << visibleContentRectUpdateInfo);
@@ -3238,7 +3241,8 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
         hasSetPageScale = true;
     }
 
-    FrameView& frameView = *m_page->mainFrame().view();
+    auto& frame = m_page->mainFrame();
+    FrameView& frameView = *frame.view();
     if (scrollPosition != frameView.scrollPosition())
         m_dynamicSizeUpdateHistory.clear();
 
@@ -3260,10 +3264,10 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (m_isInStableState) {
         if (frameView.frame().settings().visualViewportEnabled()) {
             frameView.setLayoutViewportOverrideRect(LayoutRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
-            const auto& state = editorState();
-            if (!state.isMissingPostLayoutData && state.postLayoutData().insideFixedPosition) {
+            if (selectionIsInsideFixedPositionContainer(frame)) {
+                // Ensure that the next layer tree commit contains up-to-date caret/selection rects.
                 frameView.frame().selection().setCaretRectNeedsUpdate();
-                send(Messages::WebPageProxy::EditorStateChanged(state));
+                sendPartialEditorStateAndSchedulePostLayoutUpdate();
             }
         } else
             frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
@@ -3294,12 +3298,12 @@ void WebPage::willStartUserTriggeredZooming()
 }
 
 #if ENABLE(WEBGL)
-WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const String&)
+WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
 }
 
-WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const String&)
+WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
 }

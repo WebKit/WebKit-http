@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,6 +66,7 @@
 #include <pal/SessionID.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RunLoop.h>
+#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
@@ -207,6 +208,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     platformInitializeNetworkProcess(parameters);
 
     WTF::Thread::setCurrentThreadIsUserInitiated();
+    AtomicString::init();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     m_loadThrottleLatency = parameters.loadThrottleLatency;
@@ -237,7 +239,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     // FIXME: instead of handling this here, a message should be sent later (scales to multiple sessions)
     if (parameters.privateBrowsingEnabled)
-        RemoteNetworkingContext::ensurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }});
+        RemoteNetworkingContext::ensurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, { }});
 
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
@@ -319,9 +321,16 @@ void NetworkProcess::didGrantSandboxExtensionsToStorageProcessForBlobs(uint64_t 
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void NetworkProcess::updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd,  bool shouldClearFirst)
+void NetworkProcess::updatePrevalentDomainsWithAndWithoutInteraction(PAL::SessionID sessionID, const Vector<String>& domainsWithInteraction, const Vector<String>& domainsWithoutInteraction, bool shouldClearFirst)
 {
-    NetworkStorageSession::defaultStorageSession().setShouldPartitionCookiesForHosts(domainsToRemove, domainsToAdd, shouldClearFirst);
+    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        networkStorageSession->setPrevalentDomainsWithAndWithoutInteraction(domainsWithInteraction, domainsWithoutInteraction, shouldClearFirst);
+}
+
+void NetworkProcess::removePrevalentDomains(PAL::SessionID sessionID, const Vector<String>& domains)
+{
+    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        networkStorageSession->removePrevalentDomains(domains);
 }
 #endif
 
@@ -701,6 +710,21 @@ void NetworkProcess::prefetchDNS(const String& hostname)
     WebCore::prefetchDNS(hostname);
 }
 
+String NetworkProcess::cacheStorageDirectory(PAL::SessionID sessionID) const
+{
+    if (sessionID.isEphemeral())
+        return { };
+
+    if (sessionID == PAL::SessionID::defaultSessionID())
+        return m_cacheStorageDirectory;
+
+    auto* session = NetworkStorageSession::storageSession(sessionID);
+    if (!session)
+        return { };
+
+    return session->cacheStorageDirectory();
+}
+
 #if !PLATFORM(COCOA)
 void NetworkProcess::initializeProcess(const ChildProcessInitializationParameters&)
 {
@@ -717,6 +741,7 @@ void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameter
 void NetworkProcess::syncAllCookies()
 {
 }
+
 #endif
 
 } // namespace WebKit

@@ -83,6 +83,8 @@ struct WindowFeatures;
 WEBCORE_EXPORT bool isBackForwardLoadType(FrameLoadType);
 WEBCORE_EXPORT bool isReload(FrameLoadType);
 
+using ContentPolicyDecisionFunction = WTF::Function<void(PolicyAction)>;
+
 class FrameLoader {
     WTF_MAKE_NONCOPYABLE(FrameLoader);
 public:
@@ -207,6 +209,8 @@ public:
 
     void setDefersLoading(bool);
 
+    void checkContentPolicy(const ResourceResponse&, ContentPolicyDecisionFunction&&);
+
     void didExplicitOpen();
 
     // Callbacks from DocumentWriter
@@ -261,7 +265,6 @@ public:
     bool allAncestorsAreComplete() const; // including this
     void clientRedirected(const URL&, double delay, double fireDate, LockBackForwardList);
     void clientRedirectCancelledOrFinished(bool cancelWithLoadInProgress);
-    void performClientRedirect(FrameLoadRequest&&);
 
     // FIXME: This is public because this asynchronous callback from the FrameLoaderClient
     // uses the policy machinery (and therefore is called via the PolicyChecker).  Once we

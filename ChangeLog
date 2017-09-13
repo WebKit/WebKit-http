@@ -1,3 +1,123 @@
+2017-09-07  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][CMake] Add "dist" and "distcheck" targets
+        https://bugs.webkit.org/show_bug.cgi?id=176448
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add "dist" and "distcheck" CMake targets, which create release tarballs.
+        These are available only when configuring with -DDEVELOPER_MODE=TRUE.
+
+        * Source/PlatformWPE.cmake: Added.
+        * Source/cmake/FindXz.cmake: Added.
+
+2017-09-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Wrong use of PLUGIN_ARCHITECTURE(X11) in several places
+        https://bugs.webkit.org/show_bug.cgi?id=176329
+
+        Reviewed by Michael Catanzaro.
+
+        Only define MOZ_X11 if X11 target is enabled and always define XP_UNIX if NETSCAPE_PLUGIN_API is enabled.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-09-03  Sam Weinig  <sam@webkit.org>
+
+        Remove CanvasProxy
+        https://bugs.webkit.org/show_bug.cgi?id=176288
+
+        Reviewed by Yusuke Suzuki.
+
+        CanvasProxy does not appear to be in any current HTML spec
+        and was disabled and unimplemented in our tree. Time to 
+        get rid of it.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-08-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make USE_CF conditional within Windows
+        https://bugs.webkit.org/show_bug.cgi?id=176173
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2017-08-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WinCairo] Use find_package for libpng and libjpeg
+        https://bugs.webkit.org/show_bug.cgi?id=176113
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2017-08-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Enable MEMORY_SAMPLER
+        https://bugs.webkit.org/show_bug.cgi?id=176099
+
+        Reviewed by Michael Catanzaro.
+
+        Enable the otion at build time by default on Linux (currently
+        there are only Linux and Mac implementations of this feature).
+
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix versions numbers after r221136.
+
+        We normally use .0 in trunk after branching, and bump to .1 when making the first unstable release. We also need
+        to bump the library version.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-29  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use find_package for zlib
+        https://bugs.webkit.org/show_bug.cgi?id=176075
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2017-08-29  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use find_package for libxml2 and libxstl
+        https://bugs.webkit.org/show_bug.cgi?id=176042
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2017-08-24  Tomas Popela  <tpopela@redhat.com>
+
+        Bump trunk version to be 2.19.1
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-08-24  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use find_package for SQLite
+        https://bugs.webkit.org/show_bug.cgi?id=175803
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
 2017-08-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
 
         [GStreamer][GTK][WPE] Move common things to GStreamer cmake files
@@ -11,6 +131,41 @@
         dependencies are met depending on the option switches.
 
         Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/GStreamerChecks.cmake: Added.
+        * Source/cmake/GStreamerDefinitions.cmake: Added.
+        * Source/cmake/GStreamerDependencies.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-08-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221006.
+        https://bugs.webkit.org/show_bug.cgi?id=175821
+
+        generates build failures in the bots (Requested by calvaris[m]
+        on #webkit).
+
+        Reverted changeset:
+
+        "[GStreamer][GTK][WPE] Move common things to GStreamer cmake
+        files"
+        https://bugs.webkit.org/show_bug.cgi?id=175625
+        http://trac.webkit.org/changeset/221006
+
+2017-08-22  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][GTK][WPE] Move common things to GStreamer cmake files
+        https://bugs.webkit.org/show_bug.cgi?id=175625
+
+        Three files were created as kind of hooks for the GTK and WPE
+        CMake option files. The definitions one is to enable, disable and
+        create the common options (that can be and are actually overriden
+        in some cases. The dependencies one adds dependencies for the
+        option switches that are set. The checks one ensure the
+        dependencies are met depending on the option switches.
+
+        Reviewed by Žan Doberšek.
 
         * Source/cmake/GStreamerChecks.cmake: Added.
         * Source/cmake/GStreamerDefinitions.cmake: Added.

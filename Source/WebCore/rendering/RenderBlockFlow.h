@@ -283,7 +283,8 @@ public:
     RenderMultiColumnFlowThread* multiColumnFlowThread() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlowThread : nullptr; }
     void setMultiColumnFlowThread(RenderMultiColumnFlowThread*);
     bool willCreateColumns(std::optional<unsigned> desiredColumnCount = std::nullopt) const;
-    
+    virtual bool requiresColumns(int) const;
+
     bool containsFloats() const override { return m_floatingObjects && !m_floatingObjects->set().isEmpty(); }
     bool containsFloat(RenderBox&) const;
 
@@ -391,9 +392,6 @@ public:
     void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
     void removeChild(RenderObject&) override;
 
-    void createMultiColumnFlowThread();
-    void destroyMultiColumnFlowThread();
-
     void updateColumnProgressionFromStyle(RenderStyle&);
     void updateStylesForColumnChildren();
 
@@ -469,8 +467,7 @@ protected:
     void addFloatsToNewParent(RenderBlockFlow& toBlockFlow) const;
     
     virtual void computeColumnCountAndWidth();
-    virtual bool requiresColumns(int) const;
-    
+
     virtual void cachePriorCharactersIfNeeded(const LazyLineBreakIterator&) {};
     
 protected:
@@ -595,7 +592,6 @@ private:
     // line, i.e., that it can't be re-used.
     bool lineWidthForPaginatedLineChanged(RootInlineBox*, LayoutUnit lineDelta, RenderFlowThread*) const;
     void updateLogicalWidthForAlignment(const ETextAlign&, const RootInlineBox*, BidiRun* trailingSpaceRun, float& logicalLeft, float& totalLogicalWidth, float& availableLogicalWidth, int expansionOpportunityCount);
-    void marginCollapseLinesFromStart(LineLayoutState&, RootInlineBox* stopLine);
 // END METHODS DEFINED IN RenderBlockLineLayout
 
     bool namedFlowFragmentNeedsUpdate() const;

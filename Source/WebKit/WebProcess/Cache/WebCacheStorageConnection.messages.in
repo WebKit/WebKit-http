@@ -21,11 +21,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebCacheStorageConnection {
-    OpenCompleted(uint64_t requestIdentifier, WebKit::CacheStorageEngine::CacheIdentifierOrError result);
-    RemoveCompleted(uint64_t requestIdentifier, WebKit::CacheStorageEngine::CacheIdentifierOrError result);
-    UpdateCaches(uint64_t requestIdentifier, WebKit::CacheStorageEngine::CacheInfosOrError result);
+    OpenCompleted(uint64_t requestIdentifier, WebCore::DOMCacheEngine::CacheIdentifierOrError result);
+    RemoveCompleted(uint64_t requestIdentifier, WebCore::DOMCacheEngine::CacheIdentifierOrError result);
+    UpdateCaches(uint64_t requestIdentifier, WebCore::DOMCacheEngine::CacheInfosOrError result);
 
-    UpdateRecords(uint64_t requestIdentifier, WebKit::CacheStorageEngine::RecordsOrError result);
-    DeleteRecordsCompleted(uint64_t requestIdentifier, WebKit::CacheStorageEngine::RecordIdentifiersOrError result);
-    PutRecordsCompleted(uint64_t requestIdentifier, WebKit::CacheStorageEngine::RecordIdentifiersOrError result);
+    UpdateRecords(uint64_t requestIdentifier, WebCore::DOMCacheEngine::RecordsOrError result);
+    DeleteRecordsCompleted(uint64_t requestIdentifier, WebCore::DOMCacheEngine::RecordIdentifiersOrError result);
+    PutRecordsCompleted(uint64_t requestIdentifier, WebCore::DOMCacheEngine::RecordIdentifiersOrError result);
+
+    EngineRepresentationCompleted(uint64_t requestIdentifier, String representation);
 }

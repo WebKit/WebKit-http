@@ -47,10 +47,6 @@
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
-#if OS(SOLARIS)
-#include <sys/time.h> // For time_t structure.
-#endif
-
 #if PLATFORM(COCOA)
 #include <wtf/SchedulePair.h>
 #endif
@@ -504,7 +500,7 @@ public:
 
     PluginInfoProvider& pluginInfoProvider();
 
-    UserContentProvider& userContentProvider();
+    WEBCORE_EXPORT UserContentProvider& userContentProvider();
     WEBCORE_EXPORT void setUserContentProvider(Ref<UserContentProvider>&&);
 
     VisitedLinkStore& visitedLinkStore();

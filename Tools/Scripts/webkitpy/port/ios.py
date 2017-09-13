@@ -25,6 +25,7 @@ import traceback
 
 from webkitpy.common.memoized import memoized
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
+from webkitpy.port.config import apple_additions
 from webkitpy.port.darwin import DarwinPort
 from webkitpy.port.simulator_process import SimulatorProcess
 
@@ -86,11 +87,30 @@ class IOSPort(DarwinPort):
             return self._testing_device(worker_number)
         return self._current_device
 
+    def _apple_additions_path(self, name):
+        if name == 'wk2':
+            return None
+        split_name = name.split('-')
+        os_index = -1
+        for i in xrange(2):
+            if split_name[os_index] == 'wk1' or split_name[os_index] == 'wk2' or split_name[os_index] == 'simulator' or split_name[os_index] == 'device':
+                os_index -= 1
+        if split_name[os_index] != split_name[0]:
+            os_name = apple_additions().ios_os_name(split_name[os_index])
+            if not os_name:
+                return None
+            split_name[os_index] = os_name
+        name = '-'.join(split_name)
+        return self._filesystem.join(apple_additions().layout_tests_path(), name)
+
+    @memoized
     def default_baseline_search_path(self):
         wk_string = 'wk1'
         if self.get_option('webkit_test_runner'):
             wk_string = 'wk2'
         fallback_names = [
+            '{}-{}-{}'.format(self.port_name, self.ios_version().split('.')[0], wk_string),
+            '{}-{}'.format(self.port_name, self.ios_version().split('.')[0]),
             '{}-{}'.format(self.port_name, wk_string),
             self.port_name,
             '{}-{}'.format(IOSPort.port_name, self.ios_version().split('.')[0]),
@@ -100,7 +120,16 @@ class IOSPort(DarwinPort):
         if self.get_option('webkit_test_runner'):
             fallback_names.append('wk2')
 
-        return map(self._webkit_baseline_path, fallback_names)
+        webkit_expectations = map(self._webkit_baseline_path, fallback_names)
+        if apple_additions() and getattr(apple_additions(), "layout_tests_path", None):
+            apple_expectations = map(self._apple_additions_path, fallback_names)
+            result = []
+            for i in xrange(len(webkit_expectations)):
+                if apple_expectations[i]:
+                    result.append(apple_expectations[i])
+                result.append(webkit_expectations[i])
+            return result
+        return webkit_expectations
 
     def test_expectations_file_position(self):
         return 4

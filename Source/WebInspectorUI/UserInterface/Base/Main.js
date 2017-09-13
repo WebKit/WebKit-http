@@ -288,6 +288,12 @@ WI.contentLoaded = function()
 
     this.clearKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "K", this._clear.bind(this));
 
+    // FIXME: <https://webkit.org/b/151310> Web Inspector: Command-E should propagate to other search fields (including the system)
+    this.populateFindKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "E", this._populateFind.bind(this));
+    this.populateFindKeyboardShortcut.implicitlyPreventsDefault = false;
+    this.findNextKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, "G", this._findNext.bind(this));
+    this.findPreviousKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift | WI.KeyboardShortcut.Modifier.CommandOrControl, "G", this._findPrevious.bind(this));
+
     this.quickConsole = new WI.QuickConsole(document.getElementById("quick-console"));
 
     this._consoleRepresentedObject = new WI.LogObject;
@@ -383,21 +389,20 @@ WI.contentLoaded = function()
     this._downloadToolbarButton = new WI.ButtonToolbarItem("download", WI.UIString("Download Web Archive"), "Images/DownloadArrow.svg");
     this._downloadToolbarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._downloadWebArchive, this);
 
+    var toolTip = WI.UIString("Start element selection (%s)").format(WI._inspectModeKeyboardShortcut.displayName);
+    var activatedToolTip = WI.UIString("Stop element selection (%s)").format(WI._inspectModeKeyboardShortcut.displayName);
+    this._inspectModeToolbarButton = new WI.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, "Images/Crosshair.svg");
+    this._inspectModeToolbarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._toggleInspectMode, this);
+
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
-
-    // The toolbar button for node inspection.
-    if (this.debuggableType === WI.DebuggableType.Web) {
-        var toolTip = WI.UIString("Start element selection (%s)").format(WI._inspectModeKeyboardShortcut.displayName);
-        var activatedToolTip = WI.UIString("Stop element selection (%s)").format(WI._inspectModeKeyboardShortcut.displayName);
-        this._inspectModeToolbarButton = new WI.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, "Images/Crosshair.svg");
-        this._inspectModeToolbarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._toggleInspectMode, this);
-    }
+    this._updateInspectModeToolbarButton();
 
     this._dashboardContainer = new WI.DashboardContainerView;
     this._dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.default);
 
-    this._searchToolbarItem = new WI.SearchBar("inspector-search", WI.UIString("Search"), true);
+    const incremental = false;
+    this._searchToolbarItem = new WI.SearchBar("inspector-search", WI.UIString("Search"), incremental);
     this._searchToolbarItem.addEventListener(WI.SearchBar.Event.TextChanged, this._searchTextDidChange, this);
 
     this.toolbar.addToolbarItem(this._closeToolbarButton, WI.Toolbar.Section.Control);
@@ -411,8 +416,7 @@ WI.contentLoaded = function()
 
     this.toolbar.addToolbarItem(this._dashboardContainer.toolbarItem, WI.Toolbar.Section.Center);
 
-    if (this._inspectModeToolbarButton)
-        this.toolbar.addToolbarItem(this._inspectModeToolbarButton, WI.Toolbar.Section.CenterRight);
+    this.toolbar.addToolbarItem(this._inspectModeToolbarButton, WI.Toolbar.Section.CenterRight);
 
     this.toolbar.addToolbarItem(this._searchToolbarItem, WI.Toolbar.Section.Right);
 
@@ -433,6 +437,8 @@ WI.contentLoaded = function()
         WI.ConsoleTabContentView,
         WI.DebuggerTabContentView,
         WI.ElementsTabContentView,
+        WI.LayersTabContentView,
+        WI.LegacyNetworkTabContentView,
         WI.NetworkTabContentView,
         WI.NewTabContentView,
         WI.RecordingTabContentView,
@@ -712,6 +718,8 @@ WI.activateExtraDomains = function(domains)
 
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
+    this._updateInspectModeToolbarButton();
+
     this._tryToRestorePendingTabs();
 };
 
@@ -995,9 +1003,17 @@ WI.showStorageTab = function()
 
 WI.showNetworkTab = function()
 {
-    var tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.NetworkTabContentView);
-    if (!tabContentView)
-        tabContentView = new WI.NetworkTabContentView;
+    let tabContentView;
+    if (WI.settings.experimentalEnableNewNetworkTab.value) {
+        tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.NetworkTabContentView);
+        if (!tabBrowser)
+            tabBrowser = new WI.NetworkTabContentView;
+    } else {
+        tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.LegacyNetworkTabContentView);
+        if (!tabContentView)
+            tabContentView = new WI.LegacyNetworkTabContentView;
+    }
+
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
@@ -1044,6 +1060,30 @@ WI.toggleDetailsSidebar = function(event)
     if (!this.detailsSidebar.selectedSidebarPanel)
         this.detailsSidebar.selectedSidebarPanel = this.detailsSidebar.sidebarPanels[0];
     this.detailsSidebar.collapsed = false;
+};
+
+WI.getMaximumSidebarWidth = function(sidebar)
+{
+    console.assert(sidebar instanceof WI.Sidebar);
+
+    const minimumContentBrowserWidth = 100;
+
+    let minimumWidth = window.innerWidth - minimumContentBrowserWidth;
+    let tabContentView = this.tabBrowser.selectedTabContentView;
+    console.assert(tabContentView);
+    if (!tabContentView)
+        return minimumWidth;
+
+    let otherSidebar = null;
+    if (sidebar === this.navigationSidebar)
+        otherSidebar = tabContentView.detailsSidebarPanels.length ? this.detailsSidebar : null;
+    else
+        otherSidebar = tabContentView.navigationSidebarPanel ? this.navigationSidebar : null;
+
+    if (otherSidebar)
+        minimumWidth -= otherSidebar.width;
+
+    return minimumWidth;
 };
 
 WI.tabContentViewClassForRepresentedObject = function(representedObject)
@@ -1832,6 +1872,16 @@ WI._updateDownloadToolbarButton = function()
     this._downloadToolbarButton.enabled = this.canArchiveMainFrame();
 };
 
+WI._updateInspectModeToolbarButton = function()
+{
+    if (!window.DOMAgent || !DOMAgent.setInspectModeEnabled) {
+        this._inspectModeToolbarButton.hidden = true;
+        return;
+    }
+
+    this._inspectModeToolbarButton.hidden = false;
+}
+
 WI._toggleInspectMode = function(event)
 {
     this.domTreeManager.inspectModeEnabled = !this.domTreeManager.inspectModeEnabled;
@@ -1851,7 +1901,7 @@ WI._focusedContentBrowser = function()
 {
     if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
         var tabContentView = this.tabBrowser.selectedTabContentView;
-        if (tabContentView instanceof WI.ContentBrowserTabContentView)
+        if (tabContentView.contentBrowser)
             return tabContentView.contentBrowser;
         return null;
     }
@@ -1867,7 +1917,7 @@ WI._focusedContentView = function()
 {
     if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
         var tabContentView = this.tabBrowser.selectedTabContentView;
-        if (tabContentView instanceof WI.ContentBrowserTabContentView)
+        if (tabContentView.contentBrowser)
             return tabContentView.contentBrowser.currentContentView;
         return tabContentView;
     }
@@ -1886,7 +1936,7 @@ WI._focusedOrVisibleContentBrowser = function()
         return focusedContentBrowser;
 
     var tabContentView = this.tabBrowser.selectedTabContentView;
-    if (tabContentView instanceof WI.ContentBrowserTabContentView)
+    if (tabContentView.contentBrowser)
         return tabContentView.contentBrowser;
 
     return null;
@@ -1899,7 +1949,7 @@ WI.focusedOrVisibleContentView = function()
         return focusedContentView;
 
     var tabContentView = this.tabBrowser.selectedTabContentView;
-    if (tabContentView instanceof WI.ContentBrowserTabContentView)
+    if (tabContentView.contentBrowser)
         return tabContentView.contentBrowser.currentContentView;
     return tabContentView;
 };
@@ -1972,6 +2022,51 @@ WI._clear = function(event)
 
     contentView.handleClearShortcut(event);
 };
+
+WI._populateFind = function(event)
+{
+    let focusedContentView = this._focusedContentView();
+    if (focusedContentView.supportsCustomFindBanner) {
+        focusedContentView.handlePopulateFindShortcut();
+        return;
+    }
+
+    let contentBrowser = this._focusedOrVisibleContentBrowser();
+    if (!contentBrowser)
+        return;
+
+    contentBrowser.handlePopulateFindShortcut();
+}
+
+WI._findNext = function(event)
+{
+    let focusedContentView = this._focusedContentView();
+    if (focusedContentView.supportsCustomFindBanner) {
+        focusedContentView.handleFindNextShortcut();
+        return;
+    }
+
+    let contentBrowser = this._focusedOrVisibleContentBrowser();
+    if (!contentBrowser)
+        return;
+
+    contentBrowser.handleFindNextShortcut();
+}
+
+WI._findPrevious = function(event)
+{
+    let focusedContentView = this._focusedContentView();
+    if (focusedContentView.supportsCustomFindBanner) {
+        focusedContentView.handleFindPreviousShortcut();
+        return;
+    }
+
+    let contentBrowser = this._focusedOrVisibleContentBrowser();
+    if (!contentBrowser)
+        return;
+
+    contentBrowser.handleFindPreviousShortcut();
+}
 
 WI._copy = function(event)
 {

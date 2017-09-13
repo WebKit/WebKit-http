@@ -3,7 +3,7 @@
   "devDependencies": {
     "enzyme": "^2.4.1",
     "react-addons-test-utils": "^15.3.0",
-    "react-scripts": "^0.6.0"
+    "react-scripts": "^1.0.13"
   },
   "dependencies": {
     "classnames": "^2.2.5",
@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && mv build dist",
+    "build": "rm -rf dist && react-scripts build && mv build dist",
     "test": "react-scripts test"
   },
   "homepage": "./"

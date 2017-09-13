@@ -64,6 +64,9 @@ fast/events/mouse-force-up.html [ Skip ]
 fast/events/autoscroll-when-zoomed.html [ Skip ]
 fast/events/autoscroll-main-document.html [ Skip ]
 
+# Drag and drop via EventSender is only supported on Mac WK1
+editing/pasteboard/drag-drop-href-as-text-data.html [ Skip ]
+
 # Only iOS supports QuickLook
 quicklook [ Skip ]
 http/tests/quicklook [ Skip ]
@@ -120,8 +123,6 @@ imported/w3c/web-platform-tests/service-workers [ Skip ]
 imported/w3c/web-platform-tests/service-workers/stub-4.6.2-cache.html [ Pass ]
 imported/w3c/web-platform-tests/service-workers/stub-4.6.3-cache-storage.html [ Pass ]
 imported/w3c/web-platform-tests/service-workers/cache-storage [ Pass ]
-imported/w3c/web-platform-tests/service-workers/cache-storage/window/cache-put.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/cache-storage/worker/cache-put.https.html [ Pass Failure ]
 
 # textarea.animate is not supported
 imported/w3c/web-platform-tests/css/css-ui-3/caret-color-018.html [ Skip ]
@@ -136,6 +137,8 @@ fast/text/font-lookup-dot-prefix-case-sensitive.html [ Skip ]
 
 # Payment Request is only enabled on Cocoa platforms.
 imported/w3c/web-platform-tests/payment-request [ Skip ]
+
+webkit.org/b/175269 imported/w3c/web-platform-tests/eventsource/event-data.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -727,6 +730,7 @@ webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirem
 # Content extensions are Mac-WK2-only for now
 http/tests/contentextensions [ Skip ]
 http/tests/websocket/tests/hybi/contentextensions [ Skip ]
+http/wpt/beacon/contentextensions [ Skip ]
 
 webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
 
@@ -1449,3 +1453,9 @@ compositing/regions [ Skip ]
 fast/ruby/ruby-rt-with-region-crash.html [ Skip ]
 inspector/dom/content-node-region-info.html [ Skip ]
 fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html [ Skip ]
+
+webkit.org/b/171945 perf/class-list-remove.html [ Pass Failure Timeout ]
+
+webkit.org/b/176183 fast/block/inside-inlines/opacity-on-inline.html [ ImageOnlyFailure ]
+
+webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-different-options.html [ Pass Failure ]

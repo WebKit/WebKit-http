@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,12 +37,18 @@
 
 namespace JSC { namespace DFG {
 
+// FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
 void handleExitCounts(CCallHelpers& jit, const OSRExitBase& exit)
 {
-    jit.add32(AssemblyHelpers::TrustedImm32(1), AssemblyHelpers::AbsoluteAddress(&exit.m_count));
-
-    if (!exitKindMayJettison(exit.m_kind))
+    if (!exitKindMayJettison(exit.m_kind)) {
+        // FIXME: We may want to notice that we're frequently exiting
+        // at an op_catch that we didn't compile an entrypoint for, and
+        // then trigger a reoptimization of this CodeBlock:
+        // https://bugs.webkit.org/show_bug.cgi?id=175842
         return;
+    }
+
+    jit.add32(AssemblyHelpers::TrustedImm32(1), AssemblyHelpers::AbsoluteAddress(&exit.m_count));
     
     jit.move(AssemblyHelpers::TrustedImmPtr(jit.codeBlock()), GPRInfo::regT0);
     
@@ -138,6 +144,7 @@ void handleExitCounts(CCallHelpers& jit, const OSRExitBase& exit)
     doneAdjusting.link(&jit);
 }
 
+// FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
 void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
 {
     // FIXME: We shouldn't leave holes on the stack when performing an OSR exit
@@ -217,7 +224,7 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
             GPRInfo::regT2);
 
         if (!inlineCallFrame->isVarargs())
-            jit.store32(AssemblyHelpers::TrustedImm32(inlineCallFrame->arguments.size()), AssemblyHelpers::payloadFor((VirtualRegister)(inlineCallFrame->stackOffset + CallFrameSlot::argumentCount)));
+            jit.store32(AssemblyHelpers::TrustedImm32(inlineCallFrame->argumentCountIncludingThis), AssemblyHelpers::payloadFor((VirtualRegister)(inlineCallFrame->stackOffset + CallFrameSlot::argumentCount)));
 #if USE(JSVALUE64)
         jit.store64(callerFrameGPR, AssemblyHelpers::addressForByteOffset(inlineCallFrame->callerFrameOffset()));
         uint32_t locationBits = CallSiteIndex(codeOrigin->bytecodeIndex).bits();
@@ -247,6 +254,7 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
     }
 }
 
+// FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
 static void osrWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch)
 {
     AssemblyHelpers::Jump ownerIsRememberedOrInEden = jit.barrierBranchWithoutFence(owner);
@@ -267,6 +275,7 @@ static void osrWriteBarrier(CCallHelpers& jit, GPRReg owner, GPRReg scratch)
     ownerIsRememberedOrInEden.link(&jit);
 }
 
+// FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
 void adjustAndJumpToTarget(VM& vm, CCallHelpers& jit, const OSRExitBase& exit)
 {
     jit.memoryFence();

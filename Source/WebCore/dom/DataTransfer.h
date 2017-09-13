@@ -92,11 +92,17 @@ public:
     void setDragHasStarted() { m_shouldUpdateDragImage = true; }
     DragImageRef createDragImage(IntPoint& dragLocation) const;
     void updateDragImage();
+    RefPtr<Element> dragImageElement() const;
 #endif
 
 private:
     enum class Type { CopyAndPaste, DragAndDropData, DragAndDropFiles, InputEvent };
     DataTransfer(StoreMode, std::unique_ptr<Pasteboard>, Type = Type::CopyAndPaste);
+
+#if ENABLE(DRAG_SUPPORT)
+    bool forDrag() const { return m_type == Type::DragAndDropData || m_type == Type::DragAndDropFiles; }
+    bool forFileDrag() const { return m_type == Type::DragAndDropFiles; }
+#endif
 
     StoreMode m_storeMode;
     std::unique_ptr<Pasteboard> m_pasteboard;
@@ -105,8 +111,7 @@ private:
     mutable RefPtr<FileList> m_fileList;
 
 #if ENABLE(DRAG_SUPPORT)
-    bool m_forDrag;
-    bool m_forFileDrag;
+    Type m_type;
     String m_dropEffect;
     String m_effectAllowed;
     bool m_shouldUpdateDragImage;

@@ -57,12 +57,13 @@ WI.ContentBrowser = class ContentBrowser extends WI.View
             this._backNavigationItem = new WI.ButtonNavigationItem("back", WI.UIString("Back (%s)").format(this._backKeyboardShortcut.displayName), backButtonImage, 8, 13);
             this._backNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, goBack);
             this._backNavigationItem.enabled = false;
-            this._navigationBar.addNavigationItem(this._backNavigationItem);
 
             this._forwardNavigationItem = new WI.ButtonNavigationItem("forward", WI.UIString("Forward (%s)").format(this._forwardKeyboardShortcut.displayName), forwardButtonImage, 8, 13);
             this._forwardNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, goForward);
             this._forwardNavigationItem.enabled = false;
-            this._navigationBar.addNavigationItem(this._forwardNavigationItem);
+
+            let navigationButtonsGroup = new WI.GroupNavigationItem([this._backNavigationItem, this._forwardNavigationItem]);
+            this._navigationBar.addNavigationItem(navigationButtonsGroup);
 
             this._navigationBar.addNavigationItem(new WI.DividerNavigationItem);
         }
@@ -226,9 +227,48 @@ WI.ContentBrowser = class ContentBrowser extends WI.View
         this._findBanner.show();
     }
 
+    shown()
+    {
+        this._contentViewContainer.shown();
+    }
+
+    hidden()
+    {
+        this._contentViewContainer.hidden();
+    }
+
+    // Global ContentBrowser KeyboardShortcut handlers
+
+    handlePopulateFindShortcut()
+    {
+        let currentContentView = this.currentContentView;
+        if (!currentContentView || !currentContentView.supportsSearch)
+            return;
+
+        let searchQuery = currentContentView.searchQueryWithSelection();
+        if (!searchQuery)
+            return;
+
+        this._findBanner.searchQuery = searchQuery;
+
+        currentContentView.performSearch(this._findBanner.searchQuery);
+    }
+
+    handleFindNextShortcut()
+    {
+        this.findBannerRevealNextResult(this._findBanner);
+    }
+
+    handleFindPreviousShortcut()
+    {
+        this.findBannerRevealPreviousResult(this._findBanner);
+    }
+
+    // FindBanner delegate
+
     findBannerPerformSearch(findBanner, query)
     {
-        var currentContentView = this.currentContentView;
+        let currentContentView = this.currentContentView;
         if (!currentContentView || !currentContentView.supportsSearch)
             return;
 
@@ -237,25 +277,16 @@ WI.ContentBrowser = class ContentBrowser extends WI.View
 
     findBannerSearchCleared(findBanner)
     {
-        var currentContentView = this.currentContentView;
+        let currentContentView = this.currentContentView;
         if (!currentContentView || !currentContentView.supportsSearch)
             return;
 
         currentContentView.searchCleared();
     }
 
-    findBannerSearchQueryForSelection(findBanner)
-    {
-        var currentContentView = this.currentContentView;
-        if (!currentContentView || !currentContentView.supportsSearch)
-            return null;
-
-        return currentContentView.searchQueryWithSelection();
-    }
-
     findBannerRevealPreviousResult(findBanner)
     {
-        var currentContentView = this.currentContentView;
+        let currentContentView = this.currentContentView;
         if (!currentContentView || !currentContentView.supportsSearch)
             return;
 
@@ -264,27 +295,11 @@ WI.ContentBrowser = class ContentBrowser extends WI.View
 
     findBannerRevealNextResult(findBanner)
     {
-        var currentContentView = this.currentContentView;
+        let currentContentView = this.currentContentView;
         if (!currentContentView || !currentContentView.supportsSearch)
             return;
 
         currentContentView.revealNextSearchResult(!findBanner.showing);
-    }
-
-    shown()
-    {
-        this._contentViewContainer.shown();
-
-        if (this._findBanner)
-            this._findBanner.enableKeyboardShortcuts();
-    }
-
-    hidden()
-    {
-        this._contentViewContainer.hidden();
-
-        if (this._findBanner)
-            this._findBanner.disableKeyboardShortcuts();
     }
 
     // Private

@@ -21,6 +21,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/encryptedmedia/legacy"
+    "${WEBCORE_DIR}/Modules/entriesapi"
     "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/beacon"
@@ -132,6 +133,10 @@ set(WebCore_INCLUDE_DIRECTORIES
 
 set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
+    ${LIBXML2_INCLUDE_DIR}
+    ${LIBXSLT_INCLUDE_DIR}
+    ${SQLITE_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
 )
 
 set(WebCore_IDL_INCLUDES
@@ -152,6 +157,7 @@ set(WebCore_IDL_INCLUDES
     Modules/cache
     Modules/credentials
     Modules/encryptedmedia/legacy
+    Modules/entriesapi
     Modules/fetch
     Modules/geolocation
     Modules/beacon
@@ -180,7 +186,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/beacon/NavigatorBeacon.idl
 
-    Modules/cache/Cache.idl
+    Modules/cache/DOMCache.idl
     Modules/cache/CacheQueryOptions.idl
     Modules/cache/CacheStorage.idl
     Modules/cache/DOMWindowCaches.idl
@@ -198,6 +204,17 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/credentials/NavigatorCredentials.idl
     Modules/credentials/PasswordCredential.idl
     Modules/credentials/PasswordCredentialData.idl
+
+    Modules/entriesapi/DOMFileSystem.idl
+    Modules/entriesapi/ErrorCallback.idl
+    Modules/entriesapi/FileCallback.idl
+    Modules/entriesapi/FileSystemDirectoryEntry.idl
+    Modules/entriesapi/FileSystemDirectoryReader.idl
+    Modules/entriesapi/FileSystemEntriesCallback.idl
+    Modules/entriesapi/FileSystemEntry.idl
+    Modules/entriesapi/FileSystemEntryCallback.idl
+    Modules/entriesapi/FileSystemFileEntry.idl
+    Modules/entriesapi/HTMLInputElementEntriesAPI.idl
 
     Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
@@ -313,6 +330,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/ReadableStreamBYOBRequest.idl
     Modules/streams/ReadableStreamDefaultController.idl
     Modules/streams/ReadableStreamDefaultReader.idl
+    Modules/streams/ReadableStreamSink.idl
     Modules/streams/ReadableStreamSource.idl
     Modules/streams/WritableStream.idl
 
@@ -415,6 +433,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSSupportsRule.idl
     css/CSSUnknownRule.idl
     css/DOMMatrix.idl
+    css/DOMMatrix2DInit.idl
     css/DOMMatrixInit.idl
     css/DOMMatrixReadOnly.idl
     css/DeprecatedCSSOMCounter.idl
@@ -636,12 +655,33 @@ set(WebCore_NON_SVG_IDL_FILES
     html/ValidityState.idl
     html/VoidCallback.idl
 
+    html/canvas/CanvasCompositing.idl
+    html/canvas/CanvasDirection.idl
+    html/canvas/CanvasDrawImage.idl
+    html/canvas/CanvasDrawPath.idl
+    html/canvas/CanvasFillRule.idl
+    html/canvas/CanvasFillStrokeStyles.idl
+    html/canvas/CanvasFilters.idl
     html/canvas/CanvasGradient.idl
+    html/canvas/CanvasImageData.idl
+    html/canvas/CanvasImageSmoothing.idl
+    html/canvas/CanvasLineCap.idl
+    html/canvas/CanvasLineJoin.idl
     html/canvas/CanvasPath.idl
+    html/canvas/CanvasPathDrawingStyles.idl
     html/canvas/CanvasPattern.idl
-    html/canvas/CanvasProxy.idl
+    html/canvas/CanvasRect.idl
     html/canvas/CanvasRenderingContext2D.idl
-    html/canvas/DOMPath.idl
+    html/canvas/CanvasShadowStyles.idl
+    html/canvas/CanvasState.idl
+    html/canvas/CanvasText.idl
+    html/canvas/CanvasTextAlign.idl
+    html/canvas/CanvasTextBaseline.idl
+    html/canvas/CanvasTextDrawingStyles.idl
+    html/canvas/CanvasTransform.idl
+    html/canvas/CanvasUserInterface.idl
+    html/canvas/ImageSmoothingQuality.idl
+    html/canvas/Path2D.idl
     html/canvas/WebGPUBuffer.idl
     html/canvas/WebGPUCommandBuffer.idl
     html/canvas/WebGPUCommandQueue.idl
@@ -898,9 +938,10 @@ set(WebCore_SOURCES
 
     Modules/beacon/NavigatorBeacon.cpp
 
-    Modules/cache/Cache.cpp
+    Modules/cache/DOMCache.cpp
     Modules/cache/CacheStorage.cpp
     Modules/cache/CacheStorageConnection.cpp
+    Modules/cache/DOMCacheEngine.cpp
     Modules/cache/DOMWindowCaches.cpp
     Modules/cache/WorkerCacheStorageConnection.cpp
     Modules/cache/WorkerGlobalScopeCaches.cpp
@@ -911,15 +952,24 @@ set(WebCore_SOURCES
     Modules/credentials/NavigatorCredentials.cpp
     Modules/credentials/PasswordCredential.cpp
 
+    Modules/entriesapi/ErrorCallback.cpp
+    Modules/entriesapi/DOMFileSystem.cpp
+    Modules/entriesapi/FileSystemDirectoryEntry.cpp
+    Modules/entriesapi/FileSystemDirectoryReader.cpp
+    Modules/entriesapi/FileSystemEntriesCallback.cpp
+    Modules/entriesapi/FileSystemEntry.cpp
+    Modules/entriesapi/FileSystemFileEntry.cpp
+    Modules/entriesapi/HTMLInputElementEntriesAPI.cpp
+
     Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
     Modules/fetch/FetchBodyConsumer.cpp
     Modules/fetch/FetchBodyOwner.cpp
+    Modules/fetch/FetchBodySource.cpp
     Modules/fetch/FetchHeaders.cpp
     Modules/fetch/FetchLoader.cpp
     Modules/fetch/FetchRequest.cpp
     Modules/fetch/FetchResponse.cpp
-    Modules/fetch/FetchResponseSource.cpp
     Modules/fetch/WorkerGlobalScopeFetch.cpp
 
     Modules/geolocation/Coordinates.cpp
@@ -1049,6 +1099,8 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisEvent.cpp
     Modules/speech/SpeechSynthesisUtterance.cpp
     Modules/speech/SpeechSynthesisVoice.cpp
+
+    Modules/streams/ReadableStreamSink.cpp
 
     Modules/webaudio/AnalyserNode.cpp
     Modules/webaudio/AsyncAudioDecoder.cpp
@@ -1219,6 +1271,7 @@ set(WebCore_SOURCES
     bindings/js/JSEventCustom.cpp
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
+    bindings/js/JSFileSystemEntryCustom.cpp
     bindings/js/JSHTMLCollectionCustom.cpp
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
@@ -1266,6 +1319,7 @@ set(WebCore_SOURCES
     bindings/js/JSXMLHttpRequestCustom.cpp
     bindings/js/JSXPathNSResolverCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
+    bindings/js/ReadableStream.cpp
     bindings/js/ReadableStreamDefaultController.cpp
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
@@ -1549,6 +1603,7 @@ set(WebCore_SOURCES
     dom/EventNames.cpp
     dom/EventPath.cpp
     dom/EventTarget.cpp
+    dom/ExceptionData.cpp
     dom/ExtensionStyleSheets.cpp
     dom/FocusEvent.cpp
     dom/GenericEventQueue.cpp
@@ -1743,10 +1798,10 @@ set(WebCore_SOURCES
     html/DateTimeLocalInputType.cpp
     html/EmailInputType.cpp
     html/FTPDirectoryDocument.cpp
+    html/FileListCreator.cpp
     html/FileInputType.cpp
     html/FormAssociatedElement.cpp
     html/FormController.cpp
-    html/FormDataList.cpp
     html/GenericCachedHTMLCollection.cpp
     html/HTMLAllCollection.cpp
     html/HTMLAnchorElement.cpp
@@ -1881,11 +1936,10 @@ set(WebCore_SOURCES
     html/canvas/CanvasGradient.cpp
     html/canvas/CanvasPath.cpp
     html/canvas/CanvasPattern.cpp
-    html/canvas/CanvasProxy.cpp
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
-    html/canvas/DOMPath.cpp
+    html/canvas/Path2D.cpp
     html/canvas/WebGPUBuffer.cpp
     html/canvas/WebGPUCommandBuffer.cpp
     html/canvas/WebGPUCommandQueue.cpp
@@ -2226,7 +2280,6 @@ set(WebCore_SOURCES
     platform/FileStream.cpp
     platform/FileSystem.cpp
     platform/GenericTaskQueue.cpp
-    platform/Language.cpp
     platform/LayoutUnit.cpp
     platform/Length.cpp
     platform/LengthBox.cpp
@@ -2797,6 +2850,7 @@ set(WebCore_SOURCES
     style/RenderTreeUpdaterFirstLetter.cpp
     style/RenderTreeUpdaterGeneratedContent.cpp
     style/RenderTreeUpdaterListItem.cpp
+    style/RenderTreeUpdaterMultiColumn.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleInvalidator.cpp
@@ -2993,11 +3047,17 @@ set(WebCore_SOURCES
     workers/service/ServiceWorkerContainer.cpp
     workers/service/ServiceWorkerGlobalScope.cpp
     workers/service/ServiceWorkerJob.cpp
+    workers/service/ServiceWorkerJobData.cpp
     workers/service/ServiceWorkerProvider.cpp
     workers/service/ServiceWorkerRegistration.cpp
-    workers/service/ServiceWorkerRegistrationParameters.cpp
+    workers/service/ServiceWorkerRegistrationData.cpp
+    workers/service/ServiceWorkerRegistrationKey.cpp
+    workers/service/ServiceWorkerRegistrationOptions.cpp
 
+    workers/service/server/SWClientConnection.cpp
     workers/service/server/SWServer.cpp
+    workers/service/server/SWServerRegistration.cpp
+    workers/service/server/SWServerWorker.cpp
 
     xml/DOMParser.cpp
     xml/NativeXPathNSResolver.cpp
@@ -3132,7 +3192,11 @@ set(WebCore_PLUG_INS_RESOURCES
 
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
+    ${LIBXML2_LIBRARIES}
+    ${LIBXSLT_LIBRARIES}
     ${OPENCDM_LIBRARIES}
+    ${SQLITE_LIBRARIES}
+    ${ZLIB_LIBRARIES}
     JavaScriptCore${DEBUG_SUFFIX}
     PAL${DEBUG_SUFFIX}
 )
@@ -3839,8 +3903,6 @@ add_dependencies(WebCoreTestSupportBindings WebCoreDerivedSources)
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
-    ${WEBCORE_DIR}/Modules/fetch/FetchInternals.js
-    ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js

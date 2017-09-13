@@ -554,6 +554,29 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
 
     load64(Address(regT0, Exception::valueOffset()), regT0);
     emitPutVirtualRegister(currentInstruction[2].u.operand);
+
+#if ENABLE(DFG_JIT)
+    // FIXME: consider inline caching the process of doing OSR entry, including
+    // argument type proofs, storing locals to the buffer, etc
+    // https://bugs.webkit.org/show_bug.cgi?id=175598
+
+    ValueProfileAndOperandBuffer* buffer = static_cast<ValueProfileAndOperandBuffer*>(currentInstruction[3].u.pointer);
+    if (buffer || !shouldEmitProfiling())
+        callOperation(operationTryOSREnterAtCatch, m_bytecodeOffset);
+    else
+        callOperation(operationTryOSREnterAtCatchAndValueProfile, m_bytecodeOffset);
+    auto skipOSREntry = branchTestPtr(Zero, returnValueGPR);
+    emitRestoreCalleeSaves();
+    jump(returnValueGPR);
+    skipOSREntry.link(this);
+    if (buffer && shouldEmitProfiling()) {
+        buffer->forEach([&] (ValueProfileAndOperand& profile) {
+            JSValueRegs regs(regT0);
+            emitGetVirtualRegister(profile.m_operand, regs);
+            emitValueProfilingSite(profile.m_profile);
+        });
+    }
+#endif // ENABLE(DFG_JIT)
 }
 
 void JIT::emit_op_assert(Instruction* currentInstruction)
@@ -991,9 +1014,11 @@ void JIT::emitNewFuncCommon(Instruction* currentInstruction)
         callOperation(operationNewFunction, dst, regT0, funcExec);
     else if (opcodeID == op_new_generator_func)
         callOperation(operationNewGeneratorFunction, dst, regT0, funcExec);
-    else {
-        ASSERT(opcodeID == op_new_async_func);
+    else if (opcodeID == op_new_async_func)
         callOperation(operationNewAsyncFunction, dst, regT0, funcExec);
+    else {
+        ASSERT(opcodeID == op_new_async_generator_func);
+        callOperation(operationNewAsyncGeneratorFunction, dst, regT0, funcExec);
     }
 }
 
@@ -1007,11 +1032,16 @@ void JIT::emit_op_new_generator_func(Instruction* currentInstruction)
     emitNewFuncCommon(currentInstruction);
 }
 
-void JIT::emit_op_new_async_func(Instruction* currentInstruction)
+void JIT::emit_op_new_async_generator_func(Instruction* currentInstruction)
 {
     emitNewFuncCommon(currentInstruction);
 }
 
+void JIT::emit_op_new_async_func(Instruction* currentInstruction)
+{
+    emitNewFuncCommon(currentInstruction);
+}
+    
 void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
 {
     Jump notUndefinedScope;
@@ -1035,9 +1065,11 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
         callOperation(operationNewFunction, dst, regT0, function);
     else if (opcodeID == op_new_generator_func_exp)
         callOperation(operationNewGeneratorFunction, dst, regT0, function);
-    else {
-        ASSERT(opcodeID == op_new_async_func_exp);
+    else if (opcodeID == op_new_async_func_exp)
         callOperation(operationNewAsyncFunction, dst, regT0, function);
+    else {
+        ASSERT(opcodeID == op_new_async_generator_func_exp);
+        callOperation(operationNewAsyncGeneratorFunction, dst, regT0, function);
     }
 
     done.link(this);
@@ -1057,7 +1089,12 @@ void JIT::emit_op_new_async_func_exp(Instruction* currentInstruction)
 {
     emitNewFuncExprCommon(currentInstruction);
 }
-
+    
+void JIT::emit_op_new_async_generator_func_exp(Instruction* currentInstruction)
+{
+    emitNewFuncExprCommon(currentInstruction);
+}
+    
 void JIT::emit_op_new_array(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;

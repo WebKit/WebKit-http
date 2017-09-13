@@ -30,7 +30,6 @@
 
 #import "AVAssetTrackUtilities.h"
 #import "AVFoundationMIMETypeCache.h"
-#import "AVFoundationSPI.h"
 #import "CDMSessionAVStreamSession.h"
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "FileSystem.h"
@@ -50,6 +49,7 @@
 #import <AVFoundation/AVTime.h>
 #import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
+#import <pal/spi/mac/AVFoundationSPI.h>
 #import <wtf/Deque.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
@@ -115,7 +115,7 @@ namespace WebCore {
 
 static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, const void *listener, CFStringRef, const void *, CFTypeRef)
 {
-    MediaPlayerPrivateMediaSourceAVFObjC* player = (MediaPlayerPrivateMediaSourceAVFObjC*)listener;
+    MediaPlayerPrivateMediaSourceAVFObjC* player = (MediaPlayerPrivateMediaSourceAVFObjC*)const_cast<void*>(listener);
     callOnMainThread([weakThis = player->createWeakPtr()] {
         if (!weakThis)
             return;
@@ -599,9 +599,6 @@ void MediaPlayerPrivateMediaSourceAVFObjC::paintCurrentFrameInContext(GraphicsCo
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
-    if (flipY || premultiplyAlpha)
-        return false;
-
     // We have been asked to paint into a WebGL canvas, so take that as a signal to create
     // a decompression session, even if that means the native video can't also be displayed
     // in page.
@@ -687,24 +684,27 @@ size_t MediaPlayerPrivateMediaSourceAVFObjC::extraMemoryCost() const
     return 0;
 }
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::totalVideoFrames()
+std::optional<PlatformVideoPlaybackQualityMetrics> MediaPlayerPrivateMediaSourceAVFObjC::videoPlaybackQualityMetrics()
 {
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalNumberOfVideoFrames];
-}
+    if (m_decompressionSession) {
+        return PlatformVideoPlaybackQualityMetrics(
+            m_decompressionSession->totalVideoFrames(),
+            m_decompressionSession->droppedVideoFrames(),
+            m_decompressionSession->corruptedVideoFrames(),
+            m_decompressionSession->totalFrameDelay().toDouble()
+        );
+    }
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::droppedVideoFrames()
-{
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] numberOfDroppedVideoFrames];
-}
+    auto metrics = [m_sampleBufferDisplayLayer videoPerformanceMetrics];
+    if (!metrics)
+        return std::nullopt;
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::corruptedVideoFrames()
-{
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] numberOfCorruptedVideoFrames];
-}
-
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::totalFrameDelay()
-{
-    return MediaTime::createWithDouble([[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalFrameDelay]);
+    return PlatformVideoPlaybackQualityMetrics(
+        [metrics totalNumberOfVideoFrames],
+        [metrics numberOfDroppedVideoFrames],
+        [metrics numberOfCorruptedVideoFrames],
+        [metrics totalFrameDelay]
+    );
 }
 
 #pragma mark -

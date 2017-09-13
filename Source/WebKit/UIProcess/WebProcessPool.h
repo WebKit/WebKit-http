@@ -168,7 +168,8 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    API::WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
+    API::WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
+    void setPrimaryDataStore(API::WebsiteDataStore& dataStore) { m_websiteDataStore = &dataStore; }
 
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
 
@@ -232,7 +233,7 @@ public:
     void setEnhancedAccessibility(bool);
     
     // Downloads.
-    DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
+    DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&, WebPageProxy* originatingPage);
     API::DownloadClient& downloadClient() { return *m_downloadClient; }
 
     API::LegacyContextHistoryClient& historyClient() { return *m_historyClient; }
@@ -382,6 +383,7 @@ public:
     static String legacyPlatformDefaultMediaKeysStorageDirectory();
     static String legacyPlatformDefaultMediaCacheDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
+    static String legacyPlatformDefaultCacheStorageDirectory();
     static String legacyPlatformDefaultNetworkCacheDirectory();
     static String legacyPlatformDefaultJavaScriptConfigurationDirectory();
     static bool isNetworkCacheEnabled();
@@ -519,7 +521,7 @@ private:
     bool m_memorySamplerEnabled;
     double m_memorySamplerInterval;
 
-    const Ref<API::WebsiteDataStore> m_websiteDataStore;
+    RefPtr<API::WebsiteDataStore> m_websiteDataStore;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;

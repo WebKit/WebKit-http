@@ -92,15 +92,9 @@ public:
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
     void storeRecordOfKeyUsage(const String&) override;
 
-    void gatherAvailableKeys(AvailableKeysCallback) override;
-
     const String& keySystem() const final;
 
     struct Key {
-        Key() = default;
-        Key(Key&&) = default;
-        Key& operator=(Key&&) = default;
-        String keyID;
         KeyStatus status;
         RefPtr<SharedBuffer> keyIDData;
         RefPtr<SharedBuffer> keyValueData;

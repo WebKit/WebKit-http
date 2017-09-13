@@ -132,12 +132,6 @@
 
 #endif
 
-/* COMPILER(SUNCC) */
-
-#if defined(__SUNPRO_CC) || defined(__SUNPRO_C)
-#define WTF_COMPILER_SUNCC 1
-#endif
-
 #if !COMPILER(CLANG) && !COMPILER(MSVC)
 #define WTF_COMPILER_QUIRK_CONSIDERS_UNREACHABLE_CODE 1
 #endif
@@ -148,6 +142,12 @@
 
 #if defined(__ARM_EABI__) || defined(__EABI__)
 #define WTF_COMPILER_SUPPORTS_EABI 1
+#endif
+
+/* Non-static data member initializer (NSDMI) for aggregates */
+
+#if defined(__cpp_aggregate_nsdmi) && __cpp_aggregate_nsdmi >= 201304
+#define WTF_COMPILER_SUPPORTS_NSDMI_FOR_AGGREGATES 1
 #endif
 
 /* RELAXED_CONSTEXPR */

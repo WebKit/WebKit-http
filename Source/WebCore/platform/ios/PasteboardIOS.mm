@@ -299,6 +299,11 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader)
     }
 }
 
+long Pasteboard::changeCount() const
+{
+    return platformStrategies()->pasteboardStrategy()->changeCount(m_pasteboardName);
+}
+
 NSArray *Pasteboard::supportedWebContentPasteboardTypes()
 {
     return @[(id)WebArchivePboardType, (id)kUTTypeFlatRTFD, (id)kUTTypeRTF, (id)kUTTypeHTML, (id)kUTTypePNG, (id)kUTTypeTIFF, (id)kUTTypeJPEG, (id)kUTTypeGIF, (id)kUTTypeURL, (id)kUTTypeText];
@@ -306,7 +311,7 @@ NSArray *Pasteboard::supportedWebContentPasteboardTypes()
 
 NSArray *Pasteboard::supportedFileUploadPasteboardTypes()
 {
-    return @[ (NSString *)kUTTypeContent, (NSString *)kUTTypeZipArchive ];
+    return @[ (NSString *)kUTTypeContent, (NSString *)kUTTypeZipArchive, (NSString *)kUTTypeFolder ];
 }
 
 bool Pasteboard::hasData()
@@ -324,27 +329,20 @@ static String utiTypeFromCocoaType(NSString *type)
 
 static RetainPtr<NSString> cocoaTypeFromHTMLClipboardType(const String& type)
 {
-    String strippedType = type.stripWhiteSpace();
-
-    if (strippedType == "Text")
-        return (NSString *)kUTTypeText;
-    if (strippedType == "URL")
-        return (NSString *)kUTTypeURL;
-
     // Ignore any trailing charset - JS strings are Unicode, which encapsulates the charset issue.
-    if (strippedType.startsWith("text/plain"))
-        return (NSString *)kUTTypeText;
+    if (type == "text/plain")
+        return (NSString *)kUTTypePlainText;
 
     // Special case because UTI doesn't work with Cocoa's URL type.
-    if (strippedType == "text/uri-list")
+    if (type == "text/uri-list")
         return (NSString *)kUTTypeURL;
 
     // Try UTI now.
-    if (NSString *utiType = utiTypeFromCocoaType(strippedType))
+    if (NSString *utiType = utiTypeFromCocoaType(type))
         return utiType;
 
     // No mapping, just pass the whole string though.
-    return (NSString *)strippedType;
+    return (NSString *)type;
 }
 
 void Pasteboard::clear(const String& type)
@@ -425,7 +423,7 @@ void Pasteboard::writeString(const String& type, const String& data)
     if (!cocoaType)
         return;
 
-    platformStrategies()->pasteboardStrategy()->writeToPasteboard(type, data, m_pasteboardName);
+    platformStrategies()->pasteboardStrategy()->writeToPasteboard(cocoaType.get(), data, m_pasteboardName);
 }
 
 Vector<String> Pasteboard::types()

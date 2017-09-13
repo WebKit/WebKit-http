@@ -1,3 +1,7 @@
 
+<<<<<<< HEAD
 FAIL org.w3.clearkey, temporary, mp4, playback, single key, encrypted then clear content assert_unreached: TypeError: Type error Reached unreachable code
+=======
+PASS org.w3.clearkey, temporary, mp4, playback, single key, encrypted then clear content 
+>>>>>>> c80db0a1f694034dc600e650ee9956ed8d9279af
 

@@ -106,6 +106,14 @@ Blob::Blob(Vector<uint8_t>&& data, const String& contentType)
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, WTFMove(blobParts), contentType);
 }
 
+Blob::Blob(ReferencingExistingBlobConstructor, const Blob& blob)
+    : m_internalURL(BlobURL::createInternalURL())
+    , m_type(blob.type())
+    , m_size(blob.size())
+{
+    ThreadableBlobRegistry::registerBlobURL(m_internalURL, { BlobPart(blob.url()) } , m_type);
+}
+
 Blob::Blob(DeserializationContructor, const URL& srcURL, const String& type, long long size, const String& fileBackedPath)
     : m_type(normalizedContentType(type))
     , m_size(size)

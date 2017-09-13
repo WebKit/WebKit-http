@@ -1,3 +1,290 @@
+2017-09-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Stretching auto tracks should be done as part of the track sizing algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=176783
+
+        Reviewed by Sergio Villar Senin.
+
+        Import changes on the test related to the new behavior.
+
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021.html:
+
+2017-09-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Use transferred size over content size for automatic minimum size
+        https://bugs.webkit.org/show_bug.cgi?id=176688
+
+        Reviewed by Sergio Villar Senin.
+
+        Import changes on the tests related to the new behavior.
+
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-006.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-007.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-008.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-009.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021.html:
+        * web-platform-tests/css/css-grid-1/grid-items/support/100x50-green.png: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/support/25x50-green.png: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/support/50x100-green.png: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/support/50x25-green.png: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/support/w3c-import.log:
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Make the WPT entry point for LayoutTests/http/wpt more discoverable
+        https://bugs.webkit.org/show_bug.cgi?id=176494
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/WebKit/README.txt: Added.
+        Touch a file in a "WebKit" directory so that a "WebKit" link shows up
+        on the default <http://localhost:8800> listing page.
+
+2017-09-09  Sam Weinig  <sam@webkit.org>
+
+        Finish off the FormData implementation
+        https://bugs.webkit.org/show_bug.cgi?id=176659
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/XMLHttpRequest/FormData-append-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-delete-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-foreach-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-get-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-has-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-set-expected.txt:
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        
+            Update results.
+
+2017-09-08  Antti Koivisto  <antti@apple.com>
+
+        Remove support for >> descendant combinator syntax
+        https://bugs.webkit.org/show_bug.cgi?id=175765
+
+        Reviewed by Sam Weinig.
+
+        Tests for these have been removed in WPT master, just update expectations until new version is imported.
+
+        * web-platform-tests/dom/nodes/Element-matches-expected.txt:
+        * web-platform-tests/dom/nodes/Element-webkitMatchesSelector-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-xht-expected.txt:
+
+2017-09-07  Youenn Fablet  <youenn@apple.com>
+
+        Align FetchResponse and FetchRequest body handling
+        https://bugs.webkit.org/show_bug.cgi?id=176539
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/request/request-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/request/request-consume-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+        * web-platform-tests/fetch/api/request/request-structure-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/url/urlencoded-parser-expected.txt:
+
+2017-09-06  Youenn Fablet  <youenn@apple.com>
+
+        Support caching of Response with a ReadableStream body
+        https://bugs.webkit.org/show_bug.cgi?id=176462
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/cache-storage/worker/cache-put.https-expected.txt:
+
+2017-09-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] grid shorthand should not reset the gutter properties
+        https://bugs.webkit.org/show_bug.cgi?id=176375
+
+        Reviewed by Sergio Villar Senin.
+
+        Import new test from WPT.
+
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-shorthand-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-shorthand-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/w3c-import.log:
+
+2017-09-02  Sam Weinig  <sam@webkit.org>
+
+        DOMMatrix/DOMMatrixReadOnly validation is incorrect for NaN values
+        https://bugs.webkit.org/show_bug.cgi?id=176287
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup-expected.txt:
+        Update test results.
+
+2017-09-02  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Wrong getComputedStyle result for pseudo-elements in display: none subtrees.
+        https://bugs.webkit.org/show_bug.cgi?id=176259
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+
+2017-09-01  Sam Weinig  <sam@webkit.org>
+
+        DOMMatrix and DOMMatrixReadOnly should be available in workers
+        https://bugs.webkit.org/show_bug.cgi?id=176255
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-css-string.worker-expected.txt:
+        * web-platform-tests/css/geometry-1/interfaces.worker-expected.txt:
+        Update test results.
+
+2017-09-01  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Wrong getComputedStyle behavior for pseudo-elements for layout-dependent properties.
+        https://bugs.webkit.org/show_bug.cgi?id=175936
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+        * web-platform-tests/cssom/getComputedStyle-pseudo.html: Sync test with upstream.
+
+2017-08-31  Sam Weinig  <sam@webkit.org>
+
+        Implement DOMMatrix2DInit for setTransform()/addPath()
+        https://bugs.webkit.org/show_bug.cgi?id=176048
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-001.html:
+        * web-platform-tests/css/geometry-1/DOMMatrix-css-string.worker.js:
+        (string_appeared_here.forEach.constr.test):
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup.html: Added.
+        * web-platform-tests/css/geometry-1/historical.html:
+        * web-platform-tests/css/geometry-1/interfaces-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/interfaces.html: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker.html: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker.js: Added.
+        * web-platform-tests/css/geometry-1/structured-serialization.html:
+        * web-platform-tests/css/geometry-1/w3c-import.log:
+
+            Pull latest web-platform-tests/css/geometry-1/ and rebase the results.
+
+2017-08-29  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Request should throw when keep alive is true and body is a ReadableStream
+        https://bugs.webkit.org/show_bug.cgi?id=176083
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/request/request-keepalive-expected.txt:
+
+2017-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Add support for FetchRequest.body
+        https://bugs.webkit.org/show_bug.cgi?id=176066
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/request/request-disturbed-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+
+2017-08-25  Youenn Fablet  <youenn@apple.com>
+
+        WPT server should not need to copy test harness files
+        https://bugs.webkit.org/show_bug.cgi?id=175938
+
+        Reviewed by Alexey Proskuryakov.
+
+        * resources/config.json: Use aliases to load testharness.css and testharnessreport.js
+
+2017-08-25  Ms2ger  <Ms2ger@gmail.com>
+
+        Import track-element/cloneNode.html from web-platform-tests.
+        https://bugs.webkit.org/show_bug.cgi?id=175984
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/cloneNode-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/cloneNode.html: Renamed from LayoutTests/media/track/opera/track/track-element/cloneNode.html.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/w3c-import.log:
+
+2017-08-24  Youenn Fablet  <youenn@apple.com>
+
+        WPT harness errors on leaks and iOS-sim EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=175269
+        <rdar://problem/33902404>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adding more logging to check whether the server is hanging or TCP connection is timing out.
+
+        * web-platform-tests/tools/wptserve/wptserve/response.py:
+        (Response.write_content):
+        (ResponseWriter.write):
+        (ResponseWriter.write_content_file):
+        * web-platform-tests/tools/wptserve/wptserve/server.py:
+        (WebTestRequestHandler.handle_one_request):
+
+2017-08-22  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add support for overwriting responses with put on an existing record
+        https://bugs.webkit.org/show_bug.cgi?id=175825
+
+        Reviewed by Geoffrey Garen.
+
+        * web-platform-tests/service-workers/cache-storage/window/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-put.https-expected.txt:
+
+2017-08-22  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement error checking for show(), abort(), and canMakePayment()
+        https://bugs.webkit.org/show_bug.cgi?id=175789
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/payment-request/payment-request-abort-method.https-expected.txt:
+        * web-platform-tests/payment-request/payment-request-show-method.https-expected.txt:
+
+2017-08-21  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add support for Cache.add/addAll
+        https://bugs.webkit.org/show_bug.cgi?id=175677
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/cache-storage/window/cache-add.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-storage.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-add.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-storage.https-expected.txt:
+
+2017-08-21  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Add support for CacheStorage.match
+        https://bugs.webkit.org/show_bug.cgi?id=175747
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/cache-storage/window/cache-delete.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-keys.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-matchAll.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-storage-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-storage-match.https-expected.txt:
+
+2017-08-21  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the PaymentRequest constructor
+        https://bugs.webkit.org/show_bug.cgi?id=175755
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/payment-request/payment-request-constructor.https-expected.txt:
+        * web-platform-tests/payment-request/payment-request-id.https-expected.txt:
+
 2017-08-19  Andy Estes  <aestes@apple.com>
 
         [Payment Request] Add interface stubs

@@ -72,7 +72,7 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
 
-    Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+    Shared/Plugins/Netscape/unix/NetscapePluginModuleUnix.cpp
 
     Shared/Plugins/unix/PluginSearchPath.cpp
 
@@ -99,7 +99,7 @@ list(APPEND WebKit2_SOURCES
 
     Shared/unix/ChildProcessMain.cpp
 
-    StorageProcess/gtk/StorageProcessMainGtk.cpp
+    StorageProcess/glib/StorageProcessMainGLib.cpp
 
     UIProcess/AcceleratedDrawingAreaProxy.cpp
     UIProcess/BackingStore.cpp
@@ -190,6 +190,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWebViewBase.cpp
     UIProcess/API/gtk/WebKitWebViewBaseAccessible.cpp
     UIProcess/API/gtk/WebKitWebViewGtk.cpp
+
+    UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
     UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp
 
@@ -995,7 +997,7 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
         Shared/Plugins/Netscape/NetscapePluginModule.cpp
         Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
 
-        Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+        Shared/Plugins/Netscape/unix/NetscapePluginModuleUnix.cpp
 
         Shared/cairo/ShareableBitmapCairo.cpp
 

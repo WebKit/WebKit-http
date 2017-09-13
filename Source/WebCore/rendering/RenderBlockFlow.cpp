@@ -143,23 +143,6 @@ RenderBlockFlow::~RenderBlockFlow()
     // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
-void RenderBlockFlow::createMultiColumnFlowThread()
-{
-    RenderMultiColumnFlowThread* flowThread = new RenderMultiColumnFlowThread(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK));
-    flowThread->initializeStyle();
-    setChildrenInline(false); // Do this to avoid wrapping inline children that are just going to move into the flow thread.
-    deleteLines();
-    RenderBlock::addChild(flowThread);
-    flowThread->populate(); // Called after the flow thread is inserted so that we are reachable by the flow thread.
-    setMultiColumnFlowThread(flowThread);
-}
-
-void RenderBlockFlow::destroyMultiColumnFlowThread()
-{
-    multiColumnFlowThread()->evacuateAndDestroy();
-    ASSERT(!multiColumnFlowThread());
-}
-
 void RenderBlockFlow::insertedIntoTree()
 {
     RenderBlock::insertedIntoTree();
@@ -258,17 +241,14 @@ void RenderBlockFlow::rebuildFloatingObjectSetFromIntrudingFloats()
     // We should not process floats if the parent node is not a RenderBlock. Otherwise, we will add 
     // floats in an invalid context. This will cause a crash arising from a bad cast on the parent.
     // See <rdar://problem/8049753>, where float property is applied on a text node in a SVG.
-    bool isBlockInsideInline = isAnonymousInlineBlock();
-    if (!is<RenderBlockFlow>(parent()) && !isBlockInsideInline)
+    if (!is<RenderBlockFlow>(parent()))
         return;
 
     // First add in floats from the parent. Self-collapsing blocks let their parent track any floats that intrude into
     // them (as opposed to floats they contain themselves) so check for those here too.
-    RenderBlockFlow& parentBlock = downcast<RenderBlockFlow>(isBlockInsideInline ? *containingBlock() : *parent());
-    bool parentHasFloats = isBlockInsideInline ? parentBlock.containsFloats() : false;
-    RenderBlockFlow* previousBlock = nullptr;
-    if (!isBlockInsideInline)
-        previousBlock = previousSiblingWithOverhangingFloats(parentHasFloats);
+    auto& parentBlock = downcast<RenderBlockFlow>(*parent());
+    bool parentHasFloats = false;
+    RenderBlockFlow* previousBlock = previousSiblingWithOverhangingFloats(parentHasFloats);
     LayoutUnit logicalTopOffset = logicalTop();
     if (parentHasFloats || (parentBlock.lowestFloatLogicalBottom() > logicalTopOffset && previousBlock && previousBlock->isSelfCollapsingBlock()))
         addIntrudingFloats(&parentBlock, &parentBlock, parentBlock.logicalLeftOffsetForContent(), logicalTopOffset);
@@ -456,8 +436,13 @@ bool RenderBlockFlow::willCreateColumns(std::optional<unsigned> desiredColumnCou
     // The following types are not supposed to create multicol context.
     if (isFileUploadControl() || isTextControl() || isListBox())
         return false;
+    if (isRenderSVGBlock() || isRenderMathMLBlock() || isRubyRun())
+        return false;
 
     if (!firstChild())
+        return false;
+
+    if (style().styleType() != NOPSEUDO)
         return false;
 
     // If overflow-y is set to paged-x or paged-y on the body or html element, we'll handle the paginating in the RenderView instead.
@@ -1007,20 +992,7 @@ bool RenderBlockFlow::childrenPreventSelfCollapsing() const
     if (!childrenInline())
         return RenderBlock::childrenPreventSelfCollapsing();
 
-    // If the block has inline children, see if we generated any line boxes. If we have any
-    // line boxes, then we can only be self-collapsing if we have nothing but anonymous inline blocks
-    // that are also self-collapsing inside us.
-    if (!hasLines())
-        return false;
-    
-    if (simpleLineLayout())
-        return true; // We have simple line layout lines, so we can't be self-collapsing.
-    
-    for (auto* child = firstRootBox(); child; child = child->nextRootBox()) {
-        if (!child->hasAnonymousInlineBlock() || !child->anonymousInlineBlock()->isSelfCollapsingBlock())
-            return true;
-    }
-    return false; // We have no line boxes, so we must be self-collapsing.
+    return hasLines();
 }
 
 LayoutUnit RenderBlockFlow::collapseMargins(RenderBox& child, MarginInfo& marginInfo)
@@ -1716,8 +1688,6 @@ static void clearShouldBreakAtLineToAvoidWidowIfNeeded(RenderBlockFlow& blockFlo
 
 void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsRegion, RenderFlowThread* flowThread)
 {
-    // FIXME: Ignore anonymous inline blocks. Handle the delta already having been set because of
-    // collapsing margins from a previous anonymous inline block.
     // FIXME: For now we paginate using line overflow. This ensures that lines don't overlap at all when we
     // put a strut between them for pagination purposes. However, this really isn't the desired rendering, since
     // the line on the top of the next page will appear too far down relative to the same kind of line at the top
@@ -4012,17 +3982,12 @@ bool RenderBlockFlow::requiresColumns(int desiredColumnCount) const
 
 void RenderBlockFlow::setComputedColumnCountAndWidth(int count, LayoutUnit width)
 {
-    bool destroyColumns = !requiresColumns(count);
-    if (destroyColumns) {
-        if (multiColumnFlowThread())
-            destroyMultiColumnFlowThread();
-    } else {
-        if (!multiColumnFlowThread())
-            createMultiColumnFlowThread();
-        multiColumnFlowThread()->setColumnCountAndWidth(count, width);
-        multiColumnFlowThread()->setProgressionIsInline(style().hasInlineColumnAxis());
-        multiColumnFlowThread()->setProgressionIsReversed(style().columnProgression() == ReverseColumnProgression);
-    }
+    ASSERT(!!multiColumnFlowThread() == requiresColumns(count));
+    if (!multiColumnFlowThread())
+        return;
+    multiColumnFlowThread()->setColumnCountAndWidth(count, width);
+    multiColumnFlowThread()->setProgressionIsInline(style().hasInlineColumnAxis());
+    multiColumnFlowThread()->setProgressionIsReversed(style().columnProgression() == ReverseColumnProgression);
 }
 
 void RenderBlockFlow::updateColumnProgressionFromStyle(RenderStyle& style)
@@ -4240,8 +4205,6 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
     while (RenderObject* child = childIterator.next()) {
         bool autoWrap = child->isReplaced() ? child->parent()->style().autoWrap() :
             child->style().autoWrap();
-        bool isAnonymousInlineBlock = child->isAnonymousInlineBlock();
-        
         if (!child->isBR()) {
             // Step One: determine whether or not we need to terminate our current line.
             // Each discrete chunk can become the new min-width, if it is the widest chunk
@@ -4332,21 +4295,19 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     clearPreviousFloat = false;
 
                 bool canBreakReplacedElement = !child->isImage() || allowImagesToBreak;
-                if (((canBreakReplacedElement && (autoWrap || oldAutoWrap) && (!isPrevChildInlineFlow || shouldBreakLineAfterText)) || clearPreviousFloat) || isAnonymousInlineBlock) {
-                    if (child->isAnonymousInlineBlock() && styleToUse.collapseWhiteSpace())
-                        stripTrailingSpace(inlineMax, inlineMin, trailingSpaceChild);
+                if (((canBreakReplacedElement && (autoWrap || oldAutoWrap) && (!isPrevChildInlineFlow || shouldBreakLineAfterText)) || clearPreviousFloat)) {
                     minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     inlineMin = 0;
                 }
 
                 // If we're supposed to clear the previous float, then terminate maxwidth as well.
-                if (clearPreviousFloat || isAnonymousInlineBlock) {
+                if (clearPreviousFloat) {
                     maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
                     inlineMax = 0;
                 }
 
                 // Add in text-indent. This is added in only once.
-                if (!addedTextIndent && !child->isFloating() && !isAnonymousInlineBlock) {
+                if (!addedTextIndent && !child->isFloating()) {
                     LayoutUnit ceiledIndent = textIndent.ceilToFloat();
                     childMin += ceiledIndent;
                     childMax += ceiledIndent;
@@ -4357,13 +4318,13 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                         addedTextIndent = true;
                 }
                 
-                if (canHangPunctuationAtStart && !addedStartPunctuationHang && !child->isFloating() && !isAnonymousInlineBlock)
+                if (canHangPunctuationAtStart && !addedStartPunctuationHang && !child->isFloating())
                     addedStartPunctuationHang = true;
 
                 // Add our width to the max.
                 inlineMax += std::max<float>(0, childMax);
 
-                if ((!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText)) && !isAnonymousInlineBlock) {
+                if ((!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText))) {
                     if (child->isFloating())
                         minLogicalWidth = preferredWidth(minLogicalWidth, childMin);
                     else
@@ -4373,13 +4334,7 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     minLogicalWidth = preferredWidth(minLogicalWidth, childMin);
 
                     // Now start a new line.
-                    inlineMin = 0;
-                    
-                    if (child->isAnonymousInlineBlock()) {
-                        // Terminate max width as well.
-                        maxLogicalWidth = preferredWidth(maxLogicalWidth, childMax);
-                        inlineMax = 0;
-                    }
+                    inlineMin = 0;                    
                 }
 
                 if (autoWrap && canBreakReplacedElement && isPrevChildInlineFlow) {
@@ -4505,8 +4460,8 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     inlineMax += std::max<float>(0, childMax);
             }
 
-            // Ignore spaces after a list marker and also after an anonymous inline block.
-            if (child->isListMarker() || isAnonymousInlineBlock)
+            // Ignore spaces after a list marker.
+            if (child->isListMarker())
                 stripFrontSpaces = true;
         } else {
             minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);

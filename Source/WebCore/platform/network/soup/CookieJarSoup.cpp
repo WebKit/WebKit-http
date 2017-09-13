@@ -23,6 +23,7 @@
 #if USE(SOUP)
 
 #include "Cookie.h"
+#include "CookiesStrategy.h"
 #include "GUniquePtrSoup.h"
 #include "NetworkStorageSession.h"
 #include "NetworkingContext.h"
@@ -81,21 +82,49 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     soup_cookies_free(existingCookies);
 }
 
-static String cookiesForSession(const NetworkStorageSession& session, const URL& url, bool forHTTPHeader)
+static std::pair<String, bool> cookiesForSession(const NetworkStorageSession& session, const URL& url, bool forHTTPHeader, IncludeSecureCookies includeSecureCookies)
 {
     GUniquePtr<SoupURI> uri = url.createSoupURI();
-    GUniquePtr<char> cookies(soup_cookie_jar_get_cookies(session.cookieStorage(), uri.get(), forHTTPHeader));
-    return String::fromUTF8(cookies.get());
+    GSList* cookies = soup_cookie_jar_get_cookie_list(session.cookieStorage(), uri.get(), forHTTPHeader);
+    bool didAccessSecureCookies = false;
+
+    // libsoup should omit secure cookies itself if the protocol is not https.
+    if (url.protocolIs("https")) {
+        GSList* item = cookies;
+        while (item) {
+            auto cookie = static_cast<SoupCookie*>(item->data);
+            if (soup_cookie_get_secure(cookie)) {
+                didAccessSecureCookies = true;
+                if (includeSecureCookies == IncludeSecureCookies::No) {
+                    GSList* next = item->next;
+                    soup_cookie_free(static_cast<SoupCookie*>(item->data));
+                    cookies = g_slist_remove_link(cookies, item);
+                    item = next;
+                    continue;
+                }
+            }
+            item = item->next;
+        }
+    }
+
+    if (!cookies)
+        return { { }, false };
+
+    GUniquePtr<char> cookieHeader(soup_cookies_to_cookie_header(cookies));
+    soup_cookies_free(cookies);
+
+    return { String::fromUTF8(cookieHeader.get()), didAccessSecureCookies };
 }
 
-String cookiesForDOM(const NetworkStorageSession& session, const URL&, const URL& url)
+std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL&, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return cookiesForSession(session, url, false);
+    return cookiesForSession(session, url, false, includeSecureCookies);
 }
 
-String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& url)
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return cookiesForSession(session, url, true);
+    // Secure cookies will still only be included if url's protocol is https.
+    return cookiesForSession(session, url, true, includeSecureCookies);
 }
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)

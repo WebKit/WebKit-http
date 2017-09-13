@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -111,22 +111,30 @@ NetworkDataTaskCocoa::NetworkDataTaskCocoa(NetworkSession& session, NetworkDataT
     }
 
     auto& cocoaSession = static_cast<NetworkSessionCocoa&>(m_session.get());
+    if (session.networkStorageSession().shouldBlockCookies(request)) {
+        storedCredentials = WebCore::DoNotAllowStoredCredentials;
+        m_storedCredentials = WebCore::DoNotAllowStoredCredentials;
+    }
+
     if (storedCredentials == WebCore::AllowStoredCredentials) {
         m_task = [cocoaSession.m_sessionWithCredentialStorage dataTaskWithRequest:nsRequest];
         ASSERT(!cocoaSession.m_dataTaskMapWithCredentials.contains([m_task taskIdentifier]));
         cocoaSession.m_dataTaskMapWithCredentials.add([m_task taskIdentifier], this);
+        LOG(NetworkSession, "%llu Creating stateless NetworkDataTask with URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
     } else {
-        m_task = [cocoaSession.m_sessionWithoutCredentialStorage dataTaskWithRequest:nsRequest];
-        ASSERT(!cocoaSession.m_dataTaskMapWithoutCredentials.contains([m_task taskIdentifier]));
-        cocoaSession.m_dataTaskMapWithoutCredentials.add([m_task taskIdentifier], this);
+        m_task = [cocoaSession.m_statelessSession dataTaskWithRequest:nsRequest];
+        ASSERT(!cocoaSession.m_dataTaskMapWithoutState.contains([m_task taskIdentifier]));
+        cocoaSession.m_dataTaskMapWithoutState.add([m_task taskIdentifier], this);
+        LOG(NetworkSession, "%llu Creating NetworkDataTask with URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
     }
-    LOG(NetworkSession, "%llu Creating NetworkDataTask with URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    String storagePartition = session.networkStorageSession().cookieStoragePartition(request);
-    if (!storagePartition.isEmpty()) {
-        LOG(NetworkSession, "%llu Partitioning cookies for URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
-        m_task.get()._storagePartitionIdentifier = storagePartition;
+    if (storedCredentials == WebCore::AllowStoredCredentials) {
+        String storagePartition = session.networkStorageSession().cookieStoragePartition(request);
+        if (!storagePartition.isEmpty()) {
+            LOG(NetworkSession, "%llu Partitioning cookies for URL %s", [m_task taskIdentifier], nsRequest.URL.absoluteString.UTF8String);
+            m_task.get()._storagePartitionIdentifier = storagePartition;
+        }
     }
 #endif
 
@@ -144,8 +152,8 @@ NetworkDataTaskCocoa::~NetworkDataTaskCocoa()
         ASSERT(cocoaSession.m_dataTaskMapWithCredentials.get([m_task taskIdentifier]) == this);
         cocoaSession.m_dataTaskMapWithCredentials.remove([m_task taskIdentifier]);
     } else {
-        ASSERT(cocoaSession.m_dataTaskMapWithoutCredentials.get([m_task taskIdentifier]) == this);
-        cocoaSession.m_dataTaskMapWithoutCredentials.remove([m_task taskIdentifier]);
+        ASSERT(cocoaSession.m_dataTaskMapWithoutState.get([m_task taskIdentifier]) == this);
+        cocoaSession.m_dataTaskMapWithoutState.remove([m_task taskIdentifier]);
     }
 }
 
@@ -254,7 +262,7 @@ void NetworkDataTaskCocoa::setPendingDownloadLocation(const WTF::String& filenam
         WebCore::deleteFile(filename);
 }
 
-bool NetworkDataTaskCocoa::tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge& challenge, const ChallengeCompletionHandler& completionHandler)
+bool NetworkDataTaskCocoa::tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge& challenge, ChallengeCompletionHandler& completionHandler)
 {
     if (!challenge.protectionSpace().isPasswordBased())
         return false;

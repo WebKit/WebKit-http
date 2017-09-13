@@ -70,9 +70,12 @@
 #include "JSInternalPromiseDeferred.h"
 #include "JSLock.h"
 #include "JSMap.h"
+#include "JSMapIterator.h"
 #include "JSPromiseDeferred.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSScriptFetcher.h"
+#include "JSSet.h"
+#include "JSSetIterator.h"
 #include "JSSourceCode.h"
 #include "JSTemplateRegistryKey.h"
 #include "JSWebAssembly.h"
@@ -111,7 +114,6 @@
 #include "WasmWorklist.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
-#include "WeakMapData.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 #include <wtf/ReadWriteLock.h>
@@ -261,7 +263,6 @@ VM::VM(VMType vmType, HeapType heapType)
     unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, 0, jsNull()));
     unlinkedModuleProgramCodeBlockStructure.set(*this, UnlinkedModuleProgramCodeBlock::createStructure(*this, 0, jsNull()));
     propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
-    weakMapDataStructure.set(*this, WeakMapData::createStructure(*this, 0, jsNull()));
     inferredValueStructure.set(*this, InferredValue::createStructure(*this, 0, jsNull()));
     inferredTypeStructure.set(*this, InferredType::createStructure(*this, 0, jsNull()));
     inferredTypeTableStructure.set(*this, InferredTypeTable::createStructure(*this, 0, jsNull()));
@@ -275,6 +276,11 @@ VM::VM(VMType vmType, HeapType heapType)
     functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
     hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
     hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
+    setIteratorStructure.set(*this, JSSetIterator::createStructure(*this, 0, jsNull()));
+    mapIteratorStructure.set(*this, JSMapIterator::createStructure(*this, 0, jsNull()));
+
+    sentinelSetBucket.set(*this, JSSet::BucketType::createSentinel(*this));
+    sentinelMapBucket.set(*this, JSMap::BucketType::createSentinel(*this));
 
     nativeStdFunctionCellStructure.set(*this, NativeStdFunctionCell::createStructure(*this, 0, jsNull()));
     smallStrings.initializeCommonStrings(*this);
@@ -964,6 +970,19 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
             "        (ExceptionScope::m_recursionDepth was ", recursionDepth, ")\n"
             "\n");
 
+        StringPrintStream out;
+        std::unique_ptr<StackTrace> currentTrace = StackTrace::captureStackTrace(Options::unexpectedExceptionStackTraceLimit());
+
+        if (Options::dumpSimulatedThrows()) {
+            out.println("The simulated exception was thrown at:");
+            m_nativeStackTraceOfLastSimulatedThrow->dump(out, "    ");
+            out.println();
+        }
+        out.println("Unchecked exception detected at:");
+        currentTrace->dump(out, "    ");
+        out.println();
+
+        dataLog(out.toCString());
         RELEASE_ASSERT(!m_needExceptionCheck);
     }
 }

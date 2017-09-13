@@ -37,18 +37,21 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
         this._previewImageElement = null;
         this._errorElement = null;
 
-        if (representedObject.contextType === WI.Canvas.ContextType.Canvas2D) {
+        if (representedObject.contextType === WI.Canvas.ContextType.Canvas2D || representedObject.contextType === WI.Canvas.ContextType.WebGL) {
             const toolTip = WI.UIString("Request recording of actions. Shift-click to record a single frame.");
             const altToolTip = WI.UIString("Cancel recording");
             this._recordButtonNavigationItem = new WI.ToggleButtonNavigationItem("canvas-record", toolTip, altToolTip, "Images/Record.svg", "Images/Stop.svg", 13, 13);
+            this._recordButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.High;
             this._recordButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._toggleRecording, this);
         }
 
         this._refreshButtonNavigationItem = new WI.ButtonNavigationItem("canvas-refresh", WI.UIString("Refresh"), "Images/ReloadFull.svg", 13, 13);
+        this._refreshButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
         this._refreshButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showPreview, this);
 
         this._showGridButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-grid", WI.UIString("Show Grid"), WI.UIString("Hide Grid"), "Images/NavigationItemCheckers.svg", 13, 13);
         this._showGridButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showGridButtonClicked, this);
+        this._showGridButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
         this._showGridButtonNavigationItem.activated = !!WI.settings.showImageGrid.value;
     }
 
@@ -74,6 +77,7 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
         super.shown();
 
         this._showPreview();
+        this._updateRecordNavigationItem();
 
         WI.settings.showImageGrid.addEventListener(WI.Setting.Event.Changed, this._updateImageGrid, this);
     }
@@ -96,22 +100,27 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
     _toggleRecording(event)
     {
-        let toggled = this._recordButtonNavigationItem.toggled;
-        let singleFrame = event.data.nativeEvent.shiftKey;
-        this.representedObject.toggleRecording(!toggled, singleFrame, (error) => {
-            console.assert(!error);
+        if (this.representedObject.isRecording)
+            WI.canvasManager.stopRecording();
+        else if (!WI.canvasManager.recordingCanvas) {
+            let singleFrame = event.data.nativeEvent.shiftKey;
+            WI.canvasManager.startRecording(this.representedObject, singleFrame);
+        }
 
-            this._recordButtonNavigationItem.toggled = !toggled;
-        });
+        this._updateRecordNavigationItem();
     }
 
     _recordingFinished(event)
     {
+        this._updateRecordNavigationItem();
+
         if (event.data.canvas !== this.representedObject)
             return;
 
-        if (this._recordButtonNavigationItem)
-            this._recordButtonNavigationItem.toggled = false;
+        if (!event.data.recording) {
+            console.error("Missing recording.");
+            return;
+        }
 
         WI.showRepresentedObject(event.data.recording);
     }
@@ -154,6 +163,15 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
             this._updateImageGrid();
         });
+    }
+
+    _updateRecordNavigationItem()
+    {
+        if (!this._recordButtonNavigationItem)
+            return;
+
+        this._recordButtonNavigationItem.enabled = this.representedObject.isRecording || !WI.canvasManager.recordingCanvas;
+        this._recordButtonNavigationItem.toggled = this.representedObject.isRecording;
     }
 
     _updateImageGrid()

@@ -32,6 +32,12 @@
 
 struct CGSize;
 
+typedef NS_ENUM(NSInteger, WebPreferredPresentationStyle) {
+    WebPreferredPresentationStyleUnspecified,
+    WebPreferredPresentationStyleInline,
+    WebPreferredPresentationStyleAttachment
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
 /*! A WebItemProviderRegistrationInfo represents a single call to register something to an item provider.
@@ -64,6 +70,8 @@ WEBCORE_EXPORT @interface WebItemProviderRegistrationInfoList : NSObject
 @property (nonatomic, copy) NSString *suggestedName;
 @property (nonatomic, readonly, nullable) UIItemProvider *itemProvider;
 
+@property (nonatomic) WebPreferredPresentationStyle preferredPresentationStyle;
+
 - (NSUInteger)numberOfItems;
 - (nullable WebItemProviderRegistrationInfo *)itemAtIndex:(NSUInteger)index;
 - (void)enumerateItems:(void(^)(WebItemProviderRegistrationInfo *item, NSUInteger index))block;
@@ -76,16 +84,12 @@ WEBCORE_EXPORT @interface WebItemProviderPasteboard : NSObject<AbstractPasteboar
 
 + (instancetype)sharedInstance;
 
-// Registration info lists are only available upon starting data interaction.
-- (WebItemProviderRegistrationInfoList *)registrationInfoAtIndex:(NSUInteger)index;
-- (UIItemProvider *)itemProviderAtIndex:(NSUInteger)index;
-
 @property (copy, nonatomic, nullable) NSArray<__kindof NSItemProvider *> *itemProviders;
 @property (readonly, nonatomic) NSInteger numberOfItems;
 @property (readonly, nonatomic) NSInteger changeCount;
 
 // This will only be non-empty when an operation is being performed.
-@property (readonly, nonatomic) NSArray<NSURL *> *fileURLsForDataInteraction;
+@property (readonly, nonatomic) NSArray<NSURL *> *droppedFileURLs;
 
 @property (readonly, nonatomic) BOOL hasPendingOperation;
 - (void)incrementPendingOperationCount;

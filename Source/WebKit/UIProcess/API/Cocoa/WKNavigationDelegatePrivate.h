@@ -33,6 +33,14 @@
 
 @class _WKWebsitePolicies;
 
+#if !TARGET_OS_IPHONE
+typedef NS_ENUM(NSInteger, _WKWebGLLoadPolicy) {
+    _WKWebGLLoadPolicyBlockCreation,
+    _WKWebGLLoadPolicyAllowCreation,
+    _WKWebGLLoadPolicyPendingCreation,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+#endif
+
 static const WKNavigationActionPolicy _WKNavigationActionPolicyDownload = (WKNavigationActionPolicy)(WKNavigationActionPolicyAllow + 1);
 static const WKNavigationActionPolicy WK_API_AVAILABLE(macosx(10.11), ios(9.0)) _WKNavigationActionPolicyAllowWithoutTryingAppLink = (WKNavigationActionPolicy)(WKNavigationActionPolicyAllow + 2);
 
@@ -44,7 +52,8 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 
 - (void)_webView:(WKWebView *)webView navigation:(WKNavigation *)navigation didFailProvisionalLoadInSubframe:(WKFrameInfo *)subframe withError:(NSError *)error;
 
-- (void)_webView:(WKWebView *)webView didPerformClientRedirectForNavigation:(WKNavigation *)navigation;
+- (void)_webView:(WKWebView *)webView willPerformClientRedirectToURL:(NSURL *)URL delay:(NSTimeInterval)delay;
+- (void)_webViewDidCancelClientRedirect:(WKWebView *)webView;
 
 - (void)_webView:(WKWebView *)webView navigationDidFinishDocumentLoad:(WKNavigation *)navigation;
 - (void)_webView:(WKWebView *)webView navigation:(WKNavigation *)navigation didSameDocumentNavigation:(_WKSameDocumentNavigationType)navigationType;
@@ -72,7 +81,10 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 #if TARGET_OS_IPHONE
 - (void)_webView:(WKWebView *)webView didStartLoadForQuickLookDocumentInMainFrameWithFileName:(NSString *)fileName uti:(NSString *)uti;
 - (void)_webView:(WKWebView *)webView didFinishLoadForQuickLookDocumentInMainFrame:(NSData *)documentData;
-- (void)_webViewDidRequestPasswordForQuickLookDocument:(WKWebView *)webView WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_webViewDidRequestPasswordForQuickLookDocument:(WKWebView *)webView WK_API_AVAILABLE(ios(11.0));
+#else
+- (void)_webView:(WKWebView *)webView webGLLoadPolicyForURL:(NSURL *)url decisionHandler:(void (^)(_WKWebGLLoadPolicy))decisionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView resolveWebGLLoadPolicyForURL:(NSURL *)url decisionHandler:(void (^)(_WKWebGLLoadPolicy))decisionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 #endif
 
 @end

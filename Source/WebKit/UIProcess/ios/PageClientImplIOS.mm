@@ -113,8 +113,8 @@ using namespace WebKit;
 namespace WebKit {
 
 PageClientImpl::PageClientImpl(WKContentView *contentView, WKWebView *webView)
-    : m_contentView(contentView)
-    , m_webView(webView)
+    : PageClientImplCocoa(webView)
+    , m_contentView(contentView)
     , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
 {
 }
@@ -237,10 +237,9 @@ void PageClientImpl::didCompleteSyntheticClick()
     [m_contentView _didCompleteSyntheticClick];
 }
 
-bool PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, API::SecurityOrigin& origin, GeolocationPermissionRequestProxy& request)
+void PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& frame, API::SecurityOrigin& origin, Function<void(bool)>& completionHandler)
 {
-    [[wrapper(m_webView->_page->process().processPool()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:origin.securityOrigin() frame:frame request:request view:m_webView];
-    return true;
+    [[wrapper(m_webView->_page->process().processPool()) _geolocationProvider] decidePolicyForGeolocationRequestFromOrigin:origin.securityOrigin() frame:frame completionHandler:std::exchange(completionHandler, nullptr) view:m_webView];
 }
 
 void PageClientImpl::didStartProvisionalLoadForMainFrame()
@@ -260,11 +259,8 @@ void PageClientImpl::didCommitLoadForMainFrame(const String& mimeType, bool useC
     [m_contentView _didCommitLoadForMainFrame];
 }
 
-void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
+void PageClientImpl::handleDownloadRequest(DownloadProxy*)
 {
-    ASSERT_ARG(download, download);
-    ASSERT([download->wrapper() isKindOfClass:[_WKDownload class]]);
-    [static_cast<_WKDownload *>(download->wrapper()) setOriginatingWebView:m_webView];
 }
 
 void PageClientImpl::didChangeContentSize(const WebCore::IntSize&)
@@ -784,6 +780,11 @@ void PageClientImpl::didPerformDataInteractionControllerOperation(bool handled)
 void PageClientImpl::didHandleStartDataInteractionRequest(bool started)
 {
     [m_contentView _didHandleStartDataInteractionRequest:started];
+}
+
+void PageClientImpl::didHandleAdditionalDragItemsRequest(bool added)
+{
+    [m_contentView _didHandleAdditionalDragItemsRequest:added];
 }
 
 void PageClientImpl::startDrag(const DragItem& item, const ShareableBitmap::Handle& image)

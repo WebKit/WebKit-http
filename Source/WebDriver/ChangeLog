@@ -1,3 +1,83 @@
+2017-09-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: ensure we close all windows handles when closing the session
+        https://bugs.webkit.org/show_bug.cgi?id=176508
+
+        Reviewed by Brian Burg.
+
+        The spec says that when closing the session all top level browsing contexts should be closed. We are currently
+        checking if we have an active top level browsing context and then we try to close it before trying with the
+        rest. It can happen that we are in an inconsistent state, for example if the current top level browsing context
+        has been closed by JavaScript or another action and the user didn't switch to another one before closing the
+        session. In such case, closing the session will fail with NoSuchwindow and any other window open will not be
+        closed. It's safer to always ask for all window handles and close them, which is what the spec says too.
+
+        * Session.cpp:
+        (WebDriver::firstWindowHandleInResult): Helper class to get the first window handle in the result array.
+        (WebDriver::Session::closeAllToplevelBrowsingContexts): Use firstWindowHandleInResult().
+        (WebDriver::Session::close): Close the current top level browsing context and get all window handles to close
+        them all if needed.
+
+2017-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement screen capture commands
+        https://bugs.webkit.org/show_bug.cgi?id=174615
+
+        Reviewed by Brian Burg.
+
+        Implement takeScreenshot and takeElementScreenshot commands.
+
+        19. Screen Capture.
+        https://w3c.github.io/webdriver/webdriver-spec.html#screen-capture
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::CommandResult): Handle ScreenshotError protocol error.
+        (WebDriver::CommandResult::httpStatusCode const): Add UnableToCaptureScreen.
+        (WebDriver::CommandResult::errorString const): Ditto.
+        * CommandResult.h:
+        * Session.cpp:
+        (WebDriver::Session::takeScreenshot):
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::takeScreenshot):
+        (WebDriver::WebDriverService::takeElementScreenshot):
+        * WebDriverService.h:
+
+2017-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement cookies commands
+        https://bugs.webkit.org/show_bug.cgi?id=174613
+
+        Reviewed by Brian Burg.
+
+        Add cookies commands.
+
+        16. Cookies.
+        https://w3c.github.io/webdriver/webdriver-spec.html#cookies
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::httpStatusCode const): Add NoSuchCookie error.
+        (WebDriver::CommandResult::errorString const): Ditto.
+        * CommandResult.h:
+        * Session.cpp:
+        (WebDriver::parseAutomationCookie): Parse JSON cookie object returned by automation and convert it to a Cookie struct.
+        (WebDriver::builtAutomationCookie): Build a JSON cookie object as expected by automation from a Cookie struct.
+        (WebDriver::serializeCookie): Serialize a Cookie struct into a JSON cookie object according to the WebDriver spec.
+        (WebDriver::Session::getAllCookies):
+        (WebDriver::Session::getNamedCookie):
+        (WebDriver::Session::addCookie):
+        (WebDriver::Session::deleteCookie):
+        (WebDriver::Session::deleteAllCookies):
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::getAllCookies):
+        (WebDriver::WebDriverService::getNamedCookie):
+        (WebDriver::deserializeCookie):
+        (WebDriver::WebDriverService::addCookie):
+        (WebDriver::WebDriverService::deleteCookie):
+        (WebDriver::WebDriverService::deleteAllCookies):
+        * WebDriverService.h:
+
 2017-07-28  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: fix return value of close window command

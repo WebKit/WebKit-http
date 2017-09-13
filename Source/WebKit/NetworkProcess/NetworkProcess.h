@@ -88,7 +88,7 @@ public:
     template <typename T>
     void addSupplement()
     {
-        m_supplements.add(T::supplementName(), std::make_unique<T>(this));
+        m_supplements.add(T::supplementName(), std::make_unique<T>(*this));
     }
 
     void removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess*);
@@ -132,10 +132,12 @@ public:
     void grantSandboxExtensionsToStorageProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool shouldClearFirst);
+    void updatePrevalentDomainsWithAndWithoutInteraction(PAL::SessionID, const Vector<String>& domainsWithInteraction, const Vector<String>& domainsWithoutInteraction, bool shouldClearFirst);
+    void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
 #endif
 
     Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
+    String cacheStorageDirectory(PAL::SessionID) const;
 
 private:
     NetworkProcess();
@@ -226,6 +228,7 @@ private:
     // Connections to WebProcesses.
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;
 
+    String m_cacheStorageDirectory;
     String m_diskCacheDirectory;
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;

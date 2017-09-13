@@ -50,7 +50,9 @@ namespace JSC { namespace DFG {
 
 namespace {
 
-bool verbose = false;
+namespace DFGArgumentsEliminationPhaseInternal {
+static const bool verbose = false;
+}
 
 class ArgumentsEliminationPhase : public Phase {
 public:
@@ -65,7 +67,7 @@ public:
         // version over LoadStore.
         DFG_ASSERT(m_graph, nullptr, m_graph.m_form == SSA);
         
-        if (verbose) {
+        if (DFGArgumentsEliminationPhaseInternal::verbose) {
             dataLog("Graph before arguments elimination:\n");
             m_graph.dump();
         }
@@ -157,7 +159,7 @@ private:
             }
         }
         
-        if (verbose)
+        if (DFGArgumentsEliminationPhaseInternal::verbose)
             dataLog("Candidates: ", listDump(m_candidates), "\n");
     }
 
@@ -210,7 +212,7 @@ private:
     void transitivelyRemoveCandidate(Node* node, Node* source = nullptr)
     {
         bool removed = m_candidates.remove(node);
-        if (removed && verbose && source)
+        if (removed && DFGArgumentsEliminationPhaseInternal::verbose && source)
             dataLog("eliminating candidate: ", node, " because it escapes from: ", source, "\n");
 
         if (removed)
@@ -370,6 +372,7 @@ private:
                     escapeBasedOnArrayMode(node->arrayMode(), node->child1(), node);
                     break;
 
+                case CheckStructureOrEmpty:
                 case CheckStructure: {
                     if (!m_candidates.contains(node->child1().node()))
                         break;
@@ -417,7 +420,7 @@ private:
             }
         }
 
-        if (verbose)
+        if (DFGArgumentsEliminationPhaseInternal::verbose)
             dataLog("After escape analysis: ", listDump(m_candidates), "\n");
     }
 
@@ -490,7 +493,7 @@ private:
                         }
                         
                         if (!isClobberedByBlock) {
-                            for (unsigned i = 0; i < inlineCallFrame->arguments.size() - 1; ++i) {
+                            for (unsigned i = 0; i < inlineCallFrame->argumentCountIncludingThis - 1; ++i) {
                                 VirtualRegister reg =
                                     VirtualRegister(inlineCallFrame->stackOffset) +
                                     CallFrame::argumentOffset(i);
@@ -518,7 +521,7 @@ private:
                     // for this arguments allocation, and we'd have to examine every node in the block,
                     // then we can just eliminate the candidate.
                     if (nodeIndex == block->size() && candidate->owner != block) {
-                        if (verbose)
+                        if (DFGArgumentsEliminationPhaseInternal::verbose)
                             dataLog("eliminating candidate: ", candidate, " because it is clobbered by: ", block->at(nodeIndex), "\n");
                         transitivelyRemoveCandidate(candidate);
                         return;
@@ -545,7 +548,7 @@ private:
                             NoOpClobberize());
                         
                         if (found) {
-                            if (verbose)
+                            if (DFGArgumentsEliminationPhaseInternal::verbose)
                                 dataLog("eliminating candidate: ", candidate, " because it is clobbered by ", block->at(nodeIndex), "\n");
                             transitivelyRemoveCandidate(candidate);
                             return;
@@ -567,7 +570,7 @@ private:
         // since those availabilities speak of the stack before the optimizing compiler stack frame is
         // torn down.
 
-        if (verbose)
+        if (DFGArgumentsEliminationPhaseInternal::verbose)
             dataLog("After interference analysis: ", listDump(m_candidates), "\n");
     }
     
@@ -700,7 +703,7 @@ private:
                         
                         bool safeToGetStack;
                         if (inlineCallFrame)
-                            safeToGetStack = index < inlineCallFrame->arguments.size() - 1;
+                            safeToGetStack = index < inlineCallFrame->argumentCountIncludingThis - 1;
                         else {
                             safeToGetStack =
                                 index < static_cast<unsigned>(codeBlock()->numParameters()) - 1;
@@ -805,7 +808,7 @@ private:
                                 ASSERT(spread->op() == PhantomSpread && spread->child1()->op() == PhantomCreateRest);
                                 unsigned numberOfArgumentsToSkip = spread->child1()->numberOfArgumentsToSkip();
                                 InlineCallFrame* inlineCallFrame = spread->child1()->origin.semantic.inlineCallFrame;
-                                unsigned frameArgumentCount = inlineCallFrame->arguments.size() - 1;
+                                unsigned frameArgumentCount = inlineCallFrame->argumentCountIncludingThis - 1;
                                 if (frameArgumentCount >= numberOfArgumentsToSkip)
                                     return frameArgumentCount - numberOfArgumentsToSkip;
                                 return 0;
@@ -834,7 +837,7 @@ private:
                                     ASSERT(spread->op() == PhantomSpread && spread->child1()->op() == PhantomCreateRest);
                                     unsigned numberOfArgumentsToSkip = spread->child1()->numberOfArgumentsToSkip();
                                     InlineCallFrame* inlineCallFrame = spread->child1()->origin.semantic.inlineCallFrame;
-                                    unsigned frameArgumentCount = inlineCallFrame->arguments.size() - 1;
+                                    unsigned frameArgumentCount = inlineCallFrame->argumentCountIncludingThis - 1;
                                     for (unsigned loadIndex = numberOfArgumentsToSkip; loadIndex < frameArgumentCount; ++loadIndex) {
                                         VirtualRegister reg = virtualRegisterForArgument(loadIndex + 1) + inlineCallFrame->stackOffset;
                                         StackAccessData* data = m_graph.m_stackAccessData.add(reg, FlushedJSValue);
@@ -887,7 +890,7 @@ private:
                         if (inlineCallFrame
                             && !inlineCallFrame->isVarargs()) {
 
-                            unsigned argumentCountIncludingThis = inlineCallFrame->arguments.size();
+                            unsigned argumentCountIncludingThis = inlineCallFrame->argumentCountIncludingThis;
                             if (argumentCountIncludingThis > varargsData->offset)
                                 argumentCountIncludingThis -= varargsData->offset;
                             else
@@ -909,7 +912,7 @@ private:
                                     Node* value = nullptr;
                                     unsigned loadIndex = storeIndex + varargsData->offset;
 
-                                    if (loadIndex + 1 < inlineCallFrame->arguments.size()) {
+                                    if (loadIndex + 1 < inlineCallFrame->argumentCountIncludingThis) {
                                         VirtualRegister reg = virtualRegisterForArgument(loadIndex + 1) + inlineCallFrame->stackOffset;
                                         StackAccessData* data = m_graph.m_stackAccessData.add(
                                             reg, FlushedJSValue);
@@ -1032,7 +1035,7 @@ private:
                                 ASSERT(spread->child1()->op() == PhantomCreateRest);
                                 InlineCallFrame* inlineCallFrame = spread->child1()->origin.semantic.inlineCallFrame;
                                 unsigned numberOfArgumentsToSkip = spread->child1()->numberOfArgumentsToSkip();
-                                for (unsigned i = 1 + numberOfArgumentsToSkip; i < inlineCallFrame->arguments.size(); ++i) {
+                                for (unsigned i = 1 + numberOfArgumentsToSkip; i < inlineCallFrame->argumentCountIncludingThis; ++i) {
                                     StackAccessData* data = m_graph.m_stackAccessData.add(
                                         virtualRegisterForArgument(i) + inlineCallFrame->stackOffset,
                                         FlushedJSValue);
@@ -1069,7 +1072,7 @@ private:
                         InlineCallFrame* inlineCallFrame = candidate->origin.semantic.inlineCallFrame;
                         if (inlineCallFrame && !inlineCallFrame->isVarargs()) {
                             Vector<Node*> arguments;
-                            for (unsigned i = 1 + varargsData->firstVarArgOffset; i < inlineCallFrame->arguments.size(); ++i) {
+                            for (unsigned i = 1 + varargsData->firstVarArgOffset; i < inlineCallFrame->argumentCountIncludingThis; ++i) {
                                 StackAccessData* data = m_graph.m_stackAccessData.add(
                                     virtualRegisterForArgument(i) + inlineCallFrame->stackOffset,
                                     FlushedJSValue);
@@ -1096,6 +1099,7 @@ private:
                     break;
                 }
 
+                case CheckStructureOrEmpty:
                 case CheckStructure:
                     if (!isEliminatedAllocation(node->child1().node()))
                         break;

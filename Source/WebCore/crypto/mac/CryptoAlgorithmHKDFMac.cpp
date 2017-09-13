@@ -31,35 +31,19 @@
 #include "CommonCryptoUtilities.h"
 #include "CryptoAlgorithmHkdfParams.h"
 #include "CryptoKeyRaw.h"
-#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
-void CryptoAlgorithmHKDF::platformDeriveBits(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& baseKey, size_t length, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmHKDF::platformDeriveBits(CryptoAlgorithmHkdfParams& parameters, const CryptoKeyRaw& key, size_t length)
 {
-    context.ref();
-    workQueue.dispatch([parameters = WTFMove(parameters), baseKey = WTFMove(baseKey), length, callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& hkdfParameters = downcast<CryptoAlgorithmHkdfParams>(*parameters);
-        auto& rawKey = downcast<CryptoKeyRaw>(baseKey.get());
+    Vector<uint8_t> result(length / 8);
+    CCDigestAlgorithm digestAlgorithm;
+    getCommonCryptoDigestAlgorithm(parameters.hashIdentifier, digestAlgorithm);
 
-        Vector<uint8_t> result(length / 8);
-        CCDigestAlgorithm digestAlgorithm;
-        getCommonCryptoDigestAlgorithm(hkdfParameters.hashIdentifier, digestAlgorithm);
-        // <rdar://problem/32439455> Currently, when rawKey is null, CCKeyDerivationHMac will bail out.
-        if (CCKeyDerivationHMac(kCCKDFAlgorithmHKDF, digestAlgorithm, 0, rawKey.key().data(), rawKey.key().size(), 0, 0, hkdfParameters.infoVector().data(), hkdfParameters.infoVector().size(), 0, 0, hkdfParameters.saltVector().data(), hkdfParameters.saltVector().size(), result.data(), result.size())) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(OperationError);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = WTFMove(result), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    // <rdar://problem/32439455> Currently, when key data is empty, CCKeyDerivationHMac will bail out.
+    if (CCKeyDerivationHMac(kCCKDFAlgorithmHKDF, digestAlgorithm, 0, key.key().data(), key.key().size(), 0, 0, parameters.infoVector().data(), parameters.infoVector().size(), 0, 0, parameters.saltVector().data(), parameters.saltVector().size(), result.data(), result.size()))
+        return Exception { OperationError };
+    return WTFMove(result);
 }
 
 }

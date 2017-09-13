@@ -102,10 +102,11 @@ void GenericArguments<Type>::getOwnPropertyNames(JSObject* object, ExecState* ex
     }
 
     if (mode.includeDontEnumProperties() && !thisObject->overrodeThings()) {
-        array.add(exec->propertyNames().length);
-        array.add(exec->propertyNames().callee);
+        VM& vm = exec->vm();
+        array.add(vm.propertyNames->length);
+        array.add(vm.propertyNames->callee);
         if (array.includeSymbolProperties())
-            array.add(exec->propertyNames().iteratorSymbol);
+            array.add(vm.propertyNames->iteratorSymbol);
     }
     Base::getOwnPropertyNames(thisObject, exec, array, mode);
 }
@@ -242,6 +243,7 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, ExecState* exec
                         JSValue value = thisObject->getIndexQuickly(index);
                         ASSERT(value);
                         object->putDirectMayBeIndex(exec, ident, value);
+                        scope.assertNoException();
                     }
                     thisObject->unmapArgument(vm, index);
                     thisObject->setModifiedArgumentDescriptor(vm, index);

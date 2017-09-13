@@ -278,8 +278,6 @@ String InspectorFrontendHost::platform()
     return ASCIILiteral("freebsd");
 #elif OS(OPENBSD)
     return ASCIILiteral("openbsd");
-#elif OS(SOLARIS)
-    return ASCIILiteral("solaris");
 #else
     return ASCIILiteral("unknown");
 #endif
@@ -384,7 +382,7 @@ void InspectorFrontendHost::showContextMenu(Event& event, Vector<ContextMenuItem
     ASSERT(m_frontendPage);
 
     auto& state = *execStateFromPage(debuggerWorld(), m_frontendPage);
-    auto value = state.lexicalGlobalObject()->get(&state, JSC::Identifier::fromString(&state.vm(), "InspectorFrontendHost"));
+    auto value = state.lexicalGlobalObject()->get(&state, JSC::Identifier::fromString(&state.vm(), "InspectorFrontendAPI"));
     ASSERT(value);
     ASSERT(value.isObject());
     auto* frontendAPIObject = asObject(value);

@@ -36,6 +36,7 @@ VPATH = \
     $(WebKit2)/Shared/mac \
     $(WebKit2)/StorageProcess \
     $(WebKit2)/StorageProcess/IndexedDB \
+    $(WebKit2)/StorageProcess/ServiceWorker \
     $(WebKit2)/StorageProcess/mac \
     $(WebKit2)/WebProcess/ApplePay \
     $(WebKit2)/WebProcess/ApplicationCache \
@@ -54,11 +55,11 @@ VPATH = \
     $(WebKit2)/WebProcess/OriginData \
     $(WebKit2)/WebProcess/Plugins \
     $(WebKit2)/WebProcess/ResourceCache \
-    $(WebKit2)/WebProcess/Scrolling \
     $(WebKit2)/WebProcess/Storage \
     $(WebKit2)/WebProcess/UserContent \
     $(WebKit2)/WebProcess/WebCoreSupport \
     $(WebKit2)/WebProcess/WebPage \
+    $(WebKit2)/WebProcess/WebPage/RemoteLayerTree \
     $(WebKit2)/WebProcess/WebStorage \
     $(WebKit2)/WebProcess/cocoa \
     $(WebKit2)/WebProcess/ios \
@@ -74,6 +75,7 @@ VPATH = \
     $(WebKit2)/UIProcess/Network/CustomProtocols \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
+    $(WebKit2)/UIProcess/RemoteLayerTree \
     $(WebKit2)/UIProcess/Storage \
     $(WebKit2)/UIProcess/UserContent \
     $(WebKit2)/UIProcess/WebStorage \
@@ -158,6 +160,7 @@ MESSAGE_RECEIVERS = \
     WebPasteboardProxy \
     WebPaymentCoordinator \
     WebPaymentCoordinatorProxy \
+    WebSWClientConnection \
     WebSWServerConnection \
     PlaybackSessionManager \
     PlaybackSessionManagerProxy \

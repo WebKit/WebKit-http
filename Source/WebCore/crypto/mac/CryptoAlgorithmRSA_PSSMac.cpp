@@ -32,7 +32,6 @@
 #include "CryptoAlgorithmRsaPssParams.h"
 #include "CryptoDigestAlgorithm.h"
 #include "CryptoKeyRSA.h"
-#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
@@ -82,50 +81,14 @@ static ExceptionOr<bool> verifyRSA_PSS(CryptoAlgorithmIdentifier hash, const Pla
     return false;
 }
 
-void CryptoAlgorithmRSA_PSS::platformSign(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSA_PSS::platformSign(CryptoAlgorithmRsaPssParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-        auto& rsaParams = downcast<CryptoAlgorithmRsaPssParams>(*parameters);
-        auto result = signRSA_PSS(rsaKey.hashAlgorithmIdentifier(), rsaKey.platformKey(), rsaKey.keySizeInBits(), data, rsaParams.saltLength);
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    return signRSA_PSS(key.hashAlgorithmIdentifier(), key.platformKey(), key.keySizeInBits(), data, parameters.saltLength);
 }
 
-void CryptoAlgorithmRSA_PSS::platformVerify(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<bool> CryptoAlgorithmRSA_PSS::platformVerify(CryptoAlgorithmRsaPssParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-        auto& rsaParams = downcast<CryptoAlgorithmRsaPssParams>(*parameters);
-        auto result = verifyRSA_PSS(rsaKey.hashAlgorithmIdentifier(), rsaKey.platformKey(), signature, data, rsaParams.saltLength);
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    return verifyRSA_PSS(key.hashAlgorithmIdentifier(), key.platformKey(), signature, data, parameters.saltLength);
 }
 
 } // namespace WebCore

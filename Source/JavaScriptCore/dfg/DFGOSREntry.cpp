@@ -32,6 +32,7 @@
 #include "CodeBlock.h"
 #include "DFGJITCode.h"
 #include "DFGNode.h"
+#include "InterpreterInlines.h"
 #include "JIT.h"
 #include "JSCInlines.h"
 #include "VMInlines.h"
@@ -334,6 +335,73 @@ void* prepareOSREntry(ExecState* exec, CodeBlock* codeBlock, unsigned bytecodeIn
     if (Options::verboseOSR())
         dataLogF("    OSR returning data buffer %p.\n", scratch);
     return scratch;
+}
+
+void* prepareCatchOSREntry(ExecState* exec, CodeBlock* codeBlock, unsigned bytecodeIndex)
+{ 
+    ASSERT(codeBlock->jitType() == JITCode::DFGJIT || codeBlock->jitType() == JITCode::FTLJIT);
+
+    if (!Options::useOSREntryToDFG() && codeBlock->jitCode()->jitType() == JITCode::DFGJIT)
+        return nullptr;
+    if (!Options::useOSREntryToFTL() && codeBlock->jitCode()->jitType() == JITCode::FTLJIT)
+        return nullptr;
+
+    VM& vm = exec->vm();
+
+    CommonData* dfgCommon = codeBlock->jitCode()->dfgCommon();
+    RELEASE_ASSERT(dfgCommon);
+    DFG::CatchEntrypointData* catchEntrypoint = dfgCommon->catchOSREntryDataForBytecodeIndex(bytecodeIndex);
+    if (!catchEntrypoint) {
+        // This can be null under some circumstances. The most common is that we didn't
+        // compile this op_catch as an entrypoint since it had never executed when starting
+        // the compilation.
+        return nullptr;
+    }
+
+    // We're only allowed to OSR enter if we've proven we have compatible argument types.
+    for (unsigned argument = 0; argument < catchEntrypoint->argumentFormats.size(); ++argument) {
+        JSValue value = exec->uncheckedR(virtualRegisterForArgument(argument)).jsValue();
+        switch (catchEntrypoint->argumentFormats[argument]) {
+        case DFG::FlushedInt32:
+            if (!value.isInt32())
+                return nullptr;
+            break;
+        case DFG::FlushedCell:
+            if (!value.isCell())
+                return nullptr;
+            break;
+        case DFG::FlushedBoolean:
+            if (!value.isBoolean())
+                return nullptr;
+            break;
+        case DFG::DeadFlush:
+            // This means the argument is not alive. Therefore, it's allowed to be any type.
+            break;
+        case DFG::FlushedJSValue:
+            // An argument is trivially a JSValue.
+            break; 
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
+
+    unsigned frameSizeForCheck = dfgCommon->requiredRegisterCountForExecutionAndExit();
+    if (UNLIKELY(!vm.ensureStackCapacityFor(&exec->registers()[virtualRegisterForLocal(frameSizeForCheck).offset()])))
+        return nullptr;
+
+    ASSERT(Interpreter::getOpcodeID(exec->codeBlock()->instructions()[exec->bytecodeOffset()].u.opcode) == op_catch);
+    ValueProfileAndOperandBuffer* buffer = static_cast<ValueProfileAndOperandBuffer*>(exec->codeBlock()->instructions()[exec->bytecodeOffset() + 3].u.pointer);
+    JSValue* dataBuffer = reinterpret_cast<JSValue*>(dfgCommon->catchOSREntryBuffer->dataBuffer());
+    unsigned index = 0;
+    buffer->forEach([&] (ValueProfileAndOperand& profile) {
+        if (!VirtualRegister(profile.m_operand).isLocal())
+            return;
+        dataBuffer[index] = exec->uncheckedR(profile.m_operand).jsValue();
+        ++index;
+    });
+
+    dfgCommon->catchOSREntryBuffer->setActiveLength(sizeof(JSValue) * index);
+    return catchEntrypoint->machineCode;
 }
 
 } } // namespace JSC::DFG

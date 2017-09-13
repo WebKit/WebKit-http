@@ -63,8 +63,12 @@ enum LocationKind {
     StackLoc,
     StackPayloadLoc,
     MapBucketLoc,
-    JSMapGetLoc,
-    MapHasLoc,
+    MapBucketHeadLoc,
+    MapBucketValueLoc,
+    MapBucketKeyLoc,
+    MapBucketMapNextLoc,
+    MapBucketSetNextLoc,
+    WeakMapGetLoc,
     DOMStateLoc,
 };
 

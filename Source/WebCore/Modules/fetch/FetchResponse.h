@@ -53,25 +53,20 @@ public:
         std::optional<FetchHeaders::Init> headers;
     };
 
-    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
+    static Ref<FetchResponse> create(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+
+    static ExceptionOr<Ref<FetchResponse>> create(ScriptExecutionContext&, std::optional<FetchBody::Init>&&, Init&&);
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static ExceptionOr<Ref<FetchResponse>> redirect(ScriptExecutionContext&, const String& url, int status);
-
-    static Ref<FetchResponse> create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response) { return adoptRef(*new FetchResponse(context, WTFMove(body), WTFMove(headers), WTFMove(response))); }
 
     using NotificationCallback = WTF::Function<void(ExceptionOr<FetchResponse&>&&)>;
     static void fetch(ScriptExecutionContext&, FetchRequest&, NotificationCallback&&);
 
-    void consume(unsigned, Ref<DeferredPromise>&&);
 #if ENABLE(STREAMS_API)
     void startConsumingStream(unsigned);
     void consumeChunk(Ref<JSC::Uint8Array>&&);
     void finishConsumingStream(Ref<DeferredPromise>&&);
 #endif
-
-    ExceptionOr<void> setStatus(int status, const String& statusText);
-    void initializeWith(FetchBody::Init&&);
-    void setBodyAsReadableStream();
 
     Type type() const { return m_response.type(); }
     const String& url() const;
@@ -82,13 +77,12 @@ public:
 
     const FetchHeaders& headers() const { return m_headers; }
     FetchHeaders& headers() { return m_headers; }
-    Ref<FetchResponse> cloneForJS();
+    ExceptionOr<Ref<FetchResponse>> clone(ScriptExecutionContext&);
 
 #if ENABLE(STREAMS_API)
-    ReadableStreamSource* createReadableStreamSource();
-    void consumeBodyAsStream();
-    void feedStream();
-    void cancel();
+    void consumeBodyAsStream() final;
+    void feedStream() final;
+    void cancel() final;
 #endif
 
     using ResponseData = Variant<std::nullptr_t, Ref<FormData>, Ref<SharedBuffer>>;
@@ -99,6 +93,7 @@ public:
 
     using ConsumeDataCallback = WTF::Function<void(ExceptionOr<RefPtr<SharedBuffer>>&&)>;
     void consumeBodyWhenLoaded(ConsumeDataCallback&&);
+    void consumeBodyFromReadableStream(ConsumeDataCallback&&);
 
     const ResourceResponse& resourceResponse() const { return m_response; }
 
@@ -143,9 +138,11 @@ private:
     ResourceResponse m_response;
     std::optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
-    bool m_shouldExposeBody { true };
-
-    FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::ArrayBuffer  };
 };
+
+inline Ref<FetchResponse> FetchResponse::create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response)
+{
+    return adoptRef(*new FetchResponse(context, WTFMove(body), WTFMove(headers), WTFMove(response)));
+}
 
 } // namespace WebCore

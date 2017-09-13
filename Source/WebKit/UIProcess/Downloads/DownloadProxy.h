@@ -33,6 +33,7 @@
 #include <WebCore/ResourceRequest.h>
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
+#include <wtf/WeakPtr.h>
 
 namespace API {
 class Data;
@@ -69,6 +70,9 @@ public:
     void didReceiveDownloadProxyMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncDownloadProxyMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
+    WebPageProxy* originatingPage() const;
+    void setOriginatingPage(WebPageProxy*);
+
 private:
     explicit DownloadProxy(DownloadProxyMap&, WebProcessPool&, const WebCore::ResourceRequest&);
 
@@ -86,11 +90,11 @@ private:
     void didFinish();
     void didFail(const WebCore::ResourceError&, const IPC::DataReference& resumeData);
     void didCancel(const IPC::DataReference& resumeData);
+    void willSendRequest(const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse);
 #if USE(NETWORK_SESSION)
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpace(const WebCore::ProtectionSpace&);
 #endif
-    void willSendRequest(const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse);
 #else
     void decideDestinationWithSuggestedFilename(const String& filename, const String& mimeType, String& destination, bool& allowOverwrite, SandboxExtension::Handle& sandboxExtensionHandle);
 #endif
@@ -103,6 +107,8 @@ private:
     RefPtr<API::Data> m_resumeData;
     WebCore::ResourceRequest m_request;
     String m_suggestedFilename;
+
+    WeakPtr<WebPageProxy> m_originatingPage;
 };
 
 } // namespace WebKit

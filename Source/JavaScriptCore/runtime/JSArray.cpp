@@ -165,8 +165,11 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         // b. Let newLenDesc be a copy of Desc.
         // c. Let newLen be ToUint32(Desc.[[Value]]).
         unsigned newLen = descriptor.value().toUInt32(exec);
+        RETURN_IF_EXCEPTION(scope, false);
         // d. If newLen is not equal to ToNumber( Desc.[[Value]]), throw a RangeError exception.
-        if (newLen != descriptor.value().toNumber(exec)) {
+        double valueAsNumber = descriptor.value().toNumber(exec);
+        RETURN_IF_EXCEPTION(scope, false);
+        if (newLen != valueAsNumber) {
             JSC::throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
             return false;
         }
@@ -198,7 +201,7 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         // l.ii. Let deleteSucceeded be the result of calling the [[Delete]] internal method of A passing ToString(oldLen) and false as arguments.
         // l.iii. If deleteSucceeded is false, then
         bool success = array->setLength(exec, newLen, throwException);
-        ASSERT(!scope.exception() || !success);
+        EXCEPTION_ASSERT(!scope.exception() || !success);
         if (!success) {
             // 1. Set newLenDesc.[[Value] to oldLen+1.
             // 2. If newWritable is false, set newLenDesc.[[Writable] to false.
@@ -243,8 +246,9 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
 
 bool JSArray::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
+    VM& vm = exec->vm();
     JSArray* thisObject = jsCast<JSArray*>(object);
-    if (propertyName == exec->propertyNames().length) {
+    if (propertyName == vm.propertyNames->length) {
         unsigned attributes = thisObject->isLengthWritable() ? DontDelete | DontEnum : DontDelete | DontEnum | ReadOnly;
         slot.setValue(thisObject, attributes, jsNumber(thisObject->length()));
         return true;
@@ -266,12 +270,14 @@ bool JSArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSVa
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
     }
 
-    if (propertyName == exec->propertyNames().length) {
+    if (propertyName == vm.propertyNames->length) {
         if (!thisObject->isLengthWritable())
             return false;
         unsigned newLength = value.toUInt32(exec);
         RETURN_IF_EXCEPTION(scope, false);
-        if (value.toNumber(exec) != static_cast<double>(newLength)) {
+        double valueAsNumber = value.toNumber(exec);
+        RETURN_IF_EXCEPTION(scope, false);
+        if (valueAsNumber != static_cast<double>(newLength)) {
             throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
             return false;
         }
@@ -285,9 +291,10 @@ bool JSArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSVa
 
 bool JSArray::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
+    VM& vm = exec->vm();
     JSArray* thisObject = jsCast<JSArray*>(cell);
 
-    if (propertyName == exec->propertyNames().length)
+    if (propertyName == vm.propertyNames->length)
         return false;
 
     return JSObject::deleteProperty(thisObject, exec, propertyName);
@@ -302,10 +309,11 @@ static int compareKeysForQSort(const void* a, const void* b)
 
 void JSArray::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
+    VM& vm = exec->vm();
     JSArray* thisObject = jsCast<JSArray*>(object);
 
     if (mode.includeDontEnumProperties())
-        propertyNames.add(exec->propertyNames().length);
+        propertyNames.add(vm.propertyNames->length);
 
     JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
 }
@@ -1431,7 +1439,8 @@ bool JSArray::isIteratorProtocolFastAndNonObservable()
     if (structure->storedPrototype() != globalObject->arrayPrototype())
         return false;
 
-    if (getDirectOffset(globalObject->vm(), globalObject->vm().propertyNames->iteratorSymbol) != invalidOffset)
+    VM& vm = globalObject->vm();
+    if (getDirectOffset(vm, vm.propertyNames->iteratorSymbol) != invalidOffset)
         return false;
 
     return true;

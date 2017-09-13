@@ -34,6 +34,7 @@ import re
 
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.executive import ScriptError
+from webkitpy.port.config import apple_additions
 from webkitpy.port.darwin import DarwinPort
 
 _log = logging.getLogger(__name__)
@@ -56,21 +57,53 @@ class MacPort(DarwinPort):
     def _build_driver_flags(self):
         return ['ARCHS=i386'] if self.architecture() == 'x86' else []
 
+    def _apple_additions_path(self, name):
+        if name == 'wk2':
+            return None
+        split_name = name.split('-')
+        os_index = -1
+        if split_name[-1] == 'wk1' or split_name[-1] == 'wk2':
+            os_index = -2
+        if split_name[os_index] != split_name[0]:
+            os_name = apple_additions().mac_os_name(split_name[os_index])
+            if not os_name:
+                return None
+            split_name[os_index] = os_name
+        name = '-'.join(split_name)
+        return self._filesystem.join(apple_additions().layout_tests_path(), name)
+
     @memoized
     def default_baseline_search_path(self):
+        mac_version = 'mac-{}'.format(self._os_version)
+        if mac_version.endswith(self.FUTURE_VERSION) or mac_version not in self.VERSION_FALLBACK_ORDER:
+            version_fallback = [self._os_version]
+        else:
+            version_fallback = self.VERSION_FALLBACK_ORDER[self.VERSION_FALLBACK_ORDER.index(mac_version):-1]
         wk_string = 'wk1'
         if self.get_option('webkit_test_runner'):
             wk_string = 'wk2'
-        fallback_names = [
-            '{}-{}-{}'.format(self.port_name, self._os_version, wk_string),
-            '{}-{}'.format(self.port_name, self._os_version),
+
+        fallback_names = []
+        for version in version_fallback:
+            fallback_names.append('{}-{}'.format(version, wk_string))
+            fallback_names.append(version)
+        fallback_names = fallback_names + [
             '{}-{}'.format(self.port_name, wk_string),
             self.port_name,
         ]
         if self.get_option('webkit_test_runner'):
             fallback_names.append('wk2')
 
-        return map(self._webkit_baseline_path, fallback_names)
+        webkit_expectations = map(self._webkit_baseline_path, fallback_names)
+        if apple_additions() and getattr(apple_additions(), "layout_tests_path", None):
+            apple_expectations = map(self._apple_additions_path, fallback_names)
+            result = []
+            for i in xrange(len(webkit_expectations)):
+                if apple_expectations[i]:
+                    result.append(apple_expectations[i])
+                result.append(webkit_expectations[i])
+            return result
+        return webkit_expectations
 
     def configuration_specifier_macros(self):
         return {

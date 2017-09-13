@@ -639,8 +639,6 @@ private:
     void formatForDebugger(char* buffer, unsigned length) const override;
 #endif
 
-    void cancelFocusAppearanceUpdate();
-
     // The cloneNode function is private so that non-virtual cloneElementWith/WithoutChildren are used instead.
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&);
@@ -648,6 +646,7 @@ private:
     void removeShadowRoot();
 
     const RenderStyle& resolveComputedStyle();
+    const RenderStyle& resolvePseudoElementStyle(PseudoId);
 
     bool rareDataStyleAffectedByEmpty() const;
     bool rareDataStyleAffectedByFocusWithin() const;

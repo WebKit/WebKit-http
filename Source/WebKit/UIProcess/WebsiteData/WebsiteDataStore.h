@@ -32,6 +32,7 @@
 #include <pal/SessionID.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
+#include <wtf/Identified.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -64,9 +65,11 @@ struct PluginModuleInfo;
 
 enum class ShouldClearFirst { No, Yes };
 
-class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver {
+class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver, public Identified<WebsiteDataStore>  {
 public:
     struct Configuration {
+        String cacheStorageDirectory;
+        String cacheStorageSubdirectoryName;
         String networkCacheDirectory;
         String applicationCacheDirectory;
         String applicationCacheFlatFileSubdirectoryName;
@@ -83,8 +86,6 @@ public:
     static Ref<WebsiteDataStore> createNonPersistent();
     static Ref<WebsiteDataStore> create(Configuration, PAL::SessionID);
     virtual ~WebsiteDataStore();
-
-    uint64_t identifier() const { return m_identifier; }
 
     bool isPersistent() const { return !m_sessionID.isEphemeral(); }
     PAL::SessionID sessionID() const { return m_sessionID; }
@@ -104,7 +105,8 @@ public:
     void removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyControlledDomains, Function<void(HashSet<String>&&)>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst);
+    void updatePrevalentDomainsWithAndWithoutInteraction(const Vector<String>& domainsWithInteraction, const Vector<String>& domainsWithoutInteraction, ShouldClearFirst);
+    void removePrevalentDomains(const Vector<String>& domains);
 #endif
     void networkProcessDidCrash();
     void resolveDirectoriesIfNecessary();
@@ -158,7 +160,6 @@ private:
     static void removeMediaKeys(const String& mediaKeysStorageDirectory, std::chrono::system_clock::time_point modifiedSince);
     static void removeMediaKeys(const String& mediaKeysStorageDirectory, const HashSet<WebCore::SecurityOriginData>&);
 
-    const uint64_t m_identifier;
     const PAL::SessionID m_sessionID;
 
     const Configuration m_configuration;

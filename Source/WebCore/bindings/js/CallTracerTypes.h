@@ -28,42 +28,78 @@
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
 #include "CanvasRenderingContext2D.h"
-#include "DOMMatrixInit.h"
-#include "DOMPath.h"
+#include "DOMMatrix2DInit.h"
 #include "Element.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageData.h"
+#include "Path2D.h"
+#include <runtime/ArrayBuffer.h>
+#include <runtime/ArrayBufferView.h>
+#include <runtime/Float32Array.h>
+#include <runtime/Int32Array.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(WEBGL)
+#include "WebGLBuffer.h"
+#include "WebGLFramebuffer.h"
+#include "WebGLProgram.h"
+#include "WebGLRenderbuffer.h"
+#include "WebGLShader.h"
+#include "WebGLTexture.h"
+#include "WebGLUniformLocation.h"
+#endif
+
 namespace WebCore {
 
 typedef Variant<
-    CanvasRenderingContext2D::ImageSmoothingQuality,
-    CanvasRenderingContext2D::WindingRule,
-    DOMMatrixInit,
-    DOMPath*,
+    CanvasDirection,
+    CanvasFillRule,
+    CanvasLineCap,
+    CanvasLineJoin,
+    CanvasTextAlign,
+    CanvasTextBaseline,
+    DOMMatrix2DInit,
     Element*,
     HTMLImageElement*,
     ImageData*,
+    ImageSmoothingQuality,
+    Path2D*,
+#if ENABLE(WEBGL)
+    WebGLBuffer*,
+    WebGLFramebuffer*,
+    WebGLProgram*,
+    WebGLRenderbuffer*,
+    WebGLShader*,
+    WebGLTexture*,
+    WebGLUniformLocation*,
+#endif
+    RefPtr<ArrayBuffer>,
+    RefPtr<ArrayBufferView>,
     RefPtr<CanvasGradient>,
     RefPtr<CanvasPattern>,
+    RefPtr<Float32Array>,
     RefPtr<HTMLCanvasElement>,
     RefPtr<HTMLImageElement>,
 #if ENABLE(VIDEO)
     RefPtr<HTMLVideoElement>,
 #endif
+    RefPtr<ImageData>,
+    RefPtr<Int32Array>,
     Vector<float>,
+    Vector<int>,
     String,
     double,
     float,
-    int,
-    bool,
-    std::optional<float>
+    int64_t,
+    uint32_t,
+    int32_t,
+    uint8_t,
+    bool
 > RecordCanvasActionVariant;
 
 } // namespace WebCore

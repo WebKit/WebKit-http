@@ -37,11 +37,14 @@ import sys
 import time
 import unittest
 
+from contextlib import contextmanager
+
 from webkitpy.common.system.executive_mock import MockExecutive
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.port.base import Port
+from webkitpy.port.config import apple_additions
 from webkitpy.port.image_diff import ImageDiffer
 from webkitpy.port.server_process_mock import MockServerProcess
 from webkitpy.layout_tests.servers import http_server_base
@@ -71,6 +74,30 @@ class TestWebKitPort(Port):
 
     def _tests_for_disabled_features(self):
         return ["accessibility", ]
+
+
+@contextmanager
+def bind_mock_apple_additions():
+
+    class MockAppleAdditions(object):
+
+        @staticmethod
+        def layout_tests_path():
+            return '/additional_testing_path/'
+
+        @staticmethod
+        def ios_os_name(name):
+            return 'add-{}'.format(name)
+
+        @staticmethod
+        def mac_os_name(name):
+            return 'add-{}'.format(name)
+
+    # apple_additions is a memoized function. Take advantage of this fact and manipulate the cache
+    # to temporarily return a mocked result
+    apple_additions._results_cache[()] = MockAppleAdditions
+    yield
+    apple_additions._results_cache[()] = None
 
 
 class PortTestCase(unittest.TestCase):
@@ -530,18 +557,18 @@ class PortTestCase(unittest.TestCase):
         # Delay setting _executive to avoid logging during construction
         port._executive = MockExecutive(should_log=True)
         port._options = MockOptions(configuration="Release")  # This should not be necessary, but I think TestWebKitPort is actually reading from disk (and thus detects the current configuration).
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure WebKitTestRunner is used.
         port._options = MockOptions(webkit_test_runner=True, configuration="Release")
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure we show the build log when --verbose is passed, which we simulate by setting the logging level to DEBUG.
         output.set_log_level(logging.DEBUG)
         port._options = MockOptions(configuration="Release")
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 Output of ['Tools/Scripts/build-dumprendertree', '--release']:
 MOCK output of child process
 """
@@ -551,7 +578,7 @@ MOCK output of child process
         # Make sure that failure to build returns False.
         port._executive = MockExecutive(should_log=True, should_throw=True)
         # Because WK2 currently has to build both webkittestrunner and DRT, if DRT fails, that's the only one it tries.
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 MOCK ScriptError
 
 MOCK output of child process

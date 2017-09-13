@@ -54,6 +54,7 @@
 #include "WebGLTransformFeedback.h"
 #include "WebGLVertexArrayObject.h"
 #include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
 
 namespace WebCore {
@@ -286,7 +287,7 @@ void WebGL2RenderingContext::blitFramebuffer(GC3Dint, GC3Dint, GC3Dint, GC3Dint,
 {
 }
 
-void WebGL2RenderingContext::framebufferTextureLayer(GC3Denum, GC3Denum, GC3Duint, GC3Dint, GC3Dint)
+void WebGL2RenderingContext::framebufferTextureLayer(GC3Denum, GC3Denum, WebGLTexture*, GC3Dint, GC3Dint)
 {
 }
 
@@ -919,9 +920,28 @@ Uint32Array* WebGL2RenderingContext::getUniformIndices(WebGLProgram*, const Vect
     return nullptr;
 }
 
-Int32Array* WebGL2RenderingContext::getActiveUniforms(WebGLProgram*, RefPtr<Uint32Array>&&, GC3Denum)
+WebGLAny WebGL2RenderingContext::getActiveUniforms(WebGLProgram& program, const Vector<GC3Duint>& uniformIndices, GC3Denum pname)
 {
-    return nullptr;
+    if (isContextLostOrPending() || !validateWebGLObject("getActiveUniforms", &program))
+        return nullptr;
+
+    switch (pname) {
+    case GraphicsContext3D::UNIFORM_TYPE:
+    case GraphicsContext3D::UNIFORM_SIZE:
+    case GraphicsContext3D::UNIFORM_BLOCK_INDEX:
+    case GraphicsContext3D::UNIFORM_OFFSET:
+    case GraphicsContext3D::UNIFORM_ARRAY_STRIDE:
+    case GraphicsContext3D::UNIFORM_MATRIX_STRIDE:
+    case GraphicsContext3D::UNIFORM_IS_ROW_MAJOR:
+        {
+            Vector<GC3Dint> params(uniformIndices.size(), 0);
+            m_context->getActiveUniforms(program.object(), uniformIndices, pname, params);
+            return WTFMove(params);
+        }
+    default:
+        synthesizeGLError(GraphicsContext3D::INVALID_ENUM, "getActiveUniforms", "invalid parameter name");
+        return nullptr;
+    }
 }
 
 GC3Duint WebGL2RenderingContext::getUniformBlockIndex(WebGLProgram*, const String&)

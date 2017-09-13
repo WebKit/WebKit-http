@@ -29,13 +29,16 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "Exception.h"
+#include "IDLTypes.h"
 #include "JSDOMPromiseDeferred.h"
+#include "JSServiceWorkerRegistration.h"
 #include "NavigatorBase.h"
+#include "ScopeGuard.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "ServiceWorkerJob.h"
+#include "ServiceWorkerJobData.h"
 #include "ServiceWorkerProvider.h"
-#include "ServiceWorkerRegistrationParameters.h"
 #include "URL.h"
 #include <wtf/RunLoop.h>
 
@@ -80,53 +83,66 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
         return;
     }
 
-    if (!m_serverConnection)
-        m_serverConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context->sessionID());
+    if (!m_swConnection)
+        m_swConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context->sessionID());
 
     if (relativeScriptURL.isEmpty()) {
         promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() cannot be called with an empty script URL") });
         return;
     }
 
-    ServiceWorkerRegistrationParameters parameters;
-    parameters.scriptURL = context->completeURL(relativeScriptURL);
-    if (!parameters.scriptURL.isValid()) {
+    ServiceWorkerJobData jobData(m_swConnection->identifier());
+
+    jobData.scriptURL = context->completeURL(relativeScriptURL);
+    if (!jobData.scriptURL.isValid()) {
         promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() must be called with a valid relative script URL") });
         return;
     }
 
     // FIXME: The spec disallows scripts outside of HTTP(S), but we'll likely support app custom URL schemes in WebKit.
-    if (!parameters.scriptURL.protocolIsInHTTPFamily()) {
+    if (!jobData.scriptURL.protocolIsInHTTPFamily()) {
         promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() must be called with a script URL whose protocol is either HTTP or HTTPS") });
         return;
     }
 
-    String path = parameters.scriptURL.path();
+    String path = jobData.scriptURL.path();
     if (path.containsIgnoringASCIICase("%2f") || path.containsIgnoringASCIICase("%5c")) {
-        promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() must be called with a script URL whose path does not contain '%%2f' or '%%5c'") });
+        promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() must be called with a script URL whose path does not contain '%2f' or '%5c'") });
         return;
     }
 
     String scope = options.scope.isEmpty() ? ASCIILiteral("./") : options.scope;
     if (!scope.isEmpty())
-        parameters.scopeURL = context->completeURL(scope);
+        jobData.scopeURL = context->completeURL(scope);
 
-    parameters.clientCreationURL = context->url();
-    parameters.topOrigin = SecurityOriginData::fromSecurityOrigin(context->topOrigin());
-    parameters.options = options;
+    if (!jobData.scopeURL.isNull() && !jobData.scopeURL.protocolIsInHTTPFamily()) {
+        promise->reject(Exception { TypeError, ASCIILiteral("Scope URL provided to serviceWorker.register() must be either HTTP or HTTPS") });
+        return;
+    }
 
-    scheduleJob(ServiceWorkerJob::createRegisterJob(*this, WTFMove(promise), WTFMove(parameters)));
+    path = jobData.scopeURL.path();
+    if (path.containsIgnoringASCIICase("%2f") || path.containsIgnoringASCIICase("%5c")) {
+        promise->reject(Exception { TypeError, ASCIILiteral("Scope URL provided to serviceWorker.register() cannot have a path that contains '%2f' or '%5c'") });
+        return;
+    }
+
+    jobData.clientCreationURL = context->url();
+    jobData.topOrigin = SecurityOriginData::fromSecurityOrigin(context->topOrigin());
+    jobData.type = ServiceWorkerJobType::Register;
+    jobData.registrationOptions = options;
+
+    scheduleJob(ServiceWorkerJob::create(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
 void ServiceWorkerContainer::scheduleJob(Ref<ServiceWorkerJob>&& job)
 {
-    ASSERT(m_serverConnection);
+    ASSERT(m_swConnection);
 
     ServiceWorkerJob& rawJob = job.get();
-    auto result = m_jobMap.add(rawJob.identifier(), WTFMove(job));
+    auto result = m_jobMap.add(rawJob.data().identifier(), WTFMove(job));
     ASSERT_UNUSED(result, result.isNewEntry);
 
-    m_serverConnection->scheduleJob(rawJob);
+    m_swConnection->scheduleJob(rawJob);
 }
 
 void ServiceWorkerContainer::getRegistration(const String&, Ref<DeferredPromise>&& promise)
@@ -143,10 +159,38 @@ void ServiceWorkerContainer::startMessages()
 {
 }
 
+void ServiceWorkerContainer::jobFailedWithException(ServiceWorkerJob& job, const Exception& exception)
+{
+    job.promise().reject(exception);
+    jobDidFinish(job);
+}
+
+void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, const ServiceWorkerRegistrationData& data)
+{
+    ScopeGuard guard([this, &job] {
+        jobDidFinish(job);
+    });
+
+    auto* context = scriptExecutionContext();
+    if (!context) {
+        LOG_ERROR("ServiceWorkerContainer::jobResolvedWithRegistration called but the containers ScriptExecutionContext is gone");
+        return;
+    }
+
+    auto registration = ServiceWorkerRegistration::create(*context, data);
+    job.promise().resolve<IDLInterface<ServiceWorkerRegistration>>(registration.get());
+}
+
 void ServiceWorkerContainer::jobDidFinish(ServiceWorkerJob& job)
 {
-    auto taken = m_jobMap.take(job.identifier());
-    ASSERT_UNUSED(taken, taken.get() == &job);
+    auto taken = m_jobMap.take(job.data().identifier());
+    ASSERT_UNUSED(taken, !taken || taken.get() == &job);
+}
+
+uint64_t ServiceWorkerContainer::connectionIdentifier()
+{
+    ASSERT(m_swConnection);
+    return m_swConnection->identifier();
 }
 
 const char* ServiceWorkerContainer::activeDOMObjectName() const

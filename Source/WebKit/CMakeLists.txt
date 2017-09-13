@@ -30,6 +30,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/WebsiteData"
     "${WEBKIT2_DIR}/StorageProcess"
     "${WEBKIT2_DIR}/StorageProcess/IndexedDB"
+    "${WEBKIT2_DIR}/StorageProcess/ServiceWorker"
     "${WEBKIT2_DIR}/UIProcess"
     "${WEBKIT2_DIR}/UIProcess/API"
     "${WEBKIT2_DIR}/UIProcess/API/C"
@@ -116,6 +117,8 @@ set(WebKit2_SOURCES
     NetworkProcess/PingLoad.cpp
 
     NetworkProcess/cache/CacheStorageEngine.cpp
+    NetworkProcess/cache/CacheStorageEngineCache.cpp
+    NetworkProcess/cache/CacheStorageEngineCaches.cpp
     NetworkProcess/cache/CacheStorageEngineConnection.cpp
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
@@ -273,6 +276,9 @@ set(WebKit2_SOURCES
     StorageProcess/StorageToWebProcessConnection.cpp
 
     StorageProcess/IndexedDB/WebIDBConnectionToClient.cpp
+
+    StorageProcess/ServiceWorker/WebSWServerConnection.cpp
+
     UIProcess/BackgroundProcessResponsivenessTimer.cpp
     UIProcess/ChildProcessProxy.cpp
     UIProcess/DrawingAreaProxy.cpp
@@ -420,7 +426,6 @@ set(WebKit2_SOURCES
 
     UIProcess/Network/NetworkProcessProxy.cpp
 
-    UIProcess/Notifications/NotificationPermissionRequest.cpp
     UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp
     UIProcess/Notifications/WebNotification.cpp
     UIProcess/Notifications/WebNotificationManagerProxy.cpp
@@ -532,7 +537,7 @@ set(WebKit2_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
     WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
-    WebProcess/Storage/WebSWServerConnection.cpp
+    WebProcess/Storage/WebSWClientConnection.cpp
     WebProcess/Storage/WebServiceWorkerProvider.cpp
     WebProcess/Storage/WebToStorageProcessConnection.cpp
 
@@ -616,6 +621,8 @@ set(WebKit2_MESSAGES_IN_FILES
 
     StorageProcess/IndexedDB/WebIDBConnectionToClient.messages.in
 
+    StorageProcess/ServiceWorker/WebSWServerConnection.messages.in
+
     UIProcess/DrawingAreaProxy.messages.in
     UIProcess/RemoteWebInspectorProxy.messages.in
     UIProcess/VisitedLinkStore.messages.in
@@ -673,7 +680,7 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Plugins/PluginProcessConnectionManager.messages.in
     WebProcess/Plugins/PluginProxy.messages.in
 
-    WebProcess/Storage/WebSWServerConnection.messages.in
+    WebProcess/Storage/WebSWClientConnection.messages.in
 
     WebProcess/UserContent/WebUserContentController.messages.in
 

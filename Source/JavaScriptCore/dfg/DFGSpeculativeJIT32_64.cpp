@@ -692,6 +692,19 @@ void SpeculativeJIT::compileMiscStrictEq(Node* node)
     booleanResult(result.gpr(), node);
 }
 
+void SpeculativeJIT::compileCompareEqPtr(Node* node)
+{
+    JSValueOperand operand(this, node->child1());
+    GPRTemporary result(this);
+    JSValueRegs regs = operand.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+    m_jit.boxBooleanPayload(false, resultGPR);
+    JITCompiler::JumpList notEqual = m_jit.branchIfNotEqual(regs, node->cellOperand()->value());
+    m_jit.boxBooleanPayload(true, resultGPR);
+    notEqual.link(&m_jit);
+    blessedBooleanResult(resultGPR, node);
+}
+
 void SpeculativeJIT::emitCall(Node* node)
 {
     CallLinkInfo::CallType callType;
@@ -2580,6 +2593,18 @@ void SpeculativeJIT::compile(Node* node)
             break;
         }
         case Array::Generic: {
+            if (node->child1().useKind() == ObjectUse) {
+                if (node->child2().useKind() == StringUse) {
+                    compileGetByValForObjectWithString(node);
+                    break;
+                }
+
+                if (node->child2().useKind() == SymbolUse) {
+                    compileGetByValForObjectWithSymbol(node);
+                    break;
+                }
+            }
+
             SpeculateCellOperand base(this, node->child1()); // Save a register, speculate cell. We'll probably be right.
             JSValueOperand property(this, node->child2());
             GPRReg baseGPR = base.gpr();
@@ -2830,6 +2855,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case NumberToStringWithValidRadixConstant: {
+        compileNumberToStringWithValidRadixConstant(node);
+        break;
+    }
+
     case GetByValWithThis: {
         JSValueOperand base(this, node->child1());
         JSValueRegs baseRegs = base.jsValueRegs();
@@ -2873,6 +2903,20 @@ void SpeculativeJIT::compile(Node* node)
             break;
         case Array::Generic: {
             ASSERT(node->op() == PutByVal || node->op() == PutByValDirect);
+
+            if (child1.useKind() == CellUse) {
+                if (child2.useKind() == StringUse) {
+                    compilePutByValForCellWithString(node, child1, child2, child3);
+                    alreadyHandled = true;
+                    break;
+                }
+
+                if (child2.useKind() == SymbolUse) {
+                    compilePutByValForCellWithSymbol(node, child1, child2, child3);
+                    alreadyHandled = true;
+                    break;
+                }
+            }
             
             SpeculateCellOperand base(this, child1); // Save a register, speculate cell. We'll probably be right.
             JSValueOperand property(this, child2);
@@ -3634,14 +3678,16 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case Throw:
-    case ThrowStaticError: {
-        // We expect that throw statements are rare and are intended to exit the code block
-        // anyway, so we just OSR back to the old JIT for now.
-        terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
+    case Throw: {
+        compileThrow(node);
         break;
     }
-        
+
+    case ThrowStaticError: {
+        compileThrowStaticError(node);
+        break;
+    }
+
     case BooleanToNumber: {
         switch (node->child1().useKind()) {
         case BooleanUse: {
@@ -4902,38 +4948,25 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case LoadFromJSMapBucket: {
-        SpeculateCellOperand bucket(this, node->child1());
-        GPRTemporary resultPayload(this);
-        GPRTemporary resultTag(this);
-
-        GPRReg bucketGPR = bucket.gpr();
-        GPRReg resultPayloadGPR = resultPayload.gpr();
-        GPRReg resultTagGPR = resultTag.gpr();
-
-        auto notBucket = m_jit.branchTestPtr(MacroAssembler::Zero, bucketGPR);
-        m_jit.loadValue(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()), JSValueRegs(resultTagGPR, resultPayloadGPR));
-        auto done = m_jit.jump();
-
-        notBucket.link(&m_jit);
-        m_jit.move(TrustedImm32(JSValue::UndefinedTag), resultTagGPR);
-        m_jit.move(TrustedImm32(0), resultPayloadGPR);
-        done.link(&m_jit);
-        jsValueResult(resultTagGPR, resultPayloadGPR, node);
+    case GetMapBucketHead:
+        compileGetMapBucketHead(node);
         break;
-    }
 
-    case IsNonEmptyMapBucket: {
-        SpeculateCellOperand bucket(this, node->child1());
-        GPRTemporary result(this);
-
-        GPRReg bucketGPR = bucket.gpr();
-        GPRReg resultGPR = result.gpr();
-
-        m_jit.comparePtr(MacroAssembler::NotEqual, bucketGPR, TrustedImm32(0), resultGPR);
-        booleanResult(resultGPR, node);
+    case GetMapBucketNext:
+        compileGetMapBucketNext(node);
         break;
-    }
+
+    case LoadKeyFromMapBucket:
+        compileLoadKeyFromMapBucket(node);
+        break;
+
+    case LoadValueFromMapBucket:
+        compileLoadValueFromMapBucket(node);
+        break;
+
+    case WeakMapGet:
+        compileWeakMapGet(node);
+        break;
 
     case Flush:
         break;
@@ -5066,6 +5099,7 @@ void SpeculativeJIT::compile(Node* node)
     case NewFunction:
     case NewGeneratorFunction:
     case NewAsyncFunction:
+    case NewAsyncGeneratorFunction:
         compileNewFunction(node);
         break;
 
@@ -5662,6 +5696,27 @@ void SpeculativeJIT::compile(Node* node)
         unreachable(node);
         break;
 
+    case ExtractCatchLocal: {
+        GPRTemporary temp(this);
+        GPRTemporary tag(this);
+        GPRTemporary payload(this);
+
+        GPRReg tempGPR = temp.gpr();
+        GPRReg tagGPR = tag.gpr();
+        GPRReg payloadGPR = payload.gpr();
+
+        JSValue* ptr = &reinterpret_cast<JSValue*>(m_jit.jitCode()->common.catchOSREntryBuffer->dataBuffer())[node->catchOSREntryIndex()];
+        m_jit.move(CCallHelpers::TrustedImmPtr(ptr), tempGPR);
+        m_jit.load32(CCallHelpers::Address(tempGPR, TagOffset), tagGPR);
+        m_jit.load32(CCallHelpers::Address(tempGPR, PayloadOffset), payloadGPR);
+        jsValueResult(tagGPR, payloadGPR, node);
+        break;
+    }
+
+    case CheckStructureOrEmpty:
+        DFG_CRASH(m_jit.graph(), node, "CheckStructureOrEmpty only used in 64-bit DFG");
+        break;
+
     case LastNodeType:
     case Phi:
     case Upsilon:
@@ -5682,6 +5737,7 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncFunction:
+    case PhantomNewAsyncGeneratorFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:
@@ -5706,6 +5762,8 @@ void SpeculativeJIT::compile(Node* node)
     case AtomicsSub:
     case AtomicsXor:
     case IdentityWithProfile:
+    case InitializeEntrypointArguments:
+    case EntrySwitch:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

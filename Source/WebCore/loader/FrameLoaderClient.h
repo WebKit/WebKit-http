@@ -154,7 +154,6 @@ public:
     virtual void dispatchDidChangeProvisionalURL() { }
     virtual void dispatchDidCancelClientRedirect() = 0;
     virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) = 0;
-    virtual void dispatchDidPerformClientRedirect() { }
     virtual void dispatchDidChangeMainDocument() { }
     virtual void dispatchDidNavigateWithinPage() { }
     virtual void dispatchDidChangeLocationWithinPage() = 0;
@@ -332,8 +331,8 @@ public:
     // Informs the embedder that a WebGL canvas inside this frame received a lost context
     // notification with the given GL_ARB_robustness guilt/innocence code (see Extensions3D.h).
     virtual void didLoseWebGLContext(int) { }
-    virtual WebGLLoadPolicy webGLPolicyForURL(const String&) const { return WebGLAllowCreation; }
-    virtual WebGLLoadPolicy resolveWebGLPolicyForURL(const String&) const { return WebGLAllowCreation; }
+    virtual WebGLLoadPolicy webGLPolicyForURL(const URL&) const { return WebGLAllowCreation; }
+    virtual WebGLLoadPolicy resolveWebGLPolicyForURL(const URL&) const { return WebGLAllowCreation; }
 #endif
 
     virtual void forcePageTransitionIfNeeded() { }

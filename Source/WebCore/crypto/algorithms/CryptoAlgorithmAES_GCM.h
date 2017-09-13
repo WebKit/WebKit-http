@@ -31,6 +31,7 @@
 
 namespace WebCore {
 
+class CryptoAlgorithmAesGcmParams;
 class CryptoKeyAES;
 
 class CryptoAlgorithmAES_GCM final : public CryptoAlgorithm {
@@ -50,8 +51,8 @@ private:
     void exportKey(CryptoKeyFormat, Ref<CryptoKey>&&, KeyDataCallback&&, ExceptionCallback&&) final;
     ExceptionOr<size_t> getKeyLength(const CryptoAlgorithmParameters&) final;
 
-    void platformEncrypt(std::unique_ptr<CryptoAlgorithmParameters>&&, Ref<CryptoKey>&&, Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&);
-    void platformDecrypt(std::unique_ptr<CryptoAlgorithmParameters>&&, Ref<CryptoKey>&&, Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&);
+    static ExceptionOr<Vector<uint8_t>> platformEncrypt(CryptoAlgorithmAesGcmParams&, const CryptoKeyAES&, const Vector<uint8_t>&);
+    static ExceptionOr<Vector<uint8_t>> platformDecrypt(CryptoAlgorithmAesGcmParams&, const CryptoKeyAES&, const Vector<uint8_t>&);
 };
 
 } // namespace WebCore

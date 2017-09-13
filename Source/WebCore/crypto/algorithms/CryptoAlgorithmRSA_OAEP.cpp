@@ -30,6 +30,7 @@
 
 #include "CryptoAlgorithmRsaHashedImportParams.h"
 #include "CryptoAlgorithmRsaHashedKeyGenParams.h"
+#include "CryptoAlgorithmRsaOaepParams.h"
 #include "CryptoKeyPair.h"
 #include "CryptoKeyRSA.h"
 #include <wtf/Variant.h>
@@ -59,7 +60,11 @@ void CryptoAlgorithmRSA_OAEP::encrypt(std::unique_ptr<CryptoAlgorithmParameters>
         exceptionCallback(InvalidAccessError);
         return;
     }
-    platformEncrypt(WTFMove(parameters), WTFMove(key), WTFMove(plainText), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+
+    dispatchOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback),
+        [parameters = WTFMove(parameters), key = WTFMove(key), plainText = WTFMove(plainText)] {
+            return platformEncrypt(downcast<CryptoAlgorithmRsaOaepParams>(*parameters), downcast<CryptoKeyRSA>(key.get()), plainText);
+        });
 }
 
 void CryptoAlgorithmRSA_OAEP::decrypt(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& cipherText, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
@@ -69,7 +74,11 @@ void CryptoAlgorithmRSA_OAEP::decrypt(std::unique_ptr<CryptoAlgorithmParameters>
         exceptionCallback(InvalidAccessError);
         return;
     }
-    platformDecrypt(WTFMove(parameters), WTFMove(key), WTFMove(cipherText), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+
+    dispatchOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback),
+        [parameters = WTFMove(parameters), key = WTFMove(key), cipherText = WTFMove(cipherText)] {
+            return platformDecrypt(downcast<CryptoAlgorithmRsaOaepParams>(*parameters), downcast<CryptoKeyRSA>(key.get()), cipherText);
+        });
 }
 
 void CryptoAlgorithmRSA_OAEP::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context)

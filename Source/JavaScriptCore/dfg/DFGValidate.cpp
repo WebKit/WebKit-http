@@ -83,10 +83,17 @@ public:
         // NB. This code is not written for performance, since it is not intended to run
         // in release builds.
 
-        // Validate that all local variables at the head of the root block are dead.
-        BasicBlock* root = m_graph.block(0);
-        for (unsigned i = 0; i < root->variablesAtHead.numberOfLocals(); ++i)
-            V_EQUAL((virtualRegisterForLocal(i), root), static_cast<Node*>(0), root->variablesAtHead.local(i));
+        VALIDATE((m_graph.block(0)), m_graph.isRoot(m_graph.block(0)));
+        VALIDATE((m_graph.block(0)), m_graph.block(0) == m_graph.m_roots[0]);
+
+        for (BasicBlock* block : m_graph.m_roots)
+            VALIDATE((block), block->predecessors.isEmpty());
+
+        // Validate that all local variables at the head of all entrypoints are dead.
+        for (BasicBlock* entrypoint : m_graph.m_roots) {
+            for (unsigned i = 0; i < entrypoint->variablesAtHead.numberOfLocals(); ++i)
+                V_EQUAL((virtualRegisterForLocal(i), entrypoint), static_cast<Node*>(nullptr), entrypoint->variablesAtHead.local(i));
+        }
         
         // Validate ref counts and uses.
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
@@ -270,6 +277,11 @@ public:
                     VALIDATE((node), !!node->child1());
                     VALIDATE((node), !!node->cellOperand()->value() && node->cellOperand()->value().isCell());
                     break;
+                case CheckStructureOrEmpty:
+                    VALIDATE((node), is64Bit());
+                    VALIDATE((node), !!node->child1());
+                    VALIDATE((node), node->child1().useKind() == CellUse);
+                    break;
                 case CheckStructure:
                 case StringFromCharCode:
                     VALIDATE((node), !!node->child1());
@@ -388,6 +400,11 @@ private:
     
     void validateCPS()
     {
+        VALIDATE((), !m_graph.m_rootToArguments.isEmpty()); // We should have at least one root.
+        VALIDATE((), m_graph.m_rootToArguments.size() == m_graph.m_roots.size());
+        for (BasicBlock* root : m_graph.m_rootToArguments.keys())
+            VALIDATE((), m_graph.m_roots.contains(root));
+
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
@@ -536,6 +553,7 @@ private:
                 case PhantomNewFunction:
                 case PhantomNewGeneratorFunction:
                 case PhantomNewAsyncFunction:
+                case PhantomNewAsyncGeneratorFunction:
                 case PhantomCreateActivation:
                 case GetMyArgumentByVal:
                 case GetMyArgumentByValOutOfBounds:
@@ -545,6 +563,8 @@ private:
                 case PutStack:
                 case KillStack:
                 case GetStack:
+                case EntrySwitch:
+                case InitializeEntrypointArguments:
                     VALIDATE((node), !"unexpected node type in CPS");
                     break;
                 case MaterializeNewObject: {
@@ -635,6 +655,14 @@ private:
         // FIXME: Add more things here.
         // https://bugs.webkit.org/show_bug.cgi?id=123471
         
+        VALIDATE((), m_graph.m_roots.size() == 1);
+        VALIDATE((), m_graph.m_roots[0] == m_graph.block(0));
+        VALIDATE((), !m_graph.m_argumentFormats.isEmpty()); // We always have at least one entrypoint.
+        VALIDATE((), m_graph.m_rootToArguments.isEmpty()); // This is only used in CPS.
+
+        for (unsigned entrypointIndex : m_graph.m_entrypointIndexToCatchBytecodeOffset.keys())
+            VALIDATE((), entrypointIndex > 0); // By convention, 0 is the entrypoint index for the op_enter entrypoint, which can not be in a catch.
+
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
@@ -679,6 +707,7 @@ private:
                 case PhantomNewFunction:
                 case PhantomNewGeneratorFunction:
                 case PhantomNewAsyncFunction:
+                case PhantomNewAsyncGeneratorFunction:
                 case PhantomCreateActivation:
                 case PhantomDirectArguments:
                 case PhantomCreateRest:
@@ -735,6 +764,14 @@ private:
                     break;
                 }
 
+                case EntrySwitch:
+                    VALIDATE((node), node->entrySwitchData()->cases.size() == m_graph.m_numberOfEntrypoints);
+                    break;
+
+                case InitializeEntrypointArguments:
+                    VALIDATE((node), node->entrypointIndex() < m_graph.m_numberOfEntrypoints);
+                    break;
+
                 default:
                     m_graph.doToChildren(
                         node,
@@ -775,6 +812,8 @@ private:
             getLocalPositions.operand(operand) < setLocalPositions.operand(operand));
     }
     
+    void reportValidationContext() { }
+
     void reportValidationContext(Node* node)
     {
         dataLogF("@%u", node->index());

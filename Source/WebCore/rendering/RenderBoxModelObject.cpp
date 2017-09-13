@@ -36,6 +36,7 @@
 #include "GraphicsContext.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLFrameSetElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "ImageBuffer.h"
 #include "ImageQualityController.h"
@@ -325,6 +326,8 @@ DecodingMode RenderBoxModelObject::decodingModeForImageDraw(const Image& image, 
         return DecodingMode::Synchronous;
 #endif
     if (bitmapImage.isLargeImageAsyncDecodingEnabledForTesting())
+        return DecodingMode::Asynchronous;
+    if (is<HTMLImageElement>(element()) && element()->hasAttribute(asyncAttr))
         return DecodingMode::Asynchronous;
     if (document().isImageDocument())
         return DecodingMode::Synchronous;
@@ -1241,7 +1244,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
     auto clientForBackgroundImage = backgroundObject ? backgroundObject : this;
     LayoutSize tileSize = calculateFillTileSize(fillLayer, positioningAreaSize);
     if (StyleImage* layerImage = fillLayer.image())
-        layerImage->setContainerSizeForRenderer(clientForBackgroundImage, tileSize, style().effectiveZoom());
+        layerImage->setContainerContextForRenderer(*clientForBackgroundImage, tileSize, style().effectiveZoom());
     
     EFillRepeat backgroundRepeatX = fillLayer.repeatX();
     EFillRepeat backgroundRepeatY = fillLayer.repeatY();
@@ -1363,7 +1366,7 @@ bool RenderBoxModelObject::paintNinePieceImage(GraphicsContext& graphicsContext,
     LayoutSize source = calculateImageIntrinsicDimensions(styleImage, destination.size(), DoNotScaleByEffectiveZoom);
 
     // If both values are ‘auto’ then the intrinsic width and/or height of the image should be used, if any.
-    styleImage->setContainerSizeForRenderer(this, source, style.effectiveZoom());
+    styleImage->setContainerContextForRenderer(*this, source, style.effectiveZoom());
 
     ninePieceImage.paint(graphicsContext, this, style, destination, source, deviceScaleFactor, op);
     return true;

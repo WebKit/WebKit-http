@@ -34,8 +34,6 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/removing-allowpaymentrequest.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest-timing.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest.https.sub.html [ Skip ]
-webkit.org/b/175753 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ Pass Failure ]
-webkit.org/b/175753 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ Pass Failure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -1808,6 +1806,7 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.h
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 webkit.org/b/156067 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-download-redirect.html [ Skip ]
 webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -1863,7 +1862,7 @@ webkit.org/b/161323 media/track/media-element-enqueue-event-crash.html [ Skip ]
 webkit.org/b/161323 media/track/track-remove-crash.html [ Skip ]
 
 webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Timeout ]
-webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failure ]
+webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Failure ]
 
 webkit.org/b/160591 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure Timeout ]
 
@@ -1902,8 +1901,6 @@ webkit.org/b/165344 [ Release ] http/tests/security/module-incorrect-mime-types.
 
 # Hover test does not apply
 fast/css/deferred-parsing/hover-test.html [ Skip ]
-
-webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
 
 # Skipped because there is no key to show the context menu
 fast/events/context-activated-by-key-event.html [ Skip ]
@@ -1946,8 +1943,6 @@ webkit.org/b/169637 imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multi
 
 webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-streams/general.html [ Pass Failure ]
 
-webkit.org/b/171945 [ Debug ] perf/class-list-remove.html [ Pass Failure Timeout ]
-
 webkit.org/b/171951 [ Debug ] fast/hidpi/filters-and-image-buffer-resolution.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/171957 [ Debug ] fast/animation/request-animation-frame-time-unit.html [ Pass Failure ]
@@ -1964,3 +1959,9 @@ webkit.org/b/171985 [ Release ] workers/bomb.html [ Pass Timeout ]
 
 webkit.org/b/174949 imported/w3c/IndexedDB-private-browsing/idbfactory_open12.html [ Skip ]
 
+webkit.org/b/175939 [ Debug ] editing/execCommand/forward-delete-read-write-canvas.html [ Skip ]
+
+webkit.org/b/173487 imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html [ Pass Failure ]
+
+# <rdar://problem/32826391>
+imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Failure ]

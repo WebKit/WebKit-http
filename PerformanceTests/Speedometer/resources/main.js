@@ -1,8 +1,9 @@
 window.benchmarkClient = {
-    iterationCount: 20,
-    testsCount: null,
+    displayUnit: 'runs/min',
+    iterationCount: 10,
+    stepCount: null,
     suitesCount: null,
-    _timeValues: [],
+    _measuredValuesList: [],
     _finishedTestCount: 0,
     _progressCompleted: null,
     willAddTestFrame: function (frame) {
@@ -12,17 +13,17 @@ window.benchmarkClient = {
         frame.style.top = main.offsetTop + parseInt(style.borderTopWidth) + parseInt(style.paddingTop) + 'px';
     },
     willRunTest: function (suite, test) {
-        document.getElementById('info').textContent = suite.name + ' ( ' + this._finishedTestCount + ' / ' + this.testsCount + ' )';
+        document.getElementById('info').textContent = suite.name + ' ( ' + this._finishedTestCount + ' / ' + this.stepCount + ' )';
     },
     didRunTest: function () {
         this._finishedTestCount++;
-        this._progressCompleted.style.width = (this._finishedTestCount * 100 / this.testsCount) + '%';
+        this._progressCompleted.style.width = (this._finishedTestCount * 100 / this.stepCount) + '%';
     },
     didRunSuites: function (measuredValues) {
-        this._timeValues.push(measuredValues.total);
+        this._measuredValuesList.push(measuredValues);
     },
     willStartFirstIteration: function () {
-        this._timeValues = [];
+        this._measuredValuesList = [];
         this._finishedTestCount = 0;
         this._progressCompleted = document.getElementById('progress-completed');
         document.getElementById('logo-link').onclick = function (event) { event.preventDefault(); return false; }
@@ -30,8 +31,7 @@ window.benchmarkClient = {
     didFinishLastIteration: function () {
         document.getElementById('logo-link').onclick = null;
 
-        var displayUnit = location.search == '?ms' || location.hash == '#ms' ? 'ms' : 'runs/min';
-        var results = this._computeResults(this._timeValues, displayUnit);
+        var results = this._computeResults(this._measuredValuesList, this.displayUnit);
 
         this._updateGaugeNeedle(results.mean);
         document.getElementById('result-number').textContent = results.formattedMean;
@@ -41,18 +41,18 @@ window.benchmarkClient = {
         this._populateDetailedResults(results.formattedValues);
         document.getElementById('results-with-statistics').textContent = results.formattedMeanAndDelta;
 
-        if (displayUnit == 'ms') {
+        if (this.displayUnit == 'ms') {
             document.getElementById('show-summary').style.display = 'none';
             showResultDetails();
         } else
             showResultsSummary();
     },
-    _computeResults: function (timeValues, displayUnit) {
+    _computeResults: function (measuredValuesList, displayUnit) {
         var suitesCount = this.suitesCount;
-        function totalTimeInDisplayUnit(time) {
+        function valueForUnit(measuredValues) {
             if (displayUnit == 'ms')
-                return time;
-            return computeScore(time);
+                return measuredValues.geomean;
+            return measuredValues.score;
         }
 
         function sigFigFromPercentDelta(percentDelta) {
@@ -64,7 +64,7 @@ window.benchmarkClient = {
             return number.toPrecision(Math.max(nonDecimalDigitCount, Math.min(6, sigFig)));
         }
 
-        var values = timeValues.map(totalTimeInDisplayUnit);
+        var values = measuredValuesList.map(valueForUnit);
         var sum = values.reduce(function (a, b) { return a + b; }, 0);
         var arithmeticMean = sum / values.length;
         var meanSigFig = 4;
@@ -83,8 +83,8 @@ window.benchmarkClient = {
         var formattedMean = toSigFigPrecision(arithmeticMean, Math.max(meanSigFig, 3));
 
         return {
-            formattedValues: timeValues.map(function (time) {
-                return toSigFigPrecision(totalTimeInDisplayUnit(time), 4) + ' ' + displayUnit;
+            formattedValues: values.map(function (value) {
+                return toSigFigPrecision(value, 4) + ' ' + displayUnit;
             }),
             mean: arithmeticMean,
             formattedMean: formattedMean,
@@ -149,17 +149,60 @@ window.benchmarkClient = {
     }
 }
 
+function enableOneSuite(suites, suiteToEnable)
+{
+    suiteToEnable = suiteToEnable.toLowerCase();
+    var found = false;
+    for (var i = 0; i < suites.length; i++) {
+        var currentSuite = suites[i];
+        if (currentSuite.name.toLowerCase() == suiteToEnable) {
+            currentSuite.disabled = false;
+            found = true;
+        } else
+            currentSuite.disabled = true;
+    }
+    return found;
+}
+
 function startBenchmark() {
-    var enabledSuites = Suites.filter(function (suite) { return !suite.disabled });
-    var totalSubtestCount = enabledSuites.reduce(function (testsCount, suite) { return testsCount + suite.tests.length; }, 0);
-    benchmarkClient.testsCount = benchmarkClient.iterationCount * totalSubtestCount;
+    if (location.search.length > 1) {
+        var parts = location.search.substring(1).split('&');
+        for (var i = 0; i < parts.length; i++) {
+            var keyValue = parts[i].split('=');
+            var key = keyValue[0];
+            var value = keyValue[1];
+            switch (key) {
+            case 'unit':
+                if (value == 'ms')
+                    benchmarkClient.displayUnit = 'ms';
+                else
+                    console.error('Invalid unit: ' + value);
+                break;
+            case 'iterationCount':
+                var parsedValue = parseInt(value);
+                if (!isNaN(parsedValue))
+                    benchmarkClient.iterationCount = parsedValue;
+                else
+                    console.error('Invalid iteration count: ' + value);
+                break;
+            case 'suite':
+                if (!enableOneSuite(Suites, value)) {
+                    alert('Suite "' + value + '" does not exist. No tests to run.');
+                    return false;
+                }
+                break;
+            }
+        }
+    }
+
+    var enabledSuites = Suites.filter(function (suite) { return !suite.disabled; });
+    var totalSubtestsCount = enabledSuites.reduce(function (testsCount, suite) { return testsCount + suite.tests.length; }, 0);
+    benchmarkClient.stepCount = benchmarkClient.iterationCount * totalSubtestsCount;
     benchmarkClient.suitesCount = enabledSuites.length;
     var runner = new BenchmarkRunner(Suites, benchmarkClient);
     runner.runMultipleIterations(benchmarkClient.iterationCount);
-}
 
-function computeScore(time) {
-    return 60 * 1000 * benchmarkClient.suitesCount / time;
+    return true;
 }
 
 function showSection(sectionIdentifier, pushState) {
@@ -181,8 +224,8 @@ function showHome() {
 }
 
 function startTest() {
-    showSection('running');
-    startBenchmark();
+    if (startBenchmark())
+        showSection('running');
 }
 
 function showResultsSummary() {

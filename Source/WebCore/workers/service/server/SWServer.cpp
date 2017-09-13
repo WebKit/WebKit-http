@@ -30,28 +30,140 @@
 
 #include "ExceptionCode.h"
 #include "ExceptionData.h"
+#include "Logging.h"
+#include "SWServerRegistration.h"
 #include "ServiceWorkerJobData.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-void SWServer::Connection::scheduleJob(ServiceWorkerJob& job)
+SWServer::Connection::Connection(SWServer& server, uint64_t identifier)
+    : Identified(identifier)
+    , m_server(server)
 {
-    auto addResult = m_scheduledJobs.add(job.identifier(), &job);
-    ASSERT_UNUSED(addResult, addResult.isNewEntry);
-
-    scheduleJob(job.data());
+    m_server.registerConnection(*this);
 }
 
-void SWServer::Connection::jobRejected(uint64_t jobIdentifier, const ExceptionData& exceptionData)
+SWServer::Connection::~Connection()
 {
-    auto job = m_scheduledJobs.take(jobIdentifier);
-    if (!job) {
-        LOG_ERROR("Job %" PRIu64 " rejected from server, but was not found", jobIdentifier);
+    m_server.unregisterConnection(*this);
+}
+
+SWServer::~SWServer()
+{
+    RELEASE_ASSERT(m_connections.isEmpty());
+    RELEASE_ASSERT(m_registrations.isEmpty());
+
+    ASSERT(m_taskQueue.isEmpty());
+    ASSERT(m_taskReplyQueue.isEmpty());
+
+    // For a SWServer to be cleanly shut down its thread must have finished and gone away.
+    // At this stage in development of the feature that actually never happens.
+    // But once it does start happening, this ASSERT will catch us doing it wrong.
+    Locker<Lock> locker(m_taskThreadLock);
+    ASSERT(!m_taskThread);
+}
+
+void SWServer::Connection::scheduleJobInServer(const ServiceWorkerJobData& jobData)
+{
+    LOG(ServiceWorker, "Scheduling ServiceWorker job %" PRIu64 "-%" PRIu64 " in server", jobData.connectionIdentifier(), jobData.identifier());
+    ASSERT(identifier() == jobData.connectionIdentifier());
+
+    m_server.scheduleJob(jobData);
+}
+
+SWServer::SWServer()
+{
+    m_taskThread = Thread::create(ASCIILiteral("ServiceWorker Task Thread"), [this] {
+        taskThreadEntryPoint();
+    });
+}
+
+void SWServer::scheduleJob(const ServiceWorkerJobData& jobData)
+{
+    ASSERT(m_connections.contains(jobData.connectionIdentifier()));
+
+    auto result = m_registrations.add(jobData.registrationKey(), nullptr);
+    if (result.isNewEntry)
+        result.iterator->value = std::make_unique<SWServerRegistration>(*this, jobData.registrationKey());
+
+    ASSERT(result.iterator->value);
+
+    result.iterator->value->enqueueJob(jobData);
+}
+
+void SWServer::rejectJob(const ServiceWorkerJobData& jobData, const ExceptionData& exceptionData)
+{
+    LOG(ServiceWorker, "Rejected ServiceWorker job %" PRIu64 "-%" PRIu64 " in server", jobData.connectionIdentifier(), jobData.identifier());
+    auto* connection = m_connections.get(jobData.connectionIdentifier());
+    if (!connection)
         return;
+
+    connection->rejectJobInClient(jobData.identifier(), exceptionData);
+}
+
+void SWServer::resolveJob(const ServiceWorkerJobData& jobData, const ServiceWorkerRegistrationData& registrationData)
+{
+    LOG(ServiceWorker, "Resolved ServiceWorker job %" PRIu64 "-%" PRIu64 " in server with registration %" PRIu64, jobData.connectionIdentifier(), jobData.identifier(), registrationData.identifier);
+    auto* connection = m_connections.get(jobData.connectionIdentifier());
+    if (!connection)
+        return;
+
+    connection->resolveJobInClient(jobData.identifier(), registrationData);
+}
+
+void SWServer::taskThreadEntryPoint()
+{
+    ASSERT(!isMainThread());
+
+    while (!m_taskQueue.isKilled())
+        m_taskQueue.waitForMessage().performTask();
+
+    Locker<Lock> locker(m_taskThreadLock);
+    m_taskThread = nullptr;
+}
+
+void SWServer::postTask(CrossThreadTask&& task)
+{
+    m_taskQueue.append(WTFMove(task));
+}
+
+void SWServer::postTaskReply(CrossThreadTask&& task)
+{
+    m_taskReplyQueue.append(WTFMove(task));
+
+    Locker<Lock> locker(m_mainThreadReplyLock);
+    if (m_mainThreadReplyScheduled)
+        return;
+
+    m_mainThreadReplyScheduled = true;
+    callOnMainThread([this] {
+        handleTaskRepliesOnMainThread();
+    });
+}
+
+void SWServer::handleTaskRepliesOnMainThread()
+{
+    {
+        Locker<Lock> locker(m_mainThreadReplyLock);
+        m_mainThreadReplyScheduled = false;
     }
 
-    job->failedWithException(exceptionData.toException());
+    while (auto task = m_taskReplyQueue.tryGetMessage())
+        task->performTask();
+}
+
+void SWServer::registerConnection(Connection& connection)
+{
+    auto result = m_connections.add(connection.identifier(), nullptr);
+    ASSERT(result.isNewEntry);
+    result.iterator->value = &connection;
+}
+
+void SWServer::unregisterConnection(Connection& connection)
+{
+    ASSERT(m_connections.get(connection.identifier()) == &connection);
+    m_connections.remove(connection.identifier());
 }
 
 } // namespace WebCore

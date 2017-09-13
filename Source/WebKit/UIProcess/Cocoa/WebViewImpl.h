@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebViewImpl_h
-#define WebViewImpl_h
+#pragma once
 
 #if PLATFORM(MAC)
 
@@ -42,6 +41,9 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
+using _WKRectEdge = NSInteger;
+
+OBJC_CLASS NSAccessibilityRemoteUIElement;
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
@@ -86,6 +88,7 @@ OBJC_CLASS WebPlaybackControlsManager;
 
 - (void)_web_dismissContentRelativeChildWindows;
 - (void)_web_dismissContentRelativeChildWindowsWithAnimation:(BOOL)animate;
+- (void)_web_editorStateDidChange;
 
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
 
@@ -234,6 +237,10 @@ public:
     void setUnderlayColor(NSColor *);
     NSColor *underlayColor() const;
     NSColor *pageExtendedBackgroundColor() const;
+    
+    _WKRectEdge pinnedState();
+    _WKRectEdge rubberBandingEnabled();
+    void setRubberBandingEnabled(_WKRectEdge);
 
     void setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
     std::optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
@@ -693,7 +700,7 @@ private:
     bool m_allowsBackForwardNavigationGestures { false };
     bool m_allowsMagnification { false };
 
-    RetainPtr<id> m_remoteAccessibilityChild;
+    RetainPtr<NSAccessibilityRemoteUIElement> m_remoteAccessibilityChild;
 
     RefPtr<WebCore::Image> m_promisedImage;
     String m_promisedFilename;
@@ -730,5 +737,3 @@ private:
 } // namespace WebKit
 
 #endif // PLATFORM(MAC)
-
-#endif // WebViewImpl_h

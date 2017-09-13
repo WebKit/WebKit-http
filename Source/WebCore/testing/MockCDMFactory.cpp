@@ -377,10 +377,6 @@ void MockCDMInstance::storeRecordOfKeyUsage(const String&)
     // FIXME: This should be implemented along with the support for persistent-usage-record sessions.
 }
 
-void MockCDMInstance::gatherAvailableKeys(AvailableKeysCallback)
-{
-}
-
 const String& MockCDMInstance::keySystem() const
 {
     static const String s_keySystem("org.webkit.mock");

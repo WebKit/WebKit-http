@@ -23,9 +23,9 @@
 
 #include "DOMPromiseProxy.h"
 #include "DOMWindow.h"
+#include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "EventNames.h"
-#include "Frame.h"
 #include "HTMLNames.h"
 #include "JSBlob.h"
 #include "JSDOMAttribute.h"
@@ -78,7 +78,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
-#include "Settings.h"
 #include "URL.h"
 #include "WebCoreJSClientData.h"
 #include <builtins/BuiltinNames.h>
@@ -114,7 +113,7 @@ using namespace JSC;
 
 namespace WebCore {
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumType enumerationValue)
+String convertEnumerationToString(TestObj::EnumType enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         emptyString(),
@@ -127,7 +126,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumType 
     static_assert(static_cast<size_t>(TestObj::EnumType::EnumValue2) == 2, "TestObj::EnumType::EnumValue2 is not 2 as expected");
     static_assert(static_cast<size_t>(TestObj::EnumType::EnumValue3) == 3, "TestObj::EnumType::EnumValue3 is not 3 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumType enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::EnumType> parseEnumeration<TestObj::EnumType>(ExecState& state, JSValue value)
@@ -149,7 +153,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumType>()
     return "\"\", \"enumValue1\", \"EnumValue2\", \"EnumValue3\"";
 }
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Optional enumerationValue)
+String convertEnumerationToString(TestObj::Optional enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         emptyString(),
@@ -162,7 +166,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Optional 
     static_assert(static_cast<size_t>(TestObj::Optional::OptionalValue2) == 2, "TestObj::Optional::OptionalValue2 is not 2 as expected");
     static_assert(static_cast<size_t>(TestObj::Optional::OptionalValue3) == 3, "TestObj::Optional::OptionalValue3 is not 3 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Optional enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::Optional> parseEnumeration<TestObj::Optional>(ExecState& state, JSValue value)
@@ -184,7 +193,7 @@ template<> const char* expectedEnumerationValues<TestObj::Optional>()
     return "\"\", \"OptionalValue1\", \"OptionalValue2\", \"OptionalValue3\"";
 }
 
-template<> JSString* convertEnumerationToJS(ExecState& state, AlternateEnumName enumerationValue)
+String convertEnumerationToString(AlternateEnumName enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("enumValue1"),
@@ -193,7 +202,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, AlternateEnumName 
     static_assert(static_cast<size_t>(AlternateEnumName::EnumValue1) == 0, "AlternateEnumName::EnumValue1 is not 0 as expected");
     static_assert(static_cast<size_t>(AlternateEnumName::EnumValue2) == 1, "AlternateEnumName::EnumValue2 is not 1 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, AlternateEnumName enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<AlternateEnumName> parseEnumeration<AlternateEnumName>(ExecState& state, JSValue value)
@@ -213,14 +227,19 @@ template<> const char* expectedEnumerationValues<AlternateEnumName>()
 
 #if ENABLE(Condition1)
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumA enumerationValue)
+String convertEnumerationToString(TestObj::EnumA enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("A"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumA::A) == 0, "TestObj::EnumA::A is not 0 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumA enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::EnumA> parseEnumeration<TestObj::EnumA>(ExecState& state, JSValue value)
@@ -240,14 +259,19 @@ template<> const char* expectedEnumerationValues<TestObj::EnumA>()
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumB enumerationValue)
+String convertEnumerationToString(TestObj::EnumB enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("B"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumB::B) == 0, "TestObj::EnumB::B is not 0 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumB enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::EnumB> parseEnumeration<TestObj::EnumB>(ExecState& state, JSValue value)
@@ -267,14 +291,19 @@ template<> const char* expectedEnumerationValues<TestObj::EnumB>()
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumC enumerationValue)
+String convertEnumerationToString(TestObj::EnumC enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("C"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumC::C) == 0, "TestObj::EnumC::C is not 0 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumC enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::EnumC> parseEnumeration<TestObj::EnumC>(ExecState& state, JSValue value)
@@ -292,7 +321,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumC>()
 
 #endif
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Kind enumerationValue)
+String convertEnumerationToString(TestObj::Kind enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("quick"),
@@ -301,7 +330,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Kind enum
     static_assert(static_cast<size_t>(TestObj::Kind::Quick) == 0, "TestObj::Kind::Quick is not 0 as expected");
     static_assert(static_cast<size_t>(TestObj::Kind::Dead) == 1, "TestObj::Kind::Dead is not 1 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Kind enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::Kind> parseEnumeration<TestObj::Kind>(ExecState& state, JSValue value)
@@ -319,7 +353,7 @@ template<> const char* expectedEnumerationValues<TestObj::Kind>()
     return "\"quick\", \"dead\"";
 }
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Size enumerationValue)
+String convertEnumerationToString(TestObj::Size enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("small"),
@@ -328,7 +362,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Size enum
     static_assert(static_cast<size_t>(TestObj::Size::Small) == 0, "TestObj::Size::Small is not 0 as expected");
     static_assert(static_cast<size_t>(TestObj::Size::MuchMuchLarger) == 1, "TestObj::Size::MuchMuchLarger is not 1 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Size enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::Size> parseEnumeration<TestObj::Size>(ExecState& state, JSValue value)
@@ -346,7 +385,7 @@ template<> const char* expectedEnumerationValues<TestObj::Size>()
     return "\"small\", \"much-much-larger\"";
 }
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Confidence enumerationValue)
+String convertEnumerationToString(TestObj::Confidence enumerationValue)
 {
     static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("high"),
@@ -355,7 +394,12 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Confidenc
     static_assert(static_cast<size_t>(TestObj::Confidence::High) == 0, "TestObj::Confidence::High is not 0 as expected");
     static_assert(static_cast<size_t>(TestObj::Confidence::KindaLow) == 1, "TestObj::Confidence::KindaLow is not 1 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Confidence enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestObj::Confidence> parseEnumeration<TestObj::Confidence>(ExecState& state, JSValue value)
@@ -996,9 +1040,6 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledAtRuntimeOper
 #endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabled(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWorldSpecificMethod(JSC::ExecState*);
-#if ENABLE(TEST_FEATURE)
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation(JSC::ExecState*);
-#endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSecretBoolean(JSC::ExecState*);
 #if ENABLE(TEST_FEATURE)
@@ -1158,6 +1199,9 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParamete
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLegacyCallerNamed(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimization(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWindowFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWorkerFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWindowAndWorkerFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(JSC::ExecState*);
 
@@ -1172,8 +1216,6 @@ JSC::EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(JSC::ExecState*, 
 JSC::EncodedJSValue jsTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjConstructorTestSubObj(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-bool setJSTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjByteAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
@@ -1260,10 +1302,6 @@ bool setJSTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JS
 #if ENABLE(TEST_FEATURE)
 JSC::EncodedJSValue jsTestObjEnabledAtRuntimeAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjEnabledAtRuntimeAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-#endif
-#if ENABLE(TEST_FEATURE)
-JSC::EncodedJSValue jsTestObjEnabledBySettingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-bool setJSTestObjEnabledBySettingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 JSC::EncodedJSValue jsTestObjTypedArrayAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjTypedArrayAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
@@ -1373,6 +1411,12 @@ JSC::EncodedJSValue jsTestObjConditionalAndConditionallyReadWriteAttribute(JSC::
 bool setJSTestObjConditionalAndConditionallyReadWriteAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #endif
+JSC::EncodedJSValue jsTestObjConditionallyExposedToWindowAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjConditionallyExposedToWindowAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjConditionallyExposedToWorkerAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjConditionallyExposedToWorkerAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjConditionallyExposedToWindowAndWorkerAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjConditionallyExposedToWindowAndWorkerAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestObjPrototype : public JSC::JSNonFinalObject {
 public:
@@ -1403,30 +1447,28 @@ using JSTestObjConstructor = JSDOMConstructor<JSTestObj>;
 
 /* Hash table */
 
-static const struct CompactHashIndex JSTestObjTableIndex[17] = {
-    { -1, -1 },
-    { -1, -1 },
-    { 5, -1 },
-    { -1, -1 },
+static const struct CompactHashIndex JSTestObjTableIndex[16] = {
     { -1, -1 },
     { -1, -1 },
     { 4, -1 },
     { -1, -1 },
-    { 1, -1 },
-    { 2, -1 },
-    { 0, 16 },
-    { -1, -1 },
-    { -1, -1 },
-    { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { 3, -1 },
+    { -1, -1 },
+    { 0, -1 },
+    { 1, -1 },
+    { 2, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
+    { -1, -1 },
 };
 
 
 static const HashTableValue JSTestObjTableValues[] =
 {
-    { "TestSubObjEnabledBySetting", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestSubObjEnabledBySettingConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestSubObjEnabledBySettingConstructor) } },
     { "unforgeableAttr", DontDelete | ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnforgeableAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 #if ENABLE(Condition1)
     { "conditionalAttr4", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr4Constructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr4Constructor) } },
@@ -1446,7 +1488,7 @@ static const HashTableValue JSTestObjTableValues[] =
     { "unforgeableMethod", DontDelete | ReadOnly | JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjInstanceFunctionUnforgeableMethod), (intptr_t) (0) } },
 };
 
-static const HashTable JSTestObjTable = { 6, 15, true, JSTestObj::info(), JSTestObjTableValues, JSTestObjTableIndex };
+static const HashTable JSTestObjTable = { 5, 15, true, JSTestObj::info(), JSTestObjTableValues, JSTestObjTableIndex };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
@@ -1595,11 +1637,6 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-#if ENABLE(TEST_FEATURE)
-    { "enabledBySettingAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledBySettingAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledBySettingAttribute) } },
-#else
-    { 0, 0, NoIntrinsic, { 0, 0 } },
-#endif
     { "typedArrayAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTypedArrayAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTypedArrayAttr) } },
     { "attributeWithGetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithGetterException) } },
     { "attributeWithSetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithSetterException) } },
@@ -1682,6 +1719,9 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
+    { "conditionallyExposedToWindowAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyExposedToWindowAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyExposedToWindowAttribute) } },
+    { "conditionallyExposedToWorkerAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyExposedToWorkerAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyExposedToWorkerAttribute) } },
+    { "conditionallyExposedToWindowAndWorkerAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyExposedToWindowAndWorkerAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyExposedToWindowAndWorkerAttribute) } },
 #if ENABLE(TEST_FEATURE)
     { "enabledAtRuntimeOperation", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledAtRuntimeOperation), (intptr_t) (1) } },
 #else
@@ -1689,11 +1729,6 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #endif
     { "enabledInSpecificWorldWhenRuntimeFeatureEnabled", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabled), (intptr_t) (1) } },
     { "worldSpecificMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWorldSpecificMethod), (intptr_t) (1) } },
-#if ENABLE(TEST_FEATURE)
-    { "enabledBySettingOperation", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledBySettingOperation), (intptr_t) (1) } },
-#else
-    { 0, 0, NoIntrinsic, { 0, 0 } },
-#endif
     { "calculateSecretResult", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCalculateSecretResult), (intptr_t) (0) } },
     { "getSecretBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSecretBoolean), (intptr_t) (0) } },
 #if ENABLE(TEST_FEATURE)
@@ -1859,6 +1894,9 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "legacyCallerNamed", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionLegacyCallerNamed), (intptr_t) (1) } },
     { "testReturnValueOptimization", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestReturnValueOptimization), (intptr_t) (2) } },
     { "testReturnValueOptimizationWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException), (intptr_t) (2) } },
+    { "conditionallyExposedToWindowFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConditionallyExposedToWindowFunction), (intptr_t) (0) } },
+    { "conditionallyExposedToWorkerFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConditionallyExposedToWorkerFunction), (intptr_t) (0) } },
+    { "conditionallyExposedToWindowAndWorkerFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConditionallyExposedToWindowAndWorkerFunction), (intptr_t) (0) } },
     { "toString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToString), (intptr_t) (0) } },
     { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToJSON), (intptr_t) (0) } },
 #if ENABLE(Condition1)
@@ -1920,6 +1958,16 @@ void JSTestObjPrototype::finishCreation(VM& vm)
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
 #endif
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isDocument()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("conditionallyExposedToWindowFunction"), strlen("conditionallyExposedToWindowFunction"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isWorkerGlobalScope()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("conditionallyExposedToWorkerFunction"), strlen("conditionallyExposedToWorkerFunction"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
 #if ENABLE(TEST_FEATURE)
     if (!(RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled() && RuntimeEnabledFeatures::sharedFeatures().testFeature1Enabled())) {
         auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeAttribute"), strlen("enabledAtRuntimeAttribute"));
@@ -1927,22 +1975,16 @@ void JSTestObjPrototype::finishCreation(VM& vm)
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
 #endif
-    auto* context = jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext();
-    ASSERT(!context || context->isDocument());
-#if ENABLE(TEST_FEATURE)
-    if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
-        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingOperation"), strlen("enabledBySettingOperation"));
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isDocument()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("conditionallyExposedToWindowAttribute"), strlen("conditionallyExposedToWindowAttribute"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
-#endif
-#if ENABLE(TEST_FEATURE)
-    if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
-        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingAttribute"), strlen("enabledBySettingAttribute"));
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isWorkerGlobalScope()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("conditionallyExposedToWorkerAttribute"), strlen("conditionallyExposedToWorkerAttribute"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
-#endif
     putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().privateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPrivateMethod), ReadOnly | DontEnum);
     putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().publicAndPrivateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPublicAndPrivateMethod), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayPrototype()->getDirect(vm, vm.propertyNames->builtinNames().valuesPrivateName()), DontEnum);
@@ -2118,7 +2160,7 @@ bool setJSTestObjConstructor(ExecState* state, EncodedJSValue thisValue, Encoded
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
 static inline JSValue jsTestObjReadOnlyLongAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -2214,36 +2256,6 @@ static inline JSValue jsTestObjConstructorTestSubObjGetter(ExecState& state, Thr
 EncodedJSValue jsTestObjConstructorTestSubObj(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     return IDLAttribute<JSTestObj>::getStatic<jsTestObjConstructorTestSubObjGetter>(*state, thisValue, "TestSubObj");
-}
-
-static inline JSValue jsTestObjTestSubObjEnabledBySettingConstructorGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(state);
-    if (UNLIKELY(!thisObject.wrapped().frame()))
-        return jsUndefined();
-    Settings& settings = thisObject.wrapped().frame()->settings();
-    if (!settings.testSettingEnabled())
-        return jsUndefined();
-    return JSTestSubObj::getConstructor(state.vm(), thisObject.globalObject());
-}
-
-EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
-{
-    return IDLAttribute<JSTestObj>::get<jsTestObjTestSubObjEnabledBySettingConstructorGetter>(*state, thisValue, "TestSubObjEnabledBySetting");
-}
-
-static inline bool setJSTestObjTestSubObjEnabledBySettingConstructorSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(throwScope);
-    // Shadowing a built-in constructor.
-    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("TestSubObjEnabledBySetting"), strlen("TestSubObjEnabledBySetting")), value);
-}
-
-bool setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    return IDLAttribute<JSTestObj>::set<setJSTestObjTestSubObjEnabledBySettingConstructorSetter>(*state, thisValue, encodedValue, "TestSubObjEnabledBySetting");
 }
 
 static inline JSValue jsTestObjEnumAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -3528,42 +3540,6 @@ static inline bool setJSTestObjEnabledAtRuntimeAttributeSetter(ExecState& state,
 bool setJSTestObjEnabledAtRuntimeAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     return IDLAttribute<JSTestObj>::set<setJSTestObjEnabledAtRuntimeAttributeSetter>(*state, thisValue, encodedValue, "enabledAtRuntimeAttribute");
-}
-
-#endif
-
-#if ENABLE(TEST_FEATURE)
-static inline JSValue jsTestObjEnabledBySettingAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(state);
-    auto& impl = thisObject.wrapped();
-    JSValue result = toJS<IDLDOMString>(state, impl.enabledBySettingAttribute());
-    return result;
-}
-
-EncodedJSValue jsTestObjEnabledBySettingAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
-{
-    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledBySettingAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "enabledBySettingAttribute");
-}
-
-#endif
-
-#if ENABLE(TEST_FEATURE)
-static inline bool setJSTestObjEnabledBySettingAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(throwScope);
-    auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLDOMString>(state, value);
-    RETURN_IF_EXCEPTION(throwScope, false);
-    impl.setEnabledBySettingAttribute(WTFMove(nativeValue));
-    return true;
-}
-
-bool setJSTestObjEnabledBySettingAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    return IDLAttribute<JSTestObj>::set<setJSTestObjEnabledBySettingAttributeSetter>(*state, thisValue, encodedValue, "enabledBySettingAttribute");
 }
 
 #endif
@@ -4974,6 +4950,96 @@ bool setJSTestObjConditionalAndConditionallyReadWriteAttribute(ExecState* state,
 
 #endif
 
+static inline JSValue jsTestObjConditionallyExposedToWindowAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionallyExposedToWindowAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionallyExposedToWindowAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyExposedToWindowAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionallyExposedToWindowAttribute");
+}
+
+static inline bool setJSTestObjConditionallyExposedToWindowAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionallyExposedToWindowAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionallyExposedToWindowAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionallyExposedToWindowAttributeSetter>(*state, thisValue, encodedValue, "conditionallyExposedToWindowAttribute");
+}
+
+static inline JSValue jsTestObjConditionallyExposedToWorkerAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionallyExposedToWorkerAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionallyExposedToWorkerAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyExposedToWorkerAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionallyExposedToWorkerAttribute");
+}
+
+static inline bool setJSTestObjConditionallyExposedToWorkerAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionallyExposedToWorkerAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionallyExposedToWorkerAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionallyExposedToWorkerAttributeSetter>(*state, thisValue, encodedValue, "conditionallyExposedToWorkerAttribute");
+}
+
+static inline JSValue jsTestObjConditionallyExposedToWindowAndWorkerAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionallyExposedToWindowAndWorkerAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionallyExposedToWindowAndWorkerAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyExposedToWindowAndWorkerAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionallyExposedToWindowAndWorkerAttribute");
+}
+
+static inline bool setJSTestObjConditionallyExposedToWindowAndWorkerAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionallyExposedToWindowAndWorkerAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionallyExposedToWindowAndWorkerAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionallyExposedToWindowAndWorkerAttributeSetter>(*state, thisValue, encodedValue, "conditionallyExposedToWindowAndWorkerAttribute");
+}
+
 #if ENABLE(TEST_FEATURE)
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledAtRuntimeOperation1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
@@ -5067,27 +5133,6 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWorldSpecificMethod(ExecS
     return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWorldSpecificMethodBody>(*state, "worldSpecificMethod");
 }
 
-#if ENABLE(TEST_FEATURE)
-static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledBySettingOperationBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(throwScope);
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto testParam = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
-    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.enabledBySettingOperation(WTFMove(testParam));
-    return JSValue::encode(jsUndefined());
-}
-
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation(ExecState* state)
-{
-    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionEnabledBySettingOperationBody>(*state, "enabledBySettingOperation");
-}
-
-#endif
-
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCalculateSecretResultBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
@@ -5099,7 +5144,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCalculateSecretResul
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionCalculateSecretResultBody, PromiseExecutionScope::WindowOnly>(*state, "calculateSecretResult");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionCalculateSecretResultBody, PromiseExecutionScope::WindowOrWorker>(*state, "calculateSecretResult");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionGetSecretBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
@@ -7675,7 +7720,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionB
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunction(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunction");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testPromiseFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7693,7 +7738,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionW
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgument(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithFloatArgument");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentBody, PromiseExecutionScope::WindowOrWorker>(*state, "testPromiseFunctionWithFloatArgument");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7707,7 +7752,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionW
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithException(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithException");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testPromiseFunctionWithException");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7723,7 +7768,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionW
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgument(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithOptionalIntArgument");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentBody, PromiseExecutionScope::WindowOrWorker>(*state, "testPromiseFunctionWithOptionalIntArgument");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseOverloadedFunction1Body(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7768,7 +7813,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseOverloade
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseOverloadedFunction(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseOverloadedFunctionOverloadDispatcher, PromiseExecutionScope::WindowOnly>(*state, "testPromiseOverloadedFunction");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseOverloadedFunctionOverloadDispatcher, PromiseExecutionScope::WindowOrWorker>(*state, "testPromiseOverloadedFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseFunctionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7781,7 +7826,7 @@ static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseF
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunction(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticPromiseFunction");
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testStaticPromiseFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseFunctionWithExceptionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7794,7 +7839,7 @@ static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseF
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunctionWithException(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticPromiseFunctionWithException");
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testStaticPromiseFunctionWithException");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestCustomPromiseFunctionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7806,7 +7851,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestCustomPromiseFun
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestCustomPromiseFunction(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestCustomPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testCustomPromiseFunction");
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestCustomPromiseFunctionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testCustomPromiseFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticCustomPromiseFunctionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
@@ -7818,7 +7863,7 @@ static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticCustomPr
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticCustomPromiseFunction(ExecState* state)
 {
-    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticCustomPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticCustomPromiseFunction");
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticCustomPromiseFunctionBody, PromiseExecutionScope::WindowOrWorker>(*state, "testStaticCustomPromiseFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunctionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
@@ -8063,6 +8108,48 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestReturnValueOptim
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException(ExecState* state)
 {
     return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionTestReturnValueOptimizationWithExceptionBody>(*state, "testReturnValueOptimizationWithException");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionallyExposedToWindowFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    impl.conditionallyExposedToWindowFunction();
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWindowFunction(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionallyExposedToWindowFunctionBody>(*state, "conditionallyExposedToWindowFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionallyExposedToWorkerFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    impl.conditionallyExposedToWorkerFunction();
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWorkerFunction(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionallyExposedToWorkerFunctionBody>(*state, "conditionallyExposedToWorkerFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionallyExposedToWindowAndWorkerFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    impl.conditionallyExposedToWindowAndWorkerFunction();
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionallyExposedToWindowAndWorkerFunction(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionallyExposedToWindowAndWorkerFunctionBody>(*state, "conditionallyExposedToWindowAndWorkerFunction");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)

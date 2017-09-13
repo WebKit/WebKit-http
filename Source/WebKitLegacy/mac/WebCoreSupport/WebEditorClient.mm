@@ -57,6 +57,7 @@
 #import <WebCore/Document.h>
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/Editor.h>
+#import <WebCore/Event.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
@@ -65,7 +66,6 @@
 #import <WebCore/HTMLTextAreaElement.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/LegacyWebArchive.h>
-#import <WebCore/NSSpellCheckerSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformKeyboardEvent.h>
 #import <WebCore/Settings.h>
@@ -75,7 +75,9 @@
 #import <WebCore/UndoStep.h>
 #import <WebCore/UserTypingGestureIndicator.h>
 #import <WebCore/VisibleUnits.h>
+#import <WebCore/WebContentReader.h>
 #import <WebCore/WebCoreObjCExtras.h>
+#import <pal/spi/mac/NSSpellCheckerSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RefPtr.h>

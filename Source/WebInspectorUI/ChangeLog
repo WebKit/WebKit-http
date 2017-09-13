@@ -1,3 +1,964 @@
+2017-09-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Experimental setting for new Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=176750
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        New files and strings.
+
+        * UserInterface/Base/Setting.js:
+        New experimental setting.
+
+        * UserInterface/Views/LegacyNetworkTabContentView.js:
+        (WI.LegacyNetworkTabContentView.isTabAllowed):
+        Legacy tab availability depends on the setting.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView):
+        (WI.NetworkTabContentView.isTabAllowed):
+        (WI.NetworkTabContentView.prototype.get contentBrowser):
+        (WI.NetworkTabContentView.prototype.get type):
+        (WI.NetworkTabContentView.prototype.canShowRepresentedObject):
+        (WI.NetworkTabContentView.prototype.get supportsSplitContentBrowser):
+        Modern network tab. Only difference right now is it allows the split console.
+
+        * UserInterface/Views/NetworkTableContentView.js: Added.
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get selectionPathComponents):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.shown):
+        (WI.NetworkTableContentView.prototype.hidden):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype.handleClearShortcut):
+        (WI.NetworkTableContentView.prototype._resourceCachingDisabledSettingChanged):
+        (WI.NetworkTableContentView.prototype._toggleDisableResourceCache):
+        Add a stubbed out ContentView. This will be implemented next.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        Add an experimental setting to toggle the new network tab. Only
+        show the experimental settings that relate to the debuggable target.
+        For JSContext targets, none of the settings are applicable, so don't
+        even show the experimental section.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Treat all network tabs the same.
+
+2017-09-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas: improve recording controls and state management
+        https://bugs.webkit.org/show_bug.cgi?id=176762
+        <rdar://problem/34382294>
+
+        Reviewed by Devin Rousso.
+
+        CanvasManager should be responsible for starting/stopping recordings
+        and tracking state. Fixing this layering issue lets CanvasContentView
+        better manage its recording UI.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get recordingCanvas):
+        (WI.CanvasManager.prototype.startRecording):
+        (WI.CanvasManager.prototype.stopRecording):
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.get isRecording):
+        (WI.Canvas.prototype.toggleRecording): Deleted.
+
+        * UserInterface/Views/CanvasContentView.css:
+        (.navigation-bar > .item.canvas-record.disabled):
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.shown):
+        (WI.CanvasContentView.prototype._toggleRecording):
+        (WI.CanvasContentView.prototype._recordingFinished):
+        (WI.CanvasContentView.prototype._updateRecordNavigationItem):
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup and test MIMETypeUtilities
+        https://bugs.webkit.org/show_bug.cgi?id=176731
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.saveDataToFile):
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource):
+        Update callers to handle new return values.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.fileExtensionForURL):
+        Return null in error cases.
+        Only provide the content after the last period.
+
+        (WI.fileExtensionForMIMEType):
+        Handle generic "+json" and "+xml" cases.
+
+        * UserInterface/Test.html:
+        Include MIMETypeUtilities for testing.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename NetworkTab / NetworkSidebar to LegacyNetwork*
+        https://bugs.webkit.org/show_bug.cgi?id=176739
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/LegacyNetworkSidebarPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkSidebarPanel.css.
+        * UserInterface/Views/LegacyNetworkSidebarPanel.js: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkSidebarPanel.js.
+        * UserInterface/Views/LegacyNetworkTabContentView.js: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkTabContentView.js.
+        Rename resources.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView):
+        (WI.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Update names at callsites.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused parameter to UIString
+        https://bugs.webkit.org/show_bug.cgi?id=176738
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        (WI.UIString):
+        Remove unused parameter. We moved to String.format for this behavior a while ago.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not allow the split console in the Settings tab
+        https://bugs.webkit.org/show_bug.cgi?id=176726
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype.get supportsSplitContentBrowser):
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include a DebugContentView for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=176733
+
+        Reviewed by Matt Baker.
+
+        Provide a DebugContentView which can be used to debug lifecycle
+        events of a ContentView (shown, hidden, closed), and displays a
+        provided string. It can be created like so:
+
+            `new WI.DebugContentView("Name")`
+
+        * UserInterface/Debug/DebugContentView.css: Added.
+        (.content-view.debug):
+        * UserInterface/Debug/DebugContentView.js: Added.
+        (WI.DebugContentView):
+        (WI.DebugContentView.prototype.shown):
+        (WI.DebugContentView.prototype.hidden):
+        (WI.DebugContentView.prototype.closed):
+        Log events for debugging.
+
+        * UserInterface/Main.html:
+        Include new Debug resources.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Dashboard Timeline icon and Timeline tab icon more similar
+        https://bugs.webkit.org/show_bug.cgi?id=176582
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Time.svg:
+        Change the clock hands to match the time of Timelines.svg.
+
+2017-09-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: change style of RecordingNavigationSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=175451
+        <rdar://problem/34040769>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds UI polish to the Canvas recording navigation sidebar:
+         - New icons for Canvas2D operations
+         - Removed extraneous colors: zebra striping, frame element background color
+         - Visual action color changed to match details sidebar "changed" color
+         - Make tree item indent a convenient multiple of the base indent
+         - Move RecordingActionTreeElement styles to a separate file
+
+        * UserInterface/Images/Clip.svg: Added.
+        * UserInterface/Images/Composite.svg: Added.
+        * UserInterface/Images/Fill.svg: Added.
+        * UserInterface/Images/LineStyle.svg: Added.
+        * UserInterface/Images/Palette.svg: Added.
+        * UserInterface/Images/PathArc.svg: Added.
+        * UserInterface/Images/PathCurve.svg: Added.
+        * UserInterface/Images/PathEllipse.svg: Added.
+        * UserInterface/Images/PathLineTo.svg: Added.
+        * UserInterface/Images/PathMoveTo.svg: Added.
+        * UserInterface/Images/PathRect.svg: Added.
+        * UserInterface/Images/Pixels.svg: Added.
+        * UserInterface/Images/PointInPath.svg: Added.
+        * UserInterface/Images/PointInStroke.svg: Added.
+        * UserInterface/Images/Shadow.svg: Added.
+        * UserInterface/Images/Stroke.svg: Added.
+        * UserInterface/Images/Text.svg: Added.
+        * UserInterface/Images/Transform.svg: Added.
+        New icons for Canvas2D operations.
+
+        * UserInterface/Main.html:
+        New file.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.customTitleTooltip):
+        (WI.GeneralTreeElement.prototype._updateTitleTooltip):
+        Allow derived classes to supply a custom tooltip, when
+        simply getting the title element text is insufficient.
+
+        * UserInterface/Views/RecordingActionTreeElement.css: Added.
+        (.item.action.initial-state > .icon):
+        (.tree-outline:not(:focus, .force-focus) .item.action:not(.initial-state, .parent, .invalid) > .icon):
+        (.item.action:not(.initial-state)::before):
+        (body[dir=ltr] .item.action::before):
+        (body[dir=rtl] .item.action::before):
+        (.tree-outline:matches(:focus, .force-focus) .item.action.selected:not(.initial-state, .invalid) > .icon):
+        (body:not(.window-inactive, .window-docked-inactive) :matches(:focus, .force-focus) .item.action.selected > .titles .parameter.swizzled,):
+        (.tree-outline[data-indent="1"] .item.action::before,):
+        (.tree-outline[data-indent="3"] .item.action::before):
+        (.tree-outline[data-indent="4"] .item.action::before):
+        (.tree-outline[data-indent="5"] .item.action::before):
+        (.tree-outline[data-indent="6"] .item.action::before):
+        (.tree-outline[data-indent="7"] .item.action::before):
+        (body[dir=ltr] .tree-outline:not(.hide-disclosure-buttons) .item.action:not(.initial-state, .parent) > .icon):
+        (body[dir=rtl] .tree-outline:not(.hide-disclosure-buttons) .item.action:not(.initial-state, .parent) > .icon):
+        (.item.action.visual:not(.selected, .invalid)):
+        (.item.action.attribute > .titles .parameters::before):
+        (.item.action:not(.attribute) > .titles .parameters::before):
+        (.item.action:not(.attribute) > .titles .parameters::after):
+        (.item.action > .titles .parameter:not(:last-child)::after):
+        (.item.action:not(.selected) > .titles .parameter.swizzled):
+        (.item.action.composite > .icon):
+        (.item.action.fill > .icon):
+        (.item.action.image > .icon):
+        (.item.action.line-style > .icon):
+        (.item.action.shadow > .icon):
+        (.item.action.stroke > .icon):
+        (.item.action.style > .icon):
+        (.item.action.text > .icon):
+        (.item.action.transform > .icon):
+        (.item.action.arc > .icon):
+        (.item.action.clip > .icon):
+        (.item.action.curve > .icon):
+        (.item.action.ellipse > .icon):
+        (.item.action.line-to > .icon):
+        (.item.action.move-to > .icon):
+        (.item.action.point-in-path > .icon):
+        (.item.action.point-in-stroke > .icon):
+        (.item.action.rect > .icon):
+        (.item.action.restore > .icon):
+        (.item.action.save > .icon):
+        (.item.action.invalid > .icon):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement):
+        (WI.RecordingActionTreeElement._generateDOM.createParameterElement):
+        (WI.RecordingActionTreeElement._generateDOM):
+        (WI.RecordingActionTreeElement._getClassNames):
+        Broke out into its own helper, to simplify _generateDOM which had
+        too many responsibilities.
+
+        (WI.RecordingActionTreeElement._classNameForAction.classNameForActionName):
+        (WI.RecordingActionTreeElement._classNameForAction):
+        Get an icon for the action "type". Actions are grouped by similar
+        operations. For example, lineCap, lineDash, lineJoin, lineWidth, and
+        miterLimit are assigned the icon LineStyle.svg.
+
+        (WI.RecordingActionTreeElement.prototype.customTitleTooltip):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline .item.folder-icon > .icon):
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline:not(:empty)): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline > .item.parent:not(.action, .selected).expanded): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (body[dir=ltr] .sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (body[dir=rtl] .sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="2"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="3"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="4"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="5"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="6"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="7"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.function > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.getter > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .tree-outline:matches(:focus, .force-focus) .action.attribute.getter.selected > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.boolean > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.number > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.object > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.string > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline > .item.parent:not(.action) > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action:matches(.invalid, .missing) > .icon): Deleted.
+        (body[dir=ltr] .sidebar > .panel.navigation.recording > .content .action:not(.initial-state) > .icon): Deleted.
+        (body[dir=rtl] .sidebar > .panel.navigation.recording > .content .action:not(.initial-state) > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.visual:not(.selected, .invalid)): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action:not(.selected, .initial-state) > .titles .parameter.swizzled): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles :matches(.name, .parameter.invalid)): Deleted.
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+
+2017-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: this._heapSnapshot.addEventListener is not a function.
+        https://bugs.webkit.org/show_bug.cgi?id=176633
+
+        Reviewed by Michael Saboff.
+
+        * UserInterface/Proxies/HeapSnapshotDiffProxy.js:
+        (WI.HeapSnapshotDiffProxy):
+        This class has listeners of another object's events. It should extend WI.Object.
+
+2017-09-08  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: changes to currentX/currentY aren't highlighted in the details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=176569
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/RecordingAction.js:
+        Add entries to WI.RecordingAction._stateModifiers for each path function.
+
+2017-09-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Augmented Inspector: Provide a way to inspect a DOM Node (DOM.inspect)
+        https://bugs.webkit.org/show_bug.cgi?id=176563
+        <rdar://problem/19639583>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Always create the element search toolbar icon. Only show it if the DOM domain
+        is available. With augmented agents the DOM domain may be activated later.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.inspect):
+        Select the node in the DOM tree outline.
+
+2017-09-07  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas RecordingAction tree outline virtualization is broken
+        https://bugs.webkit.org/show_bug.cgi?id=176547
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.updateVirtualizedElements.walk):
+        (WI.TreeOutline.prototype.updateVirtualizedElements):
+        Pass the current `count` to each recursive call of `walk` so that the cumulative index of a
+        TreeElement in any given sub-tree is correct.
+        Drive-by: if there is a focused TreeElement when scrolling, only change the current
+        `scrollTop` if it is not already visible. Also rewrote some loops for clarity.
+
+2017-09-07  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, change my copyright email.
+
+        * Scripts/copy-user-interface-resources.pl:
+        * UserInterface/Controllers/CodeMirrorSpringEditingController.js:
+        * UserInterface/Images/AnimationPlayStatePaused.svg:
+        * UserInterface/Images/AnimationPlayStateRunning.svg:
+        * UserInterface/Images/CSSVariable.svg:
+        * UserInterface/Images/ListStylePositionInside.svg:
+        * UserInterface/Images/ListStylePositionOutside.svg:
+        * UserInterface/Images/StyleRule.svg:
+        * UserInterface/Images/StyleRulePseudoElement.svg:
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/ResourceCollection.js:
+        * UserInterface/Views/CollectionContentView.css:
+        * UserInterface/Views/CollectionContentView.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/GeneralTabBarItem.js:
+        * UserInterface/Views/GradientEditor.css:
+        * UserInterface/Views/GradientEditor.js:
+        * UserInterface/Views/InlineSwatch.css:
+        * UserInterface/Views/InlineSwatch.js:
+        * UserInterface/Views/PinnedTabBarItem.js:
+        * UserInterface/Views/SettingsTabContentView.css:
+        * UserInterface/Views/SettingsTabContentView.js:
+        * UserInterface/Views/SpringEditor.css:
+        * UserInterface/Views/SpringEditor.js:
+        * UserInterface/Views/StyleRuleIcons.css:
+        * UserInterface/Views/TabBarItem.js:
+        * UserInterface/Views/TitleView.css:
+        * UserInterface/Views/TitleView.js:
+        * UserInterface/Views/VisualStyleBackgroundPicker.css:
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        * UserInterface/Views/VisualStyleBasicInput.js:
+
+2017-09-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Relax the maximum sidebar width
+        https://bugs.webkit.org/show_bug.cgi?id=175808
+        <rdar://problem/34005339>
+
+        Reviewed by Devin Rousso.
+
+        This patch introduces a constant, `minimumContentBrowserWidth`, which
+        constrains the maximum width of either sidebar:
+
+        maxSidebarWidth = window.innerWidth - minimumContentBrowserWidth - otherSidebarWidth
+
+        A value of 100px for `minimumContentBrowserWidth` leaves enough space for
+        three NavigationItems at their minimum width (32px), with a few pixels
+        left over for good measure. For most tabs this will ensure that the buttons
+        for showing the sidebars will be visible, along with an addition button.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar.prototype.get maximumWidth):
+
+2017-09-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Support overloaded CanvasRenderingContext2D actions with identical parameter counts
+        https://bugs.webkit.org/show_bug.cgi?id=176178
+        <rdar://problem/34192229>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.displayNameForSwizzleType):
+        (WI.Recording.prototype.swizzle):
+        Replace WI.Recording.Swizzle with an object of swizzle type keys to int values. This object
+        matches the values in WebCore::RecordingSwizzleTypes.h.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.get swizzleTypes):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+        (WI.RecordingAction.prototype.parameterSwizzleTypeForTypeAtIndex): Deleted.
+        Replace WI.RecordingAction._parameterSwizzleTypeForTypeAtIndex with an array of parameter
+        types sent in the payload. This gives more control over the swizzling to the JSON, but also
+        simplifies the way we regenerate the data in the frontend.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+        (WI.RecordingContentView.prototype._applyAction):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles :matches(.name, .parameter.invalid)):
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles .name,): Deleted.
+
+2017-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⌘E and ⌘G do not work in main content area when quick console drawer is open
+        https://bugs.webkit.org/show_bug.cgi?id=176433
+
+        Reviewed by Brian Burg.
+
+        Make the ⌘E and ⌘G keyboard shortcuts behave more like the global ⌘K clear shortcut.
+        Instead of keeping them inside of FindBanner, and enabling/disabling them when they
+        make sense to apply, we make a single global instance of the keyboard shortcut and
+        apply it to whatever content view / content browser is active. This avoids conflicts
+        in situations where there are two ContentViews that are visible and each can handle
+        the keyboard shortcut.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        New keyboard shortcuts.
+
+        (WI._populateFind):
+        (WI._findNext):
+        (WI._findPrevious):
+        Perform the shortcut on the active content view or content browser.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser.prototype.shown):
+        (WI.ContentBrowser.prototype.hidden):
+        (WI.ContentBrowser.prototype.handlePopulateFindShortcut):
+        (WI.ContentBrowser.prototype.handleFindNextShortcut):
+        (WI.ContentBrowser.prototype.handleFindPreviousShortcut):
+        (WI.ContentBrowser.prototype.findBannerSearchQueryForSelection): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.handlePopulateFindShortcut):
+        (WI.LogContentView.prototype.handleFindNextShortcut):
+        (WI.LogContentView.prototype.handleFindPreviousShortcut):
+        ContentBrowser and LogContentView (the only content view with a custom find banner)
+        now each handle the global keyboard shortcut handlers to do the right thing for
+        their respective cases.
+
+        * UserInterface/Views/FindBanner.js:
+        (WI.FindBanner.prototype.enableKeyboardShortcuts): Deleted.
+        (WI.FindBanner.prototype.disableKeyboardShortcuts): Deleted.
+        (WI.FindBanner.prototype._populateSearchQueryFromSelection): Deleted.
+        Move keyboard shortcut handling up to Main.js to be global.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.prototype.searchQueryWithSelection):
+        Default implementation should grab the selected text from the selection.
+        Previously shortcut selections only worked for selections in text editors.
+
+2017-09-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: display "Inherited From" section headers
+        https://bugs.webkit.org/show_bug.cgi?id=176033
+        <rdar://problem/34116930>
+
+        Reviewed by Devin Rousso.
+
+        Compared to the old styles sidebar, the new "Inherited From" sections are more compact.
+        One of the goals of the styles redesign is to make it fit more data vertically.
+
+        The contrast is inceased. The text is darker while the background stayed the same.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (.spreadsheet-style-panel .section-inherited):
+        (.spreadsheet-style-panel .section-inherited .node-link):
+        (.spreadsheet-style-panel .section-inherited .node-link:hover):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        Don't show two identical "Inherited From" sections.
+
+2017-09-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Layout flashing for internal View.prototype.layout
+        https://bugs.webkit.org/show_bug.cgi?id=176389
+
+        Reviewed by Matt Baker.
+
+        Add a checkbox to Settings (Debug panel) to draw an orange outline around an element every time View.prototype.layout is called.
+        This is similar to paint flashing, except this is only for View.prototype.layout.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createDebugSettingsView):
+        * UserInterface/Views/View.js:
+        (WI.View.prototype._layoutSubtree):
+        (WI.View.prototype._drawLayoutFlashingOutline):
+
+2017-09-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: hook up real data to spreadsheet style editor
+        https://bugs.webkit.org/show_bug.cgi?id=175343
+        <rdar://problem/33784793>
+
+        Reviewed by Devin Rousso.
+
+        Replace static HTML added in <https://webkit.org/b/174838> with actual data.
+
+        Addressed in this patch:
+        - CSS rules can be copied.
+        - Source links work as expected.
+        - Nonmatching selectors are grayed out.
+
+        Known limitations:
+        - Neither CSS selectors nor CSS properties are editable.
+        - "Inherited from" and media query section headers are missing.
+        - No syntax highlighting of complex CSS values, e.g. hsl(0, 0%, 70%).
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WI.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.js: Removed.
+        Rename RulesStyleSpreadsheetDetailsPanel to SpreadsheetRulesStyleDetailsPanel. All files related to the spreadsheet editor start with "Spreadsheet" now.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css: Added.
+        (.spreadsheet-style-declaration-editor):
+        (.spreadsheet-style-declaration-editor .name):
+        (.spreadsheet-style-declaration-editor .value):
+        (.spreadsheet-style-declaration-editor.no-properties):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js: Added.
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get delegate):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set delegate):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get _propertiesToRender):
+        Similar condition is commonly used in CSSStyleDeclarationTextEditor. Abstact it out to its own method.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._renderProperty):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css: Copied from Source/WebInspectorUI/UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css.
+        (.spreadsheet-css-declaration):
+        (.spreadsheet-css-declaration .origin):
+        (.spreadsheet-css-declaration.locked .origin::after):
+        (.spreadsheet-css-declaration .origin .go-to-link):
+        (.spreadsheet-css-declaration .origin .go-to-link:hover):
+        (.spreadsheet-css-declaration .styles-source):
+        (.spreadsheet-css-declaration .selector.style-attribute):
+        (.spreadsheet-css-declaration .selector > span):
+        (.spreadsheet-css-declaration .selector > .matched):
+        (.spreadsheet-css-declaration .properties):
+        (.spreadsheet-css-declaration.locked):
+        (.spreadsheet-css-declaration .locked-icon):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js: Added.
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get element):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get style):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorFocused):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get locked):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get selectorEditable):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css.
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js: Added.
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WI.StyleDetailsPanel.prototype.filterDidChange):
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.removeAllSubviews):
+        Add a method to remove all subviews more efficiently.
+
+2017-08-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Critical content browser toolbar buttons are hidden at narrow widths
+        https://bugs.webkit.org/show_bug.cgi?id=175999
+
+        Reviewed by Devin Rousso.
+
+        This patch adds a VisibilityPriority concept to NavigationItems. If a
+        NavigationBar cannot fit all of its items in the available space, items
+        are hidden to make room, starting with the lowest priority item. Consecutive
+        dividers are then collapsed, as well as leading and trailing dividers.
+
+        * UserInterface/Main.html:
+        New file.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        * UserInterface/Views/ConsoleDrawer.js:
+        (WI.ConsoleDrawer):
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser):
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WI.ContentBrowserTabContentView):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        Set `High` and `Low` priorities, and group the back/forward buttons.
+
+        * UserInterface/Views/GroupNavigationItem.js: Added.
+        (WI.GroupNavigationItem):
+        (WI.GroupNavigationItem.prototype.get navigationItems):
+        (WI.GroupNavigationItem.prototype.get minimumWidth):
+        (WI.GroupNavigationItem.prototype.updateLayout):
+        (WI.GroupNavigationItem.prototype.didAttach):
+        (WI.GroupNavigationItem.prototype.didDetach):
+        NavigationItem groups. Grouped items are shown/hidden together.
+
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WI.ImageResourceContentView):
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WI.IndexedDatabaseObjectStoreContentView):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        Set `High` and `Low` priorities.
+
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar .item.force-hidden):
+        New hidden class, which must be tracked separately from ".hidden".
+        The former is an implementation detail of NavigationBar, while the
+        latter is set by the client.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.insertNavigationItem):
+        (WI.NavigationBar.prototype.removeNavigationItem):
+        (WI.NavigationBar.prototype.findNavigationItem.matchingSelfOrChild):
+        (WI.NavigationBar.prototype.findNavigationItem):
+        (WI.NavigationBar.prototype.layout.forceItemHidden):
+        (WI.NavigationBar.prototype.layout.isDivider):
+        (WI.NavigationBar.prototype.layout.calculateVisibleItemWidth):
+        (WI.NavigationBar.prototype.layout):
+        (WI.NavigationBar.prototype._calculateMinimumWidth):
+        (WI.NavigationBar.prototype.get _visibleNavigationItems):
+        (WI.NavigationBar):
+
+        * UserInterface/Views/NavigationItem.js:
+        Add support for visibility priority, an integer value that determines the
+        order in which items are hidden when the NavigationBar becomes too narrow
+        to fit all of items child items. NavigationIte3m defines constants for
+        Low, Normal (the default), and High priority.
+
+        (WI.NavigationItem):
+        (WI.NavigationItem.prototype.get minimumWidth):
+        (WI.NavigationItem.prototype.get width):
+        (WI.NavigationItem.prototype.get visibilityPriority):
+        (WI.NavigationItem.prototype.set visibilityPriority):
+        (WI.NavigationItem.prototype.updateLayout):
+        (WI.NavigationItem.prototype.didAttach):
+        (WI.NavigationItem.prototype.didDetach):
+        Encapsulate the setting of the parent NavigationBar. Needed so that
+        GroupNavigationItem can forward this action to its children.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView):
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WI.RadioButtonNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        * UserInterface/Views/ScriptContentView.js:
+        (WI.ScriptContentView):
+        * UserInterface/Views/TextContentView.js:
+        (WI.TextContentView):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+        Set `High` and `Low` priorities, and group Timeline view mode buttons.
+
+2017-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r220235): Web Inspector: Global search should not happen incrementally
+        https://bugs.webkit.org/show_bug.cgi?id=176063
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Views/SearchBar.js:
+        (WI.SearchBar):
+        (WI.SearchBar.prototype._handleKeydownEvent):
+        Remove delegate and simplify setting incremental.
+
+2017-08-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Convert all methods in Utilities.js to ECMAScript 2015 shorthand syntax
+        https://bugs.webkit.org/show_bug.cgi?id=176067
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (get return):
+        (addStringToken):
+        (prettyFunctionName):
+        (warn):
+        (error):
+        (isEmptyObject):
+        (isEnterKey):
+        (resolveDotsInPath):
+        (parseMIMEType):
+        (simpleGlobStringToRegExp):
+        (defaultComparator):
+        (get Object):
+        (appendWebInspectorSourceURL):
+        (appendWebInspectorConsoleEvaluationSourceURL):
+        (isWebInspectorInternalScript):
+        (isWebInspectorConsoleEvaluationScript):
+        (isWebKitInjectedScript):
+        (isWebKitInternalScript):
+        (isFunctionStringNativeCode):
+        (isTextLikelyMinified):
+        (doubleQuotedString):
+        (insertionIndexForObjectInListSortedByFunction):
+        (insertObjectIntoSortedArray):
+        (decodeBase64ToBlob):
+
+2017-08-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Optimize View.prototype.removeSubview
+        https://bugs.webkit.org/show_bug.cgi?id=176041
+
+        Reviewed by Matt Baker.
+
+        Look up a subview in an array only once, not twice.
+
+        * UserInterface/Base/Utilities.js:
+        (Array.prototype.removeAll):
+        (Array.prototype.remove):
+        Split Array.propotype.remove(value, onlyFirst) into Array.propotype.removeAll(value) and
+        Array.propotype.remove(value).
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._debuggerBreakpointOptions):
+        * UserInterface/Views/ContentViewContainer.js:
+        (WI.ContentViewContainer.prototype._clearTombstonesForContentView):
+        (WI.ContentViewContainer.prototype._disassociateFromContentView):
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.removeSubview):
+
+2017-08-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove some unused DataGrid code
+        https://bugs.webkit.org/show_bug.cgi?id=176029
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.get copyTextDelimiter):
+        (WI.DataGrid.prototype.set copyTextDelimiter):
+        (WI.DataGrid.prototype.resizerDragging):
+        (WI.DataGrid.prototype.columnWidthsMap): Deleted.
+        (WI.DataGrid.prototype.applyColumnWidthsMap): Deleted.
+        (WI.DataGrid.prototype.get resizeMethod): Deleted.
+        (WI.DataGrid.prototype.set resizeMethod): Deleted.
+
+2017-08-27  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Record actions performed on WebGLRenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=174483
+        <rdar://problem/34040722>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.fromPayload):
+        (WI.Recording.prototype.swizzle):
+        Add swizzle types for WebGL parameters.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.get snapshot):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+        Include an optional fourth parameter `snapshot` that will be sent for visual actions when
+        recording WebGL canvas contexts.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.prototype.get navigationItems):
+        (WI.RecordingContentView.prototype.updateActionIndex):
+        (WI.RecordingContentView.prototype.shown):
+        (WI.RecordingContentView.prototype._generateContentCanvasWebGL):
+        * UserInterface/Views/RecordingContentView.css:
+        (.content-view:not(.tab).recording :matches(img, canvas)):
+        (.content-view:not(.tab).recording canvas): Deleted.
+        Instead of regenerating the canvas context in the WebInspector frontend, just display the
+        snapshot image for the last visual action.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+
+2017-08-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add filter for draw actions in Recordings
+        https://bugs.webkit.org/show_bug.cgi?id=175448
+        <rdar://problem/34040764>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype.initialLayout):
+        (WI.RecordingNavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Add button to filter visual actions.
+        Drive-by fix: ensure that frame folders are still visible when filtering.
+
+        * UserInterface/Images/Paint.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/PaintFlashing.svg.
+        * UserInterface/Images/gtk/Paint.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/gtk/PaintFlashing.svg.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        Rename PaintFlashing.svg to Paint.svg.
+
+2017-08-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Create experimental Layers tab
+        https://bugs.webkit.org/show_bug.cgi?id=175728
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Images/Layers.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Views/Layers3DContentView.js: Added.
+        * UserInterface/Views/LayersTabContentView.js: Added.
+        * UserInterface/Views/SettingsTabContentView.js:
+
+2017-08-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Table grid shouldn't show behind empty state
+        https://bugs.webkit.org/show_bug.cgi?id=175943
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline):
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline:not(:empty)):
+        Only apply the background when the TreeOutline has children.
+
+2017-08-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make lock icon crispier
+        https://bugs.webkit.org/show_bug.cgi?id=175868
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/Locked.svg:
+
+2017-08-22  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide way for ShaderPrograms to be enabled/disabled
+        https://bugs.webkit.org/show_bug.cgi?id=175400
+
+        Reviewed by Matt Baker.
+
+        Adds a status element to ShaderProgramTreeElement that, when clicked, will toggle the
+        disabled state of the corresponding ShaderProgram. Disabled shader programs will not draw
+        anything to the context.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram):
+        (WI.ShaderProgram.prototype.get disabled):
+        (WI.ShaderProgram.prototype.toggleDisabled):
+
+        * UserInterface/Views/ShaderProgramTreeElement.js:
+        (WI.ShaderProgramTreeElement):
+        (WI.ShaderProgramTreeElement.prototype.selectOnMouseDown):
+        (WI.ShaderProgramTreeElement.prototype._disabledImageElementClicked):
+        * UserInterface/Views/ShaderProgramTreeElement.css: Added.
+        (.item.shader-program .status > img):
+        (.item.shader-program:not(:hover, .selected, .disabled) .status > img):
+        (.tree-outline:matches(:focus, .force-focus) .item.shader-program.selected .status > img):
+        (.item.shader-program.disabled > *):
+
+2017-08-21  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Can't copy text from "View variable value" popover in Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=175758
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WI.InlineSwatch.prototype._swatchElementClicked):
+        Change CodeMirror readOnly from "nocursor" to true. The former prevents the editor from
+        being focused during selection, therefore preventing the content from being copied.
+
 2017-08-17  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: create better icon for Canvas Path navigation item

@@ -30,6 +30,7 @@
 
 #include "CryptoAlgorithmRsaHashedImportParams.h"
 #include "CryptoAlgorithmRsaHashedKeyGenParams.h"
+#include "CryptoAlgorithmRsaPssParams.h"
 #include "CryptoKeyPair.h"
 #include "CryptoKeyRSA.h"
 #include <wtf/Variant.h>
@@ -58,7 +59,11 @@ void CryptoAlgorithmRSA_PSS::sign(std::unique_ptr<CryptoAlgorithmParameters>&& p
         exceptionCallback(InvalidAccessError);
         return;
     }
-    platformSign(WTFMove(parameters), WTFMove(key), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+
+    dispatchOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback),
+        [parameters = WTFMove(parameters), key = WTFMove(key), data = WTFMove(data)] {
+            return platformSign(downcast<CryptoAlgorithmRsaPssParams>(*parameters), downcast<CryptoKeyRSA>(key.get()), data);
+        });
 }
 
 void CryptoAlgorithmRSA_PSS::verify(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
@@ -67,7 +72,11 @@ void CryptoAlgorithmRSA_PSS::verify(std::unique_ptr<CryptoAlgorithmParameters>&&
         exceptionCallback(InvalidAccessError);
         return;
     }
-    platformVerify(WTFMove(parameters), WTFMove(key), WTFMove(signature), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+
+    dispatchOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback),
+        [parameters = WTFMove(parameters), key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data)] {
+            return platformVerify(downcast<CryptoAlgorithmRsaPssParams>(*parameters), downcast<CryptoKeyRSA>(key.get()), signature, data);
+        });
 }
 
 void CryptoAlgorithmRSA_PSS::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context)

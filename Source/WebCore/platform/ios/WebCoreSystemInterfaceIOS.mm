@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,28 +26,14 @@
 #import "config.h"
 #import "WebCoreSystemInterface.h"
 
-WEBCORE_EXPORT void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef context, void (^block)(CGRect rect));
-WEBCORE_EXPORT CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
 WEBCORE_EXPORT void (*wkClearGlyphVector)(void* glyphs);
 WEBCORE_EXPORT OSStatus (*wkConvertCharToGlyphs)(void* styleGroup, const UniChar*, unsigned numCharacters, void* glyphs);
-WEBCORE_EXPORT bool (*wkCGContextIsPDFContext)(CGContextRef);
 WEBCORE_EXPORT id (*wkCreateNSURLConnectionDelegateProxy)(void);
 WEBCORE_EXPORT void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
 WEBCORE_EXPORT void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
 WEBCORE_EXPORT void (*wkSetCookieStoragePrivateBrowsingEnabled)(BOOL);
 WEBCORE_EXPORT CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 WEBCORE_EXPORT void (*wkSetLayerContentsScale)(CALayer *);
-WEBCORE_EXPORT CFStringEncoding (*wkGetWebDefaultCFStringEncoding)(void);
-
-WEBCORE_EXPORT CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
-WEBCORE_EXPORT NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);
-WEBCORE_EXPORT unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
-WEBCORE_EXPORT NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-WEBCORE_EXPORT void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
-WEBCORE_EXPORT void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
-WEBCORE_EXPORT void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
-
-WEBCORE_EXPORT void(*wkDestroyRenderingResources)(void);
 
 WEBCORE_EXPORT bool (*wkCaptionAppearanceHasUserPreferences)(void);
 WEBCORE_EXPORT bool (*wkCaptionAppearanceShowCaptionsWhenAvailable)(void);

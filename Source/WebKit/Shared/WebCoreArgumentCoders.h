@@ -45,10 +45,6 @@ class MonotonicTime;
 class Seconds;
 }
 
-namespace PAL {
-class SessionID;
-}
-
 namespace WebCore {
 class AffineTransform;
 class AuthenticationChallenge;
@@ -97,14 +93,12 @@ struct DictationAlternative;
 struct DictionaryPopupInfo;
 struct EventTrackingRegions;
 struct ExceptionDetails;
-struct FetchOptions;
 struct FileChooserSettings;
 struct Length;
 struct GrammarDetail;
 struct MimeClassInfo;
 struct PasteboardImage;
 struct PasteboardURL;
-struct PasteboardWebContent;
 struct PluginInfo;
 struct RecentSearch;
 struct ResourceLoadStatistics;
@@ -114,70 +108,52 @@ struct TextIndicatorData;
 struct ViewportAttributes;
 struct WindowFeatures;
     
-template <typename> class BoxExtent;
-using FloatBoxExtent = BoxExtent<float>;
-}
+template <typename> class RectEdges;
+using FloatBoxExtent = RectEdges<float>;
 
 #if PLATFORM(COCOA)
-namespace WebCore {
 class MachSendRight;
 struct KeypressCommand;
-}
 #endif
 
 #if PLATFORM(IOS)
-namespace WebCore {
 class FloatQuad;
 class SelectionRect;
 struct Highlight;
 struct PasteboardImage;
 struct PasteboardWebContent;
 struct ViewportArguments;
-}
 #endif
 
 #if USE(SOUP)
-namespace WebCore {
 struct SoupNetworkProxySettings;
-}
 #endif
 
 #if PLATFORM(WPE)
-namespace WebCore {
-struct PasteboardWebContents;
-}
+struct PasteboardWebContent;
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-namespace WebCore {
 class ContentFilterUnblockHandler;
-}
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-namespace WebCore {
 class MediaPlaybackTargetContext;
-}
 #endif
 
 #if ENABLE(MEDIA_SESSION)
-namespace WebCore {
 class MediaSessionMetadata;
-}
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-namespace WebCore {
 class CaptureDevice;
 struct MediaConstraints;
-}
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
-namespace WebCore {
 using IDBKeyPath = Variant<String, Vector<String>>;
-}
 #endif
+}
 
 namespace IPC {
 
@@ -196,24 +172,19 @@ template<> struct ArgumentCoder<WebCore::AffineTransform> {
     static bool decode(Decoder&, WebCore::AffineTransform&);
 };
 
-template<> struct ArgumentCoder<WebCore::FetchOptions> {
-    static void encode(Encoder&, const WebCore::FetchOptions&);
-    static bool decode(Decoder&, WebCore::FetchOptions&);
-};
-
 template<> struct ArgumentCoder<WebCore::CacheQueryOptions> {
     static void encode(Encoder&, const WebCore::CacheQueryOptions&);
     static bool decode(Decoder&, WebCore::CacheQueryOptions&);
 };
 
-template<> struct ArgumentCoder<WebCore::CacheStorageConnection::CacheInfo> {
-    static void encode(Encoder&, const WebCore::CacheStorageConnection::CacheInfo&);
-    static bool decode(Decoder&, WebCore::CacheStorageConnection::CacheInfo&);
+template<> struct ArgumentCoder<WebCore::DOMCacheEngine::CacheInfo> {
+    static void encode(Encoder&, const WebCore::DOMCacheEngine::CacheInfo&);
+    static bool decode(Decoder&, WebCore::DOMCacheEngine::CacheInfo&);
 };
 
-template<> struct ArgumentCoder<WebCore::CacheStorageConnection::Record> {
-    static void encode(Encoder&, const WebCore::CacheStorageConnection::Record&);
-    static bool decode(Decoder&, WebCore::CacheStorageConnection::Record&);
+template<> struct ArgumentCoder<WebCore::DOMCacheEngine::Record> {
+    static void encode(Encoder&, const WebCore::DOMCacheEngine::Record&);
+    static bool decode(Decoder&, WebCore::DOMCacheEngine::Record&);
 };
 
 template<> struct ArgumentCoder<WebCore::EventTrackingRegions> {
@@ -490,11 +461,6 @@ template<> struct ArgumentCoder<WebCore::TextCheckingRequestData> {
 template<> struct ArgumentCoder<WebCore::TextCheckingResult> {
     static void encode(Encoder&, const WebCore::TextCheckingResult&);
     static bool decode(Decoder&, WebCore::TextCheckingResult&);
-};
-    
-template<> struct ArgumentCoder<WebCore::URL> {
-    static void encode(Encoder&, const WebCore::URL&);
-    static bool decode(Decoder&, WebCore::URL&);
 };
 
 template<> struct ArgumentCoder<WebCore::UserStyleSheet> {
@@ -789,95 +755,6 @@ template<> struct EnumTraits<WebCore::MediaSelectionOption::Type> {
         WebCore::MediaSelectionOption::Type::Regular,
         WebCore::MediaSelectionOption::Type::LegibleOff,
         WebCore::MediaSelectionOption::Type::LegibleAuto
-    >;
-};
-
-template<> struct EnumTraits<WebCore::CacheStorageConnection::Error> {
-    using values = EnumValues<
-        WebCore::CacheStorageConnection::Error,
-        WebCore::CacheStorageConnection::Error::None,
-        WebCore::CacheStorageConnection::Error::NotImplemented
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Type> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Type,
-        WebCore::FetchOptions::Type::EmptyString,
-        WebCore::FetchOptions::Type::Audio,
-        WebCore::FetchOptions::Type::Font,
-        WebCore::FetchOptions::Type::Image,
-        WebCore::FetchOptions::Type::Script,
-        WebCore::FetchOptions::Type::Style,
-        WebCore::FetchOptions::Type::Track,
-        WebCore::FetchOptions::Type::Video
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Destination> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Destination,
-        WebCore::FetchOptions::Destination::EmptyString,
-        WebCore::FetchOptions::Destination::Document,
-        WebCore::FetchOptions::Destination::Sharedworker,
-        WebCore::FetchOptions::Destination::Subresource,
-        WebCore::FetchOptions::Destination::Unknown,
-        WebCore::FetchOptions::Destination::Worker
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Mode> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Mode,
-        WebCore::FetchOptions::Mode::Navigate,
-        WebCore::FetchOptions::Mode::SameOrigin,
-        WebCore::FetchOptions::Mode::NoCors,
-        WebCore::FetchOptions::Mode::Cors
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Credentials> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Credentials,
-        WebCore::FetchOptions::Credentials::Omit,
-        WebCore::FetchOptions::Credentials::SameOrigin,
-        WebCore::FetchOptions::Credentials::Include
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Cache> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Cache,
-        WebCore::FetchOptions::Cache::Default,
-        WebCore::FetchOptions::Cache::NoStore,
-        WebCore::FetchOptions::Cache::Reload,
-        WebCore::FetchOptions::Cache::NoCache,
-        WebCore::FetchOptions::Cache::ForceCache,
-        WebCore::FetchOptions::Cache::OnlyIfCached
-    >;
-};
-
-template<> struct EnumTraits<WebCore::FetchOptions::Redirect> {
-    using values = EnumValues<
-        WebCore::FetchOptions::Redirect,
-        WebCore::FetchOptions::Redirect::Follow,
-        WebCore::FetchOptions::Redirect::Error,
-        WebCore::FetchOptions::Redirect::Manual
-    >;
-};
-
-template<> struct EnumTraits<WebCore::ReferrerPolicy> {
-    using values = EnumValues<
-        WebCore::ReferrerPolicy,
-        WebCore::ReferrerPolicy::EmptyString,
-        WebCore::ReferrerPolicy::NoReferrer,
-        WebCore::ReferrerPolicy::NoReferrerWhenDowngrade,
-        WebCore::ReferrerPolicy::SameOrigin,
-        WebCore::ReferrerPolicy::Origin,
-        WebCore::ReferrerPolicy::StrictOrigin,
-        WebCore::ReferrerPolicy::OriginWhenCrossOrigin,
-        WebCore::ReferrerPolicy::StrictOriginWhenCrossOrigin,
-        WebCore::ReferrerPolicy::UnsafeUrl
     >;
 };
 

@@ -55,6 +55,7 @@
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
+#include <WebCore/RectEdges.h>
 #include <WebCore/Region.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoadStatistics.h>
@@ -214,77 +215,13 @@ bool ArgumentCoder<CacheQueryOptions>::decode(Decoder& decoder, CacheQueryOption
     return true;
 }
 
-void ArgumentCoder<FetchOptions>::encode(Encoder& encoder, const FetchOptions& options)
-{
-    encoder << options.type;
-    encoder << options.destination;
-    encoder << options.mode;
-    encoder << options.credentials;
-    encoder << options.cache;
-    encoder << options.redirect;
-    encoder << options.referrerPolicy;
-    encoder << options.integrity;
-    encoder << options.keepAlive;
-}
-
-bool ArgumentCoder<FetchOptions>::decode(Decoder& decoder, FetchOptions& options)
-{
-    FetchOptions::Type type;
-    if (!decoder.decode(type))
-        return false;
-
-    FetchOptions::Destination destination;
-    if (!decoder.decode(destination))
-        return false;
-
-    FetchOptions::Mode mode;
-    if (!decoder.decode(mode))
-        return false;
-
-    FetchOptions::Credentials credentials;
-    if (!decoder.decode(credentials))
-        return false;
-
-    FetchOptions::Cache cache;
-    if (!decoder.decode(cache))
-        return false;
-
-    FetchOptions::Redirect redirect;
-    if (!decoder.decode(redirect))
-        return false;
-
-    ReferrerPolicy referrerPolicy;
-    if (!decoder.decode(referrerPolicy))
-        return false;
-
-    String integrity;
-    if (!decoder.decode(integrity))
-        return false;
-
-    bool keepAlive;
-    if (!decoder.decode(keepAlive))
-        return false;
-
-    options.type = type;
-    options.destination = destination;
-    options.mode = mode;
-    options.credentials = credentials;
-    options.cache = cache;
-    options.redirect = redirect;
-    options.referrerPolicy = referrerPolicy;
-    options.integrity = WTFMove(integrity);
-    options.keepAlive = keepAlive;
-
-    return true;
-}
-
-void ArgumentCoder<CacheStorageConnection::CacheInfo>::encode(Encoder& encoder, const CacheStorageConnection::CacheInfo& info)
+void ArgumentCoder<DOMCacheEngine::CacheInfo>::encode(Encoder& encoder, const DOMCacheEngine::CacheInfo& info)
 {
     encoder << info.identifier;
     encoder << info.name;
 }
 
-bool ArgumentCoder<CacheStorageConnection::CacheInfo>::decode(Decoder& decoder, CacheStorageConnection::CacheInfo& record)
+bool ArgumentCoder<DOMCacheEngine::CacheInfo>::decode(Decoder& decoder, DOMCacheEngine::CacheInfo& record)
 {
     uint64_t identifier;
     if (!decoder.decode(identifier))
@@ -300,7 +237,7 @@ bool ArgumentCoder<CacheStorageConnection::CacheInfo>::decode(Decoder& decoder, 
     return true;
 }
 
-void ArgumentCoder<CacheStorageConnection::Record>::encode(Encoder& encoder, const CacheStorageConnection::Record& record)
+void ArgumentCoder<DOMCacheEngine::Record>::encode(Encoder& encoder, const DOMCacheEngine::Record& record)
 {
     encoder << record.identifier;
 
@@ -311,6 +248,7 @@ void ArgumentCoder<CacheStorageConnection::Record>::encode(Encoder& encoder, con
 
     encoder << record.responseHeadersGuard;
     encoder << record.response;
+    encoder << record.updateResponseCounter;
 
     WTF::switchOn(record.responseBody, [&](const Ref<SharedBuffer>& buffer) {
         encoder << true;
@@ -325,7 +263,7 @@ void ArgumentCoder<CacheStorageConnection::Record>::encode(Encoder& encoder, con
     });
 }
 
-bool ArgumentCoder<CacheStorageConnection::Record>::decode(Decoder& decoder, CacheStorageConnection::Record& record)
+bool ArgumentCoder<DOMCacheEngine::Record>::decode(Decoder& decoder, DOMCacheEngine::Record& record)
 {
     uint64_t identifier;
     if (!decoder.decode(identifier))
@@ -355,7 +293,11 @@ bool ArgumentCoder<CacheStorageConnection::Record>::decode(Decoder& decoder, Cac
     if (!decoder.decode(response))
         return false;
 
-    WebCore::CacheStorageConnection::ResponseBody responseBody;
+    uint64_t updateResponseCounter;
+    if (!decoder.decode(updateResponseCounter))
+        return false;
+
+    WebCore::DOMCacheEngine::ResponseBody responseBody;
     bool hasSharedBufferBody;
     if (!decoder.decode(hasSharedBufferBody))
         return false;
@@ -386,6 +328,7 @@ bool ArgumentCoder<CacheStorageConnection::Record>::decode(Decoder& decoder, Cac
 
     record.responseHeadersGuard = responseHeadersGuard;
     record.response = WTFMove(response);
+    record.updateResponseCounter = updateResponseCounter;
     record.responseBody = WTFMove(responseBody);
 
     return true;
@@ -1113,7 +1056,7 @@ bool ArgumentCoder<Credential>::decode(Decoder& decoder, Credential& credential)
 
 static void encodeImage(Encoder& encoder, Image& image)
 {
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(IntSize(image.size()), ShareableBitmap::SupportsAlpha);
+    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(IntSize(image.size()), { });
     bitmap->createGraphicsContext()->drawImage(image, IntPoint());
 
     ShareableBitmap::Handle handle;
@@ -1770,6 +1713,7 @@ bool ArgumentCoder<DictationAlternative>::decode(Decoder& decoder, DictationAlte
 
 void ArgumentCoder<FileChooserSettings>::encode(Encoder& encoder, const FileChooserSettings& settings)
 {
+    encoder << settings.allowsDirectories;
     encoder << settings.allowsMultipleFiles;
     encoder << settings.acceptMIMETypes;
     encoder << settings.acceptFileExtensions;
@@ -1781,6 +1725,8 @@ void ArgumentCoder<FileChooserSettings>::encode(Encoder& encoder, const FileChoo
 
 bool ArgumentCoder<FileChooserSettings>::decode(Decoder& decoder, FileChooserSettings& settings)
 {
+    if (!decoder.decode(settings.allowsDirectories))
+        return false;
     if (!decoder.decode(settings.allowsMultipleFiles))
         return false;
     if (!decoder.decode(settings.acceptMIMETypes))
@@ -1871,20 +1817,6 @@ bool ArgumentCoder<TextCheckingResult>::decode(Decoder& decoder, TextCheckingRes
         return false;
     if (!decoder.decode(result.replacement))
         return false;
-    return true;
-}
-
-void ArgumentCoder<URL>::encode(Encoder& encoder, const URL& result)
-{
-    encoder << result.string();
-}
-    
-bool ArgumentCoder<URL>::decode(Decoder& decoder, URL& result)
-{
-    String urlAsString;
-    if (!decoder.decode(urlAsString))
-        return false;
-    result = URL(ParsedURLString, urlAsString);
     return true;
 }
 

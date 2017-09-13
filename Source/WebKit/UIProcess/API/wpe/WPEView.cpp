@@ -73,6 +73,11 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
     m_pageProxy->setDrawsBackground(false);
 #endif
 
+#if ENABLE(MEMORY_SAMPLER)
+    if (getenv("WEBKIT_SAMPLE_MEMORY"))
+        pool->startMemorySampler(0);
+#endif
+
     m_backend = backend;
     if (!m_backend)
         m_backend = wpe_view_backend_create();

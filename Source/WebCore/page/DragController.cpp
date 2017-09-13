@@ -830,7 +830,7 @@ static void selectElement(Element& element)
 static IntPoint dragLocForDHTMLDrag(const IntPoint& mouseDraggedPoint, const IntPoint& dragOrigin, const IntPoint& dragImageOffset, bool isLinkImage)
 {
     // dragImageOffset is the cursor position relative to the lower-left corner of the image.
-#if PLATFORM(COCOA)
+#if PLATFORM(MAC)
     // We add in the Y dimension because we are a flipped view, so adding moves the image down.
     const int yOffset = dragImageOffset.y();
 #else
@@ -868,7 +868,7 @@ static IntPoint dragLocForSelectionDrag(Frame& src)
     return IntPoint(xpos, ypos);
 }
 
-bool DragController::startDrag(Frame& src, const DragState& state, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin)
+bool DragController::startDrag(Frame& src, const DragState& state, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin, HasNonDefaultPasteboardData hasData)
 {
     if (!src.view() || !src.contentRenderer() || !state.source)
         return false;
@@ -933,14 +933,14 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     ASSERT(state.source);
     Element& element = *state.source;
 
-    bool mustUseLegacyDragClient = dataTransfer.pasteboard().hasData() || m_client.useLegacyDragClient();
+    bool mustUseLegacyDragClient = hasData == HasNonDefaultPasteboardData::Yes || m_client.useLegacyDragClient();
 
     IntRect dragImageBounds;
     Image* image = getImage(element);
     if (state.type == DragSourceActionSelection) {
         PasteboardWriterData pasteboardWriterData;
 
-        if (!dataTransfer.pasteboard().hasData()) {
+        if (hasData == HasNonDefaultPasteboardData::No) {
             if (src.selection().selection().isNone()) {
                 // The page may have cleared out the selection in the dragstart handler, in which case we should bail
                 // out of the drag, since there is no content to write to the pasteboard.
@@ -1016,7 +1016,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         // We shouldn't be starting a drag for an image that can't provide an extension.
         // This is an early detection for problems encountered later upon drop.
         ASSERT(!image->filenameExtension().isEmpty());
-        if (!dataTransfer.pasteboard().hasData()) {
+        if (hasData == HasNonDefaultPasteboardData::No) {
             m_draggingImageURL = imageURL;
             if (element.isContentRichlyEditable())
                 selectElement(element);
@@ -1040,7 +1040,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 
         String textContentWithSimplifiedWhiteSpace = hitTestResult.textContent().simplifyWhiteSpace();
 
-        if (!dataTransfer.pasteboard().hasData()) {
+        if (hasData == HasNonDefaultPasteboardData::No) {
             // Simplify whitespace so the title put on the dataTransfer resembles what the user sees
             // on the web page. This includes replacing newlines with spaces.
             if (mustUseLegacyDragClient)
@@ -1103,7 +1103,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 
         src.editor().setIgnoreSelectionChanges(true);
         auto previousSelection = src.selection().selection();
-        if (!dataTransfer.pasteboard().hasData()) {
+        if (hasData == HasNonDefaultPasteboardData::No) {
             selectElement(element);
             if (!attachmentURL.isEmpty()) {
                 // Use the attachment URL specified by the file attribute to populate the pasteboard.
@@ -1228,12 +1228,31 @@ void DragController::doSystemDrag(DragImage image, const IntPoint& dragLoc, cons
     DragItem item;
     item.image = WTFMove(image);
     item.sourceAction = state.type;
-    item.eventPositionInContentCoordinates = viewProtector->rootViewToContents(frame.view()->contentsToRootView(eventPos));
-    item.dragLocationInContentCoordinates = viewProtector->rootViewToContents(frame.view()->contentsToRootView(dragLoc));
+
+    auto eventPositionInRootViewCoordinates = frame.view()->contentsToRootView(eventPos);
+    auto dragLocationInRootViewCoordinates = frame.view()->contentsToRootView(dragLoc);
+    item.eventPositionInContentCoordinates = viewProtector->rootViewToContents(eventPositionInRootViewCoordinates);
+    item.dragLocationInContentCoordinates = viewProtector->rootViewToContents(dragLocationInRootViewCoordinates);
     item.eventPositionInWindowCoordinates = frame.view()->contentsToWindow(item.eventPositionInContentCoordinates);
     item.dragLocationInWindowCoordinates = frame.view()->contentsToWindow(item.dragLocationInContentCoordinates);
     if (auto element = state.source) {
-        item.elementBounds = element->boundsInRootViewSpace();
+        auto dataTransferImageElement = state.dataTransfer->dragImageElement();
+        if (state.type == DragSourceActionDHTML) {
+            // If the drag image has been customized, fall back to positioning the preview relative to the drag event location.
+            IntSize dragPreviewSize;
+            if (dataTransferImageElement)
+                dragPreviewSize = dataTransferImageElement->boundsInRootViewSpace().size();
+            else {
+                dragPreviewSize = dragImageSize(item.image.get());
+                if (auto* page = frame.page())
+                    dragPreviewSize.scale(1 / page->deviceScaleFactor());
+            }
+            item.dragPreviewFrameInRootViewCoordinates = { dragLocationInRootViewCoordinates, WTFMove(dragPreviewSize) };
+        } else {
+            // We can position the preview using the bounds of the drag source element.
+            item.dragPreviewFrameInRootViewCoordinates = element->boundsInRootViewSpace();
+        }
+
         RefPtr<Element> link;
         if (element->isLink())
             link = element;

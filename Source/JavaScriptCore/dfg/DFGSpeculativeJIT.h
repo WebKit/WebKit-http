@@ -962,6 +962,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(V_JITOperation_EJssUi operation, GPRReg arg1, uint32_t arg2)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImm32(arg2));
+        return appendCall(operation);
+    }
     JITCompiler::Call callOperation(P_JITOperation_EO operation, GPRReg result, GPRReg object)
     {
         m_jit.setupArgumentsWithExecState(object);
@@ -1378,6 +1383,16 @@ public:
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(V_JITOperation_EJ operation, JSValueRegs arg1)
+    {
+#if USE(JSVALUE64)
+        m_jit.setupArgumentsWithExecState(arg1.gpr());
+#else
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR());
+#endif
+        return appendCall(operation);
     }
 
 #if USE(JSVALUE64)
@@ -1813,6 +1828,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(J_JITOperation_ECCZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCallSetResult(operation, result.payloadGPR());
+    }
     JITCompiler::Call callOperation(J_JITOperation_ECJ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
@@ -1868,6 +1888,11 @@ public:
     JITCompiler::Call callOperation(V_JITOperation_ECJJ operation, GPRReg arg1, GPRReg arg2, GPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_ECCJ operation, GPRReg arg1, GPRReg arg2, JSValueRegs arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3.payloadGPR());
         return appendCall(operation);
     }
 
@@ -2381,16 +2406,15 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
     }
+    JITCompiler::Call callOperation(J_JITOperation_ECCZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
+    }
 
     JITCompiler::Call callOperation(V_JITOperation_EOZD operation, GPRReg arg1, GPRReg arg2, FPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, EABI_32BIT_DUMMY_ARG arg3);
-        return appendCall(operation);
-    }
-
-    JITCompiler::Call callOperation(V_JITOperation_EJ operation, JSValueRegs arg1)
-    {
-        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR());
         return appendCall(operation);
     }
 
@@ -2412,6 +2436,11 @@ public:
     JITCompiler::Call callOperation(V_JITOperation_ECJJ operation, GPRReg arg1, JSValueRegs arg2, JSValueRegs arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg2.tagGPR(), arg3.payloadGPR(), arg3.tagGPR());
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_ECCJ operation, GPRReg arg1, GPRReg arg2, JSValueRegs arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, EABI_32BIT_DUMMY_ARG arg3.payloadGPR(), arg3.tagGPR());
         return appendCall(operation);
     }
 
@@ -2757,8 +2786,9 @@ public:
     void emitSwitch(Node*);
     
     void compileToStringOrCallStringConstructor(Node*);
-    void compileToStringOrCallStringConstructorOnNumber(Node*);
     void compileNumberToStringWithRadix(Node*);
+    void compileNumberToStringWithValidRadixConstant(Node*);
+    void compileNumberToStringWithValidRadixConstant(Node*, int32_t radix);
     void compileNewStringObject(Node*);
     
     void compileNewTypedArray(Node*);
@@ -2779,6 +2809,11 @@ public:
     void compileCallDOMGetter(Node*);
     void compileCallDOM(Node*);
     void compileCheckSubClass(Node*);
+    void compileGetMapBucketHead(Node*);
+    void compileGetMapBucketNext(Node*);
+    void compileWeakMapGet(Node*);
+    void compileLoadKeyFromMapBucket(Node*);
+    void compileLoadValueFromMapBucket(Node*);
     
 #if USE(JSVALUE32_64)
     template<typename BaseOperandType, typename PropertyOperandType, typename ValueOperandType, typename TagType>
@@ -2859,6 +2894,10 @@ public:
     void compilePutByValForIntTypedArray(GPRReg base, GPRReg property, Node*, TypedArrayType);
     void compileGetByValOnFloatTypedArray(Node*, TypedArrayType);
     void compilePutByValForFloatTypedArray(GPRReg base, GPRReg property, Node*, TypedArrayType);
+    void compileGetByValForObjectWithString(Node*);
+    void compileGetByValForObjectWithSymbol(Node*);
+    void compilePutByValForCellWithString(Node*, Edge& child1, Edge& child2, Edge& child3);
+    void compilePutByValForCellWithSymbol(Node*, Edge& child1, Edge& child2, Edge& child3);
     // If this returns false it means that we terminated speculative execution.
     bool getIntTypedArrayStoreOperand(
         GPRTemporary& value,
@@ -2892,8 +2931,8 @@ public:
     void compileIsObjectOrNull(Node*);
     void compileIsFunction(Node*);
     void compileTypeOf(Node*);
-    void compileCheckStructure(Node*, GPRReg cellGPR, GPRReg tempGPR);
     void compileCheckStructure(Node*);
+    void emitStructureCheck(Node*, GPRReg cellGPR, GPRReg tempGPR);
     void compilePutAccessorById(Node*);
     void compilePutGetterSetterById(Node*);
     void compilePutAccessorByVal(Node*);
@@ -2911,6 +2950,8 @@ public:
     void compileDefineDataProperty(Node*);
     void compileDefineAccessorProperty(Node*);
     void compileToLowerCase(Node*);
+    void compileThrow(Node*);
+    void compileThrowStaticError(Node*);
 
     void moveTrueTo(GPRReg);
     void moveFalseTo(GPRReg);
@@ -3032,6 +3073,10 @@ public:
     void speculateMapObject(Edge, GPRReg cell);
     void speculateSetObject(Edge);
     void speculateSetObject(Edge, GPRReg cell);
+    void speculateWeakMapObject(Edge);
+    void speculateWeakMapObject(Edge, GPRReg cell);
+    void speculateWeakSetObject(Edge);
+    void speculateWeakSetObject(Edge, GPRReg cell);
     void speculateObjectOrOther(Edge);
     void speculateString(Edge edge, GPRReg cell);
     void speculateStringIdentAndLoadStorage(Edge edge, GPRReg string, GPRReg storage);

@@ -107,7 +107,6 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyl
     , m_renderBoxNeedsLazyRepaint(false)
     , m_hasPausedImageAnimations(false)
     , m_hasCounterNodeMap(false)
-    , m_isCSSAnimating(false)
     , m_hasContinuation(false)
     , m_hasValidCachedFirstLineStyle(false)
     , m_renderBlockHasMarginBeforeQuirk(false)
@@ -2187,7 +2186,9 @@ bool RenderElement::hasSelfPaintingLayer() const
 
 bool RenderElement::checkForRepaintDuringLayout() const
 {
-    return !document().view()->needsFullRepaint() && everHadLayout() && !hasSelfPaintingLayer();
+    if (document().view()->needsFullRepaint() || !everHadLayout() || hasSelfPaintingLayer())
+        return false;
+    return !settings().repaintOutsideLayoutEnabled();
 }
 
 RespectImageOrientationEnum RenderElement::shouldRespectImageOrientation() const

@@ -764,6 +764,12 @@ public:
     // Equivalent to ::glTexImage2D(). Allows pixels==0 with no allocation.
     void texImage2DDirect(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dint border, GC3Denum format, GC3Denum type, const void* pixels);
 
+    // Get an attribute location without checking the name -> mangledname mapping.
+    int getAttribLocationDirect(Platform3DObject program, const String& name);
+
+    // Compile a shader without going through ANGLE.
+    void compileShaderDirect(Platform3DObject);
+
     // Helper to texImage2D with pixel==0 case: pixels are initialized to 0.
     // Return true if no GL error is synthesized.
     // By default, alignment is 4, the OpenGL default setting.
@@ -971,6 +977,8 @@ public:
 
     void texStorage2D(GC3Denum target, GC3Dsizei levels, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height);
     void texStorage3D(GC3Denum target, GC3Dsizei levels, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dsizei depth);
+
+    void getActiveUniforms(Platform3DObject program, const Vector<GC3Duint>& uniformIndices, GC3Denum pname, Vector<GC3Dint>& params);
 
     GC3Denum checkFramebufferStatus(GC3Denum target);
     void clear(GC3Dbitfield mask);
@@ -1340,8 +1348,13 @@ private:
         }
     };
 
+    // FIXME: Shaders are never removed from this map, even if they and their program are deleted.
+    // This is bad, and it also relies on the fact we never reuse Platform3DObject numbers.
     typedef HashMap<Platform3DObject, ShaderSourceEntry> ShaderSourceMap;
     ShaderSourceMap m_shaderSourceMap;
+
+    typedef HashMap<Platform3DObject, std::pair<Platform3DObject, Platform3DObject>> LinkedShaderMap;
+    LinkedShaderMap m_linkedShaderMap;
 
     struct ActiveShaderSymbolCounts {
         Vector<GC3Dint> filteredToActualAttributeIndexMap;
@@ -1369,6 +1382,8 @@ private:
     String mappedSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
     String mappedSymbolName(Platform3DObject shaders[2], size_t count, const String& name);
     String originalSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
+    std::optional<String> mappedSymbolInShaderSourceMap(Platform3DObject shader, ANGLEShaderSymbolType, const String& name);
+    std::optional<String> originalSymbolInShaderSourceMap(Platform3DObject shader, ANGLEShaderSymbolType, const String& name);
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 

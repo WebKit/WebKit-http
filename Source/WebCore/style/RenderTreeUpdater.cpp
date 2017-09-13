@@ -44,6 +44,7 @@
 #include "RenderTreeUpdaterFirstLetter.h"
 #include "RenderTreeUpdaterGeneratedContent.h"
 #include "RenderTreeUpdaterListItem.h"
+#include "RenderTreeUpdaterMultiColumn.h"
 #include "StyleResolver.h"
 #include "StyleTreeResolver.h"
 #include <wtf/SystemTracing.h>
@@ -134,6 +135,8 @@ void RenderTreeUpdater::commit(std::unique_ptr<const Style::Update> styleUpdate)
         updateRenderTree(*root);
 
     generatedContent().updateRemainingQuotes();
+
+    MultiColumn::update(renderView());
 
     m_styleUpdate = nullptr;
 }
@@ -263,6 +266,8 @@ void RenderTreeUpdater::updateAfterDescendants(Element& element, Style::Change s
         FirstLetter::update(downcast<RenderBlock>(*renderer));
     if (is<RenderListItem>(*renderer))
         ListItem::updateMarker(downcast<RenderListItem>(*renderer));
+    if (is<RenderBlockFlow>(*renderer))
+        MultiColumn::update(downcast<RenderBlockFlow>(*renderer));
 
     if (element.hasCustomStyleResolveCallbacks() && styleChange == Style::Detach)
         element.didAttachRenderers();
@@ -358,6 +363,8 @@ void RenderTreeUpdater::createRenderer(Element& element, RenderStyle&& style)
 #if ENABLE(CSS_REGIONS)
         if (element.shouldMoveToFlowThread(style))
             return RenderTreePosition::insertionPositionForFlowThread(renderTreePosition().parent().element(), element, style);
+#else
+        UNUSED_PARAM(style);
 #endif
         renderTreePosition().computeNextSibling(element);
         return renderTreePosition();

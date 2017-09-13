@@ -104,11 +104,12 @@ void WorkerGlobalScope::removeAllEventListeners()
 {
     EventTarget::removeAllEventListeners();
     m_performance->removeAllEventListeners();
+    m_performance->removeAllObservers();
 }
 
 bool WorkerGlobalScope::isSecureContext() const
 {
-    return securityOrigin() && securityOrigin()->isPotentionallyTrustworthy();
+    return securityOrigin() && securityOrigin()->isPotentiallyTrustworthy();
 }
 
 void WorkerGlobalScope::applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders)

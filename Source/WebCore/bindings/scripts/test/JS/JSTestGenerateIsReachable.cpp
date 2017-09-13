@@ -27,7 +27,6 @@
 #include "JSDOMConvertStrings.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
-#include "RuntimeEnabledFeatures.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSCInlines.h>
@@ -166,7 +165,7 @@ bool setJSTestGenerateIsReachableConstructor(ExecState* state, EncodedJSValue th
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
 static inline JSValue jsTestGenerateIsReachableASecretAttributeGetter(ExecState& state, JSTestGenerateIsReachable& thisObject, ThrowScope& throwScope)

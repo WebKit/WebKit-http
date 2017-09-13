@@ -38,9 +38,6 @@ class CDMClient {
 public:
     virtual ~CDMClient() { }
 
-    virtual void cdmClientInstanceAttached(const CDMInstance&) = 0;
-    virtual void cdmClientInstanceDetached(const CDMInstance&) = 0;
-
     virtual void cdmClientAttemptToResumePlaybackIfNecessary() = 0;
     virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
 };

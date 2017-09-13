@@ -209,9 +209,9 @@ PaintedContentsInfo::ContentsTypeDetermination PaintedContentsInfo::contentsType
 RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
     : m_owningLayer(layer)
 {
-    if (layer.isRootLayer()) {
+    if (layer.isRenderViewLayer()) {
         m_isMainFrameRenderViewLayer = renderer().frame().isMainFrame();
-        m_isMainFrameLayerWithTiledBacking = renderer().page().chrome().client().shouldUseTiledBackingForFrameView(renderer().view().frameView());
+        m_isFrameLayerWithTiledBacking = renderer().page().chrome().client().shouldUseTiledBackingForFrameView(renderer().view().frameView());
     }
     
     createPrimaryGraphicsLayer();
@@ -219,7 +219,7 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
     if (TiledBacking* tiledBacking = this->tiledBacking()) {
         tiledBacking->setIsInWindow(renderer().page().isInWindow());
 
-        if (m_isMainFrameLayerWithTiledBacking) {
+        if (m_isFrameLayerWithTiledBacking) {
             tiledBacking->setScrollingPerformanceLoggingEnabled(renderer().settings().scrollingPerformanceLoggingEnabled());
             adjustTiledBackingCoverage();
         }
@@ -322,7 +322,7 @@ static TiledBacking::TileCoverage computePageTiledBackingCoverage(RenderLayerBac
 
 void RenderLayerBacking::adjustTiledBackingCoverage()
 {
-    if (!m_isMainFrameLayerWithTiledBacking)
+    if (!m_isFrameLayerWithTiledBacking)
         return;
 
     TiledBacking::TileCoverage tileCoverage = computePageTiledBackingCoverage(this);
@@ -331,7 +331,7 @@ void RenderLayerBacking::adjustTiledBackingCoverage()
 
 void RenderLayerBacking::setTiledBackingHasMargins(bool hasExtendedBackgroundOnLeftAndRight, bool hasExtendedBackgroundOnTopAndBottom)
 {
-    if (!m_isMainFrameLayerWithTiledBacking)
+    if (!m_isFrameLayerWithTiledBacking)
         return;
 
     tiledBacking()->setHasMargins(hasExtendedBackgroundOnTopAndBottom, hasExtendedBackgroundOnTopAndBottom, hasExtendedBackgroundOnLeftAndRight, hasExtendedBackgroundOnLeftAndRight);
@@ -389,9 +389,9 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
         layerName.truncate(maxLayerNameLength);
         layerName.append("...");
     }
-    m_graphicsLayer = createGraphicsLayer(layerName, m_isMainFrameLayerWithTiledBacking ? GraphicsLayer::Type::PageTiledBacking : GraphicsLayer::Type::Normal);
+    m_graphicsLayer = createGraphicsLayer(layerName, m_isFrameLayerWithTiledBacking ? GraphicsLayer::Type::PageTiledBacking : GraphicsLayer::Type::Normal);
 
-    if (m_isMainFrameLayerWithTiledBacking) {
+    if (m_isFrameLayerWithTiledBacking) {
         m_childContainmentLayer = createGraphicsLayer("Page TiledBacking containment");
         m_graphicsLayer->addChild(m_childContainmentLayer.get());
     }
@@ -566,7 +566,7 @@ bool RenderLayerBacking::shouldClipCompositedBounds() const
         return false;
 #endif
 
-    if (m_isMainFrameLayerWithTiledBacking)
+    if (m_isFrameLayerWithTiledBacking)
         return false;
 
     if (layerOrAncestorIsTransformedOrUsingCompositedScrolling(m_owningLayer))
@@ -720,7 +720,7 @@ bool RenderLayerBacking::updateConfiguration()
 
     PaintedContentsInfo contentsInfo(*this);
 
-    if (!m_owningLayer.isRootLayer()) {
+    if (!m_owningLayer.isRenderViewLayer()) {
         bool didUpdateContentsRect = false;
         updateDirectlyCompositedBoxDecorations(contentsInfo, didUpdateContentsRect);
     } else
@@ -1052,7 +1052,7 @@ void RenderLayerBacking::updateGeometry()
     if (m_maskLayer)
         updateMaskingLayerGeometry();
     
-    if (m_owningLayer.renderer().hasTransformRelatedProperty()) {
+    if (renderer().hasTransformRelatedProperty()) {
         // Update properties that depend on layer dimensions.
         FloatPoint3D transformOrigin = computeTransformOriginForPainting(downcast<RenderBox>(renderer()).borderBoxRect());
         FloatPoint layerOffset = roundPointToDevicePixels(toLayoutPoint(rendererOffset.fromParentGraphicsLayer()), deviceScaleFactor());
@@ -1220,7 +1220,7 @@ void RenderLayerBacking::updateAfterDescendants()
     PaintedContentsInfo contentsInfo(*this);
     contentsInfo.setWantsSubpixelAntialiasedTextState(GraphicsLayer::supportsSubpixelAntialiasedLayerText());
 
-    if (!m_owningLayer.isRootLayer()) {
+    if (!m_owningLayer.isRenderViewLayer()) {
         bool didUpdateContentsRect = false;
         updateDirectlyCompositedBoxDecorations(contentsInfo, didUpdateContentsRect);
         if (!didUpdateContentsRect && m_graphicsLayer->usesContentsLayer())
@@ -1450,7 +1450,7 @@ bool RenderLayerBacking::updateDescendantClippingLayer(bool needsDescendantClip)
     bool layersChanged = false;
 
     if (needsDescendantClip) {
-        if (!m_childContainmentLayer && !m_isMainFrameLayerWithTiledBacking) {
+        if (!m_childContainmentLayer && !m_isFrameLayerWithTiledBacking) {
             m_childContainmentLayer = createGraphicsLayer("child clipping");
             m_childContainmentLayer->setMasksToBounds(true);
             layersChanged = true;
@@ -1959,7 +1959,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(PaintedContents
 
 void RenderLayerBacking::updateRootLayerConfiguration()
 {
-    if (!m_isMainFrameLayerWithTiledBacking)
+    if (!m_isFrameLayerWithTiledBacking)
         return;
 
     Color backgroundColor;
@@ -2399,10 +2399,10 @@ bool RenderLayerBacking::paintsIntoWindow() const
         return false;
 #endif
 
-    if (m_isMainFrameLayerWithTiledBacking)
+    if (m_isFrameLayerWithTiledBacking)
         return false;
 
-    if (m_owningLayer.isRootLayer()) {
+    if (m_owningLayer.isRenderViewLayer()) {
 #if PLATFORM(IOS) || USE(COORDINATED_GRAPHICS)
         if (compositor().inForcedCompositingMode())
             return false;
@@ -2433,7 +2433,7 @@ void RenderLayerBacking::setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer
 {
     ASSERT(!paintsIntoCompositedAncestor());
 
-    FrameView& frameView = owningLayer().renderer().view().frameView();
+    FrameView& frameView = renderer().view().frameView();
     if (m_isMainFrameRenderViewLayer && frameView.isTrackingRepaints())
         frameView.addTrackedRepaintRect(owningLayer().absoluteBoundingBoxForPainting());
     
@@ -2468,7 +2468,7 @@ void RenderLayerBacking::setContentsNeedDisplayInRect(const LayoutRect& r, Graph
     ASSERT(!paintsIntoCompositedAncestor());
 
     FloatRect pixelSnappedRectForPainting = snapRectToDevicePixels(r, deviceScaleFactor());
-    FrameView& frameView = owningLayer().renderer().view().frameView();
+    FrameView& frameView = renderer().view().frameView();
     if (m_isMainFrameRenderViewLayer && frameView.isTrackingRepaints())
         frameView.addTrackedRepaintRect(pixelSnappedRectForPainting);
 
@@ -2555,7 +2555,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
 #endif
 
     FrameView::PaintingState paintingState;
-    if (m_owningLayer.isRootLayer())
+    if (m_owningLayer.isRenderViewLayer())
         renderer().view().frameView().willPaintContents(context, paintDirtyRect, paintingState);
 
     // FIXME: GraphicsLayers need a way to split for RenderRegions.
@@ -2565,7 +2565,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
     if (m_owningLayer.containsDirtyOverlayScrollbars())
         m_owningLayer.paintLayerContents(context, paintingInfo, paintFlags | RenderLayer::PaintLayerPaintingOverlayScrollbars);
 
-    if (m_owningLayer.isRootLayer())
+    if (m_owningLayer.isRenderViewLayer())
         renderer().view().frameView().didPaintContents(context, paintDirtyRect, paintingState);
 
     compositor().didPaintBacking(this);
@@ -3050,8 +3050,8 @@ TextStream& operator<<(TextStream& ts, const RenderLayerBacking& backing)
 {
     ts << "RenderLayerBacking " << &backing << " bounds " << backing.compositedBounds();
 
-    if (backing.isMainFrameLayerWithTiledBacking())
-        ts << " main tiled backing";
+    if (backing.isFrameLayerWithTiledBacking())
+        ts << " frame layer tiled backing";
     if (backing.paintsIntoWindow())
         ts << " paintsIntoWindow";
     if (backing.paintsIntoCompositedAncestor())

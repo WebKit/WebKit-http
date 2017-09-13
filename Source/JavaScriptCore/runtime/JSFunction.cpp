@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSFunction.h"
 
+#include "AsyncGeneratorPrototype.h"
 #include "BuiltinNames.h"
 #include "ClonedArguments.h"
 #include "CodeBlock.h"
@@ -90,6 +91,17 @@ JSFunction::JSFunction(VM& vm, JSGlobalObject* globalObject, Structure* structur
 {
 }
 
+
+void JSFunction::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
+    if (isBuiltinFunction() && jsExecutable()->name().isPrivateName()) {
+        // This is anonymous builtin function.
+        rareData(vm)->setHasReifiedName();
+    }
+}
+
 void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length, const String& name)
 {
     Base::finishCreation(vm);
@@ -99,20 +111,6 @@ void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length
     if (!name.isNull())
         putDirect(vm, vm.propertyNames->name, jsString(&vm, name), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(length), ReadOnly | DontEnum);
-}
-
-JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* executable, JSGlobalObject* globalObject)
-{
-    JSFunction* function = create(vm, executable, globalObject);
-    function->putDirect(vm, vm.propertyNames->name, jsString(&vm, executable->name().string()), ReadOnly | DontEnum);
-    return function;
-}
-
-JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* executable, JSGlobalObject* globalObject, const String& name)
-{
-    JSFunction* function = create(vm, executable, globalObject);
-    function->putDirect(vm, vm.propertyNames->name, jsString(&vm, name), ReadOnly | DontEnum);
-    return function;
 }
 
 FunctionRareData* JSFunction::allocateRareData(VM& vm)
@@ -362,7 +360,9 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
                 // property does not have a constructor property whose value is the GeneratorFunction instance.
                 // https://tc39.github.io/ecma262/#sec-generatorfunction-instances-prototype
                 prototype = constructEmptyObject(exec, thisObject->globalObject(vm)->generatorPrototype());
-            } else {
+            } else if (thisObject->jsExecutable()->parseMode() == SourceParseMode::AsyncGeneratorWrapperFunctionMode)
+                prototype = constructEmptyObject(exec, thisObject->globalObject(vm)->asyncGeneratorPrototype());
+            else {
                 prototype = constructEmptyObject(exec);
                 prototype->putDirect(vm, vm.propertyNames->constructor, thisObject, DontEnum);
             }
@@ -375,7 +375,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         slot.setValue(thisObject, attributes, thisObject->getDirect(offset), offset);
     }
 
-    if (propertyName == exec->propertyNames().arguments) {
+    if (propertyName == vm.propertyNames->arguments) {
         if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties())
             return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
         
@@ -383,7 +383,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         return true;
     }
 
-    if (propertyName == exec->propertyNames().caller) {
+    if (propertyName == vm.propertyNames->caller) {
         if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties())
             return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 
@@ -417,7 +417,7 @@ void JSFunction::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, 
         } else {
             if (thisObject->isBuiltinFunction() && !thisObject->hasReifiedLength())
                 propertyNames.add(vm.propertyNames->length);
-            if (thisObject->inherits(vm, JSBoundFunction::info()) && !thisObject->hasReifiedName())
+            if ((thisObject->isBuiltinFunction() || thisObject->inherits(vm, JSBoundFunction::info())) && !thisObject->hasReifiedName())
                 propertyNames.add(vm.propertyNames->name);
         }
     }
@@ -487,10 +487,10 @@ bool JSFunction::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prop
         // For non-host functions, don't let these properties by deleted - except by DefineOwnProperty.
         FunctionExecutable* executable = thisObject->jsExecutable();
         
-        if (propertyName == exec->propertyNames().caller || propertyName == exec->propertyNames().arguments)
+        if (propertyName == vm.propertyNames->caller || propertyName == vm.propertyNames->arguments)
             return !executable->hasCallerAndArgumentsProperties();
 
-        if (propertyName == exec->propertyNames().prototype && !executable->isArrowFunction())
+        if (propertyName == vm.propertyNames->prototype && !executable->isArrowFunction())
             return false;
 
         thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
@@ -649,8 +649,8 @@ void JSFunction::reifyName(VM& vm, ExecState* exec)
     // https://tc39.github.io/ecma262/#sec-exports-runtime-semantics-evaluation
     // When the ident is "*default*", we need to set "default" for the ecma name.
     // This "*default*" name is never shown to users.
-    if (ecmaName == exec->propertyNames().builtinNames().starDefaultPrivateName())
-        name = exec->propertyNames().defaultKeyword.string();
+    if (ecmaName == vm.propertyNames->builtinNames().starDefaultPrivateName())
+        name = vm.propertyNames->defaultKeyword.string();
     else
         name = ecmaName.string();
     reifyName(vm, exec, name);
@@ -723,7 +723,9 @@ JSFunction::LazyPropertyType JSFunction::reifyLazyBoundNameIfNeeded(VM& vm, Exec
     if (hasReifiedName())
         return LazyPropertyType::IsLazyProperty;
 
-    if (this->inherits(vm, JSBoundFunction::info())) {
+    if (isBuiltinFunction())
+        reifyName(vm, exec);
+    else if (this->inherits(vm, JSBoundFunction::info())) {
         FunctionRareData* rareData = this->rareData(vm);
         String name = makeString("bound ", static_cast<NativeExecutable*>(m_executable.get())->name());
         unsigned initialAttributes = DontEnum | ReadOnly;

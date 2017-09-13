@@ -46,26 +46,26 @@ typedef NS_OPTIONS(NSInteger, _WKMediaCaptureState) {
     _WKMediaCaptureStateActiveCamera = 1 << 1,
     _WKMediaCaptureStateMutedMicrophone = 1 << 2,
     _WKMediaCaptureStateMutedCamera = 1 << 3,
-} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+} WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 typedef NS_OPTIONS(NSInteger, _WKMediaMutedState) {
     _WKMediaNoneMuted = 0,
     _WKMediaAudioMuted = 1 << 0,
     _WKMediaCaptureDevicesMuted = 1 << 1,
-} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+} WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 typedef NS_OPTIONS(NSUInteger, _WKCaptureDevices) {
     _WKCaptureDeviceMicrophone = 1 << 0,
     _WKCaptureDeviceCamera = 1 << 1,
-} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+} WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
-#if TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if TARGET_OS_IPHONE
 
 typedef NS_ENUM(NSUInteger, _WKDragInteractionPolicy) {
     _WKDragInteractionPolicyDefault = 0,
     _WKDragInteractionPolicyAlwaysEnable,
     _WKDragInteractionPolicyAlwaysDisable
-} WK_API_AVAILABLE(ios(WK_IOS_TBA));
+} WK_API_AVAILABLE(ios(11.0));
 
 #endif
 
@@ -79,6 +79,15 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
     _WKImmediateActionMailtoLink,
     _WKImmediateActionTelLink
 } WK_API_AVAILABLE(macosx(10.12));
+
+typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
+    _WKRectEdgeNone = 0,
+    _WKRectEdgeLeft = 1 << CGRectMinXEdge,
+    _WKRectEdgeTop = 1 << CGRectMinYEdge,
+    _WKRectEdgeRight = 1 << CGRectMaxXEdge,
+    _WKRectEdgeBottom = 1 << CGRectMaxYEdge,
+    _WKRectEdgeAll = _WKRectEdgeLeft | _WKRectEdgeTop | _WKRectEdgeRight | _WKRectEdgeBottom,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 #endif
 
@@ -113,12 +122,14 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL;
 - (WKNavigation *)_loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL userData:(id)userData WK_API_AVAILABLE(macosx(10.12), ios(10.0));
-- (WKNavigation *)_loadRequest:(NSURLRequest *)request shouldOpenExternalURLs:(BOOL)shouldOpenExternalURLs WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (WKNavigation *)_loadRequest:(NSURLRequest *)request shouldOpenExternalURLs:(BOOL)shouldOpenExternalURLs WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @property (nonatomic, readonly) NSArray *_certificateChain WK_API_DEPRECATED_WITH_REPLACEMENT("certificateChain", macosx(10.10, 10.11), ios(8.0, 9.0));
 @property (nonatomic, readonly) NSURL *_committedURL;
 @property (nonatomic, readonly) NSString *_MIMEType;
 @property (nonatomic, readonly) NSString *_userAgent WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+
+@property (nonatomic, readonly, getter=_isPlayingAudio) BOOL _playingAudio WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (copy, setter=_setApplicationNameForUserAgent:) NSString *_applicationNameForUserAgent;
 @property (copy, setter=_setCustomUserAgent:) NSString *_customUserAgent;
@@ -148,15 +159,15 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (void)_close;
 
-- (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
-- (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
 // For use with _layoutMode = _WKLayoutModeFixedSize:
 @property (nonatomic, setter=_setFixedLayoutSize:) CGSize _fixedLayoutSize;
 
-@property (nonatomic, setter=_setViewportSizeForCSSViewportUnits:) CGSize _viewportSizeForCSSViewportUnits WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, setter=_setViewportSizeForCSSViewportUnits:) CGSize _viewportSizeForCSSViewportUnits WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
@@ -170,12 +181,12 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 // Define the inset of the scrollview unusable by the web page.
 @property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;
 
-@property (nonatomic, setter=_setUnobscuredSafeAreaInsets:) UIEdgeInsets _unobscuredSafeAreaInsets WK_API_AVAILABLE(ios(WK_IOS_TBA));
-@property (nonatomic, readonly) BOOL _safeAreaShouldAffectObscuredInsets WK_API_AVAILABLE(ios(WK_IOS_TBA));
-@property (nonatomic, setter=_setObscuredInsetEdgesAffectedBySafeArea:) UIRectEdge _obscuredInsetEdgesAffectedBySafeArea WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, setter=_setUnobscuredSafeAreaInsets:) UIEdgeInsets _unobscuredSafeAreaInsets WK_API_AVAILABLE(ios(11.0));
+@property (nonatomic, readonly) BOOL _safeAreaShouldAffectObscuredInsets WK_API_AVAILABLE(ios(11.0));
+@property (nonatomic, setter=_setObscuredInsetEdgesAffectedBySafeArea:) UIRectEdge _obscuredInsetEdgesAffectedBySafeArea WK_API_AVAILABLE(ios(11.0));
 
 // An ancestor view whose bounds will be intersected with those of this WKWebView to determine the visible region of content to render.
-@property (nonatomic, readonly) UIView *_enclosingViewForExposedRectComputation WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) UIView *_enclosingViewForExposedRectComputation WK_API_AVAILABLE(ios(11.0));
 
 // Override the interface orientation. Clients using _beginAnimatedResizeWithUpdates: must update the interface orientation
 // in the update block.
@@ -193,9 +204,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-@property (nonatomic, setter=_setDragInteractionPolicy:) _WKDragInteractionPolicy _dragInteractionPolicy WK_API_AVAILABLE(ios(WK_IOS_TBA));
-#endif
+@property (nonatomic, setter=_setDragInteractionPolicy:) _WKDragInteractionPolicy _dragInteractionPolicy WK_API_AVAILABLE(ios(11.0));
 
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
@@ -213,8 +222,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (void)_overrideLayoutParametersWithMinimumLayoutSize:(CGSize)minimumLayoutSize maximumUnobscuredSizeOverride:(CGSize)maximumUnobscuredSizeOverride WK_API_AVAILABLE(ios(9_0));
 
-- (void)_clearOverrideLayoutParameters WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_clearInterfaceOrientationOverride WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_clearOverrideLayoutParameters WK_API_AVAILABLE(ios(11.0));
+- (void)_clearInterfaceOrientationOverride WK_API_AVAILABLE(ios(11.0));
 
 - (UIView *)_viewForFindUI;
 
@@ -232,10 +241,14 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (id)_snapshotLayerContentsForBackForwardListItem:(WKBackForwardListItem *)item WK_API_AVAILABLE(ios(9_0));
 - (NSArray *)_dataDetectionResults;
 
-- (void)_accessibilityRetrieveSpeakSelectionContent WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_accessibilityDidGetSpeakSelectionContent:(NSString *)content WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_accessibilityRetrieveSpeakSelectionContent WK_API_AVAILABLE(ios(11.0));
+- (void)_accessibilityDidGetSpeakSelectionContent:(NSString *)content WK_API_AVAILABLE(ios(11.0));
 
 #else
+
+@property (nonatomic, readonly) _WKRectEdge _pinnedState;
+@property (nonatomic, setter=_setRubberBandingEnabled:) _WKRectEdge _rubberBandingEnabled;
+
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
 @property (nonatomic, setter=_setDrawsBackground:) BOOL _drawsBackground;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
@@ -264,22 +277,22 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 // FIXME: This SPI should become a part of the WKUIDelegate. rdar://problem/26561537
 @property (nonatomic, readwrite, setter=_setWantsMediaPlaybackControlsView:) BOOL _wantsMediaPlaybackControlsView WK_API_AVAILABLE(macosx(10.12.3));
-@property (nonatomic, readonly) id _mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, readonly) id _mediaPlaybackControlsView WK_API_AVAILABLE(macosx(10.13));
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView WK_API_AVAILABLE(macosx(10.13));
 - (void)_removeMediaPlaybackControlsView WK_API_AVAILABLE(macosx(10.12.3));
 
-- (void)_prepareForMoveToWindow:(NSWindow *)targetWindow completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_prepareForMoveToWindow:(NSWindow *)targetWindow completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(10.13));
 
 #endif
 
 - (WKNavigation *)_reloadWithoutContentBlockers WK_API_AVAILABLE(macosx(10.12), ios(10.0));
-- (WKNavigation *)_reloadExpiredOnly WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (WKNavigation *)_reloadExpiredOnly WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 - (void)_killWebContentProcessAndResetState;
 
 - (void)_getMainResourceDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
 - (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
-- (void)_getContentsAsStringWithCompletionHandler:(void (^)(NSString *, NSError *))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_getContentsAsStringWithCompletionHandler:(void (^)(NSString *, NSError *))completionHandler WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @property (nonatomic, setter=_setPaginationMode:) _WKPaginationMode _paginationMode;
 // Whether the column-break-{before,after} properties are respected instead of the
@@ -315,13 +328,13 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 @property (nonatomic, readonly) BOOL _webProcessIsResponsive WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
-@property (nonatomic, setter=_setFullscreenDelegate:) id<_WKFullscreenDelegate> _fullscreenDelegate WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, setter=_setFullscreenDelegate:) id<_WKFullscreenDelegate> _fullscreenDelegate WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 @property (nonatomic, readonly) BOOL _isInFullscreen WK_API_AVAILABLE(macosx(10.12.3));
 
-- (void)_muteMediaCapture WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (void)_setPageMuted:(_WKMediaMutedState)mutedState WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_muteMediaCapture WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_setPageMuted:(_WKMediaMutedState)mutedState WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
-@property (nonatomic, setter=_setMediaCaptureEnabled:) BOOL _mediaCaptureEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, setter=_setMediaCaptureEnabled:) BOOL _mediaCaptureEnabled WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @end
 
@@ -345,7 +358,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)dismissFormAccessoryView WK_API_AVAILABLE(ios(10.3));
 - (void)selectFormAccessoryPickerRow:(int)rowIndex WK_API_AVAILABLE(ios(10.3));
 
-- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)())completionHandler WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)())completionHandler WK_API_AVAILABLE(ios(11.0));
 
 - (void)didStartFormControlInteraction WK_API_AVAILABLE(ios(10.3));
 - (void)didEndFormControlInteraction WK_API_AVAILABLE(ios(10.3));
@@ -362,21 +375,13 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 @property (nonatomic, readonly) NSNumber *_stableStateOverride WK_API_AVAILABLE(ios(10.3));
 
-- (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID WK_API_AVAILABLE(ios(WK_IOS_TBA));
-
-- (void)_simulateDataInteractionEntered:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (NSUInteger)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionPerformOperation:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionEnded:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionSessionDidEnd:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateWillBeginDataInteractionWithSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (NSArray *)_simulatedItemsForSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID WK_API_AVAILABLE(ios(11.0));
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 
-@property (nonatomic, readonly) CGRect _dragCaretRect WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) CGRect _dragCaretRect WK_API_AVAILABLE(ios(11.0));
 
-- (void)_requestActivatedElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKActivatedElementInfo *))block WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_requestActivatedElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKActivatedElementInfo *))block WK_API_AVAILABLE(ios(11.0));
+- (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text completionHandler:(void (^)(NSArray<NSValue *> *rects))completionHandler WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 #endif // TARGET_OS_IPHONE
 
@@ -390,7 +395,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_didUpdateCandidateListVisibility:(BOOL)visible WK_API_AVAILABLE(macosx(10.12.3));
 @property (nonatomic, readonly) BOOL _shouldRequestCandidates WK_API_AVAILABLE(macosx(10.12.3));
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macosx(10.12.3));
-- (NSRect)_candidateRect WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (NSRect)_candidateRect WK_API_AVAILABLE(macosx(10.13));
 
 - (void)_setHeaderBannerHeight:(int)height WK_API_AVAILABLE(macosx(10.12.3));
 - (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macosx(10.12.3));
@@ -404,9 +409,10 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 - (void)_doAfterNextPresentationUpdateWithoutWaitingForPainting:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
-- (void)_doAfterNextVisibleContentRectUpdate:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_doAfterNextVisibleContentRectUpdate:(void (^)(void))updateBlock WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 - (void)_disableBackForwardSnapshotVolatilityForTesting WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
+- (void)_executeEditCommand:(NSString *)command argument:(NSString *)argument completion:(void (^)(BOOL))completion WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

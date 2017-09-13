@@ -992,9 +992,6 @@ public:
         return GPRInfo::regT5;
     }
 
-    // Add a debug call. This call has no effect on JIT code execution state.
-    void debugCall(VM&, V_DebugOperation_EPP function, void* argument);
-
     // These methods JIT generate dynamic, debug-only checks - akin to ASSERTs.
 #if !ASSERT_DISABLED
     void jitAssertIsInt32(GPRReg);
@@ -1220,9 +1217,9 @@ public:
     {
         if (!inlineCallFrame)
             return VirtualRegister(CallFrame::argumentOffset(0));
-        if (inlineCallFrame->arguments.size() <= 1)
+        if (inlineCallFrame->argumentsWithFixup.size() <= 1)
             return virtualRegisterForLocal(0);
-        ValueRecovery recovery = inlineCallFrame->arguments[1];
+        ValueRecovery recovery = inlineCallFrame->argumentsWithFixup[1];
         RELEASE_ASSERT(recovery.technique() == DisplacedInJSStack);
         return recovery.virtualRegister();
     }
@@ -1317,7 +1314,7 @@ public:
         if (!Gigacage::shouldBeEnabled())
             return;
         
-        andPtr(TrustedImmPtr(static_cast<size_t>(GIGACAGE_MASK)), storage);
+        andPtr(TrustedImmPtr(Gigacage::mask(kind)), storage);
         addPtr(TrustedImmPtr(Gigacage::basePtr(kind)), storage);
 #else
         UNUSED_PARAM(kind);
@@ -1336,7 +1333,7 @@ public:
         
         loadPtr(&Gigacage::basePtr(kind), scratch);
         Jump done = branchTestPtr(Zero, scratch);
-        andPtr(TrustedImmPtr(static_cast<size_t>(GIGACAGE_MASK)), storage);
+        andPtr(TrustedImmPtr(Gigacage::mask(kind)), storage);
         addPtr(scratch, storage);
         done.link(this);
 #else
@@ -1465,6 +1462,7 @@ public:
     
     void emitDumbVirtualCall(VM&, CallLinkInfo*);
     
+    // FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
     Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);
 
     void makeSpaceOnStackForCCall();
@@ -1656,6 +1654,7 @@ protected:
     CodeBlock* m_codeBlock;
     CodeBlock* m_baselineCodeBlock;
 
+    // FIXME: remove this when we fix https://bugs.webkit.org/show_bug.cgi?id=175145.
     HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset>> m_decodedCodeMaps;
 };
 

@@ -252,7 +252,7 @@ const Identifier& BytecodeDumper<Block>::identifier(int index) const
 
 static CString regexpToSourceString(RegExp* regExp)
 {
-    char postfix[5] = { '/', 0, 0, 0, 0 };
+    char postfix[7] = { '/', 0, 0, 0, 0, 0, 0 };
     int index = 1;
     if (regExp->global())
         postfix[index++] = 'g';
@@ -260,10 +260,12 @@ static CString regexpToSourceString(RegExp* regExp)
         postfix[index++] = 'i';
     if (regExp->multiline())
         postfix[index] = 'm';
-    if (regExp->sticky())
-        postfix[index++] = 'y';
+    if (regExp->dotAll())
+        postfix[index++] = 's';
     if (regExp->unicode())
         postfix[index++] = 'u';
+    if (regExp->sticky())
+        postfix[index++] = 'y';
 
     return toCString("/", regExp->pattern().impl(), postfix);
 }
@@ -1331,6 +1333,14 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
         out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
         break;
     }
+    case op_new_async_generator_func: {
+        int r0 = (++it)->u.operand;
+        int r1 = (++it)->u.operand;
+        int f0 = (++it)->u.operand;
+        printLocationAndOp(out, location, it, "new_async_generator_func");
+        out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+        break;
+    }
     case op_new_func_exp: {
         int r0 = (++it)->u.operand;
         int r1 = (++it)->u.operand;
@@ -1352,6 +1362,14 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
         int r1 = (++it)->u.operand;
         int f0 = (++it)->u.operand;
         printLocationAndOp(out, location, it, "new_async_func_exp");
+        out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+        break;
+    }
+    case op_new_async_generator_func_exp: {
+        int r0 = (++it)->u.operand;
+        int r1 = (++it)->u.operand;
+        int f0 = (++it)->u.operand;
+        printLocationAndOp(out, location, it, "op_new_async_generator_func_exp");
         out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
         break;
     }
@@ -1538,8 +1556,9 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
     case op_catch: {
         int r0 = (++it)->u.operand;
         int r1 = (++it)->u.operand;
+        void* pointer = getPointer(*(++it));
         printLocationAndOp(out, location, it, "catch");
-        out.printf("%s, %s", registerName(r0).data(), registerName(r1).data());
+        out.printf("%s, %s, %p", registerName(r0).data(), registerName(r1).data(), pointer);
         break;
     }
     case op_throw: {

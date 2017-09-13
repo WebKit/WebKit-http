@@ -49,6 +49,8 @@ private:
     bool allowsRemoteAutomation(WebProcessPool*) override { return remoteAutomationAllowed(); }
     void didRequestAutomationSession(WebKit::WebProcessPool*, const String& sessionIdentifier) override;
 
+    void requestAutomationSessionWithCapabilities(NSString *sessionIdentifier, NSDictionary *forwardedCapabilities) override;
+
     // RemoteInspector::Client
     bool remoteAutomationAllowed() const override;
     void requestAutomationSession(const String& sessionIdentifier) override;

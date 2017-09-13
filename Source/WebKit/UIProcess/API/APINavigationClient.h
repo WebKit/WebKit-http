@@ -69,7 +69,8 @@ public:
 
     virtual void didStartProvisionalNavigation(WebKit::WebPageProxy&, Navigation*, Object*) { }
     virtual void didReceiveServerRedirectForProvisionalNavigation(WebKit::WebPageProxy&, Navigation*, Object*) { }
-    virtual void didPerformClientRedirectForNavigation(WebKit::WebPageProxy&, Navigation*) { }
+    virtual void willPerformClientRedirect(WebKit::WebPageProxy&, const WTF::String&, double) { }
+    virtual void didCancelClientRedirect(WebKit::WebPageProxy&) { }
     virtual void didFailProvisionalNavigationWithError(WebKit::WebPageProxy&, WebKit::WebFrameProxy&, Navigation*, const WebCore::ResourceError&, Object*) { }
     virtual void didFailProvisionalLoadInSubframeWithError(WebKit::WebPageProxy&, WebKit::WebFrameProxy&, const WebCore::SecurityOriginData&, Navigation*, const WebCore::ResourceError&, Object*) { }
     virtual void didCommitNavigation(WebKit::WebPageProxy&, Navigation*, Object*) { }
@@ -110,6 +111,11 @@ public:
     {
         return currentPluginLoadPolicy;
     }
+#endif
+
+#if ENABLE(WEBGL)
+    virtual void webGLLoadPolicy(WebKit::WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const { completionHandler(WebCore::WebGLLoadPolicy::WebGLAllowCreation); }
+    virtual void resolveWebGLLoadPolicy(WebKit::WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const { completionHandler(WebCore::WebGLLoadPolicy::WebGLAllowCreation); }
 #endif
 
     virtual void didBeginNavigationGesture(WebKit::WebPageProxy&) { }

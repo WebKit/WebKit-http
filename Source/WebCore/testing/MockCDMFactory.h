@@ -143,6 +143,8 @@ private:
 
     const String& keySystem() const final;
 
+    const String& keySystem() const final;
+
     WeakPtr<MockCDM> m_cdm;
     bool m_distinctiveIdentifiersAllowed { true };
     bool m_persistentStateAllowed { true };

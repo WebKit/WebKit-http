@@ -48,6 +48,7 @@ namespace JSC {
     macro(arrayIteratorIsDone) \
     macro(arrayIteratorKind) \
     macro(charCodeAt) \
+    macro(executor) \
     macro(isView) \
     macro(iteratedObject) \
     macro(iteratedString) \
@@ -121,6 +122,11 @@ namespace JSC {
     macro(generatorFrame) \
     macro(generatorValue) \
     macro(generatorThis) \
+    macro(syncIterator) \
+    macro(asyncGeneratorState) \
+    macro(asyncGeneratorSuspendReason) \
+    macro(asyncGeneratorQueue) \
+    macro(promiseCapability) \
     macro(generatorResumeMode) \
     macro(Collator) \
     macro(DateTimeFormat) \
@@ -142,12 +148,19 @@ namespace JSC {
     macro(predictFinalLengthFromArgumunts) \
     macro(print) \
     macro(regExpCreate) \
-    macro(SetIterator) \
-    macro(setIteratorNext) \
     macro(replaceUsingRegExp) \
     macro(replaceUsingStringSearch) \
-    macro(MapIterator) \
-    macro(mapIteratorNext) \
+    macro(mapBucket) \
+    macro(mapBucketHead) \
+    macro(mapBucketNext) \
+    macro(mapBucketKey) \
+    macro(mapBucketValue) \
+    macro(mapIteratorKind) \
+    macro(setBucket) \
+    macro(setBucketHead) \
+    macro(setBucketNext) \
+    macro(setBucketKey) \
+    macro(setIteratorKind) \
     macro(regExpBuiltinExec) \
     macro(regExpMatchFast) \
     macro(regExpProtoFlagsGetter) \

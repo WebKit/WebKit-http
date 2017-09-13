@@ -308,6 +308,8 @@ public:
             return primitiveGigacageAuxiliarySpace;
         case Gigacage::JSValue:
             return jsValueGigacageAuxiliarySpace;
+        case Gigacage::String:
+            break;
         }
         RELEASE_ASSERT_NOT_REACHED();
         return primitiveGigacageAuxiliarySpace;
@@ -369,7 +371,6 @@ public:
     Strong<Structure> unlinkedFunctionCodeBlockStructure;
     Strong<Structure> unlinkedModuleProgramCodeBlockStructure;
     Strong<Structure> propertyTableStructure;
-    Strong<Structure> weakMapDataStructure;
     Strong<Structure> inferredValueStructure;
     Strong<Structure> inferredTypeStructure;
     Strong<Structure> inferredTypeTableStructure;
@@ -384,8 +385,12 @@ public:
     Strong<Structure> functionCodeBlockStructure;
     Strong<Structure> hashMapBucketSetStructure;
     Strong<Structure> hashMapBucketMapStructure;
+    Strong<Structure> setIteratorStructure;
+    Strong<Structure> mapIteratorStructure;
 
     Strong<JSCell> emptyPropertyNameEnumerator;
+    Strong<JSCell> sentinelSetBucket;
+    Strong<JSCell> sentinelMapBucket;
 
     std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     
@@ -566,7 +571,6 @@ public:
     void* targetMachinePCForThrow;
     Instruction* targetInterpreterPCForThrow;
     uint32_t osrExitIndex;
-    void* osrExitJumpDestination;
     bool isExecutingInRegExpJIT { false };
 
     // The threading protocol here is as follows:
@@ -781,6 +785,7 @@ private:
     unsigned m_simulatedThrowPointRecursionDepth { 0 };
     mutable bool m_needExceptionCheck { false };
     std::unique_ptr<StackTrace> m_nativeStackTraceOfLastThrow;
+    std::unique_ptr<StackTrace> m_nativeStackTraceOfLastSimulatedThrow;
     ThreadIdentifier m_throwingThread;
 #endif
 

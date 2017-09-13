@@ -200,7 +200,7 @@ public:
 
     static URL urlWithUniqueSecurityOrigin();
 
-    bool isPotentionallyTrustworthy() const { return m_isPotentionallyTrustworthy; }
+    bool isPotentiallyTrustworthy() const { return m_isPotentiallyTrustworthy; }
 
     static bool isLocalHostOrLoopbackIPAddress(const URL&);
 
@@ -231,8 +231,10 @@ private:
     StorageBlockingPolicy m_storageBlockingPolicy { AllowAllStorage };
     bool m_enforceFilePathSeparation { false };
     bool m_needsStorageAccessFromFileURLsQuirk { false };
-    bool m_isPotentionallyTrustworthy { false };
+    bool m_isPotentiallyTrustworthy { false };
 };
+
+bool shouldTreatAsPotentiallyTrustworthy(const URL&);
 
 // Returns true if the Origin header values serialized from these two origins would be the same.
 bool originsMatch(const SecurityOrigin&, const SecurityOrigin&);

@@ -840,6 +840,16 @@ bool WKPreferencesGetBeaconAPIEnabled(WKPreferencesRef preferencesRef)
 #endif
 }
 
+void WKPreferencesSetDirectoryUploadEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setDirectoryUploadEnabled(flag);
+}
+
+bool WKPreferencesGetDirectoryUploadEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->directoryUploadEnabled();
+}
+
 void WKPreferencesSetMediaControlsScaleWithPageZoom(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setMediaControlsScaleWithPageZoom(flag);
@@ -898,6 +908,16 @@ void WKPreferencesSetMockScrollbarsEnabled(WKPreferencesRef preferencesRef, bool
 bool WKPreferencesGetMockScrollbarsEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->mockScrollbarsEnabled();
+}
+
+void WKPreferencesSetAttachmentElementEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAttachmentElementEnabled(flag);
+}
+
+bool WKPreferencesGetAttachmentElementEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->attachmentElementEnabled();
 }
 
 void WKPreferencesSetWebAudioEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1319,14 +1339,15 @@ bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef prefer
     return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
 }
 
-void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferencesRef, bool flag)
+void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setNewBlockInsideInlineModelEnabled(flag);
+    // FIXME: Remove Safari call to this.
 }
 
-bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->newBlockInsideInlineModelEnabled();
+    // FIXME: Remove Safari call for this.
+    return false;
 }
 
 void WKPreferencesSetDeferredCSSParserEnabled(WKPreferencesRef preferencesRef, bool flag)

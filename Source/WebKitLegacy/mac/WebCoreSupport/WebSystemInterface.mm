@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,51 +42,16 @@ void InitWebCoreSystemInterface(void)
     if (didInit)
         return;
 
-    INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
-    INIT(CGPatternCreateWithImageAndTransform);
-#if !PLATFORM(IOS)
-    INIT(CGContextDrawsWithCorrectShadowOffsets);
-#endif
     INIT(CopyCONNECTProxyResponse);
 #if !PLATFORM(IOS)
     INIT(DrawBezeledTextArea);
-    INIT(DrawFocusRing);
-    INIT(DrawFocusRingAtTime);
-    INIT(DrawCellFocusRingWithFrameAtTime);
     INIT(DrawMediaUIPart);
     INIT(DrawMediaSliderTrack);
-#endif
-    INIT(GetWebDefaultCFStringEncoding);
-#if !PLATFORM(IOS)
-    INIT(GetWheelEventDeltas);
-    INIT(GetNSEventKeyChar);
     INIT(HitTestMediaUIPart);
     INIT(MeasureMediaUIPart);
-    INIT(CreateMediaUIBackgroundView);
-    INIT(CreateMediaUIControl);
-    INIT(WindowSetAlpha);
-    INIT(WindowSetScaledFrame);
 #endif
     INIT(SetCONNECTProxyAuthorizationForStream);
     INIT(SetCONNECTProxyForStream);
-#if !PLATFORM(IOS)
-    INIT(SetDragImage);
-#endif
-    INIT(CGContextIsPDFContext);
-#if ENABLE(VIDEO) && !PLATFORM(IOS)
-    INIT(QTIncludeOnlyModernMediaFileTypes);
-    INIT(QTMovieDisableComponent);
-    INIT(QTMovieMaxTimeLoaded);
-    INIT(QTMovieMaxTimeLoadedChangeNotification);
-    INIT(QTMovieGetType);
-    INIT(QTMovieHasClosedCaptions);
-    INIT(QTMovieResolvedURL);
-    INIT(QTMovieSetShowClosedCaptions);
-    INIT(QTMovieSelectPreferredAlternates);
-    INIT(QTGetSitesInMediaDownloadCache);
-    INIT(QTClearMediaDownloadCacheForSite);
-    INIT(QTClearMediaDownloadCache);
-#endif
 
 #if !PLATFORM(IOS)
     INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
@@ -94,27 +59,9 @@ void InitWebCoreSystemInterface(void)
     INIT(Cursor);
     INIT(SpeechSynthesisGetVoiceIdentifiers);
     INIT(SpeechSynthesisGetDefaultVoiceIdentifierForLocale);
-    INIT(GetAXTextMarkerTypeID);
-    INIT(GetAXTextMarkerRangeTypeID);
-    INIT(CreateAXTextMarker);
-    INIT(GetBytesFromAXTextMarker);
-    INIT(CreateAXTextMarkerRange);
-    INIT(CopyAXTextMarkerRangeStart);
-    INIT(CopyAXTextMarkerRangeEnd);
-    INIT(AccessibilityHandleFocusChanged);
-    INIT(CreateAXUIElementRef);
-    INIT(UnregisterUniqueIdForElement);
 #endif
-    INIT(CreatePrivateStorageSession);
-    INIT(CopyRequestWithStorageSession);
-    INIT(GetHTTPCookieAcceptPolicy);
-    INIT(HTTPCookies);
-    INIT(SetHTTPCookiesForURL);
-    INIT(DeleteAllHTTPCookies);
-    INIT(DeleteHTTPCookie);
 
 #if !PLATFORM(IOS)
-    INIT(SetMetadataURL);
     INIT(NSElasticDeltaForTimeDelta);
     INIT(NSElasticDeltaForReboundDelta);
     INIT(NSReboundDeltaForElasticDelta);

@@ -98,10 +98,6 @@ public:
 
     virtual void storeRecordOfKeyUsage(const String& sessionId) = 0;
 
-    using KeyVector = Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>;
-    using AvailableKeysCallback = Function<void(KeyVector&&)>;
-    virtual void gatherAvailableKeys(AvailableKeysCallback) = 0;
-
     virtual const String& keySystem() const = 0;
 };
 

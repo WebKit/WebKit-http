@@ -642,6 +642,7 @@ public:
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
 #endif
+        [NSNumber numberWithBool:NO], WebKitDirectoryUploadEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
 #if ENABLE(WEB_ANIMATIONS)
         [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
@@ -1834,7 +1835,7 @@ public:
 
 + (CFStringEncoding)_systemCFStringEncoding
 {
-    return WKGetWebDefaultCFStringEncoding();
+    return webDefaultCFStringEncoding();
 }
 
 + (void)_setInitialDefaultTextEncodingToSystemEncoding
@@ -3033,6 +3034,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setDownloadAttributeEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitDownloadAttributeEnabledPreferenceKey];
+}
+
+- (void)setDirectoryUploadEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDirectoryUploadEnabledPreferenceKey];
+}
+
+- (BOOL)directoryUploadEnabled
+{
+    return [self _boolValueForKey:WebKitDirectoryUploadEnabledPreferenceKey];
 }
 
 - (BOOL)isCSSGridLayoutEnabled

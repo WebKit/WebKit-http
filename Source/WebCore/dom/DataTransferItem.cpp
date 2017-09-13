@@ -32,8 +32,12 @@
 #include "config.h"
 #include "DataTransferItem.h"
 
+#include "DOMFileSystem.h"
 #include "DataTransferItemList.h"
 #include "File.h"
+#include "FileSystem.h"
+#include "FileSystemDirectoryEntry.h"
+#include "FileSystemFileEntry.h"
 #include "ScriptExecutionContext.h"
 #include "StringCallback.h"
 
@@ -99,6 +103,15 @@ RefPtr<File> DataTransferItem::getAsFile() const
     if (!m_list || !m_list->dataTransfer().canReadData())
         return nullptr;
     return m_file.copyRef();
+}
+
+RefPtr<FileSystemEntry> DataTransferItem::getAsEntry(ScriptExecutionContext& context) const
+{
+    auto file = getAsFile();
+    if (!file)
+        return nullptr;
+
+    return DOMFileSystem::createEntryForFile(context, *file);
 }
 
 } // namespace WebCore

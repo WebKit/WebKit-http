@@ -45,6 +45,7 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/MIMETypeRegistry.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
@@ -52,9 +53,15 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
 )
 
-target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
+target_link_libraries(TestWebCore ${test_webcore_LIBRARIES} -Wl,--start-group WebCore WebCoreDerivedSources WebCorePlatformWPE -Wl,--end-group)
 add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/TestWebCore)
 set_tests_properties(TestWebCore PROPERTIES TIMEOUT 60)
 set_target_properties(TestWebCore PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore)
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebCore -Wno-sign-compare
+                                            -Wno-undef
+                                            -Wno-unused-parameter)
+endif ()

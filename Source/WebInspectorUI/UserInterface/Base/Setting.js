@@ -106,6 +106,7 @@ WI.settings = {
     autoLogProtocolMessages: new WI.Setting("auto-collect-protocol-messages", false),
     autoLogTimeStats: new WI.Setting("auto-collect-time-stats", false),
     enableUncaughtExceptionReporter: new WI.Setting("enable-uncaught-exception-reporter", true),
+    enableLayoutFlashing: new WI.Setting("enable-layout-flashing", false),
     enableLineWrapping: new WI.Setting("enable-line-wrapping", false),
     indentUnit: new WI.Setting("indent-unit", 4),
     tabSize: new WI.Setting("tab-size", 4),
@@ -126,4 +127,6 @@ WI.settings = {
     // Experimental
     experimentalShowCanvasContextsInResources: new WI.Setting("experimental-show-canvas-contexts-in-resources", false),
     experimentalSpreadsheetStyleEditor: new WI.Setting("experimental-spreadsheet-style-editor", false),
+    experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
+    experimentalEnableNewNetworkTab: new WI.Setting("experimental-enable-new-network-tab", false),
 };

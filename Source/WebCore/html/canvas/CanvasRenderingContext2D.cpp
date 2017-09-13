@@ -41,8 +41,7 @@
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
 #include "DOMMatrix.h"
-#include "DOMMatrixInit.h"
-#include "DOMPath.h"
+#include "DOMMatrix2DInit.h"
 #include "DisplayListRecorder.h"
 #include "DisplayListReplayer.h"
 #include "FloatQuad.h"
@@ -50,6 +49,7 @@
 #include "HTMLVideoElement.h"
 #include "ImageBuffer.h"
 #include "ImageData.h"
+#include "Path2D.h"
 #include "RenderElement.h"
 #include "RenderImage.h"
 #include "RenderLayer.h"
@@ -75,9 +75,9 @@ namespace WebCore {
 using namespace HTMLNames;
 
 #if USE(CG)
-const CanvasRenderingContext2D::ImageSmoothingQuality defaultSmoothingQuality = CanvasRenderingContext2D::ImageSmoothingQuality::Low;
+const ImageSmoothingQuality defaultSmoothingQuality = ImageSmoothingQuality::Low;
 #else
-const CanvasRenderingContext2D::ImageSmoothingQuality defaultSmoothingQuality = CanvasRenderingContext2D::ImageSmoothingQuality::Medium;
+const ImageSmoothingQuality defaultSmoothingQuality = ImageSmoothingQuality::Medium;
 #endif
 
 static const int defaultFontSize = 10;
@@ -465,44 +465,130 @@ void CanvasRenderingContext2D::setLineWidth(float width)
     c->setStrokeThickness(width);
 }
 
-String CanvasRenderingContext2D::lineCap() const
+static CanvasLineCap toCanvasLineCap(LineCap lineCap)
 {
-    return lineCapName(state().lineCap);
+    switch (lineCap) {
+    case ButtCap:
+        return CanvasLineCap::Butt;
+    case RoundCap:
+        return CanvasLineCap::Round;
+    case SquareCap:
+        return CanvasLineCap::Square;
+    }
+
+    ASSERT_NOT_REACHED();
+    return CanvasLineCap::Butt;
 }
 
-void CanvasRenderingContext2D::setLineCap(const String& s)
+static LineCap fromCanvasLineCap(CanvasLineCap canvasLineCap)
 {
-    LineCap cap;
-    if (!parseLineCap(s, cap))
-        return;
-    if (state().lineCap == cap)
+    switch (canvasLineCap) {
+    case CanvasLineCap::Butt:
+        return ButtCap;
+    case CanvasLineCap::Round:
+        return RoundCap;
+    case CanvasLineCap::Square:
+        return SquareCap;
+    }
+    
+    ASSERT_NOT_REACHED();
+    return ButtCap;
+}
+
+CanvasLineCap CanvasRenderingContext2D::lineCap() const
+{
+    return toCanvasLineCap(state().lineCap);
+}
+
+void CanvasRenderingContext2D::setLineCap(CanvasLineCap canvasLineCap)
+{
+    auto lineCap = fromCanvasLineCap(canvasLineCap);
+    if (state().lineCap == lineCap)
         return;
     realizeSaves();
-    modifiableState().lineCap = cap;
+    modifiableState().lineCap = lineCap;
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    c->setLineCap(cap);
+    c->setLineCap(lineCap);
 }
 
-String CanvasRenderingContext2D::lineJoin() const
+void CanvasRenderingContext2D::setLineCap(const String& stringValue)
 {
-    return lineJoinName(state().lineJoin);
-}
-
-void CanvasRenderingContext2D::setLineJoin(const String& s)
-{
-    LineJoin join;
-    if (!parseLineJoin(s, join))
+    CanvasLineCap cap;
+    if (stringValue == "butt")
+        cap = CanvasLineCap::Butt;
+    else if (stringValue == "round")
+        cap = CanvasLineCap::Round;
+    else if (stringValue == "square")
+        cap = CanvasLineCap::Square;
+    else
         return;
-    if (state().lineJoin == join)
+    
+    setLineCap(cap);
+}
+
+static CanvasLineJoin toCanvasLineJoin(LineJoin lineJoin)
+{
+    switch (lineJoin) {
+    case RoundJoin:
+        return CanvasLineJoin::Round;
+    case BevelJoin:
+        return CanvasLineJoin::Bevel;
+    case MiterJoin:
+        return CanvasLineJoin::Miter;
+    }
+
+    ASSERT_NOT_REACHED();
+    return CanvasLineJoin::Round;
+}
+
+static LineJoin fromCanvasLineJoin(CanvasLineJoin canvasLineJoin)
+{
+    switch (canvasLineJoin) {
+    case CanvasLineJoin::Round:
+        return RoundJoin;
+    case CanvasLineJoin::Bevel:
+        return BevelJoin;
+    case CanvasLineJoin::Miter:
+        return MiterJoin;
+    }
+    
+    ASSERT_NOT_REACHED();
+    return RoundJoin;
+}
+
+CanvasLineJoin CanvasRenderingContext2D::lineJoin() const
+{
+    return toCanvasLineJoin(state().lineJoin);
+}
+
+void CanvasRenderingContext2D::setLineJoin(CanvasLineJoin canvasLineJoin)
+{
+    auto lineJoin = fromCanvasLineJoin(canvasLineJoin);
+    if (state().lineJoin == lineJoin)
         return;
     realizeSaves();
-    modifiableState().lineJoin = join;
+    modifiableState().lineJoin = lineJoin;
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    c->setLineJoin(join);
+    c->setLineJoin(lineJoin);
+}
+
+void CanvasRenderingContext2D::setLineJoin(const String& stringValue)
+{
+    CanvasLineJoin join;
+    if (stringValue == "round")
+        join = CanvasLineJoin::Round;
+    else if (stringValue == "bevel")
+        join = CanvasLineJoin::Bevel;
+    else if (stringValue == "miter")
+        join = CanvasLineJoin::Miter;
+    else
+        return;
+
+    setLineJoin(join);
 }
 
 float CanvasRenderingContext2D::miterLimit() const
@@ -815,14 +901,13 @@ void CanvasRenderingContext2D::setTransform(float m11, float m12, float m21, flo
     transform(m11, m12, m21, m22, dx, dy);
 }
 
-ExceptionOr<void> CanvasRenderingContext2D::setTransform(DOMMatrixInit&& matrixInit)
+ExceptionOr<void> CanvasRenderingContext2D::setTransform(DOMMatrix2DInit&& matrixInit)
 {
     auto checkValid = DOMMatrixReadOnly::validateAndFixup(matrixInit);
     if (checkValid.hasException())
         return checkValid.releaseException();
 
     setTransform(matrixInit.a.value_or(1), matrixInit.b.value_or(0), matrixInit.c.value_or(0), matrixInit.d.value_or(1), matrixInit.e.value_or(0), matrixInit.f.value_or(0));
-
     return { };
 }
 
@@ -960,25 +1045,12 @@ static bool isFullCanvasCompositeMode(CompositeOperator op)
     return op == CompositeSourceIn || op == CompositeSourceOut || op == CompositeDestinationIn || op == CompositeDestinationAtop;
 }
 
-static WindRule toWindRule(CanvasRenderingContext2D::WindingRule rule)
+static WindRule toWindRule(CanvasFillRule rule)
 {
-    return rule == CanvasRenderingContext2D::WindingRule::Nonzero ? RULE_NONZERO : RULE_EVENODD;
+    return rule == CanvasFillRule::Nonzero ? RULE_NONZERO : RULE_EVENODD;
 }
 
-String CanvasRenderingContext2D::stringForWindingRule(WindingRule windingRule)
-{
-    switch (windingRule) {
-    case WindingRule::Nonzero:
-        return ASCIILiteral("nonzero");
-    case WindingRule::Evenodd:
-        return ASCIILiteral("evenodd");
-    }
-
-    ASSERT_NOT_REACHED();
-    return String();
-}
-
-void CanvasRenderingContext2D::fill(WindingRule windingRule)
+void CanvasRenderingContext2D::fill(CanvasFillRule windingRule)
 {
     fillInternal(m_path, windingRule);
     clearPathForDashboardBackwardCompatibilityMode();
@@ -990,28 +1062,28 @@ void CanvasRenderingContext2D::stroke()
     clearPathForDashboardBackwardCompatibilityMode();
 }
 
-void CanvasRenderingContext2D::clip(WindingRule windingRule)
+void CanvasRenderingContext2D::clip(CanvasFillRule windingRule)
 {
     clipInternal(m_path, windingRule);
     clearPathForDashboardBackwardCompatibilityMode();
 }
 
-void CanvasRenderingContext2D::fill(DOMPath& path, WindingRule windingRule)
+void CanvasRenderingContext2D::fill(Path2D& path, CanvasFillRule windingRule)
 {
     fillInternal(path.path(), windingRule);
 }
 
-void CanvasRenderingContext2D::stroke(DOMPath& path)
+void CanvasRenderingContext2D::stroke(Path2D& path)
 {
     strokeInternal(path.path());
 }
 
-void CanvasRenderingContext2D::clip(DOMPath& path, WindingRule windingRule)
+void CanvasRenderingContext2D::clip(Path2D& path, CanvasFillRule windingRule)
 {
     clipInternal(path.path(), windingRule);
 }
 
-void CanvasRenderingContext2D::fillInternal(const Path& path, WindingRule windingRule)
+void CanvasRenderingContext2D::fillInternal(const Path& path, CanvasFillRule windingRule)
 {
     auto* c = drawingContext();
     if (!c)
@@ -1078,7 +1150,7 @@ void CanvasRenderingContext2D::strokeInternal(const Path& path)
     }
 }
 
-void CanvasRenderingContext2D::clipInternal(const Path& path, WindingRule windingRule)
+void CanvasRenderingContext2D::clipInternal(const Path& path, CanvasFillRule windingRule)
 {
     auto* c = drawingContext();
     if (!c)
@@ -1104,7 +1176,7 @@ inline void CanvasRenderingContext2D::endCompositeLayer()
 #endif
 }
 
-bool CanvasRenderingContext2D::isPointInPath(float x, float y, WindingRule windingRule)
+bool CanvasRenderingContext2D::isPointInPath(float x, float y, CanvasFillRule windingRule)
 {
     return isPointInPathInternal(m_path, x, y, windingRule);
 }
@@ -1114,17 +1186,17 @@ bool CanvasRenderingContext2D::isPointInStroke(float x, float y)
     return isPointInStrokeInternal(m_path, x, y);
 }
 
-bool CanvasRenderingContext2D::isPointInPath(DOMPath& path, float x, float y, WindingRule windingRule)
+bool CanvasRenderingContext2D::isPointInPath(Path2D& path, float x, float y, CanvasFillRule windingRule)
 {
     return isPointInPathInternal(path.path(), x, y, windingRule);
 }
 
-bool CanvasRenderingContext2D::isPointInStroke(DOMPath& path, float x, float y)
+bool CanvasRenderingContext2D::isPointInStroke(Path2D& path, float x, float y)
 {
     return isPointInStrokeInternal(path.path(), x, y);
 }
 
-bool CanvasRenderingContext2D::isPointInPathInternal(const Path& path, float x, float y, WindingRule windingRule)
+bool CanvasRenderingContext2D::isPointInPathInternal(const Path& path, float x, float y, CanvasFillRule windingRule)
 {
     auto* c = drawingContext();
     if (!c)
@@ -1598,16 +1670,6 @@ void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement& imageElement,
     if (!parseCompositeAndBlendOperator(compositeOperation, op, blendOp) || blendOp != BlendModeNormal)
         op = CompositeSourceOver;
     drawImage(imageElement, FloatRect { sx, sy, sw, sh }, FloatRect { dx, dy, dw, dh }, op, BlendModeNormal);
-}
-
-void CanvasRenderingContext2D::setAlpha(float alpha)
-{
-    setGlobalAlpha(alpha);
-}
-
-void CanvasRenderingContext2D::setCompositeOperation(const String& operation)
-{
-    setGlobalCompositeOperation(operation);
 }
 
 void CanvasRenderingContext2D::clearCanvas()
@@ -2087,7 +2149,7 @@ void CanvasRenderingContext2D::drawFocusIfNeeded(Element& element)
     drawFocusIfNeededInternal(m_path, element);
 }
 
-void CanvasRenderingContext2D::drawFocusIfNeeded(DOMPath& path, Element& element)
+void CanvasRenderingContext2D::drawFocusIfNeeded(Path2D& path, Element& element)
 {
     drawFocusIfNeededInternal(path.path(), element);
 }
@@ -2237,36 +2299,112 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     modifiableState().font.initialize(document.fontSelector(), *styleResolver.style());
 }
 
-String CanvasRenderingContext2D::textAlign() const
+static CanvasTextAlign toCanvasTextAlign(TextAlign textAlign)
 {
-    return textAlignName(state().textAlign);
+    switch (textAlign) {
+    case StartTextAlign:
+        return CanvasTextAlign::Start;
+    case EndTextAlign:
+        return CanvasTextAlign::End;
+    case LeftTextAlign:
+        return CanvasTextAlign::Left;
+    case RightTextAlign:
+        return CanvasTextAlign::Right;
+    case CenterTextAlign:
+        return CanvasTextAlign::Center;
+    }
+
+    ASSERT_NOT_REACHED();
+    return CanvasTextAlign::Start;
 }
 
-void CanvasRenderingContext2D::setTextAlign(const String& s)
+static TextAlign fromCanvasTextAlign(CanvasTextAlign canvasTextAlign)
 {
-    TextAlign align;
-    if (!parseTextAlign(s, align))
-        return;
-    if (state().textAlign == align)
+    switch (canvasTextAlign) {
+    case CanvasTextAlign::Start:
+        return StartTextAlign;
+    case CanvasTextAlign::End:
+        return EndTextAlign;
+    case CanvasTextAlign::Left:
+        return LeftTextAlign;
+    case CanvasTextAlign::Right:
+        return RightTextAlign;
+    case CanvasTextAlign::Center:
+        return CenterTextAlign;
+    }
+
+    ASSERT_NOT_REACHED();
+    return StartTextAlign;
+}
+
+CanvasTextAlign CanvasRenderingContext2D::textAlign() const
+{
+    return toCanvasTextAlign(state().textAlign);
+}
+
+void CanvasRenderingContext2D::setTextAlign(CanvasTextAlign canvasTextAlign)
+{
+    auto textAlign = fromCanvasTextAlign(canvasTextAlign);
+    if (state().textAlign == textAlign)
         return;
     realizeSaves();
-    modifiableState().textAlign = align;
+    modifiableState().textAlign = textAlign;
 }
 
-String CanvasRenderingContext2D::textBaseline() const
+static CanvasTextBaseline toCanvasTextBaseline(TextBaseline textBaseline)
 {
-    return textBaselineName(state().textBaseline);
+    switch (textBaseline) {
+    case TopTextBaseline:
+        return CanvasTextBaseline::Top;
+    case HangingTextBaseline:
+        return CanvasTextBaseline::Hanging;
+    case MiddleTextBaseline:
+        return CanvasTextBaseline::Middle;
+    case AlphabeticTextBaseline:
+        return CanvasTextBaseline::Alphabetic;
+    case IdeographicTextBaseline:
+        return CanvasTextBaseline::Ideographic;
+    case BottomTextBaseline:
+        return CanvasTextBaseline::Bottom;
+    }
+
+    ASSERT_NOT_REACHED();
+    return CanvasTextBaseline::Top;
 }
 
-void CanvasRenderingContext2D::setTextBaseline(const String& s)
+static TextBaseline fromCanvasTextBaseline(CanvasTextBaseline canvasTextBaseline)
 {
-    TextBaseline baseline;
-    if (!parseTextBaseline(s, baseline))
-        return;
-    if (state().textBaseline == baseline)
+    switch (canvasTextBaseline) {
+    case CanvasTextBaseline::Top:
+        return TopTextBaseline;
+    case CanvasTextBaseline::Hanging:
+        return HangingTextBaseline;
+    case CanvasTextBaseline::Middle:
+        return MiddleTextBaseline;
+    case CanvasTextBaseline::Alphabetic:
+        return AlphabeticTextBaseline;
+    case CanvasTextBaseline::Ideographic:
+        return IdeographicTextBaseline;
+    case CanvasTextBaseline::Bottom:
+        return BottomTextBaseline;
+    }
+
+    ASSERT_NOT_REACHED();
+    return TopTextBaseline;
+}
+
+CanvasTextBaseline CanvasRenderingContext2D::textBaseline() const
+{
+    return toCanvasTextBaseline(state().textBaseline);
+}
+
+void CanvasRenderingContext2D::setTextBaseline(CanvasTextBaseline canvasTextBaseline)
+{
+    auto textBaseline = fromCanvasTextBaseline(canvasTextBaseline);
+    if (state().textBaseline == textBaseline)
         return;
     realizeSaves();
-    modifiableState().textBaseline = baseline;
+    modifiableState().textBaseline = textBaseline;
 }
 
 inline TextDirection CanvasRenderingContext2D::toTextDirection(Direction direction, const RenderStyle** computedStyle) const
@@ -2277,34 +2415,24 @@ inline TextDirection CanvasRenderingContext2D::toTextDirection(Direction directi
     switch (direction) {
     case Direction::Inherit:
         return style ? style->direction() : LTR;
-    case Direction::RTL:
+    case Direction::Rtl:
         return RTL;
-    case Direction::LTR:
+    case Direction::Ltr:
         return LTR;
     }
     ASSERT_NOT_REACHED();
     return LTR;
 }
 
-String CanvasRenderingContext2D::direction() const
+CanvasDirection CanvasRenderingContext2D::direction() const
 {
     if (state().direction == Direction::Inherit)
         canvas().document().updateStyleIfNeeded();
-    return toTextDirection(state().direction) == RTL ? ASCIILiteral("rtl") : ASCIILiteral("ltr");
+    return toTextDirection(state().direction) == RTL ? CanvasDirection::Rtl : CanvasDirection::Ltr;
 }
 
-void CanvasRenderingContext2D::setDirection(const String& directionString)
+void CanvasRenderingContext2D::setDirection(CanvasDirection direction)
 {
-    Direction direction;
-    if (directionString == "inherit")
-        direction = Direction::Inherit;
-    else if (directionString == "rtl")
-        direction = Direction::RTL;
-    else if (directionString == "ltr")
-        direction = Direction::LTR;
-    else
-        return;
-
     if (state().direction == direction)
         return;
 
@@ -2340,7 +2468,7 @@ static void normalizeSpaces(String& text)
         return;
 
     unsigned textLength = text.length();
-    Vector<UChar> charVector(textLength);
+    StringVector<UChar> charVector(textLength);
     StringView(text).getCharactersWithUpconvert(charVector.data());
 
     charVector[i++] = ' ';
@@ -2602,35 +2730,20 @@ PlatformLayer* CanvasRenderingContext2D::platformLayer() const
 
 #endif
 
-static inline InterpolationQuality smoothingToInterpolationQuality(CanvasRenderingContext2D::ImageSmoothingQuality quality)
+static inline InterpolationQuality smoothingToInterpolationQuality(ImageSmoothingQuality quality)
 {
     switch (quality) {
-    case CanvasRenderingContext2D::ImageSmoothingQuality::Low:
+    case ImageSmoothingQuality::Low:
         return InterpolationLow;
-    case CanvasRenderingContext2D::ImageSmoothingQuality::Medium:
+    case ImageSmoothingQuality::Medium:
         return InterpolationMedium;
-    case CanvasRenderingContext2D::ImageSmoothingQuality::High:
+    case ImageSmoothingQuality::High:
         return InterpolationHigh;
     }
 
     ASSERT_NOT_REACHED();
     return InterpolationLow;
 };
-
-String CanvasRenderingContext2D::stringForImageSmoothingQuality(ImageSmoothingQuality imageSmoothingQuality)
-{
-    switch (imageSmoothingQuality) {
-    case ImageSmoothingQuality::Low:
-        return ASCIILiteral("low");
-    case ImageSmoothingQuality::Medium:
-        return ASCIILiteral("medium");
-    case ImageSmoothingQuality::High:
-        return ASCIILiteral("high");
-    }
-
-    ASSERT_NOT_REACHED();
-    return String();
-}
 
 auto CanvasRenderingContext2D::imageSmoothingQuality() const -> ImageSmoothingQuality
 {
@@ -2669,14 +2782,14 @@ void CanvasRenderingContext2D::setImageSmoothingEnabled(bool enabled)
         c->setImageInterpolationQuality(enabled ? smoothingToInterpolationQuality(state().imageSmoothingQuality) : InterpolationNone);
 }
 
-void CanvasRenderingContext2D::setPath(DOMPath& path)
+void CanvasRenderingContext2D::setPath(Path2D& path)
 {
     m_path = path.path();
 }
 
-Ref<DOMPath> CanvasRenderingContext2D::getPath() const
+Ref<Path2D> CanvasRenderingContext2D::getPath() const
 {
-    return DOMPath::create(m_path);
+    return Path2D::create(m_path);
 }
 
 } // namespace WebCore

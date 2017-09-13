@@ -121,7 +121,11 @@ list(APPEND WebKit2_SOURCES
 
     Shared/Plugins/mac/PluginSandboxProfile.mm
 
-    Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp
+    Shared/RemoteLayerTree/RemoteLayerBackingStore.mm
+    Shared/RemoteLayerTree/RemoteLayerBackingStoreCollection.mm
+    Shared/RemoteLayerTree/RemoteLayerTreePropertyApplier.mm
+    Shared/RemoteLayerTree/RemoteLayerTreeTransaction.mm
+    Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp
 
     Shared/cf/ArgumentCodersCF.cpp
 
@@ -143,10 +147,6 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/PDFKitImports.mm
     Shared/mac/PasteboardTypes.mm
     Shared/mac/PrintInfoMac.mm
-    Shared/mac/RemoteLayerBackingStore.mm
-    Shared/mac/RemoteLayerBackingStoreCollection.mm
-    Shared/mac/RemoteLayerTreePropertyApplier.mm
-    Shared/mac/RemoteLayerTreeTransaction.mm
     Shared/mac/SandboxExtensionMac.mm
     Shared/mac/SandboxInitialiationParametersMac.mm
     Shared/mac/SandboxUtilities.mm
@@ -252,7 +252,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/IconLoadingDelegate.mm
     UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
     UIProcess/Cocoa/NavigationState.mm
-    UIProcess/Cocoa/RemoteLayerTreeScrollingPerformanceData.mm
+    UIProcess/Cocoa/PageClientImplCocoa.mm
     UIProcess/Cocoa/SessionStateCoding.mm
     UIProcess/Cocoa/UIDelegate.mm
     UIProcess/Cocoa/VersionChecks.mm
@@ -275,8 +275,11 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/mac/PluginProcessManagerMac.mm
     UIProcess/Plugins/mac/PluginProcessProxyMac.mm
 
-    UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp
-    UIProcess/Scrolling/RemoteScrollingTree.cpp
+    UIProcess/RemoteLayerTree/RemoteLayerTreeScrollingPerformanceData.mm
+    UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp
+    UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp
+    UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.mm
+    UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm
 
     UIProcess/WebStorage/StorageManager.cpp
 
@@ -284,9 +287,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/mac/CorrectionPanel.mm
     UIProcess/mac/LegacySessionStateCoding.cpp
-    UIProcess/mac/PageClientImpl.mm
-    UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm
-    UIProcess/mac/RemoteLayerTreeHost.mm
     UIProcess/mac/RemoteWebInspectorProxyMac.mm
     UIProcess/mac/SecItemShimProxy.cpp
     UIProcess/mac/ServicesController.mm
@@ -346,7 +346,15 @@ list(APPEND WebKit2_SOURCES
     WebProcess/Plugins/PDF/PDFPluginPasswordField.mm
     WebProcess/Plugins/PDF/PDFPluginTextAnnotation.mm
 
-    WebProcess/Scrolling/RemoteScrollingCoordinator.mm
+    WebProcess/WebPage/RemoteLayerTree/GraphicsLayerCARemote.cpp
+    WebProcess/WebPage/RemoteLayerTree/PlatformCAAnimationRemote.mm
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteCustom.mm
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteTiledBacking.cpp
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeContext.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDisplayRefreshMonitor.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm
 
     WebProcess/WebCoreSupport/WebPasteboardOverrides.cpp
     WebProcess/WebCoreSupport/WebValidationMessageClient.cpp
@@ -361,17 +369,9 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebPage/ViewGestureGeometryCollector.cpp
 
-    WebProcess/WebPage/Cocoa/RemoteLayerTreeDisplayRefreshMonitor.mm
     WebProcess/WebPage/Cocoa/WebPageCocoa.mm
 
-    WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp
     WebProcess/WebPage/mac/PageBannerMac.mm
-    WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm
-    WebProcess/WebPage/mac/PlatformCALayerRemote.cpp
-    WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm
-    WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp
-    WebProcess/WebPage/mac/RemoteLayerTreeContext.mm
-    WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm
     WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm
     WebProcess/WebPage/mac/WKAccessibilityWebPageObjectBase.mm
     WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm
@@ -394,7 +394,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/API/mac"
     "${WEBKIT2_DIR}/UIProcess/Cocoa"
     "${WEBKIT2_DIR}/UIProcess/Launcher/mac"
-    "${WEBKIT2_DIR}/UIProcess/Scrolling"
+    "${WEBKIT2_DIR}/UIProcess/RemoteLayerTree"
+    "${WEBKIT2_DIR}/UIProcess/RemoteLayerTree/ios"
     "${WEBKIT2_DIR}/UIProcess/ios"
     "${WEBKIT2_DIR}/Platform/cg"
     "${WEBKIT2_DIR}/Platform/classifier"
@@ -421,8 +422,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/mac"
     "${WEBKIT2_DIR}/WebProcess/Plugins/PDF"
     "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/mac"
-    "${WEBKIT2_DIR}/WebProcess/Scrolling"
     "${WEBKIT2_DIR}/WebProcess/WebPage/Cocoa"
+    "${WEBKIT2_DIR}/WebProcess/WebPage/RemoteLayerTree"
     "${WEBKIT2_DIR}/WebProcess/WebPage/mac"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/mac"
     "${FORWARDING_HEADERS_DIR}/WebCore"
@@ -471,13 +472,14 @@ set(WebKit2_FORWARDING_HEADERS_FILES
 list(APPEND WebKit2_MESSAGES_IN_FILES
     Shared/API/Cocoa/RemoteObjectRegistry.messages.in
 
+    UIProcess/Cocoa/VideoFullscreenManagerProxy.messages.in
     UIProcess/Cocoa/ViewGestureController.messages.in
-    UIProcess/Cocoa/WebVideoFullscreenManagerProxy.messages.in
 
-    UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.messages.in
+    UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.messages.in
+
     UIProcess/mac/SecItemShimProxy.messages.in
 
-    WebProcess/Scrolling/RemoteScrollingCoordinator.messages.in
+    WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.messages.in
     WebProcess/WebPage/ViewGestureGeometryCollector.messages.in
 )
 

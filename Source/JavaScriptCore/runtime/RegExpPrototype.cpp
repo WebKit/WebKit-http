@@ -50,6 +50,7 @@ static EncodedJSValue JSC_HOST_CALL regExpProtoFuncToString(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterGlobal(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterIgnoreCase(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterMultiline(ExecState*);
+static EncodedJSValue JSC_HOST_CALL regExpProtoGetterDotAll(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterSticky(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterUnicode(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterSource(ExecState*);
@@ -70,22 +71,17 @@ void RegExpPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->exec, regExpProtoFuncExec, DontEnum, 1, RegExpExecIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->toString, regExpProtoFuncToString, DontEnum, 0);
     JSC_NATIVE_GETTER(vm.propertyNames->global, regExpProtoGetterGlobal, DontEnum | Accessor);
+    JSC_NATIVE_GETTER(vm.propertyNames->dotAll, regExpProtoGetterDotAll, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->ignoreCase, regExpProtoGetterIgnoreCase, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->multiline, regExpProtoGetterMultiline, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->sticky, regExpProtoGetterSticky, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->unicode, regExpProtoGetterUnicode, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->source, regExpProtoGetterSource, DontEnum | Accessor);
     JSC_NATIVE_GETTER(vm.propertyNames->flags, regExpProtoGetterFlags, DontEnum | Accessor);
-
-    JSFunction* matchFunction = JSFunction::createBuiltinFunction(vm, regExpPrototypeMatchCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.match]"));
-    putDirectWithoutTransition(vm, vm.propertyNames->matchSymbol, matchFunction, DontEnum);
-    JSFunction* replaceFunction = JSFunction::createBuiltinFunction(vm, regExpPrototypeReplaceCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.replace]"));
-    putDirectWithoutTransition(vm, vm.propertyNames->replaceSymbol, replaceFunction, DontEnum);
-    JSFunction* searchFunction = JSFunction::createBuiltinFunction(vm, regExpPrototypeSearchCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.search]"));
-    putDirectWithoutTransition(vm, vm.propertyNames->searchSymbol, searchFunction, DontEnum);
-    JSFunction* splitFunction = JSFunction::createBuiltinFunction(vm, regExpPrototypeSplitCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.split]"));
-    putDirectWithoutTransition(vm, vm.propertyNames->splitSymbol, splitFunction, DontEnum);
-
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->matchSymbol, regExpPrototypeMatchCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->replaceSymbol, regExpPrototypeReplaceCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->searchSymbol, regExpPrototypeSearchCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->splitSymbol, regExpPrototypeSplitCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->test, regExpPrototypeTestCodeGenerator, DontEnum);
 
     m_emptyRegExp.set(vm, this, RegExp::create(vm, "", NoFlags));
@@ -111,7 +107,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncTestFast(ExecState* exec)
     if (!thisValue.inherits(vm, RegExpObject::info()))
         return throwVMTypeError(exec, scope);
     JSString* string = exec->argument(0).toStringOrNull(exec);
-    ASSERT(!!scope.exception() == !string);
+    EXCEPTION_ASSERT(!!scope.exception() == !string);
     if (!string)
         return JSValue::encode(jsUndefined());
     scope.release();
@@ -127,7 +123,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncExec(ExecState* exec)
     if (!thisValue.inherits(vm, RegExpObject::info()))
         return throwVMTypeError(exec, scope, "Builtin RegExp exec can only be called on a RegExp object");
     JSString* string = exec->argument(0).toStringOrNull(exec);
-    ASSERT(!!scope.exception() == !string);
+    EXCEPTION_ASSERT(!!scope.exception() == !string);
     if (!string)
         return JSValue::encode(jsUndefined());
     scope.release();
@@ -143,7 +139,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncMatchFast(ExecState* exec)
     if (!thisValue.inherits(vm, RegExpObject::info()))
         return throwVMTypeError(exec, scope);
     JSString* string = exec->argument(0).toStringOrNull(exec);
-    ASSERT(!!scope.exception() == !string);
+    EXCEPTION_ASSERT(!!scope.exception() == !string);
     if (!string)
         return encodedJSValue();
     if (!asRegExpObject(thisValue)->regExp()->global()) {
@@ -210,6 +206,8 @@ static inline FlagsString flagsString(ExecState* exec, JSObject* regexp)
     RETURN_IF_EXCEPTION(scope, string);
     JSValue multilineValue = regexp->get(exec, vm.propertyNames->multiline);
     RETURN_IF_EXCEPTION(scope, string);
+    JSValue dotAllValue = regexp->get(exec, vm.propertyNames->dotAll);
+    RETURN_IF_EXCEPTION(scope, string);
     JSValue unicodeValue = regexp->get(exec, vm.propertyNames->unicode);
     RETURN_IF_EXCEPTION(scope, string);
     JSValue stickyValue = regexp->get(exec, vm.propertyNames->sticky);
@@ -222,6 +220,8 @@ static inline FlagsString flagsString(ExecState* exec, JSObject* regexp)
         string[index++] = 'i';
     if (multilineValue.toBoolean(exec))
         string[index++] = 'm';
+    if (dotAllValue.toBoolean(exec))
+        string[index++] = 's';
     if (unicodeValue.toBoolean(exec))
         string[index++] = 'u';
     if (stickyValue.toBoolean(exec))
@@ -243,7 +243,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncToString(ExecState* exec)
     JSObject* thisObject = asObject(thisValue);
 
     StringRecursionChecker checker(exec, thisObject);
-    ASSERT(!scope.exception() || checker.earlyReturnValue());
+    EXCEPTION_ASSERT(!scope.exception() || checker.earlyReturnValue());
     if (JSValue earlyReturnValue = checker.earlyReturnValue())
         return JSValue::encode(earlyReturnValue);
 
@@ -306,6 +306,21 @@ EncodedJSValue JSC_HOST_CALL regExpProtoGetterMultiline(ExecState* exec)
     return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->regExp()->multiline()));
 }
 
+EncodedJSValue JSC_HOST_CALL regExpProtoGetterDotAll(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    
+    JSValue thisValue = exec->thisValue();
+    if (UNLIKELY(!thisValue.inherits(vm, RegExpObject::info()))) {
+        if (thisValue.inherits(vm, RegExpPrototype::info()))
+            return JSValue::encode(jsUndefined());
+        return throwVMTypeError(exec, scope, ASCIILiteral("The RegExp.prototype.dotAll getter can only be called on a RegExp object"));
+    }
+    
+    return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->regExp()->dotAll()));
+}
+    
 EncodedJSValue JSC_HOST_CALL regExpProtoGetterSticky(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -612,6 +627,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncSplitFast(ExecState* exec)
     // 13. If limit is undefined, let lim be 2^32-1; else let lim be ? ToUint32(limit).
     JSValue limitValue = exec->argument(1);
     unsigned limit = limitValue.isUndefined() ? 0xFFFFFFFFu : limitValue.toUInt32(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 14. Let size be the number of elements in S.
     unsigned inputSize = input.length();

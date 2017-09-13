@@ -30,12 +30,14 @@
 #include "VMAllocate.h"
 #include "Vector.h"
 #include "bmalloc.h"
+#include <cstdio>
 #include <mutex>
 
 // FIXME: Ask dyld to put this in its own page, and mprotect the page after we ensure the gigacage.
 // https://bugs.webkit.org/show_bug.cgi?id=174972
 void* g_primitiveGigacageBasePtr;
 void* g_jsValueGigacageBasePtr;
+void* g_stringGigacageBasePtr;
 
 using namespace bmalloc;
 
@@ -76,13 +78,13 @@ void ensureGigacage()
                 [&] (Kind kind) {
                     // FIXME: Randomize where this goes.
                     // https://bugs.webkit.org/show_bug.cgi?id=175245
-                    basePtr(kind) = tryVMAllocate(GIGACAGE_SIZE, GIGACAGE_SIZE + GIGACAGE_RUNWAY);
+                    basePtr(kind) = tryVMAllocate(alignment(kind), totalSize(kind));
                     if (!basePtr(kind)) {
                         fprintf(stderr, "FATAL: Could not allocate %s gigacage.\n", name(kind));
                         BCRASH();
                     }
                     
-                    vmDeallocatePhysicalPages(basePtr(kind), GIGACAGE_SIZE + GIGACAGE_RUNWAY);
+                    vmDeallocatePhysicalPages(basePtr(kind), totalSize(kind));
                 });
         });
 #endif // GIGACAGE_ENABLED

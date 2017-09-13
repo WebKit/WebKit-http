@@ -56,6 +56,7 @@ public:
     bool sticky() const { return m_flags & FlagSticky; }
     bool globalOrSticky() const { return global() || sticky(); }
     bool unicode() const { return m_flags & FlagUnicode; }
+    bool dotAll() const { return m_flags & FlagDotAll; }
 
     const String& pattern() const { return m_patternString; }
 
@@ -77,6 +78,26 @@ public:
     MatchResult matchInline(VM&, const String&, unsigned startOffset);
     
     unsigned numSubpatterns() const { return m_numSubpatterns; }
+
+    bool hasNamedCaptures()
+    {
+        return !m_captureGroupNames.isEmpty();
+    }
+
+    String getCaptureGroupName(unsigned i)
+    {
+        if (!i || m_captureGroupNames.size() <= i)
+            return String();
+        return m_captureGroupNames[i];
+    }
+
+    unsigned subpatternForName(String groupName)
+    {
+        auto it = m_namedGroupToParenIndex.find(groupName);
+        if (it == m_namedGroupToParenIndex.end())
+            return 0;
+        return it->value;
+    }
 
     bool hasCode()
     {
@@ -133,6 +154,8 @@ private:
     RegExpFlags m_flags;
     const char* m_constructionError;
     unsigned m_numSubpatterns;
+    Vector<String> m_captureGroupNames;
+    HashMap<String, unsigned> m_namedGroupToParenIndex;
 #if ENABLE(REGEXP_TRACING)
     double m_rtMatchOnlyTotalSubjectStringLen;
     double m_rtMatchTotalSubjectStringLen;

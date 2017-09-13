@@ -52,6 +52,9 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperation
 JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithArguments(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithNullableArgument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithNullableVariantArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithOptionalVariantArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithDefaultVariantArgument(JSC::ExecState*);
 
 // Attributes
 
@@ -63,6 +66,7 @@ JSC::EncodedJSValue jsTestCallTracerTestAttributeSpecified(JSC::ExecState*, JSC:
 bool setJSTestCallTracerTestAttributeSpecified(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestCallTracerTestAttributeWithVariant(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestCallTracerTestAttributeWithVariant(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestCallTracerTestReadonlyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 
 class JSTestCallTracerPrototype : public JSC::JSNonFinalObject {
 public:
@@ -91,6 +95,15 @@ private:
 
 using JSTestCallTracerConstructor = JSDOMConstructorNotConstructable<JSTestCallTracer>;
 
+/* Hash table for constructor */
+
+static const HashTableValue JSTestCallTracerConstructorTableValues[] =
+{
+    { "testConstValue", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(false) } },
+};
+
+static_assert(TestCallTracer::testConstValue == false, "testConstValue in TestCallTracer does not match value from IDL");
+
 template<> JSValue JSTestCallTracerConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
     UNUSED_PARAM(vm);
@@ -102,6 +115,7 @@ template<> void JSTestCallTracerConstructor::initializeProperties(VM& vm, JSDOMG
     putDirect(vm, vm.propertyNames->prototype, JSTestCallTracer::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestCallTracer"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
+    reifyStaticProperties(vm, JSTestCallTracer::info(), JSTestCallTracerConstructorTableValues, *this);
 }
 
 template<> const ClassInfo JSTestCallTracerConstructor::s_info = { "TestCallTracer", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCallTracerConstructor) };
@@ -114,11 +128,16 @@ static const HashTableValue JSTestCallTracerPrototypeTableValues[] =
     { "testAttributeInterface", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCallTracerTestAttributeInterface), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestCallTracerTestAttributeInterface) } },
     { "testAttributeSpecified", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCallTracerTestAttributeSpecified), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestCallTracerTestAttributeSpecified) } },
     { "testAttributeWithVariant", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCallTracerTestAttributeWithVariant), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestCallTracerTestAttributeWithVariant) } },
+    { "testReadonlyAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestCallTracerTestReadonlyAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "testOperationInterface", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationInterface), (intptr_t) (0) } },
     { "testOperationSpecified", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationSpecified), (intptr_t) (0) } },
     { "testOperationWithArguments", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithArguments), (intptr_t) (3) } },
     { "testOperationWithNullableArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithNullableArgument), (intptr_t) (1) } },
     { "testOperationWithVariantArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgument), (intptr_t) (1) } },
+    { "testOperationWithNullableVariantArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithNullableVariantArgument), (intptr_t) (1) } },
+    { "testOperationWithOptionalVariantArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithOptionalVariantArgument), (intptr_t) (0) } },
+    { "testOperationWithDefaultVariantArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCallTracerPrototypeFunctionTestOperationWithDefaultVariantArgument), (intptr_t) (0) } },
+    { "testConstValue", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(false) } },
 };
 
 const ClassInfo JSTestCallTracerPrototype::s_info = { "TestCallTracerPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCallTracerPrototype) };
@@ -194,7 +213,7 @@ bool setJSTestCallTracerConstructor(ExecState* state, EncodedJSValue thisValue, 
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
 static inline JSValue jsTestCallTracerTestAttributeInterfaceGetter(ExecState& state, JSTestCallTracer& thisObject, ThrowScope& throwScope)
@@ -308,6 +327,20 @@ bool setJSTestCallTracerTestAttributeWithVariant(ExecState* state, EncodedJSValu
     return IDLAttribute<JSTestCallTracer>::set<setJSTestCallTracerTestAttributeWithVariantSetter>(*state, thisValue, encodedValue, "testAttributeWithVariant");
 }
 
+static inline JSValue jsTestCallTracerTestReadonlyAttributeGetter(ExecState& state, JSTestCallTracer& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLBoolean>(impl.testReadonlyAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestCallTracerTestReadonlyAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestCallTracer>::get<jsTestCallTracerTestReadonlyAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "testReadonlyAttribute");
+}
+
 static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperationInterfaceBody(JSC::ExecState* state, typename IDLOperation<JSTestCallTracer>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
@@ -380,7 +413,8 @@ static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperation
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     if (UNLIKELY(impl.callTracingActive())) {
         Vector<TestCallTracerInterfaceVariant> callTracerParameters;
-        callTracerParameters.append(nodeNullableArg);
+        if (nodeNullableArg)
+            callTracerParameters.append(nodeNullableArg);
         CallTracer::testCallTracerInterface(impl, ASCIILiteral("testOperationWithNullableArgument"), WTFMove(callTracerParameters));
     }
     impl.testOperationWithNullableArgument(WTFMove(nodeNullableArg));
@@ -413,6 +447,73 @@ static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperation
 EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgument(ExecState* state)
 {
     return IDLOperation<JSTestCallTracer>::call<jsTestCallTracerPrototypeFunctionTestOperationWithVariantArgumentBody>(*state, "testOperationWithVariantArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperationWithNullableVariantArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestCallTracer>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto variantNullableArg = convert<IDLNullable<IDLUnion<IDLBoolean, IDLFloat, IDLDOMString>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    if (UNLIKELY(impl.callTracingActive())) {
+        Vector<TestCallTracerInterfaceVariant> callTracerParameters;
+        if (variantNullableArg)
+            WTF::visit([&] (auto& value) { callTracerParameters.append(value); }, *variantNullableArg);
+        CallTracer::testCallTracerInterface(impl, ASCIILiteral("testOperationWithNullableVariantArgument"), WTFMove(callTracerParameters));
+    }
+    impl.testOperationWithNullableVariantArgument(WTFMove(variantNullableArg));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithNullableVariantArgument(ExecState* state)
+{
+    return IDLOperation<JSTestCallTracer>::call<jsTestCallTracerPrototypeFunctionTestOperationWithNullableVariantArgumentBody>(*state, "testOperationWithNullableVariantArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperationWithOptionalVariantArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestCallTracer>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto variantOptionalArg = state->argument(0).isUndefined() ? std::optional<Converter<IDLUnion<IDLBoolean, IDLFloat, IDLDOMString>>::ReturnType>() : std::optional<Converter<IDLUnion<IDLBoolean, IDLFloat, IDLDOMString>>::ReturnType>(convert<IDLUnion<IDLBoolean, IDLFloat, IDLDOMString>>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    if (UNLIKELY(impl.callTracingActive())) {
+        Vector<TestCallTracerInterfaceVariant> callTracerParameters;
+        if (variantOptionalArg)
+            WTF::visit([&] (auto& value) { callTracerParameters.append(value); }, *variantOptionalArg);
+        CallTracer::testCallTracerInterface(impl, ASCIILiteral("testOperationWithOptionalVariantArgument"), WTFMove(callTracerParameters));
+    }
+    impl.testOperationWithOptionalVariantArgument(WTFMove(variantOptionalArg));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithOptionalVariantArgument(ExecState* state)
+{
+    return IDLOperation<JSTestCallTracer>::call<jsTestCallTracerPrototypeFunctionTestOperationWithOptionalVariantArgumentBody>(*state, "testOperationWithOptionalVariantArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestCallTracerPrototypeFunctionTestOperationWithDefaultVariantArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestCallTracer>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto variantDefaultArg = state->argument(0).isUndefined() ? "" : convert<IDLUnion<IDLBoolean, IDLFloat, IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    if (UNLIKELY(impl.callTracingActive())) {
+        Vector<TestCallTracerInterfaceVariant> callTracerParameters;
+        WTF::visit([&] (auto& value) { callTracerParameters.append(value); }, variantDefaultArg);
+        CallTracer::testCallTracerInterface(impl, ASCIILiteral("testOperationWithDefaultVariantArgument"), WTFMove(callTracerParameters));
+    }
+    impl.testOperationWithDefaultVariantArgument(WTFMove(variantDefaultArg));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestCallTracerPrototypeFunctionTestOperationWithDefaultVariantArgument(ExecState* state)
+{
+    return IDLOperation<JSTestCallTracer>::call<jsTestCallTracerPrototypeFunctionTestOperationWithDefaultVariantArgumentBody>(*state, "testOperationWithDefaultVariantArgument");
 }
 
 bool JSTestCallTracerOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

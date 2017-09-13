@@ -178,6 +178,7 @@ void WebAssemblyModuleRecord::link(ExecState* exec, JSWebAssemblyModule* module,
         bool ignoreReadOnlyErrors = true;
         bool putResult = false;
         symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, Identifier::fromString(&vm, String::fromUTF8(exp.field)), exportedValue, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult);
+        scope.assertNoException();
         RELEASE_ASSERT(putResult);
     }
 
@@ -342,7 +343,7 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* exec)
     if (JSObject* startFunction = m_startFunction.get()) {
         CallData callData;
         CallType callType = JSC::getCallData(startFunction, callData);
-        call(exec, startFunction, callType, callData, jsUndefined(), exec->emptyList());
+        call(exec, startFunction, callType, callData, jsUndefined(), *vm.emptyList);
         RETURN_IF_EXCEPTION(scope, { });
     }
 

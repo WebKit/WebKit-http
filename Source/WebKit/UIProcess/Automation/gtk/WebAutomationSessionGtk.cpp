@@ -145,7 +145,7 @@ static void doKeyStrokeEvent(GdkEventType type, GtkWidget* widget, unsigned keyV
     // When synthesizing an event, an invalid hardware_keycode value can cause it to be badly processed by GTK+.
     GUniqueOutPtr<GdkKeymapKey> keys;
     int keysCount;
-    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(), keyVal, &keys.outPtr(), &keysCount))
+    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(), keyVal, &keys.outPtr(), &keysCount) && keysCount)
         event->key.hardware_keycode = keys.get()[0].keycode;
 
     gtk_main_do_event(event.get());
@@ -307,12 +307,6 @@ void WebAutomationSession::platformSimulateKeySequence(WebPageProxy& page, const
         doKeyStrokeEvent(GDK_KEY_PRESS, page.viewWidget(), gdk_unicode_to_keyval(g_utf8_get_char(p)), m_currentModifiers, true);
         p = g_utf8_next_char(p);
     } while (*p);
-}
-
-std::optional<String> WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)
-{
-    // FIXME: Implement this, possibly moving it to a WebAutomationSessionCairo.cpp file.
-    return std::nullopt;
 }
 
 } // namespace WebKit

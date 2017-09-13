@@ -41,10 +41,9 @@
 
 namespace JSC { namespace FTL {
 
-using namespace DFG;
-
 void link(State& state)
 {
+    using namespace DFG;
     Graph& graph = state.graph;
     CodeBlock* codeBlock = graph.m_codeBlock;
     VM& vm = graph.m_vm;
@@ -74,8 +73,8 @@ void link(State& state)
             Profiler::OriginStack(),
             toCString("Generated FTL JIT code for ", CodeBlockWithJITType(codeBlock, JITCode::FTLJIT), ", instruction count = ", graph.m_codeBlock->instructionCount(), ":\n"));
         
-        graph.ensureDominators();
-        graph.ensureNaturalLoops();
+        graph.ensureSSADominators();
+        graph.ensureSSANaturalLoops();
         
         const char* prefix = "    ";
         

@@ -150,7 +150,8 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewDidFailNavigationWithError = [delegate respondsToSelector:@selector(webView:didFailNavigation:withError:)];
 
     m_navigationDelegateMethods.webViewNavigationDidFailProvisionalLoadInSubframeWithError = [delegate respondsToSelector:@selector(_webView:navigation:didFailProvisionalLoadInSubframe:withError:)];
-    m_navigationDelegateMethods.webViewDidPerformClientRedirectForNavigation = [delegate respondsToSelector:@selector(_webView:didPerformClientRedirectForNavigation:)];
+    m_navigationDelegateMethods.webViewWillPerformClientRedirect = [delegate respondsToSelector:@selector(_webView:willPerformClientRedirectToURL:delay:)];
+    m_navigationDelegateMethods.webViewDidCancelClientRedirect = [delegate respondsToSelector:@selector(_webViewDidCancelClientRedirect:)];
     m_navigationDelegateMethods.webViewNavigationDidFinishDocumentLoad = [delegate respondsToSelector:@selector(_webView:navigationDidFinishDocumentLoad:)];
     m_navigationDelegateMethods.webViewNavigationDidSameDocumentNavigation = [delegate respondsToSelector:@selector(_webView:navigation:didSameDocumentNavigation:)];
     m_navigationDelegateMethods.webViewRenderingProgressDidChange = [delegate respondsToSelector:@selector(_webView:renderingProgressDidChange:)];
@@ -171,6 +172,10 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewDidStartLoadForQuickLookDocumentInMainFrame = [delegate respondsToSelector:@selector(_webView:didStartLoadForQuickLookDocumentInMainFrameWithFileName:uti:)];
     m_navigationDelegateMethods.webViewDidFinishLoadForQuickLookDocumentInMainFrame = [delegate respondsToSelector:@selector(_webView:didFinishLoadForQuickLookDocumentInMainFrame:)];
     m_navigationDelegateMethods.webViewDidRequestPasswordForQuickLookDocument = [delegate respondsToSelector:@selector(_webViewDidRequestPasswordForQuickLookDocument:)];
+#endif
+#if ENABLE(WEBGL) && PLATFORM(MAC)
+    m_navigationDelegateMethods.webViewWebGLLoadPolicyForURL = [delegate respondsToSelector:@selector(_webView:webGLLoadPolicyForURL:decisionHandler:)];
+    m_navigationDelegateMethods.webViewResolveWebGLLoadPolicyForURL = [delegate respondsToSelector:@selector(_webView:resolveWebGLLoadPolicyForURL:decisionHandler:)];
 #endif
 }
 
@@ -283,6 +288,53 @@ NavigationState::NavigationClient::NavigationClient(NavigationState& navigationS
 NavigationState::NavigationClient::~NavigationClient()
 {
 }
+
+#if PLATFORM(MAC)
+inline WebCore::WebGLLoadPolicy toWebCoreWebGLLoadPolicy(_WKWebGLLoadPolicy policy)
+{
+    switch (policy) {
+    case _WKWebGLLoadPolicyAllowCreation:
+        return WebCore::WebGLAllowCreation;
+    case _WKWebGLLoadPolicyBlockCreation:
+        return WebCore::WebGLBlockCreation;
+    case _WKWebGLLoadPolicyPendingCreation:
+        return WebCore::WebGLPendingCreation;
+    }
+    
+    ASSERT_NOT_REACHED();
+    return WebCore::WebGLAllowCreation;
+}
+
+void NavigationState::NavigationClient::webGLLoadPolicy(WebPageProxy&, const WebCore::URL& url, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewWebGLLoadPolicyForURL)
+        completionHandler(WebGLAllowCreation);
+
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    Ref<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:webGLLoadPolicyForURL:decisionHandler:));
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView webGLLoadPolicyForURL:(NSURL *)url decisionHandler:BlockPtr<void(_WKWebGLLoadPolicy)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) {
+        if (checker->completionHandlerHasBeenCalled())
+            return;
+        checker->didCallCompletionHandler();
+        completionHandler(toWebCoreWebGLLoadPolicy(policy));
+    }).get()];
+}
+
+void NavigationState::NavigationClient::resolveWebGLLoadPolicy(WebPageProxy&, const WebCore::URL& url, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewResolveWebGLLoadPolicyForURL)
+        completionHandler(WebGLAllowCreation);
+    
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    Ref<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:resolveWebGLLoadPolicyForURL:decisionHandler:));
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView resolveWebGLLoadPolicyForURL:(NSURL *)url decisionHandler:BlockPtr<void(_WKWebGLLoadPolicy)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) {
+        if (checker->completionHandlerHasBeenCalled())
+            return;
+        checker->didCallCompletionHandler();
+        completionHandler(toWebCoreWebGLLoadPolicy(policy));
+    }).get()];
+}
+#endif
 
 static void tryAppLink(RefPtr<API::NavigationAction>&& navigationAction, const String& currentMainFrameURL, WTF::Function<void(bool)>&& completionHandler)
 {
@@ -489,21 +541,30 @@ void NavigationState::NavigationClient::didReceiveServerRedirectForProvisionalNa
     [navigationDelegate webView:m_navigationState.m_webView didReceiveServerRedirectForProvisionalNavigation:wkNavigation];
 }
 
-void NavigationState::NavigationClient::didPerformClientRedirectForNavigation(WebPageProxy& page, API::Navigation* navigation)
+void NavigationState::NavigationClient::willPerformClientRedirect(WebKit::WebPageProxy& page, const WTF::String& urlString, double delay)
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webViewDidPerformClientRedirectForNavigation)
+    if (!m_navigationState.m_navigationDelegateMethods.webViewWillPerformClientRedirect)
         return;
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     if (!navigationDelegate)
         return;
 
-    // FIXME: We should assert that navigation is not null here, but it's currently null for some navigations through the page cache.
-    WKNavigation *wkNavigation = nil;
-    if (navigation)
-        wkNavigation = wrapper(*navigation);
+    WebCore::URL url(WebCore::URL(), urlString);
 
-    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView didPerformClientRedirectForNavigation:wkNavigation];
+    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webView:m_navigationState.m_webView willPerformClientRedirectToURL:url delay:delay];
+}
+
+void NavigationState::NavigationClient::didCancelClientRedirect(WebKit::WebPageProxy& page)
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewDidCancelClientRedirect)
+        return;
+
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    if (!navigationDelegate)
+        return;
+
+    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webViewDidCancelClientRedirect:m_navigationState.m_webView];
 }
 
 static RetainPtr<NSError> createErrorWithRecoveryAttempter(WKWebView *webView, WebFrameProxy& webFrameProxy, NSError *originalError)

@@ -62,10 +62,10 @@ const char* AuthenticationManager::supplementName()
     return "AuthenticationManager";
 }
 
-AuthenticationManager::AuthenticationManager(ChildProcess* process)
+AuthenticationManager::AuthenticationManager(ChildProcess& process)
     : m_process(process)
 {
-    m_process->addMessageReceiver(Messages::AuthenticationManager::messageReceiverName(), *this);
+    m_process.addMessageReceiver(Messages::AuthenticationManager::messageReceiverName(), *this);
 }
 
 uint64_t AuthenticationManager::addChallengeToChallengeMap(Challenge&& challenge)
@@ -126,7 +126,7 @@ void AuthenticationManager::didReceiveAuthenticationChallenge(WebFrame* frame, c
     if (shouldCoalesceChallenge(pageID, challengeID, authenticationChallenge))
         return;
     
-    m_process->send(Messages::WebPageProxy::DidReceiveAuthenticationChallenge(frame->frameID(), authenticationChallenge, challengeID), frame->page()->pageID());
+    m_process.send(Messages::WebPageProxy::DidReceiveAuthenticationChallenge(frame->frameID(), authenticationChallenge, challengeID), frame->page()->pageID());
 }
 
 #if USE(NETWORK_SESSION)
@@ -141,7 +141,7 @@ void AuthenticationManager::didReceiveAuthenticationChallenge(uint64_t pageID, u
     if (shouldCoalesceChallenge(pageID, challengeID, authenticationChallenge))
         return;
     
-    m_process->send(Messages::NetworkProcessProxy::DidReceiveAuthenticationChallenge(pageID, frameID, authenticationChallenge, challengeID));
+    m_process.send(Messages::NetworkProcessProxy::DidReceiveAuthenticationChallenge(pageID, frameID, authenticationChallenge, challengeID));
 }
 
 void AuthenticationManager::didReceiveAuthenticationChallenge(PendingDownload& pendingDownload, const WebCore::AuthenticationChallenge& authenticationChallenge, ChallengeCompletionHandler&& completionHandler)
@@ -169,7 +169,7 @@ void AuthenticationManager::didReceiveAuthenticationChallenge(uint64_t pageID, u
     if (shouldCoalesceChallenge(pageID, challengeID, authenticationChallenge))
         return;
     
-    m_process->send(Messages::NetworkProcessProxy::DidReceiveAuthenticationChallenge(pageID, frameID, authenticationChallenge, challengeID));
+    m_process.send(Messages::NetworkProcessProxy::DidReceiveAuthenticationChallenge(pageID, frameID, authenticationChallenge, challengeID));
 }
 #endif
 
@@ -189,7 +189,7 @@ void AuthenticationManager::didReceiveAuthenticationChallenge(Download& download
 
 // Currently, only Mac knows how to respond to authentication challenges with certificate info.
 #if !HAVE(SEC_IDENTITY)
-bool AuthenticationManager::tryUseCertificateInfoForChallenge(const WebCore::AuthenticationChallenge&, const CertificateInfo&, const ChallengeCompletionHandler&)
+bool AuthenticationManager::tryUseCertificateInfoForChallenge(const WebCore::AuthenticationChallenge&, const CertificateInfo&, ChallengeCompletionHandler&)
 {
     return false;
 }

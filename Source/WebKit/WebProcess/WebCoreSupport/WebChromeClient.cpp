@@ -683,11 +683,6 @@ void WebChromeClient::unavailablePluginButtonClicked(Element& element, RenderEmb
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 }
 
-void WebChromeClient::scrollbarsModeDidChange() const
-{
-    notImplemented();
-}
-
 void WebChromeClient::mouseDidMoveOverElement(const HitTestResult& hitTestResult, unsigned modifierFlags)
 {
     RefPtr<API::Object> userData;
@@ -869,12 +864,6 @@ bool WebChromeClient::selectItemWritingDirectionIsNatural()
 bool WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection()
 {
     return true;
-}
-
-bool WebChromeClient::hasOpenedPopup() const
-{
-    notImplemented();
-    return false;
 }
 
 RefPtr<PopupMenu> WebChromeClient::createPopupMenu(PopupMenuClient& client) const

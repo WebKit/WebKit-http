@@ -6,6 +6,7 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 fast/forms/attributed-strings.html [ Pass ]
+editing/pasteboard/drag-drop-href-as-text-data.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -85,10 +86,6 @@ fast/forms/file/open-file-panel.html [ Skip ]
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
 
-# Test support for inserting special characters is not yet implemented on WK1.
-fast/events/before-input-prevent-insert-replacement.html [ Skip ]
-fast/events/input-event-insert-replacement.html [ Skip ]
-
 # Media Stream API testing is not supported for WK1 yet.
 fast/mediastream
 http/tests/media/media-stream
@@ -96,6 +93,8 @@ http/tests/ssl/media-stream
 
 # No service worker implementation for WK1
 imported/w3c/web-platform-tests/service-workers [ Skip ]
+http/wpt/cache-storage [ Skip ]
+http/tests/cache-storage [ Skip ]
 
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
@@ -242,6 +241,7 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-include
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
+webkit.org/b/156069 http/tests/download/anchor-download-redirect.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -396,3 +396,12 @@ http/tests/workers/service [ Skip ]
 webkit.org/b/175345 fast/images/animated-gif-scrolling-crash.html [ Pass Timeout ]
 
 webkit.org/b/175554 [ Sierra ] fullscreen/full-screen-iframe-legacy.html [ Pass Failure ]
+
+webkit.org/b/174218 svg/animations/smil-leak-list-property-instances.svg [ Pass Failure ]
+
+webkit.org/b/172334 webrtc/datachannel/bufferedAmountLowThreshold.html [ Pass Failure ]
+
+webkit.org/b/172877 svg/as-image/svg-image-with-data-uri-background.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/174180 svg/animations/smil-leak-elements.svg [ Pass Failure ]
+

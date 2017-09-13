@@ -30,18 +30,15 @@
 
 #include "JSDOMPromiseDeferred.h"
 #include "ServiceWorkerJobData.h"
-#include "ServiceWorkerRegistrationParameters.h"
+#include "ServiceWorkerRegistration.h"
 
 namespace WebCore {
 
-static std::atomic<uint64_t> currentIdentifier;
-
-ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, Ref<DeferredPromise>&& promise, ServiceWorkerRegistrationParameters&& parameters)
+ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, Ref<DeferredPromise>&& promise, ServiceWorkerJobData&& jobData)
     : m_client(client)
+    , m_jobData(WTFMove(jobData))
     , m_promise(WTFMove(promise))
-    , m_identifier(++currentIdentifier)
 {
-    m_registrationParameters = std::make_unique<ServiceWorkerRegistrationParameters>(WTFMove(parameters));
 }
 
 ServiceWorkerJob::~ServiceWorkerJob()
@@ -52,18 +49,19 @@ ServiceWorkerJob::~ServiceWorkerJob()
 void ServiceWorkerJob::failedWithException(const Exception& exception)
 {
     ASSERT(currentThread() == m_creationThread);
-
     ASSERT(!m_completed);
-    m_promise->reject(exception);
-    m_completed = true;
 
-    // Can cause this to be deleted.
-    m_client->jobDidFinish(*this);
+    m_completed = true;
+    m_client->jobFailedWithException(*this, exception);
 }
 
-ServiceWorkerJobData ServiceWorkerJob::data() const
+void ServiceWorkerJob::resolvedWithRegistration(const ServiceWorkerRegistrationData& data)
 {
-    return { m_identifier, m_type };
+    ASSERT(currentThread() == m_creationThread);
+    ASSERT(!m_completed);
+
+    m_completed = true;
+    m_client->jobResolvedWithRegistration(*this, data);
 }
 
 } // namespace WebCore

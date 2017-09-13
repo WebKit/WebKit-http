@@ -57,6 +57,7 @@ set(TestWebCoreLib_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntPoint.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntSize.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/MIMETypeRegistry.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/ParsedContentRange.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
@@ -86,20 +87,21 @@ else ()
     list(APPEND test_webcore_LIBRARIES
         ASL${DEBUG_SUFFIX}
         CFNetwork${DEBUG_SUFFIX}
-        CoreFoundation${DEBUG_SUFFIX}
         CoreGraphics${DEBUG_SUFFIX}
         CoreText${DEBUG_SUFFIX}
         QuartzCore${DEBUG_SUFFIX}
-        SQLite3${DEBUG_SUFFIX}
         WebKitSystemInterface${DEBUG_SUFFIX}
         WebKitQuartzCoreAdditions${DEBUG_SUFFIX}
         libdispatch${DEBUG_SUFFIX}
         libexslt${DEBUG_SUFFIX}
         libicuin${DEBUG_SUFFIX}
         libicuuc${DEBUG_SUFFIX}
-        libxml2${DEBUG_SUFFIX}
-        libxslt${DEBUG_SUFFIX}
-        zdll${DEBUG_SUFFIX}
+    )
+endif ()
+
+if (USE_CF)
+    list(APPEND test_webcore_LIBRARIES
+        ${COREFOUNDATION_LIBRARY}
     )
 endif ()
 
@@ -148,8 +150,8 @@ set(test_webkit_LIBRARIES
 add_library(TestWebKitLib SHARED
     ${test_main_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/ScaleWebView.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/WebViewDestruction.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKitLegacy/win/ScaleWebView.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKitLegacy/win/WebViewDestruction.cpp
     ${TESTWEBKITAPI_DIR}/win/HostWindow.cpp
 )
 

@@ -1,3 +1,149 @@
+2017-09-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] fast/canvas/2d.getPath.modification.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=176534
+
+        Reviewed by Alex Christensen.
+
+        We need to enable Inspector additions at runtime in order to expose the getPath function.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setDataTransferItemsEnabled):
+        (WebPreferences::inspectorAdditionsEnabled):
+        (WebPreferences::setInspectorAdditionsEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-09-07  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize Geolocation code
+        https://bugs.webkit.org/show_bug.cgi?id=176496
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebGeolocationClient.cpp:
+        (WebGeolocationClient::requestPermission):
+        * WebCoreSupport/WebGeolocationClient.h:
+        (WebGeolocationClient::setEnableHighAccuracy): Deleted.
+        (WebGeolocationClient::cancelPermissionRequest): Deleted.
+        * WebGeolocationPolicyListener.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::geolocationDidFailWithError):
+
+2017-09-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Enable DatatransferItems in DRT.
+        https://bugs.webkit.org/show_bug.cgi?id=176424
+
+        Reviewed by Brent Fulgham.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::QueryInterface):
+        (WebPreferences::isSecureContextAttributeEnabled):
+        (WebPreferences::dataTransferItemsEnabled):
+        (WebPreferences::setDataTransferItemsEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix #2 after r221275.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue): Correct return type and arguments
+        to match new API.
+        * WebCoreSupport/WebPlatformStrategies.h: Update signatures.
+
+2017-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r221275.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue): Correct return type and arguments
+        to match new API.
+
+2017-08-28  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test http/tests/misc/policy-delegate-called-twice.html is crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=176031
+
+        Reviewed by Brent Fulgham.
+
+        When the function in the FramePolicyFunction parameter is called, it has already been moved
+        to an internal member by the setUpPolicyListener method, and is no longer valid. Invoke the
+        function by using the stored member instead.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2017-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, try to fix the Windows build after r221064
+
+        didEndUserTriggeredSelectionChanges is virtual, and needs to be overridden in WebEditorClient.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2017-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] EditorState updates should be rolled into the layer update lifecycle when possible
+        https://bugs.webkit.org/show_bug.cgi?id=175370
+        <rdar://problem/33799806>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adjust WebEditorClient for interface changes.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2017-08-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r221017.
+
+        Correct copy/paste error.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::cookiesForDOM):
+
+2017-08-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r221017.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::cookiesForDOM): Update for new signature.
+        * WebCoreSupport/WebPlatformStrategies.h:
+
+2017-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ChromeClient::scrollbarsModeDidChange
+        https://bugs.webkit.org/show_bug.cgi?id=175805
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2017-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ChromeClient::hasOpenedPopup
+        https://bugs.webkit.org/show_bug.cgi?id=175804
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::hasOpenedPopup const): Deleted.
+        * WebCoreSupport/WebChromeClient.h:
+
 2017-08-18  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] accessibility/heading-crash-after-hidden.html is a flaky crash.

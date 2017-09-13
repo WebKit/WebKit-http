@@ -260,7 +260,7 @@ typedef const char* optionString;
     v(bool, logExecutableAllocation, false, Normal, nullptr) \
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
-    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, Normal, nullptr) \
+    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(3, 2) - 1, Normal, nullptr) \
     v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS, 2) - 1, Normal, nullptr) \
     v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), Normal, nullptr) \
@@ -396,7 +396,7 @@ typedef const char* optionString;
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
-    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack at each simulated throw for exception scope verification") \
+    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack of the last simulated throw if exception scope verification fails") \
     v(bool, validateExceptionChecks, false, Normal, "Verifies that needed exception checks are performed.") \
     v(unsigned, unexpectedExceptionStackTraceLimit, 100, Normal, "Stack trace limit for debugging unexpected exceptions observed in the VM") \
     \
@@ -450,7 +450,7 @@ typedef const char* optionString;
     \
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
     \
-    v(bool, useAsyncIterator, false, Normal, "Allow to use Async Iterator in JS.") \
+    v(bool, useAsyncIterator, true, Normal, "Allow to use Async Iterator in JS.") \
     \
     v(bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
     v(size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
@@ -467,7 +467,7 @@ typedef const char* optionString;
     v(bool, logWebAssemblyMemory, false, Normal, nullptr) \
     v(unsigned, webAssemblyFastMemoryRedzonePages, 128, Normal, "WebAssembly fast memories use 4GiB virtual allocations, plus a redzone (counted as multiple of 64KiB WebAssembly pages) at the end to catch reg+imm accesses which exceed 32-bit, anything beyond the redzone is explicitly bounds-checked") \
     v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
-    v(unsigned, maxNumWebAssemblyFastMemories, 10, Normal, nullptr) \
+    v(unsigned, maxNumWebAssemblyFastMemories, 4, Normal, nullptr) \
     v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.") \
     v(bool, useFastTLSForWasmContext, true, Normal, "If true (and fast TLS is enabled), we will store context in fast TLS. If false, we will pin it to a register.") \
     v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \

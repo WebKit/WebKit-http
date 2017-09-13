@@ -3,7 +3,6 @@ if (${WTF_PLATFORM_WIN_CAIRO})
     list(APPEND WebKit_INCLUDE_DIRECTORIES
         ${CAIRO_INCLUDE_DIRS}
         "${WEBKIT_LIBRARIES_DIR}/include"
-        "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
     list(APPEND WebKit_SOURCES_Classes
@@ -22,18 +21,17 @@ else ()
     )
     list(APPEND WebKit_LIBRARIES
         PRIVATE CFNetwork${DEBUG_SUFFIX}
-        PRIVATE CoreFoundation${DEBUG_SUFFIX}
         PRIVATE CoreGraphics${DEBUG_SUFFIX}
         PRIVATE CoreText${DEBUG_SUFFIX}
         PRIVATE QuartzCore${DEBUG_SUFFIX}
-        PRIVATE SQLite3${DEBUG_SUFFIX}
         PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
         PRIVATE libdispatch${DEBUG_SUFFIX}
         PRIVATE libicuin${DEBUG_SUFFIX}
         PRIVATE libicuuc${DEBUG_SUFFIX}
-        PRIVATE libxml2${DEBUG_SUFFIX}
-        PRIVATE libxslt${DEBUG_SUFFIX}
-        PRIVATE zdll${DEBUG_SUFFIX}
+        PRIVATE ${LIBXML2_LIBRARIES}
+        PRIVATE ${LIBXSLT_LIBRARIES}
+        PRIVATE ${SQLITE_LIBRARIES}
+        PRIVATE ${ZLIB_LIBRARIES}
     )
 endif ()
 
@@ -134,8 +132,6 @@ list(APPEND WebKit_INCLUDES
 )
 
 list(APPEND WebKit_SOURCES_Classes
-    cf/WebCoreSupport/WebInspectorClientCF.cpp
-
     win/AccessibleBase.cpp
     win/AccessibleDocument.cpp
     win/AccessibleImage.cpp
@@ -249,6 +245,16 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
     win/WebCoreSupport/WebVisitedLinkStore.cpp
     win/WebCoreSupport/WebVisitedLinkStore.h
 )
+
+if (USE_CF)
+    list(APPEND WebKit_SOURCES_Classes
+        cf/WebCoreSupport/WebInspectorClientCF.cpp
+    )
+
+    list(APPEND WebKit_LIBRARIES
+        ${COREFOUNDATION_LIBRARY}
+    )
+endif ()
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     enable_language(ASM_MASM)

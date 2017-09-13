@@ -203,6 +203,10 @@ WK_EXPORT bool WKPreferencesGetInlineMediaPlaybackRequiresPlaysInlineAttribute(W
 WK_EXPORT void WKPreferencesSetBeaconAPIEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetBeaconAPIEnabled(WKPreferencesRef);
 
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetDirectoryUploadEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetDirectoryUploadEnabled(WKPreferencesRef);
+
 // Defaults to false on iOS, true elsewhere.
 WK_EXPORT void WKPreferencesSetMediaControlsScaleWithPageZoom(WKPreferencesRef preferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetMediaControlsScaleWithPageZoom(WKPreferencesRef preferencesRef);
@@ -440,6 +444,10 @@ WK_EXPORT bool WKPreferencesGetSelectionPaintingWithoutSelectionGapsEnabled(WKPr
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetAllowsPictureInPictureMediaPlayback(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetAllowsPictureInPictureMediaPlayback(WKPreferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAttachmentElementEnabled(WKPreferencesRef preferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetAttachmentElementEnabled(WKPreferencesRef preferencesRef);
 
 // Defaults to false
 WK_EXPORT void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef, bool flag);

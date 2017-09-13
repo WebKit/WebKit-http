@@ -192,7 +192,6 @@ class WebUndoStep;
 class WebUserContentController;
 class VideoFullscreenManager;
 class WebWheelEvent;
-enum FindOptions : uint16_t;
 struct AssistedNodeInformation;
 struct AttributedString;
 struct BackForwardListItemState;
@@ -205,6 +204,9 @@ struct WebsitePolicies;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 struct WebSelectionData;
+
+enum class DragControllerAction;
+enum FindOptions : uint16_t;
 
 typedef uint32_t SnapshotOptions;
 typedef uint32_t WKEventModifiers;
@@ -367,13 +369,12 @@ public:
 #endif
 
 #if ENABLE(WEBGL)
-    WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const String&);
-    WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const String&);
+    WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const WebCore::URL&);
+    WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const WebCore::URL&);
 #endif
     
     enum class IncludePostLayoutDataHint { No, Yes };
     EditorState editorState(IncludePostLayoutDataHint = IncludePostLayoutDataHint::Yes) const;
-    void sendPostLayoutEditorStateIfNeeded();
     void updateEditorStateAfterLayoutIfEditabilityChanged();
 
     String renderTreeExternalRepresentation() const;
@@ -517,6 +518,7 @@ public:
     void resetAssistedNodeForFrame(WebFrame*);
 
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
+    void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
 
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize() const;
@@ -588,7 +590,6 @@ public:
 #endif
 
     void contentSizeCategoryDidChange(const String&);
-    void executeEditCommandWithCallback(const String&, CallbackID);
 
     Seconds eventThrottlingDelay() const;
 
@@ -664,8 +665,11 @@ public:
 
     void didApplyStyle();
     void didChangeSelection();
+    void didChangeContents();
     void discardedComposition();
     void canceledComposition();
+    void didUpdateComposition();
+    void didEndUserTriggeredSelectionChanges();
 
 #if PLATFORM(COCOA)
     void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
@@ -733,9 +737,9 @@ public:
 
 #if ENABLE(DRAG_SUPPORT)
 #if PLATFORM(GTK)
-    void performDragControllerAction(uint64_t action, const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&&, uint32_t flags);
+    void performDragControllerAction(DragControllerAction, const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&&, uint32_t flags);
 #else
-    void performDragControllerAction(uint64_t action, const WebCore::DragData&, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
+    void performDragControllerAction(DragControllerAction, const WebCore::DragData&, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 #endif
     void dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t operation);
 
@@ -870,7 +874,7 @@ public:
     NSDictionary *dataDetectionContext() const { return m_dataDetectionContext.get(); }
 #endif
 
-    void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size);
+    void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const WebCore::URL& originatingURL, const uint8_t* data, unsigned long size);
 #if PLATFORM(COCOA)
     void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
 #endif
@@ -986,6 +990,9 @@ public:
 
     static PluginView* pluginViewForFrame(WebCore::Frame*);
 
+    void sendPartialEditorStateAndSchedulePostLayoutUpdate();
+    void flushPendingEditorStateUpdate();
+
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
@@ -999,6 +1006,7 @@ private:
     void platformInitialize();
     void platformDetach();
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
+    void sendEditorStateUpdate();
 
     void didReceiveWebPageMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
@@ -1027,6 +1035,7 @@ private:
     RefPtr<WebCore::Range> switchToBlockSelectionAtPoint(const WebCore::IntPoint&, SelectionHandlePosition);
 #if ENABLE(DATA_INTERACTION)
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
 #endif
 #endif
 
@@ -1480,6 +1489,7 @@ private:
 
     RefPtr<WebCore::Node> m_assistedNode;
     bool m_hasPendingBlurNotification { false };
+    bool m_hasPendingEditorStateUpdate { false };
     
 #if PLATFORM(IOS)
     RefPtr<WebCore::Range> m_currentWordRange;

@@ -39,7 +39,7 @@
 #import "NativeWebMouseEvent.h"
 #import "NativeWebWheelEvent.h"
 #import "PageClient.h"
-#import "PageClientImpl.h"
+#import "PageClientImplMac.h"
 #import "PasteboardTypes.h"
 #import "PlaybackSessionManagerProxy.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
@@ -57,7 +57,7 @@
 #import "WKPrintingView.h"
 #import "WKTextInputWindowController.h"
 #import "WKViewLayoutStrategy.h"
-#import "WKWebView.h"
+#import "WKWebViewPrivate.h"
 #import "WebBackForwardList.h"
 #import "WebEditCommandProxy.h"
 #import "WebEventFactory.h"
@@ -71,18 +71,11 @@
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ActivityState.h>
 #import <WebCore/ColorMac.h>
-#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/DragData.h>
 #import <WebCore/Editor.h>
 #import <WebCore/KeypressCommand.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebCore/LookupSPI.h>
-#import <WebCore/NSApplicationSPI.h>
-#import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
-#import <WebCore/NSSpellCheckerSPI.h>
-#import <WebCore/NSTextFinderSPI.h>
-#import <WebCore/NSWindowSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
@@ -96,6 +89,14 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
 #import <pal/spi/cocoa/NSTouchBarSPI.h>
+#import <pal/spi/mac/DataDetectorsSPI.h>
+#import <pal/spi/mac/LookupSPI.h>
+#import <pal/spi/mac/NSAccessibilitySPI.h>
+#import <pal/spi/mac/NSApplicationSPI.h>
+#import <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
+#import <pal/spi/mac/NSSpellCheckerSPI.h>
+#import <pal/spi/mac/NSTextFinderSPI.h>
+#import <pal/spi/mac/NSWindowSPI.h>
 #import <sys/stat.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/SetForScope.h>
@@ -1627,7 +1628,7 @@ NSPrintOperation *WebViewImpl::printOperationWithPrintInfo(NSPrintInfo *printInf
 
     // FIXME: If the frame cannot be printed (e.g. if it contains an encrypted PDF that disallows
     // printing), this function should return nil.
-    RetainPtr<WKPrintingView> printingView = adoptNS([[WKPrintingView alloc] initWithFrameProxy:&frame view:m_view.getAutoreleased()]);
+    RetainPtr<WKPrintingView> printingView = adoptNS([[WKPrintingView alloc] initWithFrameProxy:frame view:m_view.getAutoreleased()]);
     // NSPrintOperation takes ownership of the view.
     NSPrintOperation *printOperation = [NSPrintOperation printOperationWithView:printingView.get() printInfo:printInfo];
     [printOperation setCanSpawnSeparateThread:YES];
@@ -2610,6 +2611,8 @@ void WebViewImpl::selectionDidChange()
     if (!m_page->editorState().isMissingPostLayoutData)
         requestCandidatesForSelectionIfNeeded();
 #endif
+
+    [m_view _web_editorStateDidChange];
 }
 
 void WebViewImpl::didBecomeEditable()
@@ -3280,7 +3283,7 @@ void WebViewImpl::setIgnoresMouseDraggedEvents(bool ignoresMouseDraggedEvents)
 
 void WebViewImpl::setAccessibilityWebProcessToken(NSData *data)
 {
-    m_remoteAccessibilityChild = WKAXRemoteElementForToken(data);
+    m_remoteAccessibilityChild = data.length ? adoptNS([[NSAccessibilityRemoteUIElement alloc] initWithRemoteToken:data]) : nil;
     updateRemoteAccessibilityRegistration(true);
 }
 
@@ -3293,18 +3296,23 @@ void WebViewImpl::updateRemoteAccessibilityRegistration(bool registerProcess)
     if (registerProcess)
         pid = m_page->process().processIdentifier();
     else if (!registerProcess) {
-        pid = WKAXRemoteProcessIdentifier(m_remoteAccessibilityChild.get());
+        pid = [m_remoteAccessibilityChild processIdentifier];
         m_remoteAccessibilityChild = nil;
     }
-    if (pid)
-        WKAXRegisterRemoteProcess(registerProcess, pid);
+    if (!pid)
+        return;
+
+    if (registerProcess)
+        [NSAccessibilityRemoteUIElement registerRemoteUIProcessIdentifier:pid];
+    else
+        [NSAccessibilityRemoteUIElement unregisterRemoteUIProcessIdentifier:pid];
 }
 
 void WebViewImpl::accessibilityRegisterUIProcessTokens()
 {
     // Initialize remote accessibility when the window connection has been established.
-    NSData *remoteElementToken = WKAXRemoteTokenForElement(m_view.getAutoreleased());
-    NSData *remoteWindowToken = WKAXRemoteTokenForElement([m_view window]);
+    NSData *remoteElementToken = [NSAccessibilityRemoteUIElement remoteTokenForLocalUIElement:m_view.getAutoreleased()];
+    NSData *remoteWindowToken = [NSAccessibilityRemoteUIElement remoteTokenForLocalUIElement:[m_view window]];
     IPC::DataReference elementToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteElementToken bytes]), [remoteElementToken length]);
     IPC::DataReference windowToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteWindowToken bytes]), [remoteWindowToken length]);
     m_page->registerUIProcessAccessibilityTokens(elementToken, windowToken);
@@ -4834,6 +4842,54 @@ void WebViewImpl::mouseMoved(NSEvent *event)
         return;
 
     mouseMovedInternal(event);
+}
+
+_WKRectEdge WebViewImpl::pinnedState()
+{
+#if WK_API_ENABLED
+    _WKRectEdge state = _WKRectEdgeNone;
+    if (m_page->isPinnedToLeftSide())
+        state |= _WKRectEdgeLeft;
+    if (m_page->isPinnedToRightSide())
+        state |= _WKRectEdgeRight;
+    if (m_page->isPinnedToTopSide())
+        state |= _WKRectEdgeTop;
+    if (m_page->isPinnedToBottomSide())
+        state |= _WKRectEdgeBottom;
+    return state;
+#else
+    return 0;
+#endif
+}
+
+_WKRectEdge WebViewImpl::rubberBandingEnabled()
+{
+#if WK_API_ENABLED
+    _WKRectEdge state = _WKRectEdgeNone;
+    if (m_page->rubberBandsAtLeft())
+        state |= _WKRectEdgeLeft;
+    if (m_page->rubberBandsAtRight())
+        state |= _WKRectEdgeRight;
+    if (m_page->rubberBandsAtTop())
+        state |= _WKRectEdgeTop;
+    if (m_page->rubberBandsAtBottom())
+        state |= _WKRectEdgeBottom;
+    return state;
+#else
+    return 0;
+#endif
+}
+
+void WebViewImpl::setRubberBandingEnabled(_WKRectEdge state)
+{
+#if WK_API_ENABLED
+    m_page->setRubberBandsAtLeft(state & _WKRectEdgeLeft);
+    m_page->setRubberBandsAtRight(state & _WKRectEdgeRight);
+    m_page->setRubberBandsAtTop(state & _WKRectEdgeTop);
+    m_page->setRubberBandsAtBottom(state & _WKRectEdgeBottom);
+#else
+    UNUSED_PARAM(state);
+#endif
 }
 
 void WebViewImpl::mouseDown(NSEvent *event)

@@ -97,6 +97,15 @@ public:
         return bucket;
     }
 
+    static HashMapBucket* createSentinel(VM& vm)
+    {
+        auto* bucket = create(vm);
+        bucket->setDeleted(true);
+        bucket->setKey(vm, jsUndefined());
+        bucket->setValue(vm, jsUndefined());
+        return bucket;
+    }
+
     HashMapBucket(VM& vm, Structure* structure)
         : Base(vm, structure)
     { }
@@ -150,6 +159,16 @@ public:
         return OBJECT_OFFSETOF(HashMapBucket, m_data) + OBJECT_OFFSETOF(Data, value);
     }
 
+    static ptrdiff_t offsetOfNext()
+    {
+        return OBJECT_OFFSETOF(HashMapBucket, m_next);
+    }
+
+    static ptrdiff_t offsetOfDeleted()
+    {
+        return OBJECT_OFFSETOF(HashMapBucket, m_deleted);
+    }
+
     template <typename T = Data>
     ALWAYS_INLINE static typename std::enable_if<std::is_same<T, HashMapBucketDataKeyValue>::value, JSValue>::type extractValue(const HashMapBucket& bucket)
     {
@@ -163,10 +182,10 @@ public:
     }
 
 private:
-    Data m_data;
     WriteBarrier<HashMapBucket> m_next;
     WriteBarrier<HashMapBucket> m_prev;
-    bool m_deleted { false };
+    uint32_t m_deleted { false };
+    Data m_data;
 };
 
 template <typename BucketType>
@@ -248,6 +267,15 @@ static ALWAYS_INLINE uint32_t wangsInt64Hash(uint64_t key)
     key ^= (key >> 31);
     return static_cast<unsigned>(key);
 }
+
+struct WeakMapHash {
+    static unsigned hash(JSObject* key)
+    {
+        return wangsInt64Hash(JSValue::encode(key));
+    }
+    static bool equal(JSObject* a, JSObject* b) { return a == b; }
+    static const bool safeToCompareToEmptyOrDeleted = true;
+};
 
 ALWAYS_INLINE uint32_t jsMapHash(ExecState* exec, VM& vm, JSValue value)
 {
@@ -469,6 +497,11 @@ public:
         return m_capacity * sizeof(HashMapBucketType*);
     }
 
+    static ptrdiff_t offsetOfHead()
+    {
+        return OBJECT_OFFSETOF(HashMapImpl<HashMapBucketType>, m_head);
+    }
+
     static ptrdiff_t offsetOfBuffer()
     {
         return OBJECT_OFFSETOF(HashMapImpl<HashMapBucketType>, m_buffer);
@@ -612,7 +645,7 @@ private:
         HashMapBucketType** buffer = this->buffer();
         while (iter != end) {
             uint32_t index = jsMapHash(exec, vm, iter->key()) & mask;
-            ASSERT_WITH_MESSAGE(!scope.exception(), "All keys should already be hashed before, so this should not throw because it won't resolve ropes.");
+            EXCEPTION_ASSERT_WITH_MESSAGE(!scope.exception(), "All keys should already be hashed before, so this should not throw because it won't resolve ropes.");
             {
                 HashMapBucketType* bucket = buffer[index];
                 while (!isEmpty(bucket)) {

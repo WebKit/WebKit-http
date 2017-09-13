@@ -27,6 +27,7 @@
 #include "config.h"
 #include "FileSystem.h"
 
+#include "FileMetadata.h"
 #include "ScopeGuard.h"
 #include <wtf/HexNumber.h>
 #include <wtf/text/CString.h>
@@ -255,7 +256,7 @@ bool filesHaveSameVolume(const String& fileA, const String& fileB)
 
 #if !PLATFORM(MAC)
 
-void setMetadataURL(const String&, const String&)
+void setMetadataURL(const String&, const String&, const String&)
 {
 }
 
@@ -348,6 +349,14 @@ void unlockAndCloseFile(PlatformFileHandle handle)
     ASSERT_UNUSED(unlocked, unlocked);
 #endif
     closeFile(handle);
+}
+
+bool fileIsDirectory(const String& path, ShouldFollowSymbolicLinks shouldFollowSymbolicLinks)
+{
+    auto metadata = shouldFollowSymbolicLinks == ShouldFollowSymbolicLinks::Yes ? fileMetadataFollowingSymlinks(path) : fileMetadata(path);
+    if (!metadata)
+        return false;
+    return metadata.value().type == FileMetadata::Type::Directory;
 }
 
 } // namespace WebCore

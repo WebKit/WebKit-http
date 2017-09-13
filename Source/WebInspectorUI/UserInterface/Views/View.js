@@ -120,15 +120,25 @@ WI.View = class View extends WI.Object
         console.assert(view instanceof WI.View);
         console.assert(view.element.parentNode === this._element, "Subview DOM element must be a child of the parent view element.");
 
-        if (!this._subviews.includes(view)) {
+        let index = this._subviews.lastIndexOf(view);
+        if (index === -1) {
             console.assert(false, "Cannot remove view which isn't a subview.", view);
             return;
         }
 
-        this._subviews.remove(view, true);
+        this._subviews.splice(index, 1);
         this._element.removeChild(view.element);
 
         view.didMoveToParent(null);
+    }
+
+    removeAllSubviews()
+    {
+        for (let subview of this._subviews)
+            subview.didMoveToParent(null);
+
+        this._subviews = [];
+        this._element.removeChildren();
     }
 
     replaceSubview(oldView, newView)
@@ -250,6 +260,9 @@ WI.View = class View extends WI.Object
 
         this.layout();
 
+        if (WI.settings.enableLayoutFlashing.value)
+            this._drawLayoutFlashingOutline();
+
         for (let view of this._subviews) {
             view._setLayoutReason(this._layoutReason);
             view._layoutSubtree();
@@ -264,6 +277,24 @@ WI.View = class View extends WI.Object
             return;
 
         this._layoutReason = layoutReason || WI.View.LayoutReason.Dirty;
+    }
+
+    _drawLayoutFlashingOutline()
+    {
+        if (this._layoutFlashingTimeout)
+            clearTimeout(this._layoutFlashingTimeout);
+        else
+            this._layoutFlashingPreviousOutline = this._element.style.outline;
+
+        this._element.style.outline = "1px solid hsla(39, 100%, 51%, 0.8)";
+
+        this._layoutFlashingTimeout = setTimeout(() => {
+            if (this._element)
+                this._element.style.outline = this._layoutFlashingPreviousOutline;
+
+            this._layoutFlashingTimeout = undefined;
+            this._layoutFlashingPreviousOutline = null;
+        }, 500);
     }
 
     // Layout controller logic

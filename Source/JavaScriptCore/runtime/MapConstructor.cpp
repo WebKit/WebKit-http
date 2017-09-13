@@ -64,19 +64,23 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     JSValue iterable = exec->argument(0);
-    if (iterable.isUndefinedOrNull())
+    if (iterable.isUndefinedOrNull()) {
+        scope.release();
         return JSValue::encode(JSMap::create(exec, vm, mapStructure));
+    }
 
     if (isJSMap(iterable)) {
         JSMap* iterableMap = jsCast<JSMap*>(iterable);
-        if (iterableMap->canCloneFastAndNonObservable(mapStructure))
+        if (iterableMap->canCloneFastAndNonObservable(mapStructure)) {
+            scope.release();
             return JSValue::encode(iterableMap->clone(exec, vm, mapStructure));
+        }
     }
 
     JSMap* map = JSMap::create(exec, vm, mapStructure);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    JSValue adderFunction = map->JSObject::get(exec, exec->propertyNames().set);
+    JSValue adderFunction = map->JSObject::get(exec, vm.propertyNames->set);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
@@ -118,6 +122,45 @@ CallType MapConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callMap;
     return CallType::Host;
+}
+
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketHead(ExecState* exec)
+{
+    ASSERT(isJSMap(exec->argument(0)));
+    JSMap* map = jsCast<JSMap*>(exec->uncheckedArgument(0));
+    auto* head = map->head();
+    ASSERT(head);
+    return JSValue::encode(head);
+}
+
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketNext(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<JSMap::BucketType*>(exec->vm(), exec->argument(0)));
+    auto* bucket = jsCast<JSMap::BucketType*>(exec->uncheckedArgument(0));
+    ASSERT(bucket);
+    bucket = bucket->next();
+    while (bucket) {
+        if (!bucket->deleted())
+            return JSValue::encode(bucket);
+        bucket = bucket->next();
+    }
+    return JSValue::encode(exec->vm().sentinelMapBucket.get());
+}
+
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketKey(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<JSMap::BucketType*>(exec->vm(), exec->argument(0)));
+    auto* bucket = jsCast<JSMap::BucketType*>(exec->uncheckedArgument(0));
+    ASSERT(bucket);
+    return JSValue::encode(bucket->key());
+}
+
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketValue(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<JSMap::BucketType*>(exec->vm(), exec->argument(0)));
+    auto* bucket = jsCast<JSMap::BucketType*>(exec->uncheckedArgument(0));
+    ASSERT(bucket);
+    return JSValue::encode(bucket->value());
 }
 
 }

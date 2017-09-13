@@ -1,3 +1,118 @@
+2017-09-04  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed build fix for Clang with libc++
+
+        Fixes a build failure when building with Clang, -stdlib=libc++, and gigacage
+        support enabled, which resulted in "stderr" being undefined.
+
+        * bmalloc/Gigacage.cpp: Add missing <ctsdio> include to pull the definition.
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Large virtual memory region allocation requires MMAP_NORESERVE in Linux
+        https://bugs.webkit.org/show_bug.cgi?id=176211
+
+        Reviewed by Geoffrey Garen.
+
+        In Linux, we cannot allocate very large memory region without MMAP_NORESERVE.
+        Linux kernel needs to reserve swap area for allocated memory region. If the
+        swap area is exhausted, kernel fails to allocate the memory region with ENOMEM.
+
+        This patch adds MMAP_NORESERVE to mmap flags in Linux. By adding this flag,
+        mmap does not need to reserve swap area for the reserved memory region.
+        This allows us to reserve very large memory region that is necessary for Gigacage.
+
+        * bmalloc/BPlatform.h:
+        * bmalloc/VMAllocate.h:
+        (bmalloc::tryVMAllocate):
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+        
+        This adds a StringGigacage.
+
+        * bmalloc/Gigacage.cpp:
+        * bmalloc/Gigacage.h:
+        (Gigacage::name):
+        (Gigacage::basePtr):
+        (Gigacage::forEachKind):
+        * bmalloc/HeapKind.h:
+        (bmalloc::isGigacage):
+        (bmalloc::gigacageKind):
+        (bmalloc::heapKind):
+
+2017-08-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r221384.
+
+        This patch caused multiple 32-bit JSC test failures.
+
+        Reverted changeset:
+
+        "Strings need to be in some kind of gigacage"
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+        http://trac.webkit.org/changeset/221384
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+        
+        This adds a StringGigacage.
+
+        * bmalloc/Gigacage.cpp:
+        * bmalloc/Gigacage.h:
+        (Gigacage::name):
+        (Gigacage::basePtr):
+        (Gigacage::forEachKind):
+        * bmalloc/HeapKind.h:
+        (bmalloc::isGigacage):
+        (bmalloc::gigacageKind):
+        (bmalloc::heapKind):
+
+2017-08-25  Daniel Bates  <dabates@apple.com>
+
+        Demarcate code added due to lack of NSDMI for aggregates
+        https://bugs.webkit.org/show_bug.cgi?id=175990
+
+        Reviewed by Andy Estes.
+
+        * bmalloc/BPlatform.h:
+        * bmalloc/List.h: Be explicit when initializing m_node to improve readability.
+        (bmalloc::ListNode::ListNode):
+
+2017-08-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Reduce Gigacage sizes
+        https://bugs.webkit.org/show_bug.cgi?id=175920
+
+        Reviewed by Mark Lam.
+
+        This introduces the ability to have different gigacage sizes for different gigacages, and uses it to reduce the size of both
+        gigacages, but to different extents: Primitive gets 32GB with a 16GB runway and JSValue gets 16GB.
+
+        This is a ~10% membuster progression on my Mac Pro.
+
+        * bmalloc/Gigacage.cpp:
+        (Gigacage::ensureGigacage):
+        * bmalloc/Gigacage.h:
+        (Gigacage::size):
+        (Gigacage::alignment):
+        (Gigacage::mask):
+        (Gigacage::runway):
+        (Gigacage::totalSize):
+        (Gigacage::caged):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::gigacageSize):
+        * bmalloc/Heap.h:
+
 2017-08-08  Filip Pizlo  <fpizlo@apple.com>
 
         Baseline JIT should do caging

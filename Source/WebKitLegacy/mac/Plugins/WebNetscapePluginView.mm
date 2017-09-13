@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 
 #import "WebNetscapePluginView.h"
 
-#import "QuickDrawCompatibility.h"
 #import "WebDataSourceInternal.h"
 #import "WebDefaultUIDelegate.h"
 #import "WebFrameInternal.h"
@@ -75,6 +74,8 @@
 #import <WebKitLegacy/DOMPrivate.h>
 #import <WebKitLegacy/WebUIDelegate.h>
 #import <objc/runtime.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/mac/QuickDrawSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSLock.h>
 #import <wtf/Assertions.h>
@@ -193,7 +194,7 @@ typedef struct {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
-    WKSendUserChangeNotifications();
+    sendUserChangeNotifications();
 }
 
 // MARK: EVENTS
@@ -379,10 +380,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
             qdPortState->clipRegion = clipRegion;
 
             CGContextRef currentContext = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-            if (currentContext && WKCGContextIsBitmapContext(currentContext)) {
-                // We use WKCGContextIsBitmapContext here, because if we just called CGBitmapContextGetData
-                // on any context, we'd log to the console every time. But even if WKCGContextIsBitmapContext
-                // returns true, it still might not be a context we need to create a GWorld for; for example
+            if (currentContext && CGContextGetType(currentContext) == kCGContextTypeBitmap) {
+                // We check for kCGContextTypeBitmap here, because if we just called CGBitmapContextGetData
+                // on any context, we'd log to the console every time. But even if currentContext is a
+                // kCGContextTypeBitmap, it still might not be a context we need to create a GWorld for; for example
                 // transparency layers will return true, but return 0 for CGBitmapContextGetData.
                 void* offscreenData = CGBitmapContextGetData(currentContext);
                 if (offscreenData) {
@@ -915,7 +916,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     CGrafPtr port = GetWindowPort(windowRef);
     ::Rect bounds;
     GetPortBounds(port, &bounds);
-    WKCallDrawingNotification(port, &bounds);
+    CallDrawingNotifications(port, &bounds, kBitsProc);
 #endif /* NP_NO_QUICKDRAW */
 }
 

@@ -66,7 +66,6 @@
 #include "History.h"
 #include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
-#include "Language.h"
 #include "Location.h"
 #include "MainFrame.h"
 #include "MediaQueryList.h"
@@ -110,6 +109,7 @@
 #include <inspector/ScriptCallStackFactory.h>
 #include <memory>
 #include <wtf/CurrentTime.h>
+#include <wtf/Language.h>
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -1127,6 +1127,11 @@ void DOMWindow::alert(const String& message)
     if (!m_frame)
         return;
 
+    if (document()->isSandboxed(SandboxModals)) {
+        printErrorMessage("Use of window.alert is not allowed in a sandboxed frame when the allow-modals flag is not set.");
+        return;
+    }
+
     auto* page = m_frame->page();
     if (!page)
         return;
@@ -1149,6 +1154,11 @@ bool DOMWindow::confirm(const String& message)
     if (!m_frame)
         return false;
     
+    if (document()->isSandboxed(SandboxModals)) {
+        printErrorMessage("Use of window.confirm is not allowed in a sandboxed frame when the allow-modals flag is not set.");
+        return false;
+    }
+
     auto* page = m_frame->page();
     if (!page)
         return false;
@@ -1170,6 +1180,11 @@ String DOMWindow::prompt(const String& message, const String& defaultValue)
 {
     if (!m_frame)
         return String();
+
+    if (document()->isSandboxed(SandboxModals)) {
+        printErrorMessage("Use of window.prompt is not allowed in a sandboxed frame when the allow-modals flag is not set.");
+        return String();
+    }
 
     auto* page = m_frame->page();
     if (!page)
@@ -2026,8 +2041,10 @@ void DOMWindow::removeAllEventListeners()
         document->didRemoveEventTargetNode(*document);
 #endif
 
-    if (m_performance)
+    if (m_performance) {
         m_performance->removeAllEventListeners();
+        m_performance->removeAllObservers();
+    }
 
     removeAllUnloadEventListeners(this);
     removeAllBeforeUnloadEventListeners(this);
