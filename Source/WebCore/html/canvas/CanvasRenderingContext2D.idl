@@ -80,14 +80,12 @@
     void setShadow(float width, unrestricted float height, unrestricted float blur, unrestricted float c, unrestricted float m, unrestricted float y, unrestricted float k, unrestricted float a);
     void clearShadow();
 
-    void drawSystemFocusRing(Element element);
-    void drawSystemFocusRing(DOMPath path, Element element);
-
-    readonly attribute float webkitBackingStorePixelRatio;
-
     // Inspector-only.
     [EnabledAtRuntime=InspectorAdditions] void setPath(Path2D path);
     [EnabledAtRuntime=InspectorAdditions, NewObject] Path2D getPath();
+
+    void drawSystemFocusRing(Element element);
+    void drawSystemFocusRing(Path2D path, Element element);
 };
 
 CanvasRenderingContext2D implements CanvasState;

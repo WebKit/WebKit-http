@@ -3,7 +3,7 @@
 
 #include "APIArray.h"
 #include "WebProcessPool.h"
-#include <WebCore/Language.h>
+#include <wtf/Language.h>
 
 using namespace WebKit;
 
@@ -37,5 +37,5 @@ void WKSoupSessionSetPreferredLanguages(WKContextRef context, WKArrayRef languag
             languagesVector.uncheckedAppend(string.convertToASCIILowercase().replace("_", "-"));
     }
 
-    WebCore::overrideUserPreferredLanguages(languagesVector);
+    overrideUserPreferredLanguages(languagesVector);
 }

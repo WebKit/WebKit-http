@@ -2159,7 +2159,7 @@ void CanvasRenderingContext2D::drawSystemFocusRing(Element& element)
     drawFocusIfNeededInternal(m_path, element);
 }
 
-void CanvasRenderingContext2D::drawSystemFocusRing(DOMPath& path, Element& element)
+void CanvasRenderingContext2D::drawSystemFocusRing(Path2D& path, Element& element)
 {
     drawFocusIfNeededInternal(path.path(), element);
 }

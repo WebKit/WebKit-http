@@ -67,8 +67,6 @@ public:
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
     void storeRecordOfKeyUsage(const String&) override;
 
-    void gatherAvailableKeys(AvailableKeysCallback) override;
-
     const String& keySystem() const override { return m_keySystem; }
 
     // FIXME: Session handling needs a lot of love here.
