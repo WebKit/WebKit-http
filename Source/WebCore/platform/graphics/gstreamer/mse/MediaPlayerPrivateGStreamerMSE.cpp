@@ -318,19 +318,26 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     }
 
     // Check if MSE has samples for requested time and defer actual seek if needed.
-    if (!isTimeBuffered(seekTime)) {
-        GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
-        GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
-        if (setStateResult == GST_STATE_CHANGE_FAILURE) {
-            GST_DEBUG("[Seek] Cannot seek, failed to pause playback pipeline.");
-            webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
-            m_seeking = false;
-            return false;
+    // This condition on m_readyState must match the conditions which trigger completeSeek() in
+    // MediaSource::monitorSourceBuffers().
+    if (!isTimeBuffered(seekTime) || m_readyState < MediaPlayer::HaveCurrentData) {
+        // Media source may trigger seek completion even when the target time is not yet buffered,
+        // in this case it is better continue the seek and wait for the app to provide media data.
+        m_mseSeekCompleted = true;
+        m_mediaSource->seekToTime(seekTime);
+        if (!m_mseSeekCompleted) {
+            GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
+            m_readyState = MediaPlayer::HaveMetadata;
+            GstStateChangeReturn setStateResult = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
+            if (setStateResult == GST_STATE_CHANGE_FAILURE) {
+                GST_WARNING("[Seek] Cannot seek, failed to pause playback pipeline.");
+                webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
+                m_seeking = false;
+                return false;
+            }
+            return true;
         }
-        m_readyState = MediaPlayer::HaveMetadata;
-        notifySeekNeedsDataForTime(seekTime);
-        ASSERT(!m_mseSeekCompleted);
-        return true;
+        GST_DEBUG("[Seek] The target seek time is not buffered yet, but media source says OK to continue the seek, seekTime=%f", seekTime.toDouble());
     }
 
     // Complete previous MSE seek if needed.
@@ -404,6 +411,7 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
     // Right now we can use m_seekTime as a fallback.
     m_canFallBackToLastFinishedSeekPosition = true;
     timeChanged();
+    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivateGStreamerMSE::updatePlaybackRate()
@@ -442,7 +450,7 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
     GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), &pipelineState, nullptr, 250 * GST_NSECOND);
     bool isPlaying = (getStateResult == GST_STATE_CHANGE_SUCCESS && pipelineState == GST_STATE_PLAYING);
 
-    if (m_readyState == MediaPlayer::HaveMetadata && oldReadyState > MediaPlayer::HaveMetadata && isPlaying) {
+    if (m_readyState == MediaPlayer::HaveMetadata && oldReadyState > MediaPlayer::HaveMetadata && isPlaying && !playbackPipelineHasFutureData()) {
         GST_TRACE("Changing pipeline to PAUSED...");
         bool ok = changePipelineState(GST_STATE_PAUSED);
         GST_TRACE("Changed pipeline to PAUSED: %s", ok ? "Success" : "Error");
@@ -577,7 +585,7 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
         }
 #if PLATFORM(BROADCOM)
         // this code path needs a proper review in case it can be generalized to all platforms.
-        bool buffering = !isTimeBuffered(currentMediaTime());
+        bool buffering = !isTimeBuffered(currentMediaTime()) && !playbackPipelineHasFutureData();
 #else
         bool buffering = m_buffering;
 #endif
@@ -679,6 +687,15 @@ bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
     bool result = m_mediaSource && m_mediaSource->buffered()->contain(time);
     GST_DEBUG("Time %f buffered? %s", time.toDouble(), result ? "Yes" : "No");
     return result;
+}
+
+bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
+{
+    if (!m_playbackPipeline || m_isEndReached || m_errorOccured)
+        return false;
+
+    MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
+    return m_playbackPipeline->hasFutureData(position);
 }
 
 void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)
@@ -863,6 +880,17 @@ bool MediaPlayerPrivateGStreamerMSE::supportsCodecs(const String& codecs)
     return true;
 }
 
+FloatSize MediaPlayerPrivateGStreamerMSE::naturalSize() const
+{
+    if (!hasVideo())
+        return FloatSize();
+
+    if (!m_videoSize.isEmpty())
+        return m_videoSize;
+
+    return MediaPlayerPrivateGStreamerBase::naturalSize();
+}
+
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const MediaEngineSupportParameters& parameters)
 {
     MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
@@ -879,6 +907,18 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
         result = MediaPlayer::MayBeSupported;
         return result;
     }
+
+    // We shouldn't accept media that the player can't actually play. Using AAC audio, 8K and 60 fps limits here.
+    // AAC supports up to 96 channels.
+    if (parameters.channels > 96)
+        return result;
+
+    // 8K is up to 7680*4320
+    if (parameters.dimension.width() > 7680.0 || parameters.dimension.height() > 4320.0)
+        return result;
+
+    if (parameters.framerate > 60.0)
+        return result;
 
     // Spec says we should not return "probably" if the codecs string is empty.
     if (mimeTypeCache().contains(containerType)) {
@@ -902,11 +942,19 @@ void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfSt
     updateStates();
 }
 
+void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
+{
+    GST_DEBUG("Unmarking end of stream");
+    m_eosPending = false;
+}
+
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
+    MediaTime cachedPosition = MediaTime::createWithFloat(m_cachedPosition);
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
+    MediaTime playbackProgress = abs(position - cachedPosition);
 
-    if (m_eosPending && (paused() || (position >= durationMediaTime()))) {
+    if (m_eosPending && abs(position - durationMediaTime()) < MediaTime(GST_SECOND, GST_SECOND) && !playbackProgress) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();
@@ -914,7 +962,8 @@ MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 
         m_eosPending = false;
         m_isEndReached = true;
-        m_cachedPosition = m_mediaTimeDuration.toFloat();
+        position = m_mediaTimeDuration;
+        m_cachedPosition = position.toFloat();
         m_durationAtEOS = m_mediaTimeDuration.toFloat();
         m_player->timeChanged();
     }

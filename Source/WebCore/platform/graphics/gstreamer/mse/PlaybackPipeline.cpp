@@ -36,7 +36,6 @@
 #include <gst/gst.h>
 #include <wtf/MainThread.h>
 #include <wtf/RefCounted.h>
-#include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/AtomicString.h>
@@ -114,7 +113,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
 
     GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "State %d", int(GST_STATE(m_webKitMediaSrc.get())));
 
-    Stream* stream = new Stream{ };
+    Stream* stream = new Stream { };
     stream->parent = m_webKitMediaSrc.get();
     stream->appsrc = gst_element_factory_make("appsrc", nullptr);
     stream->appsrcNeedDataFlag = false;
@@ -128,12 +127,13 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     stream->videoTrack = nullptr;
     stream->presentationSize = WebCore::FloatSize();
     stream->lastEnqueuedTime = MediaTime::invalidTime();
+    stream->firstEnqueuedTime = MediaTime::invalidTime();
 
     gst_app_src_set_callbacks(GST_APP_SRC(stream->appsrc), &enabledAppsrcCallbacks, stream->parent, nullptr);
     gst_app_src_set_emit_signals(GST_APP_SRC(stream->appsrc), FALSE);
     gst_app_src_set_stream_type(GST_APP_SRC(stream->appsrc), GST_APP_STREAM_TYPE_SEEKABLE);
 
-    gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), 2 * WTF::MB);
+    gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), 8 * WTF::MB);
     g_object_set(G_OBJECT(stream->appsrc), "block", FALSE, "min-percent", 20, "format", GST_FORMAT_TIME, nullptr);
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
@@ -404,8 +404,14 @@ void PlaybackPipeline::flush(AtomicString trackId)
     }
 
     stream->lastEnqueuedTime = MediaTime::invalidTime();
+    stream->firstEnqueuedTime = MediaTime::invalidTime();
     GstElement* appsrc = stream->appsrc;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+
+    if (trackId.startsWith("A")) {
+        GST_DEBUG("flush: refusing to flush audio stream");
+        return;
+    }
 
     if (!appsrc)
         return;
@@ -417,7 +423,7 @@ void PlaybackPipeline::flush(AtomicString trackId)
 
     GST_TRACE("Position: %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
-    if (static_cast<guint64>(position) == GST_CLOCK_TIME_NONE) {
+    if (!GST_CLOCK_TIME_IS_VALID(position)) {
         GST_TRACE("Can't determine position, avoiding flush");
         return;
     }
@@ -480,7 +486,6 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
         GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->presentationTime().toDouble())),
         GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->duration().toDouble())));
 
-    WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(m_webKitMediaSrc.get()));
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
     if (!stream) {
@@ -507,6 +512,8 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
         // gst_app_src_push_sample() uses transfer-none for gstSample.
 
         stream->lastEnqueuedTime = lastEnqueuedTime;
+        if (!stream->firstEnqueuedTime.isValid())
+            stream->firstEnqueuedTime = lastEnqueuedTime;
     }
 }
 
@@ -516,6 +523,33 @@ GstElement* PlaybackPipeline::pipeline()
         return nullptr;
 
     return GST_ELEMENT_PARENT(GST_ELEMENT_PARENT(GST_ELEMENT(m_webKitMediaSrc.get())));
+}
+
+bool PlaybackPipeline::hasFutureData(const MediaTime& start)
+{
+    if (!m_webKitMediaSrc)
+        return false;
+
+    MediaTime lastEnqueuedTime = MediaTime::positiveInfiniteTime();
+    MediaTime firstEnqueuedTime = MediaTime::negativeInfiniteTime();
+
+    GST_OBJECT_LOCK(m_webKitMediaSrc.get());
+    WebKitMediaSrcPrivate* priv = m_webKitMediaSrc->priv;
+    for (Stream* stream : priv->streams) {
+        if (lastEnqueuedTime > stream->lastEnqueuedTime)
+            lastEnqueuedTime = stream->lastEnqueuedTime;
+        if (firstEnqueuedTime < stream->firstEnqueuedTime)
+            firstEnqueuedTime = stream->firstEnqueuedTime;
+    }
+    GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+
+    if (lastEnqueuedTime.isPositiveInfinite())
+        return false;
+
+    const MediaTime threshold = MediaTime(350, 1000);
+    MediaTime end = start + threshold;
+
+    return firstEnqueuedTime <= start && lastEnqueuedTime > end;
 }
 
 } // namespace WebCore.

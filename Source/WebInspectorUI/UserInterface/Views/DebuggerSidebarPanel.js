@@ -68,7 +68,7 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         enableBreakpointsLink.addEventListener("click", () => { WI.debuggerToggleBreakpoints(); });
 
         this._navigationBar = new WI.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         var breakpointsImage = {src: "Images/Breakpoints.svg", width: 15, height: 15};
         var pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};

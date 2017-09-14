@@ -68,12 +68,12 @@ WI.LegacyNetworkSidebarPanel = class LegacyNetworkSidebarPanel extends WI.Naviga
     initialLayout()
     {
         this._navigationBar = new WI.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         this._resourcesTitleBarElement = document.createElement("div");
         this._resourcesTitleBarElement.textContent = WI.UIString("Name");
         this._resourcesTitleBarElement.classList.add("title-bar");
-        this.element.appendChild(this._resourcesTitleBarElement);
+        this.element.insertBefore(this._resourcesTitleBarElement, this._contentView.element);
 
         let scopeItemPrefix = "network-sidebar-";
         let scopeBarItems = [];

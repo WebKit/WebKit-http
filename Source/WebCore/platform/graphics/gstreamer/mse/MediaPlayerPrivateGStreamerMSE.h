@@ -53,6 +53,8 @@ public:
     void load(const String&) override;
     void load(const String&, MediaSourcePrivateClient*) override;
 
+    FloatSize naturalSize() const final;
+
     void setDownloadBuffering() override { };
 
     bool isLiveStream() const override { return false; }
@@ -79,6 +81,7 @@ public:
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+    void unmarkEndOfStream();
 
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
     void notifySeekNeedsDataForTime(const MediaTime&);
@@ -107,6 +110,7 @@ private:
     // FIXME: Implement.
     std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override { return std::nullopt; }
     bool isTimeBuffered(const MediaTime&) const;
+    bool playbackPipelineHasFutureData() const;
 
     bool isMediaSource() const override { return true; }
 

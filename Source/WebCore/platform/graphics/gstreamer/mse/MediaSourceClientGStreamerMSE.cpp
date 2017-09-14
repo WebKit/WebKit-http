@@ -154,6 +154,16 @@ void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStr
     m_playerPrivate->markEndOfStream(status);
 }
 
+void MediaSourceClientGStreamerMSE::unmarkEndOfStream()
+{
+    ASSERT(WTF::isMainThread());
+
+    if (!m_playerPrivate)
+        return;
+
+    m_playerPrivate->unmarkEndOfStream();
+}
+
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)
 {
     ASSERT(WTF::isMainThread());

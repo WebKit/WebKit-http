@@ -433,7 +433,12 @@ WI.Popover = class Popover extends WI.Object
         ctx.stroke();
 
         // Draw the popover into the final context with a drop shadow.
-        let finalContext = document.getCSSCanvasContext("2d", "popover", scaledWidth, scaledHeight);
+        var popoverCanvas = document.createElement("canvas");
+        popoverCanvas.width = scaledWidth;
+        popoverCanvas.height = scaledHeight;
+
+        var finalContext = popoverCanvas.getContext("2d");
+
         finalContext.clearRect(0, 0, scaledWidth, scaledHeight);
         finalContext.shadowOffsetX = 1;
         finalContext.shadowOffsetY = 1;

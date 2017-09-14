@@ -23,8 +23,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef WebProxy_h
-#define WeProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include <WebCore/Proxy.h>
@@ -43,11 +42,9 @@ public:
 
 private:
     WebProxy(const WebCore::Proxy& proxy)
-            : m_proxy(proxy) {}
+        : m_proxy(proxy) { }
 
     WebCore::Proxy m_proxy;
 };
 
 }
-
-#endif

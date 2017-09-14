@@ -69,6 +69,11 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
 
+#if ENABLE(MEMORY_SAMPLER)
+    if (getenv("WEBKIT_SAMPLE_MEMORY"))
+        pool->startMemorySampler(0);
+#endif
+
 #if PLATFORM(INTEL_CE)
     m_pageProxy->setDrawsBackground(false);
 #endif

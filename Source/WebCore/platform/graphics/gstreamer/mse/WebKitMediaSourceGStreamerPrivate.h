@@ -69,6 +69,7 @@ struct _Stream {
 
     // Used to enforce continuity in the appended data and avoid breaking the decoder.
     MediaTime lastEnqueuedTime;
+    MediaTime firstEnqueuedTime;
 };
 
 enum {

@@ -224,12 +224,12 @@ void WKPageLoadAlternateHTMLStringWithUserData(WKPageRef pageRef, WKStringRef ht
 
 void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef));    
+    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef));
 }
 
 void WKPageLoadPlainTextStringWithUserData(WKPageRef pageRef, WKStringRef plainTextStringRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef), toImpl(userDataRef));    
+    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef), toImpl(userDataRef));
 }
 
 void WKPageLoadWebArchiveData(WKPageRef pageRef, WKDataRef webArchiveDataRef)
@@ -963,7 +963,7 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
         {
             if (!m_client.didFindString)
                 return;
-            
+
             m_client.didFindString(toAPI(page), toAPI(string.impl()), matchCount, m_client.base.clientInfo);
         }
 
@@ -971,7 +971,7 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
         {
             if (!m_client.didFailToFindString)
                 return;
-            
+
             m_client.didFailToFindString(toAPI(page), toAPI(string.impl()), m_client.base.clientInfo);
         }
 
@@ -1326,7 +1326,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
                 RefPtr<API::String> webUnavailabilityDescription = adoptRef(toImpl(unavailabilityDescriptionOut));
                 unavailabilityDescription = webUnavailabilityDescription->string();
             }
-            
+
             return loadPolicy;
         }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -1434,7 +1434,7 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
         {
             if (!m_client.unableToImplementPolicy)
                 return;
-            
+
             m_client.unableToImplementPolicy(toAPI(&page), toAPI(&frame), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
     };
@@ -1490,7 +1490,7 @@ private:
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
-    
+
     Function<void ()> m_completionHandler;
 };
 
@@ -1615,7 +1615,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
                 return completionHandler(adoptRef(toImpl(m_client.createNewPage(toAPI(&page), toAPI(configuration.ptr()), toAPI(apiNavigationAction.ptr()), toAPI(apiWindowFeatures.ptr()), m_client.base.clientInfo))));
             }
-        
+
             if (m_client.createNewPage_deprecatedForUseWithV1 || m_client.createNewPage_deprecatedForUseWithV0) {
                 API::Dictionary::MapType map;
                 if (windowFeatures.x)
@@ -1640,7 +1640,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                     Ref<API::URLRequest> request = API::URLRequest::create(resourceRequest);
                     return completionHandler(adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV1(toAPI(&page), toAPI(request.ptr()), toAPI(featuresMap.ptr()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo))));
                 }
-    
+
                 ASSERT(m_client.createNewPage_deprecatedForUseWithV0);
                 return completionHandler(adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV0(toAPI(&page), toAPI(featuresMap.ptr()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo))));
             }
@@ -1727,7 +1727,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 completionHandler();
                 return;
             }
-            
+
             if (m_client.runJavaScriptAlert_deprecatedForUseWithV0) {
                 m_client.runJavaScriptAlert_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
                 completionHandler();
@@ -1750,18 +1750,18 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             if (m_client.runJavaScriptConfirm_deprecatedForUseWithV5) {
                 RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(securityOriginData.protocol, securityOriginData.host, securityOriginData.port);
                 bool result = m_client.runJavaScriptConfirm_deprecatedForUseWithV5(toAPI(page), toAPI(message.impl()), toAPI(frame), toAPI(securityOrigin.get()), m_client.base.clientInfo);
-                
+
                 completionHandler(result);
                 return;
             }
-            
+
             if (m_client.runJavaScriptConfirm_deprecatedForUseWithV0) {
                 bool result = m_client.runJavaScriptConfirm_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
 
                 completionHandler(result);
                 return;
             }
-            
+
             completionHandler(false);
         }
 
@@ -1777,17 +1777,17 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             if (m_client.runJavaScriptPrompt_deprecatedForUseWithV5) {
                 RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(securityOriginData.protocol, securityOriginData.host, securityOriginData.port);
                 RefPtr<API::String> string = adoptRef(toImpl(m_client.runJavaScriptPrompt_deprecatedForUseWithV5(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), toAPI(securityOrigin.get()), m_client.base.clientInfo)));
-                
+
                 if (string)
                     completionHandler(string->string());
                 else
                     completionHandler(String());
                 return;
             }
-            
+
             if (m_client.runJavaScriptPrompt_deprecatedForUseWithV0) {
                 RefPtr<API::String> string = adoptRef(toImpl(m_client.runJavaScriptPrompt_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.base.clientInfo)));
-                
+
                 if (string)
                     completionHandler(string->string());
                 else
@@ -2120,7 +2120,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 #endif
 
         void willAddDetailedMessageToConsole(WebPageProxy* page, const String& source, const String& level,
-                uint64_t line, uint64_t column, const String& message, const String& url)
+            uint64_t line, uint64_t column, const String& message, const String& url) override
         {
             if (!m_client.willAddDetailedMessageToConsole)
                 return;
@@ -2274,21 +2274,21 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
                 return;
             m_client.didSameDocumentNavigation(toAPI(&page), toAPI(navigation), toAPI(navigationType), toAPI(userData), m_client.base.clientInfo);
         }
-        
+
         void renderingProgressDidChange(WebPageProxy& page, WebCore::LayoutMilestones milestones) override
         {
             if (!m_client.renderingProgressDidChange)
                 return;
             m_client.renderingProgressDidChange(toAPI(&page), pageRenderingProgressEvents(milestones), nullptr, m_client.base.clientInfo);
         }
-        
+
         bool canAuthenticateAgainstProtectionSpace(WebPageProxy& page, WebProtectionSpace* protectionSpace) override
         {
             if (!m_client.canAuthenticateAgainstProtectionSpace)
                 return false;
             return m_client.canAuthenticateAgainstProtectionSpace(toAPI(&page), toAPI(protectionSpace), m_client.base.clientInfo);
         }
-        
+
         void didReceiveAuthenticationChallenge(WebPageProxy& page, AuthenticationChallengeProxy* authenticationChallenge) override
         {
             if (!m_client.didReceiveAuthenticationChallenge)
@@ -2348,21 +2348,21 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
                 return;
             m_client.didRemoveNavigationGestureSnapshot(toAPI(&page), m_client.base.clientInfo);
         }
-        
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
         PluginModuleLoadPolicy decidePolicyForPluginLoad(WebPageProxy& page, PluginModuleLoadPolicy currentPluginLoadPolicy, API::Dictionary* pluginInformation, String& unavailabilityDescription) override
         {
             WKStringRef unavailabilityDescriptionOut = 0;
             PluginModuleLoadPolicy loadPolicy = currentPluginLoadPolicy;
-            
+
             if (m_client.decidePolicyForPluginLoad)
                 loadPolicy = toPluginModuleLoadPolicy(m_client.decidePolicyForPluginLoad(toAPI(&page), toWKPluginLoadPolicy(currentPluginLoadPolicy), toAPI(pluginInformation), &unavailabilityDescriptionOut, m_client.base.clientInfo));
-            
+
             if (unavailabilityDescriptionOut) {
                 RefPtr<API::String> webUnavailabilityDescription = adoptRef(toImpl(unavailabilityDescriptionOut));
                 unavailabilityDescription = webUnavailabilityDescription->string();
             }
-            
+
             return loadPolicy;
         }
 #endif
@@ -2552,7 +2552,7 @@ bool WKPageGetAllowsRemoteInspection(WKPageRef page)
 #else
     UNUSED_PARAM(page);
     return false;
-#endif    
+#endif
 }
 
 void WKPageSetAllowsRemoteInspection(WKPageRef page, bool allow)
@@ -2567,7 +2567,7 @@ void WKPageSetAllowsRemoteInspection(WKPageRef page, bool allow)
 
 void WKPageSetMediaVolume(WKPageRef page, float volume)
 {
-    toImpl(page)->setMediaVolume(volume);    
+    toImpl(page)->setMediaVolume(volume);
 }
 
 void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted)
@@ -2700,7 +2700,7 @@ void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item)
 WKScrollPinningBehavior WKPageGetScrollPinningBehavior(WKPageRef page)
 {
     ScrollPinningBehavior pinning = toImpl(page)->scrollPinningBehavior();
-    
+
     switch (pinning) {
     case WebCore::ScrollPinningBehavior::DoNotPin:
         return kWKScrollPinningBehaviorDoNotPin;
@@ -2709,7 +2709,7 @@ WKScrollPinningBehavior WKPageGetScrollPinningBehavior(WKPageRef page)
     case WebCore::ScrollPinningBehavior::PinToBottom:
         return kWKScrollPinningBehaviorPinToBottom;
     }
-    
+
     ASSERT_NOT_REACHED();
     return kWKScrollPinningBehaviorDoNotPin;
 }
@@ -2731,7 +2731,7 @@ void WKPageSetScrollPinningBehavior(WKPageRef page, WKScrollPinningBehavior pinn
     default:
         ASSERT_NOT_REACHED();
     }
-    
+
     toImpl(page)->setScrollPinningBehavior(corePinning);
 }
 

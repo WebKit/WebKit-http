@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Platform_h
-#define WTF_Platform_h
+#pragma once
 
 /* Include compiler specific macros */
 #include <wtf/Compiler.h>
@@ -288,7 +287,9 @@
     || defined(__ARM_ARCH_7K__) \
     || defined(__ARM_ARCH_7M__) \
     || defined(__ARM_ARCH_7R__) \
-    || defined(__ARM_ARCH_7S__)
+    || defined(__ARM_ARCH_7S__) \
+    || defined(__ARM_ARCH_8__) \
+    || defined(__ARM_ARCH_8A__)
 #define WTF_THUMB_ARCH_VERSION 4
 
 /* RVCT sets __TARGET_ARCH_THUMB */
@@ -1295,5 +1296,3 @@
 #if !OS(WINDOWS)
 #define HAVE_STACK_BOUNDS_FOR_NEW_THREAD 1
 #endif
-
-#endif /* WTF_Platform_h */

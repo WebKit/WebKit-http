@@ -622,7 +622,7 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
             WTF::GMutexLocker<GMutex> gstLocker(*GST_OBJECT_GET_LOCK(src));
 
             GstContext* context = gst_context_new("http-headers", FALSE);
-            gst_context_make_writable(context);
+            context = gst_context_make_writable(context);
             GstStructure* contextStructure = gst_context_writable_structure(context);
 
             const gchar* cookiesArray[] = { src->priv->cookies.get(), nullptr};
@@ -984,4 +984,3 @@ void CachedResourceStreamingClient::loadFinished(PlatformMediaResource&)
 }
 
 #endif // USE(GSTREAMER)
-

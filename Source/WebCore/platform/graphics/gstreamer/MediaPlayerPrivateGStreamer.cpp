@@ -310,17 +310,17 @@ void MediaPlayerPrivateGStreamer::commitLoad()
 // utility function for bcm nexus seek functionality
 static GstElement* findVideoDecoder(GstElement *element)
 {
-    GstElement *re = NULL;
+    GstElement* re = nullptr;
     if (GST_IS_BIN(element)) {
         GstIterator* it = gst_bin_iterate_elements(GST_BIN(element));
         GValue item = G_VALUE_INIT;
         bool done = false;
-        while(!done) {
+        while (!done) {
             switch (gst_iterator_next(it, &item)) {
                 case GST_ITERATOR_OK:
                 {
                     GstElement *next = GST_ELEMENT(g_value_get_object(&item));
-                    done = (re = findVideoDecoder(next)) != NULL;
+                    done = (re = findVideoDecoder(next));
                     g_value_reset (&item);
                     break;
                 }
@@ -483,6 +483,9 @@ void MediaPlayerPrivateGStreamer::play()
         m_isEndReached = false;
         m_delayingLoad = false;
         m_preload = MediaPlayer::Auto;
+        // Make sure we properly detect live stream on play.
+        if (!isMediaSource())
+            totalBytes();
         setDownloadBuffering();
         GST_DEBUG("Play");
     } else {
@@ -1430,7 +1433,7 @@ float MediaPlayerPrivateGStreamer::maxTimeLoaded() const
         return 0.0f;
 
     float loaded = m_maxTimeLoaded;
-    if (!loaded && !m_fillTimer.isActive()){
+    if (!loaded && !m_fillTimer.isActive()) {
         if (m_cachedPosition > 0)
             loaded = m_cachedPosition;
         else if (m_durationAtEOS)
@@ -2153,7 +2156,7 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
     unsigned flagDownload = getGstPlayFlag("download");
 
     // We don't want to stop downloading if we already started it.
-    if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_resetPipeline)
+    if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_resetPipeline && !isLiveStream())
         return;
 
     bool shouldDownload = !isLiveStream() && m_preload == MediaPlayer::Auto && !isMediaDiskCacheDisabled();

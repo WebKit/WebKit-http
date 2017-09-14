@@ -4608,7 +4608,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
     invalidateCachedTime();
     bool wasSeeking = seeking();
 
-    // 4.8.10.9 step 14 & 15.  Needed if no ReadyState change is associated with the seek.
+    // 4.8.10.9 step 14 & 15. Needed if no ReadyState change is associated with the seek.
     if (m_seekRequested && m_readyState >= HAVE_CURRENT_DATA && !m_player->seeking())
         finishSeek();
 

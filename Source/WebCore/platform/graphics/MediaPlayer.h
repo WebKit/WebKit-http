@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaPlayer_h
-#define MediaPlayer_h
-
+#pragma once
 #if ENABLE(VIDEO)
 #include "GraphicsTypes3D.h"
 
@@ -121,6 +119,9 @@ struct MediaEngineSupportParameters {
     ContentType type;
     URL url;
     String keySystem;
+    unsigned int channels;
+    FloatSize dimension;
+    float framerate;
     bool isMediaSource { false };
     bool isMediaStream { false };
     Vector<ContentType> contentTypesRequiringHardwareSupport;
@@ -368,7 +369,7 @@ public:
     bool inMediaDocument() const;
 
     IntSize size() const { return m_size; }
-    void setSize(const IntSize& size);
+    void setSize(const IntSize&);
     void setPosition(const IntPoint&);
 
     bool load(const URL&, const ContentType&, const String& keySystem);
@@ -445,7 +446,7 @@ public:
     void setMuted(bool);
 
     bool hasClosedCaptions() const;
-    void setClosedCaptionsVisible(bool closedCaptionsVisible);
+    void setClosedCaptionsVisible(bool);
 
     void paint(GraphicsContext&, const FloatRect&);
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&);
@@ -711,5 +712,3 @@ struct LogArgument<WTF::MediaTime> {
 }
 
 #endif // ENABLE(VIDEO)
-
-#endif
