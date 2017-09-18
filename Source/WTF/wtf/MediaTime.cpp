@@ -474,6 +474,13 @@ const MediaTime& MediaTime::indefiniteTime()
     return *time;
 }
 
+MediaTime MediaTime::toTimeScale(int32_t timeScale) const
+{
+    MediaTime result = *this;
+    result.setTimeScale(timeScale);
+    return result;
+}
+
 void MediaTime::setTimeScale(int32_t timeScale)
 {
     if (hasDoubleValue()) {
