@@ -62,7 +62,7 @@ public:
 
     void pause() override;
     bool seeking() const override;
-    void seek(float) override;
+    void seek(const MediaTime&) override;
     void configurePlaySink() override;
     bool changePipelineState(GstState) override;
 

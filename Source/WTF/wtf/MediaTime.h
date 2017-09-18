@@ -120,6 +120,8 @@ public:
     static const int32_t DefaultTimeScale = 10000000;
     static const int32_t MaximumTimeScale;
 
+    MediaTime toTimeScale(int32_t) const;
+
 private:
     void setTimeScale(int32_t);
 
