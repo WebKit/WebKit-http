@@ -27,6 +27,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/IntRect.h>
 #include <wtf/MathExtras.h>
+#include "Extensions3DCache.h"
 
 using namespace WebCore;
 
@@ -89,19 +90,29 @@ void UpdateAtlas::didSwapBuffers()
 bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client& client)
 {
     m_inactivityInSeconds = 0;
-    buildLayoutIfNeeded();
-    IntRect rect = m_areaAllocator->allocate(size);
 
-    // No available buffer was found.
-    if (rect.isEmpty())
-        return false;
+    IntRect rect;
+    if (Extensions3DCache::singleton().GL_EXT_unpack_subimage()) {
+        buildLayoutIfNeeded();
+        rect = m_areaAllocator->allocate(size);
+
+        // No available buffer was found.
+        if (rect.isEmpty())
+            return false;
+
+        offset = rect.location();
+    } else {
+        // When GL_EXT_unpack_subimage is not available, the size requested to paint is the same
+        // as the UpdateAtlas, so we don't need the AreaAllocator. The offset is always (0, 0)
+        // and the size is always the size requested.
+        offset = IntPoint(0, 0);
+        rect = IntRect(offset, size);
+    }
 
     if (!m_surface)
         return false;
 
     atlasID = m_ID;
-
-    offset = rect.location();
 
     UpdateAtlasSurfaceClient surfaceClient(client, size, supportsAlpha());
     m_surface->paintToSurface(rect, surfaceClient);
