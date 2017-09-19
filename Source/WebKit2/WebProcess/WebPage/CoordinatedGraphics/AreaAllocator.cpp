@@ -19,7 +19,6 @@
 
 #include "config.h"
 #include "AreaAllocator.h"
-#include "Extensions3DCache.h"
 
 #if USE(COORDINATED_GRAPHICS)
 
@@ -78,9 +77,7 @@ GeneralAreaAllocator::GeneralAreaAllocator(const IntSize& size)
     m_root->rect = IntRect(0, 0, m_size.width(), m_size.height());
     m_root->largestFree = m_size;
     m_nodeCount = 1;
-    if (Extensions3DCache::singleton().GL_EXT_unpack_subimage()) {
-        setMinimumAllocation(IntSize(8, 8));
-    }
+    setMinimumAllocation(IntSize(8, 8));
 }
 
 GeneralAreaAllocator::~GeneralAreaAllocator()
