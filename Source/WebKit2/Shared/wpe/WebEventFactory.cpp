@@ -126,25 +126,29 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* 
     // FIXME: We shouldn't hard-code this.
     enum Axis {
         Vertical,
-        Horizontal
+        Horizontal,
+        Smooth
     };
 
     WebCore::FloatSize wheelTicks;
+    WebCore::FloatSize delta;
     switch (event->axis) {
     case Vertical:
-        wheelTicks = WebCore::FloatSize(0, 1);
+        wheelTicks = WebCore::FloatSize(0, event->value / std::abs(event->value));
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
     case Horizontal:
-        wheelTicks = WebCore::FloatSize(1, 0);
+        wheelTicks = WebCore::FloatSize(event->value / std::abs(event->value), 0);
+        delta = wheelTicks;
+        delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
         break;
+    case Smooth:
+        wheelTicks = WebCore::FloatSize(0, event->value);
+        delta = wheelTicks;
     default:
         ASSERT_NOT_REACHED();
     };
-
-    wheelTicks.scale(event->value / std::abs(event->value));
-
-    WebCore::FloatSize delta = wheelTicks;
-    delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event->x, event->y);
     return WebWheelEvent(WebEvent::Wheel, position, position,
@@ -197,8 +201,11 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
         if (point.type == wpe_input_touch_event_type_null)
             continue;
 
-        touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
-            WebCore::IntPoint(point.x, point.y), WebCore::IntPoint(point.x, point.y)));
+        WebCore::IntPoint pointCoordinates(point.x, point.y);
+
+        touchPoints.uncheckedAppend(
+            WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),
+            pointCoordinates, pointCoordinates));
     }
 
     return WebTouchEvent(type, WTFMove(touchPoints), WebEvent::Modifiers(0), event->time);

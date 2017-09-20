@@ -27,6 +27,7 @@
 #define PageClientImpl_h
 
 #include "PageClient.h"
+#include "ScrollGestureController.h"
 #include "WebFullScreenManagerProxy.h"
 
 namespace WKWPE {
@@ -133,6 +134,8 @@ private:
 #endif
 
     WKWPE::View& m_view;
+
+    std::unique_ptr<ScrollGestureController> m_scrollGestureController;
 };
 
 } // namespace WebKit

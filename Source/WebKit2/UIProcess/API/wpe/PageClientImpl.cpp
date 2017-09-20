@@ -28,6 +28,7 @@
 
 #include "DrawingAreaProxyWPE.h"
 #include "NativeWebMouseEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
 #include <WebCore/NotImplemented.h>
@@ -37,6 +38,7 @@ namespace WebKit {
 
 PageClientImpl::PageClientImpl(WKWPE::View& view)
     : m_view(view)
+    , m_scrollGestureController(std::make_unique<ScrollGestureController>())
 {
 }
 
@@ -173,7 +175,16 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& touchEvent, b
     if (touchPoint->type == wpe_input_touch_event_type_null)
         return;
 
-    struct wpe_input_pointer_event pointerEvent{
+    auto& page = m_view.page();
+
+    if (m_scrollGestureController->handleEvent(touchPoint)) {
+        struct wpe_input_axis_event* axisEvent = m_scrollGestureController->axisEvent();
+        if (axisEvent->type != wpe_input_axis_event_type_null)
+            page.handleWheelEvent(WebKit::NativeWebWheelEvent(axisEvent));
+        return;
+    }
+
+    struct wpe_input_pointer_event pointerEvent {
         wpe_input_pointer_event_type_null, touchPoint->time,
         touchPoint->x, touchPoint->y,
         1, 0
@@ -197,7 +208,7 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& touchEvent, b
         return;
     }
 
-    m_view.page().handleMouseEvent(NativeWebMouseEvent(&pointerEvent));
+    page.handleMouseEvent(NativeWebMouseEvent(&pointerEvent));
 }
 #endif
 
