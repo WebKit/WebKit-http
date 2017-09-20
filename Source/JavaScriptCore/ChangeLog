@@ -1,3 +1,12 @@
+2017-09-20  Alberto Garcia  <berto@igalia.com>
+
+        Fix HPPA and Alpha builds
+        https://bugs.webkit.org/show_bug.cgi?id=177224
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
 2017-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Move make-js-file-arrays.py from WebCore to JavaScriptCore
