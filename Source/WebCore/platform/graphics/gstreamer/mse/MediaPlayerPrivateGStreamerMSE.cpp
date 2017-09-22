@@ -798,11 +798,10 @@ const static HashSet<AtomicString>& codecSet()
             Vector<AtomicString> webkitCodecs;
         };
 
-        std::array<GstCapsWebKitMapping, 3> mapping = { {
-            { VideoDecoder, "video/x-h264,  profile=(string){ constrained-baseline, baseline }", { "x-h264" } },
-            { VideoDecoder, "video/x-h264, stream-format=avc", { "avc*"} },
+        GstCapsWebKitMapping mapping[] = {
+            { VideoDecoder, "video/x-h264,  profile=(string){ constrained-baseline, baseline }", { "x-h264", "avc*" } },
             { VideoDecoder, "video/mpeg, mpegversion=(int){1,2}, systemstream=(boolean)false", { "mpeg" } }
-        } };
+        };
 
         for (auto& current : mapping) {
             GList* factories = nullptr;
