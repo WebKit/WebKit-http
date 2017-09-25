@@ -33,13 +33,13 @@
 #import "GraphicsContextCG.h"
 #import "Logging.h"
 #import "MediaStreamPrivate.h"
-#import "MediaTimeAVFoundation.h"
 #import "PixelBufferConformerCV.h"
 #import "VideoTrackPrivateMediaStream.h"
 #import <AVFoundation/AVSampleBufferDisplayLayer.h>
 #import <QuartzCore/CALayer.h>
 #import <QuartzCore/CATransaction.h>
 #import <objc_runtime.h>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
 #import <pal/spi/mac/AVFoundationSPI.h>
 #import <wtf/Function.h>
 #import <wtf/MainThread.h>
@@ -188,7 +188,6 @@ static const double rendererLatency = 0.02;
 
 MediaPlayerPrivateMediaStreamAVFObjC::MediaPlayerPrivateMediaStreamAVFObjC(MediaPlayer* player)
     : m_player(player)
-    , m_weakPtrFactory(this)
     , m_statusChangeListener(adoptNS([[WebAVSampleBufferStatusChangeListener alloc] initWithParent:this]))
     , m_clock(Clock::create())
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -304,7 +303,7 @@ MediaTime MediaPlayerPrivateMediaStreamAVFObjC::calculateTimelineOffset(const Me
         sampleTime = sample.presentationTime();
     MediaTime timelineOffset = streamTime() - sampleTime + MediaTime::createWithDouble(latency);
     if (timelineOffset.timeScale() != sampleTime.timeScale())
-        timelineOffset = toMediaTime(CMTimeConvertScale(toCMTime(timelineOffset), sampleTime.timeScale(), kCMTimeRoundingMethod_Default));
+        timelineOffset = PAL::toMediaTime(CMTimeConvertScale(PAL::toCMTime(timelineOffset), sampleTime.timeScale(), kCMTimeRoundingMethod_Default));
     return timelineOffset;
 }
 
@@ -394,7 +393,11 @@ void MediaPlayerPrivateMediaStreamAVFObjC::enqueueVideoSample(MediaStreamTrackPr
 
 void MediaPlayerPrivateMediaStreamAVFObjC::requestNotificationWhenReadyForVideoData()
 {
+    auto weakThis = createWeakPtr();
     [m_sampleBufferDisplayLayer requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^ {
+        if (!weakThis)
+            return;
+
         [m_sampleBufferDisplayLayer stopRequestingMediaData];
 
         while (!m_pendingVideoSampleQueue.isEmpty()) {

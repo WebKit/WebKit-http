@@ -30,6 +30,7 @@
 
 #include "AnimationBase.h"
 #include "CSSPropertyNames.h"
+#include "RenderStyle.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -40,7 +41,18 @@ class Element;
 class Frame;
 class LayoutRect;
 class RenderElement;
-class RenderStyle;
+
+struct AnimationUpdate {
+#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
+    AnimationUpdate() = default;
+    AnimationUpdate(std::unique_ptr<RenderStyle> style, bool stateChanged)
+        : style(WTFMove(style))
+        , stateChanged(stateChanged)
+    { }
+#endif
+    std::unique_ptr<RenderStyle> style;
+    bool stateChanged { false };
+};
 
 class CSSAnimationController {
     WTF_MAKE_FAST_ALLOCATED;
@@ -48,9 +60,9 @@ public:
     explicit CSSAnimationController(Frame&);
     ~CSSAnimationController();
 
-    void cancelAnimations(RenderElement&);
-    bool updateAnimations(RenderElement&, const RenderStyle& newStyle, std::unique_ptr<RenderStyle>& animatedStyle);
-    std::unique_ptr<RenderStyle> getAnimatedStyleForRenderer(RenderElement&);
+    void cancelAnimations(Element&);
+    AnimationUpdate updateAnimations(Element&, const RenderStyle& newStyle, const RenderStyle* oldStyle);
+    std::unique_ptr<RenderStyle> animatedStyleForRenderer(RenderElement&);
 
     // If possible, compute the visual extent of any transform animation on the given renderer
     // using the given rect, returning the result in the rect. Return false if there is some
@@ -60,8 +72,8 @@ public:
     // This is called when an accelerated animation or transition has actually started to animate.
     void notifyAnimationStarted(RenderElement&, double startTime);
 
-    WEBCORE_EXPORT bool pauseAnimationAtTime(RenderElement*, const AtomicString& name, double t); // To be used only for testing
-    WEBCORE_EXPORT bool pauseTransitionAtTime(RenderElement*, const String& property, double t); // To be used only for testing
+    WEBCORE_EXPORT bool pauseAnimationAtTime(Element&, const AtomicString& name, double t); // To be used only for testing
+    WEBCORE_EXPORT bool pauseTransitionAtTime(Element&, const String& property, double t); // To be used only for testing
     WEBCORE_EXPORT unsigned numberOfActiveAnimations(Document*) const; // To be used only for testing
     
     bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;

@@ -81,6 +81,7 @@ char* JIT_OPERATION operationNewArray(ExecState*, Structure*, void*, size_t) WTF
 char* JIT_OPERATION operationNewArrayBuffer(ExecState*, Structure*, size_t, size_t) WTF_INTERNAL;
 char* JIT_OPERATION operationNewEmptyArray(ExecState*, Structure*) WTF_INTERNAL;
 char* JIT_OPERATION operationNewArrayWithSize(ExecState*, Structure*, int32_t, Butterfly*) WTF_INTERNAL;
+char* JIT_OPERATION operationNewArrayWithSizeAndHint(ExecState*, Structure*, int32_t, int32_t, Butterfly*) WTF_INTERNAL;
 char* JIT_OPERATION operationNewInt8ArrayWithSize(ExecState*, Structure*, int32_t, char*) WTF_INTERNAL;
 char* JIT_OPERATION operationNewInt8ArrayWithOneArgument(ExecState*, Structure*, EncodedJSValue) WTF_INTERNAL;
 char* JIT_OPERATION operationNewInt16ArrayWithSize(ExecState*, Structure*, int32_t, char*) WTF_INTERNAL;
@@ -150,7 +151,9 @@ size_t JIT_OPERATION operationCompareStrictEqCell(ExecState*, EncodedJSValue enc
 size_t JIT_OPERATION operationCompareStrictEq(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateActivationDirect(ExecState*, Structure*, JSScope*, SymbolTable*, EncodedJSValue);
 JSCell* JIT_OPERATION operationCreateDirectArguments(ExecState*, Structure*, int32_t length, int32_t minCapacity);
+JSCell* JIT_OPERATION operationCreateDirectArgumentsDuringExit(ExecState*, InlineCallFrame*, JSFunction*, int32_t argumentCount);
 JSCell* JIT_OPERATION operationCreateScopedArguments(ExecState*, Structure*, Register* argumentStart, int32_t length, JSFunction* callee, JSLexicalEnvironment*);
+JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState*, InlineCallFrame*, JSFunction*, int32_t argumentCount);
 JSCell* JIT_OPERATION operationCreateClonedArguments(ExecState*, Structure*, Register* argumentStart, int32_t length, JSFunction* callee);
 JSCell* JIT_OPERATION operationCreateRest(ExecState*, Register* argumentStart, unsigned numberOfArgumentsToSkip, unsigned arraySize);
 double JIT_OPERATION operationFModOnInts(int32_t, int32_t) WTF_INTERNAL;

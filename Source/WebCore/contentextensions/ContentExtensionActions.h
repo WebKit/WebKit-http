@@ -39,10 +39,8 @@ enum class ActionType : uint8_t {
     BlockLoad,
     BlockCookies,
     CSSDisplayNoneSelector,
-    CSSDisplayNoneStyleSheet,
-    IgnorePreviousRules,
-    MakeHTTPS,
-    InvalidAction,
+    IgnorePreviousRules = 3,
+    MakeHTTPS = 4,
 };
 
 struct BlockedStatus {

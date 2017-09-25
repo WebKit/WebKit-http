@@ -25,21 +25,22 @@
 "use strict";
 
 class NativeType extends Type {
-    constructor(origin, name, isPrimitive, typeParameters)
+    constructor(origin, name, typeParameters)
     {
+        if (!(typeParameters instanceof Array))
+            throw new Error("type parameters not array: " + typeParameters);
         super();
         this._origin = origin;
         this._name = name;
-        this._isPrimitive = isPrimitive;
         this._typeParameters = typeParameters;
         this._isNumber = false;
         this._isInt = false;
-        this._isFloat = false;
+        this._isFloating = false;
+        this._isPrimitive = false;
     }
     
     get origin() { return this._origin; }
     get name() { return this._name; }
-    get isPrimitive() { return this._isPrimitive; }
     get typeParameters() { return this._typeParameters; }
     get isNative() { return true; }
     
@@ -48,8 +49,10 @@ class NativeType extends Type {
     set isNumber(value) { this._isNumber = value; }
     get isInt() { return this._isInt; }
     set isInt(value) { this._isInt = value; }
-    get isFloat() { return this._isFloat; }
-    set isFloat(value) { this._isFloat = value; }
+    get isFloating() { return this._isFloating; }
+    set isFloating(value) { this._isFloating = value; }
+    get isPrimitive() { return this._isPrimitive; }
+    set isPrimitive(value) { this._isPrimitive = value; }
     
     instantiate(typeArguments)
     {
@@ -62,7 +65,7 @@ class NativeType extends Type {
     
     toString()
     {
-        return "native " + (this.isPrimitive ? "primitive " : "") + "type " + this.name + "<" + this.typeParameters + ">";
+        return "native typedef " + this.name + "<" + this.typeParameters + ">";
     }
 }
 

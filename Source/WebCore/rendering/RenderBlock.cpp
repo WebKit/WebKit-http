@@ -56,8 +56,6 @@
 #include "RenderLayer.h"
 #include "RenderListMarker.h"
 #include "RenderMenuList.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderTableCell.h"
@@ -1537,11 +1535,6 @@ void RenderBlock::markForPaginationRelayoutIfNeeded()
 
 void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-    // Check our region range to make sure we need to be painting in this region.
-    if (namedFlowFragment && !namedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
-        return;
-
     LayoutPoint adjustedPaintOffset = paintOffset + location();
     PaintPhase phase = paintInfo.phase;
 
@@ -1549,7 +1542,7 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     // FIXME: Could eliminate the isDocumentElementRenderer() check if we fix background painting so that the RenderView
     // paints the root's background.
     if (!isDocumentElementRenderer()) {
-        LayoutRect overflowBox = overflowRectForPaintRejection(namedFlowFragment);
+        LayoutRect overflowBox = overflowRectForPaintRejection();
         flipForWritingMode(overflowBox);
         overflowBox.moveBy(adjustedPaintOffset);
         if (!overflowBox.intersects(paintInfo.rect)
@@ -1681,27 +1674,8 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
     // 1. paint background, borders etc
     if ((paintPhase == PaintPhaseBlockBackground || paintPhase == PaintPhaseChildBlockBackground) && style().visibility() == VISIBLE) {
-        if (hasVisibleBoxDecorations()) {
-            bool didClipToRegion = false;
-            
-            RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-            if (namedFlowFragment && is<RenderNamedFlowThread>(paintInfo.paintContainer)) {
-                // If this box goes beyond the current region, then make sure not to overflow the region.
-                // This (overflowing region X altough also fragmented to region X+1) could happen when one of this box's children
-                // overflows region X and is an unsplittable element (like an image).
-                // The same applies for a box overflowing the top of region X when that box is also fragmented in region X-1.
-
-                paintInfo.context().save();
-                didClipToRegion = true;
-
-                paintInfo.context().clip(downcast<RenderNamedFlowThread>(*paintInfo.paintContainer).decorationsClipRectForBoxInNamedFlowFragment(*this, *namedFlowFragment));
-            }
-
+        if (hasVisibleBoxDecorations())
             paintBoxDecorations(paintInfo, paintOffset);
-            
-            if (didClipToRegion)
-                paintInfo.context().restore();
-        }
     }
     
     // Paint legends just above the border before we scroll or clip.
@@ -2012,13 +1986,6 @@ GapRects RenderBlock::selectionGaps(RenderBlock& rootBlock, const LayoutPoint& r
         lastLogicalLeft = logicalLeftSelectionOffset(rootBlock, logicalHeight(), cache);
         lastLogicalRight = logicalRightSelectionOffset(rootBlock, logicalHeight(), cache);
         return result;
-    }
-    
-    RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-    if (paintInfo && namedFlowFragment && is<RenderFlowThread>(*paintInfo->paintContainer)) {
-        // Make sure the current object is actually flowed into the region being painted.
-        if (!downcast<RenderFlowThread>(*paintInfo->paintContainer).objectShouldFragmentInFlowRegion(this, namedFlowFragment))
-            return result;
     }
 
     if (childrenInline())
@@ -2443,12 +2410,6 @@ LayoutUnit RenderBlock::adjustLogicalRightOffsetForLine(LayoutUnit offsetFromFlo
     return right;
 }
 
-bool RenderBlock::avoidsFloats() const
-{
-    // Floats can't intrude into our box if we have a non-auto column count or width.
-    return RenderBox::avoidsFloats() || style().hasFlowFrom();
-}
-
 bool RenderBlock::isPointInOverflowControl(HitTestResult& result, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset)
 {
     if (!scrollsOverflow())
@@ -2471,13 +2432,6 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
 {
     LayoutPoint adjustedLocation(accumulatedOffset + location());
     LayoutSize localOffset = toLayoutSize(adjustedLocation);
-
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    RenderNamedFlowFragment* namedFlowFragment = flowThread ? downcast<RenderNamedFlowFragment>(flowThread->currentRegion()) : nullptr;
-    // If we are now searching inside a region, make sure this element
-    // is being fragmented into this region.
-    if (namedFlowFragment && !flowThread->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
-        return false;
 
     if (!isRenderView()) {
         // Check if we need to do anything at all.
@@ -2544,7 +2498,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     // If we have clipping, then we can't have any spillout.
     bool useOverflowClip = hasOverflowClip() && !hasSelfPaintingLayer();
     bool useClip = (hasControlClip() || useOverflowClip);
-    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, namedFlowFragment, IncludeOverlayScrollbarSize)));
+    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, nullptr, IncludeOverlayScrollbarSize)));
     if (checkChildren) {
         // Hit test descendants first.
         LayoutSize scrolledOffset(localOffset - toLayoutSize(scrollPosition()));
@@ -2648,7 +2602,7 @@ VisiblePosition RenderBlock::positionForPointWithInlineChildren(const LayoutPoin
 
 static inline bool isChildHitTestCandidate(const RenderBox& box)
 {
-    return box.height() && box.style().visibility() == VISIBLE && !box.isFloatingOrOutOfFlowPositioned() && !box.isInFlowRenderFlowThread();
+    return box.height() && box.style().visibility() == VISIBLE && !box.isOutOfFlowPositioned() && !box.isInFlowRenderFlowThread();
 }
 
 // Valid candidates in a FlowThread must be rendered by the region.
@@ -2705,6 +2659,8 @@ VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point, const Re
             if (!isChildHitTestCandidate(*childBox, region, pointInLogicalContents))
                 continue;
             LayoutUnit childLogicalBottom = logicalTopForChild(*childBox) + logicalHeightForChild(*childBox);
+            if (is<RenderBlockFlow>(childBox))
+                childLogicalBottom += downcast<RenderBlockFlow>(childBox)->lowestFloatLogicalBottom();
             // We hit child if our click is above the bottom of its padding box (like IE6/7 and FF3).
             if (isChildHitTestCandidate(*childBox, region, pointInLogicalContents) && (pointInLogicalContents.y() < childLogicalBottom
                 || (blocksAreFlipped && pointInLogicalContents.y() == childLogicalBottom)))
@@ -3429,8 +3385,6 @@ RenderRegion* RenderBlock::regionAtBlockOffset(LayoutUnit blockOffset) const
 
 static bool canComputeRegionRangeForBox(const RenderBlock& parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
 {
-    ASSERT(!childBox.isRenderNamedFlowThread());
-
     if (!flowThreadContainingBlock)
         return false;
 
@@ -3448,11 +3402,9 @@ bool RenderBlock::childBoxIsUnsplittableForFragmentation(const RenderBox& child)
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     bool checkColumnBreaks = flowThread && flowThread->shouldCheckColumnBreaks();
     bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight;
-    bool checkRegionBreaks = flowThread && flowThread->isRenderNamedFlowThread();
     return child.isUnsplittableForPagination() || child.style().breakInside() == AvoidBreakInside
         || (checkColumnBreaks && child.style().breakInside() == AvoidColumnBreakInside)
-        || (checkPageBreaks && child.style().breakInside() == AvoidPageBreakInside)
-        || (checkRegionBreaks && child.style().breakInside() == AvoidRegionBreakInside);
+        || (checkPageBreaks && child.style().breakInside() == AvoidPageBreakInside);
 }
 
 void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const

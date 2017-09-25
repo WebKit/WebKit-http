@@ -37,15 +37,12 @@ namespace WebCore {
 
 class CurrentRenderRegionMaintainer;
 class RenderFlowThread;
-class RenderNamedFlowFragment;
 class RenderStyle;
 class RenderRegion;
 class RootInlineBox;
 
 typedef ListHashSet<RenderRegion*> RenderRegionList;
 typedef Vector<RenderLayer*> RenderLayerList;
-typedef HashMap<RenderNamedFlowFragment*, RenderLayerList> RegionToLayerListMap;
-typedef HashMap<RenderLayer*, RenderNamedFlowFragment*> LayerToRegionMap;
 typedef HashMap<const RootInlineBox*, RenderRegion*> ContainingRegionMap;
 
 // RenderFlowThread is used to collect all the render objects that participate in a
@@ -128,9 +125,6 @@ public:
     RenderRegion* firstRegion() const;
     RenderRegion* lastRegion() const;
 
-    bool previousRegionCountChanged() const { return m_previousRegionCount != m_regionList.size(); };
-    void updatePreviousRegionCount() { m_previousRegionCount = m_regionList.size(); };
-
     virtual void setRegionRangeForBox(const RenderBox&, RenderRegion*, RenderRegion*);
     bool getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
     bool computedRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
@@ -142,7 +136,6 @@ public:
     // Check if the object should be painted in this region and if the region is part of this flow thread.
     bool objectShouldFragmentInFlowRegion(const RenderObject*, const RenderRegion*) const;
 
-    void markAutoLogicalHeightRegionsForLayout();
     void markRegionsForOverflowLayoutIfNeeded();
 
     virtual bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0);
@@ -151,52 +144,9 @@ public:
     virtual bool isPageLogicalHeightKnown() const { return true; }
     bool pageLogicalSizeChanged() const { return m_pageLogicalSizeChanged; }
 
-    bool hasAutoLogicalHeightRegions() const { ASSERT(isAutoLogicalHeightRegionsCountConsistent()); return m_autoLogicalHeightRegionsCount; }
-    void incrementAutoLogicalHeightRegions();
-    void decrementAutoLogicalHeightRegions();
-
-#ifndef NDEBUG
-    bool isAutoLogicalHeightRegionsCountConsistent() const;
-#endif
-
     void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect);
     LayoutRect fragmentsBoundingBox(const LayoutRect& layerBoundingBox);
 
-    // A flow thread goes through different states during layout.
-    enum LayoutPhase {
-        LayoutPhaseMeasureContent = 0, // The initial phase, used to measure content for the auto-height regions.
-        LayoutPhaseConstrained, // In this phase the regions are laid out using the sizes computed in the normal phase.
-        LayoutPhaseOverflow, // In this phase the layout overflow is propagated from the content to the regions.
-        LayoutPhaseFinal // In case scrollbars have resized the regions, content is laid out one last time to respect the change.
-    };
-    bool inMeasureContentLayoutPhase() const { return m_layoutPhase == LayoutPhaseMeasureContent; }
-    bool inConstrainedLayoutPhase() const { return m_layoutPhase == LayoutPhaseConstrained; }
-    bool inOverflowLayoutPhase() const { return m_layoutPhase == LayoutPhaseOverflow; }
-    bool inFinalLayoutPhase() const { return m_layoutPhase == LayoutPhaseFinal; }
-    void setLayoutPhase(LayoutPhase phase) { m_layoutPhase = phase; }
-
-    bool needsTwoPhasesLayout() const { return m_needsTwoPhasesLayout; }
-    void clearNeedsTwoPhasesLayout() { m_needsTwoPhasesLayout = false; }
-
-    // Whether any of the regions has a compositing descendant.
-    bool hasCompositingRegionDescendant() const;
-
-    void setNeedsLayerToRegionMappingsUpdate() { m_layersToRegionMappingsDirty = true; }
-    void updateAllLayerToRegionMappingsIfNeeded()
-    {
-        if (m_layersToRegionMappingsDirty)
-            updateAllLayerToRegionMappings();
-    }
-
-    const RenderLayerList* getLayerListForRegion(RenderNamedFlowFragment*) const;
-
-    RenderNamedFlowFragment* regionForCompositedLayer(RenderLayer&) const; // By means of getRegionRangeForBox or regionAtBlockOffset.
-    RenderNamedFlowFragment* cachedRegionForCompositedLayer(RenderLayer&) const;
-
-    virtual bool collectsGraphicsLayersUnderRegions() const;
-
-    void pushFlowThreadLayoutState(const RenderObject&);
-    void popFlowThreadLayoutState();
     LayoutUnit offsetFromLogicalTopOfFirstRegion(const RenderBlock*) const;
     void clearRenderBoxRegionInfoAndCustomStyle(const RenderBox&, const RenderRegion*, const RenderRegion*, const RenderRegion*, const RenderRegion*);
 
@@ -252,23 +202,8 @@ protected:
 
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
 
-    void updateRegionsFlowThreadPortionRect(const RenderRegion* = nullptr);
+    void updateRegionsFlowThreadPortionRect();
     bool shouldRepaint(const LayoutRect&) const;
-
-    bool updateAllLayerToRegionMappings();
-
-    // Triggers a layers' update if a layer has moved from a region to another since the last update.
-    void updateLayerToRegionMappings(RenderLayer&, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
-    void updateRegionForRenderLayer(RenderLayer*, LayerToRegionMap&, RegionToLayerListMap&, bool& needsLayerUpdate);
-
-    void initializeRegionsComputedAutoHeight(RenderRegion* = nullptr);
-
-    inline bool hasCachedOffsetFromLogicalTopOfFirstRegion(const RenderBox*) const;
-    inline LayoutUnit cachedOffsetFromLogicalTopOfFirstRegion(const RenderBox*) const;
-    inline void setOffsetFromLogicalTopOfFirstRegion(const RenderBox*, LayoutUnit);
-    inline void clearOffsetFromLogicalTopOfFirstRegion(const RenderBox*);
-
-    inline const RenderBox* currentActiveRenderBox() const;
 
     bool getRegionRangeForBoxFromCachedInfo(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
 
@@ -276,7 +211,6 @@ protected:
     void removeLineRegionInfo(const RenderBlockFlow&);
 
     RenderRegionList m_regionList;
-    unsigned short m_previousRegionCount;
 
     class RenderRegionRange {
     public:
@@ -330,12 +264,6 @@ protected:
         RenderRegion* m_result;
     };
 
-    // Map a layer to the region in which the layer is painted.
-    std::unique_ptr<LayerToRegionMap> m_layerToRegionMap;
-
-    // Map a region to the list of layers that paint in that region.
-    std::unique_ptr<RegionToLayerListMap> m_regionToLayerListMap;
-
     // Map a line to its containing region.
     std::unique_ptr<ContainingRegionMap> m_lineToRegionMap;
 
@@ -348,14 +276,6 @@ protected:
     RenderBoxToRegionMap m_breakBeforeToRegionMap;
     RenderBoxToRegionMap m_breakAfterToRegionMap;
 
-    typedef Vector<const RenderObject*> RenderObjectStack;
-    RenderObjectStack m_activeObjectsStack;
-
-    typedef HashMap<const RenderBox*, LayoutUnit> RenderBoxToOffsetMap;
-    RenderBoxToOffsetMap m_boxesToOffsetMap;
-
-    unsigned m_autoLogicalHeightRegionsCount;
-
     RegionIntervalTree m_regionIntervalTree;
 
     CurrentRenderRegionMaintainer* m_currentRegionMaintainer;
@@ -364,9 +284,6 @@ protected:
     bool m_regionsHaveUniformLogicalWidth : 1;
     bool m_regionsHaveUniformLogicalHeight : 1;
     bool m_pageLogicalSizeChanged : 1;
-    unsigned m_layoutPhase : 2;
-    bool m_needsTwoPhasesLayout : 1;
-    bool m_layersToRegionMappingsDirty : 1;
 };
 
 } // namespace WebCore

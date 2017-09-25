@@ -29,16 +29,29 @@ class PtrType extends ReferenceType {
     
     unifyImpl(unificationContext, other)
     {
-        if (!(other instanceof PtrType))
+        if (!other.isPtr)
             return false;
         if (this.addressSpace != other.addressSpace)
             return false;
         return this.elementType.unify(unificationContext, other.elementType);
     }
     
+    argumentForAndOverload(origin, value)
+    {
+        throw new WTypeError(origin.originString, "Pointer subscript is not valid");
+    }
+    argumentTypeForAndOverload(origin, type)
+    {
+        throw new WTypeError(origin.originString, "Pointer subscript is not valid");
+    }
+    returnTypeFromAndOverload(origin)
+    {
+        return this.elementType;
+    }
+
     toString()
     {
-        return this.addressSpace + " " + this.elementType + "^";
+        return this.elementType + "^ " + this.addressSpace;
     }
 }
 

@@ -33,7 +33,15 @@ class Node {
         let returnValue = visitFunc.call(visitor, this);
         if ("returnValue" in visitor)
             returnValue = visitor.returnValue;
+        
         return returnValue;
+    }
+    
+    static visit(node, visitor)
+    {
+        if (node instanceof Node)
+            return node.visit(visitor);
+        return node;
     }
     
     unify(unificationContext, other)
@@ -72,10 +80,12 @@ class Node {
     }
     
     // Most type variables don't care about this.
-    commitUnification(unificatoinContext) { }
+    prepareToVerify(unificationContext) { }
+    commitUnification(unificationContext) { }
     
     get unifyNode() { return this; }
     get isUnifiable() { return false; }
+    get isLiteral() { return false; }
     
     get isNative() { return false; }
     
@@ -96,6 +106,17 @@ class Node {
             return false;
         unificationContext.commit();
         return unificationContext;
+    }
+    
+    commit()
+    {
+        let unificationContext = new UnificationContext();
+        unificationContext.addExtraNode(this);
+        let result = unificationContext.verify();
+        if (!result.result)
+            throw new WError(node.origin.originString, "Could not infer type: " + result.reason);
+        unificationContext.commit();
+        return unificationContext.find(this);
     }
     
     substitute(parameters, argumentList)

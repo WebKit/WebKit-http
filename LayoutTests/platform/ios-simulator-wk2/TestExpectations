@@ -4,10 +4,8 @@
 #
 
 editing/inserting/insert-paragraph-selection-outside-contenteditable.html [ Failure ]
-compositing/regions/composited-content-fixed-region-scrolled.html [ Failure ]
 fast/events/offsetX-offsetY.html [ Failure ]
 fast/hidpi/image-srcset-invalid-descriptor.html [ Failure ]
-fast/regions/repaint/fixed-in-named-flow-scroll.html [ Failure ]
 http/tests/cookies/js-get-and-set-http-only-cookie.html [ Failure ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Failure ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Failure ]
@@ -44,3 +42,16 @@ webkit.org/b/172384 fast/hidpi/hidpi-long-page-with-inset-element.html [ Pass Im
 
 webkit.org/b/175865 quicklook/multi-sheet-numbers-09.html [ Pass Failure ]
 
+# iOS simulator doesn’t support mouse events simulation using the eventSender.
+editing/selection/select-out-of-floated-non-editable-01.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-02.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-03.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-04.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-05.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-06.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-07.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-08.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-09.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-10.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-11.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-12.html [ Skip ]

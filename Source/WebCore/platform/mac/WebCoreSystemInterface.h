@@ -123,7 +123,6 @@ typedef enum {
     wkPatternTilingConstantSpacing
 } wkPatternTiling;
 #if !PLATFORM(IOS)
-extern void (*wkDrawBezeledTextArea)(NSRect, BOOL enabled);
 extern void (*wkDrawMediaSliderTrack)(CGContextRef context, CGRect rect, float timeLoaded, float currentTime,
     float duration, unsigned state);
 extern void (*wkDrawMediaUIPart)(int part, CGContextRef context, CGRect rect, unsigned state);
@@ -133,54 +132,13 @@ extern BOOL (*wkHitTestMediaUIPart)(int part, CGRect bounds, CGPoint point);
 extern void (*wkMeasureMediaUIPart)(int part, CGRect *bounds, CGSize *naturalSize);
 
 extern void (*wkSetCookieStoragePrivateBrowsingEnabled)(BOOL);
-#endif
-extern void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
-extern void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
-extern CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
-
-#if !PLATFORM(IOS)
 extern void* wkGetHyphenationLocationBeforeIndex;
 #endif
-
-#if !PLATFORM(IOS)
-extern bool (*wkExecutableWasLinkedOnOrBeforeSnowLeopard)(void);
-
-extern CFStringRef (*wkCopyDefaultSearchProviderDisplayName)(void);
-
-extern NSCursor *(*wkCursor)(const char*);
-#endif // !PLATFORM(IOS)
-    
-#if !PLATFORM(IOS)
-extern NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
-extern NSString *(*wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale)(NSLocale *);
-#endif // !PLATFORM(IOS)
 
 #if PLATFORM(IOS)
 extern void (*wkSetLayerContentsScale)(CALayer *);
 #endif
 
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
-
-#if !PLATFORM(IOS)
-extern CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);
-extern CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
-extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
-#endif
-
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-extern bool (*wkIsPublicSuffix)(NSString *host);
-#endif
-
-extern CFStringRef (*wkCachePartitionKey)(void);
-
-typedef enum {
-    wkExternalPlaybackTypeNone,
-    wkExternalPlaybackTypeAirPlay,
-    wkExternalPlaybackTypeTVOut,
-} wkExternalPlaybackType;
-extern int (*wkExernalDeviceTypeForPlayer)(AVPlayer *);
-extern NSString *(*wkExernalDeviceDisplayNameForPlayer)(AVPlayer *);
-
-extern bool (*wkQueryDecoderAvailability)(void);
 
 }

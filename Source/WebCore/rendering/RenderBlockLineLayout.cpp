@@ -1096,7 +1096,8 @@ inline BidiRun* RenderBlockFlow::handleTrailingSpaces(BidiRunList<BidiRun>& bidi
 void RenderBlockFlow::appendFloatingObjectToLastLine(FloatingObject& floatingObject)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject.originatingLine());
-    floatingObject.setOriginatingLine(lastRootBox());
+    ASSERT(lastRootBox());
+    floatingObject.setOriginatingLine(*lastRootBox());
     lastRootBox()->appendFloat(floatingObject.renderer());
 }
 
@@ -1441,16 +1442,6 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
                 }
                     
                 if (paginated) {
-                    if (RenderFlowThread* flowThread = flowThreadContainingBlock()) {
-                        if (flowThread->isRenderNamedFlowThread() && overflowsRegion && hasNextPage(lineBox->lineTop())) {
-                            // Limit the height of this block to the end of the current region because
-                            // it is also fragmented into the next region.
-                            LayoutUnit remainingLogicalHeight = pageRemainingLogicalHeightForOffset(logicalTop(), ExcludePageBoundary);
-                            if (logicalHeight() > remainingLogicalHeight)
-                                setLogicalHeight(remainingLogicalHeight);
-                        }
-                    }
-
                     if (layoutState.flowThread())
                         updateRegionForLine(lineBox);
                 }
@@ -1567,7 +1558,7 @@ void RenderBlockFlow::reattachCleanLineFloats(RootInlineBox& cleanLine, LayoutUn
             continue;
         }
         ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject->originatingLine());
-        floatingObject->setOriginatingLine(&cleanLine);
+        floatingObject->setOriginatingLine(cleanLine);
         setLogicalHeight(logicalTopForChild(*floatingBox) - marginBeforeForChild(*floatingBox) + delta);
         positionNewFloats();
     }
@@ -1880,7 +1871,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
                     auto* floatingBox = *it;
                     auto* floatingObject = insertFloatingObject(*floatingBox);
                     ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject->originatingLine());
-                    floatingObject->setOriginatingLine(line);
+                    floatingObject->setOriginatingLine(*line);
                     setLogicalHeight(logicalTopForChild(*floatingBox) - marginBeforeForChild(*floatingBox));
                     positionNewFloats();
                     floats.setLastCleanFloat(*floatingBox);

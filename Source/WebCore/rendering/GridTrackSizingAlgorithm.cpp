@@ -970,7 +970,7 @@ void GridTrackSizingAlgorithm::initializeTrackSizes()
 {
     ASSERT(m_contentSizedTracksIndex.isEmpty());
     ASSERT(m_flexibleSizedTracksIndex.isEmpty());
-    ASSERT(m_autoSizedTracksIndex.isEmpty());
+    ASSERT(m_autoSizedTracksForStretchIndex.isEmpty());
 
     Vector<GridTrack>& allTracks = tracks(m_direction);
     const bool hasDefiniteFreeSpace = !!availableSpace();
@@ -993,8 +993,8 @@ void GridTrackSizingAlgorithm::initializeTrackSizes()
             m_contentSizedTracksIndex.append(i);
         if (trackSize.maxTrackBreadth().isFlex())
             m_flexibleSizedTracksIndex.append(i);
-        if (trackSize.hasAutoMaxTrackBreadth())
-            m_autoSizedTracksIndex.append(i);
+        if (trackSize.hasAutoMaxTrackBreadth() && !trackSize.isFitContent())
+            m_autoSizedTracksForStretchIndex.append(i);
     }
 }
 
@@ -1071,20 +1071,17 @@ void GridTrackSizingAlgorithm::stretchFlexibleTracks(std::optional<LayoutUnit> f
 
 void GridTrackSizingAlgorithm::stretchAutoTracks()
 {
-    if (m_autoSizedTracksIndex.isEmpty())
-        return;
-
     auto currentFreeSpace = freeSpace(m_direction);
-    if (!currentFreeSpace
+    if (m_autoSizedTracksForStretchIndex.isEmpty()
+        || !currentFreeSpace
         || currentFreeSpace.value() <= 0
-        || (m_direction == ForColumns && m_renderGrid->style().resolvedJustifyContentDistribution(m_renderGrid->contentAlignmentNormalBehaviorGrid()) != ContentDistributionStretch)
-        || (m_direction == ForRows && m_renderGrid->style().resolvedAlignContentDistribution(m_renderGrid->contentAlignmentNormalBehaviorGrid()) != ContentDistributionStretch))
+        || (m_renderGrid->contentAlignment(m_direction).distribution() != ContentDistributionStretch))
         return;
 
     Vector<GridTrack>& allTracks = tracks(m_direction);
-    unsigned numberOfAutoSizedTracks = m_autoSizedTracksIndex.size();
+    unsigned numberOfAutoSizedTracks = m_autoSizedTracksForStretchIndex.size();
     LayoutUnit sizeToIncrease = currentFreeSpace.value() / numberOfAutoSizedTracks;
-    for (const auto& trackIndex : m_autoSizedTracksIndex) {
+    for (const auto& trackIndex : m_autoSizedTracksForStretchIndex) {
         auto& track = allTracks[trackIndex];
         track.setBaseSize(track.baseSize() + sizeToIncrease);
     }
@@ -1145,7 +1142,7 @@ void GridTrackSizingAlgorithm::setup(GridTrackSizingDirection direction, unsigne
 
     m_contentSizedTracksIndex.shrink(0);
     m_flexibleSizedTracksIndex.shrink(0);
-    m_autoSizedTracksIndex.shrink(0);
+    m_autoSizedTracksForStretchIndex.shrink(0);
 
     setFreeSpace(direction, freeSpace);
     tracks(direction).resize(numTracks);
@@ -1193,7 +1190,7 @@ void GridTrackSizingAlgorithm::reset()
     m_rows.shrink(0);
     m_contentSizedTracksIndex.shrink(0);
     m_flexibleSizedTracksIndex.shrink(0);
-    m_autoSizedTracksIndex.shrink(0);
+    m_autoSizedTracksForStretchIndex.shrink(0);
     setAvailableSpace(ForRows, std::nullopt);
     setAvailableSpace(ForColumns, std::nullopt);
 }

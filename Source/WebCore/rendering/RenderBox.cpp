@@ -60,8 +60,7 @@
 #include "RenderLayer.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMultiColumnFlowThread.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
+#include "RenderRegion.h"
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -211,60 +210,9 @@ LayoutRect RenderBox::clientBoxRectInRegion(RenderRegion* region) const
     return clientBox;
 }
 
-LayoutRect RenderBox::borderBoxRectInRegion(RenderRegion* region, RenderBoxRegionInfoFlags cacheFlag) const
+LayoutRect RenderBox::borderBoxRectInRegion(RenderRegion*, RenderBoxRegionInfoFlags) const
 {
-    if (!region)
-        return borderBoxRect();
-
-    auto* flowThread = flowThreadContainingBlock();
-    if (!is<RenderNamedFlowThread>(flowThread))
-        return borderBoxRect();
-
-    RenderRegion* startRegion = nullptr;
-    RenderRegion* endRegion = nullptr;
-    if (!flowThread->getRegionRangeForBox(this, startRegion, endRegion)) {
-        // FIXME: In a perfect world this condition should never happen.
-        return borderBoxRect();
-    }
-
-    ASSERT(flowThread->regionInRange(region, startRegion, endRegion));
-
-    // Compute the logical width and placement in this region.
-    RenderBoxRegionInfo* boxInfo = renderBoxRegionInfo(region, cacheFlag);
-    if (!boxInfo)
-        return borderBoxRect();
-
-    // We have cached insets.
-    LayoutUnit logicalWidth = boxInfo->logicalWidth();
-    LayoutUnit logicalLeft = boxInfo->logicalLeft();
-
-    // Now apply the parent inset since it is cumulative whenever anything in the containing block chain shifts.
-    // FIXME: Doesn't work right with perpendicular writing modes.
-    const RenderBlock* currentBox = containingBlock();
-    RenderBoxRegionInfo* currentBoxInfo = isRenderFlowThread() ? nullptr : currentBox->renderBoxRegionInfo(region);
-    while (currentBoxInfo && currentBoxInfo->isShifted()) {
-        if (currentBox->style().direction() == LTR)
-            logicalLeft += currentBoxInfo->logicalLeft();
-        else
-            logicalLeft -= (currentBox->logicalWidth() - currentBoxInfo->logicalWidth()) - currentBoxInfo->logicalLeft();
-
-        // Once we reach the fragmentation container we should stop.
-        if (currentBox->isRenderFlowThread())
-            break;
-
-        currentBox = currentBox->containingBlock();
-        if (!currentBox)
-            break;
-        region = currentBox->clampToStartAndEndRegions(region);
-        currentBoxInfo = currentBox->renderBoxRegionInfo(region);
-    }
-
-    if (cacheFlag == DoNotCacheRenderBoxRegionInfo)
-        delete boxInfo;
-
-    if (isHorizontalWritingMode())
-        return LayoutRect(logicalLeft, 0, logicalWidth, height());
-    return LayoutRect(0, logicalLeft, width(), logicalWidth);
+    return borderBoxRect();
 }
 
 static RenderBlockFlow* outermostBlockContainingFloatingObject(RenderBox& box)
@@ -869,10 +817,6 @@ bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity,
         return true;
 
     RenderBlock* nextScrollBlock = containingBlock();
-    if (is<RenderNamedFlowThread>(nextScrollBlock)) {
-        ASSERT(startBox);
-        nextScrollBlock = downcast<RenderNamedFlowThread>(*nextScrollBlock).fragmentFromAbsolutePointAndBox(wheelEventAbsolutePoint, *startBox);
-    }
 
     if (nextScrollBlock && !nextScrollBlock->isRenderView())
         return nextScrollBlock->scroll(direction, granularity, multiplier, stopElement, startBox, wheelEventAbsolutePoint);
@@ -1231,16 +1175,9 @@ bool RenderBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
         }
     }
 
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    RenderRegion* regionToUse = flowThread ? downcast<RenderNamedFlowFragment>(flowThread->currentRegion()) : nullptr;
-
-    // If the box is not contained by this region there's no point in going further.
-    if (regionToUse && !flowThread->objectShouldFragmentInFlowRegion(this, regionToUse))
-        return false;
-
     // Check our bounds next. For this purpose always assume that we can only be hit in the
     // foreground phase (which is true for replaced elements like images).
-    LayoutRect boundsRect = borderBoxRectInRegion(regionToUse);
+    LayoutRect boundsRect = borderBoxRectInRegion(nullptr);
     boundsRect.moveBy(adjustedLocation);
     if (visibleToHitTesting() && action == HitTestForeground && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, locationInContainer.point() - toLayoutSize(adjustedLocation));
@@ -1308,7 +1245,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return;
 
-    LayoutRect paintRect = borderBoxRectInRegion(currentRenderNamedFlowFragment());
+    LayoutRect paintRect = borderBoxRectInRegion(nullptr);
     paintRect.moveBy(paintOffset);
     adjustBorderBoxRectForPainting(paintRect);
 
@@ -1795,7 +1732,7 @@ bool RenderBox::pushContentsClip(PaintInfo& paintInfo, const LayoutPoint& accumu
         paintInfo.phase = PaintPhaseChildBlockBackgrounds;
     }
     float deviceScaleFactor = document().deviceScaleFactor();
-    FloatRect clipRect = snapRectToDevicePixels((isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, currentRenderNamedFlowFragment(), IgnoreOverlayScrollbarSize, paintInfo.phase)), deviceScaleFactor);
+    FloatRect clipRect = snapRectToDevicePixels((isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, nullptr, IgnoreOverlayScrollbarSize, paintInfo.phase)), deviceScaleFactor);
     paintInfo.context().save();
     if (style().hasBorderRadius())
         paintInfo.context().clipRoundedRect(style().getRoundedInnerBorderFor(LayoutRect(accumulatedOffset, size())).pixelSnappedRoundedRectForPainting(deviceScaleFactor));
@@ -2034,12 +1971,7 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
 
     mode &= ~ApplyContainerFlip;
 
-    // For fixed positioned elements inside out-of-flow named flows, we do not want to
-    // map their position further to regions based on their coordinates inside the named flows.
-    if (!container->isOutOfFlowRenderFlowThread() || !fixedPositionedWithNamedFlowContainingBlock())
-        container->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
-    else
-        container->mapLocalToContainer(downcast<RenderLayerModelObject>(container), transformState, mode, wasFixed);
+    container->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
 
 const RenderObject* RenderBox::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
@@ -2445,12 +2377,12 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
 #endif
         && !cb.isRenderGrid()
         ) {
-        LayoutUnit newMargin = containerLogicalWidth - computedValues.m_extent - cb.marginStartForChild(*this);
+        LayoutUnit newMarginTotal = containerLogicalWidth - computedValues.m_extent;
         bool hasInvertedDirection = cb.style().isLeftToRightDirection() != style().isLeftToRightDirection();
         if (hasInvertedDirection)
-            computedValues.m_margins.m_start = newMargin;
+            computedValues.m_margins.m_start = newMarginTotal - computedValues.m_margins.m_end;
         else
-            computedValues.m_margins.m_end = newMargin;
+            computedValues.m_margins.m_end = newMarginTotal - computedValues.m_margins.m_start;
     }
 }
 
@@ -2693,57 +2625,7 @@ RenderBoxRegionInfo* RenderBox::renderBoxRegionInfo(RenderRegion* region, Render
     if (boxInfo && cacheFlag == CacheRenderBoxRegionInfo)
         return boxInfo;
 
-    // No cached value was found, so we have to compute our insets in this region.
-    // FIXME: For now we limit this computation to normal RenderBlocks. Future patches will expand
-    // support to cover all boxes.
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (isRenderFlowThread() || !is<RenderNamedFlowThread>(flowThread) || !canHaveBoxInfoInRegion() || flowThread->style().writingMode() != style().writingMode())
-        return nullptr;
-
-    LogicalExtentComputedValues computedValues;
-    computeLogicalWidthInRegion(computedValues, region);
-
-    // Now determine the insets based off where this object is supposed to be positioned.
-    RenderBlock& cb = *containingBlock();
-    RenderRegion* clampedContainingBlockRegion = cb.clampToStartAndEndRegions(region);
-    RenderBoxRegionInfo* containingBlockInfo = cb.renderBoxRegionInfo(clampedContainingBlockRegion);
-    LayoutUnit containingBlockLogicalWidth = cb.logicalWidth();
-    LayoutUnit containingBlockLogicalWidthInRegion = containingBlockInfo ? containingBlockInfo->logicalWidth() : containingBlockLogicalWidth;
-    
-    LayoutUnit marginStartInRegion = computedValues.m_margins.m_start;
-    LayoutUnit startMarginDelta = marginStartInRegion - marginStart();
-    LayoutUnit logicalWidthInRegion = computedValues.m_extent;
-    LayoutUnit logicalLeftInRegion = computedValues.m_position;
-    LayoutUnit widthDelta = logicalWidthInRegion - logicalWidth();
-    LayoutUnit logicalLeftDelta = isOutOfFlowPositioned() ? logicalLeftInRegion - logicalLeft() : startMarginDelta;
-    LayoutUnit logicalRightInRegion = containingBlockLogicalWidthInRegion - (logicalLeftInRegion + logicalWidthInRegion);
-    LayoutUnit oldLogicalRight = containingBlockLogicalWidth - (logicalLeft() + logicalWidth());
-    LayoutUnit logicalRightDelta = isOutOfFlowPositioned() ? logicalRightInRegion - oldLogicalRight : startMarginDelta;
-
-    LayoutUnit logicalLeftOffset = 0;
-    
-    if (!isOutOfFlowPositioned() && avoidsFloats() && cb.containsFloats()) {
-        LayoutUnit startPositionDelta = cb.computeStartPositionDeltaForChildAvoidingFloats(*this, marginStartInRegion, region);
-        if (cb.style().isLeftToRightDirection())
-            logicalLeftDelta += startPositionDelta;
-        else
-            logicalRightDelta += startPositionDelta;
-    }
-
-    if (cb.style().isLeftToRightDirection())
-        logicalLeftOffset += logicalLeftDelta;
-    else
-        logicalLeftOffset -= (widthDelta + logicalRightDelta);
-    
-    LayoutUnit logicalRightOffset = logicalWidth() - (logicalLeftOffset + logicalWidthInRegion);
-    bool isShifted = (containingBlockInfo && containingBlockInfo->isShifted())
-            || (style().isLeftToRightDirection() && logicalLeftOffset)
-            || (!style().isLeftToRightDirection() && logicalRightOffset);
-
-    // FIXME: Although it's unlikely, these boxes can go outside our bounds, and so we will need to incorporate them into overflow.
-    if (cacheFlag == CacheRenderBoxRegionInfo)
-        return region->setRenderBoxRegionInfo(this, logicalLeftOffset, logicalWidthInRegion, isShifted);
-    return new RenderBoxRegionInfo(logicalLeftOffset, logicalWidthInRegion, isShifted);
+    return nullptr;
 }
 
 static bool shouldFlipBeforeAfterMargins(const RenderStyle& containingBlockStyle, const RenderStyle* childStyle)
@@ -3178,7 +3060,7 @@ LayoutUnit RenderBox::computeReplacedLogicalHeightUsing(SizeType heightType, Len
             auto* container = isOutOfFlowPositioned() ? this->container() : containingBlock();
             while (container && container->isAnonymous()) {
                 // Stop at rendering context root.
-                if (is<RenderView>(*container) || is<RenderNamedFlowThread>(*container))
+                if (is<RenderView>(*container))
                     break;
                 container = container->containingBlock();
             }
@@ -3342,9 +3224,6 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForPositioned(const RenderBoxMo
             return downcast<RenderBox>(containingBlock).clientLogicalWidth();
         }
 
-        if (isFixedPosition && is<RenderNamedFlowThread>(containingBlock))
-            return containingBlock.view().clientLogicalWidth();
-
         if (!is<RenderBlock>(containingBlock))
             return downcast<RenderBox>(containingBlock).clientLogicalWidth();
 
@@ -3408,11 +3287,8 @@ LayoutUnit RenderBox::containingBlockLogicalHeightForPositioned(const RenderBoxM
         const RenderBlock& cb = is<RenderBlock>(containingBlock) ? downcast<RenderBlock>(containingBlock) : *containingBlock.containingBlock();
         LayoutUnit result = cb.clientLogicalHeight();
         RenderFlowThread* flowThread = flowThreadContainingBlock();
-        if (flowThread && is<RenderFlowThread>(containingBlock) && flowThread->isHorizontalWritingMode() == containingBlock.isHorizontalWritingMode()) {
-            if (is<RenderNamedFlowThread>(containingBlock) && isFixedPosition)
-                return containingBlock.view().clientLogicalHeight();
+        if (flowThread && is<RenderFlowThread>(containingBlock) && flowThread->isHorizontalWritingMode() == containingBlock.isHorizontalWritingMode())
             return downcast<RenderFlowThread>(containingBlock).contentLogicalHeightOfFirstRegion();
-        }
         return result;
     }
         
@@ -4761,9 +4637,7 @@ bool RenderBox::isUnsplittableForPagination() const
     return isReplaced()
         || hasUnsplittableScrollingOverflow()
         || (parent() && isWritingModeRoot())
-        || (isFloating() && style().styleType() == FIRST_LETTER && style().initialLetterDrop() > 0)
-        || isRenderNamedFlowFragmentContainer()
-        || fixedPositionedWithNamedFlowContainingBlock();
+        || (isFloating() && style().styleType() == FIRST_LETTER && style().initialLetterDrop() > 0);
 }
 
 LayoutUnit RenderBox::lineHeight(bool /*firstLine*/, LineDirectionMode direction, LinePositionMode /*linePositionMode*/) const
@@ -4889,21 +4763,9 @@ LayoutRect RenderBox::flippedClientBoxRect() const
     return rect;
 }
 
-LayoutRect RenderBox::overflowRectForPaintRejection(RenderNamedFlowFragment* namedFlowFragment) const
+LayoutRect RenderBox::overflowRectForPaintRejection() const
 {
     LayoutRect overflowRect = visualOverflowRect();
-    
-    // When using regions, some boxes might have their frame rect relative to the flow thread, which could
-    // cause the paint rejection algorithm to prevent them from painting when using different width regions.
-    // e.g. an absolutely positioned box with bottom:0px and right:0px would have it's frameRect.x relative
-    // to the flow thread, not the last region (in which it will end up because of bottom:0px)
-    if (namedFlowFragment && namedFlowFragment->isValid()) {
-        RenderFlowThread* flowThread = namedFlowFragment->flowThread();
-        RenderRegion* startRegion = nullptr;
-        RenderRegion* endRegion = nullptr;
-        if (flowThread->getRegionRangeForBox(this, startRegion, endRegion))
-            overflowRect.unite(namedFlowFragment->visualOverflowRectForBox(*this));
-    }
     
     if (!m_overflow || !usesCompositedScrolling())
         return overflowRect;

@@ -23,6 +23,8 @@
 #include "JPEGImageEncoder.h"
 
 #include "IntSize.h"
+#include <wtf/Vector.h>
+
 // FIXME: jpeglib.h requires stdio.h to be included first for FILE
 #include <stdio.h>
 #include <jpeglib.h>

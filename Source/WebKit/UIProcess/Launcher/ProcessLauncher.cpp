@@ -33,7 +33,6 @@ namespace WebKit {
 
 ProcessLauncher::ProcessLauncher(Client* client, const LaunchOptions& launchOptions)
     : m_client(client)
-    , m_weakPtrFactory(this)
     , m_launchOptions(launchOptions)
     , m_processIdentifier(0)
 {
@@ -41,7 +40,7 @@ ProcessLauncher::ProcessLauncher(Client* client, const LaunchOptions& launchOpti
     launchProcess();
 }
 
-void ProcessLauncher::didFinishLaunchingProcess(pid_t processIdentifier, IPC::Connection::Identifier identifier)
+void ProcessLauncher::didFinishLaunchingProcess(ProcessID processIdentifier, IPC::Connection::Identifier identifier)
 {
     m_processIdentifier = processIdentifier;
     m_isLaunching = false;

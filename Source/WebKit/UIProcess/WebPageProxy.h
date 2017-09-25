@@ -85,6 +85,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/MonotonicTime.h>
+#include <wtf/ProcessID.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -399,7 +400,7 @@ public:
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
-    void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData = nullptr);
+    void loadAlternateHTMLString(const String& htmlString, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData = nullptr);
     void loadPlainTextString(const String&, API::Object* userData = nullptr);
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
@@ -881,7 +882,7 @@ public:
 #endif
 
     WebProcessProxy& process() { return m_process; }
-    pid_t processIdentifier() const;
+    ProcessID processIdentifier() const;
 
     WebPreferences& preferences() { return m_preferences; }
     void setPreferences(WebPreferences&);
@@ -1198,7 +1199,7 @@ public:
     void gamepadActivity(const Vector<GamepadData>&, bool shouldMakeGamepadsVisible);
 #endif
         
-    WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(*const_cast<WebPageProxy*>(this)); }
 
     void isLoadingChanged() { activityStateDidChange(WebCore::ActivityState::IsLoading); }
 
@@ -1257,17 +1258,17 @@ private:
     void didCreateMainFrame(uint64_t frameID);
     void didCreateSubframe(uint64_t frameID);
 
-    void didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& url, const String& unreachableURL, const UserData&);
-    void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
+    void didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&&, WebCore::URL&& unreachableURL, const UserData&);
+    void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&&, const UserData&);
     void willPerformClientRedirectForFrame(uint64_t frameID, const String& url, double delay);
     void didCancelClientRedirectForFrame(uint64_t frameID);
-    void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
+    void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&&);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
     void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
-    void didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t sameDocumentNavigationType, const String&, const UserData&);
+    void didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t sameDocumentNavigationType, WebCore::URL&&, const UserData&);
     void didChangeMainDocument(uint64_t frameID);
 
     void didReceiveTitleForFrame(uint64_t frameID, const String&, const UserData&);
@@ -1324,7 +1325,6 @@ private:
     void setStatusBarIsVisible(bool statusBarIsVisible);
     void getStatusBarIsVisible(Ref<Messages::WebPageProxy::GetStatusBarIsVisible::DelayedReply>&&);
     void setIsResizable(bool isResizable);
-    void getIsResizable(Ref<Messages::WebPageProxy::GetIsResizable::DelayedReply>&&);
     void screenToRootView(const WebCore::IntPoint& screenPoint, Ref<Messages::WebPageProxy::ScreenToRootView::DelayedReply>&&);
     void rootViewToScreen(const WebCore::IntRect& viewRect, Ref<Messages::WebPageProxy::RootViewToScreen::DelayedReply>&&);
 #if PLATFORM(IOS)
@@ -1768,7 +1768,7 @@ private:
     double m_pluginScaleFactor { 1 };
     double m_viewScaleFactor { 1 };
     float m_intrinsicDeviceScaleFactor { 1 };
-    float m_customDeviceScaleFactor { 0 };
+    std::optional<float> m_customDeviceScaleFactor;
     float m_topContentInset { 0 };
 
     LayerHostingMode m_layerHostingMode { LayerHostingMode::InProcess };

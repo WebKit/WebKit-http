@@ -964,7 +964,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(IntPoint(windowLoc), IntPoint(globalPoint(windowLoc, [view->platformWidget() window])),
-                             LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
+                             LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 #endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
@@ -2295,7 +2295,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 - (DOMDocumentFragment *)_documentFragmentForImageData:(NSData *)data withRelativeURLPart:(NSString *)relativeURLPart andMIMEType:(NSString *)mimeType
 {
     WebResource *resource = [[WebResource alloc] initWithData:data
-                                                          URL:[NSURL uniqueURLWithRelativePart:relativeURLPart]
+                                                          URL:URL::fakeURLWithRelativePart(relativeURLPart)
                                                      MIMEType:mimeType
                                              textEncodingName:nil
                                                     frameName:nil];

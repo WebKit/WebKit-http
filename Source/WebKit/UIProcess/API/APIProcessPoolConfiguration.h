@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIContextConfiguration_h
-#define APIContextConfiguration_h
+#pragma once
 
 #include "APIObject.h"
 #include "CacheModel.h"
@@ -139,8 +138,8 @@ public:
     void setCTDataConnectionServiceType(const WTF::String& ctDataConnectionServiceType) { m_ctDataConnectionServiceType = ctDataConnectionServiceType; }
 #endif
 
-    pid_t presentingApplicationPID() const { return m_presentingApplicationPID; }
-    void setPresentingApplicationPID(pid_t pid) { m_presentingApplicationPID = pid; }
+    ProcessID presentingApplicationPID() const { return m_presentingApplicationPID; }
+    void setPresentingApplicationPID(ProcessID pid) { m_presentingApplicationPID = pid; }
 
 private:
     bool m_shouldHaveLegacyDataStore { false };
@@ -174,12 +173,10 @@ private:
     bool m_alwaysRunsAtBackgroundPriority { false };
     bool m_shouldTakeUIBackgroundAssertion { true };
     bool m_shouldCaptureAudioInUIProcess { false };
-    pid_t m_presentingApplicationPID { getCurrentProcessID() };
+    ProcessID m_presentingApplicationPID { getCurrentProcessID() };
 #if PLATFORM(IOS)
     WTF::String m_ctDataConnectionServiceType;
 #endif
 };
 
 } // namespace API
-
-#endif // APIContextConfiguration_h

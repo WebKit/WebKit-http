@@ -48,8 +48,6 @@
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderMultiColumnFlowThread.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
 #include "RenderTable.h"
 #include "RenderTableRow.h"
@@ -411,7 +409,7 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
             // Since we will bypass the body’s renderer anyway, just end the loop if we encounter a region flow (named flow thread).
             // See http://dev.w3.org/csswg/css-regions/#cssomview-offset-attributes
             auto* ancestor = parent();
-            while (ancestor != offsetParent && !is<RenderNamedFlowThread>(*ancestor)) {
+            while (ancestor != offsetParent) {
                 // FIXME: What are we supposed to do inside SVG content?
                 
                 if (is<RenderMultiColumnFlowThread>(*ancestor)) {
@@ -427,11 +425,7 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
                 ancestor = ancestor->parent();
             }
             
-            // Compute the offset position for elements inside named flow threads for which the offsetParent was the body.
-            // See https://bugs.webkit.org/show_bug.cgi?id=115899
-            if (is<RenderNamedFlowThread>(*ancestor))
-                referencePoint = downcast<RenderNamedFlowThread>(*ancestor).adjustedPositionRelativeToOffsetParent(*this, referencePoint);
-            else if (is<RenderBox>(*offsetParent) && offsetParent->isBody() && !offsetParent->isPositioned())
+            if (is<RenderBox>(*offsetParent) && offsetParent->isBody() && !offsetParent->isPositioned())
                 referencePoint.moveBy(downcast<RenderBox>(*offsetParent).topLeftLocation());
         }
     }
@@ -685,7 +679,7 @@ InterpolationQuality RenderBoxModelObject::chooseInterpolationQuality(GraphicsCo
 void RenderBoxModelObject::paintMaskForTextFillBox(ImageBuffer* maskImage, const IntRect& maskRect, InlineFlowBox* box, const LayoutRect& scrolledPaintRect)
 {
     GraphicsContext& maskImageContext = maskImage->context();
-    maskImageContext.translate(-maskRect.x(), -maskRect.y());
+    maskImageContext.translate(-maskRect.location());
 
     // Now add the text to the clip. We do this by painting using a special paint phase that signals to
     // InlineTextBoxes that they should just add their contents to the clip.
@@ -693,10 +687,6 @@ void RenderBoxModelObject::paintMaskForTextFillBox(ImageBuffer* maskImage, const
     if (box) {
         const RootInlineBox& rootBox = box->root();
         box->paint(info, LayoutPoint(scrolledPaintRect.x() - box->x(), scrolledPaintRect.y() - box->y()), rootBox.lineTop(), rootBox.lineBottom());
-    } else if (isRenderNamedFlowFragmentContainer()) {
-        RenderNamedFlowFragment& region = *downcast<RenderBlockFlow>(*this).renderNamedFlowFragment();
-        if (region.isValid())
-            region.flowThread()->layer()->paintNamedFlowThreadInsideRegion(maskImageContext, &region, maskRect, maskRect.location(), PaintBehaviorForceBlackText, RenderLayer::PaintLayerTemporaryClipRects);
     } else {
         LayoutSize localOffset = is<RenderBox>(*this) ? downcast<RenderBox>(*this).locationOffset() : LayoutSize();
         paint(info, scrolledPaintRect.location() - localOffset);
@@ -807,7 +797,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     if (clippedWithLocalScrolling) {
         // Clip to the overflow area.
         auto& thisBox = downcast<RenderBox>(*this);
-        context.clip(thisBox.overflowClipRect(rect.location(), currentRenderNamedFlowFragment()));
+        context.clip(thisBox.overflowClipRect(rect.location()));
         
         // Adjust the paint rect to reflect a scrolled content box with borders at the ends.
         scrolledPaintRect.moveBy(-thisBox.scrollPosition());
@@ -2437,7 +2427,7 @@ void RenderBoxModelObject::paintBoxShadow(const PaintInfo& info, const LayoutRec
                 context.clip(pixelSnappedBorderRect.rect());
 
             IntSize extraOffset(2 * roundToInt(paintRect.width()) + std::max(0, shadowOffset.width()) + shadowPaintingExtent - 2 * shadowSpread + 1, 0);
-            context.translate(extraOffset.width(), extraOffset.height());
+            context.translate(extraOffset);
             shadowOffset -= extraOffset;
 
             if (shadow->isWebkitBoxShadow())

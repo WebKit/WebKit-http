@@ -34,7 +34,8 @@ class TypeDefResolver extends Visitor {
     visitTypeRef(node)
     {
         this._visiting.doVisit(node, () => {
-            super.visitTypeRef(node);
+            for (let typeArgument of node.typeArguments)
+                typeArgument.visit(this);
             if (node.type instanceof TypeDef) {
                 let unificationContext = new UnificationContext(node.type.typeParameters);
                 if (node.typeArguments.length != node.type.typeParameters.length)

@@ -36,6 +36,7 @@
 #import "SessionTracker.h"
 #import "WKAPICast.h"
 #import "WKBrowsingContextHandleInternal.h"
+#import "WKCrashReporter.h"
 #import "WKFullKeyboardAccessWatcher.h"
 #import "WKTypeRefWrapper.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
@@ -62,6 +63,7 @@
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
+#import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <pal/spi/cocoa/pthreadSPI.h>
 #import <pal/spi/mac/NSAccessibilitySPI.h>
@@ -194,7 +196,7 @@ void WebProcess::initializeProcessName(const ChildProcessInitializationParameter
         applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Inspector", "Visible name of Web Inspector's web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
     else
         applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
-    WKSetVisibleApplicationName((CFStringRef)applicationName);
+    _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
 #endif
 }
 
@@ -394,7 +396,7 @@ void WebProcess::updateActivePages()
     }
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [activePageURLs] {
-        WKSetApplicationInformationItem(CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activePageURLs.get());
+        _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), CFSTR("LSActivePageUserVisibleOriginsKey"), (__bridge CFArrayRef)activePageURLs.get(), nullptr);
     });
 #endif
 }
@@ -537,7 +539,7 @@ void WebProcess::destroyRenderingResources()
 // FIXME: This should live somewhere else, and it should have the implementation in line instead of calling out to WKSI.
 void _WKSetCrashReportApplicationSpecificInformation(NSString *infoString)
 {
-    return WKSetCrashReportApplicationSpecificInformation((__bridge CFStringRef)infoString);
+    return setCrashReportApplicationSpecificInformation((__bridge CFStringRef)infoString);
 }
 
 } // namespace WebKit

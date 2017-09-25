@@ -33,6 +33,9 @@ WI.Color = class Color
     {
         this.format = format;
 
+        if (components.length === 3)
+            components.push(1);
+
         if (format === WI.Color.Format.HSL || format === WI.Color.Format.HSLA)
             this._hsla = components;
         else
@@ -55,11 +58,11 @@ WI.Color = class Color
         }
 
         // Simple - #hex, rgb(), keyword, hsl()
-        let simple = /^(?:#([0-9a-f]{3,8})|rgb\(([^)]+)\)|(\w+)|hsl\(([^)]+)\))$/i;
+        let simple = /^(?:#(?<hex>[0-9a-f]{3,8})|rgb\((?<rgb>[^)]+)\)|(?<keyword>\w+)|hsl\((?<hsl>[^)]+)\))$/i;
         let match = colorString.match(simple);
         if (match) {
-            if (match[1]) { // hex
-                let hex = match[1].toUpperCase();
+            if (match.groups.hex) {
+                let hex = match.groups.hex.toUpperCase();
                 let len = hex.length;
                 if (len === 3) {
                     return new WI.Color(WI.Color.Format.ShortHEX, [
@@ -91,8 +94,8 @@ WI.Color = class Color
                     ]);
                 } else
                     return null;
-            } else if (match[2]) { // rgb
-                let rgb = match[2].split(/\s*,\s*/);
+            } else if (match.groups.rgb) {
+                let rgb = match.groups.rgb.split(/\s*,\s*/);
                 if (rgb.length !== 3)
                     return null;
                 return new WI.Color(WI.Color.Format.RGB, [
@@ -101,16 +104,16 @@ WI.Color = class Color
                     parseInt(rgb[2]),
                     1
                 ]);
-            } else if (match[3]) { // keyword
-                let keyword = match[3].toLowerCase();
+            } else if (match.groups.keyword) {
+                let keyword = match.groups.keyword.toLowerCase();
                 if (!WI.Color.Keywords.hasOwnProperty(keyword))
                     return null;
                 let color = new WI.Color(WI.Color.Format.Keyword, WI.Color.Keywords[keyword].concat(1));
                 color.keyword = keyword;
                 color.original = colorString;
                 return color;
-            } else if (match[4]) { // hsl
-                let hsl = match[4].replace(/%/g, "").split(/\s*,\s*/);
+            } else if (match.groups.hsl) {
+                let hsl = match.groups.hsl.replace(/%/g, "").split(/\s*,\s*/);
                 if (hsl.length !== 3)
                     return null;
                 return new WI.Color(WI.Color.Format.HSL, [
@@ -123,11 +126,11 @@ WI.Color = class Color
         }
 
         // Advanced - rgba(), hsla()
-        let advanced = /^(?:rgba\(([^)]+)\)|hsla\(([^)]+)\))$/i;
+        let advanced = /^(?:rgba\((?<rgba>[^)]+)\)|hsla\((?<hsla>[^)]+)\))$/i;
         match = colorString.match(advanced);
         if (match) {
-            if (match[1]) { // rgba
-                let rgba = match[1].split(/\s*,\s*/);
+            if (match.groups.rgba) {
+                let rgba = match.groups.rgba.split(/\s*,\s*/);
                 if (rgba.length !== 4)
                     return null;
                 return new WI.Color(WI.Color.Format.RGBA, [
@@ -136,8 +139,8 @@ WI.Color = class Color
                     parseInt(rgba[2]),
                     Number.constrain(parseFloat(rgba[3]), 0, 1)
                 ]);
-            } else if (match[2]) { // hsla
-                let hsla = match[2].replace(/%/g, "").split(/\s*,\s*/);
+            } else if (match.groups.hsla) {
+                let hsla = match.groups.hsla.replace(/%/g, "").split(/\s*,\s*/);
                 if (hsla.length !== 4)
                     return null;
                 return new WI.Color(WI.Color.Format.HSLA, [
@@ -154,9 +157,9 @@ WI.Color = class Color
 
     static rgb2hsv(r, g, b)
     {
-        r /= 255;
-        g /= 255;
-        b /= 255;
+        r = WI.Color._eightBitChannel(r) / 255;
+        g = WI.Color._eightBitChannel(g) / 255;
+        b = WI.Color._eightBitChannel(b) / 255;
 
         let min = Math.min(Math.min(r, g), b);
         let max = Math.max(Math.max(r, g), b);
@@ -225,6 +228,32 @@ WI.Color = class Color
         return rgb;
     }
 
+    static cmyk2rgb(c, m, y, k)
+    {
+        c = Number.constrain(c, 0, 1);
+        m = Number.constrain(m, 0, 1);
+        y = Number.constrain(y, 0, 1);
+        k = Number.constrain(k, 0, 1);
+
+        let r = 255 - ((Math.min(1, c * (1 - k) + k)) * 255);
+        let g = 255 - ((Math.min(1, m * (1 - k) + k)) * 255);
+        let b = 255 - ((Math.min(1, y * (1 - k) + k)) * 255);
+        return [r, g, b];
+    }
+
+    static normalized2rgb(r, g, b)
+    {
+        return [
+            WI.Color._eightBitChannel(r * 255),
+            WI.Color._eightBitChannel(g * 255),
+            WI.Color._eightBitChannel(b * 255)
+        ];
+    }
+
+    static _eightBitChannel(value)
+    {
+        return Number.constrain(Math.round(value), 0, 255);
+    }
 
     // Public
 
@@ -481,16 +510,18 @@ WI.Color = class Color
         if (!this.simple)
             return this._toRGBAString();
 
-        let rgba = this.rgba.slice(0, -1);
-        rgba = rgba.map((value) => value.maxDecimals(2));
-        return "rgb(" + rgba.join(", ") + ")";
+        let r = WI.Color._eightBitChannel(this.rgb[0]);
+        let g = WI.Color._eightBitChannel(this.rgb[1]);
+        let b = WI.Color._eightBitChannel(this.rgb[2]);
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     _toRGBAString()
     {
-        let rgba = this.rgba;
-        rgba = rgba.map((value) => value.maxDecimals(2));
-        return "rgba(" + rgba.join(", ") + ")";
+        let r = WI.Color._eightBitChannel(this.rgb[0]);
+        let g = WI.Color._eightBitChannel(this.rgb[1]);
+        let b = WI.Color._eightBitChannel(this.rgb[2]);
+        return `rgba(${r}, ${g}, ${b}, ${this.alpha})`;
     }
 
     _toHSLString()
@@ -510,14 +541,9 @@ WI.Color = class Color
         return "hsla(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%, " + hsla[3] + ")";
     }
 
-    _componentToNumber(value)
-    {
-        return Number.constrain(value, 0, 255);
-    }
-
     _componentToHexValue(value)
     {
-        let hex = this._componentToNumber(value).toString(16);
+        let hex = WI.Color._eightBitChannel(value).toString(16);
         if (hex.length === 1)
             hex = "0" + hex;
         return hex;
@@ -525,9 +551,9 @@ WI.Color = class Color
 
     _rgbToHSL(rgb)
     {
-        let r = this._componentToNumber(rgb[0]) / 255;
-        let g = this._componentToNumber(rgb[1]) / 255;
-        let b = this._componentToNumber(rgb[2]) / 255;
+        let r = WI.Color._eightBitChannel(rgb[0]) / 255;
+        let g = WI.Color._eightBitChannel(rgb[1]) / 255;
+        let b = WI.Color._eightBitChannel(rgb[2]) / 255;
         let max = Math.max(r, g, b);
         let min = Math.min(r, g, b);
         let diff = max - min;

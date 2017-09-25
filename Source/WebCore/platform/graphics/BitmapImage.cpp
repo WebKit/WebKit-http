@@ -507,7 +507,10 @@ void BitmapImage::resetAnimation()
 
 void BitmapImage::decode(WTF::Function<void()>&& callback)
 {
-    m_decodingCallbacks.append(WTFMove(callback));
+    if (!m_decodingCallbacks)
+        m_decodingCallbacks = std::make_unique<Vector<Function<void()>, 1>>();
+
+    m_decodingCallbacks->append(WTFMove(callback));
 
     if (canAnimate())  {
         if (m_desiredFrameStartTime) {
@@ -541,9 +544,11 @@ void BitmapImage::decode(WTF::Function<void()>&& callback)
 
 void BitmapImage::callDecodingCallbacks()
 {
-    for (auto& decodingCallback : m_decodingCallbacks)
+    if (!m_decodingCallbacks)
+        return;
+    for (auto& decodingCallback : *m_decodingCallbacks)
         decodingCallback();
-    m_decodingCallbacks.clear();
+    m_decodingCallbacks = nullptr;
 }
 
 void BitmapImage::imageFrameAvailableAtIndex(size_t index)

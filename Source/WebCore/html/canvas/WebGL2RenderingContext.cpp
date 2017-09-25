@@ -503,7 +503,7 @@ void WebGL2RenderingContext::compressedTexSubImage3D(GC3Denum, GC3Dint, GC3Dint,
 {
 }
 
-GC3Dint WebGL2RenderingContext::getFragDataLocation(WebGLProgram*, const String&)
+GC3Dint WebGL2RenderingContext::getFragDataLocation(WebGLProgram&, const String&)
 {
     return 0;
 }
@@ -524,43 +524,43 @@ void WebGL2RenderingContext::uniform4ui(WebGLUniformLocation*, GC3Duint, GC3Duin
 {
 }
 
-void WebGL2RenderingContext::uniform1uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::uniform1uiv(WebGLUniformLocation*, Uint32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniform2uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::uniform2uiv(WebGLUniformLocation*, Uint32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniform3uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::uniform3uiv(WebGLUniformLocation*, Uint32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniform4uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::uniform4uiv(WebGLUniformLocation*, Uint32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix2x3fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix2x3fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix3x2fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix3x2fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix2x4fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix2x4fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix4x2fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix4x2fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix3x4fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix3x4fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
-void WebGL2RenderingContext::uniformMatrix4x3fv(WebGLUniformLocation*, GC3Dboolean, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::uniformMatrix4x3fv(WebGLUniformLocation*, GC3Dboolean, Float32List&&, GC3Duint, GC3Duint)
 {
 }
 
@@ -568,7 +568,7 @@ void WebGL2RenderingContext::vertexAttribI4i(GC3Duint, GC3Dint, GC3Dint, GC3Dint
 {
 }
 
-void WebGL2RenderingContext::vertexAttribI4iv(GC3Duint, RefPtr<Int32Array>&&)
+void WebGL2RenderingContext::vertexAttribI4iv(GC3Duint, Int32List&&)
 {
 }
 
@@ -576,7 +576,7 @@ void WebGL2RenderingContext::vertexAttribI4ui(GC3Duint, GC3Duint, GC3Duint, GC3D
 {
 }
 
-void WebGL2RenderingContext::vertexAttribI4uiv(GC3Duint, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::vertexAttribI4uiv(GC3Duint, Uint32List&&)
 {
 }
 
@@ -668,7 +668,7 @@ void WebGL2RenderingContext::drawBuffers(const Vector<GC3Denum>& buffers)
     }
 }
 
-void WebGL2RenderingContext::clearBufferiv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Int32Array>&&)
+void WebGL2RenderingContext::clearBufferiv(GC3Denum buffer, GC3Dint drawbuffer, Int32List&&, GC3Duint)
 {
     switch (buffer) {
     case GraphicsContext3D::COLOR:
@@ -693,7 +693,7 @@ void WebGL2RenderingContext::clearBufferiv(GC3Denum buffer, GC3Dint drawbuffer, 
     }
 }
 
-void WebGL2RenderingContext::clearBufferuiv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Uint32Array>&&)
+void WebGL2RenderingContext::clearBufferuiv(GC3Denum buffer, GC3Dint drawbuffer, Uint32List&&, GC3Duint)
 {
     switch (buffer) {
     case GraphicsContext3D::COLOR:
@@ -712,7 +712,7 @@ void WebGL2RenderingContext::clearBufferuiv(GC3Denum buffer, GC3Dint drawbuffer,
     }
 }
 
-void WebGL2RenderingContext::clearBufferfv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Float32Array>&&)
+void WebGL2RenderingContext::clearBufferfv(GC3Denum buffer, GC3Dint drawbuffer, Float32List&&, GC3Duint)
 {
     switch (buffer) {
     case GraphicsContext3D::COLOR:
@@ -770,7 +770,7 @@ GC3Dboolean WebGL2RenderingContext::isQuery(WebGLQuery*)
     return false;
 }
 
-void WebGL2RenderingContext::beginQuery(GC3Denum, WebGLQuery*)
+void WebGL2RenderingContext::beginQuery(GC3Denum, WebGLQuery&)
 {
 }
 
@@ -783,7 +783,7 @@ RefPtr<WebGLQuery> WebGL2RenderingContext::getQuery(GC3Denum, GC3Denum)
     return nullptr;
 }
 
-WebGLAny WebGL2RenderingContext::getQueryParameter(WebGLQuery*, GC3Denum)
+WebGLAny WebGL2RenderingContext::getQueryParameter(WebGLQuery&, GC3Denum)
 {
     return nullptr;
 }
@@ -806,15 +806,15 @@ void WebGL2RenderingContext::bindSampler(GC3Duint, WebGLSampler*)
 {
 }
 
-void WebGL2RenderingContext::samplerParameteri(WebGLSampler*, GC3Denum, GC3Dint)
+void WebGL2RenderingContext::samplerParameteri(WebGLSampler&, GC3Denum, GC3Dint)
 {
 }
 
-void WebGL2RenderingContext::samplerParameterf(WebGLSampler*, GC3Denum, GC3Dfloat)
+void WebGL2RenderingContext::samplerParameterf(WebGLSampler&, GC3Denum, GC3Dfloat)
 {
 }
 
-WebGLAny WebGL2RenderingContext::getSamplerParameter(WebGLSampler*, GC3Denum)
+WebGLAny WebGL2RenderingContext::getSamplerParameter(WebGLSampler&, GC3Denum)
 {
     return nullptr;
 }
@@ -833,16 +833,16 @@ void WebGL2RenderingContext::deleteSync(WebGLSync*)
 {
 }
 
-GC3Denum WebGL2RenderingContext::clientWaitSync(WebGLSync*, GC3Dbitfield, GC3Duint64)
+GC3Denum WebGL2RenderingContext::clientWaitSync(WebGLSync&, GC3Dbitfield, GC3Duint64)
 {
     return 0;
 }
 
-void WebGL2RenderingContext::waitSync(WebGLSync*, GC3Dbitfield, GC3Duint64)
+void WebGL2RenderingContext::waitSync(WebGLSync&, GC3Dbitfield, GC3Duint64)
 {
 }
 
-WebGLAny WebGL2RenderingContext::getSyncParameter(WebGLSync*, GC3Denum)
+WebGLAny WebGL2RenderingContext::getSyncParameter(WebGLSync&, GC3Denum)
 {
     return nullptr;
 }
@@ -873,11 +873,11 @@ void WebGL2RenderingContext::endTransformFeedback()
 {
 }
 
-void WebGL2RenderingContext::transformFeedbackVaryings(WebGLProgram*, const Vector<String>&, GC3Denum)
+void WebGL2RenderingContext::transformFeedbackVaryings(WebGLProgram&, const Vector<String>&, GC3Denum)
 {
 }
 
-RefPtr<WebGLActiveInfo> WebGL2RenderingContext::getTransformFeedbackVarying(WebGLProgram*, GC3Duint)
+RefPtr<WebGLActiveInfo> WebGL2RenderingContext::getTransformFeedbackVarying(WebGLProgram&, GC3Duint)
 {
     return nullptr;
 }
@@ -915,9 +915,9 @@ WebGLAny WebGL2RenderingContext::getIndexedParameter(GC3Denum target, GC3Duint)
     }
 }
 
-Uint32Array* WebGL2RenderingContext::getUniformIndices(WebGLProgram*, const Vector<String>&)
+std::optional<Vector<GC3Duint>> WebGL2RenderingContext::getUniformIndices(WebGLProgram&, const Vector<String>&)
 {
-    return nullptr;
+    return std::nullopt;
 }
 
 WebGLAny WebGL2RenderingContext::getActiveUniforms(WebGLProgram& program, const Vector<GC3Duint>& uniformIndices, GC3Denum pname)
@@ -944,22 +944,22 @@ WebGLAny WebGL2RenderingContext::getActiveUniforms(WebGLProgram& program, const 
     }
 }
 
-GC3Duint WebGL2RenderingContext::getUniformBlockIndex(WebGLProgram*, const String&)
+GC3Duint WebGL2RenderingContext::getUniformBlockIndex(WebGLProgram&, const String&)
 {
     return 0;
 }
 
-WebGLAny WebGL2RenderingContext::getActiveUniformBlockParameter(WebGLProgram*, GC3Duint, GC3Denum)
+WebGLAny WebGL2RenderingContext::getActiveUniformBlockParameter(WebGLProgram&, GC3Duint, GC3Denum)
 {
     return nullptr;
 }
 
-WebGLAny WebGL2RenderingContext::getActiveUniformBlockName(WebGLProgram*, GC3Duint)
+WebGLAny WebGL2RenderingContext::getActiveUniformBlockName(WebGLProgram&, GC3Duint)
 {
     return nullptr;
 }
 
-void WebGL2RenderingContext::uniformBlockBinding(WebGLProgram*, GC3Duint, GC3Duint)
+void WebGL2RenderingContext::uniformBlockBinding(WebGLProgram&, GC3Duint, GC3Duint)
 {
 }
 

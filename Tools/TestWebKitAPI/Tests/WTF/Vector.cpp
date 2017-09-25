@@ -26,8 +26,10 @@
 #include "config.h"
 
 #include "MoveOnly.h"
+#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
-#include <wtf/text/CString.h>
+#include <wtf/text/StringHash.h>
+#include <wtf/text/WTFString.h>
 
 namespace TestWebKitAPI {
 
@@ -649,6 +651,128 @@ TEST(WTF_Vector, RemoveAllMatching)
     EXPECT_TRUE(v == Vector<int>({3, 1, 2, 1, 1, 1, 1, 1}));
     EXPECT_EQ(8U, v.removeAllMatching([] (int value) { return value > 0; }, 0));
     EXPECT_EQ(0U, v.size());
+}
+
+static int multiplyByTwo(int value)
+{
+    return 2 * value;
+}
+
+TEST(WTF_Vector, MapStaticFunction)
+{
+    Vector<int> vector { 2, 3, 4 };
+
+    auto mapped = WTF::map(vector, multiplyByTwo);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(4, mapped[0]);
+    EXPECT_EQ(6, mapped[1]);
+    EXPECT_EQ(8, mapped[2]);
+}
+
+static MoveOnly multiplyByTwoMoveOnly(const MoveOnly& value)
+{
+    return MoveOnly(2 * value.value());
+}
+
+TEST(WTF_Vector, MapStaticFunctionMoveOnly)
+{
+    Vector<MoveOnly> vector;
+
+    vector.reserveInitialCapacity(3);
+    for (unsigned i = 0; i < 3; ++i)
+        vector.uncheckedAppend(MoveOnly { i });
+
+    auto mapped = WTF::map(vector, multiplyByTwoMoveOnly);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(0U, mapped[0].value());
+    EXPECT_EQ(2U, mapped[1].value());
+    EXPECT_EQ(4U, mapped[2].value());
+}
+
+TEST(WTF_Vector, MapLambda)
+{
+    Vector<int> vector { 2, 3, 4 };
+
+    int counter = 0;
+    auto mapped = WTF::map(vector, [&] (int item) {
+        counter += 2;
+        return counter <= item;
+    });
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0]);
+    EXPECT_FALSE(mapped[1]);
+    EXPECT_FALSE(mapped[2]);
+}
+
+TEST(WTF_Vector, MapLambdaMove)
+{
+    Vector<MoveOnly> vector;
+
+    vector.reserveInitialCapacity(3);
+    for (unsigned i = 0; i < 3; ++i)
+        vector.uncheckedAppend(MoveOnly { i });
+
+
+    unsigned counter = 0;
+    auto mapped = WTF::map(WTFMove(vector), [&] (MoveOnly&& item) {
+        item = item.value() + ++counter;
+        return WTFMove(item);
+    });
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(1U, mapped[0].value());
+    EXPECT_EQ(3U, mapped[1].value());
+    EXPECT_EQ(5U, mapped[2].value());
+}
+
+TEST(WTF_Vector, MapFromHashMap)
+{
+    HashMap<String, String> map;
+    map.set(String { "k1" }, String { "v1" });
+    map.set(String { "k2" }, String { "v2" });
+    map.set(String { "k3" }, String { "v3" });
+
+    auto mapped = WTF::map(map, [&] (KeyValuePair<String, String>& pair) -> String {
+        return pair.value;
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "v1");
+    EXPECT_TRUE(mapped[1] == "v2");
+    EXPECT_TRUE(mapped[2] == "v3");
+
+    mapped = WTF::map(map, [&] (const auto& pair) -> String {
+        return pair.key;
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "k1");
+    EXPECT_TRUE(mapped[1] == "k2");
+    EXPECT_TRUE(mapped[2] == "k3");
+
+    mapped = WTF::map(WTFMove(map), [&] (KeyValuePair<String, String>&& pair) -> String {
+        return WTFMove(pair.value);
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "v1");
+    EXPECT_TRUE(mapped[1] == "v2");
+    EXPECT_TRUE(mapped[2] == "v3");
+
+    EXPECT_TRUE(map.contains("k1"));
+    EXPECT_TRUE(map.contains("k2"));
+    EXPECT_TRUE(map.contains("k3"));
+
+    EXPECT_TRUE(map.get("k1").isNull());
+    EXPECT_TRUE(map.get("k2").isNull());
+    EXPECT_TRUE(map.get("k3").isNull());
+
 }
 
 } // namespace TestWebKitAPI

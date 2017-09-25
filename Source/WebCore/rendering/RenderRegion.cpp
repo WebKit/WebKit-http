@@ -30,18 +30,16 @@
 #include "config.h"
 #include "RenderRegion.h"
 
-#include "FlowThreadController.h"
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "IntRect.h"
 #include "LayoutRepainter.h"
 #include "Range.h"
 #include "RenderBoxRegionInfo.h"
+#include "RenderFlowThread.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderView.h"
 #include "StyleResolver.h"
 
@@ -50,7 +48,6 @@ namespace WebCore {
 RenderRegion::RenderRegion(Element& element, RenderStyle&& style, RenderFlowThread* flowThread)
     : RenderBlockFlow(element, WTFMove(style))
     , m_flowThread(flowThread)
-    , m_parentNamedFlowThread(nullptr)
     , m_isValid(false)
 {
 }
@@ -58,7 +55,6 @@ RenderRegion::RenderRegion(Element& element, RenderStyle&& style, RenderFlowThre
 RenderRegion::RenderRegion(Document& document, RenderStyle&& style, RenderFlowThread* flowThread)
     : RenderBlockFlow(document, WTFMove(style))
     , m_flowThread(flowThread)
-    , m_parentNamedFlowThread(nullptr)
     , m_isValid(false)
 {
 }
@@ -262,19 +258,7 @@ void RenderRegion::repaintFlowThreadContentRectangle(const LayoutRect& repaintRe
 
 void RenderRegion::installFlowThread()
 {
-    m_flowThread = &view().flowThreadController().ensureRenderFlowThreadWithName(style().regionThread());
-
-    // By now the flow thread should already be added to the rendering tree,
-    // so we go up the rendering parents and check that this region is not part of the same
-    // flow that it actually needs to display. It would create a circular reference.
-
-    auto closestFlowThreadAncestor = ancestorsOfType<RenderNamedFlowThread>(*this).first();
-    if (!closestFlowThreadAncestor) {
-        m_parentNamedFlowThread = nullptr;
-        return;
-    }
-
-    m_parentNamedFlowThread = &*closestFlowThreadAncestor;
+    ASSERT_NOT_REACHED();
 }
 
 void RenderRegion::attachRegion()
@@ -290,7 +274,7 @@ void RenderRegion::attachRegion()
     // and we are attaching the region to the flow thread.
     installFlowThread();
     
-    if (m_flowThread == m_parentNamedFlowThread)
+    if (!m_flowThread)
         return;
 
     // Only after adding the region to the thread, the region is marked to be valid.

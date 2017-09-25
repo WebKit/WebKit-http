@@ -35,13 +35,16 @@ class Substitution extends Rewriter {
             this._map.set(parameters[i], argumentList[i]);
     }
     
+    get map() { return this._map; }
+    
     visitTypeRef(node)
     {
         let replacement = this._map.get(node.type);
         if (replacement) {
             if (node.typeArguments.length)
                 throw new Error("Unexpected type arguments on type variable");
-            return replacement.visit(new AutoWrapper());
+            let result = replacement.visit(new AutoWrapper());
+            return result;
         }
         
         let result = super.visitTypeRef(node);

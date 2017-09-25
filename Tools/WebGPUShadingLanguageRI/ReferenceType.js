@@ -27,6 +27,10 @@
 class ReferenceType extends Type {
     constructor(origin, addressSpace, elementType)
     {
+        if (!elementType)
+            throw new Error("Null elementType");
+        if (!origin)
+            throw new Error("Null origin");
         super();
         validateAddressSpace(addressSpace);
         this._origin = origin;
@@ -37,7 +41,6 @@ class ReferenceType extends Type {
     get origin() { return this._origin; }
     get addressSpace() { return this._addressSpace; }
     get elementType() { return this._elementType; }
-    get isPrimitive() { return false; }
 
     get size() { return 1; }
 

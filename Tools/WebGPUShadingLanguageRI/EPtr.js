@@ -27,6 +27,8 @@
 class EPtr {
     constructor(buffer, offset)
     {
+        if (offset == null || offset != offset)
+            throw new Error("Bad offset: " + offset);
         this._buffer = buffer;
         this._offset = offset;
     }
@@ -38,9 +40,13 @@ class EPtr {
     // In a real execution environment, uses of this manifest as SSA temporaries.
     static box(value)
     {
-        let buffer = new EBuffer(1);
-        buffer.set(0, value);
-        return new EPtr(buffer, 0);
+        return new EPtr(new EBuffer(1), 0).box(value);
+    }
+    
+    box(value)
+    {
+        this._buffer.set(0, value);
+        return this;
     }
     
     get buffer() { return this._buffer; }

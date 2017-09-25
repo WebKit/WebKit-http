@@ -138,11 +138,6 @@ std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 #pragma clang diagnostic pop
 }
 
-std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
-{
-    return std::make_unique<Pasteboard>(platformStrategies()->pasteboardStrategy()->uniqueName());
-}
-
 #if ENABLE(DRAG_SUPPORT)
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
@@ -296,11 +291,6 @@ void Pasteboard::write(const PasteboardImage& pasteboardImage)
     if (pasteboardImage.dataInWebArchiveFormat)
         m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(pasteboardImage.dataInWebArchiveFormat.get(), WebArchivePboardType, m_pasteboardName);
     writeFileWrapperAsRTFDAttachment(fileWrapper(pasteboardImage), m_pasteboardName, m_changeCount);
-}
-
-void Pasteboard::writePasteboard(const Pasteboard& pasteboard)
-{
-    m_changeCount = platformStrategies()->pasteboardStrategy()->copy(pasteboard.m_pasteboardName, m_pasteboardName);
 }
 
 bool Pasteboard::canSmartReplace()
@@ -517,44 +507,12 @@ static Vector<String> absoluteURLsFromPasteboardFilenames(const String& pasteboa
     return urls;
 }
 
-static Vector<String> absoluteURLsFromPasteboard(const String& pasteboardName, bool onlyFirstURL = false)
-{
-    // NOTE: We must always check [availableTypes containsObject:] before accessing pasteboard data
-    // or CoreFoundation will printf when there is not data of the corresponding type.
-    Vector<String> availableTypes;
-    Vector<String> absoluteURLs;
-    platformStrategies()->pasteboardStrategy()->getTypes(availableTypes, pasteboardName);
-
-    // Try NSFilenamesPboardType because it contains a list
-    if (availableTypes.contains(String(NSFilenamesPboardType))) {
-        absoluteURLs = absoluteURLsFromPasteboardFilenames(pasteboardName, onlyFirstURL);
-        if (!absoluteURLs.isEmpty())
-            return absoluteURLs;
-    }
-
-    // Fallback to NSURLPboardType (which is a single URL)
-    if (availableTypes.contains(String(NSURLPboardType))) {
-        absoluteURLs.append(platformStrategies()->pasteboardStrategy()->stringForType(String(NSURLPboardType), pasteboardName));
-        return absoluteURLs;
-    }
-
-    // No file paths on the pasteboard, return nil
-    return Vector<String>();
-}
-
 String Pasteboard::readString(const String& type)
 {
     const String& cocoaType = cocoaTypeFromHTMLClipboardType(type);
     String cocoaValue;
 
-    // Grab the value off the pasteboard corresponding to the cocoaType
-    if (cocoaType == String(NSURLPboardType)) {
-        // "url" and "text/url-list" both map to NSURLPboardType in cocoaTypeFromHTMLClipboardType(), "url" only wants the first URL
-        bool onlyFirstURL = equalLettersIgnoringASCIICase(type, "url");
-        Vector<String> absoluteURLs = absoluteURLsFromPasteboard(m_pasteboardName, onlyFirstURL);
-        for (size_t i = 0; i < absoluteURLs.size(); i++)
-            cocoaValue = i ? "\n" + absoluteURLs[i]: absoluteURLs[i];
-    } else if (cocoaType == String(NSStringPboardType))
+    if (cocoaType == String(NSStringPboardType))
         cocoaValue = [platformStrategies()->pasteboardStrategy()->stringForType(cocoaType, m_pasteboardName) precomposedStringWithCanonicalMapping];
     else if (!cocoaType.isEmpty())
         cocoaValue = platformStrategies()->pasteboardStrategy()->stringForType(cocoaType, m_pasteboardName);
@@ -593,12 +551,8 @@ static void addHTMLClipboardTypesForCocoaType(ListHashSet<String>& resultTypes, 
         // However, this is not really an issue for us doing a sanity check here.
         Vector<String> fileList;
         platformStrategies()->pasteboardStrategy()->getPathnamesForType(fileList, String(NSFilenamesPboardType), pasteboardName);
-        if (!fileList.isEmpty()) {
-            // It is unknown if NSFilenamesPboardType always implies NSURLPboardType in Cocoa,
-            // but NSFilenamesPboardType should imply both 'text/uri-list' and 'Files'
-            resultTypes.add(ASCIILiteral("text/uri-list"));
+        if (!fileList.isEmpty())
             resultTypes.add(ASCIILiteral("Files"));
-        }
         return;
     }
     String utiType = utiTypeFromCocoaType(cocoaType);

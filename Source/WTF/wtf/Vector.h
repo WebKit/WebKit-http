@@ -28,6 +28,7 @@
 #include <utility>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/Forward.h>
 #include <wtf/MallocPtr.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/NotFound.h>
@@ -575,7 +576,8 @@ struct UnsafeVectorOverflow {
     }
 };
 
-template<typename T, size_t inlineCapacity = 0, typename OverflowHandler = CrashOnOverflow, size_t minCapacity = 16, typename Malloc = FastMalloc>
+// Template default values are in Forward.h.
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity, typename Malloc>
 class Vector : private VectorBuffer<T, inlineCapacity, Malloc> {
     WTF_MAKE_FAST_ALLOCATED;
 private:
@@ -1558,6 +1560,51 @@ template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t min
 size_t removeRepeatedElements(Vector<T, inlineCapacity, OverflowHandler, minCapacity, Malloc>& vector)
 {
     return removeRepeatedElements(vector, [] (T& a, T& b) { return a == b; });
+}
+
+template<typename MapFunction, typename SourceType>
+struct MapFunctionInspector {
+    using RealSourceType = typename std::remove_reference<SourceType>::type;
+    using IteratorType = decltype(std::begin(std::declval<RealSourceType>()));
+    using SourceItemType = typename std::iterator_traits<IteratorType>::value_type;
+};
+
+template<typename MapFunction, typename SourceType, typename Enable = void>
+struct Mapper {
+    using SourceItemType = typename MapFunctionInspector<MapFunction, SourceType>::SourceItemType;
+    using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&)>::type;
+
+    static Vector<DestinationItemType> map(SourceType source, const MapFunction& mapFunction)
+    {
+        Vector<DestinationItemType> result;
+        // FIXME: Use std::size when available on all compilers.
+        result.reserveInitialCapacity(source.size());
+        for (auto& item : source)
+            result.uncheckedAppend(mapFunction(item));
+        return result;
+    }
+};
+
+template<typename MapFunction, typename SourceType>
+struct Mapper<MapFunction, SourceType, typename std::enable_if<std::is_rvalue_reference<SourceType&&>::value>::type> {
+    using SourceItemType = typename MapFunctionInspector<MapFunction, SourceType>::SourceItemType;
+    using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&&)>::type;
+
+    static Vector<DestinationItemType> map(SourceType&& source, const MapFunction& mapFunction)
+    {
+        Vector<DestinationItemType> result;
+        // FIXME: Use std::size when available on all compilers.
+        result.reserveInitialCapacity(source.size());
+        for (auto& item : source)
+            result.uncheckedAppend(mapFunction(WTFMove(item)));
+        return result;
+    }
+};
+
+template<typename MapFunction, typename SourceType>
+Vector<typename Mapper<MapFunction, SourceType>::DestinationItemType> map(SourceType&& source, MapFunction&& mapFunction)
+{
+    return Mapper<MapFunction, SourceType>::map(std::forward<SourceType>(source), std::forward<MapFunction>(mapFunction));
 }
 
 } // namespace WTF

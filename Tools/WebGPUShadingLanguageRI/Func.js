@@ -25,10 +25,16 @@
 "use strict";
 
 class Func extends Node {
-    constructor(origin, name, returnType, typeParameters, parameters, isCast)
+    constructor(origin, name, returnType, typeParameters, parameters, isCast, shaderType)
     {
         if (!(origin instanceof LexerToken))
             throw new Error("Bad origin: " + origin);
+        for (let parameter of parameters) {
+            if (!parameter)
+                throw new Error("Null parameter");
+            if (!parameter.type)
+                throw new Error("Null parameter type");
+        }
         super();
         this._origin = origin;
         this._name = name;
@@ -36,6 +42,7 @@ class Func extends Node {
         this._typeParameters = typeParameters;
         this._parameters = parameters;
         this._isCast = isCast;
+        this._shaderType = shaderType;
     }
     
     get origin() { return this._origin; }
@@ -46,13 +53,21 @@ class Func extends Node {
     get parameters() { return this._parameters; }
     get parameterTypes() { return this.parameters.map(parameter => parameter.type); }
     get isCast() { return this._isCast; }
+    get shaderType() { return this._shaderType; }
     get returnTypeForOverloadResolution() { return this.isCast ? this.returnType : null; }
     
     get kind() { return Func; }
     
     toDeclString()
     {
-        return (this.isCast ? "operator " + this.returnType : this.returnType + " " + this.name) + "<" + this.typeParameters + ">(" + this.parameters + ")";
+        let result = "";
+        if (this.shaderType)
+            result += this.shaderType + " ";
+        if (this.isCast)
+            result += "operator<" + this.typeParameters + "> " + this.returnType;
+        else
+            result += this.returnType + " " + this.name + "<" + this.typeParameters + ">";
+        return result + "(" + this.parameters + ")";
     }
     
     toString()

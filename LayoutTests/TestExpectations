@@ -35,6 +35,7 @@ media/ios [ Skip ]
 media/controls/ipad [ Skip ]
 fast/text-autosizing [ Skip ]
 fast/css/variables/constants/ios [ Skip ]
+fast/css/variables/env/ios [ Skip ]
 http/tests/preload/viewport [ Skip ]
 
 # window.showModalDialog is only tested in DumpRenderTree on Mac.
@@ -75,6 +76,7 @@ http/tests/quicklook [ Skip ]
 http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
 http/tests/loading/resourceLoadStatistics/ [ Skip ]
+http/tests/storageAccess/ [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -138,7 +140,55 @@ fast/text/font-lookup-dot-prefix-case-sensitive.html [ Skip ]
 # Payment Request is only enabled on Cocoa platforms.
 imported/w3c/web-platform-tests/payment-request [ Skip ]
 
-webkit.org/b/175269 imported/w3c/web-platform-tests/eventsource/event-data.html [ Skip ]
+imported/w3c/web-platform-tests/2dcontext/transformations/canvas_transformations_reset_001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async.htm [ Pass Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async-same-origin.htm [ Pass Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-header-denied.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-method-denied.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-not-supported.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-header-denied.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-method-denied.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-not-supported.htm [ Failure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-002.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-003.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-004.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-005.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-006.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-007.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-008.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-009.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-010.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-011.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-grid-1/alignment/self-baseline/grid-self-baseline-changes-grid-area-size-012.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-002.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-003.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/outline-006.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large-multiple.html [ Pass Crash ]
+imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large.html [ Pass Crash ]
+imported/w3c/web-platform-tests/IndexedDB/nested-cloning-small.html [ Pass Crash ]
+imported/w3c/web-platform-tests/cssom/interfaces.html [ Pass Timeout ]
+imported/w3c/web-platform-tests/cssom-view/interfaces.html [ Pass Timeout ]
+imported/w3c/web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-002.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-010.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-012.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-015.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-017.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-021.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Timeout ]
+imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation.tentative.html [ Pass Failure ]
+imported/w3c/web-platform-tests/hr-time/timeOrigin.html [ Failure ]
+imported/w3c/web-platform-tests/eventsource/dedicated-worker/eventsource-constructor-non-same-origin.htm [ Pass Failure Crash ]
+imported/w3c/web-platform-tests/eventsource/request-credentials.htm [ Failure ]
+imported/w3c/web-platform-tests/mediacapture-fromelement/capture.html [ Failure ]
+imported/w3c/web-platform-tests/mediacapture-fromelement/ended.html [ Failure ]
+imported/w3c/web-platform-tests/resource-timing/single-entry-per-resource.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/traverse_the_history_4.html [ Failure ]
+imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Pass Failure ]
+imported/w3c/web-platform-tests/mediacapture-fromelement/creation.html [ Pass Failure ]
+imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ Pass Failure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -224,14 +274,11 @@ webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-record
 
 # This test is fast enough in release but quite slow in debug builds.
 [ Debug ] inspector/debugger/debugger-stack-overflow.html [ Skip ]
+[ Debug ] inspector/canvas/recording-2d.html [ Slow ]
+[ Debug ] inspector/canvas/recording-webgl.html [ Slow ]
 
 # Debugger stepping tests can timeout if they run slowly due to a short timer scheduled in the frontend.
 webkit.org/b/161951 [ Debug ] inspector/debugger/paused-scopes.html [ Skip ]
-
-# Collecting region's children in a named flow not supported yet
-webkit.org/b/74144 fast/regions/flow-body-in-html.html [ Skip ]
-webkit.org/b/74144 fast/regions/universal-selector-children-to-the-same-region.html [ Skip ]
-webkit.org/b/74144 fast/regions/region-content-flown-into-region.html [ Skip ]
 
 # These conformance tests are no longer in sync with the latest specification
 # and expect compareDocumentPosition() to return:
@@ -319,7 +366,6 @@ imported/w3c/web-platform-tests/css/css-scoping-1/css-scoping-shadow-host-namesp
 imported/w3c/web-platform-tests/IndexedDB/abort-in-initial-upgradeneeded.html [ Pass Failure ]
 imported/w3c/web-platform-tests/IndexedDB/clone-before-keypath-eval.html [ Pass Failure ]
 imported/w3c/web-platform-tests/IndexedDB/bindings-inject-key.html [ Pass Failure ]
-imported/w3c/web-platform-tests/fetch/dangling-markup-mitigation.tentative.html [ Pass Failure ]
 
 # Those WPT tests are flaky when failing.
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-1.html [ Pass Failure ]
@@ -398,11 +444,12 @@ imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight.any.html 
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
-webkit.org/b/168357 imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media.html [ Failure ]
-webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
-webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
-webkit.org/b/171511 imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
+
+webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Failure ]
+webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
+webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
+webkit.org/b/171511 http/wpt/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
 
@@ -559,7 +606,8 @@ webkit.org/b/121628 [ Release ] fast/history/history-back-while-pdf-in-pagecache
 [ Debug ] fullscreen/full-screen-iframe-legacy.html [ Pass Crash ]
 webkit.org/b/151488 [ Debug ] imported/blink/editing/selection/deleteFromDocument-undo-crash.html [ Skip ]
 
-webkit.org/b/172337 [ Debug ] imported/w3c/web-platform-tests/url/failure.html [ Crash ]
+webkit.org/b/172337 [ Debug ] imported/w3c/web-platform-tests/url/failure.html [ Pass Failure Crash ]
+webkit.org/b/172337 [ Release ] imported/w3c/web-platform-tests/url/failure.html [ Pass Failure ]
 
 webkit.org/b/139634 [ Debug ] fast/selectors/matches-backtracking.html [ Slow ]
 webkit.org/b/139634 [ Debug ] fast/selectors/nth-child-of-register-requirement.html [ Slow ]
@@ -774,8 +822,6 @@ webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-14.html [ Skip ]
 webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-8.html [ Skip ]
 webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.9_Array_prototype_shift/S15.4.4.9_A2_T2.html [ Skip ]
 
-[ Debug ] js/regress-141098.html [ Slow ]
-
 # IDBVersionChangeEvent tests need to be rewritten to use event constructors instead of createEvent,
 # after we implement the IDBVersionChangeEvent constructor.
 webkit.org/b/145390 storage/indexeddb/events.html [ Failure ]
@@ -797,11 +843,10 @@ media/session [ Skip ]
 
 webrtc/datachannel/multiple-connections.html [ Slow ]
 webrtc/video-replace-track.html [ Pass Failure ]
-webrtc/video-getParameters.html [ Failure ]
 webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
-webkit.org/b/175305 webrtc/video-rotation.html [ Failure Timeout ]
-webkit.org/b/170704 webrtc/video-mute.html [ Failure ]
+webkit.org/b/170704 webrtc/video-mute.html [ Pass Failure ]
 webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold-default.html [ Pass Failure ]
+webkit.org/b/172649 webrtc/peer-connection-audio-mute.html [ Pass Failure ]
 webkit.org/b/173486 webrtc/video-replace-muted-track.html [ Pass Failure Timeout ]
 
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription.html [ Failure ]
@@ -1392,6 +1437,9 @@ imported/w3c/web-platform-tests/secure-contexts/basic-popup-and-iframe-tests.htt
 ### END OF -disabled tests
 ########################################
 
+webkit.org/b/163046 [ Release ] js/regress-141098.html [ Pass Failure ]
+webkit.org/b/163046 [ Debug ] js/regress-141098.html [ Slow Pass Failure ]
+
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
 
 webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]
@@ -1447,15 +1495,12 @@ webkit.org/b/175290 imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-0
 
 webkit.org/b/175597 http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Failure ]
 
-# CSS Regions are being phased out.
-fast/regions [ Skip ]
-compositing/regions [ Skip ]
-fast/ruby/ruby-rt-with-region-crash.html [ Skip ]
-inspector/dom/content-node-region-info.html [ Skip ]
-fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html [ Skip ]
-
 webkit.org/b/171945 perf/class-list-remove.html [ Pass Failure Timeout ]
 
 webkit.org/b/176183 fast/block/inside-inlines/opacity-on-inline.html [ ImageOnlyFailure ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-different-options.html [ Pass Failure ]
+
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-002.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-003.html [ ImageOnlyFailure ]

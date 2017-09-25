@@ -83,7 +83,6 @@ public:
     bool isRenderBlockFlow() const;
     bool isRenderReplaced() const;
     bool isRenderInline() const;
-    bool isRenderNamedFlowFragmentContainer() const;
 
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = nullptr);
@@ -130,9 +129,6 @@ public:
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
     void setStyleInternal(RenderStyle&& style) { m_style = WTFMove(style); }
-
-    bool hasInitialAnimatedStyle() const { return m_hasInitialAnimatedStyle; }
-    void setHasInitialAnimatedStyle(bool b) { m_hasInitialAnimatedStyle = b; }
 
     // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
     bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = nullptr, const LayoutRect* newOutlineBoxPtr = nullptr);
@@ -329,7 +325,6 @@ private:
     unsigned m_baseTypeFlags : 6;
     unsigned m_ancestorLineBoxDirty : 1;
     unsigned m_hasInitializedStyle : 1;
-    unsigned m_hasInitialAnimatedStyle : 1;
 
     unsigned m_renderInlineAlwaysCreatesLineBoxes : 1;
     unsigned m_renderBoxNeedsLazyRepaint : 1;
@@ -422,8 +417,6 @@ inline bool RenderElement::isRenderInline() const
 
 inline Element* RenderElement::generatingElement() const
 {
-    if (parent() && isRenderNamedFlowFragment())
-        return parent()->generatingElement();
     return downcast<Element>(RenderObject::generatingNode());
 }
 

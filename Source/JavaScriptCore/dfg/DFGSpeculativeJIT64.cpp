@@ -39,7 +39,6 @@
 #include "GetterSetter.h"
 #include "HasOwnPropertyCache.h"
 #include "JSCInlines.h"
-#include "JSEnvironmentRecord.h"
 #include "JSLexicalEnvironment.h"
 #include "JSMap.h"
 #include "JSPropertyNameEnumerator.h"
@@ -4239,6 +4238,8 @@ void SpeculativeJIT::compile(Node* node)
         IndexingType indexingType = node->indexingType();
         if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(indexingType)) {
             unsigned numElements = node->numConstants();
+            unsigned vectorLengthHint = node->vectorLengthHint();
+            ASSERT(vectorLengthHint >= numElements);
             
             GPRTemporary result(this);
             GPRTemporary storage(this);
@@ -4246,7 +4247,7 @@ void SpeculativeJIT::compile(Node* node)
             GPRReg resultGPR = result.gpr();
             GPRReg storageGPR = storage.gpr();
 
-            emitAllocateRawObject(resultGPR, m_jit.graph().registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(indexingType)), storageGPR, numElements, numElements);
+            emitAllocateRawObject(resultGPR, m_jit.graph().registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(indexingType)), storageGPR, numElements, vectorLengthHint);
             
             DFG_ASSERT(m_jit.graph(), node, indexingType & IsArray);
             JSValue* data = m_jit.codeBlock()->constantBuffer(node->startConstant());
@@ -4455,6 +4456,10 @@ void SpeculativeJIT::compile(Node* node)
     case GetGlobalObject:
         compileGetGlobalObject(node);
         break;
+
+    case GetGlobalThis:
+        compileGetGlobalThis(node);
+        break;
         
     case GetClosureVar: {
         SpeculateCellOperand base(this, node->child1());
@@ -4462,7 +4467,7 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg baseGPR = base.gpr();
         GPRReg resultGPR = result.gpr();
 
-        m_jit.load64(JITCompiler::Address(baseGPR, JSEnvironmentRecord::offsetOfVariable(node->scopeOffset())), resultGPR);
+        m_jit.load64(JITCompiler::Address(baseGPR, JSLexicalEnvironment::offsetOfVariable(node->scopeOffset())), resultGPR);
         jsValueResult(resultGPR, node);
         break;
     }
@@ -4473,7 +4478,7 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg baseGPR = base.gpr();
         GPRReg valueGPR = value.gpr();
 
-        m_jit.store64(valueGPR, JITCompiler::Address(baseGPR, JSEnvironmentRecord::offsetOfVariable(node->scopeOffset())));
+        m_jit.store64(valueGPR, JITCompiler::Address(baseGPR, JSLexicalEnvironment::offsetOfVariable(node->scopeOffset())));
         noResult(node);
         break;
     }

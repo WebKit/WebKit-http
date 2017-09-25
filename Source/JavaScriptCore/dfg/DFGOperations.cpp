@@ -1311,6 +1311,25 @@ char* JIT_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayS
     return bitwise_cast<char*>(result);
 }
 
+char* JIT_OPERATION operationNewArrayWithSizeAndHint(ExecState* exec, Structure* arrayStructure, int32_t size, int32_t vectorLengthHint, Butterfly* butterfly)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (UNLIKELY(size < 0))
+        return bitwise_cast<char*>(throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer."))));
+
+    JSArray* result;
+    if (butterfly)
+        result = JSArray::createWithButterfly(vm, nullptr, arrayStructure, butterfly);
+    else {
+        result = JSArray::tryCreate(vm, arrayStructure, size, vectorLengthHint);
+        ASSERT(result);
+    }
+    return bitwise_cast<char*>(result);
+}
+
 char* JIT_OPERATION operationNewArrayBuffer(ExecState* exec, Structure* arrayStructure, size_t start, size_t size)
 {
     VM& vm = exec->vm();
@@ -1485,6 +1504,62 @@ JSCell* JIT_OPERATION operationCreateClonedArguments(ExecState* exec, Structure*
     NativeCallFrameTracer target(&vm, exec);
     return ClonedArguments::createByCopyingFrom(
         exec, structure, argumentStart, length, callee);
+}
+
+JSCell* JIT_OPERATION operationCreateDirectArgumentsDuringExit(ExecState* exec, InlineCallFrame* inlineCallFrame, JSFunction* callee, int32_t argumentCount)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer target(&vm, exec);
+    
+    DeferGCForAWhile deferGC(vm.heap);
+    
+    CodeBlock* codeBlock;
+    if (inlineCallFrame)
+        codeBlock = baselineCodeBlockForInlineCallFrame(inlineCallFrame);
+    else
+        codeBlock = exec->codeBlock();
+    
+    unsigned length = argumentCount - 1;
+    unsigned capacity = std::max(length, static_cast<unsigned>(codeBlock->numParameters() - 1));
+    DirectArguments* result = DirectArguments::create(
+        vm, codeBlock->globalObject()->directArgumentsStructure(), length, capacity);
+    
+    result->callee().set(vm, result, callee);
+    
+    Register* arguments =
+        exec->registers() + (inlineCallFrame ? inlineCallFrame->stackOffset : 0) +
+        CallFrame::argumentOffset(0);
+    for (unsigned i = length; i--;)
+        result->setIndexQuickly(vm, i, arguments[i].jsValue());
+    
+    return result;
+}
+
+JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState* exec, InlineCallFrame* inlineCallFrame, JSFunction* callee, int32_t argumentCount)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer target(&vm, exec);
+    
+    DeferGCForAWhile deferGC(vm.heap);
+    
+    CodeBlock* codeBlock;
+    if (inlineCallFrame)
+        codeBlock = baselineCodeBlockForInlineCallFrame(inlineCallFrame);
+    else
+        codeBlock = exec->codeBlock();
+    
+    unsigned length = argumentCount - 1;
+    ClonedArguments* result = ClonedArguments::createEmpty(
+        vm, codeBlock->globalObject()->clonedArgumentsStructure(), callee, length);
+    
+    Register* arguments =
+        exec->registers() + (inlineCallFrame ? inlineCallFrame->stackOffset : 0) +
+        CallFrame::argumentOffset(0);
+    for (unsigned i = length; i--;)
+        result->putDirectIndex(exec, i, arguments[i].jsValue());
+
+    
+    return result;
 }
 
 JSCell* JIT_OPERATION operationCreateRest(ExecState* exec, Register* argumentStart, unsigned numberOfParamsToSkip, unsigned arraySize)

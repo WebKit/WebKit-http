@@ -2052,37 +2052,6 @@ template<> inline CSSPrimitiveValue::operator EMarqueeBehavior() const
     return MNONE;
 }
 
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(RegionFragment e)
-    : CSSValue(PrimitiveClass)
-{
-    m_primitiveUnitType = CSS_VALUE_ID;
-    switch (e) {
-    case AutoRegionFragment:
-        m_value.valueID = CSSValueAuto;
-        break;
-    case BreakRegionFragment:
-        m_value.valueID = CSSValueBreak;
-        break;
-    }
-}
-
-template<> inline CSSPrimitiveValue::operator RegionFragment() const
-{
-    ASSERT(isValueID());
-
-    switch (m_value.valueID) {
-    case CSSValueAuto:
-        return AutoRegionFragment;
-    case CSSValueBreak:
-        return BreakRegionFragment;
-    default:
-        break;
-    }
-
-    ASSERT_NOT_REACHED();
-    return AutoRegionFragment;
-}
-
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EMarqueeDirection e)
     : CSSValue(PrimitiveClass)
 {
@@ -2245,17 +2214,11 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(BreakBetween e)
     case AvoidPageBreakBetween:
         m_value.valueID = CSSValueAvoidPage;
         break;
-    case AvoidRegionBreakBetween:
-        m_value.valueID = CSSValueAvoidRegion;
-        break;
     case ColumnBreakBetween:
         m_value.valueID = CSSValueColumn;
         break;
     case PageBreakBetween:
         m_value.valueID = CSSValuePage;
-        break;
-    case RegionBreakBetween:
-        m_value.valueID = CSSValueRegion;
         break;
     case LeftPageBreakBetween:
         m_value.valueID = CSSValueLeft;
@@ -2285,14 +2248,10 @@ template<> inline CSSPrimitiveValue::operator BreakBetween() const
         return AvoidColumnBreakBetween;
     case CSSValueAvoidPage:
         return AvoidPageBreakBetween;
-    case CSSValueAvoidRegion:
-        return AvoidRegionBreakBetween;
     case CSSValueColumn:
         return ColumnBreakBetween;
     case CSSValuePage:
         return PageBreakBetween;
-    case CSSValueRegion:
-        return RegionBreakBetween;
     case CSSValueLeft:
         return LeftPageBreakBetween;
     case CSSValueRight:

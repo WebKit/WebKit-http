@@ -49,11 +49,7 @@
 #include "RectangleShape.h"
 #include "RenderBoxModelObject.h"
 #include "RenderElement.h"
-#include "RenderFlowThread.h"
 #include "RenderInline.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
-#include "RenderRegion.h"
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
@@ -84,7 +80,7 @@ static void contentsQuadToPage(const FrameView* mainView, const FrameView* view,
     contentsQuadToCoordinateSystem(mainView, view, quad, InspectorOverlay::CoordinateSystem::View);
 }
 
-static void buildRendererHighlight(RenderObject* renderer, RenderRegion* region, const HighlightConfig& highlightConfig, Highlight& highlight, InspectorOverlay::CoordinateSystem coordinateSystem)
+static void buildRendererHighlight(RenderObject* renderer, const HighlightConfig& highlightConfig, Highlight& highlight, InspectorOverlay::CoordinateSystem coordinateSystem)
 {
     Frame* containingFrame = renderer->document().frame();
     if (!containingFrame)
@@ -112,15 +108,7 @@ static void buildRendererHighlight(RenderObject* renderer, RenderRegion* region,
             auto& renderBox = downcast<RenderBox>(*renderer);
 
             LayoutBoxExtent margins(renderBox.marginTop(), renderBox.marginRight(), renderBox.marginBottom(), renderBox.marginLeft());
-
-            if (!renderBox.isOutOfFlowPositioned() && region) {
-                RenderBox::LogicalExtentComputedValues computedValues;
-                renderBox.computeLogicalWidthInRegion(computedValues, region);
-                margins.start(renderBox.style().writingMode()) = computedValues.m_margins.m_start;
-                margins.end(renderBox.style().writingMode()) = computedValues.m_margins.m_end;
-            }
-
-            paddingBox = renderBox.clientBoxRectInRegion(region);
+            paddingBox = renderBox.clientBoxRect();
             contentBox = LayoutRect(paddingBox.x() + renderBox.paddingLeft(), paddingBox.y() + renderBox.paddingTop(),
                 paddingBox.width() - renderBox.paddingLeft() - renderBox.paddingRight(), paddingBox.height() - renderBox.paddingTop() - renderBox.paddingBottom());
             borderBox = LayoutRect(paddingBox.x() - renderBox.borderLeft(), paddingBox.y() - renderBox.borderTop(),
@@ -141,41 +129,10 @@ static void buildRendererHighlight(RenderObject* renderer, RenderRegion* region,
                 borderBox.width() + renderInline.horizontalMarginExtent(), borderBox.height());
         }
 
-        FloatQuad absContentQuad;
-        FloatQuad absPaddingQuad;
-        FloatQuad absBorderQuad;
-        FloatQuad absMarginQuad;
-
-        if (region) {
-            RenderFlowThread* flowThread = region->flowThread();
-
-            // Figure out the quads in the space of the RenderFlowThread.
-            absContentQuad = renderer->localToContainerQuad(FloatRect(contentBox), flowThread);
-            absPaddingQuad = renderer->localToContainerQuad(FloatRect(paddingBox), flowThread);
-            absBorderQuad = renderer->localToContainerQuad(FloatRect(borderBox), flowThread);
-            absMarginQuad = renderer->localToContainerQuad(FloatRect(marginBox), flowThread);
-
-            // Move the quad relative to the space of the current region.
-            LayoutRect flippedRegionRect(region->flowThreadPortionRect());
-            flowThread->flipForWritingMode(flippedRegionRect);
-
-            FloatSize delta = region->contentBoxRect().location() - flippedRegionRect.location();
-            absContentQuad.move(delta);
-            absPaddingQuad.move(delta);
-            absBorderQuad.move(delta);
-            absMarginQuad.move(delta);
-
-            // Resolve the absolute quads starting from the current region.
-            absContentQuad = region->localToAbsoluteQuad(absContentQuad);
-            absPaddingQuad = region->localToAbsoluteQuad(absPaddingQuad);
-            absBorderQuad = region->localToAbsoluteQuad(absBorderQuad);
-            absMarginQuad = region->localToAbsoluteQuad(absMarginQuad);
-        } else {
-            absContentQuad = renderer->localToAbsoluteQuad(FloatRect(contentBox));
-            absPaddingQuad = renderer->localToAbsoluteQuad(FloatRect(paddingBox));
-            absBorderQuad = renderer->localToAbsoluteQuad(FloatRect(borderBox));
-            absMarginQuad = renderer->localToAbsoluteQuad(FloatRect(marginBox));
-        }
+        FloatQuad absContentQuad = renderer->localToAbsoluteQuad(FloatRect(contentBox));
+        FloatQuad absPaddingQuad = renderer->localToAbsoluteQuad(FloatRect(paddingBox));
+        FloatQuad absBorderQuad = renderer->localToAbsoluteQuad(FloatRect(borderBox));
+        FloatQuad absMarginQuad = renderer->localToAbsoluteQuad(FloatRect(marginBox));
 
         contentsQuadToCoordinateSystem(mainView, containingView, absContentQuad, coordinateSystem);
         contentsQuadToCoordinateSystem(mainView, containingView, absPaddingQuad, coordinateSystem);
@@ -190,13 +147,13 @@ static void buildRendererHighlight(RenderObject* renderer, RenderRegion* region,
     }
 }
 
-static void buildNodeHighlight(Node& node, RenderRegion* region, const HighlightConfig& highlightConfig, Highlight& highlight, InspectorOverlay::CoordinateSystem coordinateSystem)
+static void buildNodeHighlight(Node& node, const HighlightConfig& highlightConfig, Highlight& highlight, InspectorOverlay::CoordinateSystem coordinateSystem)
 {
     RenderObject* renderer = node.renderer();
     if (!renderer)
         return;
 
-    buildRendererHighlight(renderer, region, highlightConfig, highlight, coordinateSystem);
+    buildRendererHighlight(renderer, highlightConfig, highlight, coordinateSystem);
 }
 
 static void buildQuadHighlight(const FloatQuad& quad, const HighlightConfig& highlightConfig, Highlight& highlight)
@@ -235,12 +192,12 @@ void InspectorOverlay::getHighlight(Highlight& highlight, InspectorOverlay::Coor
 
     highlight.type = HighlightType::Rects;
     if (m_highlightNode)
-        buildNodeHighlight(*m_highlightNode, nullptr, m_nodeHighlightConfig, highlight, coordinateSystem);
+        buildNodeHighlight(*m_highlightNode, m_nodeHighlightConfig, highlight, coordinateSystem);
     else if (m_highlightNodeList) {
         highlight.setDataFromConfig(m_nodeHighlightConfig);
         for (unsigned i = 0; i < m_highlightNodeList->length(); ++i) {
             Highlight nodeHighlight;
-            buildNodeHighlight(*(m_highlightNodeList->item(i)), nullptr, m_nodeHighlightConfig, nodeHighlight, coordinateSystem);
+            buildNodeHighlight(*(m_highlightNodeList->item(i)), m_nodeHighlightConfig, nodeHighlight, coordinateSystem);
             if (nodeHighlight.type == HighlightType::Node)
                 highlight.quads.appendVector(nodeHighlight.quads);
         }
@@ -395,97 +352,12 @@ static Ref<Inspector::Protocol::OverlayTypes::FragmentHighlightData> buildObject
         .release();
 }
 
-static RefPtr<Inspector::Protocol::OverlayTypes::Region> buildObjectForRegion(FrameView* mainView, RenderRegion* region)
-{
-    FrameView* containingView = region->frame().view();
-    if (!containingView)
-        return nullptr;
-
-    RenderBlockFlow& regionContainer = downcast<RenderBlockFlow>(*region->parent());
-    LayoutRect borderBox = regionContainer.borderBoxRect();
-    borderBox.setWidth(borderBox.width() + regionContainer.verticalScrollbarWidth());
-    borderBox.setHeight(borderBox.height() + regionContainer.horizontalScrollbarHeight());
-
-    // Create incoming and outgoing boxes that we use to chain the regions toghether.
-    const LayoutSize linkBoxSize(10, 10);
-    const LayoutSize linkBoxMidpoint(linkBoxSize.width() / 2, linkBoxSize.height() / 2);
-
-    LayoutRect incomingRectBox = LayoutRect(borderBox.location() - linkBoxMidpoint, linkBoxSize);
-    LayoutRect outgoingRectBox = LayoutRect(borderBox.location() - linkBoxMidpoint + borderBox.size(), linkBoxSize);
-
-    // Move the link boxes slightly inside the region border box.
-    LayoutUnit maxUsableHeight = std::max(LayoutUnit(), borderBox.height() - linkBoxMidpoint.height());
-    LayoutUnit linkBoxVerticalOffset = std::min(LayoutUnit::fromPixel(15), maxUsableHeight);
-    incomingRectBox.move(0, linkBoxVerticalOffset);
-    outgoingRectBox.move(0, -linkBoxVerticalOffset);
-
-    FloatQuad borderRectQuad = regionContainer.localToAbsoluteQuad(FloatRect(borderBox));
-    FloatQuad incomingRectQuad = regionContainer.localToAbsoluteQuad(FloatRect(incomingRectBox));
-    FloatQuad outgoingRectQuad = regionContainer.localToAbsoluteQuad(FloatRect(outgoingRectBox));
-
-    contentsQuadToPage(mainView, containingView, borderRectQuad);
-    contentsQuadToPage(mainView, containingView, incomingRectQuad);
-    contentsQuadToPage(mainView, containingView, outgoingRectQuad);
-
-    return Inspector::Protocol::OverlayTypes::Region::create()
-        .setBorderQuad(buildArrayForQuad(borderRectQuad))
-        .setIncomingQuad(buildArrayForQuad(incomingRectQuad))
-        .setOutgoingQuad(buildArrayForQuad(outgoingRectQuad))
-        .release();
-}
-
-static Ref<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Region>> buildObjectForFlowRegions(RenderRegion* region, RenderFlowThread* flowThread)
-{
-    FrameView* mainFrameView = region->document().page()->mainFrame().view();
-
-    auto arrayOfRegions = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Region>::create();
-
-    const RenderRegionList& regionList = flowThread->renderRegionList();
-    for (auto& iterRegion : regionList) {
-        if (!iterRegion->isValid())
-            continue;
-        RefPtr<Inspector::Protocol::OverlayTypes::Region> regionObject = buildObjectForRegion(mainFrameView, iterRegion);
-        if (!regionObject)
-            continue;
-        if (region == iterRegion) {
-            // Let the script know that this is the currently highlighted node.
-            regionObject->setIsHighlighted(true);
-        }
-        arrayOfRegions->addItem(WTFMove(regionObject));
-    }
-
-    return arrayOfRegions;
-}
-
 static Ref<Inspector::Protocol::OverlayTypes::Size> buildObjectForSize(const IntSize& size)
 {
     return Inspector::Protocol::OverlayTypes::Size::create()
         .setWidth(size.width())
         .setHeight(size.height())
         .release();
-}
-
-static RefPtr<Inspector::Protocol::OverlayTypes::Quad> buildQuadObjectForCSSRegionContentClip(RenderRegion* region)
-{
-    Frame* containingFrame = region->document().frame();
-    if (!containingFrame)
-        return nullptr;
-
-    FrameView* containingView = containingFrame->view();
-    FrameView* mainView = containingFrame->page()->mainFrame().view();
-    RenderFlowThread* flowThread = region->flowThread();
-
-    // Get the clip box of the current region and covert it into an absolute quad.
-    LayoutRect flippedRegionRect(region->flowThreadPortionOverflowRect());
-    flowThread->flipForWritingMode(flippedRegionRect);
-
-    // Apply any border or padding of the region.
-    flippedRegionRect.setLocation(region->contentBoxRect().location());
-    
-    FloatQuad clipQuad = region->localToAbsoluteQuad(FloatRect(flippedRegionRect));
-    contentsQuadToPage(mainView, containingView, clipQuad);
-
-    return buildArrayForQuad(clipQuad);
 }
 
 void InspectorOverlay::setShowingPaintRects(bool showingPaintRects)
@@ -559,36 +431,9 @@ static RefPtr<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Frag
 {
     auto arrayOfFragments = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::FragmentHighlightData>::create();
 
-    RenderFlowThread* containingFlowThread = renderer->flowThreadContainingBlock();
-    if (!containingFlowThread) {
-        Highlight highlight;
-        buildRendererHighlight(renderer, nullptr, config, highlight, InspectorOverlay::CoordinateSystem::View);
-        arrayOfFragments->addItem(buildObjectForHighlight(highlight));
-    } else {
-        RenderRegion* startRegion = nullptr;
-        RenderRegion* endRegion = nullptr;
-        if (!containingFlowThread->getRegionRangeForBox(&renderer->enclosingBox(), startRegion, endRegion)) {
-            // The flow has no visible regions. The renderer is not visible on screen.
-            return nullptr;
-        }
-
-        const RenderRegionList& regionList = containingFlowThread->renderRegionList();
-        for (RenderRegionList::const_iterator iter = regionList.find(startRegion); iter != regionList.end(); ++iter) {
-            RenderRegion* region = *iter;
-            if (region->isValid()) {
-                // Compute the highlight of the fragment inside the current region.
-                Highlight highlight;
-                buildRendererHighlight(renderer, region, config, highlight, InspectorOverlay::CoordinateSystem::View);
-                Ref<Inspector::Protocol::OverlayTypes::FragmentHighlightData> fragmentHighlight = buildObjectForHighlight(highlight);
-
-                // Compute the clipping area of the region.
-                fragmentHighlight->setRegionClippingArea(buildQuadObjectForCSSRegionContentClip(region));
-                arrayOfFragments->addItem(WTFMove(fragmentHighlight));
-            }
-            if (region == endRegion)
-                break;
-        }
-    }
+    Highlight highlight;
+    buildRendererHighlight(renderer, config, highlight, InspectorOverlay::CoordinateSystem::View);
+    arrayOfFragments->addItem(buildObjectForHighlight(highlight));
 
     return WTFMove(arrayOfFragments);
 }
@@ -695,7 +540,7 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ShapeOutsideData> buildObjectFo
     return WTFMove(shapeObject);
 }
 
-static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElementData(Node* node, HighlightType type)
+static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElementData(Node* node, HighlightType)
 {
     if (!is<Element>(node) || !node->document().frame())
         return nullptr;
@@ -750,27 +595,6 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
         .setHeight(modelObject ? adjustForAbsoluteZoom(roundToInt(modelObject->offsetHeight()), *modelObject) : boundingBox.height())
         .release();
     elementData->setSize(WTFMove(sizeObject));
-
-    if (type != HighlightType::NodeList && renderer->isRenderNamedFlowFragmentContainer()) {
-        RenderNamedFlowFragment& region = *downcast<RenderBlockFlow>(*renderer).renderNamedFlowFragment();
-        if (region.isValid()) {
-            RenderFlowThread* flowThread = region.flowThread();
-            auto regionFlowData = Inspector::Protocol::OverlayTypes::RegionFlowData::create()
-                .setName(downcast<RenderNamedFlowThread>(*flowThread).flowThreadName())
-                .setRegions(buildObjectForFlowRegions(&region, flowThread))
-                .release();
-            elementData->setRegionFlowData(WTFMove(regionFlowData));
-        }
-    }
-
-    RenderFlowThread* containingFlowThread = renderer->flowThreadContainingBlock();
-    if (is<RenderNamedFlowThread>(containingFlowThread)) {
-        auto contentFlowData = Inspector::Protocol::OverlayTypes::ContentFlowData::create()
-            .setName(downcast<RenderNamedFlowThread>(*containingFlowThread).flowThreadName())
-            .release();
-
-        elementData->setContentFlowData(WTFMove(contentFlowData));
-    }
 
     if (is<RenderBox>(*renderer)) {
         auto& renderBox = downcast<RenderBox>(*renderer);

@@ -235,6 +235,7 @@
 		5C9E59411D3EB5AC00E3C62E /* ApplicationCache.db in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5C9E593E1D3EB1DE00E3C62E /* ApplicationCache.db */; };
 		5C9E59421D3EB5AC00E3C62E /* ApplicationCache.db-shm in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5C9E593F1D3EB1DE00E3C62E /* ApplicationCache.db-shm */; };
 		5C9E59431D3EB5AC00E3C62E /* ApplicationCache.db-wal in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5C9E59401D3EB1DE00E3C62E /* ApplicationCache.db-wal */; };
+		5CA1DEC81F71F70100E71BD3 /* HTTPHeaderField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5CA1DEC71F71F40700E71BD3 /* HTTPHeaderField.cpp */; };
 		5CB18BA81F5645E300EE23C4 /* ClickAutoFillButton.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB18BA71F5645B200EE23C4 /* ClickAutoFillButton.mm */; };
 		5CB40B4E1F4B98D3007DC7B9 /* UIDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB40B4D1F4B98BE007DC7B9 /* UIDelegate.mm */; };
 		5CE354D91E70DA5C00BEFE3B /* WKContentExtensionStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */; };
@@ -244,6 +245,7 @@
 		6356FB221EC4E0BA0044BF18 /* VisibleContentRect.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6356FB211EC4E0BA0044BF18 /* VisibleContentRect.mm */; };
 		636353A71E98665D0009F8AF /* GeolocationGetCurrentPositionResult.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 636353A61E9861940009F8AF /* GeolocationGetCurrentPositionResult.html */; };
 		6BFD294C1D5E6C1D008EC968 /* HashCountedSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A38D7E51C752D5F004F157D /* HashCountedSet.cpp */; };
+		754CEC811F6722F200D0039A /* AutoFillAvailable.mm in Sources */ = {isa = PBXBuildFile; fileRef = 754CEC801F6722DC00D0039A /* AutoFillAvailable.mm */; };
 		755A20AF1E6E38630093C69F /* DatabaseTrackerTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 755A20AE1E6E38630093C69F /* DatabaseTrackerTest.cpp */; };
 		764322D71B61CCC30024F801 /* WordBoundaryTypingAttributes.mm in Sources */ = {isa = PBXBuildFile; fileRef = 764322D51B61CCA40024F801 /* WordBoundaryTypingAttributes.mm */; };
 		7673499D1930C5BB00E44DF9 /* StopLoadingDuringDidFailProvisionalLoad_bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7673499A1930182E00E44DF9 /* StopLoadingDuringDidFailProvisionalLoad_bundle.cpp */; };
@@ -641,6 +643,7 @@
 		CDE195B51CFE0B880053D256 /* FullscreenTopContentInset.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = CDE195B21CFE0ADE0053D256 /* FullscreenTopContentInset.html */; };
 		CE06DF9B1E1851F200E570C9 /* SecurityOrigin.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE06DF9A1E1851F200E570C9 /* SecurityOrigin.cpp */; };
 		CE14F1A4181873B0001C2705 /* WillPerformClientRedirectToURLCrash.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = CE14F1A2181873B0001C2705 /* WillPerformClientRedirectToURLCrash.html */; };
+		CE1866491F72E8F100A0CAB6 /* MarkerSubrange.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE1866471F72E8F100A0CAB6 /* MarkerSubrange.cpp */; };
 		CE3524F81B1431F60028A7C5 /* TextFieldDidBeginAndEndEditing_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE3524F21B142B8D0028A7C5 /* TextFieldDidBeginAndEndEditing_Bundle.cpp */; };
 		CE3524F91B1441C40028A7C5 /* TextFieldDidBeginAndEndEditing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE3524F11B142B8D0028A7C5 /* TextFieldDidBeginAndEndEditing.cpp */; };
 		CE3524FA1B1443890028A7C5 /* input-focus-blur.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = CE3524F51B142BBB0028A7C5 /* input-focus-blur.html */; };
@@ -661,6 +664,7 @@
 		ECA680CE1E68CC0900731D20 /* StringUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = ECA680CD1E68CC0900731D20 /* StringUtilities.mm */; };
 		F407FE391F1D0DFC0017CF25 /* enormous.svg in Copy Resources */ = {isa = PBXBuildFile; fileRef = F407FE381F1D0DE60017CF25 /* enormous.svg */; };
 		F415086D1DA040C50044BE9B /* play-audio-on-click.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F415086C1DA040C10044BE9B /* play-audio-on-click.html */; };
+		F418BE151F71B7DC001970E6 /* RoundedRectTests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F418BE141F71B7DC001970E6 /* RoundedRectTests.cpp */; };
 		F4194AD11F5A320100ADD83F /* drop-targets.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F4194AD01F5A2EA500ADD83F /* drop-targets.html */; };
 		F41AB99F1EF4696B0083FA08 /* autofocus-contenteditable.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F41AB9981EF4692C0083FA08 /* autofocus-contenteditable.html */; };
 		F41AB9A01EF4696B0083FA08 /* background-image-link-and-input.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F41AB9971EF4692C0083FA08 /* background-image-link-and-input.html */; };
@@ -1328,6 +1332,7 @@
 		5C9E593E1D3EB1DE00E3C62E /* ApplicationCache.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = ApplicationCache.db; sourceTree = "<group>"; };
 		5C9E593F1D3EB1DE00E3C62E /* ApplicationCache.db-shm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ApplicationCache.db-shm"; sourceTree = "<group>"; };
 		5C9E59401D3EB1DE00E3C62E /* ApplicationCache.db-wal */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ApplicationCache.db-wal"; sourceTree = "<group>"; };
+		5CA1DEC71F71F40700E71BD3 /* HTTPHeaderField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HTTPHeaderField.cpp; sourceTree = "<group>"; };
 		5CB18BA71F5645B200EE23C4 /* ClickAutoFillButton.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ClickAutoFillButton.mm; sourceTree = "<group>"; };
 		5CB40B4D1F4B98BE007DC7B9 /* UIDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = UIDelegate.mm; sourceTree = "<group>"; };
 		5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKContentExtensionStore.mm; sourceTree = "<group>"; };
@@ -1336,6 +1341,7 @@
 		634910DF1E9D3FF300880309 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		6356FB211EC4E0BA0044BF18 /* VisibleContentRect.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = VisibleContentRect.mm; sourceTree = "<group>"; };
 		636353A61E9861940009F8AF /* GeolocationGetCurrentPositionResult.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = GeolocationGetCurrentPositionResult.html; sourceTree = "<group>"; };
+		754CEC801F6722DC00D0039A /* AutoFillAvailable.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AutoFillAvailable.mm; sourceTree = "<group>"; };
 		755A20AE1E6E38630093C69F /* DatabaseTrackerTest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseTrackerTest.cpp; sourceTree = "<group>"; };
 		7560917719259C59009EF06E /* MemoryCacheAddImageToCacheIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MemoryCacheAddImageToCacheIOS.mm; sourceTree = "<group>"; };
 		75F3133F18C171B70041CAEC /* EphemeralSessionPushStateNoHistoryCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EphemeralSessionPushStateNoHistoryCallback.cpp; sourceTree = "<group>"; };
@@ -1667,6 +1673,7 @@
 		CDE195B31CFE0ADE0053D256 /* FullscreenTopContentInset.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FullscreenTopContentInset.mm; sourceTree = "<group>"; };
 		CE06DF9A1E1851F200E570C9 /* SecurityOrigin.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SecurityOrigin.cpp; sourceTree = "<group>"; };
 		CE14F1A2181873B0001C2705 /* WillPerformClientRedirectToURLCrash.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = WillPerformClientRedirectToURLCrash.html; sourceTree = "<group>"; };
+		CE1866471F72E8F100A0CAB6 /* MarkerSubrange.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MarkerSubrange.cpp; sourceTree = "<group>"; };
 		CE32C7C718184C4900CD8C28 /* WillPerformClientRedirectToURLCrash.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WillPerformClientRedirectToURLCrash.mm; sourceTree = "<group>"; };
 		CE3524F11B142B8D0028A7C5 /* TextFieldDidBeginAndEndEditing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextFieldDidBeginAndEndEditing.cpp; sourceTree = "<group>"; };
 		CE3524F21B142B8D0028A7C5 /* TextFieldDidBeginAndEndEditing_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextFieldDidBeginAndEndEditing_Bundle.cpp; sourceTree = "<group>"; };
@@ -1699,6 +1706,7 @@
 		F3FC3EE213678B7300126A65 /* libgtest.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgtest.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		F407FE381F1D0DE60017CF25 /* enormous.svg */ = {isa = PBXFileReference; lastKnownFileType = text; path = enormous.svg; sourceTree = "<group>"; };
 		F415086C1DA040C10044BE9B /* play-audio-on-click.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "play-audio-on-click.html"; sourceTree = "<group>"; };
+		F418BE141F71B7DC001970E6 /* RoundedRectTests.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = RoundedRectTests.cpp; sourceTree = "<group>"; };
 		F4194AD01F5A2EA500ADD83F /* drop-targets.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "drop-targets.html"; sourceTree = "<group>"; };
 		F41AB9931EF4692C0083FA08 /* image-and-textarea.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "image-and-textarea.html"; sourceTree = "<group>"; };
 		F41AB9941EF4692C0083FA08 /* prevent-operation.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "prevent-operation.html"; sourceTree = "<group>"; };
@@ -1911,6 +1919,7 @@
 				37E7DD651EA0715B009B396D /* AdditionalReadAccessAllowedURLsProtocol.h */,
 				A1DF74301C41B65800A2F4D0 /* AlwaysRevalidatedURLSchemes.mm */,
 				2DE71AFD1D49C0BD00904094 /* AnimatedResize.mm */,
+				754CEC801F6722DC00D0039A /* AutoFillAvailable.mm */,
 				2DD355351BD08378005DF4A7 /* AutoLayoutIntegration.mm */,
 				374B7A5E1DF36EEE00ACCB6C /* BundleEditingDelegate.mm */,
 				374B7A5F1DF36EEE00ACCB6C /* BundleEditingDelegatePlugIn.mm */,
@@ -2075,13 +2084,16 @@
 				1CAD1F851E5CE7DA00AF2C2C /* FontCache.cpp */,
 				8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */,
 				83B88A331C80056D00BB2418 /* HTMLParserIdioms.cpp */,
+				5CA1DEC71F71F40700E71BD3 /* HTTPHeaderField.cpp */,
 				7A909A731D877475007E10F8 /* IntPoint.cpp */,
 				7A909A741D877475007E10F8 /* IntRect.cpp */,
 				7A909A751D877475007E10F8 /* IntSize.cpp */,
 				14464012167A8305000BD218 /* LayoutUnit.cpp */,
 				076E507E1F45031E006E9F5A /* Logging.cpp */,
+				CE1866471F72E8F100A0CAB6 /* MarkerSubrange.cpp */,
 				A5B149DD1F5A19DC00C6DAFF /* MIMETypeRegistry.cpp */,
 				CD225C071C45A69200140761 /* ParsedContentRange.cpp */,
+				F418BE141F71B7DC001970E6 /* RoundedRectTests.cpp */,
 				CDCFA7A91E45122F00C2433D /* SampleMap.cpp */,
 				CE06DF9A1E1851F200E570C9 /* SecurityOrigin.cpp */,
 				41973B5C1AF22875006C7B36 /* SharedBuffer.cpp */,
@@ -3232,6 +3244,7 @@
 				7CCE7EC11A411A7E00447C4C /* HTMLCollectionNamedItem.mm in Sources */,
 				7CCE7EC21A411A7E00447C4C /* HTMLFormCollectionNamedItem.mm in Sources */,
 				7C83E0501D0A641800FEBCF3 /* HTMLParserIdioms.cpp in Sources */,
+				5CA1DEC81F71F70100E71BD3 /* HTTPHeaderField.cpp in Sources */,
 				51AF23DF1EF1A3730072F281 /* IconLoadingDelegate.mm in Sources */,
 				510477781D29923B009747EB /* IDBDeleteRecovery.mm in Sources */,
 				5110FCFA1E01CDB8006F8D0B /* IDBIndexUpgradeToV2.mm in Sources */,
@@ -3273,6 +3286,7 @@
 				46C519DA1D355AB200DAA51A /* LocalStorageNullEntries.mm in Sources */,
 				7A6A2C701DCCFA8C00C0D085 /* LocalStorageQuirkTest.mm in Sources */,
 				076E507F1F4513D6006E9F5A /* Logging.cpp in Sources */,
+				CE1866491F72E8F100A0CAB6 /* MarkerSubrange.cpp in Sources */,
 				CDA315981ED53651009F60D3 /* MediaPlaybackSleepAssertion.mm in Sources */,
 				CDC9442E1EF1FC080059C3C4 /* MediaStreamTrackDetached.mm in Sources */,
 				7CCE7EB21A411A5100447C4C /* MemoryCacheAddImageToCacheIOS.mm in Sources */,
@@ -3336,6 +3350,7 @@
 				7CCE7F111A411AE600447C4C /* RestoreSessionStateContainingFormData.cpp in Sources */,
 				835CF9671D25FCD6001A65D4 /* RestoreSessionStateWithoutNavigation.cpp in Sources */,
 				46E816F81E79E29C00375ADC /* RestoreStateAfterTermination.mm in Sources */,
+				F418BE151F71B7DC001970E6 /* RoundedRectTests.cpp in Sources */,
 				A180C0FA1EE67DF000468F47 /* RunOpenPanel.mm in Sources */,
 				CDCFA7AA1E45183200C2433D /* SampleMap.cpp in Sources */,
 				7CCE7F121A411AE600447C4C /* ScrollPinningBehaviors.cpp in Sources */,
@@ -3470,6 +3485,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				37E7DD671EA071F3009B396D /* AdditionalReadAccessAllowedURLsPlugin.mm in Sources */,
+				754CEC811F6722F200D0039A /* AutoFillAvailable.mm in Sources */,
 				374B7A611DF371CF00ACCB6C /* BundleEditingDelegatePlugIn.mm in Sources */,
 				A13EBBB01B87436F00097110 /* BundleParametersPlugIn.mm in Sources */,
 				37A709AF1E3EA97E00CA5969 /* BundleRangeHandlePlugIn.mm in Sources */,

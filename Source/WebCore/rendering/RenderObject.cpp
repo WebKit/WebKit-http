@@ -31,7 +31,6 @@
 #include "CSSAnimationController.h"
 #include "Editing.h"
 #include "FloatQuad.h"
-#include "FlowThreadController.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GeometryUtilities.h"
@@ -54,8 +53,6 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderMultiColumnFlowThread.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderRuby.h"
 #include "RenderSVGBlock.h"
 #include "RenderSVGInline.h"
@@ -432,27 +429,6 @@ RenderBoxModelObject& RenderObject::enclosingBoxModelObject() const
     return *lineageOfType<RenderBoxModelObject>(const_cast<RenderObject&>(*this)).first();
 }
 
-bool RenderObject::fixedPositionedWithNamedFlowContainingBlock() const
-{
-    return ((flowThreadState() == RenderObject::InsideOutOfFlowThread)
-        && (style().position() == FixedPosition)
-        && (containingBlock()->isOutOfFlowRenderFlowThread()));
-}
-
-static bool hasFixedPosInNamedFlowContainingBlock(const RenderObject* renderer)
-{
-    ASSERT(renderer->flowThreadState() != RenderObject::NotInsideFlowThread);
-
-    RenderObject* curr = const_cast<RenderObject*>(renderer);
-    while (curr && !is<RenderView>(*curr)) {
-        if (curr->fixedPositionedWithNamedFlowContainingBlock())
-            return true;
-        curr = curr->containingBlock();
-    }
-
-    return false;
-}
-
 RenderBlock* RenderObject::firstLineBlock() const
 {
     return nullptr;
@@ -822,10 +798,6 @@ RenderLayerModelObject* RenderObject::containerForRepaint() const
     // repainting to do individual region repaints.
     RenderFlowThread* parentRenderFlowThread = flowThreadContainingBlock();
     if (parentRenderFlowThread) {
-        // If the element has a fixed positioned element with named flow as CB along the CB chain
-        // then the repaint container is not the flow thread.
-        if (hasFixedPosInNamedFlowContainingBlock(this))
-            return repaintContainer;
         // If we have already found a repaint container then we will repaint into that container only if it is part of the same
         // flow thread. Otherwise we will need to catch the repaint call and send it to the flow thread.
         RenderFlowThread* repaintContainerFlowThread = repaintContainer ? repaintContainer->flowThreadContainingBlock() : nullptr;
@@ -1236,8 +1208,6 @@ SelectionSubtreeRoot& RenderObject::selectionRoot() const
     if (!flowThread)
         return view();
 
-    if (is<RenderNamedFlowThread>(*flowThread))
-        return downcast<RenderNamedFlowThread>(*flowThread);
     if (is<RenderMultiColumnFlowThread>(*flowThread)) {
         if (!flowThread->containingBlock())
             return view();
@@ -1767,7 +1737,7 @@ RenderBoxModelObject* RenderObject::offsetParent() const
     bool skipTables = isPositioned();
     float currZoom = style().effectiveZoom();
     auto current = parent();
-    while (current && (!current->element() || (!current->isPositioned() && !current->isBody())) && !is<RenderNamedFlowThread>(*current)) {
+    while (current && (!current->element() || (!current->isPositioned() && !current->isBody()))) {
         Element* element = current->element();
         if (!skipTables && element && (is<HTMLTableElement>(*element) || is<HTMLTableCellElement>(*element)))
             break;
@@ -1778,13 +1748,7 @@ RenderBoxModelObject* RenderObject::offsetParent() const
         currZoom = newZoom;
         current = current->parent();
     }
-    
-    // CSS regions specification says that region flows should return the body element as their offsetParent.
-    if (is<RenderNamedFlowThread>(current)) {
-        auto* body = document().bodyOrFrameset();
-        current = body ? body->renderer() : nullptr;
-    }
-    
+
     return is<RenderBoxModelObject>(current) ? downcast<RenderBoxModelObject>(current) : nullptr;
 }
 
@@ -1921,20 +1885,6 @@ bool RenderObject::nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const
 {
     ASSERT_NOT_REACHED();
     return false;
-}
-
-RenderNamedFlowFragment* RenderObject::currentRenderNamedFlowFragment() const
-{
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!is<RenderNamedFlowThread>(flowThread))
-        return nullptr;
-
-    // FIXME: Once regions are fully integrated with the compositing system we should uncomment this assert.
-    // This assert needs to be disabled because it's possible to ask for the ancestor clipping rectangle of
-    // a layer without knowing the containing region in advance.
-    // ASSERT(flowThread->currentRegion() && flowThread->currentRegion()->isRenderNamedFlowFragment());
-
-    return downcast<RenderNamedFlowFragment>(flowThread->currentRegion());
 }
 
 RenderFlowThread* RenderObject::locateFlowThreadContainingBlock() const

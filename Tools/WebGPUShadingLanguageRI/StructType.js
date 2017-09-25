@@ -43,6 +43,7 @@ class StructType extends Type {
     }
     
     get name() { return this._name; }
+    get origin() { return this._origin; }
     get typeParameters() { return this._typeParameters; }
     
     get fieldNames() { return this._fields.keys(); }
@@ -57,23 +58,29 @@ class StructType extends Type {
         return result;
     }
     
-    instantiate(typeArguments, mode)
+    instantiate(typeArguments = null)
     {
-        if (typeArguments.length != this.typeParameters.length)
-            throw new WTypeError(origin.originString, "Wrong number of type arguments to instantiation");
+        let substitution = null;
+        let typeParameters = this.typeParameters;
         
-        if (!typeArguments.length)
-            return this;
+        if (typeArguments) {
+            if (typeArguments.length != this.typeParameters.length)
+                throw new WTypeError(this.origin.originString, "Wrong number of type arguments to instantiation");
+            
+            substitution = new Substitution(this.typeParameters, typeArguments);
+            typeParameters = [];
+        }
         
-        let substitution = new Substitution(this.typeParameters, typeArguments);
-        let instantiateImmediates = mode == "shallow" ? null : new InstantiateImmediates();
-        let result = new StructType(this.origin, this.name, []);
+        let instantiateImmediates = new InstantiateImmediates();
+        let result = new StructType(this.origin, this.name, typeParameters);
         for (let field of this.fields) {
-            let newField = field.visit(substitution);
-            if (instantiateImmediates)
-                newField = newField.visit(instantiateImmediates);
+            let newField = field;
+            if (substitution)
+                newField = newField.visit(substitution);
+            newField = newField.visit(instantiateImmediates);
             result.add(newField);
         }
+        
         return result;
     }
     

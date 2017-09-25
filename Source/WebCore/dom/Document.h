@@ -97,12 +97,12 @@ class CharacterData;
 class Comment;
 class ConstantPropertyMap;
 class DOMImplementation;
-class DOMNamedFlowCollection;
 class DOMSelection;
 class DOMWindow;
 class DOMWrapperWorld;
 class Database;
 class DatabaseThread;
+class DeferredPromise;
 class DocumentFragment;
 class DocumentLoader;
 class DocumentMarkerController;
@@ -145,7 +145,6 @@ class MediaPlaybackTargetClient;
 class MediaQueryList;
 class MediaQueryMatcher;
 class MouseEventWithHitTestResults;
-class NamedFlowCollection;
 class NodeFilter;
 class NodeIterator;
 class Page;
@@ -407,11 +406,6 @@ public:
     static CustomElementNameValidationStatus validateCustomElementName(const AtomicString&);
 
     bool isCSSGridLayoutEnabled() const;
-#if ENABLE(CSS_REGIONS)
-    RefPtr<DOMNamedFlowCollection> webkitGetNamedFlows();
-#endif
-
-    NamedFlowCollection& namedFlows();
 
     WEBCORE_EXPORT RefPtr<Range> caretRangeFromPoint(int x, int y);
     RefPtr<Range> caretRangeFromPoint(const LayoutPoint& clientPoint);
@@ -1278,7 +1272,7 @@ public:
     bool isCapturing() const { return MediaProducer::isCapturing(m_mediaState); }
     WEBCORE_EXPORT void updateIsPlayingMedia(uint64_t = HTMLMediaElementInvalidID);
     void pageMutedStateDidChange();
-    WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
+    WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(MediaPlaybackTargetClient&);
@@ -1360,6 +1354,10 @@ public:
 #endif
 
     PAL::Logger& logger() const;
+
+    bool hasStorageAccess() const { return m_hasStorageAccess; };
+    void requestStorageAccess(Ref<DeferredPromise>&& passedPromise);
+    void setUserGrantsStorageAccessOverride(bool value) { m_grantStorageAccessOverride = value; }
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1667,8 +1665,6 @@ private:
 
     Timer m_visualUpdatesSuppressionTimer;
 
-    RefPtr<NamedFlowCollection> m_namedFlows;
-
     void clearSharedObjectPool();
     Timer m_sharedObjectPoolClearTimer;
 
@@ -1814,6 +1810,9 @@ private:
     mutable RefPtr<PAL::Logger> m_logger;
 
     static bool hasEverCreatedAnAXObjectCache;
+
+    bool m_hasStorageAccess { false };
+    bool m_grantStorageAccessOverride { false };
 };
 
 Element* eventTargetElementForDocument(Document*);

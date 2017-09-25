@@ -36,6 +36,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/win"
     "${THIRDPARTY_DIR}/ANGLE/include"
     "${THIRDPARTY_DIR}/ANGLE/include/egl"
+    "${DERIVED_SOURCES_PAL_DIR}"
 )
 
 list(APPEND WebCore_SOURCES
@@ -138,10 +139,6 @@ list(APPEND WebCore_SOURCES
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/themeWin.css
     ${WEBCORE_DIR}/css/themeWinQuirks.css
-)
-
-list(APPEND WebCore_DERIVED_SOURCES
-    "${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreHeaderDetection.h"
 )
 
 set(WebCore_FORWARDING_HEADERS_DIRECTORIES
@@ -287,12 +284,6 @@ else ()
     include(PlatformAppleWin.cmake)
 endif ()
 
-add_custom_command(
-    OUTPUT "${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreHeaderDetection.h"
-    WORKING_DIRECTORY "${DERIVED_SOURCES_WEBCORE_DIR}"
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/AVFoundationSupport.py ${WEBKIT_LIBRARIES_DIR} > WebCoreHeaderDetection.h
-    VERBATIM)
-
 make_directory(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj)
 file(COPY
     "${WEBCORE_DIR}/English.lproj/Localizable.strings"
@@ -325,6 +316,7 @@ endforeach ()
 
 set(WebCore_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebCore/postBuild.cmd")
 file(WRITE "${WebCore_POST_BUILD_COMMAND}" "@xcopy /y /s /d /f \"${DERIVED_SOURCES_WEBCORE_DIR}/*.h\" \"${FORWARDING_HEADERS_DIR}/WebCore\" >nul 2>nul\n")
+file(APPEND "${WebCore_POST_BUILD_COMMAND}" "@xcopy /y /s /d /f \"${DERIVED_SOURCES_PAL_DIR}/*.h\" \"${FORWARDING_HEADERS_DIR}/WebCore\" >nul 2>nul\n")
 
 set(WebCore_OUTPUT_NAME
     WebCore${DEBUG_SUFFIX}

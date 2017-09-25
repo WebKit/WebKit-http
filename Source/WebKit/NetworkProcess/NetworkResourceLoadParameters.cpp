@@ -61,7 +61,7 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
             const FormDataElement& element = elements[i];
             if (element.m_type == FormDataElement::Type::EncodedFile) {
                 const String& path = element.m_shouldGenerateFile ? element.m_generatedFilename : element.m_filename;
-                SandboxExtension::createHandle(path, SandboxExtension::ReadOnly, requestBodySandboxExtensions[extensionIndex++]);
+                SandboxExtension::createHandle(path, SandboxExtension::Type::ReadOnly, requestBodySandboxExtensions[extensionIndex++]);
             }
         }
         encoder << requestBodySandboxExtensions;
@@ -69,7 +69,7 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
 
     if (request.url().isLocalFile()) {
         SandboxExtension::Handle requestSandboxExtension;
-        SandboxExtension::createHandle(request.url().fileSystemPath(), SandboxExtension::ReadOnly, requestSandboxExtension);
+        SandboxExtension::createHandle(request.url().fileSystemPath(), SandboxExtension::Type::ReadOnly, requestSandboxExtension);
         encoder << requestSandboxExtension;
     }
 
@@ -161,11 +161,12 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
     if (!decoder.decode(hasSourceOrigin))
         return false;
     if (hasSourceOrigin) {
-        SecurityOriginData sourceOriginData;
-        if (!decoder.decode(sourceOriginData))
+        std::optional<SecurityOriginData> sourceOriginData;
+        decoder >> sourceOriginData;
+        if (!sourceOriginData)
             return false;
-        ASSERT(!sourceOriginData.isEmpty());
-        result.sourceOrigin = sourceOriginData.securityOrigin();
+        ASSERT(!sourceOriginData->isEmpty());
+        result.sourceOrigin = sourceOriginData->securityOrigin();
     }
     if (!decoder.decodeEnum(result.mode))
         return false;
@@ -176,8 +177,11 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
     if (!decoder.decode(result.mainDocumentURL))
         return false;
 
-    if (!decoder.decode(result.contentRuleLists))
+    std::optional<Vector<std::pair<String, WebCompiledContentRuleListData>>> contentRuleLists;
+    decoder >> contentRuleLists;
+    if (!contentRuleLists)
         return false;
+    result.contentRuleLists = WTFMove(*contentRuleLists);
 #endif
 
     return true;

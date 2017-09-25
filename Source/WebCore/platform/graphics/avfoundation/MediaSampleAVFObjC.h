@@ -26,10 +26,10 @@
 #pragma once
 
 #include "MediaSample.h"
-#include "MediaTimeAVFoundation.h"
+#include <pal/avfoundation/MediaTimeAVFoundation.h>
 
 #include <runtime/Uint8ClampedArray.h>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
     

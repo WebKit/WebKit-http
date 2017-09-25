@@ -45,10 +45,10 @@
 
 namespace WebCore {
 
-KeyframeAnimation::KeyframeAnimation(const Animation& animation, RenderElement* renderer, CompositeAnimation* compositeAnimation, const RenderStyle* unanimatedStyle)
-    : AnimationBase(animation, renderer, compositeAnimation)
+KeyframeAnimation::KeyframeAnimation(const Animation& animation, Element& element, CompositeAnimation& compositeAnimation, const RenderStyle& unanimatedStyle)
+    : AnimationBase(animation, element, compositeAnimation)
     , m_keyframes(animation.name())
-    , m_unanimatedStyle(RenderStyle::clonePtr(*unanimatedStyle))
+    , m_unanimatedStyle(RenderStyle::clonePtr(unanimatedStyle))
 {
     resolveKeyframeStyles();
 
@@ -154,7 +154,7 @@ void KeyframeAnimation::fetchIntervalEndpointsForProperty(CSSPropertyID property
     prog = progress(scale, offset, prevKeyframe.timingFunction(name()));
 }
 
-bool KeyframeAnimation::animate(CompositeAnimation& compositeAnimation, RenderElement*, const RenderStyle*, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
+bool KeyframeAnimation::animate(CompositeAnimation& compositeAnimation, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
 {
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
@@ -284,7 +284,7 @@ bool KeyframeAnimation::startAnimation(double timeOffset)
 
 void KeyframeAnimation::pauseAnimation(double timeOffset)
 {
-    if (!m_element)
+    if (!element())
         return;
 
     if (auto* renderer = compositedRenderer())
@@ -292,12 +292,12 @@ void KeyframeAnimation::pauseAnimation(double timeOffset)
 
     // Restore the original (unanimated) style
     if (!paused())
-        setNeedsStyleRecalc(m_element);
+        setNeedsStyleRecalc(element());
 }
 
 void KeyframeAnimation::endAnimation()
 {
-    if (!m_element)
+    if (!element())
         return;
 
     if (auto* renderer = compositedRenderer())
@@ -305,12 +305,12 @@ void KeyframeAnimation::endAnimation()
 
     // Restore the original (unanimated) style
     if (!paused())
-        setNeedsStyleRecalc(m_element);
+        setNeedsStyleRecalc(element());
 }
 
 bool KeyframeAnimation::shouldSendEventForListener(Document::ListenerType listenerType) const
 {
-    return m_element->document().hasListenerType(listenerType);
+    return element()->document().hasListenerType(listenerType);
 }
 
 void KeyframeAnimation::onAnimationStart(double elapsedTime)
@@ -349,7 +349,7 @@ bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double
 
     if (shouldSendEventForListener(listenerType)) {
         // Dispatch the event
-        auto element = makeRefPtr(m_element);
+        auto element = makeRefPtr(this->element());
 
         ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
         if (!element)
@@ -389,16 +389,16 @@ bool KeyframeAnimation::affectsProperty(CSSPropertyID property) const
 
 void KeyframeAnimation::resolveKeyframeStyles()
 {
-    if (!m_element)
+    if (!element())
         return;
 
-    if (auto* styleScope = Style::Scope::forOrdinal(*m_element, m_animation->nameStyleScopeOrdinal()))
-        styleScope->resolver().keyframeStylesForAnimation(*m_element, m_unanimatedStyle.get(), m_keyframes);
+    if (auto* styleScope = Style::Scope::forOrdinal(*element(), m_animation->nameStyleScopeOrdinal()))
+        styleScope->resolver().keyframeStylesForAnimation(*element(), m_unanimatedStyle.get(), m_keyframes);
 
     // Ensure resource loads for all the frames.
     for (auto& keyframe : m_keyframes.keyframes()) {
         if (auto* style = const_cast<RenderStyle*>(keyframe.style()))
-            Style::loadPendingResources(*style, m_element->document(), m_element);
+            Style::loadPendingResources(*style, element()->document(), element());
     }
 }
 

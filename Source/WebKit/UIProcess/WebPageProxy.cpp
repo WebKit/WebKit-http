@@ -367,7 +367,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageLoadState(*this)
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
     , m_httpCookieStorage(API::HTTPCookieStorage::create(*this))
-    , m_weakPtrFactory(this)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
@@ -443,7 +442,7 @@ const API::PageConfiguration& WebPageProxy::configuration() const
     return m_configuration.get();
 }
 
-pid_t WebPageProxy::processIdentifier() const
+ProcessID WebPageProxy::processIdentifier() const
 {
     if (m_isClosed)
         return 0;
@@ -818,7 +817,7 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebKit::isInspectorPage(*this));
 
-    SandboxExtension::createHandle("/", SandboxExtension::ReadOnly, sandboxExtensionHandle);
+    SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
     return true;
 }
 
@@ -893,7 +892,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
     loadParameters.request = fileURL;
     loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)ShouldOpenExternalURLsPolicy::ShouldNotAllow;
     loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
-    SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::ReadOnly, loadParameters.sandboxExtensionHandle);
+    SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::Type::ReadOnly, loadParameters.sandboxExtensionHandle);
     addPlatformLoadParameters(loadParameters);
 
     m_process->assumeReadAccessToBaseURL(resourceDirectoryURL);
@@ -963,7 +962,7 @@ RefPtr<API::Navigation> WebPageProxy::loadHTMLString(const String& htmlString, c
     return WTFMove(navigation);
 }
 
-void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData)
+void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData)
 {
     // When the UIProcess is in the process of handling a failing provisional load, do not attempt to
     // start a second alternative HTML load as this will prevent the page load state from being
@@ -2280,6 +2279,8 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
     if (action == PolicyDownload) {
         // Create a download proxy.
         auto* download = m_process->processPool().createDownloadProxy(m_decidePolicyForResponseRequest, this);
+        download->setRedirectChain(frame.takeProvisionalLoadRedirectChain());
+
         downloadID = download->downloadID();
         handleDownloadRequest(download);
         m_decidePolicyForResponseRequest = { };
@@ -2570,9 +2571,7 @@ void WebPageProxy::windowScreenDidChange(PlatformDisplayID displayID)
 
 float WebPageProxy::deviceScaleFactor() const
 {
-    if (m_customDeviceScaleFactor)
-        return m_customDeviceScaleFactor;
-    return m_intrinsicDeviceScaleFactor;
+    return m_customDeviceScaleFactor.value_or(m_intrinsicDeviceScaleFactor);
 }
 
 void WebPageProxy::setCustomDeviceScaleFactor(float customScaleFactor)
@@ -2586,12 +2585,16 @@ void WebPageProxy::setCustomDeviceScaleFactor(float customScaleFactor)
     return;
 #endif
 
-    if (m_customDeviceScaleFactor == customScaleFactor)
+    if (m_customDeviceScaleFactor && m_customDeviceScaleFactor.value() == customScaleFactor)
         return;
 
     float oldScaleFactor = deviceScaleFactor();
 
-    m_customDeviceScaleFactor = customScaleFactor;
+    // A value of 0 clears the customScaleFactor.
+    if (customScaleFactor)
+        m_customDeviceScaleFactor = customScaleFactor;
+    else
+        m_customDeviceScaleFactor = std::nullopt;
 
     if (deviceScaleFactor() != oldScaleFactor)
         m_drawingArea->deviceScaleFactorDidChange();
@@ -3155,7 +3158,7 @@ void WebPageProxy::didDestroyNavigation(uint64_t navigationID)
     m_navigationState->didDestroyNavigation(navigationID);
 }
 
-void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& url, const String& unreachableURL, const UserData& userData)
+void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&& url, WebCore::URL&& unreachableURL, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3189,7 +3192,7 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
         m_loaderClient->didStartProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& url, const UserData& userData)
+void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&& url, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3243,7 +3246,7 @@ void WebPageProxy::didCancelClientRedirectForFrame(uint64_t frameID)
     }
 }
 
-void WebPageProxy::didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t, const String& url)
+void WebPageProxy::didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t, WebCore::URL&& url)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3491,7 +3494,7 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
         m_pageClient.didFailLoadForMainFrame();
 }
 
-void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t opaqueSameDocumentNavigationType, const String& url, const UserData& userData)
+void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t opaqueSameDocumentNavigationType, WebCore::URL&& url, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -4099,13 +4102,6 @@ void WebPageProxy::getStatusBarIsVisible(Ref<Messages::WebPageProxy::GetStatusBa
 void WebPageProxy::setIsResizable(bool isResizable)
 {
     m_uiClient->setIsResizable(*this, isResizable);
-}
-
-void WebPageProxy::getIsResizable(Ref<Messages::WebPageProxy::GetIsResizable::DelayedReply>&& reply)
-{
-    m_uiClient->isResizable(*this, [reply = WTFMove(reply)] (bool resizable) {
-        reply->send(resizable);
-    });
 }
 
 void WebPageProxy::setWindowFrame(const FloatRect& newWindowFrame)
@@ -4771,7 +4767,7 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
     SandboxExtension::HandleArray sandboxExtensionHandles;
     sandboxExtensionHandles.allocate(fileURLs.size());
     for (size_t i = 0; i < fileURLs.size(); ++i)
-        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandles[i]);
+        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::Type::ReadOnly, sandboxExtensionHandles[i]);
 
     m_process->send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(sandboxExtensionHandles), m_pageID);
 #endif
@@ -4792,7 +4788,7 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     SandboxExtension::HandleArray sandboxExtensionHandles;
     sandboxExtensionHandles.allocate(fileURLs.size());
     for (size_t i = 0; i < fileURLs.size(); ++i) {
-        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandles[i]);
+        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::Type::ReadOnly, sandboxExtensionHandles[i]);
         if (!createdExtension) {
             // This can legitimately fail if a directory containing the file is deleted after the file was chosen.
             // We also have reports of cases where this likely fails for some unknown reason, <rdar://problem/10156710>.

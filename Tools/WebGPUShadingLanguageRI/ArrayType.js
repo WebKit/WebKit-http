@@ -27,6 +27,8 @@
 class ArrayType extends Type {
     constructor(origin, elementType, numElements)
     {
+        if (!numElements)
+            throw new Error("null numElements");
         super();
         this._origin = origin;
         this._elementType = elementType;
@@ -37,7 +39,15 @@ class ArrayType extends Type {
     get elementType() { return this._elementType; }
     get numElements() { return this._numElements; }
     get isPrimitive() { return this.elementType.isPrimitive; }
+    get isArray() { return true; }
     
+    get numElementsValue()
+    {
+        if (!(this.numElements.isLiteral))
+            throw new Error("numElements is not a literal: " + this.numElements);
+        return this.numElements.value;
+    }
+
     toString()
     {
         return this.elementType + "[" + this.numElements + "]";
@@ -45,23 +55,35 @@ class ArrayType extends Type {
     
     get size()
     {
-        return this.elementType.size * this.numElements;
+        return this.elementType.size * this.numElementsValue;
     }
     
-    unifyImpl(unificatonContext, other)
+    populateDefaultValue(buffer, offset)
     {
-        if (other instanceof ArrayRefType) {
-            if (other.addressSpace != "thread")
-                return false;
-        } else {
-            if (!(other instanceof ArrayType))
-                return false;
-            
-            if (!this.numElements.unify(unificationContext, other.numElements))
-                return false;
-        }
+        for (let i = 0; i < this.numElementsValue; ++i)
+            this.elementType.populateDefaultValue(buffer, offset + i * this.elementType.size);
+    }
+    
+    unifyImpl(unificationContext, other)
+    {
+        if (!(other instanceof ArrayType))
+            return false;
+        
+        if (!this.numElements.unify(unificationContext, other.numElements))
+            return false;
         
         return this.elementType.unify(unificationContext, other.elementType);
+    }
+
+    argumentForAndOverload(origin, value)
+    {
+        let result = new MakeArrayRefExpression(origin, value);
+        result.numElements = this.numElements;
+        return result;
+    }
+    argumentTypeForAndOverload(origin)
+    {
+        return new ArrayRefType(origin, "thread", this.elementType);
     }
 }
 

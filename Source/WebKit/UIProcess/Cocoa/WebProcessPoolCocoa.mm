@@ -201,19 +201,19 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 
     // FIXME: This should really be configurable; we shouldn't just blindly allow read access to the UI process bundle.
     parameters.uiProcessBundleResourcePath = m_resolvedPaths.uiProcessBundleResourcePath;
-    SandboxExtension::createHandleWithoutResolvingPath(parameters.uiProcessBundleResourcePath, SandboxExtension::ReadOnly, parameters.uiProcessBundleResourcePathExtensionHandle);
+    SandboxExtension::createHandleWithoutResolvingPath(parameters.uiProcessBundleResourcePath, SandboxExtension::Type::ReadOnly, parameters.uiProcessBundleResourcePathExtensionHandle);
 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
 
 #if PLATFORM(IOS)
     if (!m_resolvedPaths.cookieStorageDirectory.isEmpty())
-        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.cookieStorageDirectory, SandboxExtension::ReadWrite, parameters.cookieStorageDirectoryExtensionHandle);
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.cookieStorageDirectory, SandboxExtension::Type::ReadWrite, parameters.cookieStorageDirectoryExtensionHandle);
 
     if (!m_resolvedPaths.containerCachesDirectory.isEmpty())
-        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerCachesDirectory, SandboxExtension::ReadWrite, parameters.containerCachesDirectoryExtensionHandle);
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerCachesDirectory, SandboxExtension::Type::ReadWrite, parameters.containerCachesDirectoryExtensionHandle);
 
     if (!m_resolvedPaths.containerTemporaryDirectory.isEmpty())
-        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerTemporaryDirectory, SandboxExtension::ReadWrite, parameters.containerTemporaryDirectoryExtensionHandle);
+        SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.containerTemporaryDirectory, SandboxExtension::Type::ReadWrite, parameters.containerTemporaryDirectoryExtensionHandle);
 #endif
 
     parameters.fontWhitelist = m_fontWhitelist;
@@ -455,7 +455,7 @@ String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 String WebProcessPool::legacyPlatformDefaultCacheStorageDirectory()
 {
-    RetainPtr<NSString> cacheStoragePath = adoptNS((NSString *)WKCopyFoundationCacheDirectory());
+    RetainPtr<NSString> cacheStoragePath = adoptNS((NSString *)_CFURLCacheCopyCacheDirectory([[NSURLCache sharedURLCache] _CFURLCache]));
     if (!cacheStoragePath)
         cacheStoragePath = @"~/Library/WebKit/CacheStorage";
 
@@ -464,7 +464,7 @@ String WebProcessPool::legacyPlatformDefaultCacheStorageDirectory()
 
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    RetainPtr<NSString> cachePath = adoptNS((NSString *)WKCopyFoundationCacheDirectory());
+    RetainPtr<NSString> cachePath = adoptNS((NSString *)_CFURLCacheCopyCacheDirectory([[NSURLCache sharedURLCache] _CFURLCache]));
     if (!cachePath)
         cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
 

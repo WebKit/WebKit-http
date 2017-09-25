@@ -29,7 +29,6 @@
 #include "FragmentScriptingPermission.h"
 #include "HTMLInterchange.h"
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -54,7 +53,6 @@ WEBCORE_EXPORT Ref<DocumentFragment> createFragmentFromMarkup(Document&, const S
 ExceptionOr<Ref<DocumentFragment>> createFragmentForInnerOuterHTML(Element&, const String& markup, ParserContentPolicy);
 RefPtr<DocumentFragment> createFragmentForTransformToFragment(Document&, const String& sourceString, const String& sourceMIMEType);
 Ref<DocumentFragment> createFragmentForImageAndURL(Document&, const String&);
-RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(Frame&, Ref<ArchiveResource>&&);
 ExceptionOr<Ref<DocumentFragment>> createContextualFragment(Element&, const String& markup, ParserContentPolicy);
 
 bool isPlainTextMarkup(Node*);

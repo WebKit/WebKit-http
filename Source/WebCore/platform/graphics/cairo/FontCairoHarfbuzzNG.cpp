@@ -40,16 +40,18 @@
 
 namespace WebCore {
 
-float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, unsigned, unsigned, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot /* forTextEmphasis */) const
+float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, unsigned from, unsigned to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot /* forTextEmphasis */) const
 {
     HarfBuzzShaper shaper(this, run);
-    if (!shaper.shape(&glyphBuffer)) {
+    if (!shaper.shape(&glyphBuffer, from, to)) {
         LOG_ERROR("Shaper couldn't shape glyphBuffer.");
         return 0;
     }
 
-    // FIXME: Mac returns an initial advance here.
-    return 0;
+    if (glyphBuffer.isEmpty())
+        return 0;
+
+    return shaper.selectionRect({ }, 0, from, to).x();
 }
 
 bool FontCascade::canReturnFallbackFontsForComplexText()
@@ -78,11 +80,11 @@ float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Fo
     return 0;
 }
 
-int FontCascade::offsetForPositionForComplexText(const TextRun& run, float x, bool) const
+int FontCascade::offsetForPositionForComplexText(const TextRun& run, float x, bool includePartialGlyphs) const
 {
     HarfBuzzShaper shaper(this, run);
     if (shaper.shape())
-        return shaper.offsetForPosition(x);
+        return shaper.offsetForPosition(x, includePartialGlyphs);
     LOG_ERROR("Shaper couldn't shape text run.");
     return 0;
 }
@@ -90,13 +92,14 @@ int FontCascade::offsetForPositionForComplexText(const TextRun& run, float x, bo
 void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, unsigned from, unsigned to) const
 {
     HarfBuzzShaper shaper(this, run);
-    if (shaper.shape()) {
-        // FIXME: This should mimic Mac port.
-        FloatRect rect = shaper.selectionRect(FloatPoint(selectionRect.location()), selectionRect.height().toInt(), from, to);
-        selectionRect = LayoutRect(rect);
+    GlyphBuffer glyphBuffer;
+    if (!shaper.shape(&glyphBuffer, from, to)) {
+        LOG_ERROR("Shaper couldn't shape text run.");
         return;
     }
-    LOG_ERROR("Shaper couldn't shape text run.");
+
+    // FIXME: This should mimic Mac port.
+    selectionRect = LayoutRect(shaper.selectionRect(selectionRect.location(), selectionRect.height().toInt(), from, to));
 }
 
 } // namespace WebCore

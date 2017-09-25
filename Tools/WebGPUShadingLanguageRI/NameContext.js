@@ -24,11 +24,11 @@
  */
 "use strict";
 
-const NotFunc = Symbol();
+const Anything = Symbol();
 
 function isWildcardKind(kind)
 {
-    return kind == NotFunc;
+    return kind == Anything;
 }
 
 class NameContext {
@@ -36,33 +36,20 @@ class NameContext {
     {
         this._map = new Map();
         this._set = new Set();
-        this._defined = null;
         this._currentStatement = null;
         this._delegate = delegate;
         this._intrinsics = null;
         this._program = null;
     }
     
-    mapFor(kind)
-    {
-        switch (kind) {
-        case NotFunc:
-        case Value:
-        case Type:
-        case Protocol:
-        case Func:
-            return this._map;
-        default:
-            throw new Error("Bad kind: " + kind);
-        }
-    }
-    
     add(thing)
     {
         if (!thing.name)
             return;
+        if (!thing.origin)
+            throw new Error("Thing does not have origin: " + thing);
         
-        if (thing.isNative) {
+        if (thing.isNative && !thing.implementation) {
             if (!this._intrinsics)
                 throw new Error("Native function in a scope that does not recognize intrinsics");
             this._intrinsics.add(thing);
@@ -89,7 +76,7 @@ class NameContext {
     
     get(kind, name)
     {
-        let result = this.mapFor(kind).get(name);
+        let result = this._map.get(name);
         if (!result && this._delegate)
             return this._delegate.get(kind, name);
         if (result && !isWildcardKind(kind) && result.kind != kind)
@@ -97,13 +84,33 @@ class NameContext {
         return result;
     }
     
-    resolveFuncOverload(name, typeArguments, argumentTypes, returnType)
+    underlyingThings(kind, name)
+    {
+        let things = this.get(kind, name);
+        return NameContext.underlyingThings(things);
+    }
+    
+    static *underlyingThings(thing)
+    {
+        if (!thing)
+            return;
+        if (thing.kind === Func) {
+            if (!(thing instanceof Array))
+                throw new Error("Func thing is not array: " + thing);
+            for (let func of thing)
+                yield func;
+            return;
+        }
+        yield thing;
+    }
+    
+    resolveFuncOverload(name, typeArguments, argumentTypes, returnType, allowEntryPoint = false)
     {
         let functions = this.get(Func, name);
         if (!functions)
             return {failures: []};
         
-        return resolveOverloadImpl(functions, typeArguments, argumentTypes, returnType);
+        return resolveOverloadImpl(functions, typeArguments, argumentTypes, returnType, allowEntryPoint);
     }
     
     get currentStatement()
@@ -115,36 +122,11 @@ class NameContext {
         return null;
     }
     
-    handleDefining()
-    {
-        this._defined = new Set();
-    }
-    
-    isDefined(thing)
-    {
-        if (this._set.has(thing)) {
-            return !this._defined
-                || this._defined.has(thing);
-        }
-        return this._delegate && this._delegate.isDefined(thing);
-    }
-    
-    define(thing)
-    {
-        this._defined.add(thing);
-    }
-    
-    defineAll()
-    {
-        this._defined = null;
-    }
-    
     doStatement(statement, callback)
     {
         this._currentStatement = statement;
         callback();
         this._currentStatement = null;
-        this.define(statement);
     }
     
     recognizeIntrinsics()

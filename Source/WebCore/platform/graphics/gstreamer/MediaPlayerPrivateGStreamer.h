@@ -140,7 +140,7 @@ private:
 
     static bool isAvailable();
 
-    WeakPtr<MediaPlayerPrivateGStreamer> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<MediaPlayerPrivateGStreamer> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
     GstElement* createAudioSink() override;
 

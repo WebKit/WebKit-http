@@ -1176,13 +1176,13 @@ void WebPage::sendClose()
     send(Messages::WebPageProxy::ClosePage(false));
 }
 
-void WebPage::loadURLInFrame(const String& url, uint64_t frameID)
+void WebPage::loadURLInFrame(WebCore::URL&& url, uint64_t frameID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
         return;
 
-    frame->coreFrame()->loader().load(FrameLoadRequest(*frame->coreFrame(), ResourceRequest(URL(URL(), url)), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    frame->coreFrame()->loader().load(FrameLoadRequest(*frame->coreFrame(), ResourceRequest(url), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 }
 
 #if !PLATFORM(COCOA)
@@ -1281,7 +1281,7 @@ void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint do
         return;
 
     const int singleClick = 1;
-    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(),
+    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, MonotonicTime::now(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(),
 #if ENABLE(POINTER_LOCK)
         0, 0,
 #endif
@@ -1979,7 +1979,7 @@ static void paintSnapshotAtSize(const IntRect& rect, const IntSize& bitmapSize, 
     }
 
     graphicsContext.scale(scaleFactor);
-    graphicsContext.translate(-snapshotRect.x(), -snapshotRect.y());
+    graphicsContext.translate(-snapshotRect.location());
 
     FrameView::SelectionInSnapshot shouldPaintSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
@@ -2099,7 +2099,7 @@ RefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions opti
     }
 
     graphicsContext->scale(scaleFactor);
-    graphicsContext->translate(-snapshotRect.x(), -snapshotRect.y());
+    graphicsContext->translate(-snapshotRect.location());
 
     Color savedBackgroundColor = frameView->baseBackgroundColor();
     frameView->setBaseBackgroundColor(Color::transparent);
@@ -2155,11 +2155,11 @@ WebContextMenu* WebPage::contextMenuAtPointInWindow(const IntPoint& point)
     corePage()->contextMenuController().clearContextMenu();
 
     // Simulate a mouse click to generate the correct menu.
-    PlatformMouseEvent mousePressEvent(point, point, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
+    PlatformMouseEvent mousePressEvent(point, point, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap);
     corePage()->userInputBridge().handleMousePressEvent(mousePressEvent);
     bool handled = corePage()->userInputBridge().handleContextMenuEvent(mousePressEvent, corePage()->mainFrame());
     auto* menu = handled ? contextMenu() : nullptr;
-    PlatformMouseEvent mouseReleaseEvent(point, point, RightButton, PlatformEvent::MouseReleased, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
+    PlatformMouseEvent mouseReleaseEvent(point, point, RightButton, PlatformEvent::MouseReleased, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap);
     corePage()->userInputBridge().handleMouseReleaseEvent(mouseReleaseEvent);
 
     return menu;
@@ -3378,6 +3378,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(store.getBoolValueForKey(WebPreferencesKey::credentialManagementEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(store.getBoolValueForKey(WebPreferencesKey::isSecureContextAttributeEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setDirectoryUploadEnabled(store.getBoolValueForKey(WebPreferencesKey::directoryUploadEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(store.getBoolValueForKey(WebPreferencesKey::webVREnabledKey()));
 
     bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
     if (m_processSuppressionEnabled != processSuppressionEnabled) {
@@ -3394,6 +3395,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(PAYMENT_REQUEST)
     settings.setPaymentRequestEnabled(store.getBoolValueForKey(WebPreferencesKey::paymentRequestEnabledKey()));
 #endif
+
+    settings.setStorageAccessAPIEnabled(store.getBoolValueForKey(WebPreferencesKey::storageAccessAPIEnabledKey()));
 
     settings.setAllowScriptsToCloseWindows(store.getBoolValueForKey(WebPreferencesKey::allowScriptsToCloseWindowsKey()));
 
@@ -3683,7 +3686,7 @@ void WebPage::dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint glob
     if (!view)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
-    PlatformMouseEvent event(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), 0, WebCore::NoTap);
+    PlatformMouseEvent event(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), 0, WebCore::NoTap);
     m_page->mainFrame().eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 
     send(Messages::WebPageProxy::DidEndDragging());
@@ -4679,17 +4682,17 @@ void WebPage::handleAlternativeTextUIResult(const String& result)
 }
 #endif
 
-void WebPage::simulateMouseDown(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, double time)
+void WebPage::simulateMouseDown(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, WallTime time)
 {
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseDown, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
 }
 
-void WebPage::simulateMouseUp(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, double time)
+void WebPage::simulateMouseUp(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, WallTime time)
 {
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseUp, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
 }
 
-void WebPage::simulateMouseMotion(WebCore::IntPoint position, double time)
+void WebPage::simulateMouseMotion(WebCore::IntPoint position, WallTime time)
 {
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time, 0, WebMouseEvent::NoTap));
 }

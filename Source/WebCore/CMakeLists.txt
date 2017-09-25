@@ -35,6 +35,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
+    "${WEBCORE_DIR}/Modules/paymentrequest"
     "${WEBCORE_DIR}/Modules/plugins"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/speech"
@@ -43,6 +44,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/webdriver"
     "${WEBCORE_DIR}/Modules/websockets"
+    "${WEBCORE_DIR}/Modules/webvr"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/animation"
     "${WEBCORE_DIR}/bindings"
@@ -165,12 +167,14 @@ set(WebCore_IDL_INCLUDES
     Modules/mediasession
     Modules/mediastream
     Modules/notifications
+    Modules/paymentrequest
     Modules/quota
     Modules/speech
     Modules/streams
     Modules/webaudio
     Modules/webdatabase
     Modules/websockets
+    Modules/webvr
 
     bindings/js
 
@@ -186,9 +190,9 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/beacon/NavigatorBeacon.idl
 
-    Modules/cache/DOMCache.idl
     Modules/cache/CacheQueryOptions.idl
-    Modules/cache/CacheStorage.idl
+    Modules/cache/DOMCache.idl
+    Modules/cache/DOMCacheStorage.idl
     Modules/cache/DOMWindowCaches.idl
     Modules/cache/WorkerGlobalScopeCaches.idl
 
@@ -262,11 +266,14 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediasession/MediaRemoteControls.idl
     Modules/mediasession/MediaSession.idl
 
+    Modules/mediasource/AudioTrackMediaSource.idl
     Modules/mediasource/DOMURLMediaSource.idl
     Modules/mediasource/MediaSource.idl
     Modules/mediasource/SourceBuffer.idl
     Modules/mediasource/SourceBufferList.idl
+    Modules/mediasource/TextTrackMediaSource.idl
     Modules/mediasource/VideoPlaybackQuality.idl
+    Modules/mediasource/VideoTrackMediaSource.idl
 
     Modules/mediastream/CanvasCaptureMediaStreamTrack.idl
     Modules/mediastream/DoubleRange.idl
@@ -315,6 +322,23 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/notifications/Notification.idl
     Modules/notifications/NotificationPermission.idl
     Modules/notifications/NotificationPermissionCallback.idl
+
+    Modules/paymentrequest/PaymentAddress.idl
+    Modules/paymentrequest/PaymentComplete.idl
+    Modules/paymentrequest/PaymentCurrencyAmount.idl
+    Modules/paymentrequest/PaymentDetailsBase.idl
+    Modules/paymentrequest/PaymentDetailsInit.idl
+    Modules/paymentrequest/PaymentDetailsModifier.idl
+    Modules/paymentrequest/PaymentDetailsUpdate.idl
+    Modules/paymentrequest/PaymentItem.idl
+    Modules/paymentrequest/PaymentMethodData.idl
+    Modules/paymentrequest/PaymentOptions.idl
+    Modules/paymentrequest/PaymentRequest.idl
+    Modules/paymentrequest/PaymentRequestUpdateEvent.idl
+    Modules/paymentrequest/PaymentRequestUpdateEventInit.idl
+    Modules/paymentrequest/PaymentResponse.idl
+    Modules/paymentrequest/PaymentShippingOption.idl
+    Modules/paymentrequest/PaymentShippingType.idl
 
     Modules/speech/DOMWindowSpeechSynthesis.idl
     Modules/speech/SpeechSynthesis.idl
@@ -378,6 +402,21 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
+
+    Modules/webvr/DOMWindowWebVR.idl
+    Modules/webvr/GamepadWebVR.idl
+    Modules/webvr/NavigatorWebVR.idl
+    Modules/webvr/VRDisplay.idl
+    Modules/webvr/VRDisplayCapabilities.idl
+    Modules/webvr/VRDisplayEvent.idl
+    Modules/webvr/VRDisplayEventReason.idl
+    Modules/webvr/VREye.idl
+    Modules/webvr/VREyeParameters.idl
+    Modules/webvr/VRFieldOfView.idl
+    Modules/webvr/VRFrameData.idl
+    Modules/webvr/VRLayerInit.idl
+    Modules/webvr/VRPose.idl
+    Modules/webvr/VRStageParameters.idl
 
     animation/Animatable.idl
     animation/AnimationEffect.idl
@@ -453,7 +492,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/StyleSheet.idl
     css/StyleSheetList.idl
     css/WebKitCSSMatrix.idl
-    css/WebKitCSSRegionRule.idl
     css/WebKitCSSViewportRule.idl
 
     dom/AnimationEvent.idl
@@ -468,10 +506,8 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/CompositionEvent.idl
     dom/CustomElementRegistry.idl
     dom/CustomEvent.idl
-    dom/DOMError.idl
     dom/DOMException.idl
     dom/DOMImplementation.idl
-    dom/DOMNamedFlowCollection.idl
     dom/DOMPoint.idl
     dom/DOMPointInit.idl
     dom/DOMPointReadOnly.idl
@@ -548,7 +584,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/UIEvent.idl
     dom/UIEventInit.idl
     dom/WebKitAnimationEvent.idl
-    dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
     dom/XMLDocument.idl
@@ -938,9 +973,9 @@ set(WebCore_SOURCES
 
     Modules/beacon/NavigatorBeacon.cpp
 
-    Modules/cache/DOMCache.cpp
-    Modules/cache/CacheStorage.cpp
     Modules/cache/CacheStorageConnection.cpp
+    Modules/cache/DOMCache.cpp
+    Modules/cache/DOMCacheStorage.cpp
     Modules/cache/DOMCacheEngine.cpp
     Modules/cache/DOMWindowCaches.cpp
     Modules/cache/WorkerCacheStorageConnection.cpp
@@ -1094,6 +1129,10 @@ set(WebCore_SOURCES
     Modules/notifications/Notification.cpp
     Modules/notifications/NotificationController.cpp
 
+    Modules/paymentrequest/PaymentRequest.cpp
+    Modules/paymentrequest/PaymentRequestUpdateEvent.cpp
+    Modules/paymentrequest/PaymentResponse.cpp
+
     Modules/speech/DOMWindowSpeechSynthesis.cpp
     Modules/speech/SpeechSynthesis.cpp
     Modules/speech/SpeechSynthesisEvent.cpp
@@ -1178,6 +1217,17 @@ set(WebCore_SOURCES
     Modules/websockets/WebSocketFrame.cpp
     Modules/websockets/WebSocketHandshake.cpp
     Modules/websockets/WorkerThreadableWebSocketChannel.cpp
+
+    Modules/webvr/GamepadWebVR.cpp
+    Modules/webvr/NavigatorWebVR.cpp
+    Modules/webvr/VRDisplay.cpp
+    Modules/webvr/VRDisplayCapabilities.cpp
+    Modules/webvr/VRDisplayEvent.cpp
+    Modules/webvr/VREyeParameters.cpp
+    Modules/webvr/VRFieldOfView.cpp
+    Modules/webvr/VRFrameData.cpp
+    Modules/webvr/VRPose.cpp
+    Modules/webvr/VRStageParameters.cpp
 
     accessibility/AXObjectCache.cpp
     accessibility/AccessibilityARIAGrid.cpp
@@ -1513,7 +1563,6 @@ set(WebCore_SOURCES
     css/TransformFunctions.cpp
     css/ViewportStyleResolver.cpp
     css/WebKitCSSMatrix.cpp
-    css/WebKitCSSRegionRule.cpp
     css/WebKitCSSViewportRule.cpp
 
     css/parser/CSSAtRuleID.cpp
@@ -1564,10 +1613,8 @@ set(WebCore_SOURCES
     dom/CustomElementReactionQueue.cpp
     dom/CustomElementRegistry.cpp
     dom/CustomEvent.cpp
-    dom/DOMError.cpp
     dom/DOMException.cpp
     dom/DOMImplementation.cpp
-    dom/DOMNamedFlowCollection.cpp
     dom/DOMPointReadOnly.cpp
     dom/DOMQuad.cpp
     dom/DOMRectList.cpp
@@ -1629,7 +1676,6 @@ set(WebCore_SOURCES
     dom/MutationObserverRegistration.cpp
     dom/MutationRecord.cpp
     dom/NameNodeList.cpp
-    dom/NamedFlowCollection.cpp
     dom/NamedNodeMap.cpp
     dom/NativeNodeFilter.cpp
     dom/Node.cpp
@@ -1692,7 +1738,6 @@ set(WebCore_SOURCES
     dom/ViewportArguments.cpp
     dom/VisitedLinkState.cpp
     dom/WebKitAnimationEvent.cpp
-    dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
 
@@ -1759,6 +1804,7 @@ set(WebCore_SOURCES
     editing/VisiblePosition.cpp
     editing/VisibleSelection.cpp
     editing/VisibleUnits.cpp
+    editing/WebContentReader.cpp
     editing/WrapContentsInDummySpanCommand.cpp
     editing/markup.cpp
 
@@ -2062,6 +2108,7 @@ set(WebCore_SOURCES
     loader/FrameLoadRequest.cpp
     loader/FrameLoader.cpp
     loader/FrameLoaderStateMachine.cpp
+    loader/HTTPHeaderField.cpp
     loader/HistoryController.cpp
     loader/ImageLoader.cpp
     loader/LinkHeader.cpp
@@ -2402,6 +2449,7 @@ set(WebCore_SOURCES
     platform/graphics/ISOVTTCue.cpp
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
+    platform/graphics/ImageDecoder.cpp
     platform/graphics/ImageFrame.cpp
     platform/graphics/ImageFrameCache.cpp
     platform/graphics/ImageOrientation.cpp
@@ -2602,7 +2650,6 @@ set(WebCore_SOURCES
     rendering/FlexibleBoxAlgorithm.cpp
     rendering/FixedTableLayout.cpp
     rendering/FloatingObjects.cpp
-    rendering/FlowThreadController.cpp
     rendering/Grid.cpp
     rendering/GridTrackSizingAlgorithm.cpp
     rendering/HitTestLocation.cpp
@@ -2617,6 +2664,7 @@ set(WebCore_SOURCES
     rendering/LayoutDisallowedScope.cpp
     rendering/LayoutRepainter.cpp
     rendering/LayoutState.cpp
+    rendering/MarkerSubrange.cpp
     rendering/OrderIterator.cpp
     rendering/PointerEventsHitRules.cpp
     rendering/RenderAttachment.cpp
@@ -2666,8 +2714,6 @@ set(WebCore_SOURCES
     rendering/RenderMultiColumnFlowThread.cpp
     rendering/RenderMultiColumnSet.cpp
     rendering/RenderMultiColumnSpannerPlaceholder.cpp
-    rendering/RenderNamedFlowFragment.cpp
-    rendering/RenderNamedFlowThread.cpp
     rendering/RenderObject.cpp
     rendering/RenderProgress.cpp
     rendering/RenderQuote.cpp
@@ -3404,6 +3450,7 @@ if (ENABLE_VIDEO_TRACK)
         loader/cache/CachedTextTrack.cpp
 
         platform/graphics/TextTrackRepresentation.cpp
+        platform/graphics/TrackPrivateBase.cpp
     )
 endif ()
 
@@ -3977,8 +4024,6 @@ list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventInterfac
 
 
 GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventTargetFactory.in EventTargetInterfaces.h)
-ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/EventNames.cpp EventTargetInterfaces.h)
-ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/DOMAllInOne.cpp EventTargetInterfaces.h)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
 
 

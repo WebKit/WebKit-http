@@ -130,25 +130,19 @@ struct TriggerHashTraits : public WTF::CustomHashTraits<Trigger> {
 };
 
 struct Action {
-    Action()
-        : m_type(ActionType::InvalidAction)
-        , m_actionID(std::numeric_limits<uint32_t>::max())
-    {
-    }
-
     Action(ActionType type, const String& stringArgument, uint32_t actionID = std::numeric_limits<uint32_t>::max())
         : m_type(type)
         , m_actionID(actionID)
         , m_stringArgument(stringArgument)
     {
-        ASSERT(type == ActionType::CSSDisplayNoneSelector || type == ActionType::CSSDisplayNoneStyleSheet);
+        ASSERT(type == ActionType::CSSDisplayNoneSelector);
     }
 
     Action(ActionType type, uint32_t actionID = std::numeric_limits<uint32_t>::max())
         : m_type(type)
         , m_actionID(actionID)
     {
-        ASSERT(type != ActionType::CSSDisplayNoneSelector && type != ActionType::CSSDisplayNoneStyleSheet);
+        ASSERT(type != ActionType::CSSDisplayNoneSelector);
     }
 
     bool operator==(const Action& other) const

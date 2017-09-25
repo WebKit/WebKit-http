@@ -103,6 +103,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     , m_autocomplete(Uninitialized)
     , m_isAutoFilled(false)
     , m_autoFillButtonType(static_cast<uint8_t>(AutoFillButtonType::None))
+    , m_isAutoFillAvailable(false)
 #if ENABLE(DATALIST_ELEMENT)
     , m_hasNonEmptyList(false)
 #endif
@@ -1117,6 +1118,11 @@ void HTMLInputElement::willDispatchEvent(Event& event, InputElementClickState& s
 void HTMLInputElement::didDispatchClickEvent(Event& event, const InputElementClickState& state)
 {
     m_inputType->didDispatchClick(&event, state);
+}
+
+void HTMLInputElement::didBlur()
+{
+    m_inputType->elementDidBlur();
 }
 
 void HTMLInputElement::defaultEventHandler(Event& event)

@@ -35,18 +35,27 @@ class Evaluator extends Visitor {
     // You must snapshot if you use a value in rvalue context. For example, a call expression will
     // snapshot all of its arguments immedaitely upon executing them. In general, it should not be
     // possible for a pointer returned from a visit method in rvalue context to live across any effects.
-    _snapshot(type, ptr)
+    _snapshot(type, dstPtr, srcPtr)
     {
         let size = type.size;
-        if (!size)
-            throw new Error("Cannot get size of type: " + type);
-        let result = new EPtr(new EBuffer(size), 0);
-        result.copyFrom(ptr, size);
-        return result;
+        if (size == null)
+            throw new Error("Cannot get size of type: " + type + " (size = " + size + ", constructor = " + type.constructor.name + ")");
+        if (!dstPtr)
+            dstPtr = new EPtr(new EBuffer(size), 0);
+        dstPtr.copyFrom(srcPtr, size);
+        return dstPtr;
     }
     
-    runBody(type, block)
+    runFunc(func)
     {
+        return EBuffer.disallowAllocation(
+            () => this._runBody(func.returnType, func.returnEPtr, func.body));
+    }
+    
+    _runBody(type, ptr, block)
+    {
+        if (!ptr)
+            throw new Error("Null ptr");
         try {
             block.visit(this);
             // FIXME: We should have a check that there is no way to drop out of a function without
@@ -55,8 +64,10 @@ class Evaluator extends Visitor {
         } catch (e) {
             if (e == BreakException || e == ContinueException)
                 throw new Error("Should not see break/continue at function scope");
-            if (e instanceof ReturnException)
-                return this._snapshot(type, e.value);
+            if (e instanceof ReturnException) {
+                let result = this._snapshot(type, ptr, e.value);
+                return result;
+            }
             throw e;
         }
     }
@@ -68,7 +79,8 @@ class Evaluator extends Visitor {
                 node.argumentList[i].visit(this),
                 node.parameters[i].type.size);
         }
-        return this.runBody(node.returnType, node.body);
+        let result = this._runBody(node.returnType, node.returnEPtr, node.body);
+        return result;
     }
     
     visitReturn(node)
@@ -93,6 +105,11 @@ class Evaluator extends Visitor {
         return target;
     }
     
+    visitIdentityExpression(node)
+    {
+        return node.target.visit(this);
+    }
+    
     visitDereferenceExpression(node)
     {
         let ptr = node.ptr.visit(this).loadValue();
@@ -103,13 +120,18 @@ class Evaluator extends Visitor {
     
     visitMakePtrExpression(node)
     {
-        return EPtr.box(node.lValue.visit(this));
+        let ptr = node.lValue.visit(this);
+        return node.ePtr.box(ptr);
     }
     
-    visitDotExpression(node)
+    visitMakeArrayRefExpression(node)
     {
-        let structPtr = node.struct.visit(this);
-        return structPtr.plus(node.field.offset);
+        return node.ePtr.box(new EArrayRef(node.lValue.visit(this), node.numElements.visit(this).loadValue()));
+    }
+    
+    visitConvertPtrToArrayRefExpression(node)
+    {
+        return node.ePtr.box(new EArrayRef(node.lValue.visit(this).loadValue(), 1));
     }
     
     visitCommaExpression(node)
@@ -126,30 +148,48 @@ class Evaluator extends Visitor {
         return node.variable.ePtr;
     }
     
-    visitIntLiteral(node)
+    visitGenericLiteral(node)
     {
-        return EPtr.box(node.value);
-    }
-    
-    visitUintLiteral(node)
-    {
-        return EPtr.box(node.value);
+        return node.ePtr.box(node.valueForSelectedType);
     }
     
     visitNullLiteral(node)
     {
-        return EPtr.box(null);
+        return node.ePtr.box(null);
     }
     
     visitBoolLiteral(node)
     {
-        return EPtr.box(node.value);
+        return node.ePtr.box(node.value);
+    }
+    
+    visitEnumLiteral(node)
+    {
+        return node.ePtr.box(node.member.value.unifyNode.valueForSelectedType);
     }
 
     visitLogicalNot(node)
     {
         let result = !node.operand.visit(this).loadValue();
-        return EPtr.box(result);
+        return node.ePtr.box(result);
+    }
+
+    visitLogicalExpression(node)
+    {
+        let lhs = node.left.visit(this).loadValue();
+        let rhs = node.right.visit(this).loadValue();
+        let result;
+        switch (node.text) {
+        case "&&":
+            result = lhs && rhs;
+            break;
+        case "||":
+            result = lhs || rhs;
+            break;
+        default:
+            throw new Error("Unknown type of logical expression");
+        }
+        return node.ePtr.box(result);
     }
 
     visitIfStatement(node)
@@ -166,9 +206,9 @@ class Evaluator extends Visitor {
             try {
                 node.body.visit(this);
             } catch (e) {
-                if (e instanceof Break)
+                if (e == BreakException)
                     break;
-                if (e instanceof Continue)
+                if (e == ContinueException)
                     continue;
                 throw e;
             }
@@ -181,9 +221,9 @@ class Evaluator extends Visitor {
             try {
                 node.body.visit(this);
             } catch (e) {
-                if (e instanceof Break)
+                if (e == BreakException)
                     break;
-                if (e instanceof Continue)
+                if (e == ContinueException)
                     continue;
                 throw e;
             }
@@ -198,23 +238,68 @@ class Evaluator extends Visitor {
             try {
                 node.body.visit(this);
             } catch (e) {
-                if (e instanceof Break)
+                if (e == BreakException)
                     break;
-                if (e instanceof Continue)
+                if (e == ContinueException)
                     continue;
                 throw e;
             }
         }
     }
+    
+    visitSwitchStatement(node)
+    {
+        let findAndRunCast = predicate => {
+            for (let i = 0; i < node.switchCases.length; ++i) {
+                let switchCase = node.switchCases[i];
+                if (predicate(switchCase)) {
+                    try {
+                        for (let j = i; j < node.switchCases.length; ++j)
+                            node.switchCases[j].visit(this);
+                    } catch (e) {
+                        if (e != BreakException)
+                            throw e;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        };
+        
+        let value = node.value.visit(this).loadValue();
+        
+        let found = findAndRunCast(switchCase => {
+            if (switchCase.isDefault)
+                return false;
+            return node.type.unifyNode.valuesEqual(
+                value, switchCase.value.unifyNode.valueForSelectedType);
+        });
+        if (found)
+            return;
+        
+        found = findAndRunCast(switchCase => switchCase.isDefault);
+        if (!found)
+            throw new Error("Switch statement did not find case");
+    }
 
     visitBreak(node)
     {
-        throw node;
+        throw BreakException;
     }
 
     visitContinue(node)
     {
-        throw node;
+        throw ContinueException;
+    }
+
+    visitTrapStatement(node)
+    {
+        throw new WTrapError(node.origin.originString, "Trap statement");
+    }
+    
+    visitAnonymousVariable(node)
+    {
+        node.type.populateDefaultValue(node.ePtr.buffer, node.ePtr.offset);
     }
     
     visitCallExpression(node)
@@ -227,9 +312,21 @@ class Evaluator extends Visitor {
             if (!type || !argument)
                 throw new Error("Cannot get type or argument; i = " + i + ", argument = " + argument + ", type = " + type + "; in " + node);
             let argumentValue = argument.visit(this);
-            callArguments.push(this._snapshot(type, argumentValue));
+            if (!argumentValue)
+                throw new Error("Null argument value, i = " + i + ", node = " + node);
+            callArguments.push(() => {
+                let result = this._snapshot(type, null, argumentValue);
+                return result;
+            });
         }
-        return node.func.implementation(callArguments, node);
+        
+        // For simplicity, we allow intrinsics to just allocate new buffers, and we allocate new
+        // buffers when snapshotting their arguments. This is not observable to the user, so it's OK.
+        let result = EBuffer.allowAllocation(
+            () => node.func.implementation(callArguments.map(thunk => thunk()), node));
+        
+        result = this._snapshot(node.nativeFuncInstance.returnType, node.resultEPtr, result);
+        return result;
     }
 }
 

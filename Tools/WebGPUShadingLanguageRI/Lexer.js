@@ -27,6 +27,8 @@
 class Lexer {
     constructor(origin, originKind, lineNumberOffset, text)
     {
+        if (!isOriginKind(originKind))
+            throw new Error("Bad origin kind: " + originKind);
         this._origin = origin;
         this._originKind = originKind;
         this._lineNumberOffset = lineNumberOffset;
@@ -47,6 +49,8 @@ class Lexer {
         return this._origin + ":" + (this.lineNumber + 1);
     }
     
+    get originKind() { return this._originKind; }
+    
     lineNumberForIndex(index)
     {
         let matches = this._text.substring(0, index).match(/\n/g);
@@ -58,6 +62,16 @@ class Lexer {
     {
         this._index = value.index;
         this._stack = value.stack;
+    }
+    
+    static _textIsIdentifierImpl(text)
+    {
+        return /^[^\d\W]\w*/.test(text);
+    }
+    
+    static textIsIdentifier(text)
+    {
+        return Lexer._textIsIdentifierImpl(text) && !RegExp.rightContext.length;
     }
     
     next()
@@ -101,9 +115,13 @@ class Lexer {
         
         if (this._index >= this._text.length)
             return null;
+
+        // FIXME: Make this handle exp-form literals like 1e1.
+        if (/^(([0-9]*\.[0-9]+[fd]?)|([0-9]+\.[0-9]*[fd]?))/.test(relevantText))
+            return result("floatLiteral");
         
         // FIXME: Make this do Unicode.
-        if (/^[^\d\W]\w*/.test(relevantText)) {
+        if (Lexer._textIsIdentifierImpl(relevantText)) {
             if (/^(struct|protocol|typedef|if|else|enum|continue|break|switch|case|default|for|while|do|return|constant|device|threadgroup|thread|operator|null|true|false)$/.test(RegExp.lastMatch))
                 return result("keyword");
             
@@ -113,17 +131,19 @@ class Lexer {
             return result("identifier");
         }
 
+        if (/^0x[0-9a-fA-F]+u/.test(relevantText))
+            return result("uintHexLiteral");
+
+        if (/^0x[0-9a-fA-F]+/.test(relevantText))
+            return result("intHexLiteral");
+
         if (/^[0-9]+u/.test(relevantText))
             return result("uintLiteral");
 
         if (/^[0-9]+/.test(relevantText))
             return result("intLiteral");
-
-        // FIXME: Make this handle exp-form literals like 1e1.
-        if (/^([0-9]*\.[0-9]+)|([0-9]+\.[0-9]*)/.test(relevantText))
-            return result("doubleLiteral");
         
-        if (/^->|>=|<=|==|!=|\+=|-=|\*=|\/=|%=|^=|\|=|&=|([{}()\[\]?:=+*\/,.%!~^&|<>@;-])/.test(relevantText))
+        if (/^<<|>>|->|>=|<=|==|!=|\+=|-=|\*=|\/=|%=|\^=|\|=|&=|\+\+|--|&&|\|\||([{}()\[\]?:=+*\/,.%!~^&|<>@;-])/.test(relevantText))
             return result("punctuation");
         
         let remaining = relevantText.substring(0, 20).split(/\s/)[0];

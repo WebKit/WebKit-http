@@ -37,7 +37,6 @@
 
 namespace WebCore {
 
-class FlowThreadController;
 class ImageQualityController;
 class RenderLayerCompositor;
 class RenderQuote;
@@ -187,10 +186,6 @@ public:
 
     // Renderer that paints the root background has background-images which all have background-attachment: fixed.
     bool rootBackgroundIsEntirelyFixed() const;
-    
-    bool hasRenderNamedFlowThreads() const;
-    bool checkTwoPassLayoutForAutoHeightRegions() const;
-    FlowThreadController& flowThreadController();
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
@@ -238,7 +233,7 @@ public:
         bool m_wasAccumulatingRepaintRegion;
     };
 
-    WeakPtr<RenderView> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
+    WeakPtr<RenderView> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
 
     void scheduleLazyRepaint(RenderBox&);
     void unscheduleLazyRepaint(RenderBox&);
@@ -277,7 +272,6 @@ private:
         if (!doingFullRepaint() || m_layoutState->isPaginated() || renderer.flowThreadContainingBlock()
             || m_layoutState->lineGrid() || (renderer.style().lineGrid() != RenderStyle::initialLineGrid() && renderer.isRenderBlockFlow())) {
             m_layoutState = std::make_unique<LayoutState>(WTFMove(m_layoutState), &renderer, offset, pageHeight, pageHeightChanged);
-            pushLayoutStateForCurrentFlowThread(renderer);
             return true;
         }
         return false;
@@ -285,7 +279,6 @@ private:
 
     void popLayoutState()
     {
-        popLayoutStateForCurrentFlowThread();
         m_layoutState = WTFMove(m_layoutState->m_next);
     }
 
@@ -309,14 +302,9 @@ private:
     void enableLayoutState() { ASSERT(m_layoutStateDisableCount > 0); m_layoutStateDisableCount--; }
 
     void layoutContent(const LayoutState&);
-    void layoutContentInAutoLogicalHeightRegions(const LayoutState&);
-    void layoutContentToComputeOverflowInRegions(const LayoutState&);
 #ifndef NDEBUG
     void checkLayoutState(const LayoutState&);
 #endif
-
-    void pushLayoutStateForCurrentFlowThread(const RenderObject&);
-    void popLayoutStateForCurrentFlowThread();
 
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
@@ -325,7 +313,6 @@ private:
 
     bool isScrollableOrRubberbandableBox() const override;
 
-    void splitSelectionBetweenSubtrees(const RenderObject* startRenderer, std::optional<unsigned> startPos, const RenderObject* endRenderer, std::optional<unsigned> endPos, SelectionRepaintMode blockRepaintMode);
     void clearSubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, OldSelectionData&) const;
     void updateSelectionForSubtrees(RenderSubtreesMap&, SelectionRepaintMode);
     void applySubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, const OldSelectionData&);
@@ -370,7 +357,6 @@ private:
     std::unique_ptr<LayoutState> m_layoutState;
     unsigned m_layoutStateDisableCount { 0 };
     std::unique_ptr<RenderLayerCompositor> m_compositor;
-    std::unique_ptr<FlowThreadController> m_flowThreadController;
 
     bool m_hasQuotesNeedingUpdate { false };
 

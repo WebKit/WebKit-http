@@ -30,7 +30,7 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
         super("recording-state", WI.UIString("State"));
 
         this._recording = null;
-        this._index = NaN;
+        this._action = null;
 
         this._dataGrid = null;
     }
@@ -60,29 +60,28 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
             return;
 
         this._recording = recording;
-        this._index = NaN;
+        this._action = null;
 
         for (let subview of this.contentView.subviews)
             this.contentView.removeSubview(subview);
     }
 
-    updateActionIndex(index, context, options = {})
+    updateAction(action, context, options = {})
     {
-        console.assert(!this._recording || (index >= 0 && index < this._recording.actions.length));
-        if (!this._recording || index < 0 || index > this._recording.actions.length || index === this._index)
+        if (!this._recording || action === this._action)
             return;
 
-        this._index = index;
+        this._action = action;
 
         if (this._recording.type === WI.Recording.Type.Canvas2D)
-            this._generateDetailsCanvas2D(context, options);
+            this._generateDetailsCanvas2D(action, context, options);
 
         this.updateLayoutIfNeeded();
     }
 
     // Private
 
-    _generateDetailsCanvas2D(context, options = {})
+    _generateDetailsCanvas2D(action, context, options = {})
     {
         if (!this._dataGrid) {
             this._dataGrid = new WI.DataGrid({
@@ -130,7 +129,19 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
         state.webkitLineDash = context.webkitLineDash;
         state.webkitLineDashOffset = context.webkitLineDashOffset;
 
-        let action = this._recording.actions[this._index];
+        function isColorProperty(name) {
+            return name === "fillStyle" || name === "strokeStyle" || name === "shadowColor";
+        }
+
+        function createInlineSwatch(value) {
+            let color = WI.Color.fromString(value);
+            if (!color)
+                return null;
+
+            const readOnly = true;
+            return new WI.InlineSwatch(WI.InlineSwatch.Type.Color, color, readOnly);
+        }
+
         for (let name in state) {
             let value = state[name];
             if (typeof value === "object") {
@@ -149,6 +160,11 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
 
                     value = JSON.stringify(value);
                 }
+            } else if (isColorProperty(name)) {
+                let swatch = createInlineSwatch(value);
+                let label = swatch.value.toString();
+                value = document.createElement("span");
+                value.append(swatch.element, label);
             }
 
             let classNames = [];

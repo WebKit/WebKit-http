@@ -33,6 +33,10 @@
     -webkit-user-select: text;
 }
 
+.spreadsheet-css-declaration .media-label {
+    color: black;
+}
+
 .spreadsheet-css-declaration .origin {
     float: right;
     max-width: 100%;
@@ -77,10 +81,6 @@
 
 .spreadsheet-css-declaration .selector > .matched {
     color: black;
-}
-
-.spreadsheet-css-declaration .properties {
-    margin-left: 1.4em;
 }
 
 .spreadsheet-css-declaration.locked {

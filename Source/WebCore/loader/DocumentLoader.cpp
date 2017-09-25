@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,6 +52,7 @@
 #include "FrameTree.h"
 #include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTTPHeaderField.h"
 #include "HTTPHeaderNames.h"
 #include "HistoryItem.h"
 #include "IconLoader.h"
@@ -133,7 +134,8 @@ static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
 }
 
 DocumentLoader::DocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
-    : m_cachedResourceLoader(CachedResourceLoader::create(this))
+    : FrameDestructionObserver(nullptr)
+    , m_cachedResourceLoader(CachedResourceLoader::create(this))
     , m_writer(m_frame)
     , m_originalRequest(request)
     , m_substituteData(substituteData)
@@ -704,7 +706,7 @@ void DocumentLoader::responseReceived(const ResourceResponse& response)
     }
 #endif
 
-    frameLoader()->checkContentPolicy(m_response, [this](PolicyAction policy) {
+    frameLoader()->checkContentPolicy(m_response, [this, protectedThis = makeRef(*this)](PolicyAction policy) {
         continueAfterContentPolicy(policy);
     });
 }
@@ -982,7 +984,7 @@ void DocumentLoader::attachToFrame(Frame& frame)
         return;
 
     ASSERT(!m_frame);
-    m_frame = &frame;
+    observeFrame(&frame);
     m_writer.setFrame(&frame);
     attachToFrame();
 
@@ -1023,7 +1025,7 @@ void DocumentLoader::detachFromFrame()
 
     InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
 
-    m_frame = nullptr;
+    observeFrame(nullptr);
 }
 
 void DocumentLoader::clearMainResourceLoader()
@@ -1032,6 +1034,11 @@ void DocumentLoader::clearMainResourceLoader()
 
     if (this == frameLoader()->activeDocumentLoader())
         checkLoadComplete();
+}
+
+void DocumentLoader::setCustomHeaderFields(Vector<HTTPHeaderField>&& fields)
+{
+    m_customHeaderFields = WTFMove(fields);
 }
 
 bool DocumentLoader::isLoadingInAPISense() const

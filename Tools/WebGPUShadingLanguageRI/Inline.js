@@ -43,7 +43,7 @@ function _inlineFunction(program, func, visiting)
     if (func.inlined || func.isNative)
         return;
     
-    func.rewrite(new InstantiateImmediates());
+    func.visit(new LateChecker());
     
     // This is the precise time when we can build EBuffers in order to get them to be uniqued by
     // type instantiation but nothing else.
@@ -55,9 +55,9 @@ function _inlineFunction(program, func, visiting)
     func.inlined = true;
 }
 
-function resolveInlinedFunction(program, name, typeArguments, argumentTypes)
+function resolveInlinedFunction(program, name, typeArguments, argumentTypes, allowEntryPoint = false)
 {
-    let overload = program.globalNameContext.resolveFuncOverload(name, typeArguments, argumentTypes);
+    let overload = program.globalNameContext.resolveFuncOverload(name, typeArguments, argumentTypes, undefined, allowEntryPoint);
     if (!overload.func)
         return overload.failures;
     if (!overload.func.typeParameters)

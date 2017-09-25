@@ -28,7 +28,6 @@
 
 #include "ClipRect.h"
 #include "Document.h"
-#include "FlowThreadController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -50,8 +49,6 @@
 #include "RenderLineBreak.h"
 #include "RenderListItem.h"
 #include "RenderListMarker.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
 #include "RenderSVGContainer.h"
 #include "RenderSVGGradientStop.h"
@@ -680,79 +677,6 @@ static void writeLayerRenderers(TextStream& ts, const RenderLayer& layer, LayerP
         write(ts, layer.renderer(), indent + 1, behavior);
 }
 
-static void writeRenderRegionList(const RenderRegionList& flowThreadRegionList, TextStream& ts, int indent)
-{
-    for (const auto& renderRegion : flowThreadRegionList) {
-        writeIndent(ts, indent);
-        ts << static_cast<const RenderObject*>(renderRegion)->renderName();
-
-        Element* generatingElement = renderRegion->generatingElement();
-        if (generatingElement) {
-            bool isRenderNamedFlowFragment = is<RenderNamedFlowFragment>(*renderRegion);
-            if (isRenderNamedFlowFragment && downcast<RenderNamedFlowFragment>(*renderRegion).hasCustomRegionStyle())
-                ts << " region style: 1";
-            if (renderRegion->hasAutoLogicalHeight())
-                ts << " hasAutoLogicalHeight";
-
-            if (isRenderNamedFlowFragment)
-                ts << " (anonymous child of";
-
-            StringBuilder tagName;
-            tagName.append(generatingElement->nodeName());
-
-            RenderElement* renderElementForRegion = isRenderNamedFlowFragment ? renderRegion->parent() : renderRegion;
-            if (renderElementForRegion->isPseudoElement()) {
-                if (renderElementForRegion->element()->isBeforePseudoElement())
-                    tagName.appendLiteral("::before");
-                else if (renderElementForRegion->element()->isAfterPseudoElement())
-                    tagName.appendLiteral("::after");
-            }
-
-            ts << " {" << tagName.toString() << "}";
-
-            auto& generatingElementId = generatingElement->idForStyleResolution();
-            if (!generatingElementId.isNull())
-                ts << " #" << generatingElementId;
-
-            if (isRenderNamedFlowFragment)
-                ts << ")";
-        }
-
-        ts << "\n";
-    }
-}
-
-static void writeRenderNamedFlowThreads(TextStream& ts, RenderView& renderView, const RenderLayer& rootLayer, const LayoutRect& paintRect, int indent, RenderAsTextBehavior behavior)
-{
-    if (!renderView.hasRenderNamedFlowThreads())
-        return;
-
-    writeIndent(ts, indent);
-    ts << "Named flows\n";
-
-    for (const auto* renderFlowThread : *renderView.flowThreadController().renderNamedFlowThreadList()) {
-        writeIndent(ts, indent + 1);
-        ts << "Named flow '" << renderFlowThread->flowThreadName() << "'\n";
-
-        RenderLayer* layer = renderFlowThread->layer();
-        writeLayers(ts, rootLayer, *layer, paintRect, indent + 2, behavior);
-
-        // Display the valid and invalid render regions attached to this flow thread.
-        const RenderRegionList& validRegionsList = renderFlowThread->renderRegionList();
-        const RenderRegionList& invalidRegionsList = renderFlowThread->invalidRenderRegionList();
-        if (!validRegionsList.isEmpty()) {
-            writeIndent(ts, indent + 2);
-            ts << "Regions for named flow '" << renderFlowThread->flowThreadName() << "'\n";
-            writeRenderRegionList(validRegionsList, ts, indent + 3);
-        }
-        if (!invalidRegionsList.isEmpty()) {
-            writeIndent(ts, indent + 2);
-            ts << "Invalid regions for named flow '" << renderFlowThread->flowThreadName() << "'\n";
-            writeRenderRegionList(invalidRegionsList, ts, indent + 3);
-        }
-    }
-}
-
 static LayoutSize maxLayoutOverflow(const RenderBox* box)
 {
     LayoutRect overflowRect = box->layoutOverflowRect();
@@ -780,7 +704,7 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
     layer.updateLayerListsIfNeeded();
 
     bool shouldPaint = (behavior & RenderAsTextShowAllLayers) ? true : layer.intersectsDamageRect(layerBounds, damageRect.rect(), &rootLayer, layer.offsetFromAncestor(&rootLayer));
-    Vector<RenderLayer*>* negativeZOrderList = layer.negZOrderList();
+    auto* negativeZOrderList = layer.negZOrderList();
     bool paintsBackgroundSeparately = negativeZOrderList && negativeZOrderList->size() > 0;
     if (shouldPaint && paintsBackgroundSeparately) {
         writeLayer(ts, layer, layerBounds, damageRect.rect(), clipRectToApply.rect(), LayerPaintPhaseBackground, indent, behavior);
@@ -818,7 +742,7 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
         writeLayerRenderers(ts, layer, paintsBackgroundSeparately ? LayerPaintPhaseForeground : LayerPaintPhaseAll, indent, behavior);
     }
     
-    if (Vector<RenderLayer*>* normalFlowList = layer.normalFlowList()) {
+    if (auto* normalFlowList = layer.normalFlowList()) {
         int currIndent = indent;
         if (behavior & RenderAsTextShowLayerNesting) {
             writeIndent(ts, indent);
@@ -830,36 +754,21 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
             writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
     }
 
-    if (Vector<RenderLayer*>* positiveZOrderList = layer.posZOrderList()) {
-        size_t layerCount = 0;
-        for (auto* currLayer : *positiveZOrderList) {
-            if (!currLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
-                ++layerCount;
-        }
-        
+    if (auto* positiveZOrderList = layer.posZOrderList()) {
+        size_t layerCount = positiveZOrderList->size();
+
         if (layerCount) {
             int currIndent = indent;
-            // We only print the header if there's at list a non-RenderNamedFlowThread part of the list.
-            if (!positiveZOrderList->size() || !positiveZOrderList->at(0)->isFlowThreadCollectingGraphicsLayersUnderRegions()) {
-                if (behavior & RenderAsTextShowLayerNesting) {
-                    writeIndent(ts, indent);
-                    ts << " positive z-order list(" << positiveZOrderList->size() << ")\n";
-                    ++currIndent;
-                }
-                
-                for (auto* currLayer : *positiveZOrderList) {
-                    // Do not print named flows twice.
-                    if (!currLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
-                        writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
-                }
+            if (behavior & RenderAsTextShowLayerNesting) {
+                writeIndent(ts, indent);
+                ts << " positive z-order list(" << positiveZOrderList->size() << ")\n";
+                ++currIndent;
             }
+
+            for (auto* currLayer : *positiveZOrderList)
+                writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
         }
     }
-    
-    // Altough the RenderFlowThread requires a layer, it is not collected by its parent,
-    // so we have to treat it as a special case.
-    if (is<RenderView>(layer.renderer()))
-        writeRenderNamedFlowThreads(ts, downcast<RenderView>(layer.renderer()), rootLayer, paintDirtyRect, indent, behavior);
 }
 
 static String nodePosition(Node* node)

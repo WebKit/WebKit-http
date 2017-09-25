@@ -28,7 +28,7 @@
 
 #if PLATFORM(WAYLAND) && USE(EGL)
 
-#include "WebKit2WaylandServerProtocol.h"
+#include "WebKitWaylandServerProtocol.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <WebCore/GLContext.h>
@@ -97,7 +97,6 @@ WaylandCompositor::Buffer* WaylandCompositor::Buffer::getOrCreate(struct wl_reso
 
 WaylandCompositor::Buffer::Buffer(struct wl_resource* resource)
     : m_resource(resource)
-    , m_weakPtrFactory(this)
 {
     wl_list_init(&m_destroyListener.link);
     m_destroyListener.notify = destroyListenerCallback;

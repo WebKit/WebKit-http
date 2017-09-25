@@ -28,7 +28,7 @@
 function callFunction(program, name, typeArguments, argumentList)
 {
     let argumentTypes = argumentList.map(argument => argument.type);
-    let funcOrFailures = resolveInlinedFunction(program, name, typeArguments, argumentTypes);
+    let funcOrFailures = resolveInlinedFunction(program, name, typeArguments, argumentTypes, true);
     if (!(funcOrFailures instanceof Func)) {
         let failures = funcOrFailures;
         throw new WTypeError("<callFunction>", "Cannot resolve function call " + name + "<" + typeArguments + ">(" + argumentList + ")" + (failures.length ? "; tried:\n" + failures.join("\n") : ""));
@@ -39,7 +39,7 @@ function callFunction(program, name, typeArguments, argumentList)
         type.visit(new StructLayoutBuilder());
         func.parameters[i].ePtr.copyFrom(argumentList[i].ePtr, type.size);
     }
-    let result = new Evaluator(program).runBody(func.returnType, func.body);
-    return new TypedValue(func.returnType.unifyNode, result);
+    let result = new Evaluator(program).runFunc(func);
+    return new TypedValue(func.uninstantiatedReturnType, result);
 }
 

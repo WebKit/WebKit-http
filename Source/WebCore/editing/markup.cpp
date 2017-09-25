@@ -584,13 +584,13 @@ static String createMarkupInternal(Document& document, const Range& range, Vecto
     bool collapsed = range.collapsed();
     if (collapsed)
         return emptyString();
-    Node* commonAncestor = range.commonAncestorContainer();
+    RefPtr<Node> commonAncestor = range.commonAncestorContainer();
     if (!commonAncestor)
         return emptyString();
 
     document.updateLayoutIgnorePendingStylesheets();
 
-    auto* body = enclosingElementWithTag(firstPositionInNode(commonAncestor), bodyTag);
+    auto* body = enclosingElementWithTag(firstPositionInNode(commonAncestor.get()), bodyTag);
     Element* fullySelectedRoot = nullptr;
     // FIXME: Do this for all fully selected blocks, not just the body.
     if (body && VisiblePosition(firstPositionInNode(body)) == VisiblePosition(range.startPosition())
@@ -931,26 +931,6 @@ Ref<DocumentFragment> createFragmentForImageAndURL(Document& document, const Str
     fragment->appendChild(imageElement);
 
     return fragment;
-}
-
-RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(Frame& frame, Ref<ArchiveResource>&& resource)
-{
-    if (!frame.document())
-        return nullptr;
-
-    Ref<Document> document = *frame.document();
-    String resourceURL = resource->url().string();
-
-    if (DocumentLoader* loader = frame.loader().documentLoader())
-        loader->addArchiveResource(WTFMove(resource));
-
-    auto imageElement = HTMLImageElement::create(document.get());
-    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, resourceURL);
-
-    auto fragment = document->createDocumentFragment();
-    fragment->appendChild(imageElement);
-
-    return WTFMove(fragment);
 }
 
 static Vector<Ref<HTMLElement>> collectElementsToRemoveFromFragment(ContainerNode& container)

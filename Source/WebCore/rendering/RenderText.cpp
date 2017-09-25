@@ -29,7 +29,6 @@
 #include "BreakLines.h"
 #include "BreakingContext.h"
 #include "CharacterProperties.h"
-#include "DocumentMarker.h"
 #include "DocumentMarkerController.h"
 #include "EllipsisBox.h"
 #include "FloatQuad.h"
@@ -69,13 +68,13 @@ using namespace Unicode;
 namespace WebCore {
 
 struct SameSizeAsRenderText : public RenderObject {
+    void* pointers[2];
     uint32_t bitfields : 16;
 #if ENABLE(TEXT_AUTOSIZING)
     float candidateTextSize;
 #endif
     float widths[4];
     String text;
-    void* pointers[2];
 };
 
 COMPILE_ASSERT(sizeof(RenderText) == sizeof(SameSizeAsRenderText), RenderText_should_stay_small);

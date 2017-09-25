@@ -41,6 +41,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKHitTestResult.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/Vector.h>
 
 #if PLATFORM(MAC)
 #import <Carbon/Carbon.h>
@@ -201,6 +202,8 @@ TEST(WebKit, ShowWebView)
     ASSERT_EQ(webViewFromDelegateCallback, createdWebView);
 }
 
+static bool resizableSet;
+
 @interface ModalDelegate : NSObject <WKUIDelegatePrivate>
 @end
 
@@ -208,8 +211,15 @@ TEST(WebKit, ShowWebView)
 
 - (void)_webViewRunModal:(WKWebView *)webView
 {
+    EXPECT_TRUE(resizableSet);
     EXPECT_EQ(webView, createdWebView.get());
     done = true;
+}
+
+- (void)_webView:(WKWebView *)webView setResizable:(BOOL)isResizable
+{
+    EXPECT_FALSE(isResizable);
+    resizableSet = true;
 }
 
 - (nullable WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures
@@ -231,6 +241,115 @@ TEST(WebKit, RunModal)
     [webView synchronouslyLoadHTMLString:html];
     [webView sendClicksAtPoint:NSMakePoint(20, 600 - 20) numberOfClicks:1];
     TestWebKitAPI::Util::run(&done);
+}
+
+static bool receivedWindowFrame;
+
+@interface WindowFrameDelegate : NSObject <WKUIDelegatePrivate>
+@end
+
+@implementation WindowFrameDelegate
+
+- (void)_webView:(WKWebView *)webView setWindowFrame:(CGRect)frame
+{
+    EXPECT_EQ(frame.origin.x, 160);
+    EXPECT_EQ(frame.origin.y, 230);
+    EXPECT_EQ(frame.size.width, 350);
+    EXPECT_EQ(frame.size.height, 450);
+    receivedWindowFrame = true;
+}
+
+- (void)_webView:(WKWebView *)webView getWindowFrameWithCompletionHandler:(void (^)(CGRect))completionHandler
+{
+    completionHandler(CGRectMake(150, 250, 350, 450));
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
+{
+    EXPECT_STREQ("350", message.UTF8String);
+    completionHandler();
+    done = true;
+}
+
+@end
+
+TEST(WebKit, WindowFrame)
+{
+    auto delegate = adoptNS([[WindowFrameDelegate alloc] init]);
+    auto webView = adoptNS([[WKWebView alloc] init]);
+    [webView setUIDelegate:delegate.get()];
+    [webView loadHTMLString:@"<script>moveBy(10,20);alert(outerWidth);</script>" baseURL:nil];
+    TestWebKitAPI::Util::run(&receivedWindowFrame);
+    TestWebKitAPI::Util::run(&done);
+}
+
+static bool headerHeightCalled;
+static bool footerHeightCalled;
+static bool drawHeaderCalled;
+static bool drawFooterCalled;
+
+@interface PrintDelegate : NSObject <WKUIDelegatePrivate>
+@end
+
+@implementation PrintDelegate
+
+- (void)_webView:(WKWebView *)webView printFrame:(_WKFrameHandle *)frame
+{
+    done = true;
+}
+
+- (CGFloat)_webViewHeaderHeight:(WKWebView *)webView
+{
+    headerHeightCalled = true;
+    return 3.14159;
+}
+
+- (CGFloat)_webViewFooterHeight:(WKWebView *)webView
+{
+    footerHeightCalled = true;
+    return 2.71828;
+}
+
+- (void)_webView:(WKWebView *)webView drawHeaderInRect:(CGRect)rect forPageWithTitle:(NSString *)title URL:(NSURL *)url
+{
+    EXPECT_EQ(rect.origin.x, 72);
+    EXPECT_TRUE(fabs(rect.origin.y - 698.858398) < .00001);
+    EXPECT_TRUE(fabs(rect.size.height - 3.141590) < .00001);
+    EXPECT_EQ(rect.size.width, 468.000000);
+    EXPECT_STREQ(title.UTF8String, "test_title");
+    EXPECT_STREQ(url.absoluteString.UTF8String, "http://example.com/");
+    drawHeaderCalled = true;
+}
+
+- (void)_webView:(WKWebView *)webView drawFooterInRect:(CGRect)rect forPageWithTitle:(NSString *)title URL:(NSURL *)url
+{
+    EXPECT_EQ(rect.origin.x, 72);
+    EXPECT_EQ(rect.origin.y, 90);
+    EXPECT_TRUE(fabs(rect.size.height - 2.718280) < .00001);
+    EXPECT_EQ(rect.size.width, 468.000000);
+    EXPECT_STREQ(url.absoluteString.UTF8String, "http://example.com/");
+    drawFooterCalled = true;
+}
+
+@end
+
+TEST(WebKit, PrintFrame)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    auto delegate = adoptNS([[PrintDelegate alloc] init]);
+    [webView setUIDelegate:delegate.get()];
+    [webView loadHTMLString:@"<head><title>test_title</title></head><body onload='print()'>hello world!</body>" baseURL:[NSURL URLWithString:@"http://example.com/"]];
+    TestWebKitAPI::Util::run(&done);
+
+    NSPrintOperation *operation = [webView _printOperationWithPrintInfo:[NSPrintInfo sharedPrintInfo]];
+    EXPECT_TRUE(operation.canSpawnSeparateThread);
+    EXPECT_STREQ(operation.jobTitle.UTF8String, "test_title");
+
+    [operation runOperationModalForWindow:[webView hostWindow] delegate:nil didRunSelector:nil contextInfo:nil];
+    TestWebKitAPI::Util::run(&headerHeightCalled);
+    TestWebKitAPI::Util::run(&footerHeightCalled);
+    TestWebKitAPI::Util::run(&drawHeaderCalled);
+    TestWebKitAPI::Util::run(&drawFooterCalled);
 }
 
 @interface NotificationDelegate : NSObject <WKUIDelegatePrivate> {
@@ -403,6 +522,30 @@ TEST(WebKit, ClickAutoFillButton)
     NSPoint buttonLocation = NSMakePoint(130, 575);
     [webView mouseDownAtPoint:buttonLocation simulatePressure:NO];
     [webView mouseUpAtPoint:buttonLocation];
+    TestWebKitAPI::Util::run(&done);
+}
+
+@interface AutoFillAvailableDelegate : NSObject <WKUIDelegatePrivate>
+@end
+
+@implementation AutoFillAvailableDelegate
+
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)())completionHandler
+{
+    completionHandler();
+    ASSERT_STREQ(message.UTF8String, "autofill available");
+    done = true;
+}
+
+@end
+
+TEST(WebKit, AutoFillAvailable)
+{
+    WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"AutoFillAvailable"];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
+    auto delegate = adoptNS([[AutoFillAvailableDelegate alloc] init]);
+    [webView setUIDelegate:delegate.get()];
     TestWebKitAPI::Util::run(&done);
 }
 

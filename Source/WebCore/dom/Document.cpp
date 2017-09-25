@@ -51,7 +51,6 @@
 #include "CustomElementRegistry.h"
 #include "CustomEvent.h"
 #include "DOMImplementation.h"
-#include "DOMNamedFlowCollection.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
 #include "DebugPageOverlays.h"
@@ -103,6 +102,7 @@
 #include "ImageLoader.h"
 #include "InspectorInstrumentation.h"
 #include "JSCustomElementInterface.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
 #include "LayoutDisallowedScope.h"
@@ -117,7 +117,6 @@
 #include "MouseEventWithHitTestResults.h"
 #include "MutationEvent.h"
 #include "NameNodeList.h"
-#include "NamedFlowCollection.h"
 #include "NavigationDisabler.h"
 #include "NavigationScheduler.h"
 #include "NestingLevelIncrementer.h"
@@ -147,6 +146,7 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RequestAnimationFrameCallback.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -469,7 +469,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_constantPropertyMap(std::make_unique<ConstantPropertyMap>(*this))
     , m_documentClasses(documentClasses)
     , m_eventQueue(*this)
-    , m_weakFactory(this)
 #if ENABLE(FULLSCREEN_API)
     , m_fullScreenChangeDelayTimer(*this, &Document::fullScreenChangeDelayTimerFired)
 #endif
@@ -1149,28 +1148,6 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
 bool Document::isCSSGridLayoutEnabled() const
 {
     return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
-}
-
-#if ENABLE(CSS_REGIONS)
-
-RefPtr<DOMNamedFlowCollection> Document::webkitGetNamedFlows()
-{
-    if (!renderView())
-        return nullptr;
-
-    updateStyleIfNeeded();
-
-    return namedFlows().createCSSOMSnapshot();
-}
-
-#endif
-
-NamedFlowCollection& Document::namedFlows()
-{
-    if (!m_namedFlows)
-        m_namedFlows = NamedFlowCollection::create(this);
-
-    return *m_namedFlows;
 }
 
 ExceptionOr<Ref<Element>> Document::createElementNS(const AtomicString& namespaceURI, const String& qualifiedName)
@@ -2034,10 +2011,8 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
     updateStyleIfNeeded();
 
     RenderObject* renderer = element.renderer();
-    if (!renderer || renderer->needsLayout() || element.renderNamedFlowFragment()) {
+    if (!renderer || renderer->needsLayout()) {
         // If we don't have a renderer or if the renderer needs layout for any reason, give up.
-        // Named flows can have auto height, so don't try to enforce the optimization in this case.
-        // The 2-pass nature of auto height named flow layout means the region may not be dirty yet.
         requireFullLayout = true;
     }
 
@@ -2083,7 +2058,7 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
             if (!currentBox->isRenderBlockFlow() || currentBox->flowThreadContainingBlock() || currentBox->isWritingModeRoot()) {
                 // FIXME: For now require only block flows all the way back to the root. This limits the optimization
                 // for now, and we'll expand it in future patches to apply to more and more scenarios.
-                // Disallow regions/columns from having the optimization.
+                // Disallow columns from having the optimization.
                 // Give up if the writing mode changes at all in the containing block chain.
                 requireFullLayout = true;
                 break;
@@ -3648,6 +3623,9 @@ void Document::noteUserInteractionWithMediaElement()
     if (m_userHasInteractedWithMediaElement)
         return;
 
+    if (!topDocument().userDidInteractWithPage())
+        return;
+
     m_userHasInteractedWithMediaElement = true;
     updateIsPlayingMedia();
 }
@@ -3834,6 +3812,15 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
             else
                 view()->setFocus(false);
         }
+
+        if (is<HTMLInputElement>(oldFocusedElement.get())) {
+            // HTMLInputElement::didBlur just scrolls text fields back to the beginning.
+            // FIXME: This could be done asynchronusly.
+            // Updating style may dispatch events due to PostResolutionCallback
+            if (eventsMode == FocusRemovalEventsMode::Dispatch)
+                updateStyleIfNeeded();
+            downcast<HTMLInputElement>(*oldFocusedElement).didBlur();
+        }
     }
 
     if (newFocusedElement && newFocusedElement->isFocusable()) {
@@ -3907,7 +3894,10 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
         page()->chrome().focusedElementChanged(m_focusedElement.get());
 
 SetFocusedNodeDone:
-    updateStyleIfNeeded();
+    // Updating style may dispatch events due to PostResolutionCallback
+    // FIXME: Why is synchronous style update needed here at all?
+    if (eventsMode == FocusRemovalEventsMode::Dispatch)
+        updateStyleIfNeeded();
     return !focusChangeBlocked;
 }
 
@@ -5636,7 +5626,7 @@ void Document::addMessage(MessageSource source, MessageLevel level, const String
 
 void Document::postTask(Task&& task)
 {
-    callOnMainThread([documentReference = m_weakFactory.createWeakPtr(), task = WTFMove(task)]() mutable {
+    callOnMainThread([documentReference = m_weakFactory.createWeakPtr(*this), task = WTFMove(task)]() mutable {
         ASSERT(isMainThread());
 
         Document* document = documentReference.get();
@@ -7280,6 +7270,74 @@ Logger& Document::logger() const
     }
 
     return *m_logger;
+}
+
+void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
+{
+    ASSERT(settings().storageAccessAPIEnabled());
+    
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+    
+    if (m_hasStorageAccess) {
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    if (!m_frame || securityOrigin().isUnique()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    if (m_frame->isMainFrame()) {
+        m_hasStorageAccess = true;
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    // There has to be a sandbox and it has to allow the storage access API to be called.
+    if (sandboxFlags() == SandboxNone || isSandboxed(SandboxStorageAccessByUserActivation)) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+
+    // The iframe has to be a direct child of the top document.
+    auto& topDocument = this->topDocument();
+    if (&topDocument != parentDocument()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+
+    auto& securityOrigin = this->securityOrigin();
+    auto& topSecurityOrigin = topDocument.securityOrigin();
+    if (securityOrigin.equal(&topSecurityOrigin)) {
+        m_hasStorageAccess = true;
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    if (!UserGestureIndicator::processingUserGesture()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    auto partitionDomain = securityOrigin.domainForCachePartition();
+    auto topPartitionDomain = topSecurityOrigin.domainForCachePartition();
+    StringBuilder builder;
+    builder.appendLiteral("Do you want to use your ");
+    builder.append(partitionDomain);
+    builder.appendLiteral(" ID on ");
+    builder.append(topPartitionDomain);
+    builder.appendLiteral("?");
+    Page* page = this->page();
+    // FIXME: Don't use runJavaScriptConfirm because it responds synchronously.
+    if ((page && page->chrome().runJavaScriptConfirm(*m_frame, builder.toString())) || m_grantStorageAccessOverride) {
+        m_hasStorageAccess = true;
+        ResourceLoadObserver::shared().registerStorageAccess(partitionDomain, topPartitionDomain);
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    promise->resolve<IDLBoolean>(false);
 }
 
 } // namespace WebCore

@@ -53,7 +53,6 @@
 #include "DisplayList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "DocumentMarker.h"
 #include "DocumentMarkerController.h"
 #include "Editor.h"
 #include "Element.h"
@@ -466,6 +465,8 @@ void Internals::resetToConsistentState(Page& page)
 #if USE(LIBWEBRTC)
     WebCore::useRealRTCPeerConnectionFactory();
 #endif
+
+    page.settings().setStorageAccessAPIEnabled(false);
 }
 
 Internals::Internals(Document& document)
@@ -905,7 +906,7 @@ ExceptionOr<bool> Internals::pauseAnimationAtTimeOnElement(const String& animati
 {
     if (pauseTime < 0)
         return Exception { InvalidAccessError };
-    return frame()->animation().pauseAnimationAtTime(element.renderer(), AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(element, AtomicString(animationName), pauseTime);
 }
 
 ExceptionOr<bool> Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element& element, const String& pseudoId)
@@ -920,14 +921,14 @@ ExceptionOr<bool> Internals::pauseAnimationAtTimeOnPseudoElement(const String& a
     if (!pseudoElement)
         return Exception { InvalidAccessError };
 
-    return frame()->animation().pauseAnimationAtTime(pseudoElement->renderer(), AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(*pseudoElement, AtomicString(animationName), pauseTime);
 }
 
 ExceptionOr<bool> Internals::pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element& element)
 {
     if (pauseTime < 0)
         return Exception { InvalidAccessError };
-    return frame()->animation().pauseTransitionAtTime(element.renderer(), propertyName, pauseTime);
+    return frame()->animation().pauseTransitionAtTime(element, propertyName, pauseTime);
 }
 
 ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element& element, const String& pseudoId)
@@ -942,7 +943,7 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
     if (!pseudoElement)
         return Exception { InvalidAccessError };
 
-    return frame()->animation().pauseTransitionAtTime(pseudoElement->renderer(), property, pauseTime);
+    return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
 }
 
 ExceptionOr<String> Internals::elementRenderTreeAsText(Element& element)
@@ -3836,6 +3837,15 @@ void Internals::setResourceLoadStatisticsEnabled(bool enable)
     Settings::setResourceLoadStatisticsEnabled(enable);
 }
 
+void Internals::setUserGrantsStorageAccess(bool value)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return;
+
+    document->setUserGrantsStorageAccessOverride(value);
+}
+
 String Internals::composedTreeAsText(Node& node)
 {
     if (!is<ContainerNode>(node))
@@ -4132,7 +4142,7 @@ String Internals::audioSessionCategory() const
     return emptyString();
 }
 
-void Internals::clearCacheStorageMemoryRepresentation()
+void Internals::clearCacheStorageMemoryRepresentation(DOMPromiseDeferred<void>&& promise)
 {
     auto* document = contextDocument();
     if (!document)
@@ -4144,7 +4154,10 @@ void Internals::clearCacheStorageMemoryRepresentation()
         if (!m_cacheStorageConnection)
             return;
     }
-    m_cacheStorageConnection->clearMemoryRepresentation(document->securityOrigin().toString(), [](std::optional<DOMCacheEngine::Error>&&) { });
+    m_cacheStorageConnection->clearMemoryRepresentation(document->securityOrigin().toString(), [promise = WTFMove(promise)](std::optional<DOMCacheEngine::Error>&& result) mutable {
+        ASSERT_UNUSED(result, !result);
+        promise.resolve();
+    });
 }
 
 void Internals::cacheStorageEngineRepresentation(DOMPromiseDeferred<IDLDOMString>&& promise)

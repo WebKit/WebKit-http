@@ -35,12 +35,13 @@ namespace WebCore {
 // FIXME: DataTransfer should filter types itself.
 static bool isSupportedType(const String& type)
 {
-    return type == "text/plain";
+    return type == "text/plain"
+        || type == "text/html"
+        || type == "text/uri-list";
 }
 
 DataTransferItemList::DataTransferItemList(DataTransfer& dataTransfer)
-    : m_weakPtrFactory(this)
-    , m_dataTransfer(dataTransfer)
+    : m_dataTransfer(dataTransfer)
 {
 }
 
@@ -79,7 +80,7 @@ ExceptionOr<RefPtr<DataTransferItem>> DataTransferItemList::add(const String& da
 
     m_dataTransfer.pasteboard().writeString(lowercasedType, data);
     ASSERT(m_items);
-    m_items->append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(), type));
+    m_items->append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(*this), lowercasedType));
     return RefPtr<DataTransferItem> { m_items->last().copyRef() };
 }
 
@@ -124,18 +125,16 @@ Vector<Ref<DataTransferItem>>& DataTransferItemList::ensureItems() const
         return *m_items;
 
     Vector<Ref<DataTransferItem>> items;
-    for (String& type : m_dataTransfer.types()) {
-        String lowercasedType = type.convertToASCIILowercase();
+    for (auto& type : m_dataTransfer.types()) {
+        auto lowercasedType = type.convertToASCIILowercase();
         if (isSupportedType(lowercasedType))
-            items.append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(), lowercasedType));
+            items.append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(*const_cast<DataTransferItemList*>(this)), lowercasedType));
     }
 
-    FileList& files = m_dataTransfer.files();
-    for (unsigned i = 0, length = files.length(); i < length; ++i) {
-        File& file = *files.item(i);
-        String type = File::contentTypeForFile(file.path()).convertToASCIILowercase();
-        if (isSupportedType(type) || file.isDirectory())
-            items.append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(), type, file));
+    for (auto& file : m_dataTransfer.files().files()) {
+        auto type = File::contentTypeForFile(file->path()).convertToASCIILowercase();
+        if (isSupportedType(type) || file->isDirectory())
+            items.append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(*const_cast<DataTransferItemList*>(this)), type, file.copyRef()));
     }
 
     m_items = WTFMove(items);
@@ -181,7 +180,7 @@ void DataTransferItemList::didSetStringData(const String& type)
     String lowercasedType = type.convertToASCIILowercase();
     removeStringItemOfLowercasedType(*m_items, type.convertToASCIILowercase());
 
-    m_items->append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(), lowercasedType));
+    m_items->append(DataTransferItem::create(m_weakPtrFactory.createWeakPtr(*this), lowercasedType));
 }
 
 }

@@ -107,6 +107,9 @@ void DownloadProxy::didStart(const ResourceRequest& request, const String& sugge
     m_request = request;
     m_suggestedFilename = suggestedFilename;
 
+    if (m_redirectChain.isEmpty() || m_redirectChain.last() != request.url())
+        m_redirectChain.append(request.url());
+
     if (!m_processPool)
         return;
 
@@ -144,8 +147,9 @@ void DownloadProxy::willSendRequest(const ResourceRequest& proposedRequest, cons
     if (!m_processPool)
         return;
 
-    RefPtr<DownloadProxy> protectedThis(this);
-    m_processPool->downloadClient().willSendRequest(m_processPool.get(), this, proposedRequest, redirectResponse, [protectedThis](const ResourceRequest& newRequest) {
+    m_processPool->downloadClient().willSendRequest(m_processPool.get(), this, proposedRequest, redirectResponse, [this, protectedThis = makeRef(*this)](const ResourceRequest& newRequest) {
+        m_redirectChain.append(newRequest.url());
+
 #if USE(NETWORK_SESSION)
         if (!protectedThis->m_processPool)
             return;
@@ -155,8 +159,6 @@ void DownloadProxy::willSendRequest(const ResourceRequest& proposedRequest, cons
             return;
 
         networkProcessProxy->send(Messages::NetworkProcess::ContinueWillSendRequest(protectedThis->m_downloadID, newRequest), 0);
-#else
-        UNUSED_PARAM(newRequest);
 #endif
     });
 }
@@ -205,7 +207,7 @@ void DownloadProxy::decideDestinationWithSuggestedFilenameAsync(DownloadID downl
     
     SandboxExtension::Handle sandboxExtensionHandle;
     if (!destination.isNull())
-        SandboxExtension::createHandle(destination, SandboxExtension::ReadWrite, sandboxExtensionHandle);
+        SandboxExtension::createHandle(destination, SandboxExtension::Type::ReadWrite, sandboxExtensionHandle);
 
     if (NetworkProcessProxy* networkProcess = m_processPool->networkProcess())
         networkProcess->send(Messages::NetworkProcess::ContinueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle, allowOverwrite), 0);
@@ -224,7 +226,7 @@ void DownloadProxy::decideDestinationWithSuggestedFilename(const String& filenam
     destination = m_processPool->downloadClient().decideDestinationWithSuggestedFilename(m_processPool.get(), this, suggestedFilename, allowOverwrite);
 
     if (!destination.isNull())
-        SandboxExtension::createHandle(destination, SandboxExtension::ReadWrite, sandboxExtensionHandle);
+        SandboxExtension::createHandle(destination, SandboxExtension::Type::ReadWrite, sandboxExtensionHandle);
 }
 
 #endif

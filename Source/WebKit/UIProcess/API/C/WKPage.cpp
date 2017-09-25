@@ -214,12 +214,12 @@ void WKPageLoadHTMLStringWithUserData(WKPageRef pageRef, WKStringRef htmlStringR
 
 void WKPageLoadAlternateHTMLString(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef, WKURLRef unreachableURLRef)
 {
-    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), toWTFString(baseURLRef), toWTFString(unreachableURLRef));
+    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), URL(URL(), toWTFString(baseURLRef)), URL(URL(), toWTFString(unreachableURLRef)));
 }
 
 void WKPageLoadAlternateHTMLStringWithUserData(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef, WKURLRef unreachableURLRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), toWTFString(baseURLRef), toWTFString(unreachableURLRef), toImpl(userDataRef));
+    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), URL(URL(), toWTFString(baseURLRef)), URL(URL(), toWTFString(unreachableURLRef)), toImpl(userDataRef));
 }
 
 void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef)
@@ -1910,13 +1910,6 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.setStatusBarIsVisible(toAPI(&page), visible, m_client.base.clientInfo);
         }
 
-        void isResizable(WebPageProxy& page, Function<void(bool)>&& completionHandler) final
-        {
-            if (!m_client.isResizable)
-                return completionHandler(true);
-            completionHandler(m_client.isResizable(toAPI(&page), m_client.base.clientInfo));
-        }
-
         void setIsResizable(WebPageProxy& page, bool resizable) final
         {
             if (!m_client.setIsResizable)
@@ -2800,7 +2793,7 @@ void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportSca
 #endif
 }
 
-pid_t WKPageGetProcessIdentifier(WKPageRef page)
+ProcessID WKPageGetProcessIdentifier(WKPageRef page)
 {
     return toImpl(page)->processIdentifier();
 }

@@ -118,12 +118,8 @@ const WebDriverService::Command WebDriverService::s_commands[] = {
     { HTTPMethod::Get, "/session/$sessionId/window/handles", &WebDriverService::getWindowHandles },
     { HTTPMethod::Post, "/session/$sessionId/frame", &WebDriverService::switchToFrame },
     { HTTPMethod::Post, "/session/$sessionId/frame/parent", &WebDriverService::switchToParentFrame },
-
-    // FIXME: Not in the spec, but still used by Selenium.
-    { HTTPMethod::Get, "/session/$sessionId/window/position", &WebDriverService::getWindowPosition },
-    { HTTPMethod::Post, "/session/$sessionId/window/position", &WebDriverService::setWindowPosition },
-    { HTTPMethod::Get, "/session/$sessionId/window/size", &WebDriverService::getWindowSize },
-    { HTTPMethod::Post, "/session/$sessionId/window/size", &WebDriverService::setWindowSize },
+    { HTTPMethod::Get, "/session/$sessionId/window/rect", &WebDriverService::getWindowRect },
+    { HTTPMethod::Post, "/session/$sessionId/window/rect", &WebDriverService::setWindowRect },
 
     { HTTPMethod::Post, "/session/$sessionId/element", &WebDriverService::findElement },
     { HTTPMethod::Post, "/session/$sessionId/elements", &WebDriverService::findElements },
@@ -248,19 +244,31 @@ void WebDriverService::handleRequest(HTTPRequestHandler::Request&& request, Func
 
 void WebDriverService::sendResponse(Function<void (HTTPRequestHandler::Response&&)>&& replyHandler, CommandResult&& result) const
 {
-    RefPtr<InspectorObject> responseObject;
+    // §6.3 Processing Model.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#processing-model
+    RefPtr<InspectorValue> resultValue;
     if (result.isError()) {
-        responseObject = InspectorObject::create();
-        responseObject->setString(ASCIILiteral("error"), result.errorString());
-        responseObject->setString(ASCIILiteral("message"), result.errorMessage().value_or(emptyString()));
-        responseObject->setString(ASCIILiteral("stacktrace"), emptyString());
+        // When required to send an error.
+        // https://w3c.github.io/webdriver/webdriver-spec.html#dfn-send-an-error
+        // Let body be a new JSON Object initialised with the following properties: "error", "message", "stacktrace".
+        auto errorObject = InspectorObject::create();
+        errorObject->setString(ASCIILiteral("error"), result.errorString());
+        errorObject->setString(ASCIILiteral("message"), result.errorMessage().value_or(emptyString()));
+        errorObject->setString(ASCIILiteral("stacktrace"), emptyString());
+        // If the error data dictionary contains any entries, set the "data" field on body to a new JSON Object populated with the dictionary.
         if (auto& additionalData = result.additionalErrorData())
-            responseObject->setObject(ASCIILiteral("data"), RefPtr<InspectorObject> { additionalData });
-    } else {
-        responseObject = InspectorObject::create();
-        auto resultValue = result.result();
-        responseObject->setValue(ASCIILiteral("value"), resultValue ? WTFMove(resultValue) : InspectorValue::null());
-    }
+            errorObject->setObject(ASCIILiteral("data"), RefPtr<InspectorObject> { additionalData });
+        // Send a response with status and body as arguments.
+        resultValue = WTFMove(errorObject);
+    } else if (auto value = result.result())
+        resultValue = WTFMove(value);
+    else
+        resultValue = InspectorValue::null();
+
+    // When required to send a response.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#dfn-send-a-response
+    RefPtr<InspectorObject> responseObject = InspectorObject::create();
+    responseObject->setValue(ASCIILiteral("value"), WTFMove(resultValue));
     replyHandler({ result.httpStatusCode(), responseObject->toJSONString().utf8(), ASCIILiteral("application/json; charset=utf-8") });
 }
 
@@ -625,7 +633,7 @@ void WebDriverService::newSession(RefPtr<InspectorObject>&& parameters, Function
                     break;
                 }
             }
-            resultObject->setObject(ASCIILiteral("value"), WTFMove(capabilitiesObject));
+            resultObject->setObject(ASCIILiteral("capabilities"), WTFMove(capabilitiesObject));
             completionHandler(CommandResult::success(WTFMove(resultObject)));
         });
     });
@@ -787,58 +795,76 @@ void WebDriverService::getWindowHandle(RefPtr<InspectorObject>&& parameters, Fun
         session->getWindowHandle(WTFMove(completionHandler));
 }
 
-void WebDriverService::getWindowPosition(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+void WebDriverService::getWindowRect(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
 {
+    // §10.7.1 Get Window Rect.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#get-window-rect
     if (auto session = findSessionOrCompleteWithError(*parameters, completionHandler))
-        session->getWindowPosition(WTFMove(completionHandler));
+        session->getWindowRect(WTFMove(completionHandler));
 }
 
-void WebDriverService::setWindowPosition(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+static std::optional<double> valueAsNumberInRange(const InspectorValue& value, double minAllowed = 0, double maxAllowed = INT_MAX)
 {
-    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
-    if (!session)
-        return;
+    double number;
+    if (!value.asDouble(number))
+        return std::nullopt;
 
-    int windowX;
-    if (!parameters->getInteger(ASCIILiteral("x"), windowX)) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
+    if (std::isnan(number) || std::isinf(number))
+        return std::nullopt;
 
-    int windowY;
-    if (!parameters->getInteger(ASCIILiteral("y"), windowY)) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
+    if (number < minAllowed || number > maxAllowed)
+        return std::nullopt;
 
-    session->setWindowPosition(windowX, windowY, WTFMove(completionHandler));
+    return number;
 }
 
-void WebDriverService::getWindowSize(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
+void WebDriverService::setWindowRect(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
 {
+    // §10.7.2 Set Window Rect.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#set-window-rect
+    RefPtr<InspectorValue> value;
+    std::optional<double> width;
+    if (parameters->getValue(ASCIILiteral("width"), value)) {
+        if (auto number = valueAsNumberInRange(*value))
+            width = number;
+        else if (!value->isNull()) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
+            return;
+        }
+    }
+    std::optional<double> height;
+    if (parameters->getValue(ASCIILiteral("height"), value)) {
+        if (auto number = valueAsNumberInRange(*value))
+            height = number;
+        else if (!value->isNull()) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
+            return;
+        }
+    }
+    std::optional<double> x;
+    if (parameters->getValue(ASCIILiteral("x"), value)) {
+        if (auto number = valueAsNumberInRange(*value, INT_MIN))
+            x = number;
+        else if (!value->isNull()) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
+            return;
+        }
+    }
+    std::optional<double> y;
+    if (parameters->getValue(ASCIILiteral("y"), value)) {
+        if (auto number = valueAsNumberInRange(*value, INT_MIN))
+            y = number;
+        else if (!value->isNull()) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
+            return;
+        }
+    }
+
+    // FIXME: If the remote end does not support the Set Window Rect command for the current
+    // top-level browsing context for any reason, return error with error code unsupported operation.
+
     if (auto session = findSessionOrCompleteWithError(*parameters, completionHandler))
-        session->getWindowSize(WTFMove(completionHandler));
-}
-
-void WebDriverService::setWindowSize(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)
-{
-    auto session = findSessionOrCompleteWithError(*parameters, completionHandler);
-    if (!session)
-        return;
-
-    int windowWidth;
-    if (!parameters->getInteger(ASCIILiteral("width"), windowWidth)) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
-
-    int windowHeight;
-    if (!parameters->getInteger(ASCIILiteral("height"), windowHeight)) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
-
-    session->setWindowSize(windowWidth, windowHeight, WTFMove(completionHandler));
+        session->setWindowRect(x, y, width, height, WTFMove(completionHandler));
 }
 
 void WebDriverService::closeWindow(RefPtr<InspectorObject>&& parameters, Function<void (CommandResult&&)>&& completionHandler)

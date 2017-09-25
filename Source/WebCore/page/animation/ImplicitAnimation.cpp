@@ -40,9 +40,9 @@
 
 namespace WebCore {
 
-ImplicitAnimation::ImplicitAnimation(const Animation& transition, CSSPropertyID animatingProperty, RenderElement* renderer, CompositeAnimation* compAnim, const RenderStyle* fromStyle)
-    : AnimationBase(transition, renderer, compAnim)
-    , m_fromStyle(RenderStyle::clonePtr(*fromStyle))
+ImplicitAnimation::ImplicitAnimation(const Animation& transition, CSSPropertyID animatingProperty, Element& element, CompositeAnimation& compositeAnimation, const RenderStyle& fromStyle)
+    : AnimationBase(transition, element, compositeAnimation)
+    , m_fromStyle(RenderStyle::clonePtr(fromStyle))
     , m_transitionProperty(transition.property())
     , m_animatingProperty(animatingProperty)
 {
@@ -58,10 +58,10 @@ ImplicitAnimation::~ImplicitAnimation()
 
 bool ImplicitAnimation::shouldSendEventForListener(Document::ListenerType inListenerType) const
 {
-    return m_element->document().hasListenerType(inListenerType);
+    return element()->document().hasListenerType(inListenerType);
 }
 
-bool ImplicitAnimation::animate(CompositeAnimation& compositeAnimation, RenderElement*, const RenderStyle*, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
+bool ImplicitAnimation::animate(CompositeAnimation& compositeAnimation, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
 {
     // If we get this far and the animation is done, it means we are cleaning up a just finished animation.
     // So just return. Everything is already all cleaned up.
@@ -144,7 +144,7 @@ void ImplicitAnimation::pauseAnimation(double timeOffset)
         renderer->transitionPaused(timeOffset, m_animatingProperty);
     // Restore the original (unanimated) style
     if (!paused())
-        setNeedsStyleRecalc(m_element);
+        setNeedsStyleRecalc(element());
 }
 
 void ImplicitAnimation::endAnimation()
@@ -176,7 +176,7 @@ bool ImplicitAnimation::sendTransitionEvent(const AtomicString& eventType, doubl
             String propertyName = getPropertyNameString(m_animatingProperty);
                 
             // Dispatch the event
-            auto element = makeRefPtr(m_element);
+            auto element = makeRefPtr(this->element());
 
             ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
             if (!element)
@@ -202,8 +202,8 @@ void ImplicitAnimation::reset(const RenderStyle& to, CompositeAnimation& composi
 
     m_toStyle = RenderStyle::clonePtr(to);
 
-    if (m_element)
-        Style::loadPendingResources(*m_toStyle, m_element->document(), m_element);
+    if (element())
+        Style::loadPendingResources(*m_toStyle, element()->document(), element());
 
     // Restart the transition.
     if (m_fromStyle && m_toStyle && !compositeAnimation.isSuspended())

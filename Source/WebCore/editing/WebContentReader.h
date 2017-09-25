@@ -50,12 +50,10 @@ public:
     {
     }
 
-#if PLATFORM(IOS)
-    void addFragment(RefPtr<DocumentFragment>&&);
-#endif
+    void addFragment(Ref<DocumentFragment>&&);
 
 private:
-#if !(PLATFORM(GTK) || PLATFORM(WIN))
+#if PLATFORM(COCOA)
     bool readWebArchive(SharedBuffer*) override;
     bool readFilenames(const Vector<String>&) override;
     bool readHTML(const String&) override;
@@ -67,7 +65,7 @@ private:
     bool readPlainText(const String&) override;
 };
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) && defined(__OBJC__)
 struct FragmentAndResources {
     RefPtr<DocumentFragment> fragment;
     Vector<Ref<ArchiveResource>> resources;
@@ -75,5 +73,5 @@ struct FragmentAndResources {
 
 RefPtr<DocumentFragment> createFragmentAndAddResources(Frame&, NSAttributedString*);
 #endif
-    
+
 }

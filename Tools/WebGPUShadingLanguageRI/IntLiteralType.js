@@ -24,33 +24,8 @@
  */
 "use strict";
 
-class IntLiteralType extends Type {
-    constructor(origin, value)
-    {
-        super();
-        this._origin = origin;
-        this._value = value;
-        this.intType = new TypeRef(origin, "int", []);
-    }
-    
-    get origin() { return this._origin; }
-    get value() { return this._value; }
-    
-    get isPrimitive() { return true; }
-    get isUnifiable() { return true; }
-    
-    typeVariableUnify(unificationContext, other)
-    {
-        if (!(other instanceof Type))
-            return false;
-        
-        return this._typeVariableUnifyImpl(unificationContext, other);
-    }
-    
-    unifyImpl(unificationContext, other)
-    {
-        return this.typeVariableUnify(unificationContext, other);
-    }
+let IntLiteralType = createLiteralType({
+    preferredTypeName: "int",
     
     verifyAsArgument(unificationContext)
     {
@@ -61,28 +36,4 @@ class IntLiteralType extends Type {
             return {result: false, reason: "Int literal " + this.value + " too large to be represented by type " + realThis};
         return {result: true};
     }
-    
-    verifyAsParameter(unificationContext)
-    {
-        throw new Error("IntLiteralType should never be used as a type parameter");
-    }
-    
-    conversionCost(unificationContext)
-    {
-        let realThis = unificationContext.find(this);
-        if (realThis.equals(this.intType))
-            return 0;
-        return 1;
-    }
-    
-    commitUnification(unificationContext)
-    {
-        this.type = TypeRef.wrap(unificationContext.find(this));
-    }
-    
-    toString()
-    {
-        return "intLiteralType<" + this.value + ">";
-    }
-}
-
+});

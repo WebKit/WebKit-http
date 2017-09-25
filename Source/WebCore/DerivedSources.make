@@ -55,6 +55,7 @@ VPATH = \
     $(WebCore)/Modules/webdatabase \
     $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
+    $(WebCore)/Modules/webvr \
     $(WebCore)/animation \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
@@ -104,9 +105,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/beacon/NavigatorBeacon.idl \
     $(WebCore)/Modules/cache/DOMWindowCaches.idl \
-    $(WebCore)/Modules/cache/DOMCache.idl \
     $(WebCore)/Modules/cache/CacheQueryOptions.idl \
-    $(WebCore)/Modules/cache/CacheStorage.idl \
+    $(WebCore)/Modules/cache/DOMCache.idl \
+    $(WebCore)/Modules/cache/DOMCacheStorage.idl \
     $(WebCore)/Modules/cache/WorkerGlobalScopeCaches.idl \
     $(WebCore)/Modules/credentials/BasicCredential.idl \
     $(WebCore)/Modules/credentials/CredentialCreationOptions.idl \
@@ -321,6 +322,20 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
+    $(WebCore)/Modules/webvr/DOMWindowWebVR.idl \
+    $(WebCore)/Modules/webvr/GamepadWebVR.idl \
+    $(WebCore)/Modules/webvr/NavigatorWebVR.idl \
+    $(WebCore)/Modules/webvr/VRDisplay.idl \
+    $(WebCore)/Modules/webvr/VRDisplayCapabilities.idl \
+    $(WebCore)/Modules/webvr/VRDisplayEvent.idl \
+    $(WebCore)/Modules/webvr/VRDisplayEventReason.idl \
+    $(WebCore)/Modules/webvr/VREye.idl \
+    $(WebCore)/Modules/webvr/VREyeParameters.idl \
+    $(WebCore)/Modules/webvr/VRFieldOfView.idl \
+    $(WebCore)/Modules/webvr/VRFrameData.idl \
+    $(WebCore)/Modules/webvr/VRLayerInit.idl \
+    $(WebCore)/Modules/webvr/VRPose.idl \
+    $(WebCore)/Modules/webvr/VRStageParameters.idl \
     $(WebCore)/animation/Animatable.idl \
     $(WebCore)/animation/AnimationEffect.idl \
     $(WebCore)/animation/AnimationTimeline.idl \
@@ -391,7 +406,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
-    $(WebCore)/css/WebKitCSSRegionRule.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
@@ -405,10 +419,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/CompositionEvent.idl \
     $(WebCore)/dom/CustomElementRegistry.idl \
     $(WebCore)/dom/CustomEvent.idl \
-    $(WebCore)/dom/DOMError.idl \
     $(WebCore)/dom/DOMException.idl \
     $(WebCore)/dom/DOMImplementation.idl \
-    $(WebCore)/dom/DOMNamedFlowCollection.idl \
     $(WebCore)/dom/DOMPoint.idl \
     $(WebCore)/dom/DOMPointInit.idl \
     $(WebCore)/dom/DOMPointReadOnly.idl \
@@ -482,7 +494,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/UIEvent.idl \
     $(WebCore)/dom/UIEventInit.idl \
     $(WebCore)/dom/WebKitAnimationEvent.idl \
-    $(WebCore)/dom/WebKitNamedFlow.idl \
     $(WebCore)/dom/WebKitTransitionEvent.idl \
     $(WebCore)/dom/WheelEvent.idl \
     $(WebCore)/dom/XMLDocument.idl \

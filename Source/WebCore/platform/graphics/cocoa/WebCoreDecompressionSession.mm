@@ -29,10 +29,10 @@
 #if USE(VIDEOTOOLBOX)
 
 #import "Logging.h"
-#import "MediaTimeAVFoundation.h"
 #import "PixelBufferConformerCV.h"
 #import <CoreMedia/CMBufferQueue.h>
 #import <CoreMedia/CMFormatDescription.h>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
 #import <wtf/MainThread.h>
 #import <wtf/MediaTime.h>
 #import <wtf/StringPrintStream.h>
@@ -44,8 +44,9 @@
 
 namespace WebCore {
 
-WebCoreDecompressionSession::WebCoreDecompressionSession()
-    : m_decompressionQueue(adoptOSObject(dispatch_queue_create("WebCoreDecompressionSession Decompression Queue", DISPATCH_QUEUE_SERIAL)))
+WebCoreDecompressionSession::WebCoreDecompressionSession(Mode mode)
+    : m_mode(mode)
+    , m_decompressionQueue(adoptOSObject(dispatch_queue_create("WebCoreDecompressionSession Decompression Queue", DISPATCH_QUEUE_SERIAL)))
     , m_enqueingQueue(adoptOSObject(dispatch_queue_create("WebCoreDecompressionSession Enqueueing Queue", DISPATCH_QUEUE_SERIAL)))
     , m_hasAvailableImageSemaphore(adoptOSObject(dispatch_semaphore_create(0)))
 {
@@ -200,7 +201,7 @@ bool WebCoreDecompressionSession::shouldDecodeSample(CMSampleBufferRef sample, b
     return true;
 }
 
-void WebCoreDecompressionSession::decodeSample(CMSampleBufferRef sample, bool displaying)
+void WebCoreDecompressionSession::ensureDecompressionSessionForSample(CMSampleBufferRef sample)
 {
     if (isInvalidated())
         return;
@@ -214,19 +215,30 @@ void WebCoreDecompressionSession::decodeSample(CMSampleBufferRef sample, bool di
     if (!m_decompressionSession) {
         CMVideoFormatDescriptionRef videoFormatDescription = CMSampleBufferGetFormatDescription(sample);
         NSDictionary* videoDecoderSpecification = @{ (NSString *)kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder: @YES };
+
+        NSDictionary *attributes;
+        if (m_mode == OpenGL) {
 #if PLATFORM(IOS)
-        NSDictionary* attributes = @{(NSString *)kCVPixelBufferIOSurfaceOpenGLESFBOCompatibilityKey: @YES};
+            attributes = @{(NSString *)kCVPixelBufferIOSurfaceOpenGLESFBOCompatibilityKey: @YES};
 #else
-        NSDictionary* attributes = @{(NSString *)kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey: @YES};
+            attributes = @{(NSString *)kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey: @YES};
 #endif
+        } else {
+            ASSERT(m_mode == RGB);
+            attributes = @{(NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+        }
         VTDecompressionSessionRef decompressionSessionOut = nullptr;
-        VTDecompressionOutputCallbackRecord callback {
-            &decompressionOutputCallback,
-            this,
-        };
-        if (noErr == VTDecompressionSessionCreate(kCFAllocatorDefault, videoFormatDescription, (CFDictionaryRef)videoDecoderSpecification, (CFDictionaryRef)attributes, &callback, &decompressionSessionOut))
+        if (noErr == VTDecompressionSessionCreate(kCFAllocatorDefault, videoFormatDescription, (CFDictionaryRef)videoDecoderSpecification, (CFDictionaryRef)attributes, nullptr, &decompressionSessionOut))
             m_decompressionSession = adoptCF(decompressionSessionOut);
     }
+}
+
+void WebCoreDecompressionSession::decodeSample(CMSampleBufferRef sample, bool displaying)
+{
+    if (isInvalidated())
+        return;
+
+    ensureDecompressionSessionForSample(sample);
 
     VTDecodeInfoFlags flags { kVTDecodeFrame_EnableTemporalProcessing };
     if (!displaying)
@@ -240,14 +252,25 @@ void WebCoreDecompressionSession::decodeSample(CMSampleBufferRef sample, bool di
         return;
     }
 
-    VTDecompressionSessionDecodeFrame(m_decompressionSession.get(), sample, flags, reinterpret_cast<void*>(displaying), nullptr);
+    VTDecompressionSessionDecodeFrameWithOutputHandler(m_decompressionSession.get(), sample, flags, nullptr, [this, displaying] (OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef imageBuffer, CMTime presentationTimeStamp, CMTime presentationDuration) {
+        handleDecompressionOutput(displaying, status, infoFlags, imageBuffer, presentationTimeStamp, presentationDuration);
+    });
 }
 
-void WebCoreDecompressionSession::decompressionOutputCallback(void* decompressionOutputRefCon, void* sourceFrameRefCon, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef imageBuffer, CMTime presentationTimeStamp, CMTime presentationDuration)
+RetainPtr<CVPixelBufferRef> WebCoreDecompressionSession::decodeSampleSync(CMSampleBufferRef sample)
 {
-    WebCoreDecompressionSession* session = static_cast<WebCoreDecompressionSession*>(decompressionOutputRefCon);
-    bool displaying = sourceFrameRefCon;
-    session->handleDecompressionOutput(displaying, status, infoFlags, imageBuffer, presentationTimeStamp, presentationDuration);
+    if (isInvalidated())
+        return nullptr;
+
+    ensureDecompressionSessionForSample(sample);
+
+    RetainPtr<CVPixelBufferRef> pixelBuffer;
+    VTDecodeInfoFlags flags { 0 };
+    VTDecompressionSessionDecodeFrameWithOutputHandler(m_decompressionSession.get(), sample, flags, nullptr, [&] (OSStatus, VTDecodeInfoFlags, CVImageBufferRef imageBuffer, CMTime, CMTime) mutable {
+        if (imageBuffer && CFGetTypeID(imageBuffer) == CVPixelBufferGetTypeID())
+            pixelBuffer = (CVPixelBufferRef)imageBuffer;
+    });
+    return pixelBuffer;
 }
 
 void WebCoreDecompressionSession::handleDecompressionOutput(bool displaying, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef rawImageBuffer, CMTime presentationTimeStamp, CMTime presentationDuration)
@@ -283,7 +306,7 @@ void WebCoreDecompressionSession::handleDecompressionOutput(bool displaying, OSS
         auto currentTime = CMTimebaseGetTime(m_timebase.get());
         auto currentRate = CMTimebaseGetRate(m_timebase.get());
         if (currentRate > 0 && CMTimeCompare(presentationTimeStamp, currentTime) < 0)
-            m_totalFrameDelay += toMediaTime(CMTimeSubtract(currentTime, presentationTimeStamp));
+            m_totalFrameDelay += PAL::toMediaTime(CMTimeSubtract(currentTime, presentationTimeStamp));
     }
 
     dispatch_async(m_enqueingQueue.get(), [protectedThis = makeRefPtr(this), status, imageSampleBuffer = adoptCF(rawImageSampleBuffer), infoFlags, displaying] {
@@ -311,15 +334,15 @@ void WebCoreDecompressionSession::automaticDequeue()
     if (!m_timebase)
         return;
 
-    auto time = toMediaTime(CMTimebaseGetTime(m_timebase.get()));
+    auto time = PAL::toMediaTime(CMTimebaseGetTime(m_timebase.get()));
     LOG(Media, "WebCoreDecompressionSession::automaticDequeue(%p) - purging all samples before time(%s)", this, toString(time).utf8().data());
 
     MediaTime nextFireTime = MediaTime::positiveInfiniteTime();
     bool releasedImageBuffers = false;
 
     while (CMSampleBufferRef firstSample = (CMSampleBufferRef)CMBufferQueueGetHead(m_producerQueue.get())) {
-        MediaTime presentationTimestamp = toMediaTime(CMSampleBufferGetPresentationTimeStamp(firstSample));
-        MediaTime duration = toMediaTime(CMSampleBufferGetDuration(firstSample));
+        MediaTime presentationTimestamp = PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(firstSample));
+        MediaTime duration = PAL::toMediaTime(CMSampleBufferGetDuration(firstSample));
         MediaTime presentationEndTimestamp = presentationTimestamp + duration;
         if (time > presentationEndTimestamp) {
             CFRelease(CMBufferQueueDequeueAndRetain(m_producerQueue.get()));
@@ -328,8 +351,8 @@ void WebCoreDecompressionSession::automaticDequeue()
         }
 
 #if !LOG_DISABLED
-        auto begin = toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
-        auto end = toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
+        auto begin = PAL::toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
+        auto end = PAL::toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
         LOG(Media, "WebCoreDecompressionSession::automaticDequeue(%p) - queue(%s -> %s)", this, toString(begin).utf8().data(), toString(end).utf8().data());
 #endif
 
@@ -341,7 +364,7 @@ void WebCoreDecompressionSession::automaticDequeue()
         maybeBecomeReadyForMoreMediaData();
 
     LOG(Media, "WebCoreDecompressionSession::automaticDequeue(%p) - queue empty", this, toString(time).utf8().data());
-    CMTimebaseSetTimerDispatchSourceNextFireTime(m_timebase.get(), m_timerSource.get(), toCMTime(nextFireTime), 0);
+    CMTimebaseSetTimerDispatchSourceNextFireTime(m_timebase.get(), m_timerSource.get(), PAL::toCMTime(nextFireTime), 0);
 }
 
 void WebCoreDecompressionSession::enqueueDecodedSample(CMSampleBufferRef sample, bool displaying)
@@ -359,9 +382,9 @@ void WebCoreDecompressionSession::enqueueDecodedSample(CMSampleBufferRef sample,
     CMBufferQueueEnqueue(m_producerQueue.get(), sample);
 
 #if !LOG_DISABLED
-    auto begin = toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
-    auto end = toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
-    auto presentationTime = toMediaTime(CMSampleBufferGetPresentationTimeStamp(sample));
+    auto begin = PAL::toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
+    auto end = PAL::toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
+    auto presentationTime = PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(sample));
     LOG(Media, "WebCoreDecompressionSession::enqueueDecodedSample(%p) - presentationTime(%s), framesBeingDecoded(%d), producerQueue(%s -> %s)", this, toString(presentationTime).utf8().data(), m_framesBeingDecoded, toString(begin).utf8().data(), toString(end).utf8().data());
 #endif
 
@@ -372,9 +395,9 @@ void WebCoreDecompressionSession::enqueueDecodedSample(CMSampleBufferRef sample,
         return;
 
     if (m_timebase) {
-        auto currentTime = toMediaTime(CMTimebaseGetTime(m_timebase.get()));
-        auto presentationStartTime = toMediaTime(CMSampleBufferGetPresentationTimeStamp(sample));
-        auto presentationEndTime = presentationStartTime + toMediaTime(CMSampleBufferGetDuration(sample));
+        auto currentTime = PAL::toMediaTime(CMTimebaseGetTime(m_timebase.get()));
+        auto presentationStartTime = PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(sample));
+        auto presentationEndTime = presentationStartTime + PAL::toMediaTime(CMSampleBufferGetDuration(sample));
         if (currentTime < presentationStartTime || currentTime >= presentationEndTime)
             return;
     }
@@ -431,8 +454,8 @@ RetainPtr<CVPixelBufferRef> WebCoreDecompressionSession::imageForTime(const Medi
     bool allowEarlier = flags == WebCoreDecompressionSession::AllowEarlier;
     bool allowLater = flags == WebCoreDecompressionSession::AllowLater;
 
-    MediaTime startTime = toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
-    MediaTime endTime = toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
+    MediaTime startTime = PAL::toMediaTime(CMBufferQueueGetFirstPresentationTimeStamp(m_producerQueue.get()));
+    MediaTime endTime = PAL::toMediaTime(CMBufferQueueGetEndPresentationTimeStamp(m_producerQueue.get()));
     if (!allowLater && time < startTime) {
         LOG(Media, "WebCoreDecompressionSession::imageForTime(%p) - time(%s) too early for queue(%s -> %s)", this, toString(time).utf8().data(), toString(startTime).utf8().data(), toString(endTime).utf8().data());
         return nullptr;
@@ -441,8 +464,8 @@ RetainPtr<CVPixelBufferRef> WebCoreDecompressionSession::imageForTime(const Medi
     bool releasedImageBuffers = false;
 
     while (CMSampleBufferRef firstSample = (CMSampleBufferRef)CMBufferQueueGetHead(m_producerQueue.get())) {
-        MediaTime presentationTimestamp = toMediaTime(CMSampleBufferGetPresentationTimeStamp(firstSample));
-        MediaTime duration = toMediaTime(CMSampleBufferGetDuration(firstSample));
+        MediaTime presentationTimestamp = PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(firstSample));
+        MediaTime duration = PAL::toMediaTime(CMSampleBufferGetDuration(firstSample));
         MediaTime presentationEndTimestamp = presentationTimestamp + duration;
         if (!allowLater && presentationTimestamp > time)
             return nullptr;

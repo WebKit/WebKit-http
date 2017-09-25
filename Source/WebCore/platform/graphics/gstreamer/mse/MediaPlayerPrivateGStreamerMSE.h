@@ -83,7 +83,7 @@ public:
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
     void unmarkEndOfStream();
 
-    void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
+    void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
     void notifySeekNeedsDataForTime(const MediaTime&);
 
     static bool supportsCodecs(const String& codecs);

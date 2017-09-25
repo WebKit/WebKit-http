@@ -90,4 +90,21 @@ public:
     }
 };
 
+struct AttributeSetter {
+    template<typename Functor>
+    static auto call(JSC::ExecState&, JSC::ThrowScope&, Functor&& functor) -> std::enable_if_t<std::is_same<void, decltype(functor())>::value>
+    {
+        functor();
+    }
+
+    template<typename Functor>
+    static auto call(JSC::ExecState& state, JSC::ThrowScope& throwScope, Functor&& functor) -> std::enable_if_t<!std::is_same<void, decltype(functor())>::value>
+    {
+        auto result = functor();
+        if (!result.hasException())
+            return;
+        propagateException(state, throwScope, result.releaseException());
+    }
+};
+
 } // namespace WebCore

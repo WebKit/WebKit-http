@@ -71,7 +71,7 @@
 #import <wtf/NeverDestroyed.h>
 
 #if HAVE(APP_LINKS)
-#import <pal/spi/ios/LaunchServicesSPI.h>
+#import <pal/spi/cocoa/LaunchServicesSPI.h>
 #endif
 
 #if USE(QUICK_LOOK)
@@ -307,8 +307,10 @@ inline WebCore::WebGLLoadPolicy toWebCoreWebGLLoadPolicy(_WKWebGLLoadPolicy poli
 
 void NavigationState::NavigationClient::webGLLoadPolicy(WebPageProxy&, const WebCore::URL& url, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webViewWebGLLoadPolicyForURL)
+    if (!m_navigationState.m_navigationDelegateMethods.webViewWebGLLoadPolicyForURL) {
         completionHandler(WebGLAllowCreation);
+        return;
+    }
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     Ref<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:webGLLoadPolicyForURL:decisionHandler:));
@@ -322,8 +324,10 @@ void NavigationState::NavigationClient::webGLLoadPolicy(WebPageProxy&, const Web
 
 void NavigationState::NavigationClient::resolveWebGLLoadPolicy(WebPageProxy&, const WebCore::URL& url, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webViewResolveWebGLLoadPolicyForURL)
+    if (!m_navigationState.m_navigationDelegateMethods.webViewResolveWebGLLoadPolicyForURL) {
         completionHandler(WebGLAllowCreation);
+        return;
+    }
     
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     Ref<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:resolveWebGLLoadPolicyForURL:decisionHandler:));

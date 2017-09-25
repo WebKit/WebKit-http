@@ -99,6 +99,7 @@ struct MultiPutByOffsetData {
 struct NewArrayBufferData {
     unsigned startConstant;
     unsigned numConstants;
+    unsigned vectorLengthHint;
     IndexingType indexingType;
 };
 
@@ -710,6 +711,13 @@ public:
         children.setChild2(Edge());
         m_opInfo = radix;
     }
+
+    void convertToGetGlobalThis()
+    {
+        ASSERT(m_op == ToThis);
+        setOpAndDefaultFlags(GetGlobalThis);
+        children.setChild1(Edge());
+    }
     
     void convertToDirectCall(FrozenValue*);
 
@@ -1107,6 +1115,11 @@ public:
     unsigned numConstants()
     {
         return newArrayBufferData()->numConstants;
+    }
+
+    unsigned vectorLengthHint()
+    {
+        return newArrayBufferData()->vectorLengthHint;
     }
     
     bool hasIndexingType()

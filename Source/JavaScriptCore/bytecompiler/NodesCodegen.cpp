@@ -1026,9 +1026,9 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& ge
 
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_idWithProfile(BytecodeGenerator& generator, RegisterID* dst)
 {
-
     ArgumentListNode* node = m_args->m_listNode;
-    RefPtr<RegisterID> idValue = generator.emitNode(node);
+    RefPtr<RegisterID> idValue = generator.newTemporary();
+    generator.emitNode(idValue.get(), node);
     SpeculatedType speculation = SpecNone;
     while (node->m_next) {
         node = node->m_next;
@@ -3602,7 +3602,7 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
             generator.emitPutGeneratorFields(next.get());
         else {
             ASSERT(isAsyncGeneratorFunctionParseMode(generator.parseMode()));
-            generator.emitPutAsyncGeneratorFields(next.get(), JSTextPosition(startLine(), startStartOffset(), startLineStartOffset()));
+            generator.emitPutAsyncGeneratorFields(next.get());
         }
         
         ASSERT(startOffset() >= lineStartOffset());
@@ -3944,6 +3944,7 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
         generator.emitMove(args.thisRegister(), rhs);
         generator.emitCall(iterator.get(), iterator.get(), NoExpectedFunction, args, divot(), divotStart(), divotEnd(), DebuggableCall::No);
     }
+    RefPtr<RegisterID> nextMethod = generator.emitGetById(generator.newTemporary(), iterator.get(), generator.propertyNames().next);
 
     if (m_targetPatterns.isEmpty()) {
         generator.emitIteratorClose(iterator.get(), this);
@@ -3962,7 +3963,7 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
                 generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
 
             RefPtr<RegisterID> value = generator.newTemporary();
-            generator.emitIteratorNext(value.get(), iterator.get(), this);
+            generator.emitIteratorNext(value.get(), nextMethod.get(), iterator.get(), this);
             generator.emitGetById(done.get(), value.get(), generator.propertyNames().done);
             generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
             generator.emitGetById(value.get(), value.get(), generator.propertyNames().value);
@@ -3998,7 +3999,7 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
             generator.emitLabel(loopStart.get());
 
             RefPtr<RegisterID> value = generator.newTemporary();
-            generator.emitIteratorNext(value.get(), iterator.get(), this);
+            generator.emitIteratorNext(value.get(), nextMethod.get(), iterator.get(), this);
             generator.emitGetById(done.get(), value.get(), generator.propertyNames().done);
             generator.emitJumpIfTrue(done.get(), iterationDone.get());
             generator.emitGetById(value.get(), value.get(), generator.propertyNames().value);

@@ -477,7 +477,7 @@ enum TextZoom {
 };
 
 enum BreakBetween {
-    AutoBreakBetween, AvoidBreakBetween, AvoidColumnBreakBetween, AvoidPageBreakBetween, AvoidRegionBreakBetween, ColumnBreakBetween, RegionBreakBetween, PageBreakBetween, LeftPageBreakBetween, RightPageBreakBetween, RectoPageBreakBetween, VersoPageBreakBetween
+    AutoBreakBetween, AvoidBreakBetween, AvoidColumnBreakBetween, AvoidPageBreakBetween, ColumnBreakBetween, PageBreakBetween, LeftPageBreakBetween, RightPageBreakBetween, RectoPageBreakBetween, VersoPageBreakBetween
 };
 bool alwaysPageBreak(BreakBetween);
     
@@ -627,8 +627,6 @@ enum ImageResolutionSource { ImageResolutionSpecified = 0, ImageResolutionFromIm
 enum ImageResolutionSnap { ImageResolutionNoSnap = 0, ImageResolutionSnapPixels };
 
 enum Order { LogicalOrder = 0, VisualOrder };
-
-enum RegionFragment { AutoRegionFragment, BreakRegionFragment };
 
 enum ColumnAxis { HorizontalColumnAxis, VerticalColumnAxis, AutoColumnAxis };
 

@@ -32,6 +32,7 @@
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
 #include "DocumentWriter.h"
+#include "FrameDestructionObserver.h"
 #include "LinkIcon.h"
 #include "LoadTiming.h"
 #include "NavigationAction.h"
@@ -68,6 +69,7 @@ class ContentFilter;
 class FormState;
 class Frame;
 class FrameLoader;
+class HTTPHeaderField;
 class IconLoader;
 class Page;
 class PreviewConverter;
@@ -90,7 +92,7 @@ enum class AutoplayQuirk {
     InheritedUserGestures = 1 << 1,
 };
 
-class DocumentLoader : public RefCounted<DocumentLoader>, private CachedRawResourceClient {
+class DocumentLoader : public RefCounted<DocumentLoader>, public FrameDestructionObserver, private CachedRawResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
     friend class ContentFilter;
 public:
@@ -101,7 +103,6 @@ public:
     WEBCORE_EXPORT virtual ~DocumentLoader();
 
     void attachToFrame(Frame&);
-    Frame* frame() const { return m_frame; }
 
     WEBCORE_EXPORT virtual void detachFromFrame();
 
@@ -295,6 +296,8 @@ public:
 
     const Vector<LinkIcon>& linkIcons() const { return m_linkIcons; }
 
+    WEBCORE_EXPORT void setCustomHeaderFields(Vector<HTTPHeaderField>&& fields);
+    
 protected:
     WEBCORE_EXPORT DocumentLoader(const ResourceRequest&, const SubstituteData&);
 
@@ -363,7 +366,6 @@ private:
 
     void notifyFinishedLoadingIcon(uint64_t callbackIdentifier, SharedBuffer*);
 
-    Frame* m_frame { nullptr };
     Ref<CachedResourceLoader> m_cachedResourceLoader;
 
     CachedResourceHandle<CachedRawResource> m_mainResource;
@@ -453,6 +455,8 @@ private:
     HashMap<std::unique_ptr<IconLoader>, uint64_t> m_iconLoaders;
     Vector<LinkIcon> m_linkIcons;
 
+    Vector<HTTPHeaderField> m_customHeaderFields;
+    
     bool m_subresourceLoadersArePageCacheAcceptable { false };
     ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
 
