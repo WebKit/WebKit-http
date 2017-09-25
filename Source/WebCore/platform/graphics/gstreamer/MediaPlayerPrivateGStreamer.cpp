@@ -409,8 +409,8 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
         playbackPosition = MediaTime(((currentPts * GST_MSECOND) / 45), GST_SECOND);
         GST_DEBUG("Using position reported by the video decoder: %s", toString(playbackPosition).utf8().data());
     }
-    if (!result && m_seekTime.isValid())
-        result = m_seekTime;
+    if (!playbackPosition && m_seekTime.isValid())
+        playbackPosition = m_seekTime;
 #endif
 
     m_cachedPosition = playbackPosition;
