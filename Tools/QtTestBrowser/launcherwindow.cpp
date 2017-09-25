@@ -345,6 +345,9 @@ void LauncherWindow::createChrome()
     spatialNavigationAction->setCheckable(true);
     spatialNavigationAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
+    QAction* caretBrowsingAction = toolsMenu->addAction("Toggle Caret Browsing", this, SLOT(toggleCaretBrowsing(bool)));
+    caretBrowsingAction->setCheckable(true);
+
     QAction* toggleFrameFlattening = toolsMenu->addAction("Toggle Frame Flattening", this, SLOT(toggleFrameFlattening(bool)));
     toggleFrameFlattening->setCheckable(true);
     toggleFrameFlattening->setChecked(settings->testAttribute(QWebSettings::FrameFlatteningEnabled));
@@ -970,6 +973,11 @@ void LauncherWindow::animatedYFlip()
 void LauncherWindow::toggleSpatialNavigation(bool enable)
 {
     page()->settings()->setAttribute(QWebSettings::SpatialNavigationEnabled, enable);
+}
+
+void LauncherWindow::toggleCaretBrowsing(bool enable)
+{
+    page()->settings()->setAttribute(QWebSettings::CaretBrowsingEnabled, enable);
 }
 
 void LauncherWindow::toggleFullScreenMode(bool enable)
